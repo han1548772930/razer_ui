@@ -2082,7 +2082,7 @@
     },
     {
       "path": "src/features/source_controls/oled_home_cards.rs",
-      "sha256": "f873b487cd2ceba3bd3577ee301e53ea3c55e2d69d247c93dc4be49cc88b14c5"
+      "sha256": "863d8f718c208245836e64aa1195ec559fbbc6146e6c1fda3fb4cabbd788a0b1"
     },
     {
       "path": "src/features/source_controls/oled_page.rs",
@@ -2105,7 +2105,7 @@
   "limitations": [
     "Tooltip content and mechanism are verified; runtime hover pixels and engine font metrics remain unmeasured.",
     "Animation transfer estimates need processed size; original imported byte counts are not substituted.",
-    "Emote/Banner/System editors, actual service loading/language downloads and device writes remain unavailable.",
+    "Emote/Banner editors remain unavailable. The separate System text preview/editor is mounted, with original SVG presentation and full workflow incomplete; actual service loading/language downloads and device writes remain unavailable.",
     "No application or tests ran; runtime image pixels, hover and focus behavior remain unmeasured."
   ]
 }

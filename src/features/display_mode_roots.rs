@@ -2,7 +2,7 @@
 //!
 //! Each product bundle selects these roots in the same ternary chain that reads
 //! `searchParams.get("displayMode")`; the branches are recorded in
-//! [display mode audit](../../docs/re/display-mode-audit.md) and regenerated into
+//! [display mode audit](../../docs/re/shell-workspace-current.md) and regenerated into
 //! `display-mode-roots.json` by `tools/generate-display-mode-roots.cjs`. The
 //! table only carries product ids, so a branch is never claimed for a product
 //! whose bundle was not scanned.

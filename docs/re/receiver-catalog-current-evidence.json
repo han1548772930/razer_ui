@@ -2866,6 +2866,24 @@
           "source": "()=>L(void 0,void 0,void 0,(function*(){var e;const t=g.razerWindow.rzDevice,n=yield t.getMultipleDeviceWirelessConnectionStatusV2(),{jsonData:o}=n;if(o){const t=(o.status||[]).filter((e=>65535!==e.productId&&e.productId!==v.DeviceInfo.dongleId));if(console.log(\"[duallink] bindedInfo\",t),t.length>0){const n=yield Y(),o=JSON.parse(null!==(e=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==e?e:\"[]\")||[];return yield Promise.all(t.map((e=>L(void 0,void 0,void 0,(function*(){const t=(yield ie(Object.assign(Object.assign({},e),{containerId:U})))?\"master\":\"slave\",i=Object.assign({role:t,name:{en:\"unknown-\"+e.productId},productName:{en:\"unknown\"+e.productId},editionName:{en:\"unknown\"+e.productId},category:me(),editionId:0,layoutId:0},e),r=n.find((t=>t.dongleId===e.productId));if(console.log(\"[duallink] bindInfo <==> availableDevices\",r),r){let n=o.find((e=>e.productId===r.productId));if(V()&&(n=Ie(r.productId)),console.log(\"[duallink] matched\",r,\"connectedInfo: \",n),n)return Object.assign(Object.assign(Object.assign({role:t},n),e),{productId:n.productId,dongleId:e.productId,layoutId:yield _e(n,n.productId,e.productId)});{const t=(yield Z().catch((e=>(console.error(\"[duallink] fetchDualLinkDevicesJSON failed\",e),{Devices:[]})))).Devices.find((e=>e.DeviceDonglePid===r.dongleId)),n=t&&(t.ProductInfo.find((e=>e.EID===i.editionId))||t.ProductInfo[0]);if(n){const e={en:n.Name,\"zh-cn\":n.CHSName};i.name=e,i.productName=e,i.editionName=e,i.category=t.DeviceType||i.category}return Object.assign(Object.assign(Object.assign({},i),e),{productId:r.productId,dongleId:e.productId})}}return i})))))}return t}}))"
         },
         {
+          "label": "startup discovery retry",
+          "module": 34340,
+          "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+          "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+          "offset": 1238586,
+          "end": 1239341,
+          "source": "()=>L(void 0,void 0,void 0,(function*(){var e,t;const n=yield he().catch((e=>{console.warn(\"[duallink] queryBindInfo failed\",e),setTimeout(Ne,1e3)}));if(n&&(0===(null===(e=n[0])||void 0===e?void 0:e.status)||\"\"===(null===(t=n[0])||void 0===t?void 0:t.serialNumber))&&be<5)return console.log(\"Recheck slave status ====>\",n[0].status),be++,void setTimeout((()=>L(void 0,void 0,void 0,(function*(){return yield Ne().catch((e=>{console.warn(\"[duallink] initMasterDevice failed\",e)}))}))),200*(be+1));if(console.log(\"[duallink] initMasterDevice bindedInfo ===>\",n),n&&n.length)for(const e of n){const t=e.status===x.connected;yield ye({vendorId:5426,productId:e.productId,deviceContainerId:U,dongleId:e.dongleId||e.productId},t),Ce(e.dongleId||e.productId)}}))"
+        },
+        {
+          "label": "startup retry counter",
+          "module": 34340,
+          "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+          "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+          "offset": 1238575,
+          "end": 1238576,
+          "source": "0"
+        },
+        {
           "label": "_createDataSend",
           "module": 7755,
           "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
@@ -2893,6 +2911,11 @@
           "source": "_getUSBTransferInResult(e,t,n,o){return lc(this,void 0,void 0,(function*(){const r=\"getUSBTransferInResult\";n.resendOutCommand=!1;try{let s=!0;for(let c=0;c<this.maxRetryIn&&s;c++){let u;if(c>0&&(yield a._v(this.sleepTimeBetweenIn)),this.isElectron){const e={action:\"hid.getFeatureReport\",payload:{productId:this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,protocol:\"25\",reportId:this.reportId,reportLength:this.reportLength}};u=yield(0,ic.NH)(e),u||(u=new Array(90).fill(0))}else{const e=yield this.device.controlTransferIn({requestType:\"class\",recipient:\"interface\",request:1,value:768,index:this.claimInterface},90);if(\"ok\"!==e.status){n.status=i.STATUS_FAIL,n.error=e.status;continue}u=new Uint8Array(e.data.buffer)}if(n.dataHeader=u.slice(0,8),n.rawData=[...u.slice(8)],n.data=[...u.slice(8,8+u[5])],u[1]!==t[1]){console.log(`${this.name}.${r}:commandSend:${e}, commandDesc:${o}, different transId, dataSend[1]: ${t[1]}, dataReturned[1]:${u[1]}, retry get:${s}, i:${c}`),n.resendOutCommand=!0;break}if(u[6]!==t[6]){n.resendOutCommand=!0;break}if(u[7]!==t[7]){console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, different command, dataSend[7]: ${t[7]}, dataReturned[7]:${u[7]}, retry get:${s}, i:${c}`),n.resendOutCommand=!0;break}switch(n.packetSizeReturned=u[5],u[0]){case 0:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_NEW_COMMAND,s=!1,n.resendOutCommand=!0;break;case 1:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_BUSY,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_BUSY, retry get:${s}, i:${c}`);break;case 2:n.status=i.STATUS_SUCCESS,n.error=\"\",s=!1,n.resendOutCommand=!1;break;case 3:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_FAILED,s=!1,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_FAILED, retry get:${s}, i:${c}`);break;case 4:e===ac.at&&this.ignoreSetDeviceModeTimeoutError?(s=!1,console.log(`${this.name} workaround for setDeviceMode(DriverMode)`),n.status=i.STATUS_SUCCESS,n.error=\"\",n.resendOutCommand=!1):(s=!1,n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_TIMEOUT,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_TIMEOUT, retry get:${s}, i:${c}`));break;case 5:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED, retry get:${s}, i:${c}`);break;default:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN, retry get:${s}, i:${c}`)}}}catch(t){n.status=i.STATUS_FAIL,n.error=t.message,console.warn(`${this.name}.${r} error: ${a.Cf(e[1])}, ${a.Cf(e[2])},\\n\\t\\t\\t\\t${JSON.stringify(t)}`)}}))}"
         }
       ],
+      "startup_retry_scope": {
+        "implemented": "Bounded first-peer status requery only",
+        "query_error_retry_ms": 1000,
+        "remaining": "Owner-cancelled error retries and runtime serial readiness are not implemented"
+      },
       "capability": {
         "source_product_id": 179,
         "vendor_id": 5426,
@@ -2914,6 +2937,16 @@
         "sleep_between_out_in_ms": 25,
         "sleep_between_in_ms": 25,
         "peer_match_product_id": false,
+        "startup_retry": {
+          "first_peer_status": 0,
+          "delays_ms": [
+            400,
+            600,
+            800,
+            1000,
+            1200
+          ]
+        },
         "source_class": "rzDevice25LinkerUma",
         "evidence_path": "docs/re/receiver-catalog-current-evidence.json"
       },

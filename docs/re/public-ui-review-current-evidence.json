@@ -330,7 +330,7 @@
           "sha256": "a5cb3d90554731827f92526a001dc9b8f167ea71e81d479038f03b73b2b1e7f7"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/background-manager/",
@@ -349,7 +349,7 @@
           "sha256": "6e6b24e72d58de6aa165f40df626d8ea9dbe6e391444a38b24d4bd7c6f96d849"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/chroma-app/dashboard/",
@@ -368,7 +368,7 @@
           "sha256": "6ef65f426d2f63f9fbd02d6304949c26e2214ae487b98eb5c85ff03702aa5fda"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/chroma-app/settings/",
@@ -387,7 +387,7 @@
           "sha256": "4874b54004ee4e011c058a37def601427379d3f93792291ede78ade216dd6d2d"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/cortex/",
@@ -397,7 +397,7 @@
         "manifest.json": null,
         "asset-manifest.json": null
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/feedback/",
@@ -416,7 +416,7 @@
           "sha256": "ee198348cf297ad68f02d0a27542f6e51f489ad35ca77ef5f64e1c47567b737f"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/natalie/",
@@ -435,7 +435,7 @@
           "sha256": "7c3e5c4c507b6b87ce37215c5194c87f2aaf724c50c6a8d1b3b78f380727c1ce"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/profile-migration/",
@@ -454,7 +454,7 @@
           "sha256": "a2c59640da40755536dc3ca147939ffe28a842ea81dbabb3869255df77e450de"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/rz-app-menu/",
@@ -473,7 +473,7 @@
           "sha256": "77af850850b68eb03be8634767e8fa0edc5b7ac104e23f5fa77aeb3ec2c64262"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/rz-user-profile-menu/",
@@ -492,7 +492,7 @@
           "sha256": "659aaa7543cfe41d02329a741725bf5b306bc8741c292bf7c1eb80ff0d56edc2"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/settings/",
@@ -511,7 +511,7 @@
           "sha256": "21ab9657bad4cda156e453142f54a2ebf604814047214e273c7c621723f26b34"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/sophie-lite/",
@@ -530,7 +530,7 @@
           "sha256": "bc4e5371596d66f59e01d1e0bd64db0dd6970a2daaf909e2c5778a7d5146d066"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/sophie/",
@@ -549,7 +549,7 @@
           "sha256": "5b1026ec761781112cd5c4e70df82aac06464ddc7d57f77381d27055a5c0823a"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/",
@@ -559,7 +559,7 @@
         "manifest.json": null,
         "asset-manifest.json": null
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/alexa/",
@@ -578,7 +578,7 @@
           "sha256": "895bba650efd869414ac46d0d003b3ff3ae14ecb62cb0fa7fed167a45d994c01"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/armory/",
@@ -597,7 +597,7 @@
           "sha256": "b32b5f84d0eeb83ebb2a35f055c1168ab02286af9fd54c6002de7917f696ed28"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/chroma-studio/",
@@ -616,7 +616,7 @@
           "sha256": "80aa60655a1922f26dd280cd17b2f471d0dab9b95c095142c3143e352a6a03d1"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/dashboard/",
@@ -635,7 +635,7 @@
           "sha256": "3f8f489ae43320bbfb7b4d85cb787abdf762622ef1850051bd9baa880ad4136a"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/introduction-tour/",
@@ -654,7 +654,7 @@
           "sha256": "533755ad92bf9a5be6baf185292df82c94a83fbc988a7967622142b2d08a1973"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/macro/",
@@ -673,7 +673,7 @@
           "sha256": "42c5f5a3f8dae356016443302d15926ce1746aa3e8aa7fce2afbc43596382884"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/profiles/",
@@ -692,7 +692,7 @@
           "sha256": "e3c1bb337ac0fe27d4e1fc0445614db613d150988110763c8d1e97553fbe7ca6"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/settings/",
@@ -711,7 +711,7 @@
           "sha256": "191455d3d4a040e3501a3c480ea2acd171f99043bc86e586ac8c2bb33f32fe72"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/synapse/update-fw/",
@@ -730,7 +730,7 @@
           "sha256": "b9f4c0cf32d27f504e561f764c78e6a04130498df5c0daf0297e1ff8cc984911"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     },
     {
       "route": "/systray/systrayv2/",
@@ -749,24 +749,24 @@
           "sha256": "61ee57bcc40a28bd007239168ed66c042e6a0e7093b0b15fe3d6a4c6dc36a9dc"
         }
       },
-      "review_status": "Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion."
+      "review_status": "Per-page status is documented in application-review-current.md; manifest presence is not UI completion."
     }
   ],
   "native": {
     "src/preferences.rs": "fdf9d07b1b93e60926568ec21fcd8006fbee3516b8f50df5f8d9de4c9d674a90",
-    "src/shell/settings_page.rs": "9c6c1e02162c380fa8e3c7a4e400f516dc2f10e81e7d3d39e9aec9a0ebf16088",
+    "src/shell/settings_page.rs": "d259565830775643df797e3d34a50821ecc6f9b188bcea2167093ed99ea455a3",
     "src/shell/settings_window.rs": "6b2893029465e711b6463aeeb20725c121c00983c33d25d09c8f77a6e8487bf5",
     "src/shell/settings_systray_action.rs": "a431d82f43fef30aafdce6aa5736ba61621199249d9e3d96f904b9fe839da79f",
-    "src/shell/profiles_page.rs": "db99e1c7a006a61622f9c8cae3573d222d6e12284128581e23721d2d584667aa",
+    "src/shell/profiles_page.rs": "fb1fd4f55619215da31b953b31a3d9f45647626ff596edba93d2c7d263e8eb8c",
     "src/shell/profiles_page/devices.rs": "b724afe11fde1f8bfec34ca7bdcd5a4124f4a4a9f20a6e72fe5227e40be9d1cc",
     "src/features/profile_collection.rs": "d5b9b5afc93778eee69d5e3c36ce9d4aa4d83fe62cfa13075765758b4dc2ffac",
-    "src/features/product_workspace.rs": "e24d75cc5e22f4ec9eeb504d437f85b95ec27bcd666b66d27d548db6495d1fbf",
-    "src/features/workspace.rs": "ad469bdf971b6660b7cac3b43434a5ab1bb9e09bba92cbcd48a9b25157836b4e",
-    "src/features/source_workspace.rs": "2a6530f462ecc527c5229aae92a67bf1dc00d6dc333968c70650ac8fdca6a3b5",
+    "src/features/product_workspace.rs": "74e7a7877da0e8e0908fa66fac322d2c76193f7be0deb473c6fd9dbc9112ee6e",
+    "src/features/workspace.rs": "40906f279c0ff17513e89e810789ebd2bfa57d29805582c607c7dcdd4b8f88ec",
+    "src/features/source_workspace.rs": "85b03851402f97d91eeeb79a373c48f4cf2cb1f4610a47d1ae8db6ca25a1b2bf",
     "src/features/control_pod_audio.rs": "1d5ebcb597a7569c68e262337a7e38ae4c2f945c5c849fa08f6323ed4382a7ee",
-    "src/shell/chroma_page.rs": "cb340826df85620ced80790e553b6f413c031fb0e8393aaa98e4ee613dcde5ca",
-    "src/features/chroma_studio.rs": "f04ba8aa0fb67bf234d720747540b8b6c2cd6cd35eebf07ea80c6f05007f0080",
-    "src/features/chroma_studio_properties.rs": "9a47a2c40b1afd35b70ba01d9772ac2fcfba2329281dc2ae2d7bd8ad54fcf92f",
+    "src/shell/chroma_page.rs": "8adea7ae31967f315ac53dec8ba90b900acbb4d3a679af6468545c953f1deee4",
+    "src/features/chroma_studio.rs": "b620261172c49d64a8d25d3c37097010b9d3da820de2b3b978fd534b3982c4d2",
+    "src/features/chroma_studio_properties.rs": "3ed990e62ac814ded7c59cdf6290ed745f2b497555f95d0c4d9b7cd678f563a8",
     "src/shell/feedback_page.rs": "95fa4fab6be3e2370640436d95b1f13b9d08dbe0fe5714058acd7b4d611d1a53",
     "src/shell/chroma_window.rs": "6e06ff883762cc2fba10d2990c9af712104975ed82d77bc3bbc1b677a7936a8d"
   },
@@ -779,5 +779,5 @@
     "Active-profile deletion refuses uncommitted mouse mapping or 1382 audio editor changes before a local restore can discard them.",
     "Chroma local preference save errors are displayed with retry while the current session edits remain available; writes are not claimed atomic."
   ],
-  "pending": "See public-ui-review-2026-10-07.md. A validated source receipt, existing route or shared editor does not complete a page or device review."
+  "pending": "See application-review-current.md. A validated source receipt, existing route or shared editor does not complete a page or device review."
 }

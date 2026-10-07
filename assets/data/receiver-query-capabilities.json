@@ -263,6 +263,16 @@
       "sleep_between_out_in_ms": 25,
       "sleep_between_in_ms": 25,
       "peer_match_product_id": false,
+      "startup_retry": {
+        "first_peer_status": 0,
+        "delays_ms": [
+          400,
+          600,
+          800,
+          1000,
+          1200
+        ]
+      },
       "source_class": "rzDevice25LinkerUma",
       "evidence_path": "docs/re/receiver-catalog-current-evidence.json"
     },

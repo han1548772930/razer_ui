@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "166a4df497df6d6c5a89519ef174ff8f6a5af9e307ce5b2d037d4f1187107ca4",
+  "generator_sha256": "ad36d32cd3221c19e036f2d2670bc5bc6883a24d7c1ba64d327f485463b8aa66",
   "method": "Static text receipts for the product iframe host (180) and the Dashboard device box that opens it. No downloaded JavaScript is executed.",
   "product_root": {
     "source": ".ref/devices/180/static/js/main.ca4353ee.js",

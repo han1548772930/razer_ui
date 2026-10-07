@@ -10,6 +10,12 @@ pub(crate) enum ReceiverProtocol {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+pub(crate) struct ReceiverStartupRetry {
+    pub(crate) first_peer_status: u8,
+    pub(crate) delays_ms: Vec<u64>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub(crate) struct ReceiverCapability {
     pub(crate) source_product_id: u16,
     pub(crate) vendor_id: u16,
@@ -29,6 +35,10 @@ pub(crate) struct ReceiverCapability {
     /// Keyboard middleware accepts productId as well as scalar dongleId;
     /// mouse/linker middleware uses scalar dongleId only.
     pub(crate) peer_match_product_id: bool,
+    /// Independently audited discovery caller policy, separate from command
+    /// transport retries. Missing policies must not be inferred from a class.
+    #[serde(default)]
+    pub(crate) startup_retry: Option<ReceiverStartupRetry>,
     pub(crate) source_class: String,
     pub(crate) evidence_path: String,
 }

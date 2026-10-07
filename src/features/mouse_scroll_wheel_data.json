@@ -1,0 +1,348 @@
+[
+  {
+    "product_id": 153,
+    "profile_key": "scrollWheel",
+    "defaults": {
+      "accelerationEnabled": false,
+      "smartReelEnabled": false,
+      "scrollMode": "FreeSpin"
+    },
+    "modes": [
+      {
+        "id": "Tactile",
+        "label": "TACTILE"
+      },
+      {
+        "id": "FreeSpin",
+        "label": "FREE_SPIN"
+      }
+    ],
+    "level_min": 0,
+    "level_max": 0,
+    "level_step": 0,
+    "max_disabled_modes": 0,
+    "locking_mode": "",
+    "presentation": "two_mode_switches",
+    "two_mode_style": {
+      "background": 1118481,
+      "text": 13421772,
+      "selected_text": 1118481,
+      "height": 36,
+      "radius": 18,
+      "padding": 5,
+      "pill_height": 26,
+      "pill_radius": 13,
+      "pill_padding_x": 10,
+      "pill_padding_y": 5,
+      "message_margin": 5,
+      "switch_margin": 5,
+      "mode_margin": 20,
+      "twoway_margin": 10,
+      "uppercase": false
+    },
+    "help_key": "SCROLL_WHEEL_TOOLTIP",
+    "mode_description": true,
+    "acceleration_descriptions": [
+      true
+    ],
+    "smart_reel_descriptions": [
+      true
+    ]
+  },
+  {
+    "product_id": 170,
+    "profile_key": "scrollWheel",
+    "defaults": {
+      "accelerationEnabled": false,
+      "smartReelEnabled": false,
+      "scrollMode": "FreeSpin"
+    },
+    "modes": [
+      {
+        "id": "Tactile",
+        "label": "TACTILE"
+      },
+      {
+        "id": "FreeSpin",
+        "label": "FREE_SPIN"
+      }
+    ],
+    "level_min": 0,
+    "level_max": 0,
+    "level_step": 0,
+    "max_disabled_modes": 0,
+    "locking_mode": "",
+    "presentation": "two_mode_switches",
+    "two_mode_style": {
+      "background": 1118481,
+      "text": 13421772,
+      "selected_text": 1118481,
+      "height": 36,
+      "radius": 18,
+      "padding": 5,
+      "pill_height": 26,
+      "pill_radius": 13,
+      "pill_padding_x": 10,
+      "pill_padding_y": 5,
+      "message_margin": 5,
+      "switch_margin": 5,
+      "mode_margin": 20,
+      "twoway_margin": 10,
+      "uppercase": false
+    },
+    "help_key": "SCROLL_WHEEL_TOOLTIP",
+    "mode_description": true,
+    "acceleration_descriptions": [
+      true
+    ],
+    "smart_reel_descriptions": [
+      true
+    ]
+  },
+  {
+    "product_id": 203,
+    "profile_key": "scrollWheel",
+    "defaults": {
+      "accelerationEnabled": false,
+      "accelerationLevel": 0,
+      "smartReelEnabled": false,
+      "smartReelLevel": 0,
+      "scrollMode": "FreeSpin"
+    },
+    "modes": [
+      {
+        "id": "Tactile",
+        "label": "TACTILE"
+      },
+      {
+        "id": "FreeSpin",
+        "label": "FREE_SPIN"
+      }
+    ],
+    "level_min": 0,
+    "level_max": 4,
+    "level_step": 1,
+    "max_disabled_modes": 0,
+    "locking_mode": "",
+    "presentation": "two_mode_levels",
+    "two_mode_style": {
+      "background": 1118481,
+      "text": 13421772,
+      "selected_text": 1118481,
+      "height": 36,
+      "radius": 18,
+      "padding": 5,
+      "pill_height": 26,
+      "pill_radius": 13,
+      "pill_padding_x": 10,
+      "pill_padding_y": 5,
+      "message_margin": 10,
+      "switch_margin": 10,
+      "mode_margin": 0,
+      "twoway_margin": 10,
+      "uppercase": true
+    },
+    "help_key": "SCROLL_WHEEL_TOOLTIP",
+    "mode_description": true,
+    "acceleration_descriptions": [
+      true
+    ],
+    "smart_reel_descriptions": [
+      true,
+      true
+    ]
+  },
+  {
+    "product_id": 204,
+    "profile_key": "scrollWheel",
+    "defaults": {
+      "accelerationEnabled": false,
+      "accelerationLevel": 0,
+      "smartReelEnabled": false,
+      "smartReelLevel": 0,
+      "scrollMode": "FreeSpin"
+    },
+    "modes": [
+      {
+        "id": "Tactile",
+        "label": "TACTILE"
+      },
+      {
+        "id": "FreeSpin",
+        "label": "FREE_SPIN"
+      }
+    ],
+    "level_min": 0,
+    "level_max": 4,
+    "level_step": 1,
+    "max_disabled_modes": 0,
+    "locking_mode": "",
+    "presentation": "two_mode_levels",
+    "two_mode_style": {
+      "background": 1118481,
+      "text": 13421772,
+      "selected_text": 1118481,
+      "height": 36,
+      "radius": 18,
+      "padding": 5,
+      "pill_height": 26,
+      "pill_radius": 13,
+      "pill_padding_x": 10,
+      "pill_padding_y": 5,
+      "message_margin": 10,
+      "switch_margin": 10,
+      "mode_margin": 0,
+      "twoway_margin": 10,
+      "uppercase": true
+    },
+    "help_key": "SCROLL_WHEEL_TOOLTIP",
+    "mode_description": true,
+    "acceleration_descriptions": [
+      true
+    ],
+    "smart_reel_descriptions": [
+      true,
+      true
+    ]
+  },
+  {
+    "product_id": 214,
+    "profile_key": "scrollWheel",
+    "defaults": {
+      "accelerationEnabled": false,
+      "accelerationLevel": 0,
+      "smartReelEnabled": false,
+      "smartReelLevel": 0,
+      "scrollMode": "FreeSpin"
+    },
+    "modes": [
+      {
+        "id": "Tactile",
+        "label": "TACTILE"
+      },
+      {
+        "id": "FreeSpin",
+        "label": "FREE_SPIN"
+      }
+    ],
+    "level_min": 0,
+    "level_max": 4,
+    "level_step": 1,
+    "max_disabled_modes": 0,
+    "locking_mode": "",
+    "presentation": "two_mode_levels",
+    "two_mode_style": {
+      "background": 1118481,
+      "text": 13421772,
+      "selected_text": 1118481,
+      "height": 36,
+      "radius": 18,
+      "padding": 5,
+      "pill_height": 26,
+      "pill_radius": 13,
+      "pill_padding_x": 10,
+      "pill_padding_y": 5,
+      "message_margin": 10,
+      "switch_margin": 10,
+      "mode_margin": 0,
+      "twoway_margin": 10,
+      "uppercase": true
+    },
+    "help_key": "SCROLL_WHEEL_TOOLTIP",
+    "mode_description": true,
+    "acceleration_descriptions": [
+      true
+    ],
+    "smart_reel_descriptions": [
+      true,
+      true
+    ]
+  },
+  {
+    "product_id": 226,
+    "profile_key": "scrollWheel",
+    "defaults": {
+      "accelerationEnabled": false,
+      "accelerationLevel": 0,
+      "smartReelEnabled": false,
+      "smartReelLevel": 0,
+      "scrollMode": "FreeSpin",
+      "disabledModes": []
+    },
+    "modes": [
+      {
+        "id": "Tactile",
+        "label": "TACTILE",
+        "disableLabel": "DISABLE_TACTILE"
+      },
+      {
+        "id": "FreeSpin",
+        "label": "FREE_SPIN",
+        "disableLabel": "DISABLE_FREE_SPIN"
+      },
+      {
+        "id": "MicroTactile",
+        "label": "MICRO_TACTILE",
+        "disableLabel": "DISABLE_MICRO_TACTILE"
+      }
+    ],
+    "level_min": 0,
+    "level_max": 4,
+    "level_step": 1,
+    "max_disabled_modes": 2,
+    "locking_mode": "FreeSpin"
+  },
+  {
+    "product_id": 45066,
+    "profile_key": "scrollWheel",
+    "defaults": {
+      "accelerationEnabled": false,
+      "accelerationLevel": 0,
+      "smartReelEnabled": false,
+      "smartReelLevel": 0,
+      "scrollMode": "FreeSpin"
+    },
+    "modes": [
+      {
+        "id": "Tactile",
+        "label": "TACTILE"
+      },
+      {
+        "id": "FreeSpin",
+        "label": "FREE_SPIN"
+      }
+    ],
+    "level_min": 0,
+    "level_max": 4,
+    "level_step": 1,
+    "max_disabled_modes": 0,
+    "locking_mode": "",
+    "presentation": "two_mode_levels",
+    "two_mode_style": {
+      "background": 1118481,
+      "text": 13421772,
+      "selected_text": 1118481,
+      "height": 36,
+      "radius": 18,
+      "padding": 5,
+      "pill_height": 26,
+      "pill_radius": 13,
+      "pill_padding_x": 10,
+      "pill_padding_y": 5,
+      "message_margin": 10,
+      "switch_margin": 10,
+      "mode_margin": 0,
+      "twoway_margin": 10,
+      "uppercase": true
+    },
+    "help_key": "SCROLL_WHEEL_TOOLTIP",
+    "mode_description": true,
+    "acceleration_descriptions": [
+      true
+    ],
+    "smart_reel_descriptions": [
+      true,
+      true
+    ]
+  }
+]

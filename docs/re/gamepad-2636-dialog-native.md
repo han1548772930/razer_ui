@@ -2,7 +2,7 @@
 
 来源为 `.ref/devices/2636/static/js/main.82d8a835.js`，SHA-256 为 `a5b49ece13b13202b65e97d565b77ca61d22c8c6e14f9ec560dcee68d1155f9a`。收据由 `node tools/prepare-gamepad-2636-dialog.cjs --check` 静态检查；不会执行厂商代码。完整 AST、CSS 与图标来源见 [证据](gamepad-2636-dialog-current-evidence.json)。
 
-## 本轮实现
+## 当前实现
 
 - `gamepad_deadzone_dialog.rs` 使用 Base Dialog 管理弹层与焦点，Base Button 管理操作；2636 原来的内联提示被替换，未向其他未审手柄推广。
 - 死区为 0 使用 ZERO_DEADZONES_WARNING 分支，其余小于 7 使用 LOW_DEADZONES_WARNING 分支；第二段说明共用 LOW_DEADZONES_WARNING_DESC_2。

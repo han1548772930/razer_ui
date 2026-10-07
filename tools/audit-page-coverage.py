@@ -39,6 +39,7 @@ SELF_TEST_BODIES = [
         }""",
         [],
         [],
+        [],
     ),
     # The guard hides every implemented page behind a note: must be reported.
     (
@@ -52,6 +53,7 @@ SELF_TEST_BODIES = [
         }""",
         [],
         ["TAB_GAMING"],
+        [],
     ),
     # An arm that only renders a placeholder note is not a renderer.
     (
@@ -62,6 +64,7 @@ SELF_TEST_BODIES = [
         }""",
         [],
         [],
+        ["TAB_PAIRING"],
     ),
     # A key with no arm at all stays on the placeholder.
     (
@@ -71,6 +74,7 @@ SELF_TEST_BODIES = [
             _ => self.placeholder(cx),
         }""",
         ["TAB_OLED"],
+        [],
         [],
     ),
 ]
@@ -86,7 +90,7 @@ def keys_in_arms(body: str):
 
 def self_test() -> int:
     failures = 0
-    for name, code, expected_unwired, expected_blocked in SELF_TEST_BODIES:
+    for name, code, expected_unwired, expected_blocked, expected_placeholder in SELF_TEST_BODIES:
         body = match_body(code, r"self\.page\.as_str\(\)")
         handled, placeholder = handled_keys(code)
         blocked = guard_order_problems(body) if body else []
@@ -94,7 +98,8 @@ def self_test() -> int:
         reported = sorted(key for key in declared if key not in handled and key not in placeholder)
         wanted_blocked = sorted(expected_blocked)
         blocked_matches = blocked == [wanted_blocked] if wanted_blocked else blocked == []
-        ok = reported == sorted(expected_unwired) and blocked_matches
+        ok = (reported == sorted(expected_unwired) and blocked_matches
+              and sorted(placeholder) == sorted(expected_placeholder))
         if not ok:
             failures += 1
         print(
@@ -301,6 +306,12 @@ def supplement_pages() -> dict:
 
 
 SUPPLEMENT = supplement_pages()
+AUDIO_DEMOS = {
+    product["product_id"]
+    for product in json.loads(
+        (ROOT / "src/features/audio_demo_data.json").read_text(encoding="utf-8")
+    )
+}
 
 
 def supplement_handles(family: str, pid: int, key: str, family_handled: bool) -> bool:
@@ -344,7 +355,9 @@ for family, (code_path, data_path) in FAMILIES.items():
                 continue
             checked_slots += 1
             if family == "audio":
-                family_handled = bool(page.get("sections")) or key == "TAB_DEMO"
+                family_handled = bool(page.get("sections")) or (
+                    key == "TAB_DEMO" and product["product_id"] in AUDIO_DEMOS
+                )
             else:
                 family_handled = key in handled
             if family_handled:
@@ -366,7 +379,7 @@ for family, (code_path, data_path) in FAMILIES.items():
                 "count": len(pages),
                 # Products whose only use of this key is the standalone mode root.
                 "standalone_products": [pid for pid in pages if pid in standalone],
-                "placeholder_products": [pid for pid in pages if pid in placeholder],
+                "placeholder_products": pages if key in placeholder else [],
             }
         )
 
@@ -411,5 +424,5 @@ else:
         f"slots with no renderer at all: {total} across {len(report)} page kinds; "
         f"placeholder-only slots: {len(placeholder_report)}; guard-order problems: {len(order_problems)}"
     )
-    if order_problems:
-        raise SystemExit(1)
+if order_problems:
+    raise SystemExit(1)

@@ -26,10 +26,10 @@ fn root_table_matches_the_audited_counts() {
 fn membership_follows_the_product_bundle() {
     assert!(has_root_branch(DisplayModeRoot::ChromaApp, 653));
     assert!(has_root_branch(DisplayModeRoot::Armory, 653));
-    // 3080 (Firefly V2 Pro) only carries the macro root in the current bundle.
+    // 3080's audited macro comparison is inline, not a root-level branch.
     assert!(!has_root_branch(DisplayModeRoot::ChromaApp, 3080));
     assert!(!has_root_branch(DisplayModeRoot::Armory, 3080));
-    assert!(has_root_branch(DisplayModeRoot::Macro, 3080));
+    assert!(!has_root_branch(DisplayModeRoot::Macro, 3080));
     // 691 (BlackWidow V4 Pro 75%) has no displayMode branch at all.
     assert!(
         DisplayModeRoot::all()

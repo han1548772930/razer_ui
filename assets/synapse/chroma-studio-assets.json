@@ -515,5 +515,93 @@
     "viewBox": "0 0 230 80",
     "width": "230",
     "height": "80"
+  },
+  {
+    "id": "clockwise-gray",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/clockwise-gray.9ca3c469.svg",
+    "source_sha256": "d20dce70213de80a43fa1717a100f2b223d43cdf96d4bb1a090c44edaea9fc8e",
+    "output": "assets/synapse/chroma-studio-clockwise-gray.svg",
+    "output_sha256": "d20dce70213de80a43fa1717a100f2b223d43cdf96d4bb1a090c44edaea9fc8e",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
+  },
+  {
+    "id": "clockwise-black",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/clockwise-black.da455ad3.svg",
+    "source_sha256": "b4cae5a8b60e0f14e3a714fa1e9bc10e83b6ce8f84217a8975b13db51b269d4c",
+    "output": "assets/synapse/chroma-studio-clockwise-black.svg",
+    "output_sha256": "b4cae5a8b60e0f14e3a714fa1e9bc10e83b6ce8f84217a8975b13db51b269d4c",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
+  },
+  {
+    "id": "counterclockwise-gray",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/counterclockwise-gray.c8fc93ff.svg",
+    "source_sha256": "dacebc40ff5256bcdfa83fa6b52cfa0f7441160098e7303660b7927469109050",
+    "output": "assets/synapse/chroma-studio-counterclockwise-gray.svg",
+    "output_sha256": "dacebc40ff5256bcdfa83fa6b52cfa0f7441160098e7303660b7927469109050",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
+  },
+  {
+    "id": "counterclockwise-black",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/counterclockwise-black.ff754b99.svg",
+    "source_sha256": "19f5c8154f241d9254f56613d40c7e4ef0f95c884ed0d15509050e17657d6953",
+    "output": "assets/synapse/chroma-studio-counterclockwise-black.svg",
+    "output_sha256": "19f5c8154f241d9254f56613d40c7e4ef0f95c884ed0d15509050e17657d6953",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
+  },
+  {
+    "id": "outward-gray",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/outward-gray.4ba54a4d.svg",
+    "source_sha256": "fa607b9d90f71fe62abb96af43008f6e5fbebf15e73954a78110b04792314eae",
+    "output": "assets/synapse/chroma-studio-outward-gray.svg",
+    "output_sha256": "fa607b9d90f71fe62abb96af43008f6e5fbebf15e73954a78110b04792314eae",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
+  },
+  {
+    "id": "outward-black",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/outward-black.cf093492.svg",
+    "source_sha256": "e31449ad7c91ec61cb0bb34a16a18ef1c885f9749116d529084ba6c01f9e2f9a",
+    "output": "assets/synapse/chroma-studio-outward-black.svg",
+    "output_sha256": "e31449ad7c91ec61cb0bb34a16a18ef1c885f9749116d529084ba6c01f9e2f9a",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
+  },
+  {
+    "id": "inward-gray",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/inward-gray.bf856670.svg",
+    "source_sha256": "2a81911b0035fe79b1524ab3d34c9af56b0bb0e3031add8f090ff850c004ced7",
+    "output": "assets/synapse/chroma-studio-inward-gray.svg",
+    "output_sha256": "2a81911b0035fe79b1524ab3d34c9af56b0bb0e3031add8f090ff850c004ced7",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
+  },
+  {
+    "id": "inward-black",
+    "source": ".ref/applications/synapse/chroma-studio/static/media/inward-black.46ca7ac5.svg",
+    "source_sha256": "8fa95da0be89159bfbfe2099b48895c6a35907c9a5b83968dd8ddc7e2d225ae2",
+    "output": "assets/synapse/chroma-studio-inward-black.svg",
+    "output_sha256": "8fa95da0be89159bfbfe2099b48895c6a35907c9a5b83968dd8ddc7e2d225ae2",
+    "method": "Original SVG bytes",
+    "viewBox": "0 0 20 20",
+    "width": "20",
+    "height": "20"
   }
 ]

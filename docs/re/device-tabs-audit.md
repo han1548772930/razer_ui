@@ -2,7 +2,7 @@
 
 2026-10-04 集成补充：已接上 Macro 和 Armory 的内部历史及壳观察订阅；关闭标签留下相邻重复外层记录时，前进/后退跳过重复项。Dashboard 96776 的 `l` 导入模块54693，`IUp → BACK`、`OXp → FORWARD`；Profiles与Macro也按自身作用域得到相同键，已撤销此前`NAVIGATE_BACK/FORWARD`的错误引用。静态校验覆盖五类内部历史的目标解析和激活接线，但没有运行点击验收。
 
-2026-10-04。[独立源码复核](source-ui-review-2026-10-04.md)给出182的实际组件链与偏移；[机器收据](device-tabs-audit.json)由[当前静态提取器](../../tools/audit-device-tabs.cjs)生成。
+2026-10-04。[独立源码复核](ui-readonly-first-roadmap.md)给出182的实际组件链与偏移；[机器收据](device-tabs-audit.json)由[当前静态提取器](../../tools/audit-device-tabs.cjs)生成。
 
 旧审计要求设备页出现 `.nav.back/.nav.forward` 按钮是错误的：CSS有这两个类，但当前 mounted navs-wrapper 并未渲染它们。实际子节点是 profile-wrapper、navs-wrapper、right；right内才是电量和帮助。现已删除第二套箭头，壳工具栏调用产品内部历史。取消脏映射确认不会提前改变历史索引。
 

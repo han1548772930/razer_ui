@@ -15,6 +15,10 @@ pub(super) use profile_collection::{
     Action as ProfileCollectionAction, edit as edit_profile_collection,
 };
 
+#[cfg(test)]
+#[path = "product_workspace_tests.rs"]
+mod tests;
+
 enum Body {
     Existing(Entity<DeviceWorkspace>),
     Source(Entity<SourceProductWorkspace>),
@@ -84,11 +88,13 @@ pub(crate) struct ProductWorkspace {
     _subscription: Subscription,
     _oled_subscription: Option<Subscription>,
     _receiver_subscription: Option<Subscription>,
+    _receiver_device_subscription: Option<Subscription>,
     _dock_subscription: Option<Subscription>,
 }
 impl EventEmitter<WorkspaceEvent> for ProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for ProductWorkspace {}
 impl EventEmitter<super::ReceiverPairingEvent> for ProductWorkspace {}
+impl EventEmitter<super::ReceiverDeviceRequested> for ProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
@@ -128,6 +134,15 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| {
                 body.observe_receiver_pairing(observation, cx)
             });
+        }
+    }
+    pub(crate) fn observe_receiver_devices(
+        &mut self,
+        devices: super::ReceiverDevicesObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_receiver_devices(devices, cx));
         }
     }
     pub(crate) fn observe_dock_pairing(
@@ -333,6 +348,7 @@ impl ProductWorkspace {
                 _subscription: subscription,
                 _oled_subscription: None,
                 _receiver_subscription: None,
+                _receiver_device_subscription: None,
                 _dock_subscription: None,
             }
         } else {
@@ -365,6 +381,10 @@ impl ProductWorkspace {
                 cx.subscribe(&entity, |_, _, event: &super::ReceiverPairingEvent, cx| {
                     cx.emit(event.clone());
                 });
+            let receiver_device_subscription = cx.subscribe(
+                &entity,
+                |_, _, event: &super::ReceiverDeviceRequested, cx| cx.emit(event.clone()),
+            );
             let dock_subscription =
                 cx.subscribe(&entity, |_, _, event: &super::DockPairingEvent, cx| {
                     cx.emit(event.clone());
@@ -374,6 +394,7 @@ impl ProductWorkspace {
                 _subscription: subscription,
                 _oled_subscription: Some(oled_subscription),
                 _receiver_subscription: Some(receiver_subscription),
+                _receiver_device_subscription: Some(receiver_device_subscription),
                 _dock_subscription: Some(dock_subscription),
             }
         }

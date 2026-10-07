@@ -5532,12 +5532,13 @@
     }
   ],
   "local": {
-    "src/features/source_controls.rs": "703264ec72e946ba22a2f1d1c9dd4dc0b622a31610a64f321c09e34acc14d6e0",
+    "src/features/source_controls.rs": "1ef0ab02806ed29d67059fb1b4727f1e6fde9ae66dcb9a91a108474cbd9f9c08",
     "src/features/source_controls/oled_page.rs": "9c07489c1e364e69980132b6ee26c5258793d32c2b6dd3b54d093faaca1d5932",
-    "src/features/source_controls/oled_home_cards.rs": "f873b487cd2ceba3bd3577ee301e53ea3c55e2d69d247c93dc4be49cc88b14c5",
+    "src/features/source_controls/oled_home_cards.rs": "863d8f718c208245836e64aa1195ec559fbbc6146e6c1fda3fb4cabbd788a0b1",
     "src/features/source_controls/oled_presets.rs": "527c0396e9b68d22c752abe08063148cb149b7ad92a6dbf4eeb50e40f8920615",
-    "src/features/keyboard_products.rs": "d8ed714d6605793c1471afac36a190a57c06f566309e4e81df0b8aece5f2704b",
-    "src/features/source_workspace/profile_bar.rs": "12ba981788fbe66c291a9f921196db3988700a19ca7c02f001e4c4c0c419f544"
+    "src/features/keyboard_products.rs": "a7919652a5b0f6ef4819551174a40b4cda2f7c04ee6193d704672dcddfcaea73",
+    "src/features/source_workspace/profile_bar.rs": "12ba981788fbe66c291a9f921196db3988700a19ca7c02f001e4c4c0c419f544",
+    "src/features/source_controls/oled_system_editor.rs": "6876efec4ff7a1e9e853a11a8c7c5d610a43219e585fb34ab2188d549f2cda42"
   },
   "dial_help": {
     "css": ".ref/devices/691/static/css/6375.333aa5fc.chunk.css",
@@ -5556,27 +5557,29 @@
   "corrected": [
     "Lazy base body Roboto16/#ccc/#222 and padding10/20/20",
     "OLED 1220/600 home and fixed600 setting columns",
-    "Seven home card shells in source order; existing animation/image/crop/import/media editors preserved",
-    "Removed invented530x120 placeholders and fake Emote/Banner dialogs",
+    "Seven home card shells in source order; animation/image/crop/import/media editors and partial System editor mounted",
+    "Emote/Banner edit actions disabled because their editors are absent",
     "OLED title switch, corner tips, language Apply staging, numeric buttons, screen-saver dimensions",
     "691 existing Power dim/sleep title switches and raw48x27 numeric choices"
   ],
   "limitations": [
-    "Emote/Banner/System home previews and real editors are still unimplemented; their edit actions are disabled locally, a known source difference",
+    "Emote/Banner home previews and editors are unimplemented; System has a partial text preview/editor, with source SVG presentation and full workflow still incomplete",
     "Power low-battery warning, indicator and low-power information widgets are still absent",
     "BLE/download/service-derived flags and source system-slide Apply semantics incomplete",
-    "Card title hover restored; OLED card, command-dial and port help tooltips now use the source portal mechanisms (`.tooltip-razer` instant mount, `[turn-off-ble-tooltip]:before`), runtime pixels remain unverified",
+    "Card title hover and source tooltip mechanisms are mounted; runtime pixels and the BLE edit-button versus source-card anchor still require comparison",
     "Shared slider source release semantics/hover transition and CSS normal font metrics remain unverified",
     "Customize/Lighting/Help content and other keyboard-specific widgets remain partial"
   ],
-  "removed_fake_editors": {
-    "emote": "Old callback mounted only a service-unavailable note, no editor entity or fields.",
-    "banner": "Old callback mounted only a transfer-unavailable note; Top/Bottom buttons had no handlers.",
-    "preserved": [
+  "editor_scope": {
+    "emote": "Preview and editor unavailable; Edit disabled.",
+    "banner": "Preview and editor unavailable; Edit disabled.",
+    "mounted": [
       "PresetEditor",
       "CropDraft",
       "OledMediaEditor",
+      "OledSystemEditor",
       "Import/crop/Apply callbacks"
-    ]
+    ],
+    "system": "Local device-owned layout/preferences with source sample text; original SVG presentation, telemetry and service workflow remain incomplete."
   }
 }

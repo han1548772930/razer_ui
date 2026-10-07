@@ -124,6 +124,8 @@ pub struct AppShell {
     tray_ignore_release: bool,
     devices: Vec<Entity<ProductWorkspace>>,
     receiver_queries: BTreeMap<String, (u64, u64)>,
+    receiver_devices: BTreeMap<String, (u32, u32)>,
+    receiver_devices_complete: bool,
     device_read_scopes: BTreeMap<String, crate::features::mouse_polling::MousePollingScope>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
@@ -235,6 +237,8 @@ impl AppShell {
         let mut this = Self {
             devices: vec![],
             receiver_queries: BTreeMap::new(),
+            receiver_devices: BTreeMap::new(),
+            receiver_devices_complete: false,
             device_read_scopes: BTreeMap::new(),
             host_tabs: host_tabs::HostTabs::new(cx),
             location: Location::Main(Tab::Home),
@@ -842,6 +846,13 @@ impl AppShell {
         self.subscriptions.push(cx.subscribe_in(
             &entity,
             window,
+            |this, _, event: &crate::features::ReceiverDeviceRequested, window, cx| {
+                this.open_receiver_device(event, window, cx);
+            },
+        ));
+        self.subscriptions.push(cx.subscribe_in(
+            &entity,
+            window,
             |this, entity, event: &crate::features::DockPairingEvent, _, cx| {
                 this.query_dock_pairing(entity.clone(), event, cx);
             },
@@ -872,6 +883,17 @@ impl AppShell {
         for workspace in &self.devices {
             workspace.update(cx, |workspace, cx| {
                 workspace.set_known_devices(list.clone(), cx)
+            });
+            workspace.update(cx, |workspace, cx| {
+                let devices = self.receiver_devices.values().copied().collect();
+                workspace.observe_receiver_devices(
+                    if self.receiver_devices_complete {
+                        crate::features::ReceiverDevicesObservation::complete(devices)
+                    } else {
+                        crate::features::ReceiverDevicesObservation::partial(devices)
+                    },
+                    cx,
+                )
             });
         }
     }

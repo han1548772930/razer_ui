@@ -3,9 +3,6 @@
 //! 保留现有目录发现与加载实现；找到文件不代表当前 DLL 的 ABI 已验证。
 //! 当前官方封装、查询链与未核实边界见 `docs/re/dll-readonly-inventory.md`。
 //! 开发验证只静态读取文件，不加载或执行 DLL。
-// 该模块的 API 面是**故意完整**的：逐条对应逆向雷云得到的功能层/模型定义，
-// 即使界面暂未调用每个成员也保留，使模型与逆向结果一一对应。
-// 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
@@ -176,11 +173,8 @@ fn collect_dlls(dir: &Path, stem: &str, depth: usize, out: &mut Vec<PathBuf>) {
 ///
 /// # 安全边界
 ///
-/// [`EngineLibrary::load`] 会真正执行第三方 `DllMain`。实测
-/// **`SysUtilsNative.dll` 的 `DllMain` 会永久阻塞**，所以：
-///
-/// - 不要在 UI 线程加载（见 `backend/mod.rs` 的模块文档）；
-/// - 命令行 `--probe` 会**先打印再加载**，这样即使卡住也能从输出看出卡在哪一个。
+/// [`EngineLibrary::load`] 会执行第三方 `DllMain`，可能阻塞。
+/// 加载不属于当前静态开发验证；运行时调用必须遵守独立 worker 边界。
 pub struct EngineLibrary {
     lib: libloading::Library,
     path: PathBuf,

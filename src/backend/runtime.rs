@@ -1,7 +1,7 @@
 //! Isolated access to statically verified Razer service APIs.
 //!
 //! The UI owns `ServiceClient`; only `run_worker` loads vendor DLLs. Requests
-//! block, so callers must use a background task. See docs/re/10-runtime-integration.md.
+//! block, so callers must use a background task. See docs/re/dll-readonly-inventory.md.
 use anyhow::{Context as _, bail};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

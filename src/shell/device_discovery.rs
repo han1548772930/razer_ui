@@ -100,6 +100,8 @@ impl AppShell {
         // Expire the previous observation even on failure. Absence is unknown,
         // not an invented offline reply. No profile/identity is overwritten.
         self.device_read_scopes.clear();
+        self.receiver_devices.clear();
+        self.receiver_devices_complete = false;
         for workspace in &self.devices {
             workspace.update(cx, |workspace, cx| workspace.observe_connection(None, cx));
             observe_polling_connection(workspace, None, cx);
@@ -108,6 +110,7 @@ impl AppShell {
             Ok(snapshot) => snapshot,
             Err(error) => {
                 self.status = format!("设备发现失败：{error}；本地草稿已保留。");
+                self.sync_known_devices(cx);
                 cx.notify();
                 return;
             }
@@ -149,6 +152,37 @@ impl AppShell {
                 }
             }
         }
+        {
+            let app: &App = cx;
+            self.receiver_devices = snapshot
+                .devices()
+                .iter()
+                .filter(|observed| match observed.connection() {
+                    crate::model::DeviceConnectionObservation::ReceiverPeer(1) => true,
+                    crate::model::DeviceConnectionObservation::UsbPresent
+                    | crate::model::DeviceConnectionObservation::HidPresent => !matches!(
+                        observed.transport(),
+                        Some(discovery::ObservedTransport::Dongle)
+                    ),
+                    _ => false,
+                })
+                .flat_map(|observed| {
+                    self.devices.iter().filter_map(move |workspace| {
+                        let device = workspace.read(app).device(app);
+                        (observed.matches(device)
+                            && !device.serial_number.starts_with("PREVIEW-")
+                            && !device.serial_number.starts_with("DEMO-"))
+                        .then(|| {
+                            (
+                                workspace.read(app).identity(app),
+                                (device.product_id, device.edition_id),
+                            )
+                        })
+                    })
+                })
+                .collect();
+        }
+        self.receiver_devices_complete = errors.is_empty();
         self.status = if errors.is_empty() {
             format!(
                 "已观察到 {} 项产品接口或接收器关联 · 配置仍为本地草稿",
@@ -251,7 +285,9 @@ impl AppShell {
                         let hid = client.request(ServiceRequest::HidDevices)?;
                         let value =
                             discovery::query_receiver(&mut client, &hid, &container, product_id)?;
-                        discovery::receiver_peers(&value)
+                        let payload = discovery::pairing_payload(product_id, &value)?;
+                        serde_json::from_value::<Vec<ReceiverPeer>>(payload)
+                            .map_err(anyhow::Error::from)
                     })();
                     let shutdown = client.request(ServiceRequest::Shutdown);
                     match (result, shutdown) {
@@ -265,14 +301,7 @@ impl AppShell {
                     return;
                 }
                 let observation = match result {
-                    Ok(peers) => ReceiverPairingObservation::bindings(
-                        session,
-                        peers
-                            .into_iter()
-                            .filter(|(pid, _)| *pid != 65535 && *pid != product_id)
-                            .map(|(pid, status)| ReceiverPeer::queried(pid, status))
-                            .collect(),
-                    ),
+                    Ok(peers) => ReceiverPairingObservation::bindings(session, peers),
                     Err(error) => {
                         this.status = format!("读取配对信息失败：{error:#}");
                         ReceiverPairingObservation::failed(session, ReceiverOperation::Bindings)
@@ -286,5 +315,37 @@ impl AppShell {
             });
         })
         .detach();
+    }
+
+    pub(super) fn open_receiver_device(
+        &mut self,
+        event: &crate::features::ReceiverDeviceRequested,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let identity = (event.product_id(), event.edition_id());
+        let observed = &self.receiver_devices;
+        let matches: Vec<_> = self
+            .devices
+            .iter()
+            .filter(|workspace| {
+                // Retain the exact owners accepted by this discovery. Another
+                // offline/local device with the same PID/edition is not a target.
+                observed.get(&workspace.read(cx).identity(cx)) == Some(&identity)
+            })
+            .cloned()
+            .collect();
+        let [workspace] = matches.as_slice() else {
+            self.status = "无法确定接收器对应的设备页面；设备身份尚未唯一匹配。".into();
+            cx.notify();
+            return;
+        };
+        let key = workspace.read(cx).identity(cx);
+        // The current receiver card chooses Performance for a mouse and
+        // Customize for a keyboard. Retained workspaces must not keep an old tab.
+        workspace.update(cx, |workspace, cx| {
+            workspace.set_page(event.page(), window, cx)
+        });
+        self.navigate(Location::Device(key), window, cx);
     }
 }

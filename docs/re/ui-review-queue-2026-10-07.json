@@ -43988,7 +43988,7 @@
       "runtime_validation": "not_run",
       "dll_writeback": "deferred",
       "review_evidence": [
-        "docs/re/monitor-pages-review-2026-10-07.md"
+        "docs/re/monitor-ui-current.md"
       ],
       "remaining": [
         "live_read_publisher",
@@ -44029,7 +44029,7 @@
       "runtime_validation": "not_run",
       "dll_writeback": "deferred",
       "review_evidence": [
-        "docs/re/monitor-pages-review-2026-10-07.md"
+        "docs/re/monitor-ui-current.md"
       ],
       "remaining": [
         "live_read_publisher",
@@ -44070,7 +44070,7 @@
       "runtime_validation": "not_run",
       "dll_writeback": "deferred",
       "review_evidence": [
-        "docs/re/monitor-pages-review-2026-10-07.md"
+        "docs/re/monitor-ui-current.md"
       ],
       "remaining": [
         "live_read_publisher",
@@ -44969,7 +44969,7 @@
       "runtime_validation": "not_run",
       "dll_writeback": "deferred",
       "review_evidence": [
-        "docs/re/monitor-pages-review-2026-10-07.md"
+        "docs/re/monitor-ui-current.md"
       ],
       "remaining": [
         "live_read_publisher",
@@ -45010,7 +45010,7 @@
       "runtime_validation": "not_run",
       "dll_writeback": "deferred",
       "review_evidence": [
-        "docs/re/monitor-pages-review-2026-10-07.md"
+        "docs/re/monitor-ui-current.md"
       ],
       "remaining": [
         "live_read_publisher",
@@ -45051,7 +45051,7 @@
       "runtime_validation": "not_run",
       "dll_writeback": "deferred",
       "review_evidence": [
-        "docs/re/monitor-pages-review-2026-10-07.md"
+        "docs/re/monitor-ui-current.md"
       ],
       "remaining": [
         "live_read_publisher",
@@ -48113,8 +48113,7 @@
       "review_status": "partial_source_review_and_native_ui",
       "runtime_validation": "not_run",
       "review_evidence": [
-        "docs/re/studio-reactive-ripple-starlight-native.md",
-        "docs/re/studio-wave-wheel-pending-review-2026-10-07.md"
+        "docs/re/studio-properties-current.md"
       ]
     },
     {
@@ -48141,8 +48140,8 @@
       "review_status": "partial_source_review_and_native_ui",
       "runtime_validation": "not_run",
       "review_evidence": [
-        "docs/re/public-ui-review-2026-10-07.md",
-        "docs/re/profiles-transfer-native.md"
+        "docs/re/application-review-current.md",
+        "docs/re/profiles-ui-current.md"
       ]
     },
     {

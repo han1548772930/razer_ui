@@ -17,7 +17,7 @@
 //! `locales/zh-CN.json`、`locales/en.json`。
 //!
 //! 内容是雷云前端语言包导出的**原文**，不是我自译的 ——
-//! 当前资源审计入口见 `docs/re/13-resource-usage.md`。
+//! 当前资源审计入口见 `docs/re/resources-current.md`。
 
 /// 取雷云真实文案。
 ///

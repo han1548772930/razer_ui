@@ -134,8 +134,8 @@ const value={
     screensaver:'`Kv` renders a two-column grid of 260x68 tiles: tile 0 is the text tile, tiles 1-3 are the current GIFs. `SET_OLED_SCREENSAVER` stores `value+1`, so tile ids equal stored values.',
     preview_asset:'The three current 1383 manifest-declared GIFs equal the prepared conversion source GIFs byte for byte. Their WebP outputs are decoded conversions validated by the resource manifest.',
     slider_thumb:'The mounted `.slider` source thumb is a 16px circle with radius 8px. The 14x20 path SVG belongs to `.slider-more`, a different source element. No 691 implementation evidence is used.',
-    home_screen:'The current 1383 reducer provides source-owned initial artwork and preview data. Seven cards and all six editable mode entries have local editors; see audio-oled-home-source.json, audio-oled-home-native.md and audio-oled-editors-2026-10-06.md.',
-    remaining:'BLE/dongle service conditions, device language download, vendor animation encoding/upload and device transport remain incomplete. Local crop and profile Apply do not acknowledge a device transaction; no runtime pixels were verified',
+    home_screen:'The current 1383 reducer provides source-owned initial artwork and preview data. Seven cards and all six editable mode entries have local editors; see audio-oled-home-source.json, oled-ui-current.md and audio-oled-editors-current.md.',
+    remaining:'BLE/dongle, loading/error/retry and language branches have typed observation/request UI in the runtime receipt. The actual provider, language download, vendor animation encoding/upload and device transport remain unavailable. Local crop and profile Apply do not acknowledge a device transaction; no runtime pixels were verified',
   },
   native_verification:'Static fingerprints and descriptor assertions only; the application, builds and tests were not run',
 };

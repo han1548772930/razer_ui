@@ -88,8 +88,8 @@ impl SourceControls {
                             .h(surface::css(64.))
                             .grayscale(true)
                             .into_any_element(),
-                        // These three service-backed preview/editor payloads are not yet
-                        // implemented. Retain the source card geometry without invented
+                        // Emote and Banner previews/editors are not implemented.
+                        // Retain the source card geometry without invented
                         // telemetry, placeholder prose, or nonfunctional editor dialogs.
                         _ => div()
                             .w(surface::css(232.))

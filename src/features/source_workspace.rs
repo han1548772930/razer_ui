@@ -26,6 +26,25 @@ mod profile_transfer;
 mod tests;
 use accessory::AccessoryPage;
 
+/// Automatic receiver reads need a live physical owner, never a preview or a
+/// persisted identity alone. This validates data without entering a DLL loader.
+fn receiver_read_owner(device: &Device) -> bool {
+    use crate::model::DeviceConnectionObservation;
+    let serial = device.serial_number.to_ascii_uppercase();
+    let container = &device.device_container_id;
+    device.product_id == 179
+        && !serial.starts_with("PREVIEW-")
+        && !serial.starts_with("DEMO-")
+        && matches!(
+            device.dashboard.connection_observation,
+            Some(DeviceConnectionObservation::UsbPresent | DeviceConnectionObservation::HidPresent)
+        )
+        && container.len() == 38
+        && container.starts_with('{')
+        && container.ends_with('}')
+        && uuid::Uuid::parse_str(container).is_ok_and(|id| !id.is_nil())
+}
+
 enum FamilyBody {
     Mouse(Entity<super::mouse_products::MouseProductWorkspace>),
     Keyboard(Entity<super::keyboard_products::KeyboardProductWorkspace>),
@@ -65,6 +84,7 @@ pub(crate) struct SourceProductWorkspace {
 impl EventEmitter<WorkspaceEvent> for SourceProductWorkspace {}
 impl EventEmitter<super::OledRuntimeRequested> for SourceProductWorkspace {}
 impl EventEmitter<super::ReceiverPairingEvent> for SourceProductWorkspace {}
+impl EventEmitter<super::ReceiverDeviceRequested> for SourceProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
@@ -84,6 +104,7 @@ impl SourceProductWorkspace {
     ) {
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
+        self.sync_receiver_read_activity(cx);
         cx.notify();
     }
 
@@ -105,6 +126,17 @@ impl SourceProductWorkspace {
             });
         }
     }
+    pub(crate) fn observe_receiver_devices(
+        &mut self,
+        devices: super::ReceiverDevicesObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Controls(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_receiver_devices(devices, cx));
+        } else if let Some(body) = &self.supplement {
+            body.update(cx, |body, cx| body.observe_receiver_devices(devices, cx));
+        }
+    }
     pub(crate) fn observe_dock_pairing(
         &mut self,
         observation: super::DockPairingObservation,
@@ -116,6 +148,7 @@ impl SourceProductWorkspace {
     }
     pub(crate) fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.active = active;
+        self.sync_receiver_read_activity(cx);
         self.sync_mouse_active(window, cx);
         if !active {
             if let FamilyBody::Gamepad(body) = &self.body {
@@ -124,6 +157,19 @@ impl SourceProductWorkspace {
                     body.leave_calibration(window, cx);
                 });
             }
+        }
+    }
+
+    fn sync_receiver_read_activity(&self, cx: &mut Context<Self>) {
+        let active = self.active
+            && self
+                .current_page()
+                .is_some_and(|page| page.kind().key() == "TAB_CUSTOMIZE")
+            && receiver_read_owner(&self.device);
+        if let FamilyBody::Controls(body) = &self.body {
+            body.update(cx, |body, cx| body.set_receiver_active(active, cx));
+        } else if let Some(body) = &self.supplement {
+            body.update(cx, |body, cx| body.set_receiver_active(active, cx));
         }
     }
 
@@ -749,6 +795,11 @@ impl SourceProductWorkspace {
                     cx.emit(event.clone());
                 },
             ));
+            subscriptions.push(
+                cx.subscribe(&body, |_, _, event: &super::ReceiverDeviceRequested, cx| {
+                    cx.emit(event.clone())
+                }),
+            );
             subscriptions.push(cx.subscribe(
                 &body,
                 |this: &mut Self, body, _: &super::source_controls::SourceControlsChanged, cx| {
@@ -1281,6 +1332,7 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn select_body_page(&self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sync_receiver_read_activity(cx);
         self.sync_mouse_active(window, cx);
         if let Some(view) = &self.accessory {
             view.dismiss(window, cx);

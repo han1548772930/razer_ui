@@ -44,6 +44,27 @@ for (const relative of [manifest.files['main.js'], Object.values(manifest.files)
 if (profileDefaults.length !== 1) throw Error('Ambiguous profile default: ' + profileDefaults.length);
 for (const name of ['Gt', 'bt', 'loadScrollWheelSettings']) if (receipts.filter(r => r.symbol === name).length !== 1) throw Error('Missing ' + name);
 const modes = source.literal(42, source.binding(42, 'ge'));
+const levelControls = [];
+walk(source.binding(42, 'Se'), node => {
+  if (node.type !== 'ObjectExpression') return;
+  const properties = new Map(node.properties.map(p => [p.key?.name, p.value]));
+  if (['min', 'max', 'step', 'minTag', 'maxTag'].every(key => properties.has(key))) {
+    levelControls.push(Object.fromEntries(['min', 'max', 'step'].map(key => [key, source.literal(42, properties.get(key))])));
+  }
+});
+if (levelControls.length !== 1) throw Error('Ambiguous scroll level control');
+const limits = [];
+walk(source.binding(42, 'fe'), node => {
+  if (node.type === 'BinaryExpression' && node.operator === '>=' &&
+      node.left.property?.name === 'length' && node.right.type === 'Literal') limits.push(node.right.value);
+});
+if (limits.length !== 2 || limits[0] !== limits[1] || limits[0] >= modes.length) throw Error('Changed disabled-mode limit');
+const wheelSpec = {
+  product_id: Number(directory.split('/').at(-1)), profile_key: 'scrollWheel',
+  defaults: profileDefaults[0], modes,
+  level_min: levelControls[0].min, level_max: levelControls[0].max, level_step: levelControls[0].step,
+  max_disabled_modes: limits[0], locking_mode: source.literal(42, source.binding(42, 'Ne')),
+};
 const labels = {};
 for (const symbol of ['wtv','dC4','KnW','X5L','EJu','NYz','MhB','b_8','X3g','a3B','bYt','$LP','E_p','RYm']) {
   labels[symbol] = source.literal(4693, source.exported(4693, symbol));
@@ -60,7 +81,8 @@ for (const relative of [...new Set(Object.values(manifest.files))].filter(f => f
   const rules = parseCSS(text).filter(r => /swtm|^\.slider(?:[, .:]|$)|^\.slider-container|^\.check-item|^\.check-box|^\.check-text|^\.switch|^\.mt10$|^\.mb20$/.test(r.selector));
   if (rules.length) css.push({path: file, sha256: hash(text), rules});
 }
-output('src/features/mouse_226_scroll_data.json', JSON.stringify({defaults: profileDefaults[0], modes}, null, 2) + '\n');
+const otherSpecs = JSON.parse(read('src/features/mouse_scroll_wheel_data.json')).filter(spec => spec.product_id !== wheelSpec.product_id);
+output('src/features/mouse_scroll_wheel_data.json', JSON.stringify([...otherSpecs, wheelSpec].sort((a,b) => a.product_id - b.product_id), null, 2) + '\n');
 output('docs/re/mouse-226-scroll-current-evidence.json', JSON.stringify({method: 'Static AST and CSS only; UTF-16 offsets', product_id: 226,
   manifest: {path: manifestPath, sha256: hash(read(manifestPath))}, receipts, labels, actions, css}, null, 2) + '\n');
 console.log(`226 scroll: ${receipts.length} AST receipts, ${css.reduce((n,c)=>n+c.rules.length,0)} CSS rules, ${modes.length} modes`);

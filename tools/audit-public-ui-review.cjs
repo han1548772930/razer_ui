@@ -81,7 +81,7 @@ const endpoints = catalog.applications.map(app => {
     return [name,fs.existsSync(path.join(root,file)) ? {path:file,sha256:hash(read(file))} : null];
   }));
   return {route:app.route, recorded_html_status:app.endpoints['index.html']?.http_status,
-    current_files:current, review_status:'Per-page status is documented in public-ui-review-2026-10-07.md; manifest presence is not UI completion.'};
+    current_files:current, review_status:'Per-page status is documented in application-review-current.md; manifest presence is not UI completion.'};
 });
 const nativePaths = ['src/preferences.rs','src/shell/settings_page.rs','src/shell/settings_window.rs',
   'src/shell/settings_systray_action.rs','src/shell/profiles_page.rs','src/shell/profiles_page/devices.rs',
@@ -106,7 +106,7 @@ const report = {
     'Active-profile deletion refuses uncommitted mouse mapping or 1382 audio editor changes before a local restore can discard them.',
     'Chroma local preference save errors are displayed with retry while the current session edits remain available; writes are not claimed atomic.',
   ],
-  pending:'See public-ui-review-2026-10-07.md. A validated source receipt, existing route or shared editor does not complete a page or device review.',
+  pending:'See application-review-current.md. A validated source receipt, existing route or shared editor does not complete a page or device review.',
 };
 const out = path.join(root,'docs/re/public-ui-review-current-evidence.json');
 const bytes = JSON.stringify(report,null,2)+'\n';

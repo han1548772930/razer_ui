@@ -260,7 +260,7 @@ pub(super) enum ModulePage {
 // modules with `policy=3,tab_visible=1` are visible host tabs. Locally implemented
 // pages open their matching tab directly; only unimplemented applications retain an
 // installation state. Runtime box order comes from host group items. Evidence:
-// docs/re/display-window-contract.md and docs/re/macro-app-current-audit.md.
+// docs/re/display-window-contract.md and docs/re/macro-ui-current.md.
 const MODULES: &[Module] = &[
     Module {
         id: "alexa",

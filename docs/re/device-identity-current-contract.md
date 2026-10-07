@@ -9,7 +9,7 @@
 - [完整身份目录](discovery-catalog-current-evidence.json)：330 行 AvailableDevices 原样投影，不将数组 dongleId 误当标量匹配；歧义保留。目录本身不产生连接观察。
 - [原生 USB 证据](usb-native-current-evidence.json)：当前 detection.node 的 SHA-256 和 USB_DEVICE GUID 静态核验；它没有独立 C 枚举导出。本地使用 Windows SetupAPI，不能称为调用厂商 DLL 的独立枚举 API。HID Feature 收发仍使用已核验原版 HID.node C 导出。
 
-## 本轮接线
+## 当前接线
 
 `ServiceRequest::UsbDevices` → 独立 worker 的 `runtime_usb` → RuntimePanel → `discovery::discover` → 首页工作区。此前 runtime_usb 没有被任何模块引用，编译及启动均未覆盖它。现在 USB/HID 分开请求，任一路失败保留另一路的真实结果；失败、格式错误、未结束枚举进入诊断，旧观察失效，已有本地草稿保留。
 

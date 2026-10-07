@@ -1,6 +1,12 @@
 //! 179/9473: J, W, re and se. Service observations and local intents are separate.
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+pub(super) fn next_generation() -> u64 {
+    static GENERATION: AtomicU64 = AtomicU64::new(1);
+    GENERATION.fetch_add(1, Ordering::Relaxed)
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
@@ -65,18 +71,25 @@ impl ReceiverPeer {
     pub(super) fn category(&self) -> Option<ReceiverCategory> {
         self.category
     }
+    pub(super) fn edition_id(&self) -> Option<u32> {
+        self.edition_id
+    }
     pub(super) fn label(&self, locale: &str) -> String {
-        let names = if self.product_name.is_empty() {
-            &self.name
-        } else {
-            &self.product_name
+        let localized = |names: &BTreeMap<String, String>| {
+            names
+                .iter()
+                .find(|(language, name)| language.eq_ignore_ascii_case(locale) && !name.is_empty())
+                .map(|(_, name)| name.clone())
         };
-        names
-            .iter()
-            .find(|(language, _)| language.eq_ignore_ascii_case(locale))
-            .map(|(_, name)| name)
-            .or_else(|| names.get("en"))
-            .cloned()
+        localized(&self.product_name)
+            .or_else(|| localized(&self.name))
+            .or_else(|| {
+                self.product_name
+                    .get("en")
+                    .filter(|name| !name.is_empty())
+                    .cloned()
+            })
+            .or_else(|| self.name.get("en").filter(|name| !name.is_empty()).cloned())
             .unwrap_or_else(|| format!("PID {}", self.product_id))
     }
     pub(super) fn identity(&self) -> String {
@@ -113,6 +126,18 @@ pub(crate) struct ReceiverPairingEvent {
     intent: ReceiverPairingIntent,
 }
 impl ReceiverPairingEvent {
+    pub(super) fn query() -> Self {
+        Self {
+            session: next_generation(),
+            intent: ReceiverPairingIntent::QueryBindings,
+        }
+    }
+    pub(super) fn cancel() -> Self {
+        Self {
+            session: next_generation(),
+            intent: ReceiverPairingIntent::Cancel,
+        }
+    }
     pub(crate) fn session(&self) -> u64 {
         self.session
     }
@@ -136,7 +161,7 @@ pub(crate) enum ReceiverProgress {
     Upgrading(ReceiverCategory),
 }
 #[derive(Clone, Debug)]
-enum Update {
+pub(super) enum Update {
     Bindings(Vec<ReceiverPeer>),
     Scanned(Vec<ReceiverPeer>),
     Bound(ReceiverPeer),
@@ -148,8 +173,8 @@ enum Update {
 /// Only a publisher with a real result may create these observations.
 #[derive(Clone, Debug)]
 pub(crate) struct ReceiverPairingObservation {
-    session: u64,
-    update: Update,
+    pub(super) session: u64,
+    pub(super) update: Update,
 }
 impl ReceiverPairingObservation {
     pub(crate) fn bindings(session: u64, peers: Vec<ReceiverPeer>) -> Self {
@@ -212,6 +237,29 @@ pub(super) enum Status {
     Unpaired,
     UnpairFailed,
 }
+/// The current se failure callbacks restore presentation after four seconds.
+/// A ticket belongs to one accepted result, never an unsent UI intent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct FailureRecovery {
+    session: u64,
+    status: Status,
+}
+impl FailureRecovery {
+    pub(super) fn delay(self) -> std::time::Duration {
+        std::time::Duration::from_secs(4)
+    }
+}
+/// Te closes the utility one second after an accepted Bind/Unbind result.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct SuccessClose {
+    session: u64,
+    status: Status,
+}
+impl SuccessClose {
+    pub(super) fn delay(self) -> std::time::Duration {
+        std::time::Duration::from_secs(1)
+    }
+}
 #[derive(Default)]
 pub(super) struct PairingState {
     session: u64,
@@ -225,9 +273,47 @@ pub(super) struct PairingState {
     pub(super) pending: Option<ReceiverPairingIntent>,
     // Retained after a publisher acknowledges progress, until its final result.
     active: Option<ReceiverPairingIntent>,
+    recovery: Option<FailureRecovery>,
+    success_close: Option<SuccessClose>,
     pub(super) failure: Option<ReceiverOperation>,
 }
 impl PairingState {
+    pub(super) fn success_close(&self) -> Option<SuccessClose> {
+        self.success_close
+    }
+    pub(super) fn can_close_success(&self, ticket: SuccessClose) -> bool {
+        self.open
+            && self.success_close == Some(ticket)
+            && self.session == ticket.session
+            && self.status == ticket.status
+            && self.active.is_none()
+    }
+    pub(super) fn recovery(&self) -> Option<FailureRecovery> {
+        self.recovery
+    }
+    pub(super) fn recover_failure(&mut self, ticket: FailureRecovery) -> bool {
+        if !self.open
+            || self.recovery != Some(ticket)
+            || self.session != ticket.session
+            || self.status != ticket.status
+            || self.active.is_some()
+        {
+            return false;
+        }
+        self.recovery = None;
+        self.failure = None;
+        match ticket.status {
+            Status::PairFailed => {
+                self.status = Status::Ready;
+                self.bound.clear();
+                self.candidates.clear();
+                self.selected = 0;
+            }
+            Status::UnpairFailed => self.status = Status::Paired,
+            _ => return false,
+        }
+        true
+    }
     pub(super) fn is_open(&self) -> bool {
         self.open
     }
@@ -245,17 +331,21 @@ impl PairingState {
         self.invalidate()
     }
     fn invalidate(&mut self) -> ReceiverPairingEvent {
-        self.session = self.session.wrapping_add(1);
+        self.session = next_generation();
         self.pending = None;
         self.active = None;
+        self.recovery = None;
+        self.success_close = None;
         ReceiverPairingEvent {
             session: self.session,
             intent: ReceiverPairingIntent::Cancel,
         }
     }
     fn request(&mut self, intent: ReceiverPairingIntent) -> ReceiverPairingEvent {
-        self.session = self.session.wrapping_add(1);
+        self.session = next_generation();
         self.failure = None;
+        self.recovery = None;
+        self.success_close = None;
         self.pending = Some(intent.clone());
         self.active = Some(intent.clone());
         ReceiverPairingEvent {
@@ -318,6 +408,7 @@ impl PairingState {
             && self.pending.is_none()
         {
             self.status = Status::ConfirmUnpair;
+            self.success_close = None;
         }
     }
     pub(super) fn cancel_unpair(&mut self) -> Option<ReceiverPairingEvent> {
@@ -406,6 +497,10 @@ impl PairingState {
                 self.bound = vec![peer];
                 self.selected = 0;
                 self.status = Status::Paired;
+                self.success_close = Some(SuccessClose {
+                    session: self.session,
+                    status: self.status,
+                });
             }
             Update::Unbound => {
                 self.failure = None;
@@ -413,6 +508,10 @@ impl PairingState {
                 self.active = None;
                 self.bound.clear();
                 self.status = Status::Unpaired;
+                self.success_close = Some(SuccessClose {
+                    session: self.session,
+                    status: self.status,
+                });
             }
             Update::Failed(operation) => {
                 self.failure = Some(operation);
@@ -432,6 +531,14 @@ impl PairingState {
                     ReceiverOperation::Bind => Status::PairFailed,
                     ReceiverOperation::Unbind => Status::UnpairFailed,
                 };
+                self.recovery = matches!(
+                    operation,
+                    ReceiverOperation::Bind | ReceiverOperation::Unbind
+                )
+                .then_some(FailureRecovery {
+                    session: self.session,
+                    status: self.status,
+                });
             }
             Update::Progress(progress) => {
                 let accepted = match (progress, self.active.as_ref()) {

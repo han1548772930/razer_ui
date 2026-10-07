@@ -110,8 +110,8 @@ struct OledSystemDraft {
     time_format: usize,
     date_format: usize,
     slides: [OledSystemSlide; 3],
-    /// Runtime telemetry is service-owned. Keep it in the local profile
-    /// object when present so editing layout preferences cannot erase it.
+    /// Runtime telemetry is service-owned. Preserve an existing info payload
+    /// in the device-owned OLED mirror while editing layout preferences.
     info: Value,
 }
 

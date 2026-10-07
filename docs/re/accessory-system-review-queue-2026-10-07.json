@@ -42,7 +42,7 @@
           "route": "dock_pairing",
           "review_status": "partial_subtree_review",
           "review_scope": "pairing observations/local intents and source callbacks reviewed; partial",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         },
         {
           "page_id": "product-164-main.458d4103-4575256",
@@ -51,7 +51,7 @@
           "route": "source_controls",
           "review_status": "partial_subtree_review",
           "review_scope": "normal quick-effects branch/brightness/idle subtree reviewed; missing effect editors",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         },
         {
           "page_id": "product-164-main.458d4103-4575301",
@@ -60,7 +60,7 @@
           "route": "source_help",
           "review_status": "partial_subtree_review",
           "review_scope": "current reset confirmation reviewed and local intent repaired; partial Help",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         }
       ],
       "independent_modes": [
@@ -87,7 +87,7 @@
           "route": "source_controls",
           "review_status": "partial_subtree_review",
           "review_scope": "pairing operation generations/progress/cancel reviewed; parent conditions remain",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         },
         {
           "page_id": "product-179-main.4849f7ca-4570442",
@@ -96,7 +96,7 @@
           "route": "source_help",
           "review_status": "partial_subtree_review",
           "review_scope": "current reset confirmation reviewed and local intent repaired; partial Help",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         }
       ],
       "independent_modes": []
@@ -147,7 +147,7 @@
           "route": "dock_pairing",
           "review_status": "partial_subtree_review",
           "review_scope": "pairing observations/local intents and source callbacks reviewed; partial",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         },
         {
           "page_id": "product-241-11.219fb515.chunk-311204",
@@ -156,7 +156,7 @@
           "route": "source_controls",
           "review_status": "partial_subtree_review",
           "review_scope": "normal quick-effects branch/brightness/idle subtree reviewed; missing effect editors",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         },
         {
           "page_id": "product-241-11.219fb515.chunk-311251",
@@ -165,7 +165,7 @@
           "route": "source_help",
           "review_status": "partial_subtree_review",
           "review_scope": "current reset confirmation reviewed and local intent repaired; partial Help",
-          "report": "docs/re/receiver-review-2026-10-07.md"
+          "report": "docs/re/receiver-ui-current.md"
         }
       ],
       "independent_modes": []
@@ -2646,7 +2646,7 @@
           "route": "accessory_system",
           "review_status": "partial_subtree_review",
           "review_scope": "gaming presets/numeric/discrete slider events reviewed; disabled wrapper and live observations remain",
-          "report": "docs/re/monitor-pages-review-2026-10-07.md"
+          "report": "docs/re/monitor-ui-current.md"
         },
         {
           "page_id": "product-3858-main.608e1599-4573745",
@@ -2655,7 +2655,7 @@
           "route": "accessory_system",
           "review_status": "partial_subtree_review",
           "review_scope": "color preset/RGB branches and source sync mount reviewed; observation and disabled wrapper remain",
-          "report": "docs/re/monitor-pages-review-2026-10-07.md"
+          "report": "docs/re/monitor-ui-current.md"
         },
         {
           "page_id": "product-3858-main.608e1599-4573795",
@@ -2664,7 +2664,7 @@
           "route": "accessory_system",
           "review_status": "partial_subtree_review",
           "review_scope": "source icons/confirmation/PIP/FPS/Adaptive Sync reviewed and repaired; loading/global outside click remain",
-          "report": "docs/re/monitor-pages-review-2026-10-07.md"
+          "report": "docs/re/monitor-ui-current.md"
         },
         {
           "page_id": "product-3858-main.608e1599-4573845",
@@ -2937,7 +2937,7 @@
           "route": "accessory_system",
           "review_status": "partial_subtree_review",
           "review_scope": "extended gamma/gamut and preset editing reviewed; disabled wrapper/reducer combinations remain",
-          "report": "docs/re/monitor-pages-review-2026-10-07.md"
+          "report": "docs/re/monitor-ui-current.md"
         },
         {
           "page_id": "product-3880-main.0ff487d9-4585273",
@@ -2946,7 +2946,7 @@
           "route": "accessory_system",
           "review_status": "partial_subtree_review",
           "review_scope": "color profile selection/restrictions/path match repaired; observations and complete dropdown geometry remain",
-          "report": "docs/re/monitor-pages-review-2026-10-07.md"
+          "report": "docs/re/monitor-ui-current.md"
         },
         {
           "page_id": "product-3880-main.0ff487d9-4585323",
@@ -2955,7 +2955,7 @@
           "route": "accessory_system",
           "review_status": "partial_subtree_review",
           "review_scope": "input assets/refresh rate restriction/local intentions/FPS repaired; live observation and exact layout remain",
-          "report": "docs/re/monitor-pages-review-2026-10-07.md"
+          "report": "docs/re/monitor-ui-current.md"
         },
         {
           "page_id": "product-3880-main.0ff487d9-4585373",

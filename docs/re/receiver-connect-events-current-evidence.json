@@ -1,0 +1,113 @@
+{
+  "method": "Current manifest-owned middleware and UI AST parsing; no vendor JavaScript, app or DLL execution.",
+  "generator_sha256": "6959cbed0b70beec05ddc075f65b309608410d25a2eda810125c2f707a969ca8",
+  "receipts": [
+    {
+      "module": 34340,
+      "binding": "he",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1231133,
+      "end": 1232753,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){var e;const t=g.razerWindow.rzDevice,n=yield t.getMultipleDeviceWirelessConnectionStatusV2(),{jsonData:o}=n;if(o){const t=(o.status||[]).filter((e=>65535!==e.productId&&e.productId!==v.DeviceInfo.dongleId));if(console.log(\"[duallink] bindedInfo\",t),t.length>0){const n=yield Y(),o=JSON.parse(null!==(e=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==e?e:\"[]\")||[];return yield Promise.all(t.map((e=>L(void 0,void 0,void 0,(function*(){const t=(yield ie(Object.assign(Object.assign({},e),{containerId:U})))?\"master\":\"slave\",i=Object.assign({role:t,name:{en:\"unknown-\"+e.productId},productName:{en:\"unknown\"+e.productId},editionName:{en:\"unknown\"+e.productId},category:me(),editionId:0,layoutId:0},e),r=n.find((t=>t.dongleId===e.productId));if(console.log(\"[duallink] bindInfo <==> availableDevices\",r),r){let n=o.find((e=>e.productId===r.productId));if(V()&&(n=Ie(r.productId)),console.log(\"[duallink] matched\",r,\"connectedInfo: \",n),n)return Object.assign(Object.assign(Object.assign({role:t},n),e),{productId:n.productId,dongleId:e.productId,layoutId:yield _e(n,n.productId,e.productId)});{const t=(yield Z().catch((e=>(console.error(\"[duallink] fetchDualLinkDevicesJSON failed\",e),{Devices:[]})))).Devices.find((e=>e.DeviceDonglePid===r.dongleId)),n=t&&(t.ProductInfo.find((e=>e.EID===i.editionId))||t.ProductInfo[0]);if(n){const e={en:n.Name,\"zh-cn\":n.CHSName};i.name=e,i.productName=e,i.editionName=e,i.category=t.DeviceType||i.category}return Object.assign(Object.assign(Object.assign({},i),e),{productId:r.productId,dongleId:e.productId})}}return i})))))}return t}}))"
+    },
+    {
+      "module": 34340,
+      "binding": "Ne",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1238586,
+      "end": 1239341,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){var e,t;const n=yield he().catch((e=>{console.warn(\"[duallink] queryBindInfo failed\",e),setTimeout(Ne,1e3)}));if(n&&(0===(null===(e=n[0])||void 0===e?void 0:e.status)||\"\"===(null===(t=n[0])||void 0===t?void 0:t.serialNumber))&&be<5)return console.log(\"Recheck slave status ====>\",n[0].status),be++,void setTimeout((()=>L(void 0,void 0,void 0,(function*(){return yield Ne().catch((e=>{console.warn(\"[duallink] initMasterDevice failed\",e)}))}))),200*(be+1));if(console.log(\"[duallink] initMasterDevice bindedInfo ===>\",n),n&&n.length)for(const e of n){const t=e.status===x.connected;yield ye({vendorId:5426,productId:e.productId,deviceContainerId:U,dongleId:e.dongleId||e.productId},t),Ce(e.dongleId||e.productId)}}))"
+    },
+    {
+      "module": 34340,
+      "binding": "oe",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1221928,
+      "end": 1222342,
+      "source": "e=>L(void 0,void 0,void 0,(function*(){const t=ee(Q),n=De();i.Z.postBCMsg(f.PR.MW_RESPONSE_UI,{type:\"SLAVE_CONNECT_EVENT\"});for(const o of n)if(!e||e===o.dongleId){if(!t||!t[X(o)])return console.log(`[duallink] onSlaveConnected, slave didn't save, need to save to localStorage to open its mw, Slave ${o}`),yield ye(o);console.log(`[duallink] onSlaveConnected, slave has saved, no need open its mw, Slave ${o}`)}}))"
+    },
+    {
+      "module": 34340,
+      "binding": "De",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1237837,
+      "end": 1238049,
+      "source": "()=>{const e=g.razerWindow.rzDevice,t=Object.values(ve).filter((t=>t.master.dongleId===e.productId&&t.deviceContainerId===U));return console.log(\"[duallink] getSlaves pairedDevices=\",ve,e.productId,\"slave=\",t),t}"
+    },
+    {
+      "module": 34340,
+      "binding": "ye",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1228849,
+      "end": 1229920,
+      "source": "(e,t=!0)=>L(void 0,void 0,void 0,(function*(){var n;const o=(yield ee(Q))||{},i=X(e);console.log(`[duallink] 🎈 addDevice ${i}`,o,e,\"saveToLocalStorage=\",t),void 0===o[i]&&(e.master={productId:v.DeviceInfo.productId,dongleId:v.DeviceInfo.dongleId||0,bleId:v.DeviceInfo.bleId||0,claimInterface:v.DeviceInfo.claimInterface},o[i]=e,t&&localStorage.setItem(Q,JSON.stringify(o)));const r=yield a.Z.getWindowStorageItem(I.rt.DEVICE_RUNTIME_DATA),s=(r?JSON.parse(r):[]).reduce(((t,{value:n})=>{const o=JSON.parse(n);if(o.deviceContainerId===U&&o.productId===e.productId)return o}));console.warn(\"slave runtime data:\",s),(null===(n=null==s?void 0:s.serialNumber)||void 0===n?void 0:n.length)>0?(console.warn(`Found slave's serial number ${s.serialNumber}`),V()?(null==e?void 0:e.productId)?Ue.add(i,s.serialNumber):console.warn(\"[duallink.addDevice] device.productId is undefined\"):H=s.serialNumber):(S.Z.onEvent(Ye(Ze)),console.warn(\"attached windowstorage listener to get slave runtime data\")),console.log(\"[duallink] 🌳 addDevice\",e,o),V()?void 0===ve[i]&&(ve[i]=o[i]):ve=o}))"
+    },
+    {
+      "module": 78548,
+      "binding": "Be.isDualLink",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1259551,
+      "end": 1260139,
+      "source": "if(at.isDualLink){const e=ke===o.ZK.NOTIFICATION_EVENTS||ke===o.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS;if(Be===o.J7.DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT||o.J7.BATTERY_CHANGE_EVENT,Be===o.J7.BATTERY_CHANGE_EVENT&&\"RESERVED\"===je&&(je=A.Bk.MOUSE),je&&(!/^(MOUSE|KEYBOARD)$/i.test(je)||je!==T.DeviceInfo.category))return e&&st&&at.productId===at.dualLinkPrimaryPId&&xe===o.E3.CONNECT_EVENT&&(yield(0,f.kO)(null==He?void 0:He.productId).catch((e=>{console.warn(\"[duallink] onSlaveConnected exec failed\",e)}))),void console.warn(\"[duallink] ignore hardwareevent for else device\")}"
+    },
+    {
+      "module": 78548,
+      "binding": "Be.wirelessEvent",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1259483,
+      "end": 1259550,
+      "source": "Be===o.J7.WIRELESS_CHANGE_EVENT||Be===o.J7.WIRELESS_CHANGE_EVENT_V2"
+    },
+    {
+      "module": 50652,
+      "binding": "o",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 998301,
+      "end": 998805,
+      "source": "{NOT_SUPPORTED:0,KEYS_EXTENDED_BUFFER:1,MEDIA_KEYS:2,POWER_KEYS:3,RAZER_KEYS:4,NOTIFICATION_EVENTS:5,ANALOG_KEYBOARD_NOTIFICATION_EVENTS_ADC_VALUE_DATA:6,ANALOG_KEYBOARD_NOTIFICATION_EVENTS_ADC_VALUE_KEY:7,DONGLE_SECONDARY_DEVICE_RAZER_KEYS:8,DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS:9,DONGLE_SECONDARY_DEVICE_MOUSE_EVENTS:10,CALIBRATION_MOUSE_REDIRECT:77,CALIBRATION_Z_Q_DATA_EVENT:90,AUDIO_HAPTIC_INTENSITY_STATUS_EVENTS:97,KEYMAP_CYCLE_BUTTON:103,PROFILE_CYCLE_BUTTON:104,CONTROLLER_SYNC_EVENT:240}"
+    },
+    {
+      "module": 50652,
+      "binding": "p",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 999847,
+      "end": 1001496,
+      "source": "{PROFILE_CHANGE:1,DPI_CHANGE:2,DETACHMENT:3,ATTACHMENT:4,LIFTED_EVENT:5,DOWNED_EVENT:6,GESTURE_DETECTED:7,BRIGHTNESS_CHANGE_EVENT:8,WIRELESS_CHANGE_EVENT:9,CALIBRATION_CHANGE_EVENT:10,MACRO_KEY_COVER_CHANGE_EVENT:11,DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT:12,DEVICE_HARDWARE_CHANGE_EVENT:13,MOUSE_KEYPAD_MODULE_CHANGE_EVENT:14,AUDIO_VOLUME_CHANGE:15,RESERVED:16,AUDIO_MUTE_STATE_CHANGE:17,AUDIO_INPUT_SOURCE_CHANGE:18,AUDIO_IO_STATUS_CHANGE:19,EQ_PRESET_CHANGE:20,EQ_SETTING_CHANGE:21,DOLBY_STATE_CHANGE:22,AUTO_SLEEP_MODE_CHANGE:23,LED_EFFECT_COLOR_SETTING_CHANGED:24,LAMP_ARRAY_EVENT:25,THREE_D_MODE_CHANGED:26,AUDIO_OUTPUT_SOURCE_CHANGED:28,CAMERA_TRACKING_STATUS:29,THX_SPATIAL_TOGGLE_EVENT:32,ANC_STATE_CHANGE:33,FAN_FORCE_AUTO_EVENT:48,BATTERY_CHANGE_EVENT:49,HW_DETECTION_DONE_EVENT:50,POWER_WATTAGE_EVENT:51,POWER_SECURITY_EVENT:52,WIRELESS_CHANGE_EVENT_V2:53,PAIR_STATUS_UPDATE:54,SCAN_STATUS_UPDATE:55,ACTIVE_CONNECTION_CHANGE_EVENT:56,SCROLL_FREE_OR_NOTCH_MODE_CHANGE_EVENT:57,HAPTICORE_SCROLL_STAGE_CHANGED_EVENT:58,DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT_V2:59,FAN_CONNECTION_CHANGE_EVENT:64,BATTERY_FULLY_CHARGED_EVENT:65,ANALOG_KEY_ADJUSTMENT_MODE_CTRL_EVENT:66,CHROMA_BUTTON_TAP:67,AUDIO_MIC_VOLUME_CHANGE:68,BUTTON_CHANGE:70,SENSOR_TEMPERATURE_CHANGE:71,OLED_MODE:81,OLED_MENU:82,OLED_COMMAND_DIAL:83,OLED_CHROMA_EFFECT:84,OLED_LOW_POWER_MODE_CHANGE:85,AUDIO_SIDETONE_LEVEL_CHANGE_ValkyrieT3_PC:85,DONGLE_CONNECTION_QUALITY_STATUS:86,AUDIO_SIDETONE_LEVEL_CHANGE:87,POLLING_RATE_CHANGE:88,KBD_MODE_SWITCH_SLIDER_CHANGE:89,HAPTIC_GAIN_CHANGE:32,HAPTIC_INTENSITY_LEVEL_CHANGE:112,HAPTIC_PROFILE_CHANGE:113,HAPTIC_SOURCE_CHANGE:114}"
+    },
+    {
+      "module": 50652,
+      "binding": "y",
+      "path": ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js",
+      "sha256": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8",
+      "offset": 1001597,
+      "end": 1001644,
+      "source": "{RESERVED:1,DISCONNECT_EVENT:2,CONNECT_EVENT:3}"
+    },
+    {
+      "module": 9473,
+      "binding": "Te.SLAVE_CONNECT_EVENT",
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4104527,
+      "end": 4104589,
+      "source": "\"SLAVE_CONNECT_EVENT\"===a&&(f(!0),setTimeout(()=>{f(!1)},2e4))"
+    }
+  ],
+  "contract": {
+    "producer": "78548/Be hardware event -> 34340/kO=oe -> MW_RESPONSE_UI SLAVE_CONNECT_EVENT",
+    "prerequisite": "isDualLink; different category branch; notification record 5 or 9; wireless event 9 or 53; own PID equals dualLinkPrimaryPId; state equals 3",
+    "consumer": "9473/Te turns loading on then off after 20000ms; this broadcast itself supplies no binding payload",
+    "query_separation": "34340/he/Ne queries use status=1 for online, not hardware eventValue.state=3; a query result is not a notification",
+    "side_effects": "oe also calls ye for unregistered slaves; ye writes duallink-devices and registers runtime listeners. Do not reuse that function as a read-only native callback",
+    "native_boundary": "No actual hardware notification publisher is wired to this UI. Do not manufacture SLAVE_CONNECT_EVENT from connection query results"
+  }
+}

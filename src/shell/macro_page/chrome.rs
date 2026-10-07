@@ -48,8 +48,9 @@ fn icon_button(
 impl MacroPage {
     pub(super) fn navigation(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let help = self.tab == MacroTab::Help;
-        // dn gates the initial tutorial, not an empty catalog after completion.
-        let selector_disabled = help || self.tutorial != Tutorial::Complete;
+        // Mn gates the profile bar; dn also gates the initial selector.
+        let profile_disabled = self.profile_actions_blocked();
+        let selector_disabled = profile_disabled || self.tutorial == Tutorial::Initial;
         let angle = motion::transition(
             "macro-selector-angle",
             if self.selector_open {
@@ -132,10 +133,10 @@ impl MacroPage {
             .p_0()
             .border_1()
             .border_color(rgb(0x515151))
-            .disabled(help || self.tutorial != Tutorial::Complete)
+            .disabled(selector_disabled)
             .hover(|s| s.border_color(rgb(0x44d62c)))
             .child(img("synapse/profile-more.svg").size_full());
-        let more = if help || self.tutorial != Tutorial::Complete {
+        let more = if selector_disabled {
             more.into_any_element()
         } else {
             self.popup("macro-more-popup", more, Menu::More, window, cx)
@@ -153,10 +154,8 @@ impl MacroPage {
                 h_flex()
                     .id("macro-profile-bar")
                     .flex_1()
-                    .when(
-                        help || matches!(self.tutorial, Tutorial::Record | Tutorial::Add),
-                        |v| v.opacity(0.8),
-                    )
+                    .when(profile_disabled, |v| v.opacity(0.8))
+                    .when(self.recording_busy(), |v| v.opacity(0.3))
                     .flex_basis(relative(0.25))
                     .ml(css(10.))
                     .child(
@@ -180,12 +179,7 @@ impl MacroPage {
                                     .p_0()
                                     .text_size(css(12.))
                                     .underline()
-                                    .disabled(
-                                        help || matches!(
-                                            self.tutorial,
-                                            Tutorial::Record | Tutorial::Add
-                                        ),
-                                    )
+                                    .disabled(profile_disabled)
                                     .hover(|s| s.text_color(rgb(0x44d62c)))
                                     .active(|s| s.opacity(0.7))
                                     .child(tr("TEXT_PROFILE_BAR_NEW_MACRO"))

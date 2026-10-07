@@ -62,6 +62,31 @@ acorn.parse(macroKeyText, {ecmaVersion: 'latest'});
 const productCSSPath = '.ref/devices/182/static/css/main.48c20423.css';
 const productCSS = fs.readFileSync(path.join(root, productCSSPath), 'utf8');
 const productRules = parseCSS(productCSS).filter(rule => /key-config|keymap-head|display-name|dropdown-playback|config-btn|config-wrapper|config-block|hyper-switch/.test(rule.selector));
+const mouseGeometry = productRules.find(rule => rule.selector === '.config-wrapper .config-block');
+function pixels(rule, property) {
+  const value = new RegExp(`(?:^|;)${property}:([0-9.]+)px(?:;|$)`).exec(rule?.declarations ?? '');
+  if (!value) throw Error(`Missing current physical input ${property}`);
+  return Number(value[1]);
+}
+const keyboardLayoutsPath = 'assets/synapse/keyboard-653-customize-layouts.json';
+const keyboardLayoutsBytes = fs.readFileSync(path.join(root, keyboardLayoutsPath));
+const keyboardLayouts = JSON.parse(keyboardLayoutsBytes);
+const keyboardSource = fs.readFileSync(path.join(root, keyboardLayouts.source));
+const keyboardViewbox = keyboardLayouts.view_box.slice(2);
+if (keyboardViewbox.length !== 2 || keyboardViewbox.some(value => !Number.isFinite(value) || value <= 0)) {
+  throw Error('Invalid prepared keyboard input geometry');
+}
+// Preserve only the two existing audited overrides. Other family catalogs stay
+// on their current renderer; product ids select data, not Rust control flow.
+const inputCatalogs = {schema_version: 1, products: [
+  {product_id: 182, input_source: 'physical_groups', groups: mouseGroups,
+    viewbox: ['width', 'height'].map(property => pixels(mouseGeometry, property)), mouse_diagram: true},
+  {product_id: 653, input_source: 'prepared_keyboard_layout',
+    viewbox: keyboardViewbox, mouse_diagram: false},
+]};
+if (new Set(inputCatalogs.products.map(product => product.product_id)).size !== inputCatalogs.products.length) {
+  throw Error('Duplicate Macro input capability');
+}
 const assets = [
   ['binding-more.svg', 'icon_more_g.32e1e984.svg'],
   ['binding-close.svg', 'icon_close.4f578909.svg'],
@@ -96,6 +121,15 @@ const receipt = {
   method: 'Module-local Acorn AST, static locale exports and CSS with enclosing media conditions; no reference code execution',
   source: {path: scope.file, sha256: hash(source.text(scope.file))},
   components, localeKeys, css, assets, native_catalogs: nativeCatalogs,
+  input_capabilities: {
+    output: 'src/features/macro_input_catalogs.json',
+    products: inputCatalogs.products.map(({groups, ...catalog}) => catalog),
+    physical_groups: {path: mousePath, sha256: hash(mouseText), module: 1368,
+      offset: groupsNode.start, end: groupsNode.end, inputs: mouseGroups[0].group.buttonList.length},
+    prepared_keyboard_layouts: {path: keyboardLayoutsPath, sha256: hash(keyboardLayoutsBytes),
+      source: keyboardLayouts.source, source_sha256: hash(keyboardSource), layouts: keyboardLayouts.layouts.length},
+    boundary: 'The prepared layout provider owns default layout 0/US and unknown-layout rejection; it is selected only for its existing audited product. No new products gain Macro capability.'
+  },
   native_boundary: 'Catalog projections are not per-product displayMode root parity. 182 has a dedicated diagram; 653 uses layout-specific shapes. Other keyboards reuse catalog shapes and other mice use a catalog-only presentation. Additional root-specific restrictions remain unaudited.',
   product_182: {...mouseReceipt,
     classes: {KP: productClass('KP'), HM: productClass('HM')}, playback: playbackReceipt,
@@ -117,13 +151,13 @@ const receipt = {
 };
 const target = path.join(root, 'docs/re/macro-bindings-current-evidence.json');
 const text = JSON.stringify(receipt, null, 2) + '\n';
-const mouseTarget = path.join(root, 'src/features/macro_inputs_182.json');
-const mouseData = JSON.stringify(mouseGroups, null, 2) + '\n';
+const catalogsTarget = path.join(root, 'src/features/macro_input_catalogs.json');
+const catalogsData = JSON.stringify(inputCatalogs, null, 2) + '\n';
 const playbackTarget = path.join(root, 'src/shell/macro_page/bindings/playback_182.json');
 const playbackData = JSON.stringify(playback, null, 2) + '\n';
 if (process.argv.includes('--check')) {
   if (fs.readFileSync(target, 'utf8') !== text) throw Error('Stale Macro bindings receipt');
-  if (fs.readFileSync(mouseTarget, 'utf8') !== mouseData) throw Error('Stale Macro input data');
+  if (fs.readFileSync(catalogsTarget, 'utf8') !== catalogsData) throw Error('Stale Macro input capabilities');
   if (fs.readFileSync(playbackTarget, 'utf8') !== playbackData) throw Error('Stale Macro playback data');
-} else { fs.writeFileSync(target, text); fs.writeFileSync(mouseTarget, mouseData); fs.writeFileSync(playbackTarget, playbackData); }
+} else { fs.writeFileSync(target, text); fs.writeFileSync(catalogsTarget, catalogsData); fs.writeFileSync(playbackTarget, playbackData); }
 console.log('Current Macro bindings: module 21700, 4 mounted components, locale/CSS receipts');

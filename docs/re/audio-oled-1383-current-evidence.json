@@ -156,12 +156,12 @@
     "foot": "bottom:-2px;opacity:1;position:absolute;text-transform:uppercase;transition:visibility 0s,opacity .3s linear;visibility:visible;will-change:visibility,opacity"
   },
   "native": {
-    "src/features/audio_oled.rs": "9ccb4c59fd88d319f683ab5a198535e82d93fcd17bed3e187417edbb65d5ada9",
-    "src/features/audio_products.rs": "fe1e15609e45dca700943c3253de5c26c7990310d01784cd2c6f067776c3954e",
-    "src/features/audio_products_data.json": "4a124991b22f66aa11607761bb4c6a63bd8471d73259a013ce23ee43555eb455",
-    "tools/prepare-audio-products.cjs": "edf6cced30b70f18faa4a0cdb4a053750b0d661f6ad9987cd4a1880439777c5f",
+    "src/features/audio_oled.rs": "c56da8d2c639ef747fe878e0908e8dfb9b8ff14c6e31c40480d4e839bad65dd8",
+    "src/features/audio_products.rs": "42d7ab02fe30f1c213a62bb6f123ffc391a4159a4602f81e8c35e7bc4bb30be7",
+    "src/features/audio_products_data.json": "aea5681aa5915a1c1298bb9f9cba76c3c0673977cc5ca6e60b0f6b99b0fce42a",
+    "tools/prepare-audio-products.cjs": "fd2e89745ffddb78cf3cc4ec13c91b8f6d75914cbe5e0b54a37ae876b0ad39ff",
     "src/ui/source_slider.rs": "250665c21822c37c9d485aa911cf11be1cb70d074f0d08da88f51faa1f9a6e9b",
-    "src/ui/theme.rs": "28ce983206e37f3eb6c4034b46bc460bd5fe2b9aabf0cb85d45bde9110033d1f"
+    "src/ui/theme.rs": "7d025a0ee4b78dde68d4d02a871bb8d691e1a1dc25f961cc44c85609196417a6"
   },
   "contract": {
     "layout": "`xx` mounts a warning banner when the headset is not on a dongle, then `body-widgets` with `col-left`(brightness, language) and `col-right`(time to home screen, dim display, screen timeout options). The local page splits the descriptor sections with the same column map.",
@@ -171,8 +171,8 @@
     "screensaver": "`Kv` renders a two-column grid of 260x68 tiles: tile 0 is the text tile, tiles 1-3 are the current GIFs. `SET_OLED_SCREENSAVER` stores `value+1`, so tile ids equal stored values.",
     "preview_asset": "The three current 1383 manifest-declared GIFs equal the prepared conversion source GIFs byte for byte. Their WebP outputs are decoded conversions validated by the resource manifest.",
     "slider_thumb": "The mounted `.slider` source thumb is a 16px circle with radius 8px. The 14x20 path SVG belongs to `.slider-more`, a different source element. No 691 implementation evidence is used.",
-    "home_screen": "The current 1383 reducer provides source-owned initial artwork and preview data. Seven cards and all six editable mode entries have local editors; see audio-oled-home-source.json, audio-oled-home-native.md and audio-oled-editors-2026-10-06.md.",
-    "remaining": "BLE/dongle service conditions, device language download, vendor animation encoding/upload and device transport remain incomplete. Local crop and profile Apply do not acknowledge a device transaction; no runtime pixels were verified"
+    "home_screen": "The current 1383 reducer provides source-owned initial artwork and preview data. Seven cards and all six editable mode entries have local editors; see audio-oled-home-source.json, oled-ui-current.md and audio-oled-editors-current.md.",
+    "remaining": "BLE/dongle, loading/error/retry and language branches have typed observation/request UI in the runtime receipt. The actual provider, language download, vendor animation encoding/upload and device transport remain unavailable. Local crop and profile Apply do not acknowledge a device transaction; no runtime pixels were verified"
   },
   "native_verification": "Static fingerprints and descriptor assertions only; the application, builds and tests were not run"
 }

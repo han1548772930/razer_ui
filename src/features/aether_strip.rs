@@ -12,7 +12,7 @@ use gpui_kit::component::{
     button::Button,
     input::{Input, InputEvent, InputState},
     select::SelectState,
-    slider::Slider,
+    slider::{Slider, SliderState},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -352,7 +352,7 @@ impl AetherStrip {
                     .child(text("DEVICE_LAYOUT").to_uppercase()),
             )
             .child(
-                source_tip::TipCommand::help(help)
+                source_tip::TipCommand::help("aether-layout-help", help)
                     .absolute()
                     .top(surface::css(10.))
                     .right(surface::css(10.)),
@@ -426,6 +426,7 @@ impl Render for AetherStrip {
 }
 
 pub(crate) struct AetherLightingPage {
+    brightness: Entity<SliderState>,
     quick_effects: Entity<SelectState<Vec<Choice>>>,
     chroma_profiles: Entity<SelectState<Vec<Choice>>>,
     /// The source Effects widget is a two tab surface.  Keep the tab choice
@@ -437,16 +438,55 @@ pub(crate) struct AetherLightingPage {
 impl AetherLightingPage {
     pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         Self {
+            brightness: cx.new(|_| SliderState::new().min(0.).max(100.).step(1.)),
             quick_effects: cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx)),
             chroma_profiles: cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx)),
             advanced_mode: false,
         }
     }
+
+    fn effect_tab(id: &'static str, label: String, selected: bool, cx: &App) -> BaseButton {
+        // Current 784: `.twoway-lighting .lighting-effect` and `.modes-tab.active`.
+        // Base owns pointer, keyboard and selected semantics; this view supplies
+        // the source pill geometry and its persistent selected presentation.
+        BaseButton::new(id)
+            .role(Role::Tab)
+            .selected(selected)
+            .accessibility_label(label.clone())
+            .h(surface::css(26.))
+            .px(surface::css(10.))
+            .py_0()
+            .rounded(surface::css(13.))
+            .text_size(surface::css(14.))
+            .line_height(surface::css(17.))
+            .flex()
+            .flex_shrink_0()
+            .items_center()
+            .justify_center()
+            .bg(if selected {
+                cx.theme().primary
+            } else {
+                Colors::background()
+            })
+            .text_color(if selected {
+                Colors::background()
+            } else {
+                cx.theme().foreground
+            })
+            .hover(|v| {
+                v.bg(if selected {
+                    cx.theme().primary
+                } else {
+                    cx.theme().foreground.opacity(0.1)
+                })
+            })
+            .focus_visible(|v| v.border_1().border_color(cx.theme().primary))
+            .child(label)
+    }
 }
 
 impl Render for AetherLightingPage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let offline = crate::i18n::t_or("DEVICE_OFFLINE", "Device status unavailable");
         let unavailable = crate::i18n::t_or(
             "AETHER_SERVICE_UNAVAILABLE",
             "Lighting controls are unavailable until device status is observed.",
@@ -457,7 +497,7 @@ impl Render for AetherLightingPage {
         let synapse_override = surface::SynapseSwitch::new("aether-lighting-override-switch")
             .checked(false)
             .disabled(true)
-            .accessibility_label(crate::i18n::t_or("DYNAMIC_LIGHTING", "Synapse Override"));
+            .accessibility_label(crate::i18n::t("SYNAPSE_OVERRIDE_HEADER"));
         let brightness_switch = surface::SynapseSwitch::new("aether-lighting-brightness-switch")
             .checked(false)
             .disabled(true)
@@ -469,18 +509,28 @@ impl Render for AetherLightingPage {
                         .gap_5()
                         .child(
                             surface::panel_with_title_switch(
-                                crate::i18n::t_or("DYNAMIC_LIGHTING", "Synapse Override"),
+                                crate::i18n::t("SYNAPSE_OVERRIDE_HEADER"),
                                 synapse_override,
                                 div(),
                                 cx,
                             )
+                            .relative()
                             .id("aether-lighting-override")
                             .test_support()
+                            .child(
+                                source_tip::TipCommand::help(
+                                    "aether-lighting-override-help",
+                                    crate::i18n::t("SYNAPSE_OVERRIDE_TOOLTIP"),
+                                )
+                                .absolute()
+                                .top(surface::css(10.))
+                                .right(surface::css(10.)),
+                            )
                             .child(
                                 h_flex()
                                     .items_center()
                                     .gap_3()
-                                    .child(offline.clone())
+                                    .child(unknown.clone())
                                     .child(surface::note(unavailable.clone(), cx)),
                             ),
                         )
@@ -491,8 +541,18 @@ impl Render for AetherLightingPage {
                                 div(),
                                 cx,
                             )
+                            .relative()
                             .id("aether-lighting-brightness")
                             .test_support()
+                            .child(
+                                source_tip::TipCommand::help(
+                                    "aether-lighting-brightness-help",
+                                    crate::i18n::t("BRIGHTNESS_TOOLTIP"),
+                                )
+                                .absolute()
+                                .top(surface::css(10.))
+                                .right(surface::css(10.)),
+                            )
                             .child(
                                 h_flex()
                                     .justify_between()
@@ -503,15 +563,15 @@ impl Render for AetherLightingPage {
                                 div()
                                     .id("aether-lighting-brightness-control")
                                     .test_support()
-                                    .child(
-                                        Slider::new(&cx.new(|_| {
-                                            gpui_kit::component::slider::SliderState::new()
-                                                .min(0.)
-                                                .max(100.)
-                                                .step(1.)
-                                        }))
-                                        .disabled(true),
-                                    ),
+                                    .child(Slider::new(&self.brightness).disabled(true)),
+                            )
+                            .child(
+                                h_flex()
+                                    .id("aether-lighting-brightness-endpoints")
+                                    .test_support()
+                                    .justify_between()
+                                    .child("0")
+                                    .child("100"),
                             ),
                         ),
                 ))
@@ -522,26 +582,42 @@ impl Render for AetherLightingPage {
                         .child(
                             h_flex()
                                 .id("aether-lighting-effect-tabs")
+                                .role(Role::TabList)
                                 .test_support()
+                                .self_start()
+                                .h(surface::css(36.))
+                                .p(surface::css(5.))
+                                .rounded(surface::css(18.))
+                                .border_1()
+                                .border_color(Colors::border())
+                                .bg(Colors::background())
                                 .child(
-                                    BaseButton::new("aether-lighting-quick-tab")
-                                        .role(Role::Tab)
-                                        .selected(!self.advanced_mode)
-                                        .child(quick.clone())
-                                        .on_click(cx.listener(|this, _, _, cx| {
+                                    Self::effect_tab(
+                                        "aether-lighting-quick-tab",
+                                        quick.clone(),
+                                        !self.advanced_mode,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
                                             this.advanced_mode = false;
                                             cx.notify();
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
-                                    BaseButton::new("aether-lighting-advanced-tab")
-                                        .role(Role::Tab)
-                                        .selected(self.advanced_mode)
-                                        .child(advanced.clone())
-                                        .on_click(cx.listener(|this, _, _, cx| {
+                                    Self::effect_tab(
+                                        "aether-lighting-advanced-tab",
+                                        advanced.clone(),
+                                        self.advanced_mode,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
                                             this.advanced_mode = true;
                                             cx.notify();
-                                        })),
+                                        },
+                                    )),
                                 ),
                         )
                         .child(

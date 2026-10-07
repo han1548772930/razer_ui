@@ -49,6 +49,16 @@ const MOUSE_POLLING_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/polling-info.svg",
     include_bytes!("../assets/synapse/polling-info.svg"),
 )];
+const RECEIVER_PARENT_ASSETS: &[(&str, &[u8])] = &[
+    (
+        "synapse/receiver/connection-skeleton-base.svg",
+        include_bytes!("../assets/synapse/receiver/connection-skeleton-base.svg"),
+    ),
+    (
+        "synapse/receiver/connection-skeleton-sweep.svg",
+        include_bytes!("../assets/synapse/receiver/connection-skeleton-sweep.svg"),
+    ),
+];
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
         if let Some((_, bytes)) = ASSETS
@@ -74,6 +84,7 @@ impl AssetSource for SynapseAssets {
             .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
             .chain(MOUSE_POLLING_ASSETS)
+            .chain(RECEIVER_PARENT_ASSETS)
             .find(|(key, _)| *key == path)
         {
             return Ok(Some(Cow::Borrowed(bytes)));
@@ -106,6 +117,7 @@ impl AssetSource for SynapseAssets {
                 .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)
                 .chain(MOUSE_POLLING_ASSETS)
+                .chain(RECEIVER_PARENT_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))
                 .map(|(key, _)| SharedString::from(*key)),
         );

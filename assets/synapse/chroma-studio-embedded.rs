@@ -47,4 +47,12 @@
     ("synapse/chroma-studio-wave-sm-gray.svg", include_bytes!("chroma-studio-wave-sm-gray.svg")),
     ("synapse/chroma-studio-wave-reactive-md-gray.svg", include_bytes!("chroma-studio-wave-reactive-md-gray.svg")),
     ("synapse/chroma-studio-wave-reactive-sm-gray.svg", include_bytes!("chroma-studio-wave-reactive-sm-gray.svg")),
+    ("synapse/chroma-studio-clockwise-gray.svg", include_bytes!("chroma-studio-clockwise-gray.svg")),
+    ("synapse/chroma-studio-clockwise-black.svg", include_bytes!("chroma-studio-clockwise-black.svg")),
+    ("synapse/chroma-studio-counterclockwise-gray.svg", include_bytes!("chroma-studio-counterclockwise-gray.svg")),
+    ("synapse/chroma-studio-counterclockwise-black.svg", include_bytes!("chroma-studio-counterclockwise-black.svg")),
+    ("synapse/chroma-studio-outward-gray.svg", include_bytes!("chroma-studio-outward-gray.svg")),
+    ("synapse/chroma-studio-outward-black.svg", include_bytes!("chroma-studio-outward-black.svg")),
+    ("synapse/chroma-studio-inward-gray.svg", include_bytes!("chroma-studio-inward-gray.svg")),
+    ("synapse/chroma-studio-inward-black.svg", include_bytes!("chroma-studio-inward-black.svg")),
 ]

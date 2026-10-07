@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 AVAILABLE = ROOT / '.ref/applications/synapse/dashboard/AvailableDevices.json'
 DEVELOPMENT = ROOT / '.ref/discovery/catalogs/inDevelopmentDevices.json'
+DUAL_LINK = ROOT / '.ref/applications/synapse/dashboard/DualDongleCompatibleDevices.json'
 FIELDS = {
     'productId': 'product_id', 'repId': 'rep_id', 'dongleId': 'dongle_id',
     'bleId': 'ble_id', 'xBoxId': 'xbox_id', 'wiredId': 'wired_id',
@@ -38,6 +39,7 @@ def main():
     args = parser.parse_args()
     available, available_receipt = source(AVAILABLE)
     development, development_receipt = source(DEVELOPMENT)
+    dual_link, dual_link_receipt = source(DUAL_LINK)
     # Current host removes inDevelopment from available before classification.
     # This current catalog is empty; refuse silently changing those semantics.
     assert development == [], 'Re-audit current inDevelopment precedence before publishing'
@@ -80,13 +82,43 @@ def main():
     )
     evidence = ROOT / 'docs/re/discovery-catalog-current-evidence.json'
     evidence_data = (json.dumps(receipts, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    # Current middleware 34340/he chooses EID 0, falling back to ProductInfo[0],
+    # for a descriptive name only when connectedDeviceInfo has no metadata.
+    # Keep this catalog separate from actual edition/layout/serial observations.
+    publishing = json.loads((ROOT / 'docs/re/receiver-publishing-review-current-evidence.json').read_text('utf-8'))
+    naming = next(receipt for receipt in publishing['receipts'] if receipt.get('binding') == 'he')
+    naming_source = (ROOT / naming['path']).read_bytes()
+    assert hashlib.sha256(naming_source).hexdigest() == naming['sha256']
+    assert naming_source.decode('utf-8').encode('utf-16-le')[naming['offset'] * 2:naming['end'] * 2].decode('utf-16-le') == naming['source']
+    assert 'editionId:0' in naming['source'] and 't.ProductInfo.find((e=>e.EID===i.editionId))||t.ProductInfo[0]' in naming['source']
+    peer_rows = []
+    for entry in dual_link['Devices']:
+        info = entry['ProductInfo']
+        assert info and type(entry['DeviceDonglePid']) is int
+        assert entry['DeviceType'] in {'MOUSE', 'KEYBOARD', 'ACCESSORY', 'MOUSEMAT'}
+        selected = next((row for row in info if row['EID'] == 0), info[0])
+        assert isinstance(selected['Name'], str) and isinstance(selected['CHSName'], str)
+        peer_rows.append(dict(dongle_id=entry['DeviceDonglePid'], category=entry['DeviceType'],
+                              product_name={'en': selected['Name'], 'zh-cn': selected['CHSName']}))
+    assert len({row['dongle_id'] for row in peer_rows}) == len(peer_rows)
+    peer_output = ROOT / 'src/backend/receiver_peer_catalog.json'
+    peer_data = (json.dumps(peer_rows, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
+    peer_evidence = ROOT / 'docs/re/receiver-peer-names-current-evidence.json'
+    peer_evidence_data = (json.dumps(dict(method='Static current catalog fallback names, never edition or connection observations.',
+        source=dual_link_receipt, naming=naming, output=relative(peer_output),
+        sha256=hashlib.sha256(peer_data).hexdigest(), entries=len(peer_rows)), ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     if args.check:
         assert output.read_bytes() == data, 'Stale complete identity projection'
         assert evidence.read_bytes() == evidence_data, 'Stale identity projection receipt'
+        assert peer_output.read_bytes() == peer_data, 'Stale receiver descriptive names'
+        assert peer_evidence.read_bytes() == peer_evidence_data, 'Stale receiver naming evidence'
     else:
         output.write_bytes(data)
         evidence.write_bytes(evidence_data)
+        peer_output.write_bytes(peer_data)
+        peer_evidence.write_bytes(peer_evidence_data)
     print(f'Identity catalog: {len(rows)} complete rows, {len(usb_aliases)} USB aliases, {len(peer_aliases)} scalar peer aliases; no connected devices generated')
+    print(f'Receiver fallback names: {len(peer_rows)} source descriptions; no edition/layout/serial generated')
 
 if __name__ == '__main__':
     main()

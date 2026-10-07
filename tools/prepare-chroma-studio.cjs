@@ -71,6 +71,7 @@ for(const key of ['main.css','EditorCanvas.css','Help.css','ModalNoDevices.css',
 }
 const assetNames=['ambient-white','audio-white','breathing-white','chroma-generate-white','fire-white','reactive-white','ripple-white','spectrum-white','starlight-white','static-white','tidal-white','wave-white','wheel-white','folder-add-gray','folder-gray','eye-gray','eye-disabled-white','ellipsis-gray','icon_reset','cursor-white','cursor-green','pen-white','pen-green','bucket-white','bucket-green','move-white','move-green','trash-white','undo-white','redo-white','plus-white','minus-white','keyboard-white','icon_help','dropdown','logo_chromastudio','icon-label','icon-label-disable','icon-chroma-preview','icon-chroma-slow-preview','icon-chroma-stop','tooltip_questionmark'];
 assetNames.push('wave-lg-gray','wave-md-gray','wave-sm-gray','wave-reactive-md-gray','wave-reactive-sm-gray');
+assetNames.push(...['clockwise','counterclockwise','outward','inward'].flatMap(name=>[name+'-gray',name+'-black']));
 const assets=[];
 for(const name of assetNames){
  const selector=name.startsWith('icon-label')||name.startsWith('icon-chroma')?`.${name}`:name==='keyboard-white'?'.btn-icon-2.btn-keyboard':null;

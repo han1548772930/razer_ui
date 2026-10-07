@@ -10,7 +10,7 @@
 
 主开关及各总线开关共同限制数字操作，父 edit 在提交时再次检查 gate；只在 STREAM_MIXER_HEADER 消费子事件。父草稿变化同步显示，兼容滑块规范化产生的浮点 JSON 数字；相同父值不覆盖尚未提交的文字，Blur 仍规范化文本。页面切换及 restore 清理暂存与重复任务；松开、移出、禁用、到达边界或窗口失活停止重复。
 
-本地修改进入 AudioProductChanged → 既有 capture/snapshot 链，没有 DLL 写入，也没有设备成功确认。原 profile 与 reducer 初态区分见 [继续记录](ui-continuation-2026-10-06.md)。
+本地修改进入 AudioProductChanged → 既有 capture/snapshot 链，没有 DLL 写入，也没有设备成功确认。原 profile 与 reducer 初态区分见 [继续记录](ui-readonly-first-roadmap.md)。
 
 ## 外观与边界
 
@@ -21,4 +21,4 @@
 格式化、cargo check --locked --all-targets、专用收据及音频静态校验通过；仅三项既有 Rust 警告。嵌入 JSON 51 项通过、0 失败、4 项既有跳过。未运行应用、构建、测试、厂商脚本或 DLL。
 
 
-独立回读已确认 Change 主动重绘、Base 数字 mask 关闭、鼠标点击回调顺序去重、键盘步进和父草稿恢复链；未发现本批新的数据编辑阻断。另保留 Base NumberInput 后置 disabled 覆盖单个箭头 limit 的表现差异：应用处理器阻止边界鼠标写入且显示半透明，但边界箭头的指针/辅助功能禁用语义尚不能声称完全等价。报告见 [独立验证](prior-ui-verification-2026-10-06.md)。
+独立回读已确认 Change 主动重绘、Base 数字 mask 关闭、鼠标点击回调顺序去重、键盘步进和父草稿恢复链；未发现本批新的数据编辑阻断。另保留 Base NumberInput 后置 disabled 覆盖单个箭头 limit 的表现差异：应用处理器阻止边界鼠标写入且显示半透明，但边界箭头的指针/辅助功能禁用语义尚不能声称完全等价。报告见 [独立验证](ui-readonly-first-roadmap.md)。

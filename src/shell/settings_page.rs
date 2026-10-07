@@ -806,6 +806,7 @@ impl SettingsPage {
                     .child(h_flex().flex_wrap().items_end().gap_3()
                         .child(v_flex().gap_2().child("产品名称或 ID").child(
                             select::Select::new(&self.preview_product)
+                                .id("preview-product-select")
                                 .placeholder("搜索产品名称或 ID")
                                 .w(surface::css(400.))
                         ))

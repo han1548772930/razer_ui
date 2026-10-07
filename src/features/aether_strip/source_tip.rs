@@ -74,9 +74,9 @@ impl TipCommand {
             style: StyleRefinement::default(),
         }
     }
-    pub(super) fn help(label: String) -> Self {
+    pub(super) fn help(id: impl Into<ElementId>, label: String) -> Self {
         Self {
-            id: "aether-layout-help".into(),
+            id: id.into(),
             name: "tooltip_questionmark",
             label,
             disabled: false,

@@ -9,6 +9,10 @@ use anyhow::{Context as _, ensure};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
+#[cfg(test)]
+#[path = "discovery_startup_tests.rs"]
+mod startup_tests;
+
 #[derive(Clone, Copy)]
 pub(crate) enum ObservedTransport {
     Wired,
@@ -241,6 +245,39 @@ fn query_receiver_with(
     anyhow::bail!("所有接收器查询接口均失败：{}", errors.join("；"))
 }
 
+/// The startup caller retries a successful but not-yet-online first peer with
+/// fresh transactions. Protocol Busy retries inside the worker do not cover
+/// this state. Run only on the existing background discovery bridge.
+fn startup_receiver_query_with(
+    product_id: u32,
+    mut query: impl FnMut() -> anyhow::Result<Value>,
+    mut wait: impl FnMut(std::time::Duration),
+) -> anyhow::Result<Value> {
+    let mut value = query()?;
+    let Some(policy) = u16::try_from(product_id)
+        .ok()
+        .and_then(super::receiver_capabilities::capability)
+        .and_then(|capability| capability.startup_retry.as_ref())
+    else {
+        return Ok(value);
+    };
+    for &delay_ms in &policy.delays_ms {
+        // The source he() removes sentinel and receiver-self rows before Ne()
+        // checks its first peer. Unknown status and an empty list are not 0.
+        let first = receiver_peers(&value)?
+            .into_iter()
+            .find(|(pid, _)| *pid != 65535 && *pid != product_id);
+        if !first.is_some_and(|(_, status)| status == policy.first_peer_status) {
+            break;
+        }
+        wait(std::time::Duration::from_millis(delay_ms));
+        // Errors end this bounded observation. The source's independent 1s
+        // error loop still needs owner cancellation before it can be ported.
+        value = query()?;
+    }
+    Ok(value)
+}
+
 pub(crate) fn receiver_peers(value: &Value) -> anyhow::Result<Vec<(u32, u8)>> {
     let devices = value["devices"]
         .as_array()
@@ -288,16 +325,26 @@ pub(crate) fn pairing_payload(receiver_pid: u32, value: &Value) -> anyhow::Resul
         let product =
             crate::product::registered(identity.product_id).context("配对产品尚无本地页面")?;
         let categories = product.categories();
-        let category = if categories.contains(&"MOUSE") {
+        let description = super::receiver_catalog::description(raw_pid);
+        let category = if let Some(description) = description {
+            description.category()
+        } else if categories.contains(&"MOUSE") {
             "MOUSE"
         } else if categories.contains(&"KEYBOARD") {
             "KEYBOARD"
         } else {
             anyhow::bail!("配对 PID {raw_pid} 的产品类别不适用于底座页面")
         };
+        ensure!(
+            matches!(category, "MOUSE" | "KEYBOARD"),
+            "配对设备类别不适用于此页面"
+        );
+        let product_name = description
+            .map(|description| serde_json::json!(description.product_name()))
+            .unwrap_or_else(|| serde_json::json!({"en":product.name()}));
         rows.push(
             serde_json::json!({"productId":identity.product_id,"dongleId":raw_pid,
-            "status":status,"category":category,"productName":{"en":product.name()}}),
+            "status":status,"category":category,"productName":product_name}),
         );
     }
     Ok(Value::Array(rows))
@@ -428,7 +475,13 @@ pub(crate) fn discover(
         let result = hid
             .as_ref()
             .map_err(|error| anyhow::anyhow!(error.clone()))
-            .and_then(|hid| query_receiver(client, hid, &container, pid))
+            .and_then(|hid| {
+                startup_receiver_query_with(
+                    pid,
+                    || query_receiver(client, hid, &container, pid),
+                    std::thread::sleep,
+                )
+            })
             .and_then(|value| receiver_peers(&value));
         match result {
             Ok(peers) => {
@@ -656,5 +709,23 @@ mod tests {
             panic!("must not query another container")
         });
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn pairing_names_use_source_peer_catalog_without_inventing_metadata() {
+        let payload =
+            pairing_payload(179, &json!({"devices":[{"product_id":183,"status":1}]})).unwrap();
+        let peer = &payload[0];
+        assert_eq!(peer["productId"], 182);
+        assert_eq!(peer["dongleId"], 183);
+        assert_eq!(peer["category"], "MOUSE");
+        assert_eq!(peer["productName"]["en"], "RAZER DEATHADDER V3 PRO");
+        assert_eq!(peer["productName"]["zh-cn"], "RAZER炼狱蝰蛇 V3 专业版");
+        for key in ["editionId", "layoutId", "serialNumber", "setupStatus"] {
+            assert!(
+                peer.get(key).is_none(),
+                "{key} is not returned by this query"
+            );
+        }
     }
 }

@@ -125,11 +125,14 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
   assert(styles.some(s=>s.path.includes('/5171.')), 'Lazy base CSS absent');
   const files=['src/features/source_controls.rs','src/features/source_controls/oled_page.rs',
     'src/features/source_controls/oled_home_cards.rs','src/features/source_controls/oled_presets.rs','src/features/keyboard_products.rs',
-    'src/features/source_workspace/profile_bar.rs'];
+    'src/features/source_workspace/profile_bar.rs','src/features/source_controls/oled_system_editor.rs'];
   const local=Object.fromEntries(files.map(file=>[file,hash(read(file))]));
   assert(read(files[1]).includes('surface::page_column') && read(files[1]).includes('surface::css(530.)'), 'OLED local columns/screensaver width drift');
   assert(!read(files[3]).includes('fn render_home_mode_branch'), 'Legacy invented preview branch returned');
   assert(read(files[5]).includes('691 => !matches!(key, "OLED" | "TAB_POWER" | "HELP")'), '691 profile sync state drift');
+  assert(read(files[2]).includes('6 => this.open_oled_system(window, cx)')
+    && read(files[2]).includes('matches!(mode, 0 | 1 | 5 | 6)')
+    && read(files[6]).includes('pub(super) fn system_preview'), '691 current System editor/preview route drift');
   // 命令拨盘帮助：源 `<i className="help" …/>` + `<Un.A position="bottom-right"
   // isMounted target className="command-dial-tooltip">…富文本…</Un.A>`，CSS
   // `.command-dial .help{background-color:#4a4a4a;border-radius:50%;height:14px;margin:0;
@@ -222,9 +225,9 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
     method:'Current manifest ownership, Acorn AST and CSS parsing only; no app, build, test or vendor code execution.',
     boot:mainReceipt(boot),css_loader:mainReceipt(cssLoader),bindings,styles,local,dial_help:dialHelp,attribute_tooltip:attributeTooltip,
     profile_contract:'Ca disables isEnableProfileBar for OLED/Power/Help; Kt uses it only for loader disable. Profile bar remains mounted and enableSwitchProfile controls dropdown independently.',
-    corrected:['Lazy base body Roboto16/#ccc/#222 and padding10/20/20','OLED 1220/600 home and fixed600 setting columns','Seven home card shells in source order; existing animation/image/crop/import/media editors preserved','Removed invented530x120 placeholders and fake Emote/Banner dialogs','OLED title switch, corner tips, language Apply staging, numeric buttons, screen-saver dimensions','691 existing Power dim/sleep title switches and raw48x27 numeric choices'],
-    limitations:['Emote/Banner/System home previews and real editors are still unimplemented; their edit actions are disabled locally, a known source difference','Power low-battery warning, indicator and low-power information widgets are still absent','BLE/download/service-derived flags and source system-slide Apply semantics incomplete','Card title hover restored; OLED card, command-dial and port help tooltips now use the source portal mechanisms (`.tooltip-razer` instant mount, `[turn-off-ble-tooltip]:before`), runtime pixels remain unverified','Shared slider source release semantics/hover transition and CSS normal font metrics remain unverified','Customize/Lighting/Help content and other keyboard-specific widgets remain partial'],
-    removed_fake_editors:{emote:'Old callback mounted only a service-unavailable note, no editor entity or fields.',banner:'Old callback mounted only a transfer-unavailable note; Top/Bottom buttons had no handlers.',preserved:['PresetEditor','CropDraft','OledMediaEditor','Import/crop/Apply callbacks']}};
+    corrected:['Lazy base body Roboto16/#ccc/#222 and padding10/20/20','OLED 1220/600 home and fixed600 setting columns','Seven home card shells in source order; animation/image/crop/import/media editors and partial System editor mounted','Emote/Banner edit actions disabled because their editors are absent','OLED title switch, corner tips, language Apply staging, numeric buttons, screen-saver dimensions','691 existing Power dim/sleep title switches and raw48x27 numeric choices'],
+    limitations:['Emote/Banner home previews and editors are unimplemented; System has a partial text preview/editor, with source SVG presentation and full workflow still incomplete','Power low-battery warning, indicator and low-power information widgets are still absent','BLE/download/service-derived flags and source system-slide Apply semantics incomplete','Card title hover and source tooltip mechanisms are mounted; runtime pixels and the BLE edit-button versus source-card anchor still require comparison','Shared slider source release semantics/hover transition and CSS normal font metrics remain unverified','Customize/Lighting/Help content and other keyboard-specific widgets remain partial'],
+    editor_scope:{emote:'Preview and editor unavailable; Edit disabled.',banner:'Preview and editor unavailable; Edit disabled.',mounted:['PresetEditor','CropDraft','OledMediaEditor','OledSystemEditor','Import/crop/Apply callbacks'],system:'Local device-owned layout/preferences with source sample text; original SVG presentation, telemetry and service workflow remain incomplete.'}};
   const target='docs/re/keyboard-691-current-evidence.json',output=JSON.stringify(evidence,null,2)+'\n';
   if(process.argv.includes('--check'))assert(read(target)===output,'Stale 691 audit receipt');
   else fs.writeFileSync(target,output);

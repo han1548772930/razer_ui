@@ -1,4 +1,4 @@
-//! Current 768/2245 integer number + range composition for 5305/6548.
+//! Current 768/2245 number + range composition, including Audio's fractional fields.
 //! Change updates only working paint parameters; no device preview is invented.
 use super::*;
 use gpui_kit::base::{NumberInput, StepAction};
@@ -107,8 +107,8 @@ impl NumericField {
         }
     }
     fn limits(self) -> (f64, f64, f64) {
-        // 5305 Mn/s8, jw/Ph/h1 and 6548 dV/JG, independently checked
-        // against their JSX props by review-studio-reactive-ripple-starlight.cjs.
+        // Bounds come from each current effect root's JSX props; the shared
+        // numeric component owns clamping and step normalization.
         match self {
             Self::RippleSpeed => (1., 50., 1.),
             Self::RippleWidth => (100., 400., 100.),
@@ -125,8 +125,13 @@ impl NumericField {
     }
     fn normalize(self, value: f64) -> f64 {
         let (min, max, step) = self.limits();
-        // 7660:x5 clamps first, then rounds to a multiple of step from zero.
-        (value.clamp(min, max) / step).round() * step
+        // 7660:x5 clamps, rounds to a step from zero, then applies
+        // Number(value.toFixed(2)). The registered steps have at most 2 decimals.
+        let value = (value.clamp(min, max) / step).round() * step;
+        (value * 100.).round() / 100.
+    }
+    fn blocks_character(self, character: &str) -> bool {
+        matches!(character, "+" | "-" | "e") || (character == "." && self.limits().2 >= 1.)
     }
     fn slider(self, value: f64) -> SliderState {
         let (min, max, step) = self.limits();
@@ -144,12 +149,21 @@ pub(super) struct NumericChanged {
     pub(super) revision: u64,
 }
 impl EventEmitter<NumericChanged> for StudioNumeric {}
+pub(super) struct NumericToggleChanged {
+    pub(super) field: NumericField,
+    pub(super) checked: bool,
+    pub(super) revision: u64,
+}
+impl EventEmitter<NumericToggleChanged> for StudioNumeric {}
 
 pub(super) struct StudioNumeric {
     field: NumericField,
     value: f64,
     enabled: bool,
     revision: u64,
+    companion: Option<Entity<StudioNumeric>>,
+    toggle_checked: bool,
+    toggle_enabled: bool,
     input: Entity<InputState>,
     slider: Entity<SliderState>,
     focused: bool,
@@ -185,12 +199,15 @@ impl StudioNumeric {
                 _ => {}
             }),
             cx.observe_in(&slider, window, |this, slider, window, cx| {
-                let next = f64::from(slider.read(cx).value().start());
-                if next == this.field.normalize(this.value) {
+                let next = slider.read(cx).value().start();
+                // Compare at SliderState's precision. Comparing f32's 0.1
+                // after promotion to f64 against 0.1f64 would keep scheduling
+                // disabled resynchronization and publish spurious edits.
+                if next == this.field.normalize(this.value) as f32 {
                     return;
                 }
                 if this.enabled {
-                    this.value = next;
+                    this.value = this.field.normalize(f64::from(next));
                     this.write_input(window, cx);
                     this.publish(cx);
                 } else {
@@ -203,7 +220,7 @@ impl StudioNumeric {
                 }
                 match event {
                     SliderEvent::Change(value) | SliderEvent::Release(value) => {
-                        this.value = f64::from(value.start());
+                        this.value = this.field.normalize(f64::from(value.start()));
                         this.write_input(window, cx);
                         this.publish(cx);
                     }
@@ -221,6 +238,9 @@ impl StudioNumeric {
             value,
             enabled: false,
             revision: 0,
+            companion: None,
+            toggle_checked: false,
+            toggle_enabled: false,
             input,
             slider,
             focused: false,
@@ -230,6 +250,28 @@ impl StudioNumeric {
             suppress_click: false,
             repeat: None,
             _subscriptions: subscriptions,
+        }
+    }
+    pub(super) fn set_companion(&mut self, companion: Entity<StudioNumeric>) {
+        self.companion = Some(companion);
+    }
+    pub(super) fn configure_toggle(
+        &mut self,
+        checked: bool,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.toggle_checked = checked;
+        self.toggle_enabled = enabled;
+        cx.notify();
+    }
+    fn toggle_changed(&self, checked: bool, revision: u64, cx: &mut Context<Self>) {
+        if self.toggle_enabled && self.revision == revision {
+            cx.emit(NumericToggleChanged {
+                field: self.field,
+                checked,
+                revision,
+            });
         }
     }
     pub(super) fn configure(
@@ -425,7 +467,7 @@ impl StudioNumeric {
     }
 }
 impl Render for StudioNumeric {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let increment = self.spinner(StepAction::Increment, cx);
         let decrement = self.spinner(StepAction::Decrement, cx);
         let owner = cx.weak_entity();
@@ -435,6 +477,87 @@ impl Render for StudioNumeric {
         let held = self.held;
         let action = self.held_action;
         let revision = self.revision;
+        let toggle_owner = cx.weak_entity();
+        let trailing = match self.field {
+            NumericField::AudioBoost => Some(
+                super::super::studio_checkbox::checkbox(
+                    "studio-audio-auto-boost",
+                    self.toggle_checked,
+                    self.toggle_enabled,
+                    label("TEXT_AUTO"),
+                    window,
+                    cx,
+                )
+                .on_change(move |state, _, _, cx| {
+                    let _ = toggle_owner.update(cx, |this, cx| {
+                        this.toggle_changed(
+                            state == gpui_kit::base::CheckboxState::Checked,
+                            revision,
+                            cx,
+                        )
+                    });
+                })
+                .into_any_element(),
+            ),
+            NumericField::WaveWidth => {
+                let left = gpui_kit::base::motion::transition(
+                    "studio-wave-split-left",
+                    if self.toggle_checked { 15_f32 } else { 1_f32 },
+                    gpui_kit::base::motion::Transition::new(Duration::from_millis(300))
+                        .easing(gpui_kit::base::motion::Easing::Ease),
+                    window,
+                    cx,
+                );
+                let color = surface::fade_color(
+                    "studio-wave-split-color",
+                    if self.toggle_checked {
+                        Colors::selected()
+                    } else {
+                        Colors::helper()
+                    },
+                    300,
+                    window,
+                    cx,
+                );
+                Some(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .items_end()
+                        .child(div().mb(surface::css(6.)).child(label("TEXT_SPLIT")))
+                        .child(
+                            gpui_kit::base::Switch::new("studio-wave-split")
+                                .accessibility_label(label("TEXT_SPLIT"))
+                                .checked(self.toggle_checked)
+                                .disabled(!self.toggle_enabled)
+                                .relative()
+                                .w(surface::css(32.))
+                                .h(surface::css(18.))
+                                .border_1()
+                                .border_color(Colors::gradient_border())
+                                .rounded(surface::css(9.))
+                                .bg(color)
+                                .focus_visible(|style| style.border_color(Colors::selected()))
+                                .child(
+                                    div()
+                                        .absolute()
+                                        .left(surface::css(left))
+                                        .top(surface::css(1.))
+                                        .size(surface::css(14.))
+                                        .rounded_full()
+                                        .bg(Colors::black()),
+                                )
+                                .on_change(move |checked, _, _, cx| {
+                                    let _ = toggle_owner.update(cx, |this, cx| {
+                                        this.toggle_changed(checked, revision, cx)
+                                    });
+                                }),
+                        )
+                        .into_any_element(),
+                )
+            }
+            _ => None,
+        };
         div()
             .relative()
             .flex()
@@ -461,90 +584,124 @@ impl Render for StudioNumeric {
                 .absolute()
                 .inset_0(),
             )
-            .child(div().mb(surface::css(6.)).child(title.clone()))
             .child(
                 div()
-                    .id(format!("studio-{}-input", self.field.id()))
+                    .id(format!("studio-{}-input-group", self.field.id()))
                     .test_support()
-                    .mb(surface::css(10.))
-                    .w(surface::css(62.))
-                    .h(surface::css(27.))
-                    .border_1()
-                    .border_color(if self.focused {
-                        Colors::selected()
-                    } else {
-                        Colors::input_border()
-                    })
-                    .when(self.enabled, |view| {
-                        view.hover(|style| style.border_color(Colors::selected()))
-                    })
-                    .capture_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
-                        if !this.enabled {
-                            return;
-                        }
-                        match event.keystroke.key.as_str() {
-                            "escape" => window.blur(cx),
-                            "up" | "down" => {
-                                this.step(
-                                    if event.keystroke.key == "up" {
-                                        StepAction::Increment
-                                    } else {
-                                        StepAction::Decrement
-                                    },
-                                    window,
-                                    cx,
-                                );
-                                window.prevent_default();
-                            }
-                            _ if matches!(
-                                event.keystroke.key_char.as_deref(),
-                                Some("." | "+" | "-" | "e")
-                            ) =>
-                            {
-                                window.prevent_default()
-                            }
-                            _ => return,
-                        }
-                        cx.stop_propagation();
-                    }))
-                    .child(
-                        NumberInput::new(&self.input)
-                            .disabled(!self.enabled)
-                            .controls_right()
-                            .size_full()
-                            .input(
-                                Input::new(&self.input)
-                                    .aria_label(title.clone())
-                                    .appearance(false)
-                                    .bordered(false)
-                                    .focus_bordered(false)
-                                    .size_full()
-                                    .px(surface::css(6.))
-                                    .py(surface::css(2.))
-                                    .text_size(surface::css(14.)),
-                            )
-                            .increment_button(move |_| increment)
-                            .decrement_button(move |_| decrement)
-                            .on_step(move |action, window, cx| {
-                                let _ = owner.update(cx, |this, cx| {
-                                    if !this.suppress_click {
-                                        this.step(action, window, cx);
-                                    }
-                                });
-                            }),
-                    ),
-            )
-            .child(
-                super::super::studio_slider::StudioSlider::new(&self.slider, self.enabled)
-                    .label(title),
-            )
-            .child(
-                div()
                     .flex()
-                    .justify_between()
-                    .mt(surface::css(3.))
-                    .child(min.to_string())
-                    .child(max.to_string()),
+                    .items_end()
+                    .when(self.field != NumericField::WavePause, |view| {
+                        view.mb(surface::css(10.))
+                    })
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .flex_1()
+                            .child(div().mb(surface::css(6.)).child(title.clone()))
+                            .child(
+                                div()
+                                    .id(format!("studio-{}-input", self.field.id()))
+                                    .test_support()
+                                    .w(surface::css(62.))
+                                    .h(surface::css(27.))
+                                    .border_1()
+                                    .border_color(if self.focused {
+                                        Colors::selected()
+                                    } else {
+                                        Colors::input_border()
+                                    })
+                                    .when(self.enabled, |view| {
+                                        view.hover(|style| style.border_color(Colors::selected()))
+                                    })
+                                    .capture_key_down(cx.listener(
+                                        |this, event: &KeyDownEvent, window, cx| {
+                                            if !this.enabled {
+                                                return;
+                                            }
+                                            match event.keystroke.key.as_str() {
+                                                "escape" => window.blur(cx),
+                                                "up" | "down" => {
+                                                    this.step(
+                                                        if event.keystroke.key == "up" {
+                                                            StepAction::Increment
+                                                        } else {
+                                                            StepAction::Decrement
+                                                        },
+                                                        window,
+                                                        cx,
+                                                    );
+                                                    window.prevent_default();
+                                                }
+                                                _ if event
+                                                    .keystroke
+                                                    .key_char
+                                                    .as_deref()
+                                                    .is_some_and(|character| {
+                                                        this.field.blocks_character(character)
+                                                    }) =>
+                                                {
+                                                    window.prevent_default()
+                                                }
+                                                _ => return,
+                                            }
+                                            cx.stop_propagation();
+                                        },
+                                    ))
+                                    .child(
+                                        NumberInput::new(&self.input)
+                                            .disabled(!self.enabled)
+                                            .controls_right()
+                                            .size_full()
+                                            .input(
+                                                Input::new(&self.input)
+                                                    .aria_label(title.clone())
+                                                    .appearance(false)
+                                                    .bordered(false)
+                                                    .focus_bordered(false)
+                                                    .size_full()
+                                                    .px(surface::css(6.))
+                                                    .py(surface::css(2.))
+                                                    .text_size(surface::css(14.)),
+                                            )
+                                            .increment_button(move |_| increment)
+                                            .decrement_button(move |_| decrement)
+                                            .on_step(move |action, window, cx| {
+                                                let _ = owner.update(cx, |this, cx| {
+                                                    if !this.suppress_click {
+                                                        this.step(action, window, cx);
+                                                    }
+                                                });
+                                            }),
+                                    ),
+                            ),
+                    )
+                    .children(self.companion.clone())
+                    .when_some(trailing, |view, trailing| {
+                        view.child(
+                            div()
+                                .when(self.field == NumericField::AudioBoost, |view| {
+                                    view.ml(surface::css(20.))
+                                })
+                                .child(trailing),
+                        )
+                    }),
             )
+            .when(self.field != NumericField::WavePause, |view| {
+                view.child(
+                    super::super::studio_slider::StudioSlider::new(&self.slider, self.enabled)
+                        .label(title),
+                )
+            })
+            .when(self.field != NumericField::WavePause, |view| {
+                view.child(
+                    div()
+                        .flex()
+                        .justify_between()
+                        .mt(surface::css(3.))
+                        .child(min.to_string())
+                        .child(max.to_string()),
+                )
+            })
     }
 }

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="16" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 80 16">
+  <defs>
+    <style>
+      .cls-1 {
+        opacity: .03;
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        opacity: .04;
+      }
+
+      .cls-4 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="0" y1="8" x2="80" y2="8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#fff"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <g id="text">
+    <g id="text-2" data-name="text" class="cls-3">
+      <rect class="cls-2" width="80" height="16" rx="3" ry="3"/>
+    </g>
+  </g>
+  <g id="shimmer">
+    <g id="shimmer-2" data-name="shimmer" class="cls-1">
+      <rect class="cls-4" width="80" height="16" rx="3" ry="3">
+        <animateTransform id="ani" attributeName="transform" attributeType="XML"
+          type="translate" from="-80 0" to="80 0"
+          begin="0s;ani.end+0.5s" dur="1.5s" fill="freeze" />
+      </rect>
+    </g>
+  </g>
+</svg>

@@ -36,7 +36,7 @@ const table = {
   method:
     'Root branches audited by tools/audit-display-modes.cjs: the product bundle selects this component ' +
     'in the same ternary chain that reads `searchParams.get("displayMode")`. Products are listed by id only; ' +
-    'the branch content, its opener window and its services are recorded in docs/re/display-mode-audit.md.',
+    'the branch content, its opener window and its services are recorded in docs/re/shell-workspace-current.md.',
   modes,
 };
 const text = JSON.stringify(table, null, 2) + '\n';

@@ -1,5 +1,110 @@
 use super::*;
 
+#[test]
+fn only_accepted_device_success_schedules_close_and_new_actions_invalidate_it() {
+    let (mut state, _) = ready();
+    assert!(state.success_close().is_none());
+    let scan = state.scan(ReceiverCategory::Mouse).unwrap();
+    let peer = ReceiverPeer::queried(183, 1);
+    let (_, bind) = state.observe(ReceiverPairingObservation::scanned(
+        scan.session(),
+        vec![peer.clone()],
+    ));
+    assert!(state.success_close().is_none());
+    let bind = bind.unwrap();
+    assert!(
+        state
+            .observe(ReceiverPairingObservation::bound(
+                bind.session(),
+                peer.clone()
+            ))
+            .0
+    );
+    let ticket = state.success_close().unwrap();
+    assert_eq!(ticket.delay(), std::time::Duration::from_secs(1));
+    assert!(state.can_close_success(ticket));
+    assert!(
+        !state
+            .observe(ReceiverPairingObservation::bound(bind.session(), peer))
+            .0
+    );
+    state.confirm_unpair();
+    assert!(!state.can_close_success(ticket));
+    let unbind = state.unbind().unwrap();
+    assert!(state.success_close().is_none());
+    assert!(
+        state
+            .observe(ReceiverPairingObservation::unbound(unbind.session()))
+            .0
+    );
+    let ticket = state.success_close().unwrap();
+    assert!(state.can_close_success(ticket));
+    state.close();
+    state.open();
+    assert!(!state.can_close_success(ticket));
+}
+
+fn failed_bind() -> PairingState {
+    let (mut state, _) = ready();
+    let scan = state.scan(ReceiverCategory::Mouse).unwrap();
+    let (_, bind) = state.observe(ReceiverPairingObservation::scanned(
+        scan.session(),
+        vec![ReceiverPeer::queried(183, 1)],
+    ));
+    assert!(state.recovery().is_none());
+    state.observe(ReceiverPairingObservation::failed(
+        bind.unwrap().session(),
+        ReceiverOperation::Bind,
+    ));
+    state
+}
+
+#[test]
+fn observed_failure_recovery_clears_bind_candidates_but_preserves_unbind_peer() {
+    let mut state = failed_bind();
+    let ticket = state.recovery().unwrap();
+    assert_eq!(ticket.delay(), std::time::Duration::from_secs(4));
+    assert_eq!(state.status, Status::PairFailed);
+    assert!(!state.candidates.is_empty());
+    assert!(state.recover_failure(ticket));
+    assert_eq!(state.status, Status::Ready);
+    assert!(state.candidates.is_empty());
+    assert!(state.failure.is_none());
+    assert!(!state.recover_failure(ticket));
+
+    let query = state.refresh().unwrap();
+    let peer = ReceiverPeer::queried(183, 1);
+    state.observe(ReceiverPairingObservation::bindings(
+        query.session(),
+        vec![peer.clone()],
+    ));
+    state.confirm_unpair();
+    let unbind = state.unbind().unwrap();
+    assert!(state.recovery().is_none());
+    state.observe(ReceiverPairingObservation::failed(
+        unbind.session(),
+        ReceiverOperation::Unbind,
+    ));
+    let ticket = state.recovery().unwrap();
+    assert!(state.recover_failure(ticket));
+    assert_eq!(state.status, Status::Paired);
+    assert_eq!(state.bound, vec![peer]);
+    assert!(state.failure.is_none());
+}
+
+#[test]
+fn failure_timer_cannot_change_retried_or_reopened_pairing() {
+    let mut state = failed_bind();
+    let ticket = state.recovery().unwrap();
+    let retry = state.scan(ReceiverCategory::Mouse).unwrap();
+    assert!(!state.recover_failure(ticket));
+    assert_eq!(state.pending.as_ref(), Some(retry.intent()));
+    state.close();
+    state.open();
+    assert!(!state.recover_failure(ticket));
+    assert_eq!(state.status, Status::Loading);
+}
+
 fn ready() -> (PairingState, u64) {
     let mut state = PairingState::default();
     let session = state.open().session();

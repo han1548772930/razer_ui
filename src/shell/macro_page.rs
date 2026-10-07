@@ -1,7 +1,6 @@
-//! Current Macro business IIFE and 58190/21700/1519; see the scoped review in
-//! docs/re/macro-current-source-review.md. Only explicitly created local data is
-//! represented here. Recording, service devices and capability flags are not
-//! fabricated. CSS coordinates below are CSS px, scaled by the shared rem unit.
+//! Current Macro business IIFE and 58190/21700/1519; current contract:
+//! docs/re/macro-ui-current.md. Local drafts remain separate from observed
+//! recorder events and device metadata. CSS px scale with the shared rem unit.
 use crate::{
     i18n,
     ui::{scroll::SourceScrollable as _, surface::css, tutorial::TutorialIndicator},
@@ -40,6 +39,8 @@ mod row_drag;
 mod row_view;
 mod selection;
 mod state;
+#[cfg(test)]
+mod tests;
 mod text;
 mod text_emoji;
 mod text_overlay;
@@ -435,6 +436,15 @@ impl MacroPage {
             .iter()
             .filter(|e| e.kind == EntryKind::Macro)
             .count()
+    }
+    /// Mn disables the entire profile bar during recording/settings, Help and
+    /// the two active tutorial steps. Initial creation remains available.
+    fn profile_actions_blocked(&self) -> bool {
+        self.recording_busy()
+            || self.record_ui.open
+            || self.tab == MacroTab::Help
+            || matches!(self.tutorial, Tutorial::Record | Tutorial::Add)
+            || self.suspended_action.is_some()
     }
     fn actions(&self) -> &[ActionItem] {
         if self.actions_for == self.current {

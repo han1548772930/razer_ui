@@ -1,7 +1,8 @@
 //! Read-only projection of current product input catalogs for displayMode=macro.
-//! DEFAULTPROFILE mappings are not a physical input catalog. In particular,
-//! 182 uses its audited 1368 groupList, not its broader default mapping array.
+//! DEFAULTPROFILE mappings are not a physical input catalog. Audited standalone
+//! catalogs and prepared-layout policies are selected by capability data.
 use crate::{model::Device, resources};
+use serde::Deserialize;
 use serde_json::Value;
 use std::sync::OnceLock;
 
@@ -90,56 +91,86 @@ fn group_inputs(groups: &[Value]) -> Vec<MacroInput> {
     inputs
 }
 
-pub(crate) fn for_device(device: &Device) -> Option<MacroInputLayout> {
-    if device.product_id == 182 {
-        static GROUPS: OnceLock<Vec<Value>> = OnceLock::new();
-        let groups = GROUPS.get_or_init(|| {
-            serde_json::from_str(include_str!("macro_inputs_182.json"))
-                .expect("audited 182 input catalog")
-        });
-        return Some(MacroInputLayout {
-            inputs: group_inputs(groups),
-            image: resources::device_image(
-                182,
-                device.edition_id,
-                device.layout_id,
-                resources::DeviceImage::Product,
-            )
-            .map(str::to_owned),
-            viewbox: [770., 340.],
-            mouse_diagram: true,
-        });
-    }
-    if device.product_id == 653 {
-        let source: Vec<Value> =
-            serde_json::from_str(resources::keyboard_source_for_layout(device.layout_id)?).ok()?;
-        let shapes = resources::keyboard_keys_for_layout(device.layout_id);
-        let values = source.iter().flat_map(|group| {
-            group["group"]["buttonList"]
-                .as_array()
-                .into_iter()
-                .flatten()
-        });
-        let inputs = values
-            .filter_map(|value| {
-                let shape = shapes
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum InputSource {
+    PhysicalGroups,
+    PreparedKeyboardLayout,
+}
+
+#[derive(Deserialize)]
+struct MacroInputCatalog {
+    product_id: u32,
+    input_source: InputSource,
+    #[serde(default)]
+    groups: Vec<Value>,
+    viewbox: [f32; 2],
+    mouse_diagram: bool,
+}
+
+#[derive(Deserialize)]
+struct MacroInputCatalogs {
+    products: Vec<MacroInputCatalog>,
+}
+
+fn source_catalog(product_id: u32) -> Option<&'static MacroInputCatalog> {
+    static CATALOGS: OnceLock<MacroInputCatalogs> = OnceLock::new();
+    CATALOGS
+        .get_or_init(|| {
+            serde_json::from_str(include_str!("macro_input_catalogs.json"))
+                .expect("audited Macro input catalog capabilities")
+        })
+        .products
+        .iter()
+        .find(|catalog| catalog.product_id == product_id)
+}
+
+impl MacroInputCatalog {
+    fn for_device(&self, device: &Device) -> Option<MacroInputLayout> {
+        let inputs = match self.input_source {
+            InputSource::PhysicalGroups => group_inputs(&self.groups),
+            InputSource::PreparedKeyboardLayout => {
+                // The prepared catalog owns its legacy/default layout policy.
+                // Unknown layouts must not fall through to a different catalog.
+                let source: Vec<Value> =
+                    serde_json::from_str(resources::keyboard_source_for_layout(device.layout_id)?)
+                        .ok()?;
+                let shapes = resources::keyboard_keys_for_layout(device.layout_id);
+                source
                     .iter()
-                    .find(|shape| value["inputID"].as_str() == Some(&shape.id))?;
-                input(value, Some(shape))
-            })
-            .collect();
-        return Some(MacroInputLayout {
+                    .flat_map(|group| {
+                        group["group"]["buttonList"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                    })
+                    .filter_map(|value| {
+                        let shape = shapes
+                            .iter()
+                            .find(|shape| value["inputID"].as_str() == Some(&shape.id))?;
+                        input(value, Some(shape))
+                    })
+                    .collect()
+            }
+        };
+        Some(MacroInputLayout {
             inputs,
             image: resources::device_image(
-                653,
+                device.product_id,
                 device.edition_id,
                 device.layout_id,
                 resources::DeviceImage::Product,
             )
             .map(str::to_owned),
-            viewbox: [730., 340.],
-            mouse_diagram: false,
-        });
+            viewbox: self.viewbox,
+            mouse_diagram: self.mouse_diagram,
+        })
+    }
+}
+
+pub(crate) fn for_device(device: &Device) -> Option<MacroInputLayout> {
+    if let Some(catalog) = source_catalog(device.product_id) {
+        return catalog.for_device(device);
     }
     if let Some(spec) = super::keyboard_products::source_product(device.product_id) {
         let inputs = spec
@@ -175,3 +206,7 @@ pub(crate) fn for_device(device: &Device) -> Option<MacroInputLayout> {
         mouse_diagram: false,
     })
 }
+
+#[cfg(test)]
+#[path = "macro_inputs_tests.rs"]
+mod tests;

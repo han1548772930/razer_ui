@@ -1,7 +1,7 @@
 {
   "product_id": 179,
   "method": "Acorn current mounted state tree, product-owned 10-locale getter namespaces, CSS and independent asset hashes; no execution of vendor code",
-  "generator_sha256": "80b9d6d6777cfe472748c54e41a6776f670c364aadd3574e9b9dbf131ae9a846",
+  "generator_sha256": "59c2f18d3a7b1b2a4d076c84fb52104dfdf6dca8a4c930e9475b41f28401d818",
   "manifest": {
     "path": ".ref/devices/179/asset-manifest.json",
     "sha256": "33f8cd60c72685d968e70e2d84ba2d4dcfd116e2452528034c8bc3e1cad559bd"
@@ -113,6 +113,68 @@
       "source": "class mE extends t.Component{constructor(e){super(e),this.state={UmaComponent:(0,NE.Yh)()?Ie:eE,latestVersionInfo:y.DeviceInfo.latestVersionInfo}}componentDidMount(){ME().then(e=>{console.log(\"Pairing componentDidMount - getVersions- latestVersionInfo:\",e),this.setState({latestVersionInfo:e})})}render(){const e=(JSON.parse(localStorage.getItem(lE.CV.DEVICE_DETAIL))||[]).find(e=>e.productId===y.DeviceInfo.productId)||{},E=this.state.UmaComponent;const a={deviceName:e.productName||{},imgPairing:SE,hyperpollingNoteFour:A.PXm,hyperpollingHeader:A.PRj,hyperpollingConfirmText:A.owr,productId:y.DeviceInfo.productId};return console.log(\"Pairing componentDidMount render latestVersionInfo -> \",this.state.latestVersionInfo),(0,S.jsxs)(o.A,{children:[(0,S.jsx)(r.default,{}),(0,S.jsx)(n.A,{direction:\"left\",children:E&&(0,S.jsx)(E,{deviceInfo:a,latestVersionInfo:this.state.latestVersionInfo})}),(0,S.jsx)(n.A,{direction:\"right\",children:(0,S.jsx)(AE,{uppercase:!1})})]})}}"
     }
   },
+  "parent_constants": {
+    "I": {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4081360,
+      "end": 4081403,
+      "source": "a.p+\"static/media/Skeletonsvg.3811ae52.svg\""
+    },
+    "K": {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4086050,
+      "end": 4086057,
+      "source": "\"mouse\""
+    },
+    "z": {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4086037,
+      "end": 4086047,
+      "source": "\"keyboard\""
+    }
+  },
+  "failureRecovery": [
+    {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4101452,
+      "end": 4101551,
+      "source": "setTimeout(()=>{U({type:\"SET_BINDINFO\",payload:{status:W.LOADED,bindInfo:[],scannedInfo:[]}})},4e3)"
+    },
+    {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4101667,
+      "end": 4101737,
+      "source": "setTimeout(()=>{U({type:\"SET_STATUS\",payload:{status:W.PAIRED}})},4e3)"
+    }
+  ],
+  "parentTimers": [
+    {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4104331,
+      "end": 4104366,
+      "source": "setTimeout(()=>{e&&e(),e=null},1e3)"
+    },
+    {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4104561,
+      "end": 4104588,
+      "source": "setTimeout(()=>{f(!1)},2e4)"
+    },
+    {
+      "path": ".ref/devices/179/static/js/main.4849f7ca.js",
+      "sha256": "f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874",
+      "offset": 4104877,
+      "end": 4104926,
+      "source": "setTimeout(()=>{ee(\"DUALLINK_BIND_INFO\",{})},1e3)"
+    }
+  ],
   "labels": {
     "PXm": "HYPERPOLLING_WIRELESS_DONGLE_NOTE_FOUR",
     "PRj": "HYPERPOLLING_WIRELESS_DONGLE_HEADER",
@@ -140,7 +202,23 @@
     "o1A": "MICE_FOUND",
     "CRt": "KEYBOARDS_FOUND",
     "ssI": "UNPAIR",
-    "UVv": "PAIRING_UTILITY"
+    "UVv": "PAIRING_UTILITY",
+    "FeU": "HYPERPOLLING_WIRELESS",
+    "A4y": "MULTI__DUALINK_PROPERTIES_TOOLTIP",
+    "JSN": "OPEN_PAIRING_UTILITY",
+    "vHO": "PAIRED_WITH",
+    "rYs": "CONFIGURE_4000_POLLING_RATE",
+    "VYK": "CONFIGURE_POLLING_RATE_DEVICE_DISCONNECTED_TEXT"
+  },
+  "parent_contract": {
+    "source": "9473/mE -> Te left parent widget, not the separate G/se pairing dialog",
+    "binding": "Only observed binding payload; temporary until exact PID and edition match actual validDevices",
+    "connectivity": "ReceiverDevicesObservation retains known-positive PID/edition entries in complete or partial discovery; absent partial is unknown and absent complete is disconnected; duplicate owners remain ambiguous",
+    "retry": "At most 30 delayed 1000ms requests while temporary and connected; pause outside active real-owner Customize page or while dialog owns query",
+    "success_close": "1000ms only after accepted actual Bind/Unbind result; new intent/session invalidates ticket",
+    "connection_event": "Current 78548/Be -> 34340/kO=oe hardware-event producer is traced in receiver-connect-events-current-evidence.json; source SLAVE_CONNECT_EVENT has a 20000ms loading timer; no native publisher is integrated and query status=1 does not imply eventValue.state=3",
+    "skeleton": "Source 80x16 SVG split into base/sweep; native 1500ms translation plus 500ms hold, reduced motion static",
+    "adaptation": "Empty successful read clears binding; failed read is explicit. Navigation needs one actual device identity; missing edition/category are never invented"
   },
   "locale_map": {
     "path": ".ref/devices/179/static/js/main.4849f7ca.js",
@@ -4234,27 +4312,92 @@
       "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize",
       "width": 975,
       "height": 750
+    },
+    {
+      "source": ".ref/devices/179/static/media/Skeletonsvg.3811ae52.svg",
+      "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/Skeletonsvg.3811ae52.svg",
+      "source_sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+      "output": "assets/synapse/receiver/connection-skeleton-base.svg",
+      "sha256": "4256a439c450d67934e3f189424ca4b74c508c39b691f24941d5217c22633631",
+      "preparation": "Source SVG base layer, SMIL removed; native 1.5s translation and 0.5s hold"
+    },
+    {
+      "source": ".ref/devices/179/static/media/Skeletonsvg.3811ae52.svg",
+      "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/Skeletonsvg.3811ae52.svg",
+      "source_sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+      "output": "assets/synapse/receiver/connection-skeleton-sweep.svg",
+      "sha256": "3892ce1c6f7ebfaee4ef67c1e38bfa6ebb99c7cb107cde779fea5cf80081d679",
+      "preparation": "Source SVG sweep layer, SMIL removed; native 1.5s translation and 0.5s hold"
+    },
+    {
+      "source": ".ref/devices/179/static/media/Skeletonsvg.3811ae52.svg",
+      "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/Skeletonsvg.3811ae52.svg",
+      "source_sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+      "output": "assets/synapse/receiver/connection-skeleton.svg",
+      "sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+      "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
     }
   ],
   "native": [
     {
       "path": "src/features/source_controls/receiver.rs",
-      "sha256": "e718eaa559b0c0bf9a520f434a1b40d11624d20abac485258d0a30a8e9e280be"
+      "sha256": "1c8bd65a989a5c819c497f00d46feb3fdb01fb21bff707a3a43e29f4786973d1"
+    },
+    {
+      "path": "src/features/source_controls/receiver_page.rs",
+      "sha256": "b83389dfef088fbed30e9f34af8fde8d434551a381631125f8cf5d9b1f7c120a"
+    },
+    {
+      "path": "src/features/source_controls/receiver_page_state.rs",
+      "sha256": "6f1988b839fb4f03c804de68e0e1870fc081b2403b0c534f5457e197c1b94ebe"
+    },
+    {
+      "path": "src/features/source_controls/receiver_page_state_tests.rs",
+      "sha256": "90a1dee3a6e978c3f156698789adfaba54d75872b123b43e177218106e0ba3ed"
     },
     {
       "path": "src/features/source_controls/receiver_pairing_state.rs",
-      "sha256": "482da6c64a355357fbca20f180fec14babc4d27507e7b6344569dadb194a9ca9"
+      "sha256": "c4cc5d80bbe670669bfff6502e5637bf866f3752995c009f2bde20de79365577"
     },
     {
       "path": "src/features/source_controls/receiver_pairing_view.rs",
-      "sha256": "f5fe4c6e9490a4459ddc4d1d5bce8ab69a96751912dd917132397e1f3e7a2122"
+      "sha256": "5e1d8c1d6c971d1f6e07a39c8c448a545b7a43d31d42cc5b1f76f39d5c46b98e"
     },
     {
       "path": "src/features/source_controls/receiver_pairing_state_tests.rs",
-      "sha256": "2c1ec59c9472f659b398f7ca37b4705100e41e17bbfaf5f98538676da8199fb2"
+      "sha256": "7c685fcb1ce221c5f364f9f0fc8af466e52cbb910c8ac0d5b7a20305103040ce"
+    }
+  ],
+  "supporting_native": [
+    {
+      "path": "src/features/source_workspace.rs",
+      "sha256": "85b03851402f97d91eeeb79a373c48f4cf2cb1f4610a47d1ae8db6ca25a1b2bf"
+    },
+    {
+      "path": "src/features/source_workspace/tests.rs",
+      "sha256": "482cf139560fddd8e54708ac057af35b5f1d16cebb6dab7c3b24ef1172138af8"
+    },
+    {
+      "path": "src/resources.rs",
+      "sha256": "43b325ef1bde44ae521ad96cd57fb5d76e5bb3db295a2a11134f41d1ba52b90c"
+    },
+    {
+      "path": "src/ui/theme.rs",
+      "sha256": "7d025a0ee4b78dde68d4d02a871bb8d691e1a1dc25f961cc44c85609196417a6"
     }
   ],
   "test_support_ids": [
+    "receiver-paired-description",
+    "receiver-paired-name",
+    "receiver-parent-loading",
+    "receiver-configure-device",
+    "receiver-parent-binding",
+    "receiver-parent-unpair",
+    "receiver-parent-empty",
+    "receiver-open-pairing",
+    "receiver-pairing-widget",
+    "receiver-parent-read-error",
+    "receiver-parent-retry",
     "receiver-pairing-loading",
     "receiver-pairing-content",
     "receiver-pairing-service-error",

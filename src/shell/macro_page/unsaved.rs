@@ -117,6 +117,9 @@ impl MacroPage {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let panel = v_flex()
+            .id("macro-unsaved-dialog")
+            .test_support()
+            .aria_label(tr("SAVE_MACRO"))
             .relative()
             .occlude()
             .w(css(400.))

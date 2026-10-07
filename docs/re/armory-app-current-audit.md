@@ -1,6 +1,6 @@
 # Armory 窗口（`/synapse/armory/`）依据与实现
 
-> 2026-10-05 正文续审：3026/77989/54693 重新核对后，未收到 feature 响应时横幅使用 hook 初值 false 对应的 `WORKSHOP_GET_STARTED`，已修正原生硬写 Exchange 的偏差。无响应与有效的全 false feature 响应不同，后者会计算 `isExchangeEnabled=true`。详见[独立应用正文覆盖表](independent-app-content-consistency-2026-10-05.md)。
+> 2026-10-05 正文续审：3026/77989/54693 重新核对后，未收到 feature 响应时横幅使用 hook 初值 false 对应的 `WORKSHOP_GET_STARTED`，已修正原生硬写 Exchange 的偏差。无响应与有效的全 false feature 响应不同，后者会计算 `isExchangeEnabled=true`。详见[独立应用正文覆盖表](shell-workspace-current.md)。
 
 > 2026-10-04 更正：以下四页签常显和正文说明是旧实现，已撤销。当前已重新读取模块29770根、20540导航reducer、77989功能hook、60094开关取值及3026/95889介绍横幅。没有功能数据时各能力缺省false；加载结束后根切到Browse，guest=true时只显示Browse与MyDownloads。本地现按这个已稳定下来的默认分支呈现，补内部历史并接入壳工具栏。横幅使用原AVIF/关闭SVG、24px RazerF5标题及14/17 Roboto正文，去掉源码键和技术说明。收据见[armory-default-source.json](armory-default-source.json)，维护工具为[audit-armory-default.cjs](../../tools/audit-armory-default.cjs)。
 >

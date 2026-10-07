@@ -111,7 +111,7 @@ const report = {product_id: 691, bindings, localization,
     require_synapse: 'source_hover_tip_element(SourceTipPlacement::BottomRight) on the `require-synapse-icon-{id}` wrapper (source `xA isMounted`, no delay)'},
   limitations: ['Tooltip content and mechanism are verified; runtime hover pixels and engine font metrics remain unmeasured.',
     'Animation transfer estimates need processed size; original imported byte counts are not substituted.',
-    'Emote/Banner/System editors, actual service loading/language downloads and device writes remain unavailable.',
+    'Emote/Banner editors remain unavailable. The separate System text preview/editor is mounted, with original SVG presentation and full workflow incomplete; actual service loading/language downloads and device writes remain unavailable.',
     'No application or tests ran; runtime image pixels, hover and focus behavior remain unmeasured.']};
 const target = 'docs/re/oled-preset-cards-current-evidence.json';
 const output = JSON.stringify(report, null, 2) + '\n';

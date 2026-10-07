@@ -2,7 +2,7 @@
 use super::AetherLightingPage;
 use gpui_kit::component::Root;
 use gpui_kit::test::TestWindowExt;
-use gpui_kit::{AppContext, TestAppContext, px, size};
+use gpui_kit::{AppContext, Role, TestAppContext, px, size};
 
 #[gpui_kit::test]
 fn lighting_preview_keeps_source_controls_in_the_tab_body(cx: &mut TestAppContext) {
@@ -17,8 +17,12 @@ fn lighting_preview_keeps_source_controls_in_the_tab_body(cx: &mut TestAppContex
             "aether-lighting-page",
             "aether-lighting-override",
             "aether-lighting-override-switch",
+            "aether-lighting-override-help",
             "aether-lighting-brightness",
+            "aether-lighting-brightness-switch",
+            "aether-lighting-brightness-help",
             "aether-lighting-brightness-control",
+            "aether-lighting-brightness-endpoints",
             "aether-lighting-effects",
             "aether-lighting-effect-tabs",
             "aether-lighting-quick-effects",
@@ -29,12 +33,44 @@ fn lighting_preview_keeps_source_controls_in_the_tab_body(cx: &mut TestAppContex
                 "missing Aether lighting control {id}"
             );
         }
+        assert_eq!(
+            window
+                .try_find("aether-lighting-override-switch")
+                .unwrap()
+                .label(),
+            Some(crate::i18n::t("SYNAPSE_OVERRIDE_HEADER").as_str())
+        );
+        for id in [
+            "aether-lighting-override-switch",
+            "aether-lighting-brightness-switch",
+            "aether-lighting-effect-selector",
+            "aether-lighting-sync",
+        ] {
+            assert_eq!(window.try_find(id).unwrap().disabled(), Some(true));
+        }
+        let quick = window.try_find("aether-lighting-quick-tab").unwrap();
+        assert_eq!(quick.role(), Some(Role::Tab));
+        assert_eq!(quick.selected(), Some(true));
         assert!(
             window
                 .try_find("aether-lighting-advanced-effects")
                 .is_none()
         );
         window.click("aether-lighting-advanced-tab", cx);
+        assert_eq!(
+            window
+                .try_find("aether-lighting-advanced-tab")
+                .unwrap()
+                .selected(),
+            Some(true)
+        );
+        assert_eq!(
+            window
+                .try_find("aether-lighting-quick-tab")
+                .unwrap()
+                .selected(),
+            Some(false)
+        );
         assert!(window.try_find("aether-lighting-quick-effects").is_none());
         for id in [
             "aether-lighting-advanced-effects",
@@ -43,6 +79,26 @@ fn lighting_preview_keeps_source_controls_in_the_tab_body(cx: &mut TestAppContex
         ] {
             assert!(window.try_find(id).is_some(), "missing Aether control {id}");
         }
+        for id in [
+            "aether-lighting-profile-selector",
+            "aether-lighting-chroma-studio",
+        ] {
+            assert_eq!(window.try_find(id).unwrap().disabled(), Some(true));
+        }
+        window.click("aether-lighting-quick-tab", cx);
+        assert!(window.try_find("aether-lighting-quick-effects").is_some());
+        assert!(
+            window
+                .try_find("aether-lighting-advanced-effects")
+                .is_none()
+        );
+        assert_eq!(
+            window
+                .try_find("aether-lighting-quick-tab")
+                .unwrap()
+                .selected(),
+            Some(true)
+        );
     })
     .unwrap();
 }

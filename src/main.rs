@@ -430,7 +430,7 @@ fn main() {
             // 圆角：雷云是**两级**，正好对上主题的命名档位。
             //   .thx-btn { border-radius:3px }  → radius    → tokens.md（控件）
             //   .widget  { border-radius:5px }  → radius_lg → tokens.lg（卡片）
-            // 早期公共基线；当前产品特有 CSS 应由对应页面覆盖。
+            // 公共主题基线；产品页面按各自当前 CSS 覆盖。
             theme.radius = px(3.);
             theme.radius_lg = px(5.);
         });

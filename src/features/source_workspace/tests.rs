@@ -5,6 +5,32 @@ use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 use serde_json::json;
 
+#[test]
+fn receiver_automatic_reads_require_live_physical_identity() {
+    use crate::model::DeviceConnectionObservation;
+    let mut device = crate::demo::registered_preview(179).unwrap();
+    assert!(!super::receiver_read_owner(&device));
+    device.observe_connection(Some(DeviceConnectionObservation::HidPresent));
+    assert!(!super::receiver_read_owner(&device));
+    device.serial_number = "observed-device".into();
+    for container in [
+        "PREVIEW-179",
+        "{00000000-0000-0000-0000-000000000000}",
+        "72cbd6ee-ea6b-4aa4-8b10-d82c7796fd13",
+    ] {
+        device.device_container_id = container.into();
+        assert!(!super::receiver_read_owner(&device));
+    }
+    device.device_container_id = "{72cbd6ee-ea6b-4aa4-8b10-d82c7796fd13}".into();
+    assert!(super::receiver_read_owner(&device));
+    device.observe_connection(Some(DeviceConnectionObservation::ReceiverPeer(1)));
+    assert!(!super::receiver_read_owner(&device));
+    device.observe_connection(Some(DeviceConnectionObservation::UsbPresent));
+    assert!(super::receiver_read_owner(&device));
+    device.observe_connection(None);
+    assert!(!super::receiver_read_owner(&device));
+}
+
 #[gpui_kit::test]
 fn receiver_never_mounts_a_profile_selector(cx: &mut TestAppContext) {
     cx.update(|cx| {
@@ -229,23 +255,16 @@ fn active_profile_product_draft_is_detected_before_deletion() {
 #[gpui_kit::test]
 fn lighting_changes_and_profile_switches_preserve_device_layout(cx: &mut TestAppContext) {
     cx.update(|cx| gpui_kit::init(cx));
+    let mut workspace = None;
     let handle = cx.open_window(size(px(1280.), px(900.)), |window, cx| {
-        Root::new(
-            cx.new(|cx| {
-                SourceProductWorkspace::new(
-                    crate::demo::registered_preview(784).unwrap(),
-                    window,
-                    cx,
-                )
-            }),
-            window,
-            cx,
-        )
-    });
-    cx.update_window(handle.into(), |_, window, cx| {
         let view = cx.new(|cx| {
             SourceProductWorkspace::new(crate::demo::registered_preview(784).unwrap(), window, cx)
         });
+        workspace = Some(view.clone());
+        Root::new(view, window, cx)
+    });
+    let view = workspace.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
         view.update(cx, |workspace, cx| {
             let layout =
                 workspace.device.source_device_settings.as_ref().unwrap()["_accessory"].clone();

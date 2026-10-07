@@ -1,15 +1,26 @@
-# 本地启动
+# 开发与静态检查
 
-本仓库当前要求代理不运行应用、构建、测试、安装程序或厂商代码；代理可执行 `cargo check --locked --all-targets`、格式化和静态验证。下面是开发者自行启动程序的说明。
+本项目按当前官方源逐项实现 UI，使用 [GPUI Kit 约定](../skills/gpui-kit/SKILL.md)和[设计约定](../skills/gpui-kit-design-guides/SKILL.md)。组件需要稳定身份、状态所有者、焦点与清理路径；原版特有布局和交互以实际挂载源码为准。
 
-如果工作区由 Windows 沙箱配置过，其目录可能带有可继承的 Low Mandatory Level 标签，目录内生成的 exe 也会继承。即使从普通终端 `cargo run`，程序仍可能以 Low 完整性运行，无法向 Medium 完整性的 Explorer 注册托盘。
+允许的 Rust 检查：
 
-在普通 PowerShell 中进入项目目录，使用项目外的构建目录：
-
-```powershell
-cargo run --target-dir "$env:LOCALAPPDATA\razer-ui-build"
+```text
+cargo check --locked --all-targets
+cargo fmt --all -- --check
+git diff --check
 ```
 
-此操作不要求管理员权限，不更改仓库 ACL。调试输出目录由 Cargo 命令行参数指定，不写入绝对路径配置；release 构建也可以使用同一 `--target-dir` 参数。
+静态检查入口：
 
-若仍失败，终端 `[tray]` 行会报告注册结果、窗口归属和进程安全状态。4096 为 Low，8192 为 Medium。`elevated=false` 只说明没有管理员提权，不能单独证明进程为 Medium。注册失败时主窗口关闭仍退出，避免隐藏后无法恢复。
+```text
+python -X utf8 tools/validate-ui-fix-registry.py
+python -X utf8 tools/validate-current-docs.py
+python -X utf8 tools/audit-feature-capabilities.py --check
+python -X utf8 tools/validate-embedded-json.py
+```
+
+按改动范围补对应契约列出的源码、生成数据和资源 `--check`。收据发生变化时先核对原因，再更新相应记录；不要将重新计算指纹写成重新验证全部 UI。
+
+滚动容器应让视口高度、实际滚动节点和 ScrollHandle 保持同一所有者；浮层要核对底层 Capture 与指针遮挡，不能仅检查按钮回调是否存在。状态观察与本地编辑分开，纯查询不产生 dirty 或设备保存成功。
+
+禁止运行应用、构建、测试、安装器、下载的 JavaScript 或 DLL。新增回归用例只做编译检查。源码工具只能解析数据，不得通过 require/eval/import 执行厂商代码；静态资源准备遵守 [资源契约](re/resources-current.md)。

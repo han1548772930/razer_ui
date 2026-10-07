@@ -43,7 +43,7 @@ impl EqKind {
     }
     fn bands(self, preset: &str) -> Vec<Band> {
         // 777 module 7816 builds BOTH preset collections from audioBandFrequency.
-        // Custom device bands keep their own frequencies. See docs/screens/09-mic.md.
+        // Custom device bands keep their own frequencies. See docs/screens/README.md.
         [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
             .into_iter()
             .zip(self.values(preset))

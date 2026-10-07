@@ -98,10 +98,8 @@ struct TrayPopup {
     login_hovered: bool,
     launcher_hovered: bool,
     launcher_pressed: bool,
-    // The host renderer has three account branches: no user id, a guest
-    // session, and an authenticated user.  Keep the session branch explicit
-    // so a future host-session event can mount the guest/notification surface
-    // without treating local workspace data as an account response.
+    // All three source account surfaces exist. A real host-session publisher
+    // must select the branch; local workspace data is not an account response.
     session: TraySession,
     section: TraySection,
     account_hovered: bool,

@@ -14,12 +14,12 @@
       "local": [
         "src/features/workspace.rs (armory_mapping_page: mapping surface without product chrome)",
         "src/features/product_workspace.rs (armory_device_page / has_armory_device_page)",
-        "src/features/armory_product.rs (independently audited 1303/1304/1313/3893 roots and category-limited 3894 root)",
+        "src/features/armory_product.rs (source-audited product images, 3893/3907 specialized bodies and category-limited 3894 root)",
         "src/shell/armory_page/device_root.rs (device panel, iframe height by device type)",
         "src/shell.rs (share entry opens the device panel next to the share form)"
       ],
       "rule": "product has a root armory branch AND either a local mapping page or the independently audited armory_product renderer; 3894 requires Accessory/Mousepad category",
-      "boundary": "the panel message handshake is recorded but not exchanged (both sides run in this process); other audio/accessory roots remain unimplemented; five independent roots still lack original product artwork, and 3894 DEFAULT / 3907 remain closed"
+      "boundary": "the panel message handshake is recorded but not exchanged (both sides run in this process); remaining roots, live telemetry, connected performance modes and remote mapping are tracked in armory-products-current.md; registered original product artwork is prepared, and 3894 DEFAULT is unreachable for its fixed category"
     },
     "chromaApp": {
       "root_products": 212,
@@ -30,13 +30,13 @@
         "src/shell/chroma_page.rs (.box-item-device card opens the popup without a gate when a lighting page exists)"
       ],
       "rule": "product has a root chromaApp branch AND a local lighting page; 28 Audio products additionally require the generated root-to-own-Lighting component match (including the LIGHTING key of 1465)",
-      "boundary": "accessory families and unaudited Audio roots remain unavailable; connected Audio bodies retain the known incomplete controls listed in product-mode-integration-2026-10-05.md"
+      "boundary": "root availability does not prove complete controls; per-product Audio gaps and shared-workspace rules are recorded in shell-workspace-current.md and the dedicated Nommo evidence"
     },
     "macro": {
       "root_products": 174,
       "status": "entry-elsewhere-product-bodies-unreviewed",
       "local": [
-        "src/shell/macro_page.rs (macro application window)"
+        "src/shell/macro_page.rs (macro application host tab)"
       ],
       "rule": "the product-side macro branch only appears inside the macro application iframe, so the same page is opened there",
       "boundary": "macro service, recording and device binding remain unconnected"

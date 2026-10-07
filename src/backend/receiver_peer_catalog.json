@@ -1,0 +1,314 @@
+[
+  {
+    "dongle_id": 604,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "RAZER BLACKWIDOW V3 PRO",
+      "zh-cn": "RAZER 黑寡妇蜘蛛V3无线版"
+    }
+  },
+  {
+    "dongle_id": 625,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "RAZER BLACKWIDOW V3 MINI HYPERSPEED",
+      "zh-cn": "RAZER 黑寡妇蜘蛛V3迷你无线版"
+    }
+  },
+  {
+    "dongle_id": 698,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "RAZER BLACKWIDOW V4 MINI HYPERSPEED",
+      "zh-cn": "RAZER 黑寡妇蜘蛛V4迷你无线版"
+    }
+  },
+  {
+    "dongle_id": 144,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER NAGA PRO",
+      "zh-cn": "RAZER 那伽梵蛇专业版"
+    }
+  },
+  {
+    "dongle_id": 168,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER NAGA V2 PRO",
+      "zh-cn": "RAZER 那伽梵蛇专业版"
+    }
+  },
+  {
+    "dongle_id": 171,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER BASILISK V3 PRO",
+      "zh-cn": "RAZER 巴塞利斯蛇 V3 专业版"
+    }
+  },
+  {
+    "dongle_id": 212,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER BASILISK MOBILE",
+      "zh-cn": "RAZER 巴塞利斯蛇移动版"
+    }
+  },
+  {
+    "dongle_id": 205,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER BASILISK V3 PRO 35K",
+      "zh-cn": "RAZER 巴塞利斯蛇 V3 专业版 35K"
+    }
+  },
+  {
+    "dongle_id": 227,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Basilisk V4 Pro",
+      "zh-cn": "Razer 巴塞利斯蛇 V4 专业版"
+    }
+  },
+  {
+    "dongle_id": 234,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Basilisk V4 HyperSpeed",
+      "zh-cn": "Razer 巴塞利斯蛇 V4 极速版"
+    }
+  },
+  {
+    "dongle_id": 215,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Basilisk V3 Pro 35K Phantom Green Edition",
+      "zh-cn": "RAZER 巴塞利斯蛇 V3  专业版 35K 幻影绿"
+    }
+  },
+  {
+    "dongle_id": 45067,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER BASILISK V3 PRO 35K - XBOX 25 ANNIVERSARY EDITION",
+      "zh-cn": "Razer 巴塞利斯蛇V3专业版35K Xbox 25周年限定款"
+    }
+  },
+  {
+    "dongle_id": 125,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER DEATHADDER V2 PRO",
+      "zh-cn": "RAZER 炼狱蝰蛇 V2专业版"
+    }
+  },
+  {
+    "dongle_id": 148,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER OROCHI V2",
+      "zh-cn": "RAZER 八岐大蛇 V2"
+    }
+  },
+  {
+    "dongle_id": 232,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER NAGA V3 PRO",
+      "zh-cn": "RAZER 那伽梵蛇 V3 专业版"
+    }
+  },
+  {
+    "dongle_id": 166,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER VIPER V2 PRO",
+      "zh-cn": "RAZER 毒蝰V2专业版"
+    }
+  },
+  {
+    "dongle_id": 183,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER DEATHADDER V3 PRO",
+      "zh-cn": "RAZER炼狱蝰蛇 V3 专业版"
+    }
+  },
+  {
+    "dongle_id": 156,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER DEATHADDER V2 X HYPERSPEED",
+      "zh-cn": "RAZER 炼狱蝰蛇 V2 X 极速版"
+    }
+  },
+  {
+    "dongle_id": 154,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER PRO CLICK MINI",
+      "zh-cn": "RAZER PRO CLICK MINI"
+    }
+  },
+  {
+    "dongle_id": 176,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Cobra Pro",
+      "zh-cn": "Razer 眼镜蛇专业版"
+    }
+  },
+  {
+    "dongle_id": 184,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Viper V3 HyperSpeed",
+      "zh-cn": "RAZER毒蝰V3极速版"
+    }
+  },
+  {
+    "dongle_id": 635,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "RAZER PRO TYPE ULTRA",
+      "zh-cn": "RAZER PRO TYPE ULTRA"
+    }
+  },
+  {
+    "dongle_id": 656,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "RAZER DEATHSTALKER V2 PRO",
+      "zh-cn": "RAZER 噬魂金蝎V2专业版"
+    }
+  },
+  {
+    "dongle_id": 662,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "RAZER DEATHSTALKER V2 PRO TENKEYLESS",
+      "zh-cn": "RAZER 噬魂金蝎 V2 无线竞技版"
+    }
+  },
+  {
+    "dongle_id": 722,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed",
+      "zh-cn": "RAZER 黑寡妇蜘蛛V4矮轴竞技极速版"
+    }
+  },
+  {
+    "dongle_id": 725,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "Razer BlackWidow V4 Tenkeyless HyperSpeed",
+      "zh-cn": "RAZER 黑寡妇蜘蛛 V4 竞技极速版"
+    }
+  },
+  {
+    "dongle_id": 713,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "Razer BlackWidow V4 Low-profile HyperSpeed",
+      "zh-cn": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+    }
+  },
+  {
+    "dongle_id": 730,
+    "category": "KEYBOARD",
+    "product_name": {
+      "en": "Razer Joro",
+      "zh-cn": "Razer 乔罗金蛛"
+    }
+  },
+  {
+    "dongle_id": 164,
+    "category": "ACCESSORY",
+    "product_name": {
+      "en": "Razer Mouse Dock Pro",
+      "zh-cn": "Razer 幻彩鼠标底座"
+    }
+  },
+  {
+    "dongle_id": 241,
+    "category": "ACCESSORY",
+    "product_name": {
+      "en": "Razer Mouse Dock V2 Pro",
+      "zh-cn": "RAZER 鼠标底座 V2 专业版"
+    }
+  },
+  {
+    "dongle_id": 179,
+    "category": "ACCESSORY",
+    "product_name": {
+      "en": "Razer HyperPolling Wireless Dongle",
+      "zh-cn": "RAZER HYPERPOLLING 无线接收器"
+    }
+  },
+  {
+    "dongle_id": 185,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Basilisk V3 X HyperSpeed",
+      "zh-cn": "RAZER巴塞利斯蛇 V3 X 极速版"
+    }
+  },
+  {
+    "dongle_id": 180,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Naga V2 Hyperspeed",
+      "zh-cn": "Razer 那伽梵蛇 V2 极速版"
+    }
+  },
+  {
+    "dongle_id": 197,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER DEATHADDER V3 HYPERSPEED",
+      "zh-cn": "RAZER 毒蝰V3 专业版"
+    }
+  },
+  {
+    "dongle_id": 191,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "RAZER DEATHADDER V4 PRO",
+      "zh-cn": "RAZER 炼狱蝰蛇 V4 专业版"
+    }
+  },
+  {
+    "dongle_id": 193,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Viper V3 Pro",
+      "zh-cn": "RAZER 毒蝰V3 专业版"
+    }
+  },
+  {
+    "dongle_id": 207,
+    "category": "MOUSEMAT",
+    "product_name": {
+      "en": "Razer HyperFlux V2 Hard Edition",
+      "zh-cn": "Razer HyperFlux V2 硬质版"
+    }
+  },
+  {
+    "dongle_id": 219,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Cobra HyperSpeed",
+      "zh-cn": "Razer 眼镜蛇极速版"
+    }
+  },
+  {
+    "dongle_id": 223,
+    "category": "MOUSE",
+    "product_name": {
+      "en": "Razer Viper V3 Pro SE",
+      "zh-cn": "Razer毒蝰 V3 专业版SE"
+    }
+  }
+]

@@ -12,6 +12,9 @@ const evidencePath='docs/re/receiver-catalog-current-evidence.json';
 const nodes=(n,p)=>{const a=[];walk(n,x=>{if(p(x))a.push(x)});return a};
 const only=(a,n)=>{if(a.length!==1)throw Error(`${n}: ${a.length} candidates`);return a[0]};
 const ensure=(v,s)=>{if(!v)throw Error(s)};
+// Explicitly reviewed startup roots. Other products retain no startup policy
+// until their caller (not just their shared protocol class) is audited.
+const startupAudits=new Map([[179,{module:34340,entry:'Ne',counter:'be'}]]);
 const capabilities=[],products=[];
 for(const planned of plan.products){
   const row={product_id:planned.product_id,status:planned.status,receipts:[]};
@@ -109,6 +112,37 @@ for(const planned of plan.products){
     }
     const consumer=only(consumers,'source wireless-list consumer');record(consumer.id,'source wireless-list consumer',consumer.node);
     const peerProductMatch=/\.dongleId===\w+\.productId\|\|\w+\.productId===\w+\.productId/.test(source.snippet(consumer.id,consumer.node));
+    let startupRetry;
+    const startupAudit=startupAudits.get(planned.product_id);
+    if(startupAudit){
+      const {module,entry,counter}=startupAudit;
+      const startup=record(module,'startup discovery retry',source.binding(module,entry));
+      const initial=record(module,'startup retry counter',source.binding(module,counter));
+      ensure(source.literal(module,initial)===0,'Startup counter changed');
+      const consumerName=only([...source.module(consumer.id).definitions].filter(([,n])=>n===consumer.node),'consumer name')[0];
+      ensure(module===consumer.id&&nodes(startup,n=>n.type==='CallExpression'&&n.callee.name===consumerName).length===1,'Startup query changed');
+      const limit=only(nodes(startup,n=>n.type==='BinaryExpression'&&n.operator==='<'&&n.left.name===counter),'startup retry limit');
+      const count=source.literal(module,limit.right);
+      ensure(count===5,'Startup retry count changed');
+      ensure(nodes(startup,n=>n.type==='UpdateExpression'&&n.operator==='++'&&n.argument.name===counter).length===1,'Startup increment changed');
+      const timers=nodes(startup,n=>n.type==='CallExpression'&&n.callee.name==='setTimeout');
+      const delayed=only(timers.filter(n=>n.arguments[1]?.type==='BinaryExpression'),'startup status delay');
+      const delay=delayed.arguments[1];
+      ensure(delay.operator==='*'&&delay.left.value===200&&delay.right.operator==='+'&&delay.right.left.name===counter&&delay.right.right.value===1,'Startup delay changed');
+      const errorTimer=only(timers.filter(n=>n.arguments[0]?.name===entry),'startup error timer');
+      const status=only(nodes(startup,n=>n.type==='BinaryExpression'&&n.operator==='==='&&n.left.value===0&&source.snippet(module,n.right).includes('.status')),'startup disconnected status');
+      ensure(source.snippet(module,status.right).includes('[0]'),'Startup no longer checks first peer');
+      const text=source.snippet(module,startup);
+      ensure(text.includes('serialNumber')&&text.includes('""==='),'Startup serial readiness condition changed');
+      // Match he()'s self/sentinel filtering before selecting the first peer.
+      const consumerText=source.snippet(consumer.id,consumer.node);
+      ensure(/65535!==\w+\.productId&&\w+\.productId!==\w+\.DeviceInfo\.dongleId/.test(consumerText),'Startup peer filtering changed');
+      startupRetry={first_peer_status:status.left.value,delays_ms:Array.from({length:count},(_,index)=>delay.left.value*(index+2))};
+      row.startup_retry_scope={implemented:'Bounded first-peer status requery only',
+        query_error_retry_ms:source.literal(module,errorTimer.arguments[1]),
+        remaining:'Owner-cancelled error retries and runtime serial readiness are not implemented'};
+      ensure(row.startup_retry_scope.query_error_retry_ms===1000,'Startup error interval changed');
+    }
     // Keep the manufacturer-provided interface map keyed by real PID.
     const info=planned.device_info.values,claim=typeof info.claimInterface==='number'?info.claimInterface:info.claimInterface?.[info.dongleId];
     ensure(Number.isInteger(claim)&&claim>=0&&claim<=255,'Unresolved per-connection interface');
@@ -117,7 +151,8 @@ for(const planned of plan.products){
       claim_interface:claim,report_bytes:reportBytes,report_id:reportId,protocol:'razer_device25_wireless_status_v2',command,
       transaction_prefix:prefix,transaction_modulus:wrap,max_retry_in:maxIn,max_retry_out:maxOut,
       sleep_between_out_ms:timing(3),sleep_between_out_in_ms:timing(4),sleep_between_in_ms:timing(5),
-      peer_match_product_id:peerProductMatch,source_class:planned.selected_class,evidence_path:evidencePath};
+      peer_match_product_id:peerProductMatch,...(startupRetry?{startup_retry:startupRetry}:{}),
+      source_class:planned.selected_class,evidence_path:evidencePath};
     capabilities.push(capability);row.status='query_binding_verified';row.capability=capability;row.acquisition=source.acquisition;
     row.feature=planned.feature;row.device_info=planned.device_info;row.factory=planned.factory;row.loader=planned.loader;
   } catch(error){row.status='unresolved_query_binding';row.reason=error.message;}

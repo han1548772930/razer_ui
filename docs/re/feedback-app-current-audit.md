@@ -66,8 +66,9 @@ draft、校验、下拉选择和字符计数；提交、日志导出、设备枚
 [`tools/audit-feedback-app.cjs`](../../tools/audit-feedback-app.cjs) 与
 [`feedback-app-current-evidence.json`](feedback-app-current-evidence.json)。
 
-这项接入完成的是当前可验证的表单外观和本地草稿交互，不把反馈提交、日志收集、设备
-查询或服务器成功页伪造成已接通功能。
+草稿只随retained FeedbackPage会话保留，未做文件持久化。真实账户、已安装软件和设备
+目录发布者未接，非访客根不能由访客表单代替。提交、日志归档及服务器成功/失败页
+仍须实际服务响应，不把本地表单或确认状态作为回执。
 
 验证：`node tools/audit-feedback-app.cjs --check` 为 `problems=0`，`rustfmt` 已通过。
 `cargo check --locked --all-targets` 由主线统一执行，结果以本轮主线报告为准。

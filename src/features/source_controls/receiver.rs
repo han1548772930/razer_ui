@@ -6,10 +6,15 @@ use gpui_kit::base::{
 };
 use std::time::{Duration, Instant};
 
+#[path = "receiver_page.rs"]
+mod page;
+#[path = "receiver_page_state.rs"]
+mod page_state;
 #[path = "receiver_pairing_state.rs"]
 mod pairing_state;
 #[path = "receiver_pairing_view.rs"]
 mod pairing_view;
+pub(crate) use page_state::{ReceiverDeviceRequested, ReceiverDevicesObservation};
 use pairing_state::PairingState;
 pub(crate) use pairing_state::{
     ReceiverCategory, ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent,
@@ -19,14 +24,26 @@ pub(crate) use pairing_state::{
 pub(super) struct ReceiverState {
     indicator_since: Instant,
     pairing: PairingState,
+    failure_recovery: Option<(pairing_state::FailureRecovery, Task<()>)>,
+    success_close: Option<(pairing_state::SuccessClose, Task<()>)>,
+    pairing_window: Option<AnyWindowHandle>,
     return_focus: Option<FocusHandle>,
+    active: bool,
+    page: page_state::ReceiverPageState,
+    page_retry: Option<(page_state::PageRetry, Task<()>)>,
 }
 impl Default for ReceiverState {
     fn default() -> Self {
         Self {
             indicator_since: Instant::now(),
             pairing: PairingState::default(),
+            failure_recovery: None,
+            success_close: None,
+            pairing_window: None,
             return_focus: None,
+            active: false,
+            page: page_state::ReceiverPageState::default(),
+            page_retry: None,
         }
     }
 }
@@ -141,6 +158,70 @@ fn indicator_image(mode: u64, since: Instant, cx: &App) -> AnyElement {
 }
 
 impl SourceControls {
+    pub(crate) fn set_receiver_active(&mut self, active: bool, cx: &mut Context<Self>) {
+        self.receiver.active = active;
+        self.sync_receiver_page_activity(cx);
+    }
+    pub(super) fn sync_receiver_page_activity(&mut self, cx: &mut Context<Self>) {
+        if self.spec.product_id != 179 {
+            return;
+        }
+        let active = self.receiver.active && self.page == "TAB_CUSTOMIZE";
+        if active == self.receiver.page.active {
+            return;
+        }
+        self.receiver.page.active = active;
+        let event = if active && !self.receiver.pairing.is_open() {
+            self.receiver.page.begin()
+        } else {
+            self.receiver.page.suspend()
+        };
+        if let Some(event) = event {
+            cx.emit(event);
+        }
+        self.sync_receiver_page_retry(cx);
+        cx.notify();
+    }
+    pub(crate) fn observe_receiver_devices(
+        &mut self,
+        devices: ReceiverDevicesObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if self.spec.product_id != 179 {
+            return;
+        }
+        let connected = self.receiver.page.connected();
+        if !self.receiver.page.observe_devices(devices) {
+            return;
+        }
+        if connected != self.receiver.page.connected() && !self.receiver.pairing.is_open() {
+            if let Some(event) = self.receiver.page.begin() {
+                cx.emit(event);
+            }
+        }
+        self.sync_receiver_page_retry(cx);
+        cx.notify();
+    }
+    fn sync_receiver_page_retry(&mut self, cx: &mut Context<Self>) {
+        let retry = self.receiver.page.retry();
+        if self.receiver.page_retry.as_ref().map(|(ticket, _)| *ticket) == retry {
+            return;
+        }
+        self.receiver.page_retry = None;
+        if let Some(ticket) = retry {
+            let task = cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(Duration::from_secs(1)).await;
+                let _ = this.update(cx, |this, cx| {
+                    this.receiver.page_retry = None;
+                    if let Some(event) = this.receiver.page.resume_retry(ticket) {
+                        cx.emit(event);
+                        cx.notify();
+                    }
+                });
+            });
+            self.receiver.page_retry = Some((ticket, task));
+        }
+    }
     pub(super) fn render_receiver(
         &self,
         window: &mut Window,
@@ -247,44 +328,7 @@ impl SourceControls {
                     ),
             );
         }
-        let left = surface::panel(crate::i18n::t("HYPERPOLLING_WIRELESS"), cx)
-            .relative()
-            .w(surface::css(600.))
-            .pr(surface::css(30.))
-            .child(
-                div()
-                    .absolute()
-                    .right(surface::css(10.))
-                    .top(surface::css(10.))
-                    .child(surface::receiver_help_control(
-                        "receiver-pairing-help",
-                        crate::i18n::t("MULTI__DUALINK_PROPERTIES_TOOLTIP"),
-                    )),
-            )
-            .child(
-                h_flex()
-                    .gap(surface::css(10.))
-                    .child(
-                        img("synapse/hyperpolling-icon-multidevicepairing2.svg")
-                            .size(surface::css(44.))
-                            .flex_shrink_0(),
-                    )
-                    .child(
-                        gpui_kit::base::Button::new("receiver-open-pairing")
-                            .accessibility_label(crate::i18n::t("OPEN_PAIRING_UTILITY"))
-                            .h(surface::css(44.))
-                            .text_size(surface::css(14.))
-                            .line_height(surface::css(44.))
-                            .text_color(rgb(0xcccccc))
-                            .underline()
-                            .hover(|s| s.text_color(rgb(0x44d62c)))
-                            .active(|s| s.opacity(0.7))
-                            .child(crate::i18n::t("OPEN_PAIRING_UTILITY"))
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.open_receiver_pairing(window, cx);
-                            })),
-                    ),
-            );
+        let left = self.receiver_pairing_widget(cx);
         let right = surface::panel(crate::i18n::t("INDICATOR_LED_V2"), cx)
             .w(surface::css(600.))
             .child(
@@ -317,7 +361,7 @@ impl SourceControls {
                             ),
                     ),
             );
-        let columns = [left, right].into_iter().map(|widget| {
+        let columns = [left, right.into_any_element()].into_iter().map(|widget| {
             div()
                 .w(surface::css(600.))
                 .flex_shrink_0()

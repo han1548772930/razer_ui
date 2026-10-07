@@ -24,8 +24,9 @@ mod oled_presets;
 mod oled_system_editor;
 mod receiver;
 pub(crate) use receiver::{
-    ReceiverCategory, ReceiverOperation, ReceiverPairingEvent, ReceiverPairingIntent,
-    ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
+    ReceiverCategory, ReceiverDeviceRequested, ReceiverDevicesObservation, ReceiverOperation,
+    ReceiverPairingEvent, ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer,
+    ReceiverProgress,
 };
 
 #[derive(Deserialize)]
@@ -238,6 +239,7 @@ impl EventEmitter<SourceControlsChanged> for SourceControls {}
 impl EventEmitter<SourceControlsPairingRequested> for SourceControls {}
 impl EventEmitter<SourceControlsHelpRequested> for SourceControls {}
 impl EventEmitter<SourceControlsPreviewRefreshRequested> for SourceControls {}
+impl EventEmitter<ReceiverDeviceRequested> for SourceControls {}
 impl SourceControls {
     pub(crate) fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let spec = specs()
@@ -861,6 +863,7 @@ impl SourceControls {
             self.sync(window, cx);
         }
         self.page = page.into();
+        self.sync_receiver_page_activity(cx);
         cx.notify();
     }
     /// `.pan-and-tilt-container`: a 220x132 content box with a 1px border, the

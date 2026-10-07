@@ -11,7 +11,7 @@
 //! view mounts the audited mapping page directly and keeps the frame height; the
 //! message names stay recorded rather than exchanged.
 //!
-//! See [display mode audit](../../docs/re/display-mode-audit.md) and
+//! See [display mode audit](../../docs/re/shell-workspace-current.md) and
 //! [display mode roots receipt](../../docs/re/display-mode-roots-audit.json).
 use crate::{features::ProductWorkspace, model::DeviceCategory, ui::surface};
 use gpui_kit::prelude::FluentBuilder as _;

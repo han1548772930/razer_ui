@@ -9,16 +9,10 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 DISCOVERY = ROOT / ".ref/discovery"
-MOUSE_MATS = (3072, 3073, 3074, 3076, 3077, 3078, 3080)
-ADAPTED_PRODUCTS = (182, 653, 777, *MOUSE_MATS)
 
 
 def implementation(pid):
-    if pid in MOUSE_MATS:
-        return "已接入本地灯光及帮助，设备与 Chroma 服务仍未接通"
-    if pid in ADAPTED_PRODUCTS:
-        return "已适配，服务及部分条件界面仍有缺口"
-    return "未适配"
+    return "not_assessed_by_source_catalog"
 
 
 def read(path, fallback=None):
@@ -114,24 +108,11 @@ def main():
         "products": records}
     target = ROOT / "docs/re/product-catalog.json"
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    text = ["# 官方目录、连接别名与产品界面清单", "", "更新日期：2026-10-02。由保存的 HTTP 响应、资源清单和入口 AST 生成；没有执行下载的 JS、驱动或安装器。", "",
-        f"六份官方目录合计 {summary['official_primary_ids']} 个主产品 ID，与旧记录合并为 {summary['seed_product_ids']} 个主候选；沿连接别名及 manifest 中的明确声明共检查 {summary['fetched_product_ids']} 个 ID。其中 {summary['ui_html_found']} 个有 UI 入口。别名仍保留父产品关系，不计为独立型号。", "",
-        f"已取得 {summary['code_files_acquired']} 份清单所列 JS/CSS，{summary['code_complete_products']} 个产品清单齐备；{summary['products_with_navigation_arrays']} 个产品找到明确写入 state.navs 或作为 JSX navs 传入的数组，包括入口、displayMode 和 setupStatus 延迟根组件。记录保留每条解析依据、条件表达式、调用偏移、根入口和 chunk/module ID；Babel 类及 useMemo 分支也按实际绑定追踪。未解析的名称和条件界面继续保留，不能按产品类别猜页面。", "",
-        "机器可读记录：[product-catalog.json](product-catalog.json)。原始响应及错误体在 `.ref/discovery`，代码在 `.ref/devices`。资源哈希是本次下载指纹，不是发布方数字签名。", "",
-        "## 来源", "", "| 目录 | 原始条目数 | HTTP | SHA-256 |", "| --- | ---: | ---: | --- |"]
-    for name, receipt in sorted(discovery["catalog_snapshots"].items()):
-        rows = read(DISCOVERY / "catalogs" / name, [])
-        text.append(f"| [{name}]({receipt['source_url']}) | {len(rows)} | {receipt['http_status']} | `{receipt['sha256']}` |")
-    text += ["", "## 全部候选及实际入口", "", "同一导航组合不表示控件、弹窗、服务、配色或布局相同。下表只列明确挂载的导航；附属界面和业务完成度仍以逐页审计为准。404 表示记录时此路径不可用，不表示产品不存在。", "",
-        "| ID | 原名称 | 来源目录／别名 | UI | JS/CSS | 实际导航 | Rust |", "| ---: | --- | --- | --- | ---: | --- | --- |"]
-    for row in records:
-        navigation = "；".join(" / ".join(navigation_name(item) for item in nav["items"]) for nav in row["navigation"])
-        source = ", ".join(n.replace("Devices.json", "").replace(".json", "") for n in row["catalogs"])
-        if not source:
-            source = "连接／声明引用" if row["referenced_by"] else "历史探测"
-        ui = "有入口" if row["ui_entry_found"] else row["endpoints"]["ui/index.html"]["result"]
-        text.append(f"| {row['product_id']} | {escape(row['name'])} | {escape(source)} | {ui} | {row['code_files_acquired']}/{row['code_files_expected']} | {escape(navigation or '待追踪' if row['ui_entry_found'] else '—')} | {'已有适配' if row['product_id'] in ADAPTED_PRODUCTS else '未适配'} |")
-    text += ["", "## 尚未完成", "", f"- 导航中仍有 {summary['unresolved_navigation_names']} 个名称表达式未化简；保留原表达式与源码偏移。条件弹窗、子应用和各显示模式继续逐项追踪。", "- 此表不是完整功能验收清单；当前 Rust 产品入口为 182/653/777 及 3072/3073/3074/3076/3077/3078/3080。新增鼠标垫的本地灯光、帮助和资源见[逐页规格](../screens/17-mouse-mat-lighting.md)，设备与 Chroma 服务仍未接通。不能把下载或编译完成计作实际界面验收。", "- 图像、视频、字体、source map 和原生服务不在 JS/CSS 齐备统计内。", "- 目录是已记录版本的官方来源，不能证明未来或未公开产品的完整性。", ""]
+    text = ["# 产品源码目录", "",
+        "本目录仅记录官方来源、别名、入口及已取得的代码，不能推算本地 UI 完成度。", "",
+        "[产品源码记录](product-catalog.json)保留各目录、manifest、连接别名与实际挂载位置；[产品注册](product-registration-audit.md)说明当前可用产品身份。", "",
+        "本地实现状态单独由 [页面覆盖](native-product-coverage.md)与[当前缺口](remaining-ui-work.md)维护，不使用固定型号白名单判断已适配。", "",
+        "维护工具为 `tools/report-razer-discovery.py`，只读取已保存的源元数据。取得源码、成功解析、路由存在和实际界面完成是不同事项。", ""]
     (ROOT / "docs/re/16-product-catalog.md").write_text("\n".join(text), encoding="utf-8")
     print(json.dumps(summary, ensure_ascii=False))
 

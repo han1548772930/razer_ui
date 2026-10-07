@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "source": "docs/re/display-mode-audit.json",
-  "source_sha256": "d2ced692ff50c6ceed7bdb306f4be6854b50d8420319ce4d2666ca4206e087a3",
-  "generator_sha256": "1d24e504a61c4df53ae7ef5e5869dec3cae63247f859c913d1c9c9f58f7cb3a5",
-  "method": "Root branches audited by tools/audit-display-modes.cjs: the product bundle selects this component in the same ternary chain that reads `searchParams.get(\"displayMode\")`. Products are listed by id only; the branch content, its opener window and its services are recorded in docs/re/display-mode-audit.md.",
+  "source_sha256": "038a43d81f2a65279dd47faad7a39635f394384fb56e1e3c71011cd404ccbefb",
+  "generator_sha256": "6b18366cf61b2cd805b214f9ef64285e1e94062cba44d76abd7d39ee99e8c4c4",
+  "method": "Root branches audited by tools/audit-display-modes.cjs: the product bundle selects this component in the same ternary chain that reads `searchParams.get(\"displayMode\")`. Products are listed by id only; the branch content, its opener window and its services are recorded in docs/re/shell-workspace-current.md.",
   "modes": {
     "armory": [
       70,

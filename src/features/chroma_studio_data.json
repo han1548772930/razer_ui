@@ -5350,6 +5350,14 @@
     "wave-md-gray": "synapse/chroma-studio-wave-md-gray.svg",
     "wave-sm-gray": "synapse/chroma-studio-wave-sm-gray.svg",
     "wave-reactive-md-gray": "synapse/chroma-studio-wave-reactive-md-gray.svg",
-    "wave-reactive-sm-gray": "synapse/chroma-studio-wave-reactive-sm-gray.svg"
+    "wave-reactive-sm-gray": "synapse/chroma-studio-wave-reactive-sm-gray.svg",
+    "clockwise-gray": "synapse/chroma-studio-clockwise-gray.svg",
+    "clockwise-black": "synapse/chroma-studio-clockwise-black.svg",
+    "counterclockwise-gray": "synapse/chroma-studio-counterclockwise-gray.svg",
+    "counterclockwise-black": "synapse/chroma-studio-counterclockwise-black.svg",
+    "outward-gray": "synapse/chroma-studio-outward-gray.svg",
+    "outward-black": "synapse/chroma-studio-outward-black.svg",
+    "inward-gray": "synapse/chroma-studio-inward-gray.svg",
+    "inward-black": "synapse/chroma-studio-inward-black.svg"
   }
 }

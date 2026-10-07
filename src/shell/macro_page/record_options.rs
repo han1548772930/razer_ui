@@ -426,6 +426,9 @@ impl MacroPage {
         div()
             .id("macro-record-settings")
             .test_support()
+            // This deferred popup overlaps a list whose capture handler is
+            // disabled while settings are open. It must own that hit area.
+            .occlude()
             .aria_label("宏录制设置")
             .absolute()
             .right_0()

@@ -1,0 +1,30 @@
+[
+  {
+    "product_id": 70,
+    "stages_path": "/DPIStages/Stages/DPIStage",
+    "active_path": "/DPIStages/Active",
+    "enabled_path": "/DPIStages/State",
+    "x_key": "X",
+    "y_key": "Y",
+    "independent_key": "Independent",
+    "visible_key": "Active",
+    "minimum_visible_stages": 2,
+    "rows_margin_x": 0,
+    "description_key": "SENSITIVITY_DESC",
+    "drag_ordinal_key": null
+  },
+  {
+    "product_id": 226,
+    "stages_path": "/dpiStages/stages",
+    "active_path": "/dpiStages/active",
+    "enabled_path": "/dpiStages/enable",
+    "x_key": "x",
+    "y_key": "y",
+    "independent_key": "independent",
+    "visible_key": "visible",
+    "minimum_visible_stages": 2,
+    "rows_margin_x": -20,
+    "description_key": "SENSITIVITY_DESC",
+    "drag_ordinal_key": "Active"
+  }
+]

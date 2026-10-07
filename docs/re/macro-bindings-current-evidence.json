@@ -2495,6 +2495,45 @@
       ]
     }
   ],
+  "input_capabilities": {
+    "output": "src/features/macro_input_catalogs.json",
+    "products": [
+      {
+        "product_id": 182,
+        "input_source": "physical_groups",
+        "viewbox": [
+          770,
+          340
+        ],
+        "mouse_diagram": true
+      },
+      {
+        "product_id": 653,
+        "input_source": "prepared_keyboard_layout",
+        "viewbox": [
+          730,
+          340
+        ],
+        "mouse_diagram": false
+      }
+    ],
+    "physical_groups": {
+      "path": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "module": 1368,
+      "offset": 118206,
+      "end": 121585,
+      "inputs": 8
+    },
+    "prepared_keyboard_layouts": {
+      "path": "assets/synapse/keyboard-653-customize-layouts.json",
+      "sha256": "783378ad71a908346dc23bd43f73e70b33bd2a0ef20b22720d2c80bc44a3eadc",
+      "source": ".ref/devices/653/static/js/main.7b71cce5.js",
+      "source_sha256": "5854d3cb89f5e01eeb258f3218301988e3509e27f38ed23ddd77040e39dcb6ab",
+      "layouts": 16
+    },
+    "boundary": "The prepared layout provider owns default layout 0/US and unknown-layout rejection; it is selected only for its existing audited product. No new products gain Macro capability."
+  },
   "native_boundary": "Catalog projections are not per-product displayMode root parity. 182 has a dedicated diagram; 653 uses layout-specific shapes. Other keyboards reuse catalog shapes and other mice use a catalog-only presentation. Additional root-specific restrictions remain unaudited.",
   "product_182": {
     "path": ".ref/devices/182/static/js/main.db20a7c4.js",

@@ -29,7 +29,7 @@ impl MacroPage {
         let palette_disabled = empty
             || self.recording_busy()
             || self.record_ui.open
-            || matches!(self.tutorial, Tutorial::Initial | Tutorial::Record);
+            || self.tutorial != Tutorial::Complete;
         let page = cx.entity_id();
         let baseline = std::rc::Rc::new(self.actions().to_vec());
         div()
@@ -775,6 +775,10 @@ impl MacroPage {
         };
         v_flex()
             .id("macro-onboarding")
+            .test_support()
+            // Current .onboarding has pointer-events:all above the disabled
+            // editor. Exclude its hitbox from the list's capture handler.
+            .occlude()
             .absolute()
             .top(css(63.))
             .left(css(if adding { 0. } else { 150. }))
@@ -800,6 +804,7 @@ impl MacroPage {
             .when(!initial, |v| {
                 v.child(
                     BaseButton::new("macro-onboarding-skip")
+                        .accessibility_label(tr("TEXT_MACRO_CONTENT_SKIP"))
                         .absolute()
                         .right(css(10.))
                         .top(css(10.))
@@ -842,6 +847,11 @@ impl MacroPage {
             .when(!initial, |v| {
                 v.child(
                     BaseButton::new("macro-onboarding-next")
+                        .accessibility_label(tr(if adding {
+                            "TEXT_MACRO_CONTENT_DONE"
+                        } else {
+                            "TEXT_MACRO_CONTENT_NEXT"
+                        }))
                         .w(css(90.))
                         .h(css(27.))
                         .p_0()

@@ -72,5 +72,29 @@
     "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize",
     "width": 975,
     "height": 750
+  },
+  {
+    "source": ".ref/devices/179/static/media/Skeletonsvg.3811ae52.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/Skeletonsvg.3811ae52.svg",
+    "source_sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+    "output": "assets/synapse/receiver/connection-skeleton-base.svg",
+    "sha256": "4256a439c450d67934e3f189424ca4b74c508c39b691f24941d5217c22633631",
+    "preparation": "Source SVG base layer, SMIL removed; native 1.5s translation and 0.5s hold"
+  },
+  {
+    "source": ".ref/devices/179/static/media/Skeletonsvg.3811ae52.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/Skeletonsvg.3811ae52.svg",
+    "source_sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+    "output": "assets/synapse/receiver/connection-skeleton-sweep.svg",
+    "sha256": "3892ce1c6f7ebfaee4ef67c1e38bfa6ebb99c7cb107cde779fea5cf80081d679",
+    "preparation": "Source SVG sweep layer, SMIL removed; native 1.5s translation and 0.5s hold"
+  },
+  {
+    "source": ".ref/devices/179/static/media/Skeletonsvg.3811ae52.svg",
+    "source_url": "https://apps.razer.com/synapse/products/179/ui/static/media/Skeletonsvg.3811ae52.svg",
+    "source_sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+    "output": "assets/synapse/receiver/connection-skeleton.svg",
+    "sha256": "26d17b96292882389cd8d6e67892b5cce071205f3883b782fed7f16fd79e3954",
+    "preparation": "Byte-identical existing SVG or AVIF to RGBA PNG; no resize"
   }
 ]

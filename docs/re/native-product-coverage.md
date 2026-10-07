@@ -36,9 +36,9 @@
 
 ## 不包含在设备页计数中的界面缺口
 
-- 托盘：访客/登录账户内容、Widgets/Notifications、多应用入口和动态高度仍未完成；见 [当前托盘审计](tray-current-audit.md)。
-- OLED：主页预览卡片、内容编辑器、语言下载及设备传输仍未完成；见 [当前 OLED 审计](keyboard-oled-current-audit.md)。
-- 宿主服务：账户登录、独立 Settings 窗口、固件/重置等服务不能由已存在的入口视为完成。
+- 托盘：账户/通知/Widgets 已有 UI；真实发布者、多应用与动态高度见 [当前托盘契约](tray-ui-current.md)。
+- OLED：卡片和编辑器已部分接入；语言下载、设备传输及其余条件见 [当前 OLED 契约](oled-ui-current.md)。
+- 宿主服务：独立 Settings 窗口已有本地实现；账户、目录、固件/重置等真实服务与界面完成分开核实。
 - 跨平台：公共托盘菜单及界面已与 Windows 适配拆分，macOS/Linux 的系统注册适配仍未实现。
 
 逐产品页面身份、实际路由和输入 SHA-256 见 [机器可读记录](native-product-coverage.json)。

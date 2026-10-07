@@ -1,0 +1,29 @@
+{
+  "method": "Complete audited capabilities only; current manifest/AST/CSS/SVG verified statically",
+  "products": [
+    {
+      "product_id": 226,
+      "audit": "docs/re/mouse-226-properties-current-evidence.json",
+      "sha256": "baa0211220542573e2416808655b19a3b7dc8621080518608b64cb2ad1d71017",
+      "mounted_page": {
+        "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+        "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+        "nav_offset": 275451
+      },
+      "source_files": [
+        {
+          "path": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+          "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8"
+        },
+        {
+          "path": ".ref/devices/226/static/js/main.08f95762.js",
+          "sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e"
+        },
+        {
+          "path": ".ref/devices/226/static/css/main.c2099849.css",
+          "sha256": "68bc9ccdc21fe548330106b3a27beb5049be06f55939e5950677b220f52703df"
+        }
+      ]
+    }
+  ]
+}

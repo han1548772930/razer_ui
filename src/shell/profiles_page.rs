@@ -1,7 +1,7 @@
 //! Current /synapse/profiles/ module 43: Ba mounts Games (oe) and Devices (Ga).
-//! Shared URL-matching constants are not navigation entries. See the scoped
-//! AST/CSS receipts in docs/re/profiles-app-audit.json. Service data is deferred;
-//! an empty catalog remains empty instead of becoming a list of fixture games.
+//! Current UI/data boundaries are maintained in docs/re/profiles-ui-current.md.
+//! Device workspaces provide local profiles and links; the global game catalog
+//! still requires a real service publisher. Empty observations stay empty.
 use crate::{
     features::{Choice, ProductWorkspace},
     i18n,

@@ -1,15 +1,11 @@
 //! 设备与配置的数据模型。
 //!
-//! 本文件保留早期运行日志对应的模型，历史记录为 `.ref/notes/device-model.json`。
-//! 这不证明当前版本字段已全部复核；当前工作入口见 `docs/README.md`。
+//! 持久化配置、产品身份和真实连接观察分别保存，见 `docs/README.md`。
 //!
 //! 关键点：
-//! - 设备名称是 9 语区的 i18n 对象，不是单个字符串。
+//! - 设备名称是按语区索引的 i18n 对象。
 //! - DPI 档位挂在 **profile** 上，不在设备上。
 //! - `dkmKeys` 是设备的物理输入点 → 动作映射表。
-// 该模块的 API 面是**故意完整**的：逐条对应逆向雷云得到的功能层/模型定义，
-// 即使界面暂未调用每个成员也保留，使模型与逆向结果一一对应。
-// 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
@@ -598,17 +594,7 @@ pub fn region_label_zh(input_id: &str) -> String {
     format!("{region_zh} {index}")
 }
 
-/// 本机实测的设备快照。
-///
-/// 这里只保留早期日志中探测到的设备，不代表当前机器连接状态：
-///
-/// | productId | 设备 | 类别 |
-/// |---|---|---|
-/// | 182 | Razer DeathAdder V3 Pro | 鼠标 |
-/// | 179 | HyperPolling Wireless Dongle | 配件 |
-///
-/// 653（黑寡妇 V4 Pro）与 777（Kraken BT）是下载了设备模块但没有实机的型号，
-/// 因此**不在这里**出现；需要时用 `--demo-keyboard` 注入合成键盘。
+/// 自检与测试使用的固定样例，不参与自动设备发现，也不代表当前连接状态。
 pub fn measured_devices() -> Vec<Device> {
     vec![
         Device {

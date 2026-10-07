@@ -35,9 +35,9 @@ for product in catalog["products"]:
         record["review_scope"] = scope or "Inventory only; current source and implemented UI still require independent review."
         if scope:
             record["report"] = (
-                "docs/re/monitor-pages-review-2026-10-07.md"
+                "docs/re/monitor-ui-current.md"
                 if product["product_id"] in {3858, 3880}
-                else "docs/re/receiver-review-2026-10-07.md"
+                else "docs/re/receiver-ui-current.md"
             )
         pages.append(record)
     products.append({

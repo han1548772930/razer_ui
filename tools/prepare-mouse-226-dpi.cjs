@@ -26,9 +26,13 @@ if (values.minDPI !== 100 || values.maxDPI !== 50000 || values.dpiStep !== 1 || 
 receipts.push({symbol:'CONFIG', ...source.receipt(1057, config.fn)});
 const env = {Bt:values.minDPI, Zt:values.maxDPI, Gt:values.dpiStep};
 const mainPath=directory+'/'+manifest.files['main.js'].slice(2), mainText=read(mainPath);
+let editingEnabledDefault;
 walk(acorn.parse(mainText,{ecmaVersion:'latest'}),node=>{
  if(node.type==='VariableDeclarator' && ['Pe','ve'].includes(node.id?.name) && node.start>184000 && node.end<188000){
-  if(node.id.name==='Pe' && source.literal(1057,node.init).enableStages!==true)throw Error('Re-audit editing default');
+  if(node.id.name==='Pe'){
+   editingEnabledDefault=source.literal(1057,node.init).enableStages;
+   if(editingEnabledDefault!==true)throw Error('Re-audit editing default');
+  }
   receipts.push({symbol:node.id.name,path:mainPath,sha256:hash(mainText),offset:node.start,end:node.end,source:mainText.slice(node.start,node.end)});
  }
 });
@@ -63,6 +67,16 @@ walk(ast, node => {
       && node.start > 133000 && node.end < 150000) receipts.push({symbol:node.id.name,path:page.path,sha256:hash(text),offset:node.start,end:node.end,source:text.slice(node.start,node.end)});
 });
 if (!segments || segments.length !== 5) throw Error('Missing default ranges');
+for(const [index,segment] of segments.entries()){
+ const previous=segments[index-1];
+ if(![segment.from,segment.to,segment.fromValue,segment.toValue,segment.step].every(Number.isFinite)
+   || segment.to<=segment.from || segment.toValue<=segment.fromValue || segment.step<=0
+   || (previous ? segment.from!==previous.to || segment.fromValue!==previous.toValue : segment.from!==0 || segment.fromValue!==values.minDPI)
+   || (segment.tracks||[]).some(track=>!Number.isFinite(track)||track<=segment.from||track>=segment.to)
+   || Math.abs((segment.to-segment.from)/(segment.toValue-segment.fromValue)*values.dpiStep-segment.step)>1e-12)
+  throw Error('Invalid segmented DPI capability at segment '+index);
+}
+if(segments.at(-1).to!==100 || segments.at(-1).toValue!==values.maxDPI)throw Error('Incomplete DPI capability range');
 const css=[];
 for(const relative of [...new Set(Object.values(manifest.files))].filter(f=>f.endsWith('.css'))){
  const file=directory+'/'+relative.slice(2), text=read(file);
@@ -77,6 +91,8 @@ const assets=names.map(([name,target])=>{
  return {source:file,source_url:'https://apps.razer.com/synapse/products/226/ui/'+relative.slice(2),output,sha256:hash(bytes)};
 });
 function output(file,value){const text=JSON.stringify(value,null,2)+'\n';if(process.argv.includes('--check')){if(read(file)!==text)throw Error('Stale '+file);}else fs.writeFileSync(path.join(root,file),text);}
-output('src/features/mouse_226_dpi_data.json',{min:values.minDPI,max:values.maxDPI,step:values.dpiStep,segments});
+// The runtime dispatches by declared capability; this source receipt registers
+// only the product whose mounted Ft implementation and reducer were audited.
+output('src/features/mouse_dpi_grid_data.json',[{product_id:226,min:values.minDPI,max:values.maxDPI,step:values.dpiStep,editing_enabled_default:editingEnabledDefault,segments}]);
 output('docs/re/mouse-226-dpi-current-evidence.json',{product_id:226,method:'AST/CSS and finite arithmetic evaluation only; UTF-16 offsets',manifest:{path:manifestPath,sha256:hash(read(manifestPath))},receipts,labels,css,assets});
 console.log(`226 stages/grid: ${receipts.length} AST receipts, ${css.reduce((n,c)=>n+c.rules.length,0)} CSS rules, ${assets.length} assets`);

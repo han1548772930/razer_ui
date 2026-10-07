@@ -47,7 +47,7 @@
     },
     {
       "path": "src/shell/settings_page.rs",
-      "sha256": "a80d1c36ca16b9bc9d53f6932d5ebe50094792b33669f11fb57d67ce36a41076"
+      "sha256": "d259565830775643df797e3d34a50821ecc6f9b188bcea2167093ed99ea455a3"
     },
     {
       "path": "tools/prepare-preview-product-names.py",

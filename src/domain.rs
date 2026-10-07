@@ -1,13 +1,8 @@
 //! 鼠标与键盘的功能模型。
 //!
-//! # 证据等级说明
-//!
-//! 本文件保留早期模型和默认值，其中包含当时的推断，尚未全部按当前产品源码复核。
-//! 当前产品实现应逐项使用自身源码与真实读取状态，不能把这些默认值当作设备读数。
-//! 当前来源与待核实项见 `docs/README.md`、`docs/re/dll-readonly-inventory.md`。
-// 该模块的 API 面是**故意完整**的：逐条对应逆向雷云得到的功能层/模型定义，
-// 即使界面暂未调用每个成员也保留，使模型与逆向结果一一对应。
-// 这只用于领域模型模块；`src/pages/**` 里不存在这个豁免。
+//! 用于本地配置兼容与演示数据；默认值不是设备读数或产品能力声明。
+//! 产品可用能力由各自当前源码生成的数据决定，读取边界见
+//! `docs/re/dll-readonly-inventory.md`。
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
@@ -767,8 +762,7 @@ pub const KEYBOARD_LAYOUTS: [(&str, &str); 4] = [
 
 /// Chroma 灯光效果。
 ///
-/// 早期通用效果集合，尚未逐产品复核；不能用它推断当前设备支持哪些效果。
-/// 当前产品效果与参数应以各自已获取的官方源码为准。
+/// 本地配置可表示的效果集合；设备支持的效果由产品能力数据决定。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LightingEffect {
     Off,
@@ -1058,7 +1052,7 @@ impl Scrolling {
 // ---------------------------------------------------------------------------
 // 校准（TAB_CALIBRATION）
 // ---------------------------------------------------------------------------
-// 依据 docs/screens/04-calibration.md：
+// 依据 docs/screens/README.md：
 //   CALIBRATION_INFORMATION   「校准信息」
 //   CREATE_OWN_SURFACE_PROFILE「创建自己的表面配置文件」
 //   CALIBRATE_STEP1/2         「单击鼠标左键，并移动鼠标。」「以 Z 字形方式移动鼠标……」
@@ -1146,7 +1140,7 @@ impl Calibration {
 // ---------------------------------------------------------------------------
 // 配对（TAB_PAIRING）
 // ---------------------------------------------------------------------------
-// 依据 docs/screens/03-pairing.md：
+// 依据 docs/screens/README.md：
 //   HYPERPOLLING_WIRELESS_DONGLE_HEADER 「使用 Razer HyperPolling 无线接收器……」
 //   DONGLE_IS_LATEST                    「……使用的已经是最新固件。」
 //   MULTI_DEVICE_PAIRING                「多设备配对」
@@ -1205,19 +1199,6 @@ impl Default for Pairing {
 // ---------------------------------------------------------------------------
 // 声音（TAB_SOUND）
 // ---------------------------------------------------------------------------
-// 依据 docs/screens/08-sound.md，耳机模块的布局分区是：
-//   ① 音量与输出   volume / volume-item / volume-title / description-volume-map
-//   ② 均衡器       switch-eq-item / switch-eq-title / description-eq-map
-//   ③ 增强         thx-wrapper / thx-head / thx-main-title / thx-spatial / thx-reset
-//   其它           audio-tutorial__video（教程视频）、launch-sound-app、
-//                  text-sound-properties、audio-power-saving
-//
-// ⚠️ 更正：`audio-left` / `audio-right` **不是**左右两栏。
-// 它们的真实 CSS 是
-//   `.widget-prod img.audio-left, .widget-prod img.audio-right
-//    { left:auto; position:static; top:auto }`
-// 即**产品图片**的类名。真正的分栏是 `.widget-col { width:600px }`。
-// 以上为早期样式记录；当前产品需按自身 CSS 复核，见 docs/re/06-style-source-audit.md。
 
 /// 音效增强模式（`AUDIO_ENHANCEMENT_HEADER` = 音效增强）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1311,7 +1292,7 @@ impl Default for Sound {
 // ---------------------------------------------------------------------------
 // 麦克风（TAB_MIC）
 // ---------------------------------------------------------------------------
-// 依据 docs/screens/09-mic.md：
+// 依据 docs/screens/README.md：
 //   ① 麦克风音量 / 增益  mic-container / mic-enhancements / micboost / microphone
 //   ② 监听与降噪         整个 MonitoringDashboard_* 面板 + MonitoringToggle_button
 //

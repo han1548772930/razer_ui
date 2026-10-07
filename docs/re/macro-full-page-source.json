@@ -2435,12 +2435,12 @@
       "Cargo.lock": "887c6a82dbd0bd56f7dc2601e77c5382d91d77389ea5661cc38b0d639aaca189",
       "Cargo.toml": "120b5148fd2420659b349ffe4bacde8411a0b3394f96e35a741b3ad1171d29a9",
       "src/features/macro_library.rs": "670132b83126c2530e5463070e328bb188b33524dd4583cffd50f6cf999784ce",
-      "src/shell/macro_page.rs": "0c627cd72ab86279b8f5dfdcddd05cb4c8032a4fb743b55e09fb2dce7caf72bd",
+      "src/shell/macro_page.rs": "669e7f94840fe6f0e17e892b4572260aa7823e0ae081b0922a1dc20d8eb9e05e",
       "src/shell/macro_page/bindings.rs": "9be182be6d960594d65c2ef304dbf1f620520b3240587c1a3451a12be9afaadc",
       "src/shell/macro_page/bindings/diagram.rs": "d04d95ea628e61f58cabb2b747ce487abcd09209d6ca998a2c16e50fafbbd56d",
       "src/shell/macro_page/bindings/playback.rs": "951e35d560dad255e8207eb421e929e5cd211cdb5c5642f4933fb9273c1a08db",
-      "src/shell/macro_page/body.rs": "627592bf9fc509f4e43a8611e869f62b50b6e6a44fd46bc202bd76f450c2844c",
-      "src/shell/macro_page/chrome.rs": "cdc84527bcce90798d0aafc7bd50f630cf4ec70abbb53e69adf8371a2adf452e",
+      "src/shell/macro_page/body.rs": "d89a0f16338a138453491d4c78d6e4d5aa213a5a20559990f7b73c2461d00596",
+      "src/shell/macro_page/chrome.rs": "189170227ee0a8959cbd77b7f4845aff6793251b5ce992c54e57731c8bcae868",
       "src/shell/macro_page/editors.rs": "33386e5dfd3af13b2a5c278c5dbef93f8351bf9b5ca0116f93ad8fcdc6a8045e",
       "src/shell/macro_page/keyboard.rs": "9a64eb0ee452b1188219c05f26a6bfc84ddeaa09812b567b36e80214dcae217c",
       "src/shell/macro_page/keyboard_windows.rs": "5d58b09b7f4fae69d563cbe9d763aa29ffe53ce60a40521981c8345d082b39df",
@@ -2450,7 +2450,7 @@
       "src/shell/macro_page/palette.rs": "42cca9a28e3db67dde7144814c36ec059c52ec3df73e33011f779df34ad15831",
       "src/shell/macro_page/phased.rs": "399a4124ef5387585f81cf86779fedacb06b8694134ae487a6d7fb2cbcd526e6",
       "src/shell/macro_page/record_help.rs": "cf7808f4d930bae1e25d26808837c72d01105c34a3b3fb09c89ce8bd6ee151e7",
-      "src/shell/macro_page/record_options.rs": "c70d7867dde12ecf686e2fd49b25e135fab079e6b26045992b70940b0e84c4f4",
+      "src/shell/macro_page/record_options.rs": "6f7941e464ab37a316b7065129ab07a60cd07c3e98791fc7bed2659eeb7fd9ed",
       "src/shell/macro_page/record_shortcut.rs": "e4b5e19c8e00565098bd95776336703eb36daf747d87cba24f8c4914b107a85b",
       "src/shell/macro_page/recording.rs": "6fb29b74d36b73cfb84bbde7d3155506483439091401a6318359651de6c8c000",
       "src/shell/macro_page/recording_actor.rs": "065e1a1b71ff23fcdc79460184ed424b7a108a4abdb215972ac6f399800e1940",
@@ -2460,14 +2460,15 @@
       "src/shell/macro_page/row_drag.rs": "e64ee2ab615b1b7ca615abf8c9c872ec73d4b3ae1e0668604a4dc48426e4b535",
       "src/shell/macro_page/row_view.rs": "ef5cba9bcfd353d17143c6c54fdc6331abf2538558813f26f076a2397a98ce94",
       "src/shell/macro_page/selection.rs": "e6992b1855550633b271d8d9bc9d833bcbb564423de96f7dbce51026e27a0dc5",
-      "src/shell/macro_page/state.rs": "3035611da5dd04a7d5970702d6cd8a7654dbd67d2ff57e2bc460818fc914fd18",
+      "src/shell/macro_page/state.rs": "115dcd2052ea57ef3325d7660f0504db5639f2ea0c604f7ab618d647701ae6f0",
+      "src/shell/macro_page/tests.rs": "e9ff4105abd6f41564dc079dd87bf06d976c2550db061497d60b5a81b15998bc",
       "src/shell/macro_page/text.rs": "f3a8492b0ce83f7a027153452a2cff1d4a762437f4dec4484fcac807be4c5d07",
       "src/shell/macro_page/text_emoji.rs": "81a5820251fdba7fcc9afaac25149871fcd07331b5235f6fa6affaaf956b5ff2",
       "src/shell/macro_page/text_overlay.rs": "99decf640c8ca21d4892e45ddbd93cb05df5007246f28ca756ccc49178af9073",
       "src/shell/macro_page/transfer.rs": "a9a70f10f3ad5d7243b12f630a6315fa793fae9969c71928b939a2f076b17647",
       "src/shell/macro_page/transfer/xml.rs": "a76e28aac07f063112acda27186fa6146ed5fcff5f9344d92c7c1a9c5926ff03",
       "src/shell/macro_page/tree.rs": "1baef25a3c42f1b2f3c3662d71314df4eef2ffdffdf320df8012aef8b5c21a23",
-      "src/shell/macro_page/unsaved.rs": "85020d2139190edb1ba0b389059d3559983fc02c52d9d975bb755b6033ea1a69"
+      "src/shell/macro_page/unsaved.rs": "b2e3ad3bf68ad1787371e2f8b77547c7b60622628a43983c957facec3dfe2b0f"
     }
   }
 }

@@ -8,7 +8,7 @@
 
 [当前证据](kitsune-current-evidence.json)包含 42 项 AST 收据、8 份 manifest 声明的 CSS、两个 SVG 的原始字节和动态请求链。`tools/prepare-kitsune.cjs --check` 静态复核来源并验证生成数据、嵌入登记和资源，不执行厂商脚本。
 
-## 本批实现
+## 当前实现
 
 - `GamepadProductWorkspace` 对 4115 使用专门的 `kitsune.rs`，不改变其他手柄布局。
 - 顶部 340px 预览区、770px 内框、原始 SVG 按 251px 高显示，复用已存在的 22px 点阵与径向淡出背景。
@@ -25,4 +25,4 @@
 - 真实设备连接、固件、无线模式与运行时读取观察，及窗口变更时的设备元数据同步仍需追链。静态配置与本地草稿不代表读取成功。
 - SVG 布局、动画、焦点与运行交互未验收；没有运行应用、测试、构建、下载的 JavaScript 或 DLL。
 
-格式化和 `cargo check --locked --all-targets` 通过，保留 3 项既有 Rust 警告。资源校验覆盖新增的两个 SVG；嵌入 JSON 校验为 50 份、0 失败、4 项既有跳过。独立回读见 [报告 G](prior-ui-verification-2026-10-06.md)。
+格式化和 `cargo check --locked --all-targets` 通过，保留 3 项既有 Rust 警告。资源校验覆盖新增的两个 SVG；嵌入 JSON 校验为 50 份、0 失败、4 项既有跳过。独立回读见 [报告 G](ui-readonly-first-roadmap.md)。

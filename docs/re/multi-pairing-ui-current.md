@@ -1,0 +1,19 @@
+# MultiDevicePairing 当前产品入口契约
+
+当前Dashboard 7861的URL builder与设备盒入口，以及各产品displayMode=multiDevicePairing根共同定义入口。该模式只对[当前独立根成员表](display-mode-audit.json)中的30个产品成立；共享组件存在不扩大资格。
+
+## 入口、参数与宿主
+
+PairingDevice::open_window_payload要求非零productId及非空deviceContainerId。`AppShell::open_product_pairing_tab`同时接受containerId别名，检查当前根成员，按container/product/serial生成具名host tab并进入Location::Pairing；policy3为同宿主页签，重复打开复用身份，不创建第二OS窗口。窗口规则见[host policy](host-window-policy-current-audit.md)和[具名窗口契约](display-window-contract.md)。
+
+源URL可带containerId、displayMode、productId/pid、category、canPairTwoDevices、isProductivity、deviceName、serialNumber、lang及JSON allMasters。原生projection保留已有可选字段，不按产品号补值。allMasters接受数组或源JSON字符串，只有实际传入才调用apply_all_masters；无效内容按PairingPage校验报错，不变为配对成功。
+
+产品源本身为iframeMultiDevicePairingWidget，加载/signal ready后发送multiDevicePairingInit的deviceInfo/deviceName/allMasters至/synapse/multipairing/。本地采用实际4130 PairingPage表达内容，并非执行iframe或host postMessage；专用deviceInfo/deviceName与全部iframe初始化语义仍未完整适配。`pairing_window.rs`没有挂入当前应用，不作为实现完成证据。
+
+## 数据与配对边界
+
+allMasters的官方生产者来自connectedDeviceInfo的jt/Et投影；当前缺这条完整真实发布链，不从普通设备目录制造结果。PairingPage保持主/副类别状态、代际和ticket，只有匹配且校验通过的响应可进入成功；当前产品tab共享retained PairingPage实体，无输入时不会生成新的观察。各页签状态隔离和缺payload时已有观察的处理仍需专门核实。
+
+产品179的HyperPolling G是页内modal；已绑定项x打开服务返回的/synapse设备URL（policy3/tab_visible），不读取multiDevicePairing。含该共享控件的126不得加入30项根表或绕过资格guard。接收器页内配对与父卡读取的当前契约见[Receiver](receiver-ui-current.md)，不能将它们的成功状态套给4130产品根。
+
+[multi-pairing-window-current-evidence.json](multi-pairing-window-current-evidence.json)保留产品iframe、源参数及Dashboard入口原文；audit-multi-pairing-window.cjs维护静态收据。Dashboard7861源SHA为9fc4c16bfd646066882263192641c0ad7be5a0d3b38f4a03293deab94b7e43a6，产品179源SHA为f5d6efe15f34167d61020469f151c3a0827f695cb35bc49cbdd32c23957fb874。静态入口/数据保留不证明真实DUALLINK transport、设备写回或窗口像素完成；应用、测试、下载JavaScript和DLL均未运行。

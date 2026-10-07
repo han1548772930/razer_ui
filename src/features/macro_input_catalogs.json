@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": 182,
+      "input_source": "physical_groups",
+      "groups": [
+        {
+          "group": {
+            "groupName": "TOP VIEW",
+            "buttonList": [
+              {
+                "buttonKey": "LeftClick",
+                "defaultValue": "LEFT_CLICK",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": false,
+                "inputType": "MouseInput",
+                "inputID": "LeftClick",
+                "counter": 1,
+                "assignment": "MOUSE",
+                "assignmentValue": "LEFT_CLICK",
+                "buttonPos": "left",
+                "functionList": [
+                  "DEFAULT",
+                  "AI_LAUNCHER",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "SENSITIVITY",
+                  "MACRO",
+                  "INTERDEVICE",
+                  "SWITCH_PROFILE",
+                  "SWITCH_LIGHTING",
+                  "RAZER_HYPERSHIFT",
+                  "LAUNCH_PROGRAM",
+                  "MULTIMEDIA",
+                  "WINDOWS_SHORTCUT",
+                  "TEXT_FUNCTION",
+                  "DISABLE"
+                ]
+              },
+              {
+                "buttonKey": "RightClick",
+                "defaultValue": "RIGHT_CLICK",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": true,
+                "inputType": "MouseInput",
+                "inputID": "RightClick",
+                "counter": 2,
+                "assignment": "MOUSE",
+                "assignmentValue": "RIGHT_CLICK",
+                "buttonPos": "right",
+                "functionList": [
+                  "DEFAULT",
+                  "AI_LAUNCHER",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "SENSITIVITY",
+                  "MACRO",
+                  "INTERDEVICE",
+                  "SWITCH_PROFILE",
+                  "SWITCH_LIGHTING",
+                  "RAZER_HYPERSHIFT",
+                  "LAUNCH_PROGRAM",
+                  "MULTIMEDIA",
+                  "WINDOWS_SHORTCUT",
+                  "TEXT_FUNCTION",
+                  "DISABLE"
+                ]
+              },
+              {
+                "buttonKey": "ScrollClick",
+                "defaultValue": "SCROLL_CLICK",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": true,
+                "inputType": "MouseInput",
+                "inputID": "ScrollButton",
+                "counter": 3,
+                "assignment": "MOUSE",
+                "assignmentValue": "SCROLL_CLICK",
+                "buttonPos": "left",
+                "functionList": [
+                  "DEFAULT",
+                  "AI_LAUNCHER",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "SENSITIVITY",
+                  "MACRO",
+                  "INTERDEVICE",
+                  "SWITCH_PROFILE",
+                  "SWITCH_LIGHTING",
+                  "RAZER_HYPERSHIFT",
+                  "LAUNCH_PROGRAM",
+                  "MULTIMEDIA",
+                  "WINDOWS_SHORTCUT",
+                  "TEXT_FUNCTION",
+                  "DISABLE"
+                ]
+              },
+              {
+                "buttonKey": "ScrollUp",
+                "defaultValue": "SCROLL_UP",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": true,
+                "inputType": "MouseInput",
+                "inputID": "ScrollUp",
+                "counter": 4,
+                "assignment": "MOUSE",
+                "assignmentValue": "SCROLL_UP",
+                "buttonPos": "right",
+                "functionList": [
+                  "DEFAULT",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "MACRO",
+                  "MULTIMEDIA",
+                  "DISABLE"
+                ]
+              },
+              {
+                "buttonKey": "ScrollDown",
+                "defaultValue": "SCROLL_DOWN",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": true,
+                "inputType": "MouseInput",
+                "inputID": "ScrollDown",
+                "counter": 5,
+                "assignment": "MOUSE",
+                "assignmentValue": "SCROLL_DOWN",
+                "buttonPos": "right",
+                "functionList": [
+                  "DEFAULT",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "MACRO",
+                  "MULTIMEDIA",
+                  "DISABLE"
+                ]
+              },
+              {
+                "buttonKey": "MouseButton4",
+                "defaultValue": "MOUSE_BUTTON_4",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": true,
+                "inputType": "MouseInput",
+                "inputID": "Button4",
+                "counter": 6,
+                "assignment": "MOUSE",
+                "assignmentValue": "MOUSE_BUTTON_4",
+                "buttonPos": "left",
+                "functionList": [
+                  "DEFAULT",
+                  "AI_LAUNCHER",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "SENSITIVITY",
+                  "MACRO",
+                  "INTERDEVICE",
+                  "SWITCH_PROFILE",
+                  "SWITCH_LIGHTING",
+                  "RAZER_HYPERSHIFT",
+                  "LAUNCH_PROGRAM",
+                  "MULTIMEDIA",
+                  "WINDOWS_SHORTCUT",
+                  "TEXT_FUNCTION",
+                  "DISABLE"
+                ]
+              },
+              {
+                "buttonKey": "MouseButton5",
+                "defaultValue": "MOUSE_BUTTON_5",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": true,
+                "inputType": "MouseInput",
+                "inputID": "Button5",
+                "counter": 7,
+                "assignment": "MOUSE",
+                "assignmentValue": "MOUSE_BUTTON_5",
+                "buttonPos": "left",
+                "functionList": [
+                  "DEFAULT",
+                  "AI_LAUNCHER",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "SENSITIVITY",
+                  "MACRO",
+                  "INTERDEVICE",
+                  "SWITCH_PROFILE",
+                  "SWITCH_LIGHTING",
+                  "RAZER_HYPERSHIFT",
+                  "LAUNCH_PROGRAM",
+                  "MULTIMEDIA",
+                  "WINDOWS_SHORTCUT",
+                  "TEXT_FUNCTION",
+                  "DISABLE"
+                ]
+              },
+              {
+                "buttonKey": "CycleUpSensitivityStages",
+                "defaultValue": "CYCLE_UP_SENSITIVITY",
+                "isFocused": false,
+                "isMapped": false,
+                "isEnabled": true,
+                "inputType": "DKMInput",
+                "inputID": "DKM_SB_03",
+                "counter": 8,
+                "assignment": "SENSITIVITY",
+                "assignmentValue": "CYCLE_UP_SENSITIVITY",
+                "buttonPos": "left",
+                "functionList": [
+                  "DEFAULT",
+                  "AI_LAUNCHER",
+                  "KEYBOARD_FUNCTION",
+                  "MOUSE_FUNCTION",
+                  "SENSITIVITY",
+                  "MACRO",
+                  "INTERDEVICE",
+                  "SWITCH_PROFILE",
+                  "SWITCH_LIGHTING",
+                  "LAUNCH_PROGRAM",
+                  "MULTIMEDIA",
+                  "WINDOWS_SHORTCUT",
+                  "TEXT_FUNCTION",
+                  "DISABLE"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "viewbox": [
+        770,
+        340
+      ],
+      "mouse_diagram": true
+    },
+    {
+      "product_id": 653,
+      "input_source": "prepared_keyboard_layout",
+      "viewbox": [
+        730,
+        340
+      ],
+      "mouse_diagram": false
+    }
+  ]
+}

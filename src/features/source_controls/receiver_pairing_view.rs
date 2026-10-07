@@ -8,7 +8,7 @@ use gpui_kit::base::{Button as BaseButton, Link, Radio as BaseRadio};
 struct PairingText {
     translations: BTreeMap<String, BTreeMap<String, String>>,
 }
-fn t(key: &str) -> String {
+pub(super) fn t(key: &str) -> String {
     static TEXT: OnceLock<PairingText> = OnceLock::new();
     let text = TEXT.get_or_init(|| {
         serde_json::from_str(include_str!("receiver_pairing_data.json"))
@@ -44,6 +44,13 @@ enum Action {
 
 impl SourceControls {
     pub(super) fn open_receiver_pairing(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(event) = self.receiver.page.suspend() {
+            cx.emit(event);
+        }
+        self.sync_receiver_page_retry(cx);
+        self.receiver.failure_recovery = None;
+        self.receiver.success_close = None;
+        self.receiver.pairing_window = Some(window.window_handle());
         self.receiver.return_focus = window.focused(cx);
         let event = self.receiver.pairing.open();
         self.focus.focus(window, cx);
@@ -51,10 +58,16 @@ impl SourceControls {
         cx.notify();
     }
     pub(super) fn close_receiver_pairing(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.receiver.failure_recovery = None;
+        self.receiver.success_close = None;
+        self.receiver.pairing_window = None;
         let event = self.receiver.pairing.close();
         cx.emit(event);
         if let Some(focus) = self.receiver.return_focus.take() {
             focus.focus(window, cx);
+        }
+        if let Some(event) = self.receiver.page.begin() {
+            cx.emit(event);
         }
         cx.notify();
     }
@@ -68,12 +81,71 @@ impl SourceControls {
         if self.spec.product_id != 179 {
             return;
         }
-        let (changed, event) = self.receiver.pairing.observe(observation);
+        if self.receiver.page.observe(&observation) {
+            self.sync_receiver_page_retry(cx);
+            cx.notify();
+            return;
+        }
+        let (changed, event) = self.receiver.pairing.observe(observation.clone());
         if let Some(event) = event {
             cx.emit(event);
         }
         if changed {
+            self.receiver.page.observe_dialog_result(&observation);
+            self.sync_receiver_failure_recovery(cx);
+            self.sync_receiver_success_close(cx);
             cx.notify();
+        }
+    }
+    fn sync_receiver_success_close(&mut self, cx: &mut Context<Self>) {
+        let ticket = self.receiver.pairing.success_close();
+        if self
+            .receiver
+            .success_close
+            .as_ref()
+            .map(|(ticket, _)| *ticket)
+            == ticket
+        {
+            return;
+        }
+        self.receiver.success_close = None;
+        if let (Some(ticket), Some(handle)) = (ticket, self.receiver.pairing_window) {
+            let task = cx.spawn(async move |owner, cx| {
+                cx.background_executor().timer(ticket.delay()).await;
+                let _ = handle.update(cx, |_, window, cx| {
+                    let _ = owner.update(cx, |this, cx| {
+                        if this.receiver.pairing.can_close_success(ticket) {
+                            this.close_receiver_pairing(window, cx);
+                        }
+                    });
+                });
+            });
+            self.receiver.success_close = Some((ticket, task));
+        }
+    }
+    fn sync_receiver_failure_recovery(&mut self, cx: &mut Context<Self>) {
+        let recovery = self.receiver.pairing.recovery();
+        if self
+            .receiver
+            .failure_recovery
+            .as_ref()
+            .map(|(ticket, _)| *ticket)
+            == recovery
+        {
+            return;
+        }
+        self.receiver.failure_recovery = None;
+        if let Some(ticket) = recovery {
+            let task = cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(ticket.delay()).await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.receiver.pairing.recover_failure(ticket) {
+                        this.receiver.failure_recovery = None;
+                        cx.notify();
+                    }
+                });
+            });
+            self.receiver.failure_recovery = Some((ticket, task));
         }
     }
     fn receiver_pairing_action(&mut self, action: Action, cx: &mut Context<Self>) {
@@ -94,6 +166,8 @@ impl SourceControls {
         if let Some(event) = event {
             cx.emit(event);
         }
+        self.sync_receiver_failure_recovery(cx);
+        self.sync_receiver_success_close(cx);
         cx.notify();
     }
 

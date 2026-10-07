@@ -23,7 +23,7 @@
 允许的格式化、`cargo check --locked --all-targets` 与嵌入 JSON 静态校验通过；原有 3 条未使用方法警告。当前数据共 35 项源码收据、4 份相关 CSS 和 1 个共享关闭图标收据；嵌入 JSON 为 51 项通过、0 失败、4 项既有跳过。未运行应用、构建、测试、厂商 JS 或 DLL。
 
 
-## 自身关闭提示（本轮静态复核通过）
+## 自身关闭提示
 
 新增 control_pod_audio_warning.rs，对应 913.closeMapping(false) → 主根 displaySaveAlert(clear)，仅用于编辑器自身 ×。dirty 时打开原版保存提示；无 dirty 直接关闭。底部 Cancel 仍不弹提示。
 

@@ -8,11 +8,11 @@
 //! mounts the product's lighting content without the normal product navigation
 //! and profile chrome, and Escape asks the parent window to close it
 //! (`window.postMessage("closePopup","*")`). See
-//! [display-mode audit](../../docs/re/display-mode-audit.md),
+//! [display-mode audit](../../docs/re/shell-workspace-current.md),
 //! [window contract](../../docs/re/display-window-contract.md) and
 //! [Chroma application evidence](../../docs/re/chroma-app-current-evidence.json).
 //! Audio root-to-page identity and differing body width overrides are recorded
-//! in [the product mode audit](../../docs/re/product-mode-integration-2026-10-05.md).
+//! in [the workspace contract](../../docs/re/shell-workspace-current.md).
 //!
 //! The product id table is generated from the audited static scan by
 //! `tools/generate-display-mode-roots.cjs`; the branch content stays a product

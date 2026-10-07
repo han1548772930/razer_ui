@@ -31,7 +31,7 @@
 | 3072 / 3073 / 3074 / 3076 / 3077 / 3078 / 3080 | TAB_LIGHTING | `mousemat_lighting` | `device_pages.rs:472`；`nav.rs:37` 只给出 Lighting；数据 `product.rs:10`／`:59`（模块 9228 方向常量）与 `settings.rs:374` 的逐产品效果表 |
 | 上述七个 | HELP | `device_help` | `help_page.rs:111`；`support_links` 走 `audited_mouse_mat` 的 support/guide 前缀 |
 
-## 仍然存在的缺口（不因本轮复核而消失）
+## 当前缺口
 
 - 十个产品都没有进入 `source_help_data.json` 描述符，Help 走的是本地 `help_page`，其逐页条件（序列号、注册、固件、重置、系统信息等）覆盖度不等同于其余 321 个产品的描述符路径。
 - 182 的 `mouse_products_data.json` 条目的 `pages` 为空数组：规格数据齐全，但页面清单仍由适配器决定，没有迁到 family 描述符路径。

@@ -10,13 +10,90 @@ use crate::ui::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use gpui_kit::component::slider::SliderState;
 #[path = "chroma_studio_numeric.rs"]
 mod numeric;
-use numeric::{NumericChanged, NumericField, StudioNumeric};
+use numeric::{NumericChanged, NumericField, NumericToggleChanged, StudioNumeric};
 
 pub(super) struct StudioPropertiesChanged {
     pub(super) layer_id: u64,
     pub(super) params: Value,
     pub(super) params2: Value,
     pub(super) paint_params: Value,
+}
+
+#[cfg(test)]
+mod current_layout_tests {
+    use super::{ChromaStudio, source};
+    use gpui_kit::component::Root;
+    use gpui_kit::test::TestWindowExt;
+    use gpui_kit::{AppContext, ElementId, TestAppContext, px, size};
+
+    #[gpui_kit::test]
+    fn direction_selected_half_toggles_and_audio_auto_stays_on_input_row(cx: &mut TestAppContext) {
+        cx.update(|cx| {
+            gpui_kit::init(cx);
+            cx.set_reduce_motion(true);
+        });
+        for effect in ["wheel", "tidal", "audio"] {
+            let mut props = None;
+            // Only transient property state is supplied; there is no fixture device.
+            let handle = cx.open_window(size(px(360.), px(900.)), |window, cx| {
+                let studio = cx.new(ChromaStudio::new);
+                let editor = studio.read(cx).properties.clone();
+                editor.update(cx, |editor, cx| {
+                    let defaults = source()
+                        .effects
+                        .iter()
+                        .find(|item| item.name == effect)
+                        .unwrap();
+                    editor.current = Some((1, effect.to_owned()));
+                    editor.tool = "pen".into();
+                    editor.params = defaults.paint_params.clone();
+                    editor.params2 = serde_json::json!({"counterclockwise": false});
+                    editor.layer_params = defaults.params.clone();
+                    editor.paint_params = defaults.paint_params.clone();
+                    editor.attach(window, cx);
+                });
+                props = Some(editor.clone());
+                Root::new(editor, window, cx)
+            });
+            let props = props.unwrap();
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                if effect == "audio" {
+                    let input = window.find("studio-audio-boost-input").bounds();
+                    let auto = window.find("studio-audio-auto-boost").bounds();
+                    assert!(auto.origin.x > input.origin.x + input.size.width);
+                    assert_eq!(
+                        auto.origin.y + auto.size.height,
+                        input.origin.y + input.size.height
+                    );
+                    let before = props.read(cx).params["autoBoost"] == true;
+                    window.click("studio-audio-auto-boost", cx);
+                    assert_eq!(props.read(cx).params["autoBoost"], !before);
+                } else {
+                    let prefix = if effect == "wheel" {
+                        "studio-wheel-direction"
+                    } else {
+                        "studio-tidal-direction"
+                    };
+                    let first = if effect == "wheel" {
+                        "clockwise"
+                    } else {
+                        "outward"
+                    };
+                    let second = if effect == "wheel" {
+                        "counterclockwise"
+                    } else {
+                        "inward"
+                    };
+                    window.click((ElementId::from(prefix), first), cx);
+                    assert_eq!(props.read(cx).params2["counterclockwise"], true);
+                    window.click((ElementId::from(prefix), second), cx);
+                    assert_eq!(props.read(cx).params2["counterclockwise"], false);
+                }
+            })
+            .unwrap();
+        }
+    }
 }
 impl EventEmitter<StudioPropertiesChanged> for StudioProperties {}
 
@@ -365,14 +442,46 @@ impl StudioProperties {
                             .current
                             .as_ref()
                             .is_some_and(|(_, name)| name == event.field.effect())
+                        && !(event.field == NumericField::AudioBoost
+                            && this.params["autoBoost"] == true)
                     {
-                        let value = Value::from(event.value);
+                        let value = Value::from(if event.field == NumericField::WavePause {
+                            event.value * 1000.
+                        } else {
+                            event.value
+                        });
                         if this.params[event.field.field()] != value {
                             this.params[event.field.field()] = value;
                             this.publish(cx);
                             cx.notify();
                         }
                     }
+                },
+            ));
+        }
+        numeric[3].update(cx, |editor, _| editor.set_companion(numeric[5].clone()));
+        for editor in [&numeric[4], &numeric[9]] {
+            self.editor_subscriptions.push(cx.subscribe(
+                editor,
+                |this, _, event: &NumericToggleChanged, cx| {
+                    if !this.enabled()
+                        || event.revision != this.control_revision
+                        || !this
+                            .current
+                            .as_ref()
+                            .is_some_and(|(_, name)| name == event.field.effect())
+                    {
+                        return;
+                    }
+                    let field = match event.field {
+                        NumericField::AudioBoost => "autoBoost",
+                        NumericField::WaveWidth => "split",
+                        _ => return,
+                    };
+                    this.params[field] = event.checked.into();
+                    this.refresh_numeric(cx);
+                    this.publish(cx);
+                    cx.notify();
                 },
             ));
         }
@@ -570,12 +679,26 @@ impl StudioProperties {
                             && effect == field.effect()
                             && !(field == NumericField::AudioBoost && params["autoBoost"] == true);
                         editor.configure(
-                            params[field.field()].as_f64().unwrap_or(0.),
+                            params[field.field()].as_f64().unwrap_or(0.)
+                                / if field == NumericField::WavePause {
+                                    1000.
+                                } else {
+                                    1.
+                                },
                             active,
                             revision,
                             window,
                             cx,
-                        )
+                        );
+                        editor.configure_toggle(
+                            params[if field == NumericField::AudioBoost {
+                                "autoBoost"
+                            } else {
+                                "split"
+                            }] == true,
+                            enabled && effect == field.effect(),
+                            cx,
+                        );
                     });
                 }
             });
@@ -695,66 +818,91 @@ impl StudioProperties {
             .into_any_element()
     }
 
+    fn toggle_direction(&mut self, tidal: bool, revision: u64, cx: &mut Context<Self>) {
+        if self.enabled()
+            && self.control_revision == revision
+            && self
+                .current
+                .as_ref()
+                .is_some_and(|(_, name)| name == if tidal { "tidal" } else { "wheel" })
+        {
+            self.params2["counterclockwise"] = (self.params2["counterclockwise"] != true).into();
+            self.publish(cx);
+            cx.notify();
+        }
+    }
+
     fn direction(&self, id: &'static str, tidal: bool, cx: &mut Context<Self>) -> AnyElement {
         let counterclockwise = self.params2["counterclockwise"] == true;
         let enabled = self.enabled();
-        let owner = cx.weak_entity();
-        let clockwise_label = if tidal { "Outward" } else { "Clockwise" };
-        let counterclockwise_label = if tidal { "Inward" } else { "Counterclockwise" };
-        let option = |suffix: &'static str, text: &'static str, selected: bool, value: bool| {
-            let owner = owner.clone();
-            button((ElementId::from(id), suffix), "TEXT_DIRECTION")
-                .accessibility_label(text)
-                .disabled(!enabled)
-                .min_w(surface::css(52.))
-                .h(surface::css(40.))
-                .px(surface::css(8.))
-                .border_1()
-                .border_color(if selected {
-                    Colors::selected()
-                } else {
-                    Colors::border()
-                })
-                .bg(if selected {
-                    Colors::selected()
-                } else {
-                    Colors::panel()
-                })
-                .child(text)
-                .on_click(move |_, _, cx| {
-                    let _ = owner.update(cx, |this, cx| {
-                        if this.enabled()
-                            && this.params2["counterclockwise"] != Value::from(value)
-                            && this.current.as_ref().is_some_and(|(_, name)| {
-                                matches!(name.as_str(), "wheel" | "tidal")
-                                    && (tidal == (name == "tidal"))
-                            })
-                        {
-                            this.params2["counterclockwise"] = Value::from(value);
-                            this.publish(cx);
-                            cx.notify();
-                        }
-                    });
-                })
+        let revision = self.control_revision;
+        let options = if tidal {
+            [("outward", "Outward"), ("inward", "Inward")]
+        } else {
+            [
+                ("clockwise", "Clockwise"),
+                ("counterclockwise", "Counterclockwise"),
+            ]
         };
-        div()
+        let group = div()
             .id((ElementId::from(id), "direction"))
             .test_support()
+            .group(id)
             .flex()
-            .items_center()
-            .gap(surface::css(6.))
-            .child(option(
-                "clockwise",
-                clockwise_label,
-                !counterclockwise,
-                false,
-            ))
-            .child(option(
-                "counterclockwise",
-                counterclockwise_label,
-                counterclockwise,
-                true,
-            ))
+            .h(surface::css(30.))
+            .min_w(surface::css(104.))
+            .border_1()
+            .border_color(Colors::input_border())
+            .rounded(surface::css(3.))
+            .overflow_hidden()
+            .when(enabled, |view| {
+                view.hover(|style| style.border_color(Colors::selected()))
+            })
+            .on_click(cx.listener(move |this, _, _, cx| this.toggle_direction(tidal, revision, cx)))
+            .children(
+                options
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, (name, text))| {
+                        let selected = counterclockwise == (index == 1);
+                        BaseButton::new((ElementId::from(id), name))
+                            .accessibility_label(text)
+                            .selected(selected)
+                            .disabled(!enabled)
+                            .p_0()
+                            .flex_1()
+                            .min_w(surface::css(50.))
+                            .h_full()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .bg(if selected {
+                                Colors::selected()
+                            } else {
+                                Colors::panel()
+                            })
+                            .when(enabled && !selected, |button| {
+                                button.group_active(id, |style| style.bg(Colors::canvas()))
+                            })
+                            .focus_visible(|style| style.border_1().border_color(Colors::text()))
+                            .child(icon(
+                                &format!("{name}-{}", if selected { "black" } else { "gray" }),
+                                20.,
+                            ))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                // Both source buttons bubble to one group toggle, including
+                                // the already selected half. Consume here to avoid doubling.
+                                cx.stop_propagation();
+                                this.toggle_direction(tidal, revision, cx);
+                            }))
+                    }),
+            );
+        div()
+            .flex()
+            .flex_col()
+            .items_start()
+            .child(div().mb(surface::css(6.)).child(label("TEXT_DIRECTION")))
+            .child(group)
             .into_any_element()
     }
 
@@ -915,25 +1063,7 @@ impl StudioProperties {
             .into_any_element()
     }
 
-    fn wave(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let owner = cx.weak_entity();
-        let split = super::studio_checkbox::checkbox(
-            "studio-wave-split",
-            self.params["split"] == true,
-            self.enabled(),
-            label("TEXT_SPLIT"),
-            window,
-            cx,
-        )
-        .on_change(move |state, _, _, cx| {
-            let _ = owner.update(cx, |this, cx| {
-                if this.enabled() {
-                    this.params["split"] = (state == gpui_kit::base::CheckboxState::Checked).into();
-                    this.publish(cx);
-                    cx.notify();
-                }
-            });
-        });
+    fn wave(&self, _window: &mut Window, _cx: &mut Context<Self>) -> AnyElement {
         div()
             .id("studio-wave-properties")
             .test_support()
@@ -953,14 +1083,8 @@ impl StudioProperties {
                     .child(
                         div()
                             .mt(surface::css(10.))
-                            .children(self.numeric.as_ref().map(|editors| editors[5].clone())),
-                    )
-                    .child(
-                        div()
-                            .mt(surface::css(10.))
                             .children(self.numeric.as_ref().map(|editors| editors[6].clone())),
-                    )
-                    .child(div().mt(surface::css(10.)).child(split)),
+                    ),
             )
             .child(self.subtitle("PLAYBACK_TITLE", "TEXT_PLAYBACK"))
             .child(section().children(self.playback.clone()))
@@ -1034,39 +1158,29 @@ impl StudioProperties {
             .into_any_element()
     }
 
-    fn audio(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let owner = cx.weak_entity();
-        let auto = super::studio_checkbox::checkbox(
-            "studio-audio-auto-boost",
-            self.params["autoBoost"] == true,
-            self.enabled(),
-            label("TEXT_BOOST"),
-            window,
-            cx,
-        )
-        .on_change(move |state, _, _, cx| {
-            let _ = owner.update(cx, |this, cx| {
-                if this.enabled() {
-                    this.params["autoBoost"] =
-                        (state == gpui_kit::base::CheckboxState::Checked).into();
-                    this.refresh_numeric(cx);
-                    this.publish(cx);
-                    cx.notify();
-                }
-            });
-        });
+    fn audio(&self, _window: &mut Window, _cx: &mut Context<Self>) -> AnyElement {
         div()
             .id("studio-audio-properties")
             .test_support()
             .flex()
             .flex_col()
             .child(self.subtitle("COLOR", "TEXT_AUDIO_METER_COLOR"))
-            .child(section().children(self.gradient.clone()))
+            .child(
+                section().children(self.gradient.clone()).child(
+                    div()
+                        .id("studio-audio-gradient-labels")
+                        .test_support()
+                        .flex()
+                        .justify_between()
+                        .mt(surface::css(-5.))
+                        .child(label("TEXT_LOW"))
+                        .child(label("TEXT_HIGH")),
+                ),
+            )
             .child(self.subtitle("PROPERTIES", "TEXT_AUDIO_METER_PROPERTIES"))
             .child(
                 section()
                     .children(self.numeric.as_ref().map(|editors| editors[9].clone()))
-                    .child(div().mt(surface::css(10.)).child(auto))
                     .child(
                         div()
                             .mt(surface::css(10.))

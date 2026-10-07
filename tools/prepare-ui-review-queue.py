@@ -64,17 +64,17 @@ def main():
             page['remaining'] = ['live_read_publisher', 'runtime_visual_focus_acceptance']
         if page['product_id'] in (3858, 3880) and page['page_key'] in ('TAB_GAMING', 'TAB_COLOR', 'TAB_DISPLAY'):
             page['review_status'] = 'partial_source_review_and_native_ui'
-            page['review_evidence'] = ['docs/re/monitor-pages-review-2026-10-07.md']
+            page['review_evidence'] = ['docs/re/monitor-ui-current.md']
             page['remaining'] = ['live_read_publisher', 'documented_layout_and_condition_gaps', 'runtime_visual_focus_acceptance']
     for application in applications:
         if application['route'] == '/synapse/profiles/':
-            application['review_evidence'] = ['docs/re/public-ui-review-2026-10-07.md', 'docs/re/profiles-transfer-native.md']
+            application['review_evidence'] = ['docs/re/application-review-current.md', 'docs/re/profiles-ui-current.md']
             application['review_status'] = 'partial_source_review_and_native_ui'
         if application['route'] == '/chroma-app/settings/':
             application['review_evidence'] = ['docs/re/chroma-settings-current-audit.md']
             application['review_status'] = 'partial_source_review_and_native_ui'
         if application['route'] == '/synapse/chroma-studio/':
-            application['review_evidence'] = ['docs/re/studio-reactive-ripple-starlight-native.md', 'docs/re/studio-wave-wheel-pending-review-2026-10-07.md']
+            application['review_evidence'] = ['docs/re/studio-properties-current.md']
             application['review_status'] = 'partial_source_review_and_native_ui'
     counts = Counter(p['assigned_group'] for p in pages)
     payload = dict(schema_version=1, scope='All registered product navigation pages, independent modes and current application endpoints; per-page reviews remain separate evidence',

@@ -46692,6 +46692,62 @@
       "source": ".ref/applications/synapse/chroma-studio/static/media/wave-reactive-sm-gray.9560ba21.svg",
       "url": "https://apps.razer.com/synapse/chroma-studio/static/media/wave-reactive-sm-gray.9560ba21.svg",
       "output": "assets/synapse/chroma-studio-wave-reactive-sm-gray.svg"
+    },
+    {
+      "name": "clockwise-gray",
+      "manifest_key": "static/media/clockwise-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/clockwise-gray.9ca3c469.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/clockwise-gray.9ca3c469.svg",
+      "output": "assets/synapse/chroma-studio-clockwise-gray.svg"
+    },
+    {
+      "name": "clockwise-black",
+      "manifest_key": "static/media/clockwise-black.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/clockwise-black.da455ad3.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/clockwise-black.da455ad3.svg",
+      "output": "assets/synapse/chroma-studio-clockwise-black.svg"
+    },
+    {
+      "name": "counterclockwise-gray",
+      "manifest_key": "static/media/counterclockwise-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/counterclockwise-gray.c8fc93ff.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/counterclockwise-gray.c8fc93ff.svg",
+      "output": "assets/synapse/chroma-studio-counterclockwise-gray.svg"
+    },
+    {
+      "name": "counterclockwise-black",
+      "manifest_key": "static/media/counterclockwise-black.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/counterclockwise-black.ff754b99.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/counterclockwise-black.ff754b99.svg",
+      "output": "assets/synapse/chroma-studio-counterclockwise-black.svg"
+    },
+    {
+      "name": "outward-gray",
+      "manifest_key": "static/media/outward-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/outward-gray.4ba54a4d.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/outward-gray.4ba54a4d.svg",
+      "output": "assets/synapse/chroma-studio-outward-gray.svg"
+    },
+    {
+      "name": "outward-black",
+      "manifest_key": "static/media/outward-black.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/outward-black.cf093492.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/outward-black.cf093492.svg",
+      "output": "assets/synapse/chroma-studio-outward-black.svg"
+    },
+    {
+      "name": "inward-gray",
+      "manifest_key": "static/media/inward-gray.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/inward-gray.bf856670.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/inward-gray.bf856670.svg",
+      "output": "assets/synapse/chroma-studio-inward-gray.svg"
+    },
+    {
+      "name": "inward-black",
+      "manifest_key": "static/media/inward-black.svg",
+      "source": ".ref/applications/synapse/chroma-studio/static/media/inward-black.46ca7ac5.svg",
+      "url": "https://apps.razer.com/synapse/chroma-studio/static/media/inward-black.46ca7ac5.svg",
+      "output": "assets/synapse/chroma-studio-inward-black.svg"
     }
   ]
 }

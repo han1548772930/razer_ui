@@ -146,7 +146,7 @@ def main():
     for row in records:
         lines.append(f"| [{row['route']}](https://apps.razer.com{row['route']}) | {row['endpoints']['index.html']['result']} | {'齐备' if row['manifest_code_complete'] else '待追踪'} | {sum(f['result'] == 'ok' for f in row['files'])}/{len(row['files'])} |")
     lines += ["", "没有 asset-manifest 的入口仅能确认 HTML 声明的脚本；其动态 import、条件路由和原生服务仍须追踪。404 仅代表记录时该端点不可用。", "",
-        "`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。`/feedback/` 来自当前 Dashboard、App Menu 和 Settings 中查询参数插值之前的固定路径。发现脚本只提取静态路径，不执行模板或下载的代码。`--routes` 仅准备已在源码登记的应用，保留其他已取得的目录记录。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/19-app-picker.md)。", ""]
+        "`/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。`/feedback/` 来自当前 Dashboard、App Menu 和 Settings 中查询参数插值之前的固定路径。发现脚本只提取静态路径，不执行模板或下载的代码。`--routes` 仅准备已在源码登记的应用，保留其他已取得的目录记录。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/README.md)。", ""]
     (ROOT / "docs/re/17-application-catalog.md").write_text("\n".join(lines), encoding="utf-8")
     print(json.dumps(summary))
 

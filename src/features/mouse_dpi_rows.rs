@@ -1,6 +1,76 @@
-//! Current 70 cI/EI/XT and 226 Ms/ls/es, with independently verified schemas.
+//! Source-declared DPI rows with independently verified schema and presentation capabilities.
 use super::*;
 use gpui_kit::{base::Button as BaseButton, prelude::FluentBuilder as _};
+
+#[derive(Deserialize)]
+pub(super) struct RowsSpec {
+    product_id: u32,
+    stages_path: String,
+    active_path: String,
+    enabled_path: String,
+    x_key: String,
+    y_key: String,
+    independent_key: String,
+    visible_key: String,
+    minimum_visible_stages: usize,
+    rows_margin_x: f32,
+    description_key: Option<String>,
+    drag_ordinal_key: Option<String>,
+}
+
+pub(super) fn source_spec(product_id: u32) -> Option<&'static RowsSpec> {
+    static SPECS: OnceLock<Vec<RowsSpec>> = OnceLock::new();
+    SPECS
+        .get_or_init(|| {
+            serde_json::from_str(include_str!("mouse_dpi_rows_data.json"))
+                .expect("audited DPI row capabilities")
+        })
+        .iter()
+        .find(|spec| spec.product_id == product_id)
+}
+
+impl RowsSpec {
+    pub(super) fn stages_path(&self) -> &str {
+        &self.stages_path
+    }
+    pub(super) fn active_path(&self) -> &str {
+        &self.active_path
+    }
+    pub(super) fn enabled_path(&self) -> &str {
+        &self.enabled_path
+    }
+    pub(super) fn x_key(&self) -> &str {
+        &self.x_key
+    }
+    pub(super) fn y_key(&self) -> &str {
+        &self.y_key
+    }
+    pub(super) fn independent_key(&self) -> &str {
+        &self.independent_key
+    }
+    pub(super) fn visible_key(&self) -> &str {
+        &self.visible_key
+    }
+    pub(super) fn has_number(&self, path: &str) -> bool {
+        let Some((slot, axis)) = path
+            .strip_prefix(self.stages_path())
+            .and_then(|path| path.strip_prefix('/'))
+            .and_then(|path| path.split_once('/'))
+        else {
+            return false;
+        };
+        slot.parse::<usize>().is_ok() && (axis == self.x_key || axis == self.y_key)
+    }
+    fn drag_ordinal(&self, stages: &[Value], index: usize) -> Option<usize> {
+        let key = self.drag_ordinal_key.as_deref()?;
+        (stages.get(index)?[key] == true).then(|| {
+            stages[..=index]
+                .iter()
+                .filter(|stage| stage[key] == true)
+                .count()
+        })
+    }
+}
 
 struct Palette;
 impl Palette {
@@ -102,7 +172,7 @@ impl MouseProductWorkspace {
         if !self.dpi_editing_enabled() {
             return;
         }
-        if !matches!(self.spec.product_id, 70 | 226)
+        if source_spec(self.spec.product_id).is_none()
             || !self.dpi_row_visible(index)
             || (!self.boolean(self.spec.stage_enable_path())
                 && self.number(self.spec.active_path()) as usize != index + 1)
@@ -148,6 +218,9 @@ impl MouseProductWorkspace {
         cx.notify();
     }
     fn dpi_toggle_visibility(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(row_spec) = source_spec(self.spec.product_id) else {
+            return;
+        };
         if !self.dpi_editing_enabled() {
             return;
         }
@@ -169,7 +242,7 @@ impl MouseProductWorkspace {
                 .iter()
                 .filter(|stage| stage[visible_key] == true)
                 .count()
-                <= 2
+                <= row_spec.minimum_visible_stages
         {
             return;
         }
@@ -265,6 +338,9 @@ impl MouseProductWorkspace {
         cx.notify();
     }
     pub(super) fn dpi_rows(&self, cx: &Context<Self>) -> AnyElement {
+        let Some(row_spec) = source_spec(self.spec.product_id) else {
+            return div().into_any_element();
+        };
         let stages = self
             .draft
             .pointer(self.spec.stages_path())
@@ -282,7 +358,7 @@ impl MouseProductWorkspace {
             .flex()
             .flex_col()
             .opacity(if editing_enabled { 1. } else { 0.3 })
-            .when(product_id == 226, |rows| rows.mx(surface::css(-20.)));
+            .mx(surface::css(row_spec.rows_margin_x));
         let mut ordinal = 0;
         for (index, stage) in stages.iter().enumerate() {
             let drag_owner = cx.entity().downgrade();
@@ -467,7 +543,7 @@ impl MouseProductWorkspace {
                                                 .iter()
                                                 .filter(|s| s[self.spec.visible_key()] == true)
                                                 .count()
-                                                <= 2,
+                                                <= row_spec.minimum_visible_stages,
                                 )
                                 .ml(surface::css(15.))
                                 .on_click(cx.listener(
@@ -493,18 +569,7 @@ impl MouseProductWorkspace {
                                 StageDrag {
                                     owner: cx.entity_id(),
                                     from: index,
-                                    ordinal: if product_id == 226 {
-                                        // ls's drag caption reads capital Active,
-                                        // not the visible field used by normal rows.
-                                        (stage["Active"] == true).then(|| {
-                                            stages[..=index]
-                                                .iter()
-                                                .filter(|stage| stage["Active"] == true)
-                                                .count()
-                                        })
-                                    } else {
-                                        Some(ordinal)
-                                    },
+                                    ordinal: row_spec.drag_ordinal(stages, index),
                                     stages: Value::Array(stages.clone()),
                                     active: selected + 1,
                                     generation: self.draft_generation,
@@ -560,12 +625,12 @@ impl MouseProductWorkspace {
             surface::help_control("dpi-stages-help", t("SENSITIVITY_TOOLTIP")),
             cx,
         )
-        .when(product_id == 226, |panel| {
+        .when_some(row_spec.description_key.as_deref(), |panel, key| {
             panel.child(
                 div()
                     .text_size(surface::css(14.))
                     .text_color(Palette::text())
-                    .child(t("SENSITIVITY_DESC")),
+                    .child(t(key)),
             )
         })
         .child(

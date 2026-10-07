@@ -295,3 +295,69 @@ fn settings_changes_emit_immediately_and_preserve_edits_during_persistence(
     .unwrap();
     drop(subscription);
 }
+
+#[gpui_kit::test]
+fn registered_product_preview_requests_selected_variant_without_installation_or_dialogs(
+    cx: &mut TestAppContext,
+) {
+    use std::{cell::RefCell, rc::Rc};
+
+    let (page, handle) = open(cx, AppPreferences::default());
+    let requests = Rc::new(RefCell::new(Vec::new()));
+    let observed = requests.clone();
+    let subscription = page.update(cx, |_, cx| {
+        cx.subscribe(&page, move |_, _, event, _| {
+            if let super::SettingsEvent::PreviewVariant(pid, edition, layout) = event {
+                observed.borrow_mut().push((*pid, *edition, *layout));
+            }
+        })
+    });
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.click("settings-tab-connection", cx);
+    })
+    .unwrap();
+
+    let expected = cx.update(|cx| {
+        let page = page.read(cx);
+        let selected = |state: &Entity<
+            gpui_kit::component::select::SelectState<Vec<crate::features::Choice>>,
+        >| {
+            state
+                .read(cx)
+                .selected_value()
+                .unwrap()
+                .parse::<u32>()
+                .unwrap()
+        };
+        (
+            selected(&page.preview_product),
+            selected(&page.preview_edition),
+            selected(&page.preview_layout),
+        )
+    });
+    assert!(crate::product::registered(expected.0).is_some());
+    cx.update_window(handle.into(), |_, window, cx| {
+        assert!(window.try_find("preview-product-select").is_some());
+        window.click("preview-registered-product", cx);
+        assert!(window.try_find("dialog").is_none());
+        assert!(!page.read(cx).dirty(), "navigation must not save settings");
+    })
+    .unwrap();
+    cx.run_until_parked();
+    assert_eq!(*requests.borrow(), [expected]);
+
+    // The registry-driven command retains the native button keyboard contract.
+    cx.update_window(handle.into(), |_, window, cx| {
+        assert_eq!(
+            window.find("preview-registered-product").focused(),
+            Some(true)
+        );
+        window.press("enter", cx);
+        assert!(window.try_find("dialog").is_none());
+    })
+    .unwrap();
+    cx.run_until_parked();
+    assert_eq!(*requests.borrow(), [expected, expected]);
+    drop(subscription);
+}

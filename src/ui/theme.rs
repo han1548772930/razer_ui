@@ -219,6 +219,10 @@ impl DockPairingColors {
     pub(crate) fn dialog_warning_text() -> Hsla {
         rgb(0xcccccc).into()
     }
+    /// Current 179 `.HyperPollingWirelessUma_pairInfoBox .unpairbutton`.
+    pub(crate) fn receiver_unpair_border() -> Hsla {
+        rgb(0xcfcfcf).into()
+    }
     pub(crate) fn border() -> Hsla {
         rgb(0x5d5d5d).into()
     }

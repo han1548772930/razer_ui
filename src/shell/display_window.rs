@@ -12,7 +12,7 @@ use std::cell::RefCell;
 /// 产品包按 `?displayMode=` 选择的根，取值即原版
 /// `searchParams.get("displayMode")` 的比较字面量。
 ///
-/// 四个取值都来自 [分支审计](../docs/re/display-mode-audit.md)；
+/// 四个取值都来自 [分支审计](../docs/re/shell-workspace-current.md)；
 /// The application modules live in host tabs. Product-side macro/armory roots
 /// are separate embedded modes, not an OS-window policy. Product pairing uses
 /// a named host tab; `chromaApp` belongs to Chroma.

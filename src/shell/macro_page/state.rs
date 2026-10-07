@@ -210,7 +210,7 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         if kind == EntryKind::Macro {
@@ -271,7 +271,7 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn select_entry(&mut self, id: u64, window: &mut Window, cx: &mut Context<Self>) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         if self.current != Some(id)
@@ -316,7 +316,7 @@ impl MacroPage {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         if let Some(entry) = self.entries.iter().find(|e| e.id == id) {
@@ -368,7 +368,7 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn duplicate_current(&mut self, cx: &mut Context<Self>) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         if let Some(id) = self.current {
@@ -382,7 +382,7 @@ impl MacroPage {
         from_tree: bool,
         cx: &mut Context<Self>,
     ) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         let Some(original) = self.entries.iter().find(|e| e.id == id).cloned() else {
@@ -454,7 +454,7 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn move_entry(&mut self, id: u64, destination: u64, cx: &mut Context<Self>) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         if id == destination {
@@ -492,7 +492,7 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn request_delete(&mut self, id: u64, cx: &mut Context<Self>) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         self.deletion = Some(id);
@@ -502,7 +502,7 @@ impl MacroPage {
         cx.notify();
     }
     pub(super) fn delete_entry(&mut self, id: u64, cx: &mut Context<Self>) {
-        if self.recording_busy() {
+        if self.profile_actions_blocked() {
             return;
         }
         // Mn's page redirect checks the deleted item's own guid against the
