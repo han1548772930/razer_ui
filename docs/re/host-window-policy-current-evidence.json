@@ -414,7 +414,7 @@
     ],
     "module_opening": "Named host tabs through open_module_tab -> navigate; source names are preserved.",
     "os_window_guard": "display_window::open_or_focus rejects WindowPolicy::Same.",
-    "pairing_exception": "A separate pairing OS window remains because the user explicitly requested a second window. Local WindowPolicy::Different is an intentional deviation from the source sameWindow/policy=3 opener; it is not evidence that policy=3 creates OS windows."
+    "pairing_exception": "Product pairing follows source sameWindow/policy=3 by navigating to a named host tab. The tab name preserves the source container/product/serial identity and is reused on repeat opens."
   },
   "verification": "Static Acorn AST/literal resolution plus local Rust source checks. No reference JavaScript, installers, DLLs, application, build or tests executed. --check only compares generated evidence/document bytes and never writes."
 }

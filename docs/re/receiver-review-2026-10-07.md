@@ -73,6 +73,16 @@
 | 241 | TAB_LIGHTING | 亮度/熄灯及普通快捷效果挂载已回读 | 效果参数、同步与高级效果主体 |
 | 241 | HELP | 普通 Reset 当前源回读；本地确认/撤销已修 | 其余帮助子分支和完整视觉验收 |
 
+## 本地产品预览与正式 Tabs 对照
+
+按 Settings 的产品选择器路径静态回读：`preview_product_choices` 从已登记产品构造选择项，`PreviewVariant` 经 Shell `add_preview_variant` 创建 `registered_preview(pid)` 后进入 `ProductWorkspace` 的 `Location::Device`；未命中旧手写适配器时，`ProductWorkspace` 使用 `SourceProductWorkspace`。它按当前登记产品的 primary navigation 生成导航，而非直接打开配对弹窗或单独简化页。
+
+`SourceProductWorkspace` 根稳定 ID 为 `source-product-workspace` 并带 `test_support()`；导航容器 ID 为 `source-product-navigation`，普通页签 ID 为 `product-page-{ProductPageId.key()}`，Help 入口 ID 为 `source-help-{ProductPageId.key()}`。实际查询落在有稳定 ID 的导航按钮，而非 `Tabs` 容器。新增编译期覆盖检查 164、179、241、3858、3880 的普通页签和 Help 锚点是否随当前登记导航出现。该测试源码没有执行，需由父任务统一的 `cargo check --locked --all-targets` 覆盖其编译。
+
+当前源登记核对结果：164 默认导航为 `TAB_CUSTOMIZE`、`TAB_LIGHTING`、`HELP`，另外的 `multiDevicePairing` 是独立 standalone mode，并非默认 Tabs；241 默认导航为 `TAB_PAIRING`、`TAB_LIGHTING`、`HELP`；179 为 `TAB_CUSTOMIZE`、`HELP`；3858/3880 为各自登记的 Gaming、Color、Display、Lighting 与 Help tabs。设置页另有专用 Dock 配对状态样例弹窗，用于查看配对状态组件；它不代表完整产品预览，也不覆盖默认产品 Tabs。164 standalone mode 在产品预览中仍未暴露，须作为独立入口继续审核。
+
+受限项：完整预览确认其路由/布局与正式 `ProductWorkspace` 相同，不等同于实窗像素或焦点验收。另需单独核对 `PREVIEW-*` 工作区触发 164/241/179 配对工具时，Shell 的只读查询边界；预览身份不能代替真实设备结果。
+
 以上只登记实际回读范围。接收器、附件、音频其他已实现页面继续由总复查队列逐项处理，不能因为同家族已修一页就标记全部已审。
 
 本轮静态检查：`audit-receiver-pairing-current.cjs --check`、`extract-dock-pairing.cjs --check`、`validate-dock-pairing.py` 已通过；交互收据在加入当前 le/ds 和 observation 实现后刷新。Cargo 结果由父任务统一记录。

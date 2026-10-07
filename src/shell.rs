@@ -42,7 +42,6 @@ mod iot_popup;
 mod macro_page;
 mod main_pages;
 mod pairing_page;
-mod pairing_window;
 mod profile_migration;
 mod profiles_page;
 mod release_notes;
@@ -58,7 +57,7 @@ use introduction_tour::TourKind;
 enum Location {
     Main(Tab),
     Device(String),
-    Pairing,
+    Pairing(String),
     Tour(TourKind),
     Alexa,
     FirmwareUpdate,
@@ -381,7 +380,7 @@ impl AppShell {
                     cx.notify();
                 }
                 settings_page::SettingsEvent::Pairing => {
-                    this.navigate(Location::Pairing, window, cx)
+                    this.navigate(Location::Pairing("multi-device-pairing".into()), window, cx)
                 }
                 settings_page::SettingsEvent::ResetTutorials => {
                     this.tracking_intro_seen = false;
@@ -502,7 +501,7 @@ impl AppShell {
                 // Dashboard 7861 `hi`：设备盒按下时用 `productId` 与
                 // `deviceContainerId` 打开该产品的配对窗口；两者缺一就不动作。
                 pairing_page::PairingPageEvent::OpenProductWindow(device) => {
-                    this.open_product_pairing_window(device, cx)
+                    this.open_product_pairing_tab(device, window, cx)
                 }
             },
         ));
@@ -655,7 +654,7 @@ impl AppShell {
             if tab.is_some_and(Tab::is_main) {
                 this.location = Location::Main(tab.unwrap());
             } else if tab == Some(Tab::Pairing) {
-                this.location = Location::Pairing;
+                this.location = Location::Pairing("multi-device-pairing".into());
             } else {
                 let normalized = key.to_ascii_uppercase();
                 let device = this
@@ -825,7 +824,7 @@ impl AppShell {
                             .and_then(|value| value.as_str().map(str::to_owned)),
                         "deviceName": device.display_name(),
                     });
-                    this.open_product_pairing_window(&payload, cx);
+                    this.open_product_pairing_tab(&payload, window, cx);
                 }
             },
         ));
@@ -891,13 +890,17 @@ impl AppShell {
     fn navigate(&mut self, next: Location, window: &mut Window, cx: &mut Context<Self>) {
         self.request_navigation(next, None, window, cx);
     }
-    /// 打开产品的 `displayMode=multiDevicePairing` 窗口（Dashboard 7861 `hi`）。
+    /// 打开产品的 `displayMode=multiDevicePairing` 具名宿主 Tab（Dashboard 7861 `hi`）。
     ///
     /// 原版把 `/synapse/products/<pid>/ui/index.html` 连同 `containerId`、
-    /// `displayMode` 与（非空时）`allMasters` 交给宿主的具名窗口，窗口名与策略见
-    /// [窗口契约](../docs/re/display-window-contract.md)。窗口几何由宿主决定、契约
-    /// 里没有给出，这里沿用主窗口的尺寸。
-    fn open_product_pairing_window(&mut self, device: &serde_json::Value, cx: &mut App) {
+    /// `displayMode` 与（非空时）`allMasters` 交给宿主的具名 Tab。Tab 名称见
+    /// [窗口契约](../docs/re/display-window-contract.md)。
+    fn open_product_pairing_tab(
+        &mut self,
+        device: &serde_json::Value,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let product_id = device
             .get("productId")
             .and_then(serde_json::Value::as_u64)
@@ -927,15 +930,6 @@ impl AppShell {
                 .map(str::to_string),
         };
         let name = display_window::multi_device_pairing_name(&identity);
-        let options = WindowOptions {
-            window_bounds: Some(WindowBounds::centered(size(px(1280.), px(820.)), cx)),
-            window_min_size: Some(size(px(1080.), px(720.))),
-            ..TitleBar::window_options()
-        };
-        // The source opener uses policy=3 (a host tab). Keep the separately
-        // requested second pairing window as an explicit local exception;
-        // its OS-window policy must not be presented as source equivalence.
-        let policy = display_window::WindowPolicy::Different;
         // `allMasters` 来自宿主写入的 connectedDeviceInfo 投影（Dashboard `jt`/`Et`），
         // 该投影尚未审计；没有真实记录时传 None，窗口显示 4130 页面原有的空态。
         // The source URL serializes `allMasters` and parses it again in the
@@ -946,14 +940,12 @@ impl AppShell {
                 |encoded| serde_json::from_str(encoded).ok(),
             )
         });
-        let payload = pairing_window::PairingWindowPayload { all_masters };
-        if let Err(error) =
-            display_window::open_or_focus(cx, name, policy, options, move |window, cx| {
-                cx.new(|cx| pairing_window::PairingWindow::new(window, cx, payload))
-            })
-        {
-            eprintln!("无法打开配对窗口：{error}");
+        if let Some(all_masters) = all_masters {
+            self.pairing.update(cx, |page, cx| {
+                page.apply_all_masters(all_masters, window, cx)
+            });
         }
+        self.navigate(Location::Pairing(name.to_string()), window, cx);
     }
     /// Dashboard `chromaApp` uses policy=5: a named independent Chroma window.
     pub(super) fn open_chroma_window(&mut self, cx: &mut Context<Self>) {
@@ -1120,10 +1112,10 @@ impl AppShell {
                     });
                 }
             }
-            if self.location == Location::Pairing {
+            if matches!(self.location, Location::Pairing(_)) {
                 self.pairing.update(cx, |page, cx| page.deactivate(cx));
             }
-            if next == Location::Pairing {
+            if matches!(next, Location::Pairing(_)) {
                 self.pairing
                     .update(cx, |page, cx| page.activate(window, cx));
             }
@@ -1788,7 +1780,7 @@ impl AppShell {
                 .unwrap_or_default(),
             Location::Main(Tab::Setting) => "设置".into(),
             Location::Main(_) => "RAZER SYNAPSE".into(),
-            Location::Pairing => "多设备配对".into(),
+            Location::Pairing(_) => "多设备配对".into(),
             Location::Tour(kind) => kind.title().into(),
             Location::Alexa => "Alexa".into(),
             Location::FirmwareUpdate => "固件更新".into(),
@@ -2147,8 +2139,9 @@ impl Render for AppShell {
                 .as_ref()
                 .map(|page| page.clone().into_any_element())
                 .unwrap_or_else(|| div().into_any_element()),
-            Location::Pairing => div()
-                .id("pairing-page-scroll")
+            Location::Pairing(name) => div()
+                .id(format!("pairing-page-scroll-{name}"))
+                .test_support()
                 .size_full()
                 .scrollable_both()
                 .child(self.pairing.clone())

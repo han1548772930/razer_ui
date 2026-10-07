@@ -10,7 +10,10 @@ pub(super) fn device_layout(pid: u32) -> bool {
 pub(super) enum AccessoryPage {
     Wireless(Entity<crate::features::wireless_argb::WirelessArgb>),
     Wired(Entity<crate::features::wired_argb::WiredArgbWorkspace>),
-    Aether(Entity<crate::features::aether_strip::AetherStrip>),
+    Aether {
+        strip: Entity<crate::features::aether_strip::AetherStrip>,
+        lighting: Entity<crate::features::aether_strip::AetherLightingPage>,
+    },
     Automation(Entity<crate::features::automation::Automation>),
 }
 impl AccessoryPage {
@@ -51,7 +54,12 @@ impl AccessoryPage {
                     this.capture_accessory(view.read(cx).snapshot(), cx);
                 },
             ));
-            return Some(Self::Aether(view));
+            let lighting =
+                cx.new(|cx| crate::features::aether_strip::AetherLightingPage::new(window, cx));
+            return Some(Self::Aether {
+                strip: view,
+                lighting,
+            });
         }
         if device.product_id == 3946 {
             let view =
@@ -70,7 +78,10 @@ impl AccessoryPage {
         match self {
             Self::Wireless(_) => crate::features::wireless_argb::supports_page(pid, key),
             Self::Wired(_) => crate::features::wired_argb::supports_page(pid, key),
-            Self::Aether(_) => crate::features::aether_strip::supports_page(pid, key),
+            Self::Aether { strip: _, .. } => {
+                crate::features::aether_strip::supports_page(pid, key)
+                    || (pid == 784 && key == "TAB_LIGHTING")
+            }
             Self::Automation(_) => crate::features::automation::supports_page(pid, key),
         }
     }
@@ -91,7 +102,7 @@ impl AccessoryPage {
                 });
                 view.read(cx).snapshot()
             }
-            Self::Aether(view) => {
+            Self::Aether { strip: view, .. } => {
                 view.update(cx, |view, cx| view.restore(value, window, cx));
                 view.read(cx).snapshot()
             }
@@ -105,15 +116,23 @@ impl AccessoryPage {
         match self {
             Self::Wireless(view) => view.update(cx, |view, cx| view.dismiss(window, cx)),
             Self::Wired(view) => view.update(cx, |view, cx| view.dismiss(window, cx)),
-            Self::Aether(view) => view.update(cx, |view, cx| view.dismiss(window, cx)),
+            Self::Aether { strip: view, .. } => {
+                view.update(cx, |view, cx| view.dismiss(window, cx))
+            }
             Self::Automation(view) => view.update(cx, |view, cx| view.dismiss(window, cx)),
         }
     }
-    pub(super) fn element(&self) -> AnyElement {
+    pub(super) fn element(&self, key: &str) -> AnyElement {
         match self {
             Self::Wireless(view) => view.clone().into_any_element(),
             Self::Wired(view) => view.clone().into_any_element(),
-            Self::Aether(view) => view.clone().into_any_element(),
+            Self::Aether { strip, lighting } => {
+                if key == "TAB_LIGHTING" {
+                    lighting.clone().into_any_element()
+                } else {
+                    strip.clone().into_any_element()
+                }
+            }
             Self::Automation(view) => view.clone().into_any_element(),
         }
     }

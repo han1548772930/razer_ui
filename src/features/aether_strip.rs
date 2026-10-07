@@ -1,12 +1,18 @@
 //! Current product 784's device layout and IoT card. Local edits are independent
 //! of the unavailable device transport; only the explicit preview supplies observations.
 use crate::{
+    features::Choice,
     i18n,
     model::Device,
     ui::{surface, theme::AetherStripColors as Colors},
 };
+use gpui_kit::base::Button as BaseButton;
+use gpui_kit::base::TestSupportExt as _;
 use gpui_kit::component::{
+    button::Button,
     input::{Input, InputEvent, InputState},
+    select::SelectState,
+    slider::Slider,
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -418,6 +424,195 @@ impl Render for AetherStrip {
             .children(self.modal.clone())
     }
 }
+
+pub(crate) struct AetherLightingPage {
+    quick_effects: Entity<SelectState<Vec<Choice>>>,
+    chroma_profiles: Entity<SelectState<Vec<Choice>>>,
+    /// The source Effects widget is a two tab surface.  Keep the tab choice
+    /// local while device/service state is unavailable; it must not be
+    /// represented by two simultaneously mounted panels.
+    advanced_mode: bool,
+}
+
+impl AetherLightingPage {
+    pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        Self {
+            quick_effects: cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx)),
+            chroma_profiles: cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx)),
+            advanced_mode: false,
+        }
+    }
+}
+
+impl Render for AetherLightingPage {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let offline = crate::i18n::t_or("DEVICE_OFFLINE", "Device status unavailable");
+        let unavailable = crate::i18n::t_or(
+            "AETHER_SERVICE_UNAVAILABLE",
+            "Lighting controls are unavailable until device status is observed.",
+        );
+        let unknown = crate::i18n::t_or("UNKNOWN", "Unknown");
+        let quick = crate::i18n::t_or("QUICK_EFFECTS", "Quick Effects");
+        let advanced = crate::i18n::t_or("ADVANCED_EFFECTS", "Advanced Effects");
+        let synapse_override = surface::SynapseSwitch::new("aether-lighting-override-switch")
+            .checked(false)
+            .disabled(true)
+            .accessibility_label(crate::i18n::t_or("DYNAMIC_LIGHTING", "Synapse Override"));
+        let brightness_switch = surface::SynapseSwitch::new("aether-lighting-brightness-switch")
+            .checked(false)
+            .disabled(true)
+            .accessibility_label(crate::i18n::t_or("BRIGHTNESS_HEADER", "Brightness"));
+        div().id("aether-lighting-page").test_support().child(
+            surface::page_columns()
+                .child(surface::page_column(
+                    v_flex()
+                        .gap_5()
+                        .child(
+                            surface::panel_with_title_switch(
+                                crate::i18n::t_or("DYNAMIC_LIGHTING", "Synapse Override"),
+                                synapse_override,
+                                div(),
+                                cx,
+                            )
+                            .id("aether-lighting-override")
+                            .test_support()
+                            .child(
+                                h_flex()
+                                    .items_center()
+                                    .gap_3()
+                                    .child(offline.clone())
+                                    .child(surface::note(unavailable.clone(), cx)),
+                            ),
+                        )
+                        .child(
+                            surface::panel_with_title_switch(
+                                crate::i18n::t_or("BRIGHTNESS_HEADER", "Brightness"),
+                                brightness_switch,
+                                div(),
+                                cx,
+                            )
+                            .id("aether-lighting-brightness")
+                            .test_support()
+                            .child(
+                                h_flex()
+                                    .justify_between()
+                                    .child(crate::i18n::t_or("BRIGHTNESS", "Brightness"))
+                                    .child(unknown.clone()),
+                            )
+                            .child(
+                                div()
+                                    .id("aether-lighting-brightness-control")
+                                    .test_support()
+                                    .child(
+                                        Slider::new(&cx.new(|_| {
+                                            gpui_kit::component::slider::SliderState::new()
+                                                .min(0.)
+                                                .max(100.)
+                                                .step(1.)
+                                        }))
+                                        .disabled(true),
+                                    ),
+                            ),
+                        ),
+                ))
+                .child(surface::page_column(
+                    surface::panel(crate::i18n::t_or("EFFECTS", "Effects"), cx)
+                        .id("aether-lighting-effects")
+                        .test_support()
+                        .child(
+                            h_flex()
+                                .id("aether-lighting-effect-tabs")
+                                .test_support()
+                                .child(
+                                    BaseButton::new("aether-lighting-quick-tab")
+                                        .role(Role::Tab)
+                                        .selected(!self.advanced_mode)
+                                        .child(quick.clone())
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.advanced_mode = false;
+                                            cx.notify();
+                                        })),
+                                )
+                                .child(
+                                    BaseButton::new("aether-lighting-advanced-tab")
+                                        .role(Role::Tab)
+                                        .selected(self.advanced_mode)
+                                        .child(advanced.clone())
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.advanced_mode = true;
+                                            cx.notify();
+                                        })),
+                                ),
+                        )
+                        .child(
+                            h_flex()
+                                .items_center()
+                                .justify_between()
+                                .child(crate::i18n::t_or(
+                                    "AETHER_MODE_UNKNOWN",
+                                    "Effect mode is unknown",
+                                )),
+                        )
+                        .child(surface::note(unavailable, cx))
+                        .when(!self.advanced_mode, |effects| {
+                            effects.child(
+                                v_flex()
+                                    .id("aether-lighting-quick-effects")
+                                    .test_support()
+                                    .gap_3()
+                                    .child(crate::i18n::t_or("QUICK_EFFECTS_MSG", "Quick effect"))
+                                    .child(
+                                        surface::select(&self.quick_effects)
+                                            .id("aether-lighting-effect-selector")
+                                            .accessibility_label(quick)
+                                            .placeholder(unknown.clone())
+                                            .disabled(true),
+                                    )
+                                    .child(
+                                        Button::new("aether-lighting-sync")
+                                            .label(crate::i18n::t_or(
+                                                "APPLY_TO_ALL_CHROMA_DEVICES",
+                                                "Apply to all Chroma devices",
+                                            ))
+                                            .disabled(true),
+                                    ),
+                            )
+                        })
+                        .when(self.advanced_mode, |effects| {
+                            effects.child(
+                                v_flex()
+                                    .id("aether-lighting-advanced-effects")
+                                    .test_support()
+                                    .gap_3()
+                                    .child(crate::i18n::t_or(
+                                        "ADVANCED_EFFECTS_DETAIL",
+                                        "Chroma Studio profiles",
+                                    ))
+                                    .child(
+                                        surface::select(&self.chroma_profiles)
+                                            .id("aether-lighting-profile-selector")
+                                            .accessibility_label(advanced)
+                                            .placeholder(unknown)
+                                            .disabled(true),
+                                    )
+                                    .child(
+                                        Button::new("aether-lighting-chroma-studio")
+                                            .label(crate::i18n::t_or(
+                                                "CHROMA_STUDIO",
+                                                "Chroma Studio",
+                                            ))
+                                            .disabled(true),
+                                    ),
+                            )
+                        }),
+                )),
+        )
+    }
+}
+
+#[cfg(test)]
+#[path = "aether_strip_lighting_tests.rs"]
+mod lighting_tests;
 fn icon_button(
     id: impl Into<ElementId>,
     name: &'static str,

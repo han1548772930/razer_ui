@@ -175,11 +175,16 @@ requireFact(dashboard.snippet(22534, pairingCallback).includes('"multiDevicePair
 const shell = read('src/shell.rs');
 const tabs = read('src/shell/host_tabs.rs');
 const windowLayer = read('src/shell/display_window.rs');
-const pairingStart = shell.indexOf('fn open_product_pairing_window(');
+const pairingStart = shell.indexOf('fn open_product_pairing_tab(');
+const chromaStart = shell.indexOf('fn open_chroma_window(', pairingStart);
 const moduleStart = shell.indexOf('fn open_module_tab(');
-requireFact(pairingStart >= 0 && moduleStart > pairingStart, 'Local routing methods missing');
-const pairingLocal = shell.slice(pairingStart, moduleStart);
-requireFact(pairingLocal.includes('WindowPolicy::Different') && pairingLocal.includes('explicit local exception'), 'Local pairing second-window exception must stay explicit');
+requireFact(pairingStart >= 0 && chromaStart > pairingStart && moduleStart > chromaStart, 'Local routing methods missing');
+const pairingLocal = shell.slice(pairingStart, chromaStart);
+requireFact(pairingLocal.includes('multi_device_pairing_name(&identity)')
+  && pairingLocal.includes('self.navigate(Location::Pairing(name.to_string())')
+  && !pairingLocal.includes('WindowPolicy::Different')
+  && !pairingLocal.includes('display_window::open_or_focus'),
+  'Local pairing opener must navigate through a named host tab');
 requireFact(windowLayer.includes('policy != WindowPolicy::Same') && windowLayer.includes('policy=3 must be opened through the host tab registry'),
   'OS-window layer must reject policy 3');
 const moduleLocal = shell.slice(moduleStart, shell.indexOf('\n    fn ', moduleStart + 5));
@@ -215,7 +220,7 @@ const report = {
   local: {checked_files: ['src/shell.rs', 'src/shell/host_tabs.rs', 'src/shell/display_window.rs'],
     module_opening: 'Named host tabs through open_module_tab -> navigate; source names are preserved.',
     os_window_guard: 'display_window::open_or_focus rejects WindowPolicy::Same.',
-    pairing_exception: 'A separate pairing OS window remains because the user explicitly requested a second window. Local WindowPolicy::Different is an intentional deviation from the source sameWindow/policy=3 opener; it is not evidence that policy=3 creates OS windows.'},
+    pairing_exception: 'Product pairing follows source sameWindow/policy=3 by navigating to a named host tab. The tab name preserves the source container/product/serial identity and is reused on repeat opens.'},
   verification: 'Static Acorn AST/literal resolution plus local Rust source checks. No reference JavaScript, installers, DLLs, application, build or tests executed. --check only compares generated evidence/document bytes and never writes.',
 };
 const markdown = [
@@ -258,9 +263,8 @@ const markdown = [
   '模块入口使用 `open_module_tab -> navigate` 进入宿主页签，保留 `macro`、`armory`、',
   '`profiles`、`alexa` 和 `feedback-synapse` 等源码身份。同名再次打开由宿主页签注册表复用。',
   '`display_window::open_or_focus` 拒绝 `WindowPolicy::Same`，防止将 policy 3 误送到原生窗口创建路径。', '',
-  '**配对第二窗口是明确的本地例外。** 用户此前明确要求保留第二个配对窗口，因此本地',
-  '`open_product_pairing_window` 使用 `WindowPolicy::Different` 创建或聚焦独立窗口。源码入口',
-  '仍为 `sameWindow/policy=3`；保留第二窗口是用户要求的偏离，不能用它反推源码 policy 3 的语义。', '',
+  '**多设备配对使用具名宿主 Tab。** 本地 `open_product_pairing_tab` 保留来源的',
+  '`sameWindow/policy=3` 语义，按容器、产品与序列号生成 Tab 名称并在重复打开时复用。', '',
   '## 静态复核', '',
   '生成：`node tools/audit-host-window-policy.cjs`。只读校验：',
   '`node tools/audit-host-window-policy.cjs --check`。校验模式只解析并比较证据与文档，不写文件。',
@@ -273,7 +277,7 @@ const outputs = [
 ];
 if (process.argv.includes('--check')) {
   for (const [file, expected] of outputs) requireFact(read(file) === expected, `Stale generated file: ${file}`);
-  console.log('host window policy audit: verified current AST chain, native routes and pairing exception; no files written');
+  console.log('host window policy audit: verified current AST chain, native routes and pairing tabs; no files written');
 } else {
   for (const [file, text] of outputs) fs.writeFileSync(path.join(root, file), text);
   console.log('host window policy audit: generated current evidence and audit');

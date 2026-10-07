@@ -227,3 +227,9 @@ CSS 决定，基础规则是 `.device--badge{…position:absolute;visibility:hid
 `[tooltip]` 伪元素，且**没有** identify/refresh 的专用覆盖规则，所以走全局
 `[tooltip]:before{…right:0;text-align:left;top:calc(100% + 5px);white-space:nowrap;width:auto;
 `z-index:100}`；本地改为 `Kind::Badge{anchor: TipAnchor::Right, gap: 5}`（与该皮肤同一套测量）。
+
+## 2026-10-07 TAB_LIGHTING preview parity
+
+The current source renderer at `main.3094caa4.js` offset `4601197` composes three source widgets: the Synapse Override widget (`kd`, title switch and explanatory body), Brightness (`Wd`, title switch and a 0�C100 slider), and Quick Effects (`Bd`, Quick/Advanced mode surface with effect selector/sync row or Chroma Studio profile selector). The local `AetherLightingPage` now keeps those widgets in the registered `TAB_LIGHTING` body, with stable test-support anchors for each control and both effect surfaces.
+
+The preview has no DLL/service observation, so switches, slider, selectors, sync and Chroma Studio actions are disabled and values are shown as Unknown. It does not claim Synapse Override, power, online, lock, selected effect, profile, or effect catalog state. Remaining integration gaps are read-only device status observation, effect/profile catalogs and current selections, IoT device carousel selection, and later device mutation/write-back.

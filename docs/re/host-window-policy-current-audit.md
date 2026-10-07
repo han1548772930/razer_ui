@@ -51,9 +51,8 @@
 `profiles`、`alexa` 和 `feedback-synapse` 等源码身份。同名再次打开由宿主页签注册表复用。
 `display_window::open_or_focus` 拒绝 `WindowPolicy::Same`，防止将 policy 3 误送到原生窗口创建路径。
 
-**配对第二窗口是明确的本地例外。** 用户此前明确要求保留第二个配对窗口，因此本地
-`open_product_pairing_window` 使用 `WindowPolicy::Different` 创建或聚焦独立窗口。源码入口
-仍为 `sameWindow/policy=3`；保留第二窗口是用户要求的偏离，不能用它反推源码 policy 3 的语义。
+**多设备配对使用具名宿主 Tab。** 本地 `open_product_pairing_tab` 保留来源的
+`sameWindow/policy=3` 语义，按容器、产品与序列号生成 Tab 名称并在重复打开时复用。
 
 ## 静态复核
 

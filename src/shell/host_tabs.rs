@@ -41,6 +41,7 @@ pub(super) enum HostTab {
     ProfileMigration,
     Macro,
     Armory,
+    Pairing(String),
     Chroma,
     Profiles,
     Feedback,
@@ -55,6 +56,7 @@ impl HostTab {
             Self::ProfileMigration => Location::ProfileMigration,
             Self::Macro => Location::Macro,
             Self::Armory => Location::Armory,
+            Self::Pairing(name) => Location::Pairing(name.clone()),
             Self::Chroma => Location::Chroma,
             Self::Profiles => Location::Profiles,
             Self::Feedback => Location::Feedback,
@@ -71,6 +73,7 @@ impl HostTab {
             Self::Macro => "macro".into(),
             // 原版窗口名常量就是 `armory`。
             Self::Armory => "armory".into(),
+            Self::Pairing(name) => name.clone().into(),
             Self::Chroma => "chroma-studio".into(),
             // 模块表里这个窗口就叫 `profiles`。
             Self::Profiles => "profiles".into(),
@@ -86,6 +89,7 @@ impl HostTab {
             Location::ProfileMigration => Some(Self::ProfileMigration),
             Location::Macro => Some(Self::Macro),
             Location::Armory => Some(Self::Armory),
+            Location::Pairing(name) => Some(Self::Pairing(name.clone())),
             Location::Chroma => Some(Self::Chroma),
             Location::Profiles => Some(Self::Profiles),
             Location::Feedback => Some(Self::Feedback),
@@ -404,6 +408,7 @@ impl AppShell {
                     // 77989 starts isExchangeEnabled=false without an observed
                     // feature response, matching the current Armory page state.
                     HostTab::Armory => crate::i18n::t("ARMORY_SOURCE.DASHBOARD_WORKSHOP"),
+                    HostTab::Pairing(_) => "多设备配对".into(),
                     HostTab::Chroma => crate::i18n::t_or("CHROMA_STUDIO", "Chroma Studio"),
                     HostTab::Profiles => crate::i18n::t_or("LINKED_GAMES", "已关联的游戏"),
                     HostTab::Feedback => crate::i18n::t("FEEDBACK"),
@@ -526,10 +531,7 @@ impl AppShell {
     ) -> Stateful<Div> {
         let active = tab
             .map(|tab| tab.location() == self.location)
-            .unwrap_or(matches!(
-                self.location,
-                Location::Main(_) | Location::Pairing
-            ));
+            .unwrap_or(matches!(self.location, Location::Main(_)));
         let id: SharedString = tab.map(HostTab::id).unwrap_or_else(|| "host-main".into());
         let location = tab
             .map(HostTab::location)
@@ -545,6 +547,7 @@ impl AppShell {
             Some(HostTab::ProfileMigration) => "synapse/migration-favicon.svg",
             Some(HostTab::Macro) => "synapse/host-macro-favicon.png",
             Some(HostTab::Armory) => "synapse/host-app-armory.svg",
+            Some(HostTab::Pairing(_)) => "synapse/host-default-tab.png",
             Some(HostTab::Chroma) => "synapse/host-app-chroma.svg",
             Some(HostTab::Profiles) => "synapse/host-app-profiles.svg",
             Some(HostTab::Feedback) => "synapse/host-app-feedback.svg",

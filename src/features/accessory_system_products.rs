@@ -73,6 +73,7 @@ fn source_button(id: impl Into<ElementId>, label: String, active: bool) -> BaseB
 
 fn source_button_body(id: impl Into<ElementId>, active: bool) -> BaseButton {
     BaseButton::new(id)
+        .selected(active)
         .flex()
         .items_center()
         .w_auto()
@@ -1647,6 +1648,7 @@ impl AccessorySystemProductWorkspace {
         tags: Option<(&str, &str, &str, Option<&str>)>,
         numeric_input: bool,
         enabled: bool,
+        dim_when_disabled: bool,
         cx: &Context<Self>,
     ) -> AnyElement {
         let enabled = enabled && self.allowed(path);
@@ -1667,6 +1669,8 @@ impl AccessorySystemProductWorkspace {
         if numeric_input {
             let input = self.inputs.get(path);
             let mut field = div()
+                .id(SharedString::from(format!("accessory-input-{path}")))
+                .test_support()
                 .ml(surface::css(10.))
                 .w(surface::css(50.))
                 .h(surface::css(27.))
@@ -1695,8 +1699,9 @@ impl AccessorySystemProductWorkspace {
         }
         let mut row = v_flex()
             .id(SharedString::from(format!("accessory-slider-row-{path}")))
+            .test_support()
             .w_full()
-            .when(!enabled, |row| row.opacity(0.3))
+            .when(!enabled && dim_when_disabled, |row| row.opacity(0.3))
             .child(header);
         if let Some(slider) = self.sliders.get(path) {
             row = row.child(
@@ -1911,6 +1916,7 @@ impl AccessorySystemProductWorkspace {
                 None,
                 true,
                 true,
+                true,
                 cx,
             ),
             self.slider_row(
@@ -1920,6 +1926,7 @@ impl AccessorySystemProductWorkspace {
                 None,
                 true,
                 !gamut_locked,
+                true,
                 cx,
             ),
             self.slider_row(
@@ -1934,6 +1941,7 @@ impl AccessorySystemProductWorkspace {
                 )),
                 false,
                 true,
+                true,
                 cx,
             ),
             self.slider_row(
@@ -1943,6 +1951,7 @@ impl AccessorySystemProductWorkspace {
                 Some(gaming_gamma_tags(self.spec.product_id)),
                 false,
                 !gamut_locked,
+                true,
                 cx,
             ),
         ];
@@ -2005,7 +2014,15 @@ impl AccessorySystemProductWorkspace {
         }
         panel = panel
             .child(self.restriction_line("gaming", cx))
-            .child(surface::widget_content(content));
+            // `RTA`/`vTA` put every preset, slider and gamut control inside one
+            // `.widgetContent.featureDisabled` wrapper. Individual disabled
+            // controls alone do not reproduce the source's 30% body opacity.
+            .child(
+                surface::widget_content(content)
+                    .id("accessory-gaming-content")
+                    .test_support()
+                    .opacity(if gaming_restricted { 0.3 } else { 1. }),
+            );
         panel.into_any_element()
     }
 
@@ -2033,46 +2050,54 @@ impl AccessorySystemProductWorkspace {
         // group; those two are its only children, and the three RGB rows stay
         // flush inside `.slide-off` (a block container without a gap).
         .child(self.restriction_line("color", cx))
-        .child(surface::widget_content({
-            let mut content: Vec<AnyElement> = vec![
-                h_flex()
-                    .flex_wrap()
-                    .gap(surface::css(10.))
-                    .children(COLOR_PRESETS.map(|(id, label)| {
-                        source_button(
-                            SharedString::from(format!("accessory-color-preset-{id}")),
-                            t(label),
-                            selected == id,
-                        )
-                        .disabled(color_restricted)
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                this.change("/color/selectedPreset", json!(id), window, cx);
-                            },
-                        ))
-                    }))
-                    .into_any_element(),
-            ];
-            if selected == 11 {
-                let mut custom = v_flex();
-                for (color, label) in [("red", "RED"), ("green", "GREEN"), ("blue", "BLUE")] {
-                    custom = custom.child(self.slider_row(
-                        &format!("/color/customData/{color}"),
-                        label,
-                        None,
-                        None,
-                        true,
-                        // `STA` passes no `disabled`; the source's
-                        // `.featureDisabled` wrapper is what dims and blocks the
-                        // whole custom group.
-                        !color_restricted,
-                        cx,
-                    ));
+        .child(
+            surface::widget_content({
+                let mut content: Vec<AnyElement> = vec![
+                    h_flex()
+                        .flex_wrap()
+                        .gap(surface::css(10.))
+                        .children(COLOR_PRESETS.map(|(id, label)| {
+                            source_button(
+                                SharedString::from(format!("accessory-color-preset-{id}")),
+                                t(label),
+                                selected == id,
+                            )
+                            .disabled(color_restricted)
+                            .on_click(cx.listener(
+                                move |this, _, window, cx| {
+                                    this.change("/color/selectedPreset", json!(id), window, cx);
+                                },
+                            ))
+                        }))
+                        .into_any_element(),
+                ];
+                if selected == 11 {
+                    let mut custom = v_flex();
+                    for (color, label) in [("red", "RED"), ("green", "GREEN"), ("blue", "BLUE")] {
+                        custom = custom.child(self.slider_row(
+                            &format!("/color/customData/{color}"),
+                            label,
+                            None,
+                            None,
+                            true,
+                            // `STA` passes no `disabled`; the source's
+                            // `.featureDisabled` wrapper is what dims and blocks the
+                            // whole custom group.
+                            !color_restricted,
+                            false,
+                            cx,
+                        ));
+                    }
+                    content.push(custom.into_any_element());
                 }
-                content.push(custom.into_any_element());
-            }
-            content
-        }));
+                content
+            })
+            .id("accessory-color-content")
+            .test_support()
+            // `wAA`/`nSA` apply `.featureDisabled` to the complete widget body,
+            // including the preset group and the conditional RGB section.
+            .opacity(if color_restricted { 0.3 } else { 1. }),
+        );
         panel.into_any_element()
     }
 

@@ -287,19 +287,24 @@ impl ModuleCatalog {
                     .when_some(item.native_page, |view, page| {
                         // Opening a compiled local page is not an installer receipt.
                         view.child(
-                            module_action(
-                                SharedString::from(format!("module-open-{}", item.id)),
-                                i18n::t("TEXT_OPEN"),
-                                false,
-                                false,
-                                cx,
-                            )
-                            .ml(surface::css(30.))
-                            .on_click(cx.listener(
-                                move |_, _, _, cx| {
-                                    cx.emit(ModuleCatalogEvent::OpenModule(page));
-                                },
-                            )),
+                            div()
+                                .id(SharedString::from(format!("module-open-wrap-{}", item.id)))
+                                .test_support()
+                                .child(
+                                    module_action(
+                                        SharedString::from(format!("module-open-{}", item.id)),
+                                        i18n::t("TEXT_OPEN"),
+                                        false,
+                                        false,
+                                        cx,
+                                    )
+                                    .ml(surface::css(30.))
+                                    .on_click(cx.listener(
+                                        move |_, _, _, cx| {
+                                            cx.emit(ModuleCatalogEvent::OpenModule(page));
+                                        },
+                                    )),
+                                ),
                         )
                     }),
             )

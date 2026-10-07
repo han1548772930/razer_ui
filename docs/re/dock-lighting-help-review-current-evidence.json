@@ -175,7 +175,7 @@
   "native": [
     {
       "path": "src/features/source_help.rs",
-      "sha256": "a4b573bb354395bdde3b952f7342d55981c0cf7951513cb909e5acc0c1419226"
+      "sha256": "edf26ac241e737c3b207de7f106ab0654a84a71fd2271174449a3c9422a4643a"
     },
     {
       "path": "src/features/source_controls.rs",

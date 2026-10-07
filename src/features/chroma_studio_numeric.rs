@@ -37,16 +37,43 @@ fn html_number(raw: &str) -> f64 {
         .unwrap_or(0.)
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum NumericField {
     RippleSpeed,
     RippleWidth,
     StarlightDensity,
+    WaveSpeed,
+    WaveWidth,
+    WavePause,
+    WaveAngle,
+    WheelSpeed,
+    TidalSpeed,
+    AudioBoost,
+    AudioDecay,
 }
 impl NumericField {
+    fn id(self) -> &'static str {
+        match self {
+            Self::RippleSpeed => "ripple-speed",
+            Self::RippleWidth => "ripple-width",
+            Self::StarlightDensity => "starlight-density",
+            Self::WaveSpeed => "wave-speed",
+            Self::WaveWidth => "wave-width",
+            Self::WavePause => "wave-pause",
+            Self::WaveAngle => "wave-angle",
+            Self::WheelSpeed => "wheel-speed",
+            Self::TidalSpeed => "tidal-speed",
+            Self::AudioBoost => "audio-boost",
+            Self::AudioDecay => "audio-decay",
+        }
+    }
     pub(super) fn effect(self) -> &'static str {
         match self {
             Self::StarlightDensity => "starlight",
+            Self::WaveSpeed | Self::WaveWidth | Self::WavePause | Self::WaveAngle => "wave",
+            Self::WheelSpeed => "wheel",
+            Self::TidalSpeed => "tidal",
+            Self::AudioBoost | Self::AudioDecay => "audio",
             _ => "ripple",
         }
     }
@@ -55,6 +82,13 @@ impl NumericField {
             Self::RippleSpeed => "speed",
             Self::RippleWidth => "width",
             Self::StarlightDensity => "density",
+            Self::WaveSpeed => "speed",
+            Self::WaveWidth => "width",
+            Self::WavePause => "pause",
+            Self::WaveAngle => "angle",
+            Self::WheelSpeed | Self::TidalSpeed => "speed",
+            Self::AudioBoost => "boost",
+            Self::AudioDecay => "decay",
         }
     }
     fn title(self) -> String {
@@ -62,21 +96,37 @@ impl NumericField {
             Self::RippleSpeed => label("SPEED"),
             Self::RippleWidth => format!("{} (%)", label("WIDTH_PERCENT")),
             Self::StarlightDensity => label("DENSITY"),
+            Self::WaveSpeed => label("SPEED"),
+            Self::WaveWidth => format!("{} (%)", label("WIDTH_PERCENT")),
+            Self::WavePause => label("TEXT_PAUSE_SEC"),
+            Self::WaveAngle => label("TEXT_ANGLE"),
+            Self::WheelSpeed => label("SPEED"),
+            Self::TidalSpeed => label("SPEED"),
+            Self::AudioBoost => label("TEXT_BOOST"),
+            Self::AudioDecay => label("TEXT_DECAY"),
         }
     }
-    fn limits(self) -> (i64, i64, i64) {
+    fn limits(self) -> (f64, f64, f64) {
         // 5305 Mn/s8, jw/Ph/h1 and 6548 dV/JG, independently checked
         // against their JSX props by review-studio-reactive-ripple-starlight.cjs.
         match self {
-            Self::RippleSpeed => (1, 50, 1),
-            Self::RippleWidth => (100, 400, 100),
-            Self::StarlightDensity => (1, 10, 1),
+            Self::RippleSpeed => (1., 50., 1.),
+            Self::RippleWidth => (100., 400., 100.),
+            Self::StarlightDensity => (1., 10., 1.),
+            Self::WaveSpeed => (0., 50., 1.),
+            Self::WaveWidth => (10., 400., 1.),
+            Self::WavePause => (0., 60., 1.),
+            Self::WaveAngle => (0., 359., 1.),
+            Self::WheelSpeed => (0., 360., 1.),
+            Self::TidalSpeed => (0., 50., 1.),
+            Self::AudioBoost => (0.25, 4., 0.25),
+            Self::AudioDecay => (0.1, 2., 0.1),
         }
     }
     fn normalize(self, value: f64) -> f64 {
         let (min, max, step) = self.limits();
         // 7660:x5 clamps first, then rounds to a multiple of step from zero.
-        (value.clamp(min as f64, max as f64) / step as f64).round() * step as f64
+        (value.clamp(min, max) / step).round() * step
     }
     fn slider(self, value: f64) -> SliderState {
         let (min, max, step) = self.limits();
@@ -112,7 +162,7 @@ pub(super) struct StudioNumeric {
 }
 impl StudioNumeric {
     pub(super) fn new(field: NumericField, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let value = field.limits().0 as f64;
+        let value = field.limits().0;
         let input = cx.new(|cx| InputState::new(window, cx).mask_pattern(MaskPattern::None));
         let slider = cx.new(|_| field.slider(value));
         let subscriptions = vec![
@@ -253,15 +303,15 @@ impl StudioNumeric {
         } else {
             ((self.value / step as f64).ceil() - 1.) * step as f64
         }
-        .clamp(min as f64, max as f64);
+        .clamp(min, max);
         self.value = next;
         self.commit(window, cx);
     }
     fn press(&mut self, action: StepAction, window: &mut Window, cx: &mut Context<Self>) {
         let (min, max, _) = self.field.limits();
         if !self.enabled
-            || (action == StepAction::Increment && self.value == max as f64)
-            || (action == StepAction::Decrement && self.value == min as f64)
+            || (action == StepAction::Increment && self.value == max)
+            || (action == StepAction::Decrement && self.value == min)
         {
             return;
         }
@@ -293,7 +343,7 @@ impl StudioNumeric {
                     }
                     this.step(action, window, cx);
                     let (min, max, _) = this.field.limits();
-                    this.value > min as f64 && this.value < max as f64
+                    this.value > min && this.value < max
                 });
                 if !matches!(keep, Ok(true)) {
                     break;
@@ -321,14 +371,14 @@ impl StudioNumeric {
         let (min, max, _) = self.field.limits();
         let disabled = !self.enabled
             || if action == StepAction::Increment {
-                self.value == max as f64
+                self.value == max
             } else {
-                self.value == min as f64
+                self.value == min
             };
         BaseButton::new(if action == StepAction::Increment {
-            "up"
+            format!("studio-{}-increase", self.field.id())
         } else {
-            "down"
+            format!("studio-{}-decrease", self.field.id())
         })
         .accessibility_label(if action == StepAction::Increment {
             "Increase Value"
@@ -414,7 +464,8 @@ impl Render for StudioNumeric {
             .child(div().mb(surface::css(6.)).child(title.clone()))
             .child(
                 div()
-                    .id("studio-numeric-input")
+                    .id(format!("studio-{}-input", self.field.id()))
+                    .test_support()
                     .mb(surface::css(10.))
                     .w(surface::css(62.))
                     .h(surface::css(27.))

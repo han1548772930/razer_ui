@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "5319f52721651ab12f300dbcdeabc2b972bb3f8019136747080a67cd5f29190c",
+  "generator_sha256": "166a4df497df6d6c5a89519ef174ff8f6a5af9e307ce5b2d037d4f1187107ca4",
   "method": "Static text receipts for the product iframe host (180) and the Dashboard device box that opens it. No downloaded JavaScript is executed.",
   "product_root": {
     "source": ".ref/devices/180/static/js/main.ca4353ee.js",
@@ -106,9 +106,10 @@
     "window_name_function": "xc (module 84058: container → product+serial → plain name)"
   },
   "implemented": {
-    "window_layer": "src/shell/display_window.rs",
-    "window_view": "src/shell/pairing_window.rs",
-    "entry": "PairingPage 设备卡（productId + deviceContainerId 同时存在）→ AppShell::open_product_pairing_window"
+    "tab_identity": "src/shell/display_window.rs",
+    "tab_registry": "src/shell/host_tabs.rs",
+    "tab_view": "src/shell/pairing_page.rs",
+    "entry": "PairingPage 设备卡（productId + deviceContainerId 同时存在）→ AppShell::open_product_pairing_tab"
   },
   "gaps": [
     "deviceInfo / deviceName 在本地页面没有对应字段，未映射",

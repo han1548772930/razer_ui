@@ -50,3 +50,10 @@
 逐字段收据见 [机器可读证据](multi-pairing-window-current-evidence.json)。
 
 重新生成：`node tools/audit-multi-pairing-window.cjs`；校验：`node tools/audit-multi-pairing-window.cjs --check`。
+
+
+## Current Local Route
+
+Dashboard `sameWindow/policy=3` opens the product pairing page as a named host tab. The tab name follows the source container/product/serial identity and repeat opens reuse it. `allMasters` is applied only when the input contains real source data; otherwise the page keeps its empty state.
+
+The former `pairing_window.rs` implementation is not connected to the application and does not describe the current route.

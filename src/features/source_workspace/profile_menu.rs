@@ -337,6 +337,7 @@ impl SourceProductWorkspace {
                     .progress;
                 div()
                     .id("source-profile-actions")
+                    .test_support()
                     .role(Role::Menu)
                     .w(surface::css(width))
                     .h(surface::css(height + 2.))
@@ -390,6 +391,7 @@ fn confirmation_element(
     };
     v_flex()
         .id("source-profile-confirmation")
+        .test_support()
         .role(Role::Dialog)
         .aria_label(title.clone())
         .track_focus(&focus)

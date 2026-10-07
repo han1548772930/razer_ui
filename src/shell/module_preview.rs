@@ -809,6 +809,8 @@ impl Render for ModulePreview {
                 .into_any_element()
         };
         v_flex()
+            .id("module-state-preview")
+            .test_support()
             .w_full()
             .gap(surface::css(16.))
             .child(

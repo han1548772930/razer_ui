@@ -55,12 +55,12 @@ const implementations = {
   multiDevicePairing: {
     status: 'entry-wired-service-unconnected',
     local: [
-      'src/shell/display_window.rs (named window + policy flags)',
-      'src/shell/pairing_window.rs (root view)',
-      'src/shell/pairing_page.rs (embedded /synapse/multipairing/ page)',
+      'src/shell/display_window.rs (source-derived pairing tab identity)',
+      'src/shell/host_tabs.rs (named product pairing tabs)',
+      'src/shell/pairing_page.rs (host-tab page for /synapse/multipairing/)',
     ],
-    rule: 'Dashboard device box opens the named `multi-device-pairing*` window',
-    boundary: 'keep as the audited second-window exception; device services stay unconnected',
+    rule: 'Dashboard device box opens/reuses a named host tab using source container/product/serial identity',
+    boundary: 'device services stay unconnected; missing allMasters remains the original empty state',
   },
   macro: {
     status: 'entry-elsewhere-product-bodies-unreviewed',

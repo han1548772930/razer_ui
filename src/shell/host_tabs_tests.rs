@@ -43,6 +43,27 @@ fn named_modules_reuse_host_tabs_and_preserve_legacy_alexa_order(cx: &mut TestAp
     });
 }
 
+#[gpui_kit::test]
+fn pairing_products_reuse_their_named_host_tabs(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        let mut tabs = HostTabs::new(cx);
+        let first = Location::Pairing("multi-device-pairing-{A1}".into());
+        let second = Location::Pairing("multi-device-pairing-{B2}".into());
+        tabs.visit(&first, cx);
+        tabs.visit(&first, cx);
+        tabs.visit(&second, cx);
+
+        assert_eq!(
+            tabs.order(),
+            ["multi-device-pairing-{A1}", "multi-device-pairing-{B2}"]
+        );
+        assert_eq!(
+            HostTab::from_location(&first),
+            Some(HostTab::Pairing("multi-device-pairing-{A1}".into()))
+        );
+    });
+}
+
 struct ChromeFixture {
     scroll: ScrollHandle,
     blank_presses: Rc<Cell<usize>>,

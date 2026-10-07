@@ -31,6 +31,10 @@ pub(super) use gamer_room::{GamerRoomEvent, GamerRoomPage};
 #[path = "service_button_tests.rs"]
 mod button_tests;
 
+#[cfg(test)]
+#[path = "service_pages_tests.rs"]
+mod page_tests;
+
 pub(super) fn source_link(
     id: &'static str,
     label: impl Into<SharedString>,
@@ -252,10 +256,11 @@ pub(super) enum ModulePage {
 // come from its own current 6505/44442 ne/te/ee table, not this broader list.
 // No native installed state is inferred from a compiled local destination.
 // 盒名、窗口名与地址来自当前 Dashboard：模块 54420 登记具名窗口，7861 的
-// `showModules` 把盒名映射到窗口名（`focusTab(windowName)`），未安装时先打开
-// `/installer/#type=module&id=<id>&location=<path>` 再聚焦窗口。运行时盒子的顺序
-// 由宿主的 group items 决定，本地不臆造顺序。收据见 docs/re/display-window-contract.md
-// 与 docs/re/macro-app-current-audit.md。
+// `showModules` maps each box to a named window (`focusTab(windowName)`). Source
+// modules with `policy=3,tab_visible=1` are visible host tabs. Locally implemented
+// pages open their matching tab directly; only unimplemented applications retain an
+// installation state. Runtime box order comes from host group items. Evidence:
+// docs/re/display-window-contract.md and docs/re/macro-app-current-audit.md.
 const MODULES: &[Module] = &[
     Module {
         id: "alexa",

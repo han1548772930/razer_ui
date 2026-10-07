@@ -8,12 +8,14 @@ use std::{cell::Cell, rc::Rc, time::Duration};
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum GradientKind {
     Spectrum,
+    Audio,
     Default,
 }
 impl GradientKind {
     fn definition(self) -> &'static GradientDefinition {
         &source().gradients[match self {
             Self::Spectrum => "spectrum",
+            Self::Audio => "audio",
             Self::Default => "default",
         }]
     }

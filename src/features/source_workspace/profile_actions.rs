@@ -281,17 +281,19 @@ impl SourceProductWorkspace {
         }
         match confirmation.action {
             ProfileAction::Delete if self.device.profiles.len() > 1 => {
-                self.device
-                    .profiles
-                    .retain(|profile| profile.id != confirmation.id);
-                self.device.active_profile = self.device.profiles[0].id.clone();
+                if let Err(error) = self.change_profile_collection(
+                    super::super::product_workspace::ProfileCollectionAction::Delete(
+                        confirmation.id,
+                    ),
+                    window,
+                    cx,
+                ) {
+                    self.profile_confirmation = None;
+                    window.push_notification(error, cx);
+                }
             }
             _ => return,
         }
-        self.dismiss_profile_dialog(window, cx);
-        self.refresh_profile_choices(window, cx);
-        self.restore_active(window, cx);
-        cx.emit(WorkspaceEvent::Changed);
         cx.notify();
     }
 }

@@ -171,6 +171,11 @@ impl MacroPage {
                             );
                             crate::ui::surface::track_pointer(BaseButton::new(id), &pointer, window)
                                 .min_w(css(100.))
+                                .accessibility_label(i18n::t(if save {
+                                    "SAVE"
+                                } else {
+                                    "DONT_SAVE"
+                                }))
                                 .h(css(27.))
                                 .mr(css(10.))
                                 .px(css(10.))

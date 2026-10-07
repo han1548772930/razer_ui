@@ -459,6 +459,9 @@ impl SourceProfileTransfer {
             }
         });
         div()
+            .id("source-transfer-status")
+            .test_support()
+            .role(Role::Status)
             .flex_1()
             .min_h_0()
             .px(surface::css(50.))
@@ -552,6 +555,7 @@ impl Render for SourceProfileTransfer {
             window.viewport_size().width / 2. - surface::css(300.).to_pixels(window.rem_size());
         let panel = v_flex()
             .id("source-profile-transfer")
+            .test_support()
             .w(surface::css(geometry.width))
             .h(surface::css(geometry.height))
             .border_1()

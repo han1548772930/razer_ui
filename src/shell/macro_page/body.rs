@@ -47,6 +47,7 @@ impl MacroPage {
                     .child(
                         v_flex()
                             .id("macro-editor")
+                            .test_support()
                             .w_full()
                             .when(empty, |v| v.opacity(0.7))
                             .child(self.action_bar(window, cx))
@@ -729,6 +730,11 @@ impl MacroPage {
                         .child(
                             BaseButton::new("macro-save")
                                 .disabled(!self.can_save_with_pending(cx))
+                                .accessibility_label(if self.can_save_with_pending(cx) {
+                                    tr("TEXT_LAUNCH_SAVE")
+                                } else {
+                                    "No unsaved local macro changes".into()
+                                })
                                 .opacity(if self.can_save_with_pending(cx) {
                                     1.
                                 } else {

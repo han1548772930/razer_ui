@@ -1544,6 +1544,7 @@ impl Render for MouseProductWorkspace {
         };
         div()
             .id("mouse-product-body")
+            .test_support()
             .size_full()
             .min_h_0()
             .overflow_y_scroll()

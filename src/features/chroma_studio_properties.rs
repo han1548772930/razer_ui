@@ -12,10 +12,21 @@ use gpui_kit::component::slider::SliderState;
 mod numeric;
 use numeric::{NumericChanged, NumericField, StudioNumeric};
 
+pub(super) struct StudioPropertiesChanged {
+    pub(super) layer_id: u64,
+    pub(super) params: Value,
+    pub(super) params2: Value,
+    pub(super) paint_params: Value,
+}
+impl EventEmitter<StudioPropertiesChanged> for StudioProperties {}
+
 pub(super) struct StudioProperties {
     current: Option<(u64, String)>,
     tool: String,
     params: Value,
+    params2: Value,
+    layer_params: Value,
+    paint_params: Value,
     blur: Entity<SliderState>,
     duration: Entity<StudioDuration>,
     color: Option<Entity<StudioColor>>,
@@ -24,7 +35,7 @@ pub(super) struct StudioProperties {
     gradient_subscription: Option<Subscription>,
     colors: Option<[Entity<StudioColorDropdown>; 2]>,
     playback: Option<Entity<StudioPlayback>>,
-    numeric: Option<[Entity<StudioNumeric>; 3]>,
+    numeric: Option<[Entity<StudioNumeric>; 11]>,
     control_revision: u64,
     editor_subscriptions: Vec<Subscription>,
     window: Option<AnyWindowHandle>,
@@ -56,19 +67,27 @@ impl StudioProperties {
                     .copied();
                 if let Some(value) = value {
                     this.params["duration"] = Value::from(value);
+                    this.publish(cx);
                     cx.notify();
                 }
             }),
             cx.observe(owner, |this, owner, cx| {
                 let owner = owner.read(cx);
-                let current = owner
+                let layer = owner
                     .document
                     .layers
                     .iter()
                     .find(|layer| Some(layer.id) == owner.current && !layer.group)
-                    .map(|layer| (layer.id, layer.name.clone()));
+                    .map(|layer| {
+                        (
+                            (layer.id, layer.name.clone()),
+                            layer.params.clone(),
+                            layer.params2.clone(),
+                            layer.paint_params.clone(),
+                        )
+                    });
                 let tool = owner.tool.clone();
-                this.sync(current, tool, cx);
+                this.sync(layer, tool, cx);
             }),
             cx.observe(&blur, |this, slider, cx| {
                 // Base's accessibility actions use set_value without emitting
@@ -85,6 +104,7 @@ impl StudioProperties {
                         .is_some_and(|(_, name)| name == "ambient")
                 {
                     this.params["blur"] = Value::from(value as u32);
+                    this.publish(cx);
                     cx.notify();
                 } else {
                     // The base accessibility callback is available even when
@@ -100,6 +120,9 @@ impl StudioProperties {
             current: None,
             tool: "select".into(),
             params: serde_json::json!({}),
+            params2: serde_json::json!({}),
+            layer_params: serde_json::json!({}),
+            paint_params: serde_json::json!({}),
             blur,
             duration,
             color: None,
@@ -126,6 +149,23 @@ impl StudioProperties {
 
     fn enabled(&self) -> bool {
         self.current.is_some() && matches!(self.tool.as_str(), "pen" | "bucket")
+    }
+
+    fn publish(&mut self, cx: &mut Context<Self>) {
+        let Some((layer_id, _)) = self.current else {
+            return;
+        };
+        if self.enabled() {
+            self.paint_params = self.params.clone();
+        } else {
+            self.layer_params = self.params.clone();
+        }
+        cx.emit(StudioPropertiesChanged {
+            layer_id,
+            params: self.layer_params.clone(),
+            params2: self.params2.clone(),
+            paint_params: self.paint_params.clone(),
+        });
     }
 
     fn color_value(&self) -> Option<u32> {
@@ -195,6 +235,7 @@ impl StudioProperties {
                 } else if let Some(params) = this.params.as_object_mut() {
                     params.remove("color");
                 }
+                this.publish(cx);
                 cx.notify();
             }
         }));
@@ -227,6 +268,7 @@ impl StudioProperties {
                 if this.gradient_enabled() {
                     this.params["colorStops"] = event.stops.clone();
                     this.params["colorStopsCustom"] = event.custom.into();
+                    this.publish(cx);
                     cx.notify();
                 }
             },
@@ -245,16 +287,16 @@ impl StudioProperties {
                         .map(|(_, name)| name.as_str())
                         .unwrap_or("");
                     if !this.enabled()
-                        || !matches!(name, "breathing" | "fire" | "reactive")
+                        || !matches!(name, "breathing" | "fire" | "reactive" | "tidal")
                         || (name == "reactive" && index != 0)
-                        || (matches!(name, "breathing" | "reactive")
+                        || (matches!(name, "breathing" | "reactive" | "tidal")
                             && this.params["randomColor"] == true)
                     {
                         return;
                     }
                     let field = if index == 0 { "color" } else { "color2" };
                     // 2777 intentionally maps black (0) as well as undefined to FU.
-                    let value = if name == "breathing" {
+                    let value = if matches!(name, "breathing" | "tidal") {
                         Some(
                             event
                                 .0
@@ -270,6 +312,7 @@ impl StudioProperties {
                         params.remove(field);
                     }
                     this.refresh_pairs(true, cx);
+                    this.publish(cx);
                     cx.notify();
                 },
             ));
@@ -280,16 +323,19 @@ impl StudioProperties {
             &playback,
             |this, _, event: &PlaybackChanged, cx| {
                 if this.enabled()
-                    && this
-                        .current
-                        .as_ref()
-                        .is_some_and(|(_, name)| matches!(name.as_str(), "breathing" | "ripple"))
+                    && this.current.as_ref().is_some_and(|(_, name)| {
+                        matches!(
+                            name.as_str(),
+                            "breathing" | "ripple" | "wave" | "wheel" | "tidal"
+                        )
+                    })
                 {
                     if let (Some(params), Some(patch)) =
                         (this.params.as_object_mut(), event.0.as_object())
                     {
                         params.extend(patch.clone());
                     }
+                    this.publish(cx);
                     cx.notify();
                 }
             },
@@ -299,6 +345,14 @@ impl StudioProperties {
             NumericField::RippleSpeed,
             NumericField::RippleWidth,
             NumericField::StarlightDensity,
+            NumericField::WaveSpeed,
+            NumericField::WaveWidth,
+            NumericField::WavePause,
+            NumericField::WaveAngle,
+            NumericField::WheelSpeed,
+            NumericField::TidalSpeed,
+            NumericField::AudioBoost,
+            NumericField::AudioDecay,
         ]
         .map(|field| cx.new(|cx| StudioNumeric::new(field, window, cx)));
         for editor in &numeric {
@@ -315,6 +369,7 @@ impl StudioProperties {
                         let value = Value::from(event.value);
                         if this.params[event.field.field()] != value {
                             this.params[event.field.field()] = value;
+                            this.publish(cx);
                             cx.notify();
                         }
                     }
@@ -338,9 +393,11 @@ impl StudioProperties {
             .as_ref()
             .map(|(_, name)| name.as_str())
             .unwrap_or("");
-        let hidden = matches!(name, "breathing" | "reactive") && self.params["randomColor"] == true;
-        let enabled =
-            self.enabled() && matches!(name, "breathing" | "fire" | "reactive") && !hidden;
+        let hidden = matches!(name, "breathing" | "reactive" | "tidal")
+            && self.params["randomColor"] == true;
+        let enabled = self.enabled()
+            && matches!(name, "breathing" | "fire" | "reactive" | "tidal")
+            && !hidden;
         let reactive = name == "reactive";
         let effect = name.to_owned();
         let values = ["color", "color2"].map(|field| {
@@ -379,10 +436,12 @@ impl StudioProperties {
             .map(|(_, name)| name.clone())
             .unwrap_or_default();
         let enabled = self.enabled();
-        let mounted = self
-            .current
-            .as_ref()
-            .is_some_and(|(_, name)| matches!(name.as_str(), "breathing" | "ripple"));
+        let mounted = self.current.as_ref().is_some_and(|(_, name)| {
+            matches!(
+                name.as_str(),
+                "breathing" | "ripple" | "wave" | "wheel" | "tidal"
+            )
+        });
         cx.defer(move |cx| {
             let _ = handle.update(cx, |_, window, cx| {
                 playback.update(cx, |playback, cx| {
@@ -450,6 +509,12 @@ impl StudioProperties {
             .is_some_and(|(_, name)| name == "spectrum")
         {
             GradientKind::Spectrum
+        } else if self
+            .current
+            .as_ref()
+            .is_some_and(|(_, name)| name == "audio")
+        {
+            GradientKind::Audio
         } else {
             GradientKind::Default
         }
@@ -466,7 +531,10 @@ impl StudioProperties {
         self.enabled()
             && !self.gradient_hidden()
             && self.current.as_ref().is_some_and(|(_, name)| {
-                matches!(name.as_str(), "spectrum" | "ripple" | "starlight")
+                matches!(
+                    name.as_str(),
+                    "spectrum" | "ripple" | "starlight" | "audio" | "wave" | "wheel"
+                )
             })
     }
 
@@ -488,11 +556,22 @@ impl StudioProperties {
                     NumericField::RippleSpeed,
                     NumericField::RippleWidth,
                     NumericField::StarlightDensity,
+                    NumericField::WaveSpeed,
+                    NumericField::WaveWidth,
+                    NumericField::WavePause,
+                    NumericField::WaveAngle,
+                    NumericField::WheelSpeed,
+                    NumericField::TidalSpeed,
+                    NumericField::AudioBoost,
+                    NumericField::AudioDecay,
                 ]) {
                     editor.update(cx, |editor, cx| {
+                        let active = enabled
+                            && effect == field.effect()
+                            && !(field == NumericField::AudioBoost && params["autoBoost"] == true);
                         editor.configure(
                             params[field.field()].as_f64().unwrap_or(0.),
-                            enabled && effect == field.effect(),
+                            active,
                             revision,
                             window,
                             cx,
@@ -526,11 +605,29 @@ impl StudioProperties {
             self.refresh_color(true, cx);
             self.refresh_duration(cx);
             self.refresh_numeric(cx);
+            self.publish(cx);
             cx.notify();
         }
     }
 
-    fn sync(&mut self, current: Option<(u64, String)>, tool: String, cx: &mut Context<Self>) {
+    fn sync(
+        &mut self,
+        layer: Option<((u64, String), Value, Value, Value)>,
+        tool: String,
+        cx: &mut Context<Self>,
+    ) {
+        let (current, params, params2, paint_params) = layer
+            .map(|(current, params, params2, paint_params)| {
+                (Some(current), params, params2, paint_params)
+            })
+            .unwrap_or_else(|| {
+                (
+                    None,
+                    serde_json::json!({}),
+                    serde_json::json!({}),
+                    serde_json::json!({}),
+                )
+            });
         let selection_changed = current != self.current;
         let tool_changed = tool != self.tool;
         if !selection_changed && !tool_changed {
@@ -538,40 +635,23 @@ impl StudioProperties {
         }
         // 9870:d keeps pen↔bucket values; transitions involving select/move
         // merge defaults (1638:j zB), whereas 9286:C replaces on layer change.
-        let reset = selection_changed
-            || (tool_changed
-                && (matches!(self.tool.as_str(), "select" | "move")
-                    || matches!(tool.as_str(), "select" | "move")));
         self.current = current;
         self.tool = tool;
+        self.layer_params = params;
+        self.params2 = params2;
+        self.paint_params = paint_params;
+        self.params = if self.enabled() {
+            self.paint_params.clone()
+        } else {
+            self.layer_params.clone()
+        };
         self.control_revision = self.control_revision.wrapping_add(1);
-        if reset {
-            let defaults = self
-                .current
-                .as_ref()
-                .and_then(|(_, name)| source().effects.iter().find(|effect| &effect.name == name))
-                .map(|effect| {
-                    if matches!(self.tool.as_str(), "pen" | "bucket") {
-                        effect.paint_params.clone()
-                    } else {
-                        effect.params.clone()
-                    }
-                })
-                .unwrap_or_else(|| serde_json::json!({}));
-            if selection_changed {
-                self.params = defaults;
-            } else if let (Some(params), Some(defaults)) =
-                (self.params.as_object_mut(), defaults.as_object())
-            {
-                params.extend(defaults.clone());
-            }
-            let blur = self.params["blur"].as_f64().unwrap_or(5.) as f32;
-            self.blur.update(cx, |slider, cx| {
-                *slider = Self::blur_state(blur);
-                cx.notify();
-            });
-        }
-        self.refresh_color(reset, cx);
+        let blur = self.params["blur"].as_f64().unwrap_or(5.) as f32;
+        self.blur.update(cx, |slider, cx| {
+            *slider = Self::blur_state(blur);
+            cx.notify();
+        });
+        self.refresh_color(true, cx);
         self.refresh_duration(cx);
         self.refresh_numeric(cx);
         cx.notify();
@@ -612,6 +692,69 @@ impl StudioProperties {
                     .child(icon("tooltip_questionmark", 14.))
                     .into_any_element()
             })
+            .into_any_element()
+    }
+
+    fn direction(&self, id: &'static str, tidal: bool, cx: &mut Context<Self>) -> AnyElement {
+        let counterclockwise = self.params2["counterclockwise"] == true;
+        let enabled = self.enabled();
+        let owner = cx.weak_entity();
+        let clockwise_label = if tidal { "Outward" } else { "Clockwise" };
+        let counterclockwise_label = if tidal { "Inward" } else { "Counterclockwise" };
+        let option = |suffix: &'static str, text: &'static str, selected: bool, value: bool| {
+            let owner = owner.clone();
+            button((ElementId::from(id), suffix), "TEXT_DIRECTION")
+                .accessibility_label(text)
+                .disabled(!enabled)
+                .min_w(surface::css(52.))
+                .h(surface::css(40.))
+                .px(surface::css(8.))
+                .border_1()
+                .border_color(if selected {
+                    Colors::selected()
+                } else {
+                    Colors::border()
+                })
+                .bg(if selected {
+                    Colors::selected()
+                } else {
+                    Colors::panel()
+                })
+                .child(text)
+                .on_click(move |_, _, cx| {
+                    let _ = owner.update(cx, |this, cx| {
+                        if this.enabled()
+                            && this.params2["counterclockwise"] != Value::from(value)
+                            && this.current.as_ref().is_some_and(|(_, name)| {
+                                matches!(name.as_str(), "wheel" | "tidal")
+                                    && (tidal == (name == "tidal"))
+                            })
+                        {
+                            this.params2["counterclockwise"] = Value::from(value);
+                            this.publish(cx);
+                            cx.notify();
+                        }
+                    });
+                })
+        };
+        div()
+            .id((ElementId::from(id), "direction"))
+            .test_support()
+            .flex()
+            .items_center()
+            .gap(surface::css(6.))
+            .child(option(
+                "clockwise",
+                clockwise_label,
+                !counterclockwise,
+                false,
+            ))
+            .child(option(
+                "counterclockwise",
+                counterclockwise_label,
+                counterclockwise,
+                true,
+            ))
             .into_any_element()
     }
 
@@ -676,6 +819,7 @@ impl StudioProperties {
                             this.params["randomColor"] =
                                 (state == gpui_kit::base::CheckboxState::Checked).into();
                             this.refresh_pairs(false, cx);
+                            this.publish(cx);
                             cx.notify();
                         }
                     });
@@ -726,6 +870,7 @@ impl StudioProperties {
                     this.params["randomColor"] =
                         (state == gpui_kit::base::CheckboxState::Checked).into();
                     this.refresh_pairs(false, cx);
+                    this.publish(cx);
                     cx.notify();
                 }
             });
@@ -770,6 +915,167 @@ impl StudioProperties {
             .into_any_element()
     }
 
+    fn wave(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let owner = cx.weak_entity();
+        let split = super::studio_checkbox::checkbox(
+            "studio-wave-split",
+            self.params["split"] == true,
+            self.enabled(),
+            label("TEXT_SPLIT"),
+            window,
+            cx,
+        )
+        .on_change(move |state, _, _, cx| {
+            let _ = owner.update(cx, |this, cx| {
+                if this.enabled() {
+                    this.params["split"] = (state == gpui_kit::base::CheckboxState::Checked).into();
+                    this.publish(cx);
+                    cx.notify();
+                }
+            });
+        });
+        div()
+            .id("studio-wave-properties")
+            .test_support()
+            .flex()
+            .flex_col()
+            .child(self.subtitle("COLOR", "TEXT_WAVE_COLOR"))
+            .child(section().children(self.gradient.clone()))
+            .child(self.subtitle("PROPERTIES", "TEXT_WAVE_PROPERTIES"))
+            .child(
+                section()
+                    .children(self.numeric.as_ref().map(|editors| editors[3].clone()))
+                    .child(
+                        div()
+                            .mt(surface::css(10.))
+                            .children(self.numeric.as_ref().map(|editors| editors[4].clone())),
+                    )
+                    .child(
+                        div()
+                            .mt(surface::css(10.))
+                            .children(self.numeric.as_ref().map(|editors| editors[5].clone())),
+                    )
+                    .child(
+                        div()
+                            .mt(surface::css(10.))
+                            .children(self.numeric.as_ref().map(|editors| editors[6].clone())),
+                    )
+                    .child(div().mt(surface::css(10.)).child(split)),
+            )
+            .child(self.subtitle("PLAYBACK_TITLE", "TEXT_PLAYBACK"))
+            .child(section().children(self.playback.clone()))
+            .into_any_element()
+    }
+
+    fn wheel(&self, cx: &mut Context<Self>) -> AnyElement {
+        let direction = self.direction("studio-wheel-direction", false, cx);
+        div()
+            .id("studio-wheel-properties")
+            .test_support()
+            .flex()
+            .flex_col()
+            .child(self.subtitle("COLOR", "TEXT_WHEEL_COLOR"))
+            .child(section().children(self.gradient.clone()))
+            .child(self.subtitle("PROPERTIES", "TEXT_WHEEL_PROPERTIES"))
+            .child(
+                section()
+                    .children(self.numeric.as_ref().map(|editors| editors[7].clone()))
+                    .child(div().mt(surface::css(10.)).child(direction)),
+            )
+            .child(self.subtitle("PLAYBACK_TITLE", "TEXT_PLAYBACK"))
+            .child(section().children(self.playback.clone()))
+            .into_any_element()
+    }
+
+    fn tidal(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let owner = cx.weak_entity();
+        let random = super::studio_checkbox::checkbox(
+            "studio-tidal-random",
+            self.params["randomColor"] == true,
+            self.enabled(),
+            label("RANDOM"),
+            window,
+            cx,
+        )
+        .on_change(move |state, _, _, cx| {
+            let _ = owner.update(cx, |this, cx| {
+                if this.enabled() {
+                    this.params["randomColor"] =
+                        (state == gpui_kit::base::CheckboxState::Checked).into();
+                    this.refresh_pairs(false, cx);
+                    this.publish(cx);
+                    cx.notify();
+                }
+            });
+        });
+        let direction = self.direction("studio-tidal-direction", true, cx);
+        div()
+            .id("studio-tidal-properties")
+            .test_support()
+            .flex()
+            .flex_col()
+            .child(self.subtitle("COLOR", "TEXT_WAVE_COLOR"))
+            .child(section().child({
+                let colors = self.colors.as_ref();
+                let mut row = div().flex().gap(surface::css(10.));
+                if let Some(colors) = colors {
+                    row = row.child(colors[0].clone()).child(colors[1].clone());
+                }
+                row.child(random)
+            }))
+            .child(self.subtitle("PROPERTIES", "TEXT_WHEEL_PROPERTIES"))
+            .child(
+                section()
+                    .children(self.numeric.as_ref().map(|editors| editors[8].clone()))
+                    .child(div().mt(surface::css(10.)).child(direction)),
+            )
+            .child(self.subtitle("PLAYBACK_TITLE", "TEXT_PLAYBACK"))
+            .child(section().children(self.playback.clone()))
+            .into_any_element()
+    }
+
+    fn audio(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let owner = cx.weak_entity();
+        let auto = super::studio_checkbox::checkbox(
+            "studio-audio-auto-boost",
+            self.params["autoBoost"] == true,
+            self.enabled(),
+            label("TEXT_BOOST"),
+            window,
+            cx,
+        )
+        .on_change(move |state, _, _, cx| {
+            let _ = owner.update(cx, |this, cx| {
+                if this.enabled() {
+                    this.params["autoBoost"] =
+                        (state == gpui_kit::base::CheckboxState::Checked).into();
+                    this.refresh_numeric(cx);
+                    this.publish(cx);
+                    cx.notify();
+                }
+            });
+        });
+        div()
+            .id("studio-audio-properties")
+            .test_support()
+            .flex()
+            .flex_col()
+            .child(self.subtitle("COLOR", "TEXT_AUDIO_METER_COLOR"))
+            .child(section().children(self.gradient.clone()))
+            .child(self.subtitle("PROPERTIES", "TEXT_AUDIO_METER_PROPERTIES"))
+            .child(
+                section()
+                    .children(self.numeric.as_ref().map(|editors| editors[9].clone()))
+                    .child(div().mt(surface::css(10.)).child(auto))
+                    .child(
+                        div()
+                            .mt(surface::css(10.))
+                            .children(self.numeric.as_ref().map(|editors| editors[10].clone())),
+                    ),
+            )
+            .into_any_element()
+    }
+
     fn starlight(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let owner = cx.weak_entity();
         let revision = self.control_revision;
@@ -793,6 +1099,7 @@ impl StudioProperties {
                     this.params["randomColor"] =
                         (state == gpui_kit::base::CheckboxState::Checked).into();
                     this.refresh_color(false, cx);
+                    this.publish(cx);
                     cx.notify();
                 }
             });
@@ -823,6 +1130,7 @@ impl StudioProperties {
                 cx.listener(move |this, _, _, cx| {
                     if this.enabled() {
                         this.params["screen"] = Value::from(name);
+                        this.publish(cx);
                         cx.notify();
                     }
                 }),
@@ -884,6 +1192,7 @@ impl StudioProperties {
                                     owner.update(cx, |this, cx| {
                                         if this.enabled() {
                                             this.params["blur"] = Value::from(value.round() as u32);
+                                            this.publish(cx);
                                             cx.notify();
                                         }
                                     })
@@ -933,6 +1242,10 @@ impl Render for StudioProperties {
             Some("fire") => self.paired_colors(false, window, cx),
             Some("reactive") => self.reactive(window, cx),
             Some("ripple") => self.ripple(),
+            Some("wave") => self.wave(window, cx),
+            Some("wheel") => self.wheel(cx),
+            Some("tidal") => self.tidal(window, cx),
+            Some("audio") => self.audio(window, cx),
             Some("starlight") => self.starlight(window, cx),
             Some("ambient") => self.ambient(cx),
             Some("static") => div()
@@ -953,6 +1266,7 @@ impl Render for StudioProperties {
         };
         div()
             .id("studio-properties")
+            .test_support()
             .line_height(relative(1.22))
             .flex_1()
             .min_h_0()

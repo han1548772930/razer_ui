@@ -484,17 +484,24 @@ impl ModuleCatalog {
                     .child(self.service_progress(module.source_id(), &record, cx))
                     .when_some(page, |v, page| {
                         v.child(
-                            module_action(
-                                SharedString::from(format!("open-{key}")),
-                                i18n::t("TEXT_OPEN"),
-                                false,
-                                false,
-                                cx,
-                            )
-                            .ml(surface::css(30.))
-                            .on_click(cx.listener(
-                                move |_, _, _, cx| cx.emit(ModuleCatalogEvent::OpenModule(page)),
-                            )),
+                            div()
+                                .id(SharedString::from(format!("module-open-wrap-{key}")))
+                                .test_support()
+                                .child(
+                                    module_action(
+                                        SharedString::from(format!("open-{key}")),
+                                        i18n::t("TEXT_OPEN"),
+                                        false,
+                                        false,
+                                        cx,
+                                    )
+                                    .ml(surface::css(30.))
+                                    .on_click(cx.listener(
+                                        move |_, _, _, cx| {
+                                            cx.emit(ModuleCatalogEvent::OpenModule(page))
+                                        },
+                                    )),
+                                ),
                         )
                     }),
             )

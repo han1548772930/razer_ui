@@ -34,6 +34,8 @@ impl AudioProductWorkspace {
             }
         }
         v_flex()
+            .id("kraken-oled-page")
+            .test_support()
             .relative()
             .max_w(surface::css(1240.))
             .mx_auto()

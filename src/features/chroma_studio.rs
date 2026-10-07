@@ -111,9 +111,14 @@ struct Layer {
     title: String,
     value: u32,
     params: Value,
+    #[serde(default = "studio_empty_params")]
+    params2: Value,
     paint_params: Value,
     visible: bool,
     group: bool,
+}
+fn studio_empty_params() -> Value {
+    serde_json::json!({})
 }
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -161,11 +166,13 @@ impl ChromaStudioSnapshot {
                     layer.value == effect.value,
                     "Studio effect identity mismatch"
                 );
-                // Until a property editor is ported, only audited defaults can
-                // be produced by this version; reject unhandled state intact.
                 anyhow::ensure!(
-                    layer.params == effect.params && layer.paint_params == effect.paint_params,
-                    "Unsupported Studio effect parameters"
+                    layer.params.is_object() && layer.paint_params.is_object(),
+                    "Studio effect parameters must be objects"
+                );
+                anyhow::ensure!(
+                    layer.params2.is_object(),
+                    "Studio effect params2 must be an object"
                 );
             }
         }
@@ -193,6 +200,7 @@ pub(crate) struct ChromaStudio {
     rename_subscription: Option<Subscription>,
     focus: FocusHandle,
     properties: Entity<studio_properties::StudioProperties>,
+    property_subscription: Subscription,
 }
 impl EventEmitter<ChromaStudioEvent> for ChromaStudio {}
 impl ChromaStudio {
@@ -209,6 +217,37 @@ impl ChromaStudio {
     pub(crate) fn new(cx: &mut Context<Self>) -> Self {
         let owner = cx.entity();
         let properties = cx.new(|cx| studio_properties::StudioProperties::new(&owner, cx));
+        let property_subscription = cx.subscribe(
+            &properties,
+            |this, _, event: &studio_properties::StudioPropertiesChanged, cx| {
+                let Some(layer) = this
+                    .document
+                    .layers
+                    .iter()
+                    .find(|layer| layer.id == event.layer_id && !layer.group)
+                else {
+                    return;
+                };
+                if layer.params == event.params
+                    && layer.params2 == event.params2
+                    && layer.paint_params == event.paint_params
+                {
+                    return;
+                }
+                this.checkpoint();
+                if let Some(layer) = this
+                    .document
+                    .layers
+                    .iter_mut()
+                    .find(|layer| layer.id == event.layer_id)
+                {
+                    layer.params = event.params.clone();
+                    layer.params2 = event.params2.clone();
+                    layer.paint_params = event.paint_params.clone();
+                }
+                cx.notify();
+            },
+        );
         Self {
             document: Document::default(),
             saved: Document::default(),
@@ -226,6 +265,7 @@ impl ChromaStudio {
             rename_subscription: None,
             focus: cx.focus_handle(),
             properties,
+            property_subscription,
         }
     }
     pub(crate) fn restore(&mut self, snapshot: ChromaStudioSnapshot, cx: &mut Context<Self>) {
@@ -278,6 +318,11 @@ impl ChromaStudio {
                 title: effect.label.clone(),
                 value: effect.value,
                 params: effect.params.clone(),
+                params2: if matches!(effect.name.as_str(), "wheel" | "tidal") {
+                    serde_json::json!({"counterclockwise": false})
+                } else {
+                    serde_json::json!({})
+                },
                 paint_params: effect.paint_params.clone(),
                 visible: true,
                 group: false,
@@ -299,6 +344,7 @@ impl ChromaStudio {
                 title,
                 value: 0,
                 params: Value::Null,
+                params2: Value::Null,
                 paint_params: Value::Null,
                 visible: true,
                 group: true,
@@ -715,6 +761,8 @@ impl ChromaStudio {
             );
         }
         div()
+            .id("studio-layer-panel")
+            .test_support()
             .flex()
             .flex_col()
             .w(surface::css(250.))
@@ -923,6 +971,8 @@ impl ChromaStudio {
             )
             .child(zoom);
         div()
+            .id("studio-editor")
+            .test_support()
             .flex()
             .flex_col()
             .flex_1()
@@ -934,6 +984,8 @@ impl ChromaStudio {
             // vt renders no device or LED without an actual enumerated item.
             .child(
                 div()
+                    .id("studio-canvas")
+                    .test_support()
                     .flex_1()
                     .min_h_0()
                     .bg(Colors::canvas())
@@ -962,6 +1014,8 @@ impl ChromaStudio {
             })
             .unwrap_or_default();
         div()
+            .id("studio-inspector")
+            .test_support()
             .flex()
             .flex_col()
             .w(surface::css(250.))
@@ -984,6 +1038,7 @@ impl ChromaStudio {
                     .child(div().flex_1().child(title))
                     .child(
                         button("studio-reset-properties", "RESET")
+                            .accessibility_label(label("RESET"))
                             .size(surface::css(20.))
                             .mt(surface::css(-3.))
                             .hover(|style| style.bg(Colors::panel()).text_color(Colors::selected()))
@@ -1031,6 +1086,7 @@ impl Render for ChromaStudio {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .id("chroma-studio-root")
+            .test_support()
             .track_focus(&self.focus)
             .size_full()
             .min_w_0()

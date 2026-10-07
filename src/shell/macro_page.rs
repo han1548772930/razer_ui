@@ -912,6 +912,15 @@ impl Render for MacroPage {
                 }
             }))
             .child(self.navigation(window, cx))
+            .when(self.transfer_busy, |root| {
+                root.child(
+                    div()
+                        .id("macro-transfer-status")
+                        .test_support()
+                        .role(Role::Status)
+                        .aria_label("Macro file transfer in progress"),
+                )
+            })
             .child(
                 div()
                     .id("macro-body-scroll")

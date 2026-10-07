@@ -1001,10 +1001,18 @@ impl Render for AudioProductWorkspace {
                 return demo.clone().into_any_element();
             }
         }
-        super::product_surface::body()
-            .child(self.page_body(&self.page, window, cx))
-            .children(self.oled_home_dialog())
-            .children(self.mixer_dialog(window, cx))
+        div()
+            .id(SharedString::from(format!(
+                "audio-product-page-{}-{}",
+                self.spec.product_id, self.page
+            )))
+            .test_support()
+            .child(
+                super::product_surface::body()
+                    .child(self.page_body(&self.page, window, cx))
+                    .children(self.oled_home_dialog())
+                    .children(self.mixer_dialog(window, cx)),
+            )
             .into_any_element()
     }
 }

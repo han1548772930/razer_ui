@@ -6,6 +6,7 @@ use crate::{
     product::{self, ProductPage, ProductPageId, ProductPageRole},
     ui::{scroll::SourceScrollable as _, surface},
 };
+use gpui_kit::base::TestSupportExt as _;
 use gpui_kit::component::{
     input::{InputEvent, InputState},
     list::ListState,
@@ -408,6 +409,11 @@ impl SourceProductWorkspace {
     ) -> Result<String, String> {
         let active = self.device.active_profile.clone();
         if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
+            && active_profile_settings_dirty(&self.device, &self.saved)
+        {
+            return Err("请先保存或取消当前配置的本地设置，再删除活动配置文件。".into());
+        }
+        if matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
             && let FamilyBody::Audio(body) = &self.body
             && body.read(cx).pod_editor_dirty(cx)
         {
@@ -443,6 +449,7 @@ impl SourceProductWorkspace {
         cx.notify();
         Ok(target)
     }
+
     pub(crate) fn keyboard_preview_page(
         &self,
     ) -> Option<Entity<crate::features::keyboard_products::KeyboardProductWorkspace>> {
@@ -455,7 +462,7 @@ impl SourceProductWorkspace {
         &self,
     ) -> Option<Entity<crate::features::aether_strip::AetherStrip>> {
         match &self.accessory {
-            Some(accessory::AccessoryPage::Aether(view)) => Some(view.clone()),
+            Some(accessory::AccessoryPage::Aether { strip: view, .. }) => Some(view.clone()),
             _ => None,
         }
     }
@@ -1348,6 +1355,26 @@ impl SourceProductWorkspace {
         }
     }
 }
+
+fn active_profile_settings_dirty(device: &Device, saved: &Device) -> bool {
+    let Some(current) = device
+        .profiles
+        .iter()
+        .find(|profile| profile.id == device.active_profile)
+    else {
+        return false;
+    };
+    match saved
+        .profiles
+        .iter()
+        .find(|profile| profile.id == device.active_profile)
+    {
+        Some(saved) => {
+            current.settings != saved.settings || current.source_settings != saved.source_settings
+        }
+        None => current.settings.is_some() || current.source_settings.is_some(),
+    }
+}
 impl Render for SourceProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let registered = product::registered(self.device.product_id);
@@ -1403,7 +1430,7 @@ impl Render for SourceProductWorkspace {
             self.current_page()
                 .is_some_and(|page| view.supports_page(self.device.product_id, page.kind().key()))
         }) {
-            view.element()
+            view.element(self.current_page().map_or("", |page| page.kind().key()))
         } else if let Some(controls) = self.supplement.as_ref().filter(|_| {
             self.current_page()
                 .is_some_and(|page| self.use_supplement_for(page.kind().key()))
@@ -1425,6 +1452,8 @@ impl Render for SourceProductWorkspace {
             }
         };
         v_flex()
+            .id("source-product-workspace")
+            .test_support()
             .size_full()
             .min_h_0()
             .child(

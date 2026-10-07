@@ -14,8 +14,8 @@ use std::cell::RefCell;
 ///
 /// 四个取值都来自 [分支审计](../docs/re/display-mode-audit.md)；
 /// The application modules live in host tabs. Product-side macro/armory roots
-/// are separate embedded modes, not an OS-window policy. Pairing retains an
-/// explicitly requested second window; `chromaApp` belongs to Chroma.
+/// are separate embedded modes, not an OS-window policy. Product pairing uses
+/// a named host tab; `chromaApp` belongs to Chroma.
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DisplayMode {
@@ -85,7 +85,7 @@ impl WindowPolicy {
     }
 }
 
-/// 多设备配对窗口名，逐字对应 Dashboard 模块 84058 的 `xc()`：
+/// 多设备配对宿主 Tab 名，逐字对应 Dashboard 模块 84058 的 `xc()`：
 /// 容器 → 产品 + 序列号 → 纯模式名。
 pub(super) fn multi_device_pairing_name(identity: &WindowIdentity) -> SharedString {
     if let Some(container) = identity
