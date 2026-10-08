@@ -76,6 +76,33 @@ def main():
         if application['route'] == '/synapse/chroma-studio/':
             application['review_evidence'] = ['docs/re/studio-properties-current.md']
             application['review_status'] = 'partial_source_review_and_native_ui'
+    # Keep explicitly authored partial findings when regenerating scope. Only
+    # identical source identities may retain a finding; this never upgrades a
+    # page's status or infers completion from a shared implementation.
+    output = ROOT / 'docs/re/ui-review-queue-2026-10-07.json'
+    if output.exists():
+        previous = read(output.relative_to(ROOT).as_posix())
+        fixes = {entry['id']: entry for entry in read('docs/re/ui-fix-registry.json')['fixes']}
+        def retain(current, old):
+            if not old or not old.get('partial_reviews'):
+                return
+            for finding in old['partial_reviews']:
+                fix = fixes[finding['fix_id']]
+                assert finding['evidence'] in fix['evidence'], finding
+                assert finding['runtime_validation'] == 'not_run', finding
+                assert finding['complete_page'] is False, finding
+            current['partial_reviews'] = old['partial_reviews']
+        def identity(page):
+            return page['product_id'], page['page_id'], page['display_mode']
+        prior_pages = {identity(page): page for page in previous['pages']}
+        for page in pages:
+            old = prior_pages.get(identity(page))
+            if old and old.get('partial_reviews'):
+                assert old['source'] == page['source'], f"Review source changed: {identity(page)}"
+                retain(page, old)
+        prior_apps = {app['route']: app for app in previous['applications']}
+        for application in applications:
+            retain(application, prior_apps.get(application['route']))
     counts = Counter(p['assigned_group'] for p in pages)
     payload = dict(schema_version=1, scope='All registered product navigation pages, independent modes and current application endpoints; per-page reviews remain separate evidence',
                    products=len(coverage['products']), primary_pages=sum(p['display_mode']=='default' for p in pages),
@@ -84,7 +111,6 @@ def main():
                    limitations=['Source SHA verification and route enumeration do not prove rendered UI or behavior.',
                                 'Dialog/control/animation subroots must be enumerated while reviewing each page.',
                                 'No application, test, downloaded JavaScript or DLL was executed.'])
-    output = ROOT / 'docs/re/ui-review-queue-2026-10-07.json'
     text = json.dumps(payload, ensure_ascii=False, indent=2) + '\n'
     if args.check:
         assert output.read_text('utf-8') == text, 'Stale full UI review queue'

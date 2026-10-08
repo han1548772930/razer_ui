@@ -289,8 +289,13 @@ impl Render for TrayPopup {
                 let _ = this.sender.try_send(Event::Dismiss);
             }))
             .w_full()
-            .h_full()
+            // Source sets min-height:100%, not height:100%. The root must
+            // grow around its header/list; the browser viewport clips it.
+            .min_h_full()
             .max_h(surface::css(700.))
+            // Current main CSS `body { overflow:hidden }` clips content to
+            // the renderer's requested viewport, including the 60px branch.
+            .overflow_hidden()
             .cursor(CursorStyle::default())
             .bg(TrayColors::surface())
             .border_1()
@@ -361,6 +366,7 @@ impl Render for TrayPopup {
                             .child(
                                 img("synapse/tray-synapse.svg")
                                     .size(surface::css(32.))
+                                    .flex_shrink_0()
                                     .opacity(icon_opacity),
                             )
                             .child(
@@ -657,9 +663,12 @@ impl crate::shell::AppShell {
 }
 
 fn menu_is_dark(_cx: &App) -> bool {
+    // The host forces Chromium Views dark. The retained HMENU is a permitted
+    // platform presentation difference: choose readable source icons for the
+    // actual native menu surface, not Windows' unrelated AppsUseLightTheme.
     #[cfg(target_os = "windows")]
     {
-        native::dark_theme()
+        native::menu_is_dark()
     }
     #[cfg(not(target_os = "windows"))]
     {

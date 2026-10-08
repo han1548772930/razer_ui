@@ -1,6 +1,6 @@
 {
   "method": "Acorn lexical resolution of mounted source components; no vendor execution",
-  "generator_sha256": "62a66f9141b7c923e0909bc012e46d83e07cbe7288de674dcf1252bdf8910de3",
+  "generator_sha256": "b54ae3e27f9d343730abb3decaff88e3d30ec963358139a32e4a3e0e0dbd9962",
   "resolver_sha256": "fb74171c7186a5cb1b3db2b2dc64bf99c259e9cccc964cd9db7aa362c3d688f8",
   "products": [
     {
@@ -1529,6 +1529,1055 @@
           ]
         }
       ]
+    }
+  ],
+  "presentation_audits": [
+    {
+      "product_id": 1392,
+      "presentation": {
+        "player_font_size": 10,
+        "button_font_size": 10,
+        "button_width": 40,
+        "glyph_size": 18,
+        "checkbox_lower_tick_origin": [
+          0.8,
+          10.2
+        ]
+      },
+      "cascade_evidence": {
+        "method": "Mounted controls carry video-react-button. Its font-size:inherit specificity 0,2,0 overrides custom font-size:18px specificity 0,1,0. Player has no inline fontSize; video-react root is 10px, width is 4em, glyph is 1.8em.",
+        "player_import": {
+          "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+          "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+          "offset": 5712303,
+          "end": 5712314,
+          "source": "SG=a(34732)"
+        },
+        "library": {
+          "module": 34732,
+          "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+          "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+          "offset": 469895,
+          "end": 470915,
+          "source": "(e,t,a)=>{\"use strict\";var E=a(6305),n=a(24994);Object.defineProperty(t,\"ai\",{enumerable:!0,get:function(){return _.default}}),Object.defineProperty(t,\"Fn\",{enumerable:!0,get:function(){return o.default}}),Object.defineProperty(t,\"kt\",{enumerable:!0,get:function(){return r.default}}),Object.defineProperty(t,\"hf\",{enumerable:!0,get:function(){return A.default}}),Object.defineProperty(t,\"zA\",{enumerable:!0,get:function(){return l.default}}),Object.defineProperty(t,\"Wc\",{enumerable:!0,get:function(){return c.default}}),Object.defineProperty(t,\"VB\",{enumerable:!0,get:function(){return d.default}});var _=n(a(98284)),i=n(a(39134)),o=n(a(80501)),r=n(a(36552)),s=n(a(19795)),T=n(a(77144)),O=n(a(2669)),I=n(a(46703)),A=n(a(44097)),l=n(a(89249)),S=n(a(35669)),R=n(a(71347)),c=n(a(31934)),d=n(a(89679)),u=n(a(15986)),N=n(a(85641)),C=n(a(75611)),D=n(a(23899)),L=n(a(96078)),P=n(a(37059)),p=n(a(18876)),m=n(a(68721)),M=n(a(65855)),h=n(a(90808)),U=n(a(99934)),f=n(a(95854)),g=n(a(65698));E(a(19919)),E(a(76011));var G=a(4096)}"
+        },
+        "implementations": [
+          {
+            "export_name": "ai",
+            "module": 98284,
+            "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+            "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+            "offset": 4834559,
+            "end": 4842344,
+            "source": "(e,t,a)=>{\"use strict\";var E=a(6305),n=a(24994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var _=n(a(95335)),i=n(a(43693)),o=n(a(91847)),r=n(a(17383)),s=n(a(34579)),T=n(a(28452)),O=n(a(63072)),I=n(a(12475)),A=n(a(29511)),l=n(a(6234)),S=E(a(41594)),R=n(a(76996)),c=n(a(13887)),d=n(a(80501)),u=n(a(36552)),N=n(a(19795)),C=n(a(39134)),D=n(a(2669)),L=n(a(46703)),P=n(a(44097)),p=E(a(42622)),m=a(35806),M=a(49774),h=n(a(96129)),U={children:l.default.any,width:l.default.oneOfType([l.default.string,l.default.number]),height:l.default.oneOfType([l.default.string,l.default.number]),fluid:l.default.bool,muted:l.default.bool,playsInline:l.default.bool,aspectRatio:l.default.string,className:l.default.string,videoId:l.default.string,startTime:l.default.number,loop:l.default.bool,autoPlay:l.default.bool,src:l.default.string,poster:l.default.string,preload:l.default.oneOf([\"auto\",\"metadata\",\"none\"]),onLoadStart:l.default.func,onWaiting:l.default.func,onCanPlay:l.default.func,onCanPlayThrough:l.default.func,onPlaying:l.default.func,onEnded:l.default.func,onSeeking:l.default.func,onSeeked:l.default.func,onPlay:l.default.func,onPause:l.default.func,onProgress:l.default.func,onDurationChange:l.default.func,onError:l.default.func,onSuspend:l.default.func,onAbort:l.default.func,onEmptied:l.default.func,onStalled:l.default.func,onLoadedMetadata:l.default.func,onLoadedData:l.default.func,onTimeUpdate:l.default.func,onRateChange:l.default.func,onVolumeChange:l.default.func,store:l.default.object},f=function(e){function t(e){var a;return(0,r.default)(this,t),(a=(0,T.default)(this,(0,O.default)(t).call(this,e))).controlsHideTimer=null,a.video=null,a.manager=new c.default(e.store),a.actions=a.manager.getActions(),a.manager.subscribeToPlayerStateChange(a.handleStateChange.bind((0,I.default)(a))),a.getStyle=a.getStyle.bind((0,I.default)(a)),a.handleResize=a.handleResize.bind((0,I.default)(a)),a.getChildren=a.getChildren.bind((0,I.default)(a)),a.handleMouseMove=(0,M.throttle)(a.handleMouseMove.bind((0,I.default)(a)),250),a.handleMouseDown=a.handleMouseDown.bind((0,I.default)(a)),a.startControlsTimer=a.startControlsTimer.bind((0,I.default)(a)),a.handleFullScreenChange=a.handleFullScreenChange.bind((0,I.default)(a)),a.handleKeyDown=a.handleKeyDown.bind((0,I.default)(a)),a.handleFocus=a.handleFocus.bind((0,I.default)(a)),a.handleBlur=a.handleBlur.bind((0,I.default)(a)),a}return(0,A.default)(t,e),(0,s.default)(t,[{key:\"componentDidMount\",value:function(){this.handleResize(),window.addEventListener(\"resize\",this.handleResize),h.default.addEventListener(this.handleFullScreenChange)}},{key:\"componentWillUnmount\",value:function(){window.removeEventListener(\"resize\",this.handleResize),h.default.removeEventListener(this.handleFullScreenChange),this.controlsHideTimer&&window.clearTimeout(this.controlsHideTimer)}},{key:\"getDefaultChildren\",value:function(e){var t=this;return[S.default.createElement(C.default,{ref:function(e){t.video=e,t.manager.video=t.video},key:\"video\",order:0},e),S.default.createElement(N.default,{key:\"poster-image\",order:1}),S.default.createElement(u.default,{key:\"loading-spinner\",order:2}),S.default.createElement(D.default,{key:\"bezel\",order:3}),S.default.createElement(d.default,{key:\"big-play-button\",order:4}),S.default.createElement(P.default,{key:\"control-bar\",order:5}),S.default.createElement(L.default,{key:\"shortcut\",order:99})]}},{key:\"getChildren\",value:function(e){e.className;var t=e.children,a=(0,o.default)(e,[\"className\",\"children\"]),E=S.default.Children.toArray(this.props.children).filter(function(e){return!(0,M.isVideoChild)(e)}),n=this.getDefaultChildren(t);return(0,M.mergeAndSortChildren)(n,E,a)}},{key:\"setWidthOrHeight\",value:function(e,t,a){var E;\"string\"===typeof a?\"auto\"===a?E=\"auto\":a.match(/\\d+%/)&&(E=a):\"number\"===typeof a&&(E=\"\".concat(a,\"px\")),Object.assign(e,(0,i.default)({},t,E))}},{key:\"getStyle\",value:function(){var e,t,a=this.props,E=a.fluid,n=a.aspectRatio,_=a.height,i=a.width,o=this.manager.getState().player,r={},s=(void 0!==n&&\"auto\"!==n?n:o.videoWidth?\"\".concat(o.videoWidth,\":\").concat(o.videoHeight):\"16:9\").split(\":\"),T=s[1]/s[0];return e=void 0!==i?i:void 0!==_?_/T:o.videoWidth||400,t=void 0!==_?_:e*T,E?r.paddingTop=\"\".concat(100*T,\"%\"):(this.setWidthOrHeight(r,\"width\",e),this.setWidthOrHeight(r,\"height\",t)),r}},{key:\"getState\",value:function(){return this.manager.getState()}},{key:\"play\",value:function(){this.video.play()}},{key:\"pause\",value:function(){this.video.pause()}},{key:\"load\",value:function(){this.video.load()}},{key:\"addTextTrack\",value:function(){var e;(e=this.video).addTextTrack.apply(e,arguments)}},{key:\"canPlayType\",value:function(){var e;(e=this.video).canPlayType.apply(e,arguments)}},{key:\"seek\",value:function(e){this.video.seek(e)}},{key:\"forward\",value:function(e){this.video.forward(e)}},{key:\"replay\",value:function(e){this.video.replay(e)}},{key:\"toggleFullscreen\",value:function(){this.video.toggleFullscreen()}},{key:\"subscribeToStateChange\",value:function(e){return this.manager.subscribeToPlayerStateChange(e)}},{key:\"handleResize\",value:function(){}},{key:\"handleFullScreenChange\",value:function(e){e.target===this.manager.rootElement&&this.actions.handleFullscreenChange(h.default.isFullscreen)}},{key:\"handleMouseDown\",value:function(){this.startControlsTimer()}},{key:\"handleMouseMove\",value:function(){this.startControlsTimer()}},{key:\"handleKeyDown\",value:function(){this.startControlsTimer()}},{key:\"startControlsTimer\",value:function(){var e=this,t=3e3;S.default.Children.forEach(this.props.children,function(e){if(S.default.isValidElement(e)&&e.type===P.default){var a=e.props.autoHideTime;\"number\"===typeof a&&(t=a)}}),this.actions.userActivate(!0),clearTimeout(this.controlsHideTimer),this.controlsHideTimer=setTimeout(function(){e.actions.userActivate(!1)},t)}},{key:\"handleStateChange\",value:function(e,t){e.isFullscreen!==t.isFullscreen&&(this.handleResize(),(0,m.focusNode)(this.manager.rootElement)),this.forceUpdate()}},{key:\"handleFocus\",value:function(){this.actions.activate(!0)}},{key:\"handleBlur\",value:function(){this.actions.activate(!1)}},{key:\"render\",value:function(){var e=this,t=this.props.fluid,a=this.manager.getState().player,E=a.paused,n=a.hasStarted,i=a.waiting,o=a.seeking,r=a.isFullscreen,s=a.userActivity,T=(0,_.default)({},this.props,{player:a,actions:this.actions,manager:this.manager,store:this.manager.store,video:this.video?this.video.video:null}),O=this.getChildren(T);return S.default.createElement(\"div\",{className:(0,R.default)({\"video-react-controls-enabled\":!0,\"video-react-has-started\":n,\"video-react-paused\":E,\"video-react-playing\":!E,\"video-react-waiting\":i,\"video-react-seeking\":o,\"video-react-fluid\":t,\"video-react-fullscreen\":r,\"video-react-user-inactive\":!s,\"video-react-user-active\":s,\"video-react-workinghover\":!p.IS_IOS},\"video-react\",this.props.className),style:this.getStyle(),ref:function(t){e.manager.rootElement=t},role:\"region\",onTouchStart:this.handleMouseDown,onMouseDown:this.handleMouseDown,onTouchMove:this.handleMouseMove,onMouseMove:this.handleMouseMove,onKeyDown:this.handleKeyDown,onFocus:this.handleFocus,onBlur:this.handleBlur,tabIndex:\"-1\"},O)}},{key:\"playbackRate\",get:function(){return this.video.playbackRate},set:function(e){this.video.playbackRate=e}},{key:\"muted\",get:function(){return this.video.muted},set:function(e){this.video.muted=e}},{key:\"volume\",get:function(){return this.video.volume},set:function(e){this.video.volume=e}},{key:\"videoWidth\",get:function(){return this.video.videoWidth}},{key:\"videoHeight\",get:function(){return this.video.videoHeight}}]),t}(S.Component);t.default=f,f.contextTypes={store:l.default.object},f.propTypes=U,f.defaultProps={fluid:!0,muted:!1,playsInline:!1,preload:\"auto\",aspectRatio:\"auto\"},f.displayName=\"Player\"}"
+          },
+          {
+            "export_name": "zA",
+            "module": 89249,
+            "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+            "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+            "offset": 4809896,
+            "end": 4811079,
+            "source": "(e,t,a)=>{\"use strict\";var E=a(6305),n=a(24994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var _=n(a(17383)),i=n(a(34579)),o=n(a(28452)),r=n(a(63072)),s=n(a(12475)),T=n(a(29511)),O=n(a(6234)),I=E(a(41594)),A=n(a(76996)),l={actions:O.default.object,player:O.default.object,className:O.default.string},S=function(e){function t(e,a){var E;return(0,_.default)(this,t),(E=(0,o.default)(this,(0,r.default)(t).call(this,e,a))).handleClick=E.handleClick.bind((0,s.default)(E)),E}return(0,T.default)(t,e),(0,i.default)(t,[{key:\"handleClick\",value:function(){var e=this.props,t=e.actions;e.player.paused?t.play():t.pause()}},{key:\"render\",value:function(){var e=this,t=this.props,a=t.player,E=t.className,n=a.paused?\"Play\":\"Pause\";return I.default.createElement(\"button\",{ref:function(t){e.button=t},className:(0,A.default)(E,{\"video-react-play-control\":!0,\"video-react-control\":!0,\"video-react-button\":!0,\"video-react-paused\":a.paused,\"video-react-playing\":!a.paused}),type:\"button\",tabIndex:\"0\",onClick:this.handleClick},I.default.createElement(\"span\",{className:\"video-react-control-text\"},n))}}]),t}(I.Component);t.default=S,S.propTypes=l,S.displayName=\"PlayToggle\"}"
+          },
+          {
+            "export_name": "Wc",
+            "module": 31934,
+            "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+            "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+            "offset": 458914,
+            "end": 460130,
+            "source": "(e,t,a)=>{\"use strict\";var E=a(6305),n=a(24994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var _=n(a(17383)),i=n(a(34579)),o=n(a(28452)),r=n(a(63072)),s=n(a(12475)),T=n(a(29511)),O=n(a(6234)),I=E(a(41594)),A=n(a(76996)),l={actions:O.default.object,player:O.default.object,className:O.default.string},S=function(e){function t(e,a){var E;return(0,_.default)(this,t),(E=(0,o.default)(this,(0,r.default)(t).call(this,e,a))).handleClick=E.handleClick.bind((0,s.default)(E)),E}return(0,T.default)(t,e),(0,i.default)(t,[{key:\"handleClick\",value:function(){var e=this.props,t=e.player;e.actions.toggleFullscreen(t)}},{key:\"render\",value:function(){var e=this,t=this.props,a=t.player,E=t.className;return I.default.createElement(\"button\",{className:(0,A.default)(E,{\"video-react-icon-fullscreen-exit\":a.isFullscreen,\"video-react-icon-fullscreen\":!a.isFullscreen},\"video-react-fullscreen-control video-react-control video-react-button video-react-icon\"),ref:function(t){e.button=t},type:\"button\",tabIndex:\"0\",onClick:this.handleClick},I.default.createElement(\"span\",{className:\"video-react-control-text\"},\"Non-Fullscreen\"))}}]),t}(I.Component);t.default=S,S.propTypes=l,S.displayName=\"FullscreenToggle\"}"
+          }
+        ],
+        "css": {
+          "path": ".ref/devices/1392/static/css/main.b8aa0aec.css",
+          "sha256": "30220546d16b48c57d2fe6b422bb72137f39ea9c3e793b289c64145ac0586b91",
+          "rules": [
+            {
+              "offset": 389865,
+              "selector": ".video-react",
+              "conditions": [],
+              "declarations": "background-color:#000;box-sizing:border-box;color:#fff;display:block;font-family:serif,Times,Times New Roman;font-size:10px;line-height:1;position:relative;-webkit-user-select:none;user-select:none;vertical-align:top",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#000",
+                  "important": false
+                },
+                {
+                  "property": "box-sizing",
+                  "value": "border-box",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#fff",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "block",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "serif,Times,Times New Roman",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "-webkit-user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "vertical-align",
+                  "value": "top",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 391143,
+              "selector": ".video-react .video-react-button",
+              "conditions": [],
+              "declarations": "-webkit-appearance:none;appearance:none;background:none;border:none;color:inherit;cursor:pointer;display:inline-block;font-size:inherit;line-height:inherit;overflow:visible;text-decoration:none;text-transform:none;transition:none",
+              "properties": [
+                {
+                  "property": "-webkit-appearance",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "appearance",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "background",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "inline-block",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "overflow",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "text-decoration",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "transition",
+                  "value": "none",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 396643,
+              "selector": ".video-react .video-react-control",
+              "conditions": [],
+              "declarations": "flex:none;height:100%;margin:0;outline:none;padding:0;position:relative;text-align:center;width:4em",
+              "properties": [
+                {
+                  "property": "flex",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "margin",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "outline",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "4em",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 396777,
+              "selector": ".video-react .video-react-control:before",
+              "conditions": [],
+              "declarations": "font-size:1.8em;line-height:1.67",
+              "properties": [
+                {
+                  "property": "font-size",
+                  "value": "1.8em",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "1.67",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        },
+        "stylesheet_loading": {
+          "index": {
+            "path": ".ref/devices/1392/index.html",
+            "sha256": "b05189c19aa6496ef02cbaa065546ee1adf88364b42eaad2def57879d4d02086",
+            "styles": [
+              {
+                "offset": 3743,
+                "end": 3804,
+                "source": "<link href=\"./static/css/main.b8aa0aec.css\" rel=\"stylesheet\">",
+                "href": "./static/css/main.b8aa0aec.css"
+              }
+            ]
+          },
+          "runtime": {
+            "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+            "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+            "offset": 4860088,
+            "end": 4862604,
+            "source": "miniCssF=e=>\"static/css/\"+e+\".545b84f5.chunk.css\",a.g=function(){if(\"object\"===typeof globalThis)return globalThis;try{return this||new Function(\"return this\")()}catch(e){if(\"object\"===typeof window)return window}}(),a.o=(e,t)=>Object.prototype.hasOwnProperty.call(e,t),(()=>{var e={},t=\"project_anne-clio:\";a.l=(E,n,_,i)=>{if(e[E])e[E].push(n);else{var o,r;if(void 0!==_)for(var s=document.getElementsByTagName(\"script\"),T=0;T<s.length;T++){var O=s[T];if(O.getAttribute(\"src\")==E||O.getAttribute(\"data-webpack\")==t+_){o=O;break}}o||(r=!0,(o=document.createElement(\"script\")).charset=\"utf-8\",a.nc&&o.setAttribute(\"nonce\",a.nc),o.setAttribute(\"data-webpack\",t+_),o.src=E),e[E]=[n];var I=(t,a)=>{o.onerror=o.onload=null,clearTimeout(A);var n=e[E];if(delete e[E],o.parentNode&&o.parentNode.removeChild(o),n&&n.forEach(e=>e(a)),t)return t(a)},A=setTimeout(I.bind(null,void 0,{type:\"timeout\",target:o}),12e4);o.onerror=I.bind(null,o.onerror),o.onload=I.bind(null,o.onload),r&&document.head.appendChild(o)}}})(),a.r=e=>{\"undefined\"!==typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:\"Module\"}),Object.defineProperty(e,\"__esModule\",{value:!0})},a.nmd=e=>(e.paths=[],e.children||(e.children=[]),e),a.p=\"./\",(()=>{if(\"undefined\"!==typeof document){var e=e=>new Promise((t,E)=>{var n=a.miniCssF(e),_=a.p+n;if(((e,t)=>{for(var a=document.getElementsByTagName(\"link\"),E=0;E<a.length;E++){var n=(i=a[E]).getAttribute(\"data-href\")||i.getAttribute(\"href\");if(\"stylesheet\"===i.rel&&(n===e||n===t))return i}var _=document.getElementsByTagName(\"style\");for(E=0;E<_.length;E++){var i;if((n=(i=_[E]).getAttribute(\"data-href\"))===e||n===t)return i}})(n,_))return t();((e,t,E,n,_)=>{var i=document.createElement(\"link\");i.rel=\"stylesheet\",i.type=\"text/css\",a.nc&&(i.nonce=a.nc),i.onerror=i.onload=a=>{if(i.onerror=i.onload=null,\"load\"===a.type)n();else{var E=a&&a.type,o=a&&a.target&&a.target.href||t,r=new Error(\"Loading CSS chunk \"+e+\" failed.\\n(\"+E+\": \"+o+\")\");r.name=\"ChunkLoadError\",r.code=\"CSS_CHUNK_LOAD_FAILED\",r.type=E,r.request=o,i.parentNode&&i.parentNode.removeChild(i),_(r)}},i.href=t,E?E.parentNode.insertBefore(i,E.nextSibling):document.head.appendChild(i)})(e,_,null,t,E)}),t={8792:0};a.f.miniCss=(a,E)=>{t[a]?E.push(t[a]):0!==t[a]&&{1491:1}[a]&&E.push(t[a]=e(a).then(()=>{t[a]=0},e=>{throw delete t[a],e}))}}})(),(()=>{var e={8792:0};a.f.j=(t,E)=>{var n=a.o(e,t)?e[t]:void 0;if(0!==n)if(n)E.push(n[2]);else{var _=new Promise((a,E)=>n=e[t]=[a,E]);E.push(n[2]=_);var i=a.p+a.u(t),o=new E"
+          }
+        },
+        "optional_1491_css": {
+          "context_imports": [
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5492670,
+              "end": 5492678
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5492742,
+              "end": 5492750
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5492891,
+              "end": 5492899
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5492963,
+              "end": 5492971
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5494982,
+              "end": 5494990
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "offset": 5495123,
+              "end": 5495131
+            }
+          ],
+          "context_requests": [
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+              "offset": 5492670,
+              "end": 5492741,
+              "source": "a(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-l-1x.\").concat(T))"
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+              "offset": 5492742,
+              "end": 5492813,
+              "source": "a(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-l-3x.\").concat(T))"
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+              "offset": 5492891,
+              "end": 5492962,
+              "source": "a(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-r-1x.\").concat(T))"
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+              "offset": 5492963,
+              "end": 5493034,
+              "source": "a(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-r-3x.\").concat(T))"
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+              "offset": 5494982,
+              "end": 5495053,
+              "source": "a(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-l-3x.\").concat(T))"
+            },
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+              "offset": 5495123,
+              "end": 5495194,
+              "source": "a(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-r-3x.\").concat(T))"
+            }
+          ],
+          "resource_keys": [
+            {
+              "path": ".ref/devices/1392/static/js/main.6fccfd1e.js",
+              "sha256": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+              "offset": 4635436,
+              "end": 4635461,
+              "source": "\"./scss/video-player.css\""
+            }
+          ],
+          "direct_chunk_loads": [],
+          "status": "not_requested_by_current_product_calls"
+        }
+      }
+    },
+    {
+      "product_id": 1442,
+      "presentation": {
+        "player_font_size": 10,
+        "button_font_size": 10,
+        "button_width": 40,
+        "glyph_size": 18,
+        "checkbox_lower_tick_origin": [
+          0.8,
+          10.2
+        ]
+      },
+      "cascade_evidence": {
+        "method": "Mounted controls carry video-react-button. Its font-size:inherit specificity 0,2,0 overrides custom font-size:18px specificity 0,1,0. Player has no inline fontSize; video-react root is 10px, width is 4em, glyph is 1.8em.",
+        "player_import": {
+          "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+          "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+          "offset": 512524,
+          "end": 512535,
+          "source": "am=s(34732)"
+        },
+        "library": {
+          "module": 34732,
+          "path": ".ref/devices/1442/static/js/2242.e15bf38a.chunk.js",
+          "sha256": "d3755dcde74dbdbb0d755b91d30c2ee4b46f08c9016f02712b7adc7adfd33b2b",
+          "offset": 193341,
+          "end": 194361,
+          "source": "(e,t,n)=>{\"use strict\";var a=n(6305),r=n(24994);Object.defineProperty(t,\"ai\",{enumerable:!0,get:function(){return i.default}}),Object.defineProperty(t,\"Fn\",{enumerable:!0,get:function(){return s.default}}),Object.defineProperty(t,\"kt\",{enumerable:!0,get:function(){return l.default}}),Object.defineProperty(t,\"hf\",{enumerable:!0,get:function(){return f.default}}),Object.defineProperty(t,\"zA\",{enumerable:!0,get:function(){return p.default}}),Object.defineProperty(t,\"Wc\",{enumerable:!0,get:function(){return m.default}}),Object.defineProperty(t,\"VB\",{enumerable:!0,get:function(){return y.default}});var i=r(n(98284)),o=r(n(39134)),s=r(n(80501)),l=r(n(36552)),u=r(n(19795)),d=r(n(77144)),c=r(n(2669)),h=r(n(46703)),f=r(n(44097)),p=r(n(89249)),v=r(n(35669)),g=r(n(71347)),m=r(n(31934)),y=r(n(89679)),b=r(n(15986)),_=r(n(85641)),x=r(n(75611)),k=r(n(23899)),w=r(n(96078)),M=r(n(37059)),S=r(n(18876)),P=r(n(68721)),C=r(n(65855)),T=r(n(90808)),D=r(n(99934)),A=r(n(95854)),E=r(n(65698));a(n(19919)),a(n(76011));var O=n(4096)}"
+        },
+        "implementations": [
+          {
+            "export_name": "ai",
+            "module": 98284,
+            "path": ".ref/devices/1442/static/js/2242.e15bf38a.chunk.js",
+            "sha256": "d3755dcde74dbdbb0d755b91d30c2ee4b46f08c9016f02712b7adc7adfd33b2b",
+            "offset": 338015,
+            "end": 345800,
+            "source": "(e,t,n)=>{\"use strict\";var a=n(6305),r=n(24994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var i=r(n(95335)),o=r(n(43693)),s=r(n(91847)),l=r(n(17383)),u=r(n(34579)),d=r(n(28452)),c=r(n(63072)),h=r(n(12475)),f=r(n(29511)),p=r(n(6234)),v=a(n(41594)),g=r(n(76996)),m=r(n(13887)),y=r(n(80501)),b=r(n(36552)),_=r(n(19795)),x=r(n(39134)),k=r(n(2669)),w=r(n(46703)),M=r(n(44097)),S=a(n(42622)),P=n(35806),C=n(49774),T=r(n(96129)),D={children:p.default.any,width:p.default.oneOfType([p.default.string,p.default.number]),height:p.default.oneOfType([p.default.string,p.default.number]),fluid:p.default.bool,muted:p.default.bool,playsInline:p.default.bool,aspectRatio:p.default.string,className:p.default.string,videoId:p.default.string,startTime:p.default.number,loop:p.default.bool,autoPlay:p.default.bool,src:p.default.string,poster:p.default.string,preload:p.default.oneOf([\"auto\",\"metadata\",\"none\"]),onLoadStart:p.default.func,onWaiting:p.default.func,onCanPlay:p.default.func,onCanPlayThrough:p.default.func,onPlaying:p.default.func,onEnded:p.default.func,onSeeking:p.default.func,onSeeked:p.default.func,onPlay:p.default.func,onPause:p.default.func,onProgress:p.default.func,onDurationChange:p.default.func,onError:p.default.func,onSuspend:p.default.func,onAbort:p.default.func,onEmptied:p.default.func,onStalled:p.default.func,onLoadedMetadata:p.default.func,onLoadedData:p.default.func,onTimeUpdate:p.default.func,onRateChange:p.default.func,onVolumeChange:p.default.func,store:p.default.object},A=function(e){function t(e){var n;return(0,l.default)(this,t),(n=(0,d.default)(this,(0,c.default)(t).call(this,e))).controlsHideTimer=null,n.video=null,n.manager=new m.default(e.store),n.actions=n.manager.getActions(),n.manager.subscribeToPlayerStateChange(n.handleStateChange.bind((0,h.default)(n))),n.getStyle=n.getStyle.bind((0,h.default)(n)),n.handleResize=n.handleResize.bind((0,h.default)(n)),n.getChildren=n.getChildren.bind((0,h.default)(n)),n.handleMouseMove=(0,C.throttle)(n.handleMouseMove.bind((0,h.default)(n)),250),n.handleMouseDown=n.handleMouseDown.bind((0,h.default)(n)),n.startControlsTimer=n.startControlsTimer.bind((0,h.default)(n)),n.handleFullScreenChange=n.handleFullScreenChange.bind((0,h.default)(n)),n.handleKeyDown=n.handleKeyDown.bind((0,h.default)(n)),n.handleFocus=n.handleFocus.bind((0,h.default)(n)),n.handleBlur=n.handleBlur.bind((0,h.default)(n)),n}return(0,f.default)(t,e),(0,u.default)(t,[{key:\"componentDidMount\",value:function(){this.handleResize(),window.addEventListener(\"resize\",this.handleResize),T.default.addEventListener(this.handleFullScreenChange)}},{key:\"componentWillUnmount\",value:function(){window.removeEventListener(\"resize\",this.handleResize),T.default.removeEventListener(this.handleFullScreenChange),this.controlsHideTimer&&window.clearTimeout(this.controlsHideTimer)}},{key:\"getDefaultChildren\",value:function(e){var t=this;return[v.default.createElement(x.default,{ref:function(e){t.video=e,t.manager.video=t.video},key:\"video\",order:0},e),v.default.createElement(_.default,{key:\"poster-image\",order:1}),v.default.createElement(b.default,{key:\"loading-spinner\",order:2}),v.default.createElement(k.default,{key:\"bezel\",order:3}),v.default.createElement(y.default,{key:\"big-play-button\",order:4}),v.default.createElement(M.default,{key:\"control-bar\",order:5}),v.default.createElement(w.default,{key:\"shortcut\",order:99})]}},{key:\"getChildren\",value:function(e){e.className;var t=e.children,n=(0,s.default)(e,[\"className\",\"children\"]),a=v.default.Children.toArray(this.props.children).filter(function(e){return!(0,C.isVideoChild)(e)}),r=this.getDefaultChildren(t);return(0,C.mergeAndSortChildren)(r,a,n)}},{key:\"setWidthOrHeight\",value:function(e,t,n){var a;\"string\"===typeof n?\"auto\"===n?a=\"auto\":n.match(/\\d+%/)&&(a=n):\"number\"===typeof n&&(a=\"\".concat(n,\"px\")),Object.assign(e,(0,o.default)({},t,a))}},{key:\"getStyle\",value:function(){var e,t,n=this.props,a=n.fluid,r=n.aspectRatio,i=n.height,o=n.width,s=this.manager.getState().player,l={},u=(void 0!==r&&\"auto\"!==r?r:s.videoWidth?\"\".concat(s.videoWidth,\":\").concat(s.videoHeight):\"16:9\").split(\":\"),d=u[1]/u[0];return e=void 0!==o?o:void 0!==i?i/d:s.videoWidth||400,t=void 0!==i?i:e*d,a?l.paddingTop=\"\".concat(100*d,\"%\"):(this.setWidthOrHeight(l,\"width\",e),this.setWidthOrHeight(l,\"height\",t)),l}},{key:\"getState\",value:function(){return this.manager.getState()}},{key:\"play\",value:function(){this.video.play()}},{key:\"pause\",value:function(){this.video.pause()}},{key:\"load\",value:function(){this.video.load()}},{key:\"addTextTrack\",value:function(){var e;(e=this.video).addTextTrack.apply(e,arguments)}},{key:\"canPlayType\",value:function(){var e;(e=this.video).canPlayType.apply(e,arguments)}},{key:\"seek\",value:function(e){this.video.seek(e)}},{key:\"forward\",value:function(e){this.video.forward(e)}},{key:\"replay\",value:function(e){this.video.replay(e)}},{key:\"toggleFullscreen\",value:function(){this.video.toggleFullscreen()}},{key:\"subscribeToStateChange\",value:function(e){return this.manager.subscribeToPlayerStateChange(e)}},{key:\"handleResize\",value:function(){}},{key:\"handleFullScreenChange\",value:function(e){e.target===this.manager.rootElement&&this.actions.handleFullscreenChange(T.default.isFullscreen)}},{key:\"handleMouseDown\",value:function(){this.startControlsTimer()}},{key:\"handleMouseMove\",value:function(){this.startControlsTimer()}},{key:\"handleKeyDown\",value:function(){this.startControlsTimer()}},{key:\"startControlsTimer\",value:function(){var e=this,t=3e3;v.default.Children.forEach(this.props.children,function(e){if(v.default.isValidElement(e)&&e.type===M.default){var n=e.props.autoHideTime;\"number\"===typeof n&&(t=n)}}),this.actions.userActivate(!0),clearTimeout(this.controlsHideTimer),this.controlsHideTimer=setTimeout(function(){e.actions.userActivate(!1)},t)}},{key:\"handleStateChange\",value:function(e,t){e.isFullscreen!==t.isFullscreen&&(this.handleResize(),(0,P.focusNode)(this.manager.rootElement)),this.forceUpdate()}},{key:\"handleFocus\",value:function(){this.actions.activate(!0)}},{key:\"handleBlur\",value:function(){this.actions.activate(!1)}},{key:\"render\",value:function(){var e=this,t=this.props.fluid,n=this.manager.getState().player,a=n.paused,r=n.hasStarted,o=n.waiting,s=n.seeking,l=n.isFullscreen,u=n.userActivity,d=(0,i.default)({},this.props,{player:n,actions:this.actions,manager:this.manager,store:this.manager.store,video:this.video?this.video.video:null}),c=this.getChildren(d);return v.default.createElement(\"div\",{className:(0,g.default)({\"video-react-controls-enabled\":!0,\"video-react-has-started\":r,\"video-react-paused\":a,\"video-react-playing\":!a,\"video-react-waiting\":o,\"video-react-seeking\":s,\"video-react-fluid\":t,\"video-react-fullscreen\":l,\"video-react-user-inactive\":!u,\"video-react-user-active\":u,\"video-react-workinghover\":!S.IS_IOS},\"video-react\",this.props.className),style:this.getStyle(),ref:function(t){e.manager.rootElement=t},role:\"region\",onTouchStart:this.handleMouseDown,onMouseDown:this.handleMouseDown,onTouchMove:this.handleMouseMove,onMouseMove:this.handleMouseMove,onKeyDown:this.handleKeyDown,onFocus:this.handleFocus,onBlur:this.handleBlur,tabIndex:\"-1\"},c)}},{key:\"playbackRate\",get:function(){return this.video.playbackRate},set:function(e){this.video.playbackRate=e}},{key:\"muted\",get:function(){return this.video.muted},set:function(e){this.video.muted=e}},{key:\"volume\",get:function(){return this.video.volume},set:function(e){this.video.volume=e}},{key:\"videoWidth\",get:function(){return this.video.videoWidth}},{key:\"videoHeight\",get:function(){return this.video.videoHeight}}]),t}(v.Component);t.default=A,A.contextTypes={store:p.default.object},A.propTypes=D,A.defaultProps={fluid:!0,muted:!1,playsInline:!1,preload:\"auto\",aspectRatio:\"auto\"},A.displayName=\"Player\"}"
+          },
+          {
+            "export_name": "zA",
+            "module": 89249,
+            "path": ".ref/devices/1442/static/js/2242.e15bf38a.chunk.js",
+            "sha256": "d3755dcde74dbdbb0d755b91d30c2ee4b46f08c9016f02712b7adc7adfd33b2b",
+            "offset": 329617,
+            "end": 330800,
+            "source": "(e,t,n)=>{\"use strict\";var a=n(6305),r=n(24994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var i=r(n(17383)),o=r(n(34579)),s=r(n(28452)),l=r(n(63072)),u=r(n(12475)),d=r(n(29511)),c=r(n(6234)),h=a(n(41594)),f=r(n(76996)),p={actions:c.default.object,player:c.default.object,className:c.default.string},v=function(e){function t(e,n){var a;return(0,i.default)(this,t),(a=(0,s.default)(this,(0,l.default)(t).call(this,e,n))).handleClick=a.handleClick.bind((0,u.default)(a)),a}return(0,d.default)(t,e),(0,o.default)(t,[{key:\"handleClick\",value:function(){var e=this.props,t=e.actions;e.player.paused?t.play():t.pause()}},{key:\"render\",value:function(){var e=this,t=this.props,n=t.player,a=t.className,r=n.paused?\"Play\":\"Pause\";return h.default.createElement(\"button\",{ref:function(t){e.button=t},className:(0,f.default)(a,{\"video-react-play-control\":!0,\"video-react-control\":!0,\"video-react-button\":!0,\"video-react-paused\":n.paused,\"video-react-playing\":!n.paused}),type:\"button\",tabIndex:\"0\",onClick:this.handleClick},h.default.createElement(\"span\",{className:\"video-react-control-text\"},r))}}]),t}(h.Component);t.default=v,v.propTypes=p,v.displayName=\"PlayToggle\"}"
+          },
+          {
+            "export_name": "Wc",
+            "module": 31934,
+            "path": ".ref/devices/1442/static/js/2242.e15bf38a.chunk.js",
+            "sha256": "d3755dcde74dbdbb0d755b91d30c2ee4b46f08c9016f02712b7adc7adfd33b2b",
+            "offset": 191949,
+            "end": 193165,
+            "source": "(e,t,n)=>{\"use strict\";var a=n(6305),r=n(24994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var i=r(n(17383)),o=r(n(34579)),s=r(n(28452)),l=r(n(63072)),u=r(n(12475)),d=r(n(29511)),c=r(n(6234)),h=a(n(41594)),f=r(n(76996)),p={actions:c.default.object,player:c.default.object,className:c.default.string},v=function(e){function t(e,n){var a;return(0,i.default)(this,t),(a=(0,s.default)(this,(0,l.default)(t).call(this,e,n))).handleClick=a.handleClick.bind((0,u.default)(a)),a}return(0,d.default)(t,e),(0,o.default)(t,[{key:\"handleClick\",value:function(){var e=this.props,t=e.player;e.actions.toggleFullscreen(t)}},{key:\"render\",value:function(){var e=this,t=this.props,n=t.player,a=t.className;return h.default.createElement(\"button\",{className:(0,f.default)(a,{\"video-react-icon-fullscreen-exit\":n.isFullscreen,\"video-react-icon-fullscreen\":!n.isFullscreen},\"video-react-fullscreen-control video-react-control video-react-button video-react-icon\"),ref:function(t){e.button=t},type:\"button\",tabIndex:\"0\",onClick:this.handleClick},h.default.createElement(\"span\",{className:\"video-react-control-text\"},\"Non-Fullscreen\"))}}]),t}(h.Component);t.default=v,v.propTypes=p,v.displayName=\"FullscreenToggle\"}"
+          }
+        ],
+        "css": {
+          "path": ".ref/devices/1442/static/css/main.bd5a7c95.css",
+          "sha256": "c38164acbdb804327caa8ec33a3c914e1cbc727df20835158ceafea18f3980fb",
+          "rules": [
+            {
+              "offset": 394042,
+              "selector": ".video-react",
+              "conditions": [],
+              "declarations": "background-color:#000;box-sizing:border-box;color:#fff;display:block;font-family:serif,Times,Times New Roman;font-size:10px;line-height:1;position:relative;-webkit-user-select:none;user-select:none;vertical-align:top",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#000",
+                  "important": false
+                },
+                {
+                  "property": "box-sizing",
+                  "value": "border-box",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#fff",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "block",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "serif,Times,Times New Roman",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "-webkit-user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "vertical-align",
+                  "value": "top",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 395320,
+              "selector": ".video-react .video-react-button",
+              "conditions": [],
+              "declarations": "-webkit-appearance:none;appearance:none;background:none;border:none;color:inherit;cursor:pointer;display:inline-block;font-size:inherit;line-height:inherit;overflow:visible;text-decoration:none;text-transform:none;transition:none",
+              "properties": [
+                {
+                  "property": "-webkit-appearance",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "appearance",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "background",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "inline-block",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "overflow",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "text-decoration",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "transition",
+                  "value": "none",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 400820,
+              "selector": ".video-react .video-react-control",
+              "conditions": [],
+              "declarations": "flex:none;height:100%;margin:0;outline:none;padding:0;position:relative;text-align:center;width:4em",
+              "properties": [
+                {
+                  "property": "flex",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "margin",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "outline",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "4em",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 400954,
+              "selector": ".video-react .video-react-control:before",
+              "conditions": [],
+              "declarations": "font-size:1.8em;line-height:1.67",
+              "properties": [
+                {
+                  "property": "font-size",
+                  "value": "1.8em",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "1.67",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        },
+        "stylesheet_loading": {
+          "index": {
+            "path": ".ref/devices/1442/index.html",
+            "sha256": "5f7a02502341966dbb20bd42bc349ec3725c9f9c98dcbf747337cb32dfb0ba47",
+            "styles": [
+              {
+                "offset": 3750,
+                "end": 3811,
+                "source": "<link href=\"./static/css/main.bd5a7c95.css\" rel=\"stylesheet\">",
+                "href": "./static/css/main.bd5a7c95.css"
+              }
+            ]
+          },
+          "runtime": {
+            "path": ".ref/devices/1442/static/js/main.f0649cc4.js",
+            "sha256": "8013923f0ad95a198d2791875c18543eacd709e56dc8cc0c6506be2fb68b760d",
+            "offset": 1237827,
+            "end": 1240378,
+            "source": "miniCssF=e=>\"static/css/\"+e+\".\"+{1491:\"545b84f5\",3737:\"ab025647\"}[e]+\".chunk.css\",n.g=function(){if(\"object\"===typeof globalThis)return globalThis;try{return this||new Function(\"return this\")()}catch(e){if(\"object\"===typeof window)return window}}(),n.o=(e,t)=>Object.prototype.hasOwnProperty.call(e,t),(()=>{var e={},t=\"project_anne-carolt2:\";n.l=(_,E,r,a)=>{if(e[_])e[_].push(E);else{var o,i;if(void 0!==r)for(var s=document.getElementsByTagName(\"script\"),T=0;T<s.length;T++){var c=s[T];if(c.getAttribute(\"src\")==_||c.getAttribute(\"data-webpack\")==t+r){o=c;break}}o||(i=!0,(o=document.createElement(\"script\")).charset=\"utf-8\",n.nc&&o.setAttribute(\"nonce\",n.nc),o.setAttribute(\"data-webpack\",t+r),o.src=_),e[_]=[E];var A=(t,n)=>{o.onerror=o.onload=null,clearTimeout(O);var E=e[_];if(delete e[_],o.parentNode&&o.parentNode.removeChild(o),E&&E.forEach(e=>e(n)),t)return t(n)},O=setTimeout(A.bind(null,void 0,{type:\"timeout\",target:o}),12e4);o.onerror=A.bind(null,o.onerror),o.onload=A.bind(null,o.onload),i&&document.head.appendChild(o)}}})(),n.r=e=>{\"undefined\"!==typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:\"Module\"}),Object.defineProperty(e,\"__esModule\",{value:!0})},n.nmd=e=>(e.paths=[],e.children||(e.children=[]),e),n.p=\"./\",(()=>{if(\"undefined\"!==typeof document){var e=e=>new Promise((t,_)=>{var E=n.miniCssF(e),r=n.p+E;if(((e,t)=>{for(var n=document.getElementsByTagName(\"link\"),_=0;_<n.length;_++){var E=(a=n[_]).getAttribute(\"data-href\")||a.getAttribute(\"href\");if(\"stylesheet\"===a.rel&&(E===e||E===t))return a}var r=document.getElementsByTagName(\"style\");for(_=0;_<r.length;_++){var a;if((E=(a=r[_]).getAttribute(\"data-href\"))===e||E===t)return a}})(E,r))return t();((e,t,_,E,r)=>{var a=document.createElement(\"link\");a.rel=\"stylesheet\",a.type=\"text/css\",n.nc&&(a.nonce=n.nc),a.onerror=a.onload=n=>{if(a.onerror=a.onload=null,\"load\"===n.type)E();else{var _=n&&n.type,o=n&&n.target&&n.target.href||t,i=new Error(\"Loading CSS chunk \"+e+\" failed.\\n(\"+_+\": \"+o+\")\");i.name=\"ChunkLoadError\",i.code=\"CSS_CHUNK_LOAD_FAILED\",i.type=_,i.request=o,a.parentNode&&a.parentNode.removeChild(a),r(i)}},a.href=t,_?_.parentNode.insertBefore(a,_.nextSibling):document.head.appendChild(a)})(e,r,null,t,_)}),t={8792:0};n.f.miniCss=(n,_)=>{t[n]?_.push(t[n]):0!==t[n]&&{1491:1,3737:1}[n]&&_.push(t[n]=e(n).then(()=>{t[n]=0},e=>{throw delete t[n],e}))}}})(),(()=>{var e={8792:0};n.f.j=(t,_)=>{var E=n.o(e,t)?e[t]:void 0;if(0!==E)if(E)_.push(E[2]);else{var r=new Promise((n,_)=>E=e[t]=[n,_]);_.push(E[2]=r);var a=n.p+n.u(t),"
+          }
+        },
+        "optional_1491_css": {
+          "context_imports": [
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 296027,
+              "end": 296035
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 296099,
+              "end": 296107
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 296247,
+              "end": 296255
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 296319,
+              "end": 296327
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 298327,
+              "end": 298335
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "offset": 298467,
+              "end": 298475
+            }
+          ],
+          "context_requests": [
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+              "offset": 296027,
+              "end": 296098,
+              "source": "s(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-l-1x.\").concat(d))"
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+              "offset": 296099,
+              "end": 296170,
+              "source": "s(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-l-3x.\").concat(d))"
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+              "offset": 296247,
+              "end": 296318,
+              "source": "s(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-r-1x.\").concat(d))"
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+              "offset": 296319,
+              "end": 296390,
+              "source": "s(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-r-3x.\").concat(d))"
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+              "offset": 298327,
+              "end": 298398,
+              "source": "s(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-l-3x.\").concat(d))"
+            },
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+              "offset": 298467,
+              "end": 298538,
+              "source": "s(58388)(\"./\".concat(t,\"_\").concat(e,\"/img_prods/prd-r-3x.\").concat(d))"
+            }
+          ],
+          "resource_keys": [
+            {
+              "path": ".ref/devices/1442/static/js/3737.a871f924.chunk.js",
+              "sha256": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+              "offset": 577314,
+              "end": 577339,
+              "source": "\"./scss/video-player.css\""
+            }
+          ],
+          "direct_chunk_loads": [],
+          "status": "not_requested_by_current_product_calls"
+        }
+      }
+    },
+    {
+      "product_id": 3942,
+      "presentation": {
+        "player_font_size": 10,
+        "button_font_size": 10,
+        "button_width": 40,
+        "glyph_size": 18,
+        "checkbox_lower_tick_origin": [
+          0.8,
+          10.2
+        ]
+      },
+      "cascade_evidence": {
+        "method": "Mounted controls carry video-react-button. Its font-size:inherit specificity 0,2,0 overrides custom font-size:18px specificity 0,1,0. Player has no inline fontSize; video-react root is 10px, width is 4em, glyph is 1.8em.",
+        "player_import": {
+          "path": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
+          "sha256": "538a2cf45ac8f845c1e8766c6a0b4ffbe11fd2704ee860b86310b61eab8e4d5d",
+          "offset": 304821,
+          "end": 304831,
+          "source": "Pn=s(4732)"
+        },
+        "library": {
+          "module": 4732,
+          "path": ".ref/devices/3942/static/js/176.1fa03da8.chunk.js",
+          "sha256": "6a6f52d9e844be9787b93266aafda77db87cf7c04a4782843e8b74c0137fe5e5",
+          "offset": 117732,
+          "end": 118721,
+          "source": "(e,t,n)=>{\"use strict\";var r=n(6305),a=n(4994);Object.defineProperty(t,\"ai\",{enumerable:!0,get:function(){return i.default}}),Object.defineProperty(t,\"Fn\",{enumerable:!0,get:function(){return s.default}}),Object.defineProperty(t,\"kt\",{enumerable:!0,get:function(){return l.default}}),Object.defineProperty(t,\"hf\",{enumerable:!0,get:function(){return f.default}}),Object.defineProperty(t,\"zA\",{enumerable:!0,get:function(){return p.default}}),Object.defineProperty(t,\"Wc\",{enumerable:!0,get:function(){return m.default}}),Object.defineProperty(t,\"VB\",{enumerable:!0,get:function(){return y.default}});var i=a(n(8284)),o=a(n(9134)),s=a(n(501)),l=a(n(6552)),u=a(n(9795)),d=a(n(7144)),c=a(n(2669)),h=a(n(6703)),f=a(n(4097)),p=a(n(9249)),g=a(n(5669)),v=a(n(1347)),m=a(n(1934)),y=a(n(9679)),b=a(n(5986)),k=a(n(5641)),x=a(n(5611)),w=a(n(3899)),_=a(n(6078)),S=a(n(7059)),M=a(n(8876)),C=a(n(8721)),A=a(n(5855)),T=a(n(808)),P=a(n(9934)),D=a(n(5854)),E=a(n(5698));r(n(9919)),r(n(6011));var O=n(4096)}"
+        },
+        "implementations": [
+          {
+            "export_name": "ai",
+            "module": 8284,
+            "path": ".ref/devices/3942/static/js/176.1fa03da8.chunk.js",
+            "sha256": "6a6f52d9e844be9787b93266aafda77db87cf7c04a4782843e8b74c0137fe5e5",
+            "offset": 268522,
+            "end": 276283,
+            "source": "(e,t,n)=>{\"use strict\";var r=n(6305),a=n(4994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var i=a(n(5335)),o=a(n(3693)),s=a(n(4228)),l=a(n(7383)),u=a(n(4579)),d=a(n(8452)),c=a(n(3072)),h=a(n(2475)),f=a(n(9511)),p=a(n(6234)),g=r(n(1594)),v=a(n(6996)),m=a(n(3887)),y=a(n(501)),b=a(n(6552)),k=a(n(9795)),x=a(n(9134)),w=a(n(2669)),_=a(n(6703)),S=a(n(4097)),M=r(n(2622)),C=n(5806),A=n(9774),T=a(n(6129)),P={children:p.default.any,width:p.default.oneOfType([p.default.string,p.default.number]),height:p.default.oneOfType([p.default.string,p.default.number]),fluid:p.default.bool,muted:p.default.bool,playsInline:p.default.bool,aspectRatio:p.default.string,className:p.default.string,videoId:p.default.string,startTime:p.default.number,loop:p.default.bool,autoPlay:p.default.bool,src:p.default.string,poster:p.default.string,preload:p.default.oneOf([\"auto\",\"metadata\",\"none\"]),onLoadStart:p.default.func,onWaiting:p.default.func,onCanPlay:p.default.func,onCanPlayThrough:p.default.func,onPlaying:p.default.func,onEnded:p.default.func,onSeeking:p.default.func,onSeeked:p.default.func,onPlay:p.default.func,onPause:p.default.func,onProgress:p.default.func,onDurationChange:p.default.func,onError:p.default.func,onSuspend:p.default.func,onAbort:p.default.func,onEmptied:p.default.func,onStalled:p.default.func,onLoadedMetadata:p.default.func,onLoadedData:p.default.func,onTimeUpdate:p.default.func,onRateChange:p.default.func,onVolumeChange:p.default.func,store:p.default.object},D=function(e){function t(e){var n;return(0,l.default)(this,t),(n=(0,d.default)(this,(0,c.default)(t).call(this,e))).controlsHideTimer=null,n.video=null,n.manager=new m.default(e.store),n.actions=n.manager.getActions(),n.manager.subscribeToPlayerStateChange(n.handleStateChange.bind((0,h.default)(n))),n.getStyle=n.getStyle.bind((0,h.default)(n)),n.handleResize=n.handleResize.bind((0,h.default)(n)),n.getChildren=n.getChildren.bind((0,h.default)(n)),n.handleMouseMove=(0,A.throttle)(n.handleMouseMove.bind((0,h.default)(n)),250),n.handleMouseDown=n.handleMouseDown.bind((0,h.default)(n)),n.startControlsTimer=n.startControlsTimer.bind((0,h.default)(n)),n.handleFullScreenChange=n.handleFullScreenChange.bind((0,h.default)(n)),n.handleKeyDown=n.handleKeyDown.bind((0,h.default)(n)),n.handleFocus=n.handleFocus.bind((0,h.default)(n)),n.handleBlur=n.handleBlur.bind((0,h.default)(n)),n}return(0,f.default)(t,e),(0,u.default)(t,[{key:\"componentDidMount\",value:function(){this.handleResize(),window.addEventListener(\"resize\",this.handleResize),T.default.addEventListener(this.handleFullScreenChange)}},{key:\"componentWillUnmount\",value:function(){window.removeEventListener(\"resize\",this.handleResize),T.default.removeEventListener(this.handleFullScreenChange),this.controlsHideTimer&&window.clearTimeout(this.controlsHideTimer)}},{key:\"getDefaultChildren\",value:function(e){var t=this;return[g.default.createElement(x.default,{ref:function(e){t.video=e,t.manager.video=t.video},key:\"video\",order:0},e),g.default.createElement(k.default,{key:\"poster-image\",order:1}),g.default.createElement(b.default,{key:\"loading-spinner\",order:2}),g.default.createElement(w.default,{key:\"bezel\",order:3}),g.default.createElement(y.default,{key:\"big-play-button\",order:4}),g.default.createElement(S.default,{key:\"control-bar\",order:5}),g.default.createElement(_.default,{key:\"shortcut\",order:99})]}},{key:\"getChildren\",value:function(e){e.className;var t=e.children,n=(0,s.default)(e,[\"className\",\"children\"]),r=g.default.Children.toArray(this.props.children).filter(function(e){return!(0,A.isVideoChild)(e)}),a=this.getDefaultChildren(t);return(0,A.mergeAndSortChildren)(a,r,n)}},{key:\"setWidthOrHeight\",value:function(e,t,n){var r;\"string\"===typeof n?\"auto\"===n?r=\"auto\":n.match(/\\d+%/)&&(r=n):\"number\"===typeof n&&(r=\"\".concat(n,\"px\")),Object.assign(e,(0,o.default)({},t,r))}},{key:\"getStyle\",value:function(){var e,t,n=this.props,r=n.fluid,a=n.aspectRatio,i=n.height,o=n.width,s=this.manager.getState().player,l={},u=(void 0!==a&&\"auto\"!==a?a:s.videoWidth?\"\".concat(s.videoWidth,\":\").concat(s.videoHeight):\"16:9\").split(\":\"),d=u[1]/u[0];return e=void 0!==o?o:void 0!==i?i/d:s.videoWidth||400,t=void 0!==i?i:e*d,r?l.paddingTop=\"\".concat(100*d,\"%\"):(this.setWidthOrHeight(l,\"width\",e),this.setWidthOrHeight(l,\"height\",t)),l}},{key:\"getState\",value:function(){return this.manager.getState()}},{key:\"play\",value:function(){this.video.play()}},{key:\"pause\",value:function(){this.video.pause()}},{key:\"load\",value:function(){this.video.load()}},{key:\"addTextTrack\",value:function(){var e;(e=this.video).addTextTrack.apply(e,arguments)}},{key:\"canPlayType\",value:function(){var e;(e=this.video).canPlayType.apply(e,arguments)}},{key:\"seek\",value:function(e){this.video.seek(e)}},{key:\"forward\",value:function(e){this.video.forward(e)}},{key:\"replay\",value:function(e){this.video.replay(e)}},{key:\"toggleFullscreen\",value:function(){this.video.toggleFullscreen()}},{key:\"subscribeToStateChange\",value:function(e){return this.manager.subscribeToPlayerStateChange(e)}},{key:\"handleResize\",value:function(){}},{key:\"handleFullScreenChange\",value:function(e){e.target===this.manager.rootElement&&this.actions.handleFullscreenChange(T.default.isFullscreen)}},{key:\"handleMouseDown\",value:function(){this.startControlsTimer()}},{key:\"handleMouseMove\",value:function(){this.startControlsTimer()}},{key:\"handleKeyDown\",value:function(){this.startControlsTimer()}},{key:\"startControlsTimer\",value:function(){var e=this,t=3e3;g.default.Children.forEach(this.props.children,function(e){if(g.default.isValidElement(e)&&e.type===S.default){var n=e.props.autoHideTime;\"number\"===typeof n&&(t=n)}}),this.actions.userActivate(!0),clearTimeout(this.controlsHideTimer),this.controlsHideTimer=setTimeout(function(){e.actions.userActivate(!1)},t)}},{key:\"handleStateChange\",value:function(e,t){e.isFullscreen!==t.isFullscreen&&(this.handleResize(),(0,C.focusNode)(this.manager.rootElement)),this.forceUpdate()}},{key:\"handleFocus\",value:function(){this.actions.activate(!0)}},{key:\"handleBlur\",value:function(){this.actions.activate(!1)}},{key:\"render\",value:function(){var e=this,t=this.props.fluid,n=this.manager.getState().player,r=n.paused,a=n.hasStarted,o=n.waiting,s=n.seeking,l=n.isFullscreen,u=n.userActivity,d=(0,i.default)({},this.props,{player:n,actions:this.actions,manager:this.manager,store:this.manager.store,video:this.video?this.video.video:null}),c=this.getChildren(d);return g.default.createElement(\"div\",{className:(0,v.default)({\"video-react-controls-enabled\":!0,\"video-react-has-started\":a,\"video-react-paused\":r,\"video-react-playing\":!r,\"video-react-waiting\":o,\"video-react-seeking\":s,\"video-react-fluid\":t,\"video-react-fullscreen\":l,\"video-react-user-inactive\":!u,\"video-react-user-active\":u,\"video-react-workinghover\":!M.IS_IOS},\"video-react\",this.props.className),style:this.getStyle(),ref:function(t){e.manager.rootElement=t},role:\"region\",onTouchStart:this.handleMouseDown,onMouseDown:this.handleMouseDown,onTouchMove:this.handleMouseMove,onMouseMove:this.handleMouseMove,onKeyDown:this.handleKeyDown,onFocus:this.handleFocus,onBlur:this.handleBlur,tabIndex:\"-1\"},c)}},{key:\"playbackRate\",get:function(){return this.video.playbackRate},set:function(e){this.video.playbackRate=e}},{key:\"muted\",get:function(){return this.video.muted},set:function(e){this.video.muted=e}},{key:\"volume\",get:function(){return this.video.volume},set:function(e){this.video.volume=e}},{key:\"videoWidth\",get:function(){return this.video.videoWidth}},{key:\"videoHeight\",get:function(){return this.video.videoHeight}}]),t}(g.Component);t.default=D,D.contextTypes={store:p.default.object},D.propTypes=P,D.defaultProps={fluid:!0,muted:!1,playsInline:!1,preload:\"auto\",aspectRatio:\"auto\"},D.displayName=\"Player\"}"
+          },
+          {
+            "export_name": "zA",
+            "module": 9249,
+            "path": ".ref/devices/3942/static/js/176.1fa03da8.chunk.js",
+            "sha256": "6a6f52d9e844be9787b93266aafda77db87cf7c04a4782843e8b74c0137fe5e5",
+            "offset": 379752,
+            "end": 380926,
+            "source": "(e,t,n)=>{\"use strict\";var r=n(6305),a=n(4994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var i=a(n(7383)),o=a(n(4579)),s=a(n(8452)),l=a(n(3072)),u=a(n(2475)),d=a(n(9511)),c=a(n(6234)),h=r(n(1594)),f=a(n(6996)),p={actions:c.default.object,player:c.default.object,className:c.default.string},g=function(e){function t(e,n){var r;return(0,i.default)(this,t),(r=(0,s.default)(this,(0,l.default)(t).call(this,e,n))).handleClick=r.handleClick.bind((0,u.default)(r)),r}return(0,d.default)(t,e),(0,o.default)(t,[{key:\"handleClick\",value:function(){var e=this.props,t=e.actions;e.player.paused?t.play():t.pause()}},{key:\"render\",value:function(){var e=this,t=this.props,n=t.player,r=t.className,a=n.paused?\"Play\":\"Pause\";return h.default.createElement(\"button\",{ref:function(t){e.button=t},className:(0,f.default)(r,{\"video-react-play-control\":!0,\"video-react-control\":!0,\"video-react-button\":!0,\"video-react-paused\":n.paused,\"video-react-playing\":!n.paused}),type:\"button\",tabIndex:\"0\",onClick:this.handleClick},h.default.createElement(\"span\",{className:\"video-react-control-text\"},a))}}]),t}(h.Component);t.default=g,g.propTypes=p,g.displayName=\"PlayToggle\"}"
+          },
+          {
+            "export_name": "Wc",
+            "module": 1934,
+            "path": ".ref/devices/3942/static/js/176.1fa03da8.chunk.js",
+            "sha256": "6a6f52d9e844be9787b93266aafda77db87cf7c04a4782843e8b74c0137fe5e5",
+            "offset": 54391,
+            "end": 55598,
+            "source": "(e,t,n)=>{\"use strict\";var r=n(6305),a=n(4994);Object.defineProperty(t,\"__esModule\",{value:!0}),t.default=void 0;var i=a(n(7383)),o=a(n(4579)),s=a(n(8452)),l=a(n(3072)),u=a(n(2475)),d=a(n(9511)),c=a(n(6234)),h=r(n(1594)),f=a(n(6996)),p={actions:c.default.object,player:c.default.object,className:c.default.string},g=function(e){function t(e,n){var r;return(0,i.default)(this,t),(r=(0,s.default)(this,(0,l.default)(t).call(this,e,n))).handleClick=r.handleClick.bind((0,u.default)(r)),r}return(0,d.default)(t,e),(0,o.default)(t,[{key:\"handleClick\",value:function(){var e=this.props,t=e.player;e.actions.toggleFullscreen(t)}},{key:\"render\",value:function(){var e=this,t=this.props,n=t.player,r=t.className;return h.default.createElement(\"button\",{className:(0,f.default)(r,{\"video-react-icon-fullscreen-exit\":n.isFullscreen,\"video-react-icon-fullscreen\":!n.isFullscreen},\"video-react-fullscreen-control video-react-control video-react-button video-react-icon\"),ref:function(t){e.button=t},type:\"button\",tabIndex:\"0\",onClick:this.handleClick},h.default.createElement(\"span\",{className:\"video-react-control-text\"},\"Non-Fullscreen\"))}}]),t}(h.Component);t.default=g,g.propTypes=p,g.displayName=\"FullscreenToggle\"}"
+          }
+        ],
+        "css": {
+          "path": ".ref/devices/3942/static/css/main.e8c6de08.css",
+          "sha256": "a08de2935a47fc8e7f760b3f5d8965d5d328cd7c540787b257a99d4f04a2a6df",
+          "rules": [
+            {
+              "offset": 392342,
+              "selector": ".video-react",
+              "conditions": [],
+              "declarations": "background-color:#000;box-sizing:border-box;color:#fff;display:block;font-family:serif,Times,Times New Roman;font-size:10px;line-height:1;position:relative;-webkit-user-select:none;user-select:none;vertical-align:top",
+              "properties": [
+                {
+                  "property": "background-color",
+                  "value": "#000",
+                  "important": false
+                },
+                {
+                  "property": "box-sizing",
+                  "value": "border-box",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "#fff",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "block",
+                  "important": false
+                },
+                {
+                  "property": "font-family",
+                  "value": "serif,Times,Times New Roman",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "10px",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "1",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "-webkit-user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "user-select",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "vertical-align",
+                  "value": "top",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 393620,
+              "selector": ".video-react .video-react-button",
+              "conditions": [],
+              "declarations": "appearance:none;background:none;border:none;color:inherit;cursor:pointer;display:inline-block;font-size:inherit;line-height:inherit;overflow:visible;text-decoration:none;text-transform:none;transition:none",
+              "properties": [
+                {
+                  "property": "appearance",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "background",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "border",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "color",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "cursor",
+                  "value": "pointer",
+                  "important": false
+                },
+                {
+                  "property": "display",
+                  "value": "inline-block",
+                  "important": false
+                },
+                {
+                  "property": "font-size",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "inherit",
+                  "important": false
+                },
+                {
+                  "property": "overflow",
+                  "value": "visible",
+                  "important": false
+                },
+                {
+                  "property": "text-decoration",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "text-transform",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "transition",
+                  "value": "none",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 399096,
+              "selector": ".video-react .video-react-control",
+              "conditions": [],
+              "declarations": "flex:none;height:100%;margin:0;outline:none;padding:0;position:relative;text-align:center;width:4em",
+              "properties": [
+                {
+                  "property": "flex",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "height",
+                  "value": "100%",
+                  "important": false
+                },
+                {
+                  "property": "margin",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "outline",
+                  "value": "none",
+                  "important": false
+                },
+                {
+                  "property": "padding",
+                  "value": "0",
+                  "important": false
+                },
+                {
+                  "property": "position",
+                  "value": "relative",
+                  "important": false
+                },
+                {
+                  "property": "text-align",
+                  "value": "center",
+                  "important": false
+                },
+                {
+                  "property": "width",
+                  "value": "4em",
+                  "important": false
+                }
+              ]
+            },
+            {
+              "offset": 399230,
+              "selector": ".video-react .video-react-control:before",
+              "conditions": [],
+              "declarations": "font-size:1.8em;line-height:1.67",
+              "properties": [
+                {
+                  "property": "font-size",
+                  "value": "1.8em",
+                  "important": false
+                },
+                {
+                  "property": "line-height",
+                  "value": "1.67",
+                  "important": false
+                }
+              ]
+            }
+          ]
+        },
+        "stylesheet_loading": {
+          "index": {
+            "path": ".ref/devices/3942/index.html",
+            "sha256": "4fdea8db2b01ddb0d853ce2ac25358d32841a29b8a6f21c74b425817a4cb8342",
+            "styles": [
+              {
+                "offset": 3732,
+                "end": 3793,
+                "source": "<link href=\"./static/css/main.e8c6de08.css\" rel=\"stylesheet\">",
+                "href": "./static/css/main.e8c6de08.css"
+              }
+            ]
+          },
+          "runtime": {
+            "path": ".ref/devices/3942/static/js/main.07f59396.js",
+            "sha256": "84a7a45e640d45b5ccad85736c188a16e331437a67504e1df92d54da6e1be77d",
+            "offset": 296230,
+            "end": 298792,
+            "source": "miniCssF=e=>\"static/css/\"+e+\".\"+{70:\"c46e976d\",720:\"55eac9f3\",866:\"befda845\"}[e]+\".chunk.css\",n.g=function(){if(\"object\"===typeof globalThis)return globalThis;try{return this||new Function(\"return this\")()}catch(e){if(\"object\"===typeof window)return window}}(),n.o=(e,t)=>Object.prototype.hasOwnProperty.call(e,t),(()=>{var e={},t=\"project-anne-marcit1:\";n.l=(i,o,a,r)=>{if(e[i])e[i].push(o);else{var s,_;if(void 0!==a)for(var E=document.getElementsByTagName(\"script\"),c=0;c<E.length;c++){var l=E[c];if(l.getAttribute(\"src\")==i||l.getAttribute(\"data-webpack\")==t+a){s=l;break}}s||(_=!0,(s=document.createElement(\"script\")).charset=\"utf-8\",n.nc&&s.setAttribute(\"nonce\",n.nc),s.setAttribute(\"data-webpack\",t+a),s.src=i),e[i]=[o];var T=(t,n)=>{s.onerror=s.onload=null,clearTimeout(A);var o=e[i];if(delete e[i],s.parentNode&&s.parentNode.removeChild(s),o&&o.forEach(e=>e(n)),t)return t(n)},A=setTimeout(T.bind(null,void 0,{type:\"timeout\",target:s}),12e4);s.onerror=T.bind(null,s.onerror),s.onload=T.bind(null,s.onload),_&&document.head.appendChild(s)}}})(),n.r=e=>{\"undefined\"!==typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStringTag,{value:\"Module\"}),Object.defineProperty(e,\"__esModule\",{value:!0})},n.nmd=e=>(e.paths=[],e.children||(e.children=[]),e),n.p=\"./\",(()=>{if(\"undefined\"!==typeof document){var e=e=>new Promise((t,i)=>{var o=n.miniCssF(e),a=n.p+o;if(((e,t)=>{for(var n=document.getElementsByTagName(\"link\"),i=0;i<n.length;i++){var o=(r=n[i]).getAttribute(\"data-href\")||r.getAttribute(\"href\");if(\"stylesheet\"===r.rel&&(o===e||o===t))return r}var a=document.getElementsByTagName(\"style\");for(i=0;i<a.length;i++){var r;if((o=(r=a[i]).getAttribute(\"data-href\"))===e||o===t)return r}})(o,a))return t();((e,t,i,o,a)=>{var r=document.createElement(\"link\");r.rel=\"stylesheet\",r.type=\"text/css\",n.nc&&(r.nonce=n.nc),r.onerror=r.onload=n=>{if(r.onerror=r.onload=null,\"load\"===n.type)o();else{var i=n&&n.type,s=n&&n.target&&n.target.href||t,_=new Error(\"Loading CSS chunk \"+e+\" failed.\\n(\"+i+\": \"+s+\")\");_.name=\"ChunkLoadError\",_.code=\"CSS_CHUNK_LOAD_FAILED\",_.type=i,_.request=s,r.parentNode&&r.parentNode.removeChild(r),a(_)}},r.href=t,i?i.parentNode.insertBefore(r,i.nextSibling):document.head.appendChild(r)})(e,a,null,t,i)}),t={792:0};n.f.miniCss=(n,i)=>{t[n]?i.push(t[n]):0!==t[n]&&{70:1,720:1,866:1}[n]&&i.push(t[n]=e(n).then(()=>{t[n]=0},e=>{throw delete t[n],e}))}}})(),(()=>{var e={792:0};n.f.j=(t,i)=>{var o=n.o(e,t)?e[t]:void 0;if(0!==o)if(o)i.push(o[2]);else{var a=new Promise((n,i)=>o=e[t]=[n,i]);i.push(o[2]=a);var r=n.p+n.u(t"
+          }
+        },
+        "optional_1491_css": {
+          "context_imports": [],
+          "context_requests": [],
+          "resource_keys": [],
+          "direct_chunk_loads": [],
+          "status": "not_in_current_product"
+        }
+      }
     }
   ]
 }

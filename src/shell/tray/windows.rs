@@ -12,15 +12,15 @@ impl DesktopTray {
             cx.bind_keys([KeyBinding::new("escape", Dismiss, Some("TrayPopup"))]);
             let sender = self.sender.clone();
             let options = WindowOptions {
-                // 宿主 `LeftSystray.js` 建窗用 width:300/height:200（最小同值），弹窗
-                // 自己再 `resizeTo(360, header2.clientHeight + 列表高度)`；宽度取
-                // `.systray{width:360px}`，高度被 minimum_height:200 夹住，因此最终
-                // 就是 360x200。
+                // LeftSystray creates a 300x200 window. The renderer then calls
+                // setBounds(360, 60) for the signed-out branch. Electron's
+                // non-resizable NativeWindowViews resets its size constraints
+                // to the requested size; the initial 200 is not a height floor.
                 window_bounds: Some(WindowBounds::Windowed(Bounds::new(
                     point(px(0.), px(0.)),
-                    size(px(360.), px(200.)),
+                    size(px(300.), px(200.)),
                 ))),
-                window_min_size: Some(size(px(300.), px(200.))),
+                window_min_size: Some(size(px(300.), px(60.))),
                 window_background: WindowBackgroundAppearance::Transparent,
                 titlebar: None,
                 show: false,
@@ -45,7 +45,13 @@ impl DesktopTray {
                     view.show_task = None;
                     native::hide(window);
                 } else {
-                    let placement = rect.and_then(|rect| native::popup_placement(window, rect));
+                    // LeftSystray.addHandler aligns only while hidden; another
+                    // click focuses the existing panel without moving it.
+                    let placement = if native::visible(window) {
+                        None
+                    } else {
+                        rect.and_then(|rect| native::popup_placement(window, rect))
+                    };
                     view.show_task = Some(cx.spawn_in(window, async move |this, cx| {
                         if let Some(placement) = placement {
                             cx.background_spawn(async move {
@@ -353,12 +359,11 @@ pub(in crate::shell) mod native {
             }
         }
     }
-    /// 位置端口自弹窗应用自己的定位函数
-    /// （`.ref/applications/systray/systrayv2/static/js/main.9579c403.js` 的 `c()`）：
-    /// `x = trayX - width / 2`、`y = trayY - height`，再按显示器工作区夹取
-    /// （原版还会按 dpi 与 `S / dpiScaleY * 0.7` 收缩，这里做同一件事的等价实现）。
-    /// 宿主 `LeftSystray.calculateWindowPosition` 只把 `{x,y,trayX,trayY}` 通过
-    /// `align` 事件发给页面，真正移动窗口的是这段逻辑。
+    /// Current renderer `c()` signed-out branch: `.header-2` is 60px;
+    /// its singular `.app.list-unstyled` query does not find the `.apps` list.
+    /// Preserve that source behavior rather than inventing a 120/200px request.
+    /// Only the account/body branch clamps Y and calculates a dynamic height.
+    /// Mixed-monitor DPI still needs real-window verification.
     pub(in crate::shell) fn popup_placement(
         window: &Window,
         rect: tray_icon::Rect,
@@ -382,28 +387,26 @@ pub(in crate::shell) mod native {
         }
         let scale = window.scale_factor();
         let width = (360. * scale).round() as i32;
-        let height = (200. * scale).round() as i32;
+        let height = (60. * scale).round() as i32;
         let work = info.rcWork;
-        let work_width = work.right - work.left;
-        let work_height = work.bottom - work.top;
         let tray_x = rect.position.x as i32;
         let tray_y = rect.position.y as i32;
-        // `.systray>.header-2` + `.apps` 各 60px；窗口高度由 minimum_height 夹到 200。
-        let mut y = tray_y - height;
-        if y < work.top {
-            y = work.top;
-        }
-        if y + height > work.bottom {
-            y = work.bottom - height;
-        }
+        let y = tray_y - height;
         let mut x = tray_x - width / 2;
+        let right_gap = (10. * scale).round() as i32;
+        // 597/a uses the primary WorkRect width, not its monitor width.
+        // Preserve the first clamp separately from the later right/left
+        // checks: side taskbars can make these two widths differ.
+        let primary_width = (work.right.abs() - work.left.abs()).abs();
+        if x + width > primary_width {
+            x = primary_width - width - right_gap;
+        }
+        if x + width > work.right {
+            x -= (x + width - work.right).abs() + right_gap;
+        }
         if x < work.left {
             x = work.left;
         }
-        if x + width > work.right {
-            x = work.right - width;
-        }
-        let _ = (work_height, work_width);
         Some(PopupPlacement {
             address,
             x,
@@ -412,25 +415,16 @@ pub(in crate::shell) mod native {
             height,
         })
     }
-    pub(in crate::shell) fn dark_theme() -> bool {
-        use windows_sys::Win32::System::Registry::*;
-        let key: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize\0"
-            .encode_utf16()
-            .collect();
-        let name: Vec<u16> = "AppsUseLightTheme\0".encode_utf16().collect();
-        let mut light = 1u32;
-        let mut length = 4;
-        unsafe {
-            RegGetValueW(
-                HKEY_CURRENT_USER,
-                key.as_ptr(),
-                name.as_ptr(),
-                RRF_RT_REG_DWORD,
-                std::ptr::null_mut(),
-                (&mut light as *mut u32).cast(),
-                &mut length,
-            );
-        }
-        light == 0
+
+    pub(in crate::shell) fn menu_is_dark() -> bool {
+        // muda uses TrackPopupMenu. Its surface is the native menu color,
+        // independent of the registry's app-theme setting. Keep the original
+        // light/dark PNG variants legible on that accepted platform adapter.
+        use windows_sys::Win32::Graphics::Gdi::{COLOR_MENU, GetSysColor};
+        let color = unsafe { GetSysColor(COLOR_MENU) };
+        let red = color & 0xff;
+        let green = (color >> 8) & 0xff;
+        let blue = (color >> 16) & 0xff;
+        red + green + blue < 3 * 128
     }
 }

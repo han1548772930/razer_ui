@@ -41,7 +41,7 @@ function carries(file, selector, expected) {
   rules.push({path: file, selector, offset: rule.offset, declarations: rule.declarations});
 }
 carries(mainCssPath, 'body', {'font-size':'16px', 'line-height':'1.22', color:'#ccc'});
-carries(cssPath, '.systray', {width:'360px', 'max-height':'700px', 'background-color':'#222', border:'1px solid #000', cursor:'default'});
+carries(cssPath, '.systray', {width:'360px', 'min-height':'100%', 'max-height':'700px', 'background-color':'#222', border:'1px solid #000', cursor:'default'});
 carries(cssPath, '.systray>.header,.systray>.header-2', {height:'60px', padding:'0 20px'});
 carries(cssPath, '.systray>.header-2', {'padding-bottom':'1px'});
 carries(cssPath, '.systray>.apps', {height:'60px', 'border-top':'1px solid #222', 'background-color':'#111'});
@@ -69,6 +69,7 @@ assert(account.includes('.line_height(relative(1.22))'), 'Account name line heig
 assert(/\.id\("tray-apps"\)[\s\S]*?\.h\(surface::css\(60\.\)\)[\s\S]*?\.border_t_1\(\)[\s\S]*?Button::new\("tray-launch-synapse"\)[\s\S]*?\.h\(surface::css\(59\.\)\)/.test(tray), 'Apps border/row geometry flattened');
 assert(tray.includes('.child(text("host", "RAZER_SYNAPSE").to_uppercase())') && tray.includes('.truncate()'), 'Title presentation missing');
 assert(tray.includes('from_rgba(bytes.to_vec(), width, height)'), 'Menu ignores original icon dimensions');
+assert(/\.id\("source-tray-popup"\)[\s\S]*?\.min_h_full\(\)/.test(tray), 'Tray root has fixed viewport height instead of source min-height');
 const inputPaths = [manifestPath, jsPath, cssPath, mainCssPath, cachePath, ...assets.map(entry => entry.source)];
 const evidence = {
   schema_version: 1,
@@ -77,9 +78,10 @@ const evidence = {
   changes: ['Inherited body 1.22 line height explicitly overrides Base Button defaults.',
     '60px apps container owns its border; the 59px launcher row is a separate child.',
     'Single launcher title follows uppercase and ellipsis rules.',
+    'Tray root preserves source min-height:100% rather than a fixed viewport-height border box.',
     'Theme menu PNGs retain official pixels and dimensions without preparation-time resizing.'],
   remaining: ['Real-window appearance, fonts, keyboard focus, DPI and hover are not run.',
-    'muda 0.21.0 Windows to_hbitmap draws all custom menu icons into a 16x16 bitmap; Electron output parity is not established.',
+    'Host uses forced-dark Chromium Views; retained HMENU presentation and native-palette icons are an accepted framework difference.',
     'Account transport, populated widgets/notifications, multi-app catalog and dynamic popup bounds remain incomplete.'],
   runtime_validation: 'not_run'
 };

@@ -8,7 +8,7 @@
 - Games卡为290×220、body150/footer70；关联卡为240×190、body120/footer70；Devices卡290×220、图片250×140。关联卡checkbox使用源两段3px/100与200ms几何，active/busy及添加卡页脚各自处理。
 - Games清空搜索会收起输入，Views/Order区域点击不提前关空搜索；Add清空只清文字。Add/Search使用源即时tooltip。Scan/Refresh/Browse未有真实结果时保留不可用边界。
 - Add根只有fixed-header和内容rows，不添加工程空目录文字。当前f不向r转发goBack，因此无额外返回按钮；来自设备页时关闭仍回设备弹层，no-popup切换保留。
-- Add/DeviceGames遵守各自backdrop、标题36、关闭36/图20、100ms opacity/300ms位置与媒体条件；DeviceGames最低800、≥1600时1300，中间auto/shrink-to-fit精确宽度仍待完成。
+- Add/DeviceGames遵守各自backdrop、标题36、关闭36/图20、100ms opacity/300ms位置与媒体条件。两种实际挂载祖先都用 `min-width:0;width:calc(100vw - 40px)` 取消公共800px最小宽；DeviceGames和其Add子层≥1600时采用源1300px。窄窗不再人为强制800px；主Games的900px内容限制仍单独保留。
 
 `ProductWorkspace`提供真实本地设备/配置实体。弹层订阅传入workspaces，吸收后续已知游戏关联；解除关联后曾见过的游戏留在本次All列表，不推断为卸载。Linked Games只包含当前任一workspace中实际存在的关联；Removed需要真实removed/missing状态。全局gameList/扫描目录仍未连接。
 

@@ -1,0 +1,122 @@
+[
+  {
+    "product_id": 580,
+    "factory_profile_lock": false,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 614,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 642,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 678,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 679,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 688,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 719,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 720,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": true
+  },
+  {
+    "product_id": 721,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 728,
+    "factory_profile_lock": false,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 740,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 741,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 742,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 746,
+    "factory_profile_lock": true,
+    "sync_padding_x": 10,
+    "sync_padding_bottom": 0,
+    "sync_container_height": null,
+    "sync_default_secondary": false
+  },
+  {
+    "product_id": 747,
+    "factory_profile_lock": false,
+    "sync_padding_x": 0,
+    "sync_padding_bottom": 10,
+    "sync_container_height": 60,
+    "sync_default_secondary": false
+  }
+]

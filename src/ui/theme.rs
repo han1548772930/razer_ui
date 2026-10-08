@@ -301,6 +301,13 @@ impl HueColors {
 /// Current audio demo .demo-preview > .box > .icon, shared by 1392/1442/3942.
 pub(crate) struct AudioDemoColors;
 impl AudioDemoColors {
+    pub(crate) fn unchecked_background() -> Hsla {
+        Hsla::transparent_black()
+    }
+    /// Current audio demo `.custom-control-bar`: translucent black #0003.
+    pub(crate) fn control_background() -> Hsla {
+        rgba(0x00000033).into()
+    }
     pub(crate) fn play_foreground() -> Hsla {
         rgb(0xffffff).into()
     }
@@ -915,8 +922,27 @@ impl AetherStripColors {
     }
 }
 
-/// systrayv2 554.7cdbd936: its popup uses a fixed dark palette independently
-/// of the Windows-native right-click menu's system appearance.
+/// Current keyboard ACTUATION `.btn-sync` and `.actuation-warning` palette.
+pub(crate) struct KeyboardActuationColors;
+impl KeyboardActuationColors {
+    pub(crate) fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub(crate) fn sync_background() -> Hsla {
+        rgb(0x222222).into()
+    }
+    pub(crate) fn sync_border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub(crate) fn sync_hover() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub(crate) fn sync_text() -> Hsla {
+        rgb(0xffffff).into()
+    }
+}
+
+/// systrayv2 554.7cdbd936: its popup uses the renderer's fixed dark palette.
 pub(crate) struct TrayColors;
 impl TrayColors {
     pub(crate) fn tooltip_border() -> Hsla {

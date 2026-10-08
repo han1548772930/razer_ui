@@ -111,7 +111,7 @@
       "contract": "docs/re/receiver-ui-current.md",
       "implementation": {
         "src/shell/device_discovery.rs": "acab0c0406e33160ebe0415e939e8be0133a51e65c632aca8d015d62f731a14e",
-        "src/shell.rs": "fa665f0f0b5e63e9f2d3d992bb09dcba415a858a412aa221525a167040418cf0",
+        "src/shell.rs": "719fa149bff4ba5b77230e9e742091593471f9a6c31416b0c23d22f1189cfac8",
         "src/features/product_workspace.rs": "35ac9435e39ecdd0910c586066998d8a98f45eee7066a7f19ed34ffe325c3efc",
         "src/features/source_workspace.rs": "6157839254945d51a31bd46234e8c34ffbce77115c4519856f8e2c84fcb2401e",
         "src/features/source_controls/receiver_page_state.rs": "6f1988b839fb4f03c804de68e0e1870fc081b2403b0c534f5457e197c1b94ebe",
@@ -136,6 +136,11 @@
         ".ref/devices/179/static/media/spinner.ef2d0235.svg": "1990cb6a1e1e856e53bbe87d05f85802eeeaec9397ce1db31b0510c1e633ee83",
         ".ref/devices/179/static/media/tooltip_questionmark.96138d2f.svg": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
         ".ref/middleware/179/6120.ef5d145fafdfd0069d53.js": "1bc185f4b6407b0c5aab6939b827a9f3ccba88e21966c222607bc0e92742beb8"
+      },
+      "fingerprint_review": {
+        "path": "src/shell.rs",
+        "reason": "旧指纹对应 87a538f；后续变化仅涉及模块目录导航及本地页面集合，接收器完整/部分发现、精确身份和导航机制未变。登记静态检查重新通过；其他指纹保持原值。",
+        "runtime_validation": "not_run"
       }
     },
     {
@@ -143,7 +148,7 @@
       "behavior": "接收器结果使用当前身份/描述目录；首个已核实 peer 状态零触发能力数据指定的有限独立重查",
       "contract": "docs/re/receiver-ui-current.md",
       "implementation": {
-        "src/backend/discovery.rs": "14da32442bf7e4f482dd6d8af53e73487b8283ca3f307f921e8f1dd83af2d1c1",
+        "src/backend/discovery.rs": "17ed9fcc958580b765c1ad99e59aacaeca3db365b1a7754ccc9a17d694e225f3",
         "src/backend/receiver_capabilities.rs": "fd44ca75dcb5ac7ffcabc41a10bf4a9bd1b6d35efc5ea32edc4b2d34e1cfbac6",
         "src/backend/receiver_catalog.rs": "ce8162705494dc5acfe265e3a2dbd0e4e26fe040a53b888d1b11a10c613898be",
         "src/backend/receiver_peer_catalog.json": "cb8252dc39dcfd95e283f5a15b48e9d8b8dd8b85a397931d0e53be23431d4557",
@@ -489,6 +494,11 @@
         ".ref/middleware/727/rzDevice25.b06e00d2305d6eae67ae.js": "51f643598a7f34fac9daa76d685058454db1a08a5cd0d45f352d0c28c7416dc0",
         ".ref/middleware/727/rzDevice25DualLinkKeyboard.27a865e449d9cb148b36.js": "81968701f6712e6e85ea0fcab2076e257f7b6d6ad5a259354b047ed881bcb6ae",
         ".ref/middleware/727/webpackManifest.json": "12f41c3988908800d9fcf8fb2fe8458c4001bdf76ed460348574f496955ddb52"
+      },
+      "fingerprint_review": {
+        "path": "src/backend/discovery.rs",
+        "reason": "旧指纹对应 87a538f；后续变化仅涉及 HID 接口路径提取和候选排序，目录投影及首个有效 peer 的有限重查机制未变。登记静态检查重新通过；其他指纹保持原值。",
+        "runtime_validation": "not_run"
       }
     },
     {
@@ -496,7 +506,7 @@
       "behavior": "去除按产品编号命名的滚轮/DPI/Properties 实现和已重构共享逻辑中的 PID 特例，改用独立源证能力数据",
       "contract": "docs/re/mouse-ui-current.md",
       "implementation": {
-        "src/features/mouse_products.rs": "f5449e1bae7db58ebe890e195706791d70235446d8b41f966ef678213a49d774",
+        "src/features/mouse_products.rs": "bc7b3f14b16a5041895586ff0ca5985d297e8fe0883e9a19956c15ba33933add",
         "src/features/mouse_dpi_grid.rs": "064f8caff9fd8df7afdfdcb410e1103b96b33e52a1a276ac4d04bb40c3d41796",
         "src/features/mouse_dpi_grid_data.json": "e9d2cc6c160da69456043bb3222745f43c274f3da6f2f94ec0b368b187d95939",
         "src/features/mouse_dpi_rows.rs": "56415644fbcd1a563e95717d9087e370814de29d372624a796c357c525b7e4eb",
@@ -533,6 +543,11 @@
         ".ref/devices/70/asset-manifest.json": "1ebb5c8fcc14b5628f687f5578e415d9eede7d0d803a0e91e79a90431cd8830b",
         ".ref/devices/70/static/css/main.dd229426.css": "5c2bd08d0564900249a47bdebf0ef5c6ef12ee59683534fa685e90c1de1c9f59",
         ".ref/devices/70/static/js/main.8f24b6a1.js": "be0816be63fe674ea9fc106cbd55f5aabd509e1ff36aaf66e6c002d9ecd1f4b5"
+      },
+      "fingerprint_review": {
+        "path": "src/features/mouse_products.rs",
+        "reason": "旧指纹对应 ee54ea9；977d04d 唯一变化为表面校准移除目录冒充设备配置。能力分派和滚轮机制未变化，列出的静态检查重新通过；其他指纹保持原值。",
+        "runtime_validation": "not_run"
       }
     },
     {
@@ -542,7 +557,7 @@
       "implementation": {
         "src/features/mouse_scroll_wheel.rs": "8b2f87d2c070d721798378aa3824476ca0514c984301d38850698b0139767c77",
         "src/features/mouse_scroll_wheel_data.json": "a20656b231b3b530ca47db3f592a93a7ed98340fd65229f291157799b604316b",
-        "src/features/mouse_products.rs": "f5449e1bae7db58ebe890e195706791d70235446d8b41f966ef678213a49d774"
+        "src/features/mouse_products.rs": "bc7b3f14b16a5041895586ff0ca5985d297e8fe0883e9a19956c15ba33933add"
       },
       "evidence": {
         "docs/re/mouse-scroll-wheel-current-evidence.json": "eb6ee2014abeecc611ed4fdc81a3194761cc5fe1cc31593b7cd3fcb6025fe85f",
@@ -713,6 +728,11 @@
         ".ref/devices/45066/static/js/286.1978470e.chunk.js": "1773c4535cbeb1b7c484e7d4b0570bd69686c870f0c8b43e3c766a86cfc7e7a1",
         ".ref/devices/45066/static/js/8703.a90ad548.chunk.js": "62906841145ed328766f57a2a10d10814e1398c900f500503afcaf75db5464e8",
         ".ref/devices/45066/static/js/main.bc41890a.js": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71"
+      },
+      "fingerprint_review": {
+        "path": "src/features/mouse_products.rs",
+        "reason": "旧指纹对应 ee54ea9；977d04d 唯一变化为表面校准移除目录冒充设备配置。能力分派和滚轮机制未变化，列出的静态检查重新通过；其他指纹保持原值。",
+        "runtime_validation": "not_run"
       }
     },
     {
@@ -791,31 +811,35 @@
     },
     {
       "id": "tray-source-presentation",
-      "behavior": "托盘按钮源行高、应用区与启动行边框分层、标题大写省略及原始菜单PNG像素和尺寸",
+      "behavior": "托盘源行高、min-height 外框、分层边框与原图；未登录 360×60 请求和工作区定位；当前宿主 Chromium Views 菜单链及本地 HMENU 差异",
       "contract": "docs/re/tray-ui-current.md",
       "implementation": {
-        "src/shell/tray.rs": "5081f3b62926d1d8f62b1d37ff78c5d84fc6ce4bfbe94d8dbf839ee87067a4cc",
+        "src/shell/tray.rs": "ef049f113c3184dc555f32c6dd1cf5e4a77401b3064d994859f6b7f6b0a275aa",
         "src/shell/tray/account.rs": "8a5e8d995ad0ec84f54434c411a80caaa40606e272aaea4a34ba0b3854cb483e",
         "tools/tray_assets.py": "7caa46d067221a809e7c9ebc8a1e21e428e64e85e8273080112015aa58e0c9d5",
         "tools/validate-tray-assets.py": "1a8c109b86e75e07f42f8651cd82d01d094654b8e9912169530ac593c4928e85",
-        "tools/audit-tray-presentation.cjs": "4141903e7c757d3665071e181c0e1af81f3baf3e3681bf455215133a93b9c2d1",
+        "tools/audit-tray-presentation.cjs": "9da19b5abf7a8c3f321f8a2e430a98ad7d7c61aeba6d219535004840d4c4db7c",
         "assets/synapse/manifest.json": "a30fd9076a50eeb403d5d1c910aabd5952dfcaefa39a90c4cfa4a3b1069526f8",
         "assets/synapse/tray-gear-dark.rgba": "7747f51f284ded6599cc7decd8b2d6e76f7403890b0090ed905968172134a1a0",
         "assets/synapse/tray-gear-light.rgba": "33892a0b56b919587845e46a195f849f546eff9e9da5d8aaeb6a1fe2d02e4ea7",
         "assets/synapse/tray-user-dark.rgba": "92b2729cb9449c6ab5d48d717ee13ea02818f2a2adcea0fc530981d92b2238fc",
-        "assets/synapse/tray-user-light.rgba": "e430ab0949f04ccb836e4922153b362dc846ee274fcdcb84e827eff4143f7a8b"
+        "assets/synapse/tray-user-light.rgba": "e430ab0949f04ccb836e4922153b362dc846ee274fcdcb84e827eff4143f7a8b",
+        "src/shell/tray/windows.rs": "66f7a6b5b096f9f21a672002999e11c3f5d3833ed1818dc7c31fdccdf93a8897",
+        "tools/audit-tray-window-current.py": "abc16777ab06c770990f0a6b577edb19a18946df29b375ee4e65e8fb8a717371"
       },
       "evidence": {
-        "docs/re/tray-presentation-current-evidence.json": "3bad68d49879e12638821b5954a9724e74c96be63aab7f3ce168023a7b5a5d77",
-        "docs/re/tray-icon-validation.json": "f8812cd8923883b260099e2f23ccf74981cd9b23cd5414b5cb99e9b021858dfe"
+        "docs/re/tray-presentation-current-evidence.json": "b11d05aff6b14807f8c9d35cd6147a3933e21e567ff9444a5fefa0ad37e99201",
+        "docs/re/tray-icon-validation.json": "f8812cd8923883b260099e2f23ccf74981cd9b23cd5414b5cb99e9b021858dfe",
+        "docs/re/tray-window-current-evidence.json": "1bbee84de566e9e1cc6083c6039810bc2eb982312a6b3dc4bb94ebed31fa6259"
       },
       "checks": [
         "node tools/audit-tray-presentation.cjs",
         "node tools/audit-tray-account.cjs",
         ".work/resource-env/Scripts/python.exe tools/validate-tray-assets.py",
-        "cargo check --locked --all-targets"
+        "cargo check --locked --all-targets",
+        "python -X utf8 tools/audit-tray-window-current.py"
       ],
-      "remaining": "muda原生菜单16px绘制、真实窗口、账户/Widget数据、动态高度和纵向定位未验收",
+      "remaining": "真实账户发布者、账户 body/通知/Widgets、多应用与动态高度未接通；HMENU 保留框架差异；字体、窗口及 DPI 未运行验收",
       "state": "implemented_static_checked",
       "runtime_validation": "not_run",
       "source_inputs": {
@@ -827,7 +851,18 @@
         ".ref/host-4.0.827/electron/resources/images/gear-black.png": "df6220984a30d61af0aad6c2693de6ac04e45593498f2451db57077e1a0a9886",
         ".ref/host-4.0.827/electron/resources/images/gear-white.png": "195d3b079248f44304de5f40cc815fdf9be26342b6804181f42ecbf5d50d9906",
         ".ref/host-4.0.827/electron/resources/images/user-black.png": "5dae90d3ef26e3e47726927e64d6e07d1f60ce6422907a47e62b33fb6a102b1d",
-        ".ref/host-4.0.827/electron/resources/images/user-white.png": "5fe98270d16a1549dbe08143b2572cefc3b10affde9b89c7150b0a0e6de9ddaf"
+        ".ref/host-4.0.827/electron/resources/images/user-white.png": "5fe98270d16a1549dbe08143b2572cefc3b10affde9b89c7150b0a0e6de9ddaf",
+        ".ref/applications/systray/systrayv2/static/js/main.9579c403.js": "f77242abe6648164d2da401814b0dd4cd872526d81811caa455c69b85beb06b2",
+        ".ref/framework/electron-41.2.0/DEPS": "8ad245d6ceae6b50002f3e41bb2a644b581685167b810a6e8647d0a0908bb8df",
+        ".ref/framework/electron-41.2.0/shell/browser/api/electron_api_base_window.cc": "6f0ea9c0aaa20efe3cfe547d668c3d6418094f505d1bab67afee33b476a4b4a6",
+        ".ref/framework/electron-41.2.0/shell/browser/native_window_views.cc": "fa84eca5b8215f7ea83d1ddda809b6f67fe3c000acfa3c0f9f35a33e0bd14e67",
+        ".ref/framework/electron-41.2.0/shell/browser/ui/win/notify_icon.cc": "cc3ef8fb24c9b471942ed41bbaade6562b01f1e56fbd80d8124ba116e2b0980f",
+        ".ref/host-4.0.827/ARCHIVE-CHAIN.json": "19fdc6eb7ab48845e63ab264f8e272313d9d80a6a7a1a6a51285d317a67eda3a",
+        ".ref/host-4.0.827/electron/components/Tab/LeftSystray.js": "2e916360f1d87097266d76da43b3caad761d144de1a254e374c094e3592a3677",
+        ".ref/host-4.0.827/electron/components/Tab/common.js": "7262ee43326e3960b0159547909282434421aba1cb000c01a6a96fda068f0532",
+        ".ref/host-4.0.827/electron/lib/common.js": "b7bfa2eec3da3d20e33add539e6606338c27aa6484bf0c7097a13959a3374dce",
+        ".ref/host-4.0.827/electron/main.js": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e",
+        ".ref/host-4.0.827/electron/preload.js": "b5a7c038a9d31f2536c11a6f091e34648195ac5b716ff6435c297ca387e40a7b"
       }
     },
     {
@@ -857,6 +892,250 @@
         ".ref/devices/777/asset-manifest.json": "771c86aa006c854de1a3e29308bf27da76a3506357d348cd90e020159e68c39e",
         ".ref/devices/777/static/js/main.eb70ce38.js": "7c3cc1d1ff8a95bd42462c8bb0f3b9573276d9bc35e103e805d9d02ce18053b4",
         ".ref/devices/777/static/css/main.e4bab2aa.css": "28d5a7ea7b3c38cff5a467b325203841f21cdd14a213e274ffcddc7cf9843427"
+      }
+    },
+    {
+      "id": "settings-source-presentation",
+      "behavior": "独立 Settings 的当前字体加载、Software 标题/禁用动作、360×60 空预览、标签和 About 分隔符",
+      "contract": "docs/re/settings-presentation-current.md",
+      "implementation": {
+        "src/shell/settings_window.rs": "8f8e04680cfc8085538729b5cb53737135e4e45b76ca57fe6b82043f13fa4323",
+        "tools/audit-settings-presentation-current.cjs": "f8c5c964c2a779e774377a9f84a7a9b5751aa30b63e26c3111dcb3cfe44b1f7c"
+      },
+      "evidence": {
+        "docs/re/settings-presentation-current-evidence.json": "633621dda2865a848f22c8b8200f1998e730fab99d915792e14a74e3c1cff0cf"
+      },
+      "source_inputs": {
+        ".ref/applications/settings/asset-manifest.json": "21ab9657bad4cda156e453142f54a2ebf604814047214e273c7c621723f26b34",
+        ".ref/applications/settings/index.html": "86538b53c32b32334dbb7d4f73e00fd9788bf4a27644a3039ad1ee24fb7fa55e",
+        ".ref/applications/settings/static/css/414.2e30559c.chunk.css": "222a0b50bbafe963a630831968b0bd7b76ecab2c4327b23cb333456b6120f879",
+        ".ref/applications/settings/static/css/762.226a09dd.chunk.css": "e2d6a8b35dba810752229577e10dada08acb0c6b1ec14b3c76b00dbf142b1a46",
+        ".ref/applications/settings/static/css/921.08e5c8d7.chunk.css": "4aa3b142707fe5e63bd6ee94dabc3690855f3c3f5991f6de290933a1e962cfe0",
+        ".ref/applications/settings/static/css/97.394f9404.chunk.css": "6045fbb50e96fe9a383ffd09aea5b44c9ba0aa844a0adf8645ccdc1d5f6a3cfe",
+        ".ref/applications/settings/static/css/main.a418d266.css": "a8ea1ce96a4f90a2c21357b0165304f46ca27f83a76b9ddf32b80f462b235d81",
+        ".ref/applications/settings/static/js/414.717cc452.chunk.js": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+        ".ref/applications/settings/static/js/762.98d21f1a.chunk.js": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+        ".ref/applications/settings/static/js/921.dfdde98f.chunk.js": "278e86f857920973cecc55f66c46d25870aa84c861f71eb32cc18d961ece86cb",
+        ".ref/applications/settings/static/js/97.d87e27ff.chunk.js": "b5e5db708c2a18ccee559922b232944a3901d2d28443d53a2fd8314e8320c7e1",
+        ".ref/applications/settings/static/js/main.eda30dd1.js": "12368ae1d2a359e479951a1fb95242c6c7a5510581b75bee784bd8bab62741a0"
+      },
+      "checks": [
+        "node tools/audit-settings-presentation-current.cjs --check",
+        "node tools/prepare-settings-window.cjs --check",
+        "cargo check --locked --all-targets"
+      ],
+      "remaining": "安装应用/Widgets/Launcher 真实目录缺失；其余设置控件、实际字体、焦点及窗口视觉未逐项完成",
+      "state": "implemented_static_checked",
+      "runtime_validation": "not_run"
+    },
+    {
+      "id": "profiles-popup-source-minimum",
+      "behavior": "当前 DeviceGames 挂载祖先取消公共 800px 最小宽度，按 calc(100vw - 40px) 和媒体条件布局",
+      "contract": "docs/re/profiles-ui-current.md",
+      "implementation": {
+        "src/shell/profiles_page.rs": "776b28570e34e01b6d88812ed0e4c817bd9f28aee6fb14a5487a487203757398",
+        "tools/audit-profiles-content.cjs": "1b7bb21b87e5b8176c81191729a54b1cbe5e797e883cebbebe8109dec4b6d1e6"
+      },
+      "evidence": {
+        "docs/re/profiles-content-current-evidence.json": "47003d1ed3da9ed1710a897f018ed3a09714b61e6846c47e88d5b77bac76498e"
+      },
+      "source_inputs": {
+        ".ref/applications/synapse/profiles/static/css/9449.b8e7f39a.chunk.css": "f1c2cbe5d0da03c1d0b9c40365f7ef0b2d6c8496066b79a60e3809a5c937dbab",
+        ".ref/applications/synapse/profiles/static/css/main.ee3cb5b6.css": "657511d1061169e5e3a6308978fab05276ed23c879f2601b08d42ea1cbe71cf1",
+        ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js": "823e7a30acddaa3650be99cf430055fcbd505d39ebfb679685c9878aa7ce70a3",
+        ".ref/applications/synapse/profiles/static/js/9473.f9ed3133.chunk.js": "ed7876b57a439cd399d92798479ebadd509fcaabc3aa4fd811cbbf79d250714b",
+        ".ref/applications/synapse/profiles/static/js/main.776df2b1.js": "5c765e57ea009fa8f66ce9f973a99cf8a1b2e7c994c99a776a0ad8feeba9a6c2",
+        ".ref/applications/synapse/profiles/static/media/icon_add.c95a8d74.svg": "5bf5f05350fb55e4fc72f196300fb89a484b6a9ce2244bfa24a599aaca9a3ceb",
+        ".ref/applications/synapse/profiles/static/media/icon_add.green.db605256.svg": "1f777d6922ad393ca104113006ac304a8b237709d998bb0d7f4d45452d3c3642",
+        ".ref/applications/synapse/profiles/static/media/icon_addnotgrey.f73db7b6.svg": "34458e3c4d5aac897b4bef3dae6bdb0971957edaa205c3574624c1268dbc7e71",
+        ".ref/applications/synapse/profiles/static/media/icon_close.55fe41f1.svg": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+        ".ref/applications/synapse/profiles/static/media/icon_close_enclosed.6056b667.svg": "f254f96aad55e9b5c101cfcc1ab2c0874ef0ced6f8a45e601c8ad45d0482930f",
+        ".ref/applications/synapse/profiles/static/media/icon_close_enclosed_a.83aff4bb.svg": "5b789a132a0c7468397a4f758e00c414e5a83a38de8ca718bc81974f6cb76451",
+        ".ref/applications/synapse/profiles/static/media/icon_more.fb688d78.svg": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c",
+        ".ref/applications/synapse/profiles/static/media/icon_refresh.80aa16c3.svg": "b78569e26ef2eef49e571b1a03089da3345f7722ff12fc127d504357de73c074",
+        ".ref/applications/synapse/profiles/static/media/icon_refresh.green.10a444da.svg": "7011c5eaa56d9bbb598a6d024fc9ab367c9e70e0e5835247409fa9353e20a46c",
+        ".ref/applications/synapse/profiles/static/media/icon_refresh_gamelibrary.5f8edb51.svg": "1ae95d8056fabf2eb3a5704e11738d89692e8c851769c7632292bd27ea7576a9",
+        ".ref/applications/synapse/profiles/static/media/icon_refresh_gamelibrary.green.66e2a41e.svg": "91e0da122f87d4e5a2321ecdf806b12f0d5f72235db18a320daf23107874f47a",
+        ".ref/applications/synapse/profiles/static/media/icon_search.b84dee08.svg": "2dfb538fb7d85f1e1d86481cc3f457c33ebbb330fad3c6e7769fbd6a7f1d45a5",
+        ".ref/applications/synapse/profiles/static/media/icon_search.green.f5e350b7.svg": "2f395af949710a5aa353dccf761a64a1b63be4ffd3c92e86331f40a028d1a391",
+        ".ref/applications/synapse/profiles/static/media/icon_search.grey.7c0cb7bb.svg": "c801f345f5f2a95e21b6ab2889b0e98f5734a427a96f0b21d79705a0588e00bb"
+      },
+      "checks": [
+        "node tools/audit-profiles-content.cjs --check",
+        "cargo check --locked --all-targets"
+      ],
+      "remaining": "全局游戏目录、完整导入/导出应用及其余契约缺口保留；窄窗实际布局未运行验收",
+      "state": "implemented_static_checked",
+      "runtime_validation": "not_run"
+    },
+    {
+      "id": "audio-demo-source-presentation",
+      "behavior": "三款音频 Demo 的真实三控件、来源 glyph、控制条、页面间距、封面 fit 与透明本地浮动偏好复选框",
+      "contract": "docs/re/audio-demo-current-audit.md",
+      "implementation": {
+        "src/features/audio_demo.rs": "b7c3c220b438797f6930411f4d76bb8fc93b072e1b8e10bfa4b8017d4a664db6",
+        "src/features/audio_demo_data.json": "ed8f6369942dd4b9a622d78213e0df1bdcde198460f6aa849f254f969b53fc4e",
+        "src/ui/surface.rs": "1d114234fd6624aa24213cd58fc9bf0f8d219b861a49e524eb103474a290a690",
+        "src/ui/theme.rs": "0498d64522b8d9d195b224e1cc99a915e3c97da6699dc016956a0a2874037721",
+        "src/resources.rs": "93b49733667e34257aeac3ab5d47db2782bc4bb7e5d3b0fd938c379f73c690b9",
+        "tools/extract-audio-demo.cjs": "b54ae3e27f9d343730abb3decaff88e3d30ec963358139a32e4a3e0e0dbd9962",
+        "tools/prepare-audio-demo.py": "d1533f2dcc63cdd4fdbfbca1473009ea71be7c014ab0904bd9417b11e50d1405",
+        "assets/synapse/audio-demo-control-play.svg": "d81b9ba9f2eb523a20bc694838aaea4fd14f66aa988b7ee7ca9970273048949a",
+        "assets/synapse/audio-demo-control-fullscreen.svg": "8ee3eea1c3fc0b63c6374babd9b8ece0721f16185b391a79cdbc037937fcc23b",
+        "assets/synapse/audio-demo-controls-embedded.rs": "3b15fdbe008e4c63f5ce54c6c30b11a3a7160ea31c4140c14a959b4ef0e0d3ae",
+        "assets/synapse/audio-demo-play.svg": "45b56fc8e3758f9ba915db0681c20a522227ca255632f50196c37b740bb9be0b"
+      },
+      "evidence": {
+        "docs/re/audio-demo-current-evidence.json": "13ac09ed2ac2d77b64dc5890e8361d7a31ba6315485217caa1a7c9a002023151",
+        "assets/synapse/audio-demo-manifest.json": "39fc19c3394b46ce5105a5c19c475d73560fbffa81b249d02b09e07213d65cf1"
+      },
+      "source_inputs": {
+        ".ref/devices/1392/asset-manifest.json": "7dd61361b56cbcf1eeee833b7e4bc4cdc53c2e4a8278a43e2aba41a9043d9ca1",
+        ".ref/devices/1392/index.html": "b05189c19aa6496ef02cbaa065546ee1adf88364b42eaad2def57879d4d02086",
+        ".ref/devices/1392/static/css/1491.545b84f5.chunk.css": "5d92890ed0719739451520ae6449478c9e223b374fabf049dae197f77de6344a",
+        ".ref/devices/1392/static/css/main.b8aa0aec.css": "30220546d16b48c57d2fe6b422bb72137f39ea9c3e793b289c64145ac0586b91",
+        ".ref/devices/1392/static/js/main.6fccfd1e.js": "588994cf23b24d84c47ea4ae6636a2674d334a1a0a921938150fa4d0d469a489",
+        ".ref/devices/1392/static/media/demo.ff6ba9d8.avif": "0d505b7cb310f14911ebc89e01f1f1179b198884995e8f7b0d2b528e70263977",
+        ".ref/devices/1442/asset-manifest.json": "b0bb54f5ec85967493b13b5d319e9c3887527606bc9f550a21a49b9c0af62712",
+        ".ref/devices/1442/index.html": "5f7a02502341966dbb20bd42bc349ec3725c9f9c98dcbf747337cb32dfb0ba47",
+        ".ref/devices/1442/static/css/1491.545b84f5.chunk.css": "5d92890ed0719739451520ae6449478c9e223b374fabf049dae197f77de6344a",
+        ".ref/devices/1442/static/css/3737.ab025647.chunk.css": "e4b830197e0f919258c99f7d311b9be7cb82ecb76570645af5965d974af7a86e",
+        ".ref/devices/1442/static/css/main.bd5a7c95.css": "c38164acbdb804327caa8ec33a3c914e1cbc727df20835158ceafea18f3980fb",
+        ".ref/devices/1442/static/js/2242.e15bf38a.chunk.js": "d3755dcde74dbdbb0d755b91d30c2ee4b46f08c9016f02712b7adc7adfd33b2b",
+        ".ref/devices/1442/static/js/3737.a871f924.chunk.js": "84717cdb5e02d8d6fb42580c4e9926862dd52f812061c825c04c5f9858cf8a8d",
+        ".ref/devices/1442/static/js/main.f0649cc4.js": "8013923f0ad95a198d2791875c18543eacd709e56dc8cc0c6506be2fb68b760d",
+        ".ref/devices/1442/static/media/demo.ff6ba9d8.avif": "0d505b7cb310f14911ebc89e01f1f1179b198884995e8f7b0d2b528e70263977",
+        ".ref/devices/3942/asset-manifest.json": "80690487fa66118ef296eb46737549b1fd8852d15427f11ee8e83269f6f5a3e9",
+        ".ref/devices/3942/index.html": "4fdea8db2b01ddb0d853ce2ac25358d32841a29b8a6f21c74b425817a4cb8342",
+        ".ref/devices/3942/static/css/70.c46e976d.chunk.css": "00a230fb41cc8efe180faa213d0ed9fefdf91da5d0cccdc083a84617d6d073bf",
+        ".ref/devices/3942/static/css/main.e8c6de08.css": "a08de2935a47fc8e7f760b3f5d8965d5d328cd7c540787b257a99d4f04a2a6df",
+        ".ref/devices/3942/static/js/176.1fa03da8.chunk.js": "6a6f52d9e844be9787b93266aafda77db87cf7c04a4782843e8b74c0137fe5e5",
+        ".ref/devices/3942/static/js/70.f296e7d2.chunk.js": "538a2cf45ac8f845c1e8766c6a0b4ffbe11fd2704ee860b86310b61eab8e4d5d",
+        ".ref/devices/3942/static/js/994.db208acd.chunk.js": "728d2584490ec3222c54b5505e69723919e39b7c42bb12876654dc4e9ad9dc83",
+        ".ref/devices/3942/static/js/main.07f59396.js": "84a7a45e640d45b5ccad85736c188a16e331437a67504e1df92d54da6e1be77d",
+        ".ref/devices/3942/static/media/demo.ff6ba9d8.avif": "0d505b7cb310f14911ebc89e01f1f1179b198884995e8f7b0d2b528e70263977"
+      },
+      "checks": [
+        "node tools/extract-audio-demo.cjs --check",
+        ".work/resource-env/Scripts/python.exe -X utf8 tools/prepare-audio-demo.py --check",
+        "cargo check --locked --all-targets"
+      ],
+      "remaining": "真实播放/seek/计时/fullscreen/floating 服务未接通，媒体控件明确不可用；行盒/字形/悬停/实际视觉未验收",
+      "state": "implemented_static_checked",
+      "runtime_validation": "not_run"
+    },
+    {
+      "id": "keyboard-actuation-sync-source-controls",
+      "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+      "contract": "docs/re/keyboard-actuation-current-audit.md",
+      "implementation": {
+        "src/features/keyboard_actuation.rs": "0ef7a418dcc8511110fa1293152d96d3402106b98b062b47a3b8e45f676a9f6e",
+        "src/features/keyboard_products.rs": "8c51ca0cb20eed7cd9fd9d19a730ac260f378b376e68b4e548e066cfc1457651",
+        "src/features/keyboard_actuation_presentation_data.json": "50757b386e50ce1308c7a3806e6ed4147551a5fcd9f95cb9ac69990cdb6b0040",
+        "assets/synapse/keyboard-actuation-sync.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        "assets/synapse/keyboard-actuation-embedded.rs": "ff653fe3fca09c8e0627d0bb1e8a1a23535670a5401206ef629c198c63947365",
+        "src/ui/theme.rs": "0498d64522b8d9d195b224e1cc99a915e3c97da6699dc016956a0a2874037721",
+        "src/resources.rs": "93b49733667e34257aeac3ab5d47db2782bc4bb7e5d3b0fd938c379f73c690b9",
+        "tools/audit-keyboard-actuation-sync.cjs": "a7c53c18f1f07d948a5a381f9eb8314bdafbd5025fbc0758be3d2a742ea98885"
+      },
+      "evidence": {
+        "docs/re/keyboard-actuation-sync-current-evidence.json": "84c5a8609affda2814f2e14b8e66366c65391172d93cffa7fc21330470883056"
+      },
+      "checks": [
+        "node tools/audit-keyboard-actuation-sync.cjs --check",
+        "python tools/validate-keyboard-actuation.py"
+      ],
+      "remaining": "Vertical animation, complete Rapid Trigger/factory warning/mixed selection, shared spinner, mapping normalization/runtime conditions and live queries remain partial; DLL write-back deferred; visual validation not run.",
+      "state": "implemented_static_checked",
+      "runtime_validation": "not_run",
+      "source_inputs": {
+        ".ref/devices/580/asset-manifest.json": "ff99daba0e66a101fa1a869b55c47c2ab41309c6416fb7118c0537c42ac8154f",
+        ".ref/devices/580/static/js/main.1648cf28.js": "7e5ecfb9bab8bea451aa3eceb94c55b29a68328080482cfdde67c9f9916636cb",
+        ".ref/devices/580/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/580/static/css/main.6e07ccff.css": "aa6dadf04ce33f1055b73771b47994bb15177fcb5002cce81d638624e53413a4",
+        ".ref/devices/614/asset-manifest.json": "3e3e7e43d0115c415a4a8e8600838c567c13f563ff0674ed14c30d25c45bcf41",
+        ".ref/devices/614/static/js/main.73d0babc.js": "7f1d1fa7dcacc88b2feb987b58cfcafcab43d545fe6fd8f7bd071a09b99c27d0",
+        ".ref/devices/614/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/614/static/css/main.17875d87.css": "ca50f2fd70bb6ab703cf78e9b91ab641c1b289aa7a31a7aeed3e72968ac71647",
+        ".ref/devices/642/asset-manifest.json": "ff182ad3c25979539483b5928788a10dbe02d3fbce62309eea8c0cbf349b81d0",
+        ".ref/devices/642/static/js/main.c81e7939.js": "ab41c1cd82ccc8350500d48216a214f689bee9836cfa5b2db6a34aeb898889ae",
+        ".ref/devices/642/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/642/static/css/main.8a8863fa.css": "b77fb39b5751a77cd6e053d9c14d3046323281a017b96183b419d53783d206de",
+        ".ref/devices/678/asset-manifest.json": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+        ".ref/devices/678/static/js/main.f78f0dcf.js": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180",
+        ".ref/devices/678/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/678/static/css/main.28785c66.css": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+        ".ref/devices/679/asset-manifest.json": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+        ".ref/devices/679/static/js/main.194d8a7b.js": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+        ".ref/devices/679/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/679/static/css/main.1c5a651a.css": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+        ".ref/devices/688/asset-manifest.json": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+        ".ref/devices/688/static/js/main.e09fd702.js": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929",
+        ".ref/devices/688/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/688/static/css/main.00729a36.css": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+        ".ref/devices/719/asset-manifest.json": "77262917dfd6d28e6a65784ad7ffbf8cd0f0dd6c6b46c5053792936dbb4e366a",
+        ".ref/devices/719/static/js/7928.8ab59a50.chunk.js": "f080c0a68ffcb10498bc543a113473a6480abecbbfa55e1487f21950eb787cb4",
+        ".ref/devices/719/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/719/static/js/main.b3b06763.js": "21704ca3b05d7c4293d664cb43cdc15ce769f805b95e0ace37429eb422997645",
+        ".ref/devices/719/static/css/main.bdbb64c2.css": "2219d000d83fe8dab0940498bc7cab74e2849833993ca0879e5a6a727c25d987",
+        ".ref/devices/719/static/css/7928.f37dc560.chunk.css": "9b3a4e36daf7abaa2d733add368362c67fb1b1144338297a6a4b6b186198c864",
+        ".ref/devices/719/static/css/2879.ac839047.chunk.css": "02f4be9b61c7e5e45bd31101120cc0ba8960d879a675e05b2a4f94507bd9e401",
+        ".ref/devices/720/asset-manifest.json": "e4293b6fda36624cd079f2bd36489876510c0545e9e24d786e2b7d7d8bf7a075",
+        ".ref/devices/720/static/js/7293.9acc3165.chunk.js": "fcfae4640af5ccf6f0d4bd2336e2a5d50b3dad9890b2f2773d7db513884de09f",
+        ".ref/devices/720/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/720/static/js/main.2b3c6f06.js": "6aeb371a37af9ec411ff7eba6a59a3fcd5cb8001926b1cec24523871a5b001de",
+        ".ref/devices/720/static/css/main.bdbb64c2.css": "2219d000d83fe8dab0940498bc7cab74e2849833993ca0879e5a6a727c25d987",
+        ".ref/devices/720/static/css/7293.010a2384.chunk.css": "1cfbebd71b463e9035742074cb4c57f59ffe0d704e93b31f2a63d451b082c977",
+        ".ref/devices/720/static/css/7528.e14516ae.chunk.css": "0b0285019cbe019f0a9337e9f1b64142f2996644ba9fda5e51dd3839c442a7bb",
+        ".ref/devices/721/asset-manifest.json": "aca9eea485b9678dc74386a36971ad02fd296461ce0b2349b535ac3c10ada125",
+        ".ref/devices/721/static/js/557.44f061f6.chunk.js": "d97edc5f5c4c6e7cd9835b2ad56ae623d41202e27f9b071c9523d335ea663114",
+        ".ref/devices/721/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/721/static/js/main.67ffbbf2.js": "dfafc296f6f5c4f7d38c4b03367b0160132fdcaa2058cdee9d1bed20b52b6192",
+        ".ref/devices/721/static/css/main.4ba50797.css": "acd040298ec9c005a0ac0653339dbf4062f4ba4bb426009249497ec2e2acd479",
+        ".ref/devices/721/static/css/557.300d5cbd.chunk.css": "1c7b44e21344a5720ccc69a26cb07e55bb3c4683cddf4c9d17a7d5c0acf2281b",
+        ".ref/devices/721/static/css/6224.32a42c9a.chunk.css": "739a87ae7555c5b306797fc6244c44a4b797cecdb9f8777f079cc23cc1567b91",
+        ".ref/devices/728/asset-manifest.json": "2cc8a20839eaf1bd156c474cdf158e6f24bd1f3935602ddda672a16952c58bab",
+        ".ref/devices/728/static/js/3470.5c149f4b.chunk.js": "304dd9c055281dfd0e1013f619e1ff0e9b7fec46643ff390cd33315e213a621c",
+        ".ref/devices/728/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/728/static/js/main.69c38496.js": "1c7b13b7400b4c7c7172461bde30025ee8976cedd972caac4147413e8984ae24",
+        ".ref/devices/728/static/css/main.68eaa13b.css": "8196f4e83214fb1105c7633c1e9c27f8c26c7ddb97e31178b77162d00c7e8b61",
+        ".ref/devices/728/static/css/3470.fe510b2e.chunk.css": "91d6ce733256ad1b556d7aaca6de7f9be0e79fc763fa97963c51fa27394a8014",
+        ".ref/devices/728/static/css/8925.3681bf5b.chunk.css": "71628cc399f94daa55d51e31ad8bc669825eb081d26ae43709a1a2080b007b6d",
+        ".ref/devices/740/asset-manifest.json": "b98da7b6887857359738c1b2f520e62cdf8e208e2d7f217388e8ac61eb52207b",
+        ".ref/devices/740/static/js/9908.1f02bab3.chunk.js": "90d8e757ed43ccecb5a19a1cd7dd89db75087f6af54e00e10515db192f71beda",
+        ".ref/devices/740/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/740/static/js/main.e1791e16.js": "22424f5f208c5a77a0e54ca1287ee1ccb4816af3420ba82fc95e452ef72a7452",
+        ".ref/devices/740/static/css/main.50621167.css": "552a462b7df26c3e82c1c0f3c2657a3c45069b4058dc98ff873893087ae925ec",
+        ".ref/devices/740/static/css/9908.fadb8afb.chunk.css": "f22c3de4b872d2466f79782dcdbde10fe97c82240dd053fdf10aa9699a2711db",
+        ".ref/devices/740/static/css/1891.49330b8b.chunk.css": "839c8b4f1f9cee26a6a83102f14f1b85b98419a9c8ed36a5804e14ba48e3f338",
+        ".ref/devices/741/asset-manifest.json": "6cd6a5b2f949546e6431b104961be5a84f19879e7946d89684a3d452f2fd78df",
+        ".ref/devices/741/static/js/8427.2d5ccb8c.chunk.js": "2f2a69e9b81b8d2cd0198d6c761049c3a3c6ebd5f1aedf7bf276e094dae102c0",
+        ".ref/devices/741/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/741/static/js/main.47f4e650.js": "6308ca65cfadf9af21a7940cf1da7b8b652d3f85ca2c8ca1b0f9d7ed49f2cab8",
+        ".ref/devices/741/static/css/main.bdbb64c2.css": "2219d000d83fe8dab0940498bc7cab74e2849833993ca0879e5a6a727c25d987",
+        ".ref/devices/741/static/css/8427.9109b546.chunk.css": "3396d8dbaf23ffc64dbfe2a32c0dd5cad909a9ebafba1bca997a6b9c3fe09fb4",
+        ".ref/devices/741/static/css/9480.e9faddb0.chunk.css": "4089f5de5dc8429914bd20d832c28f37357130babb2ded086681ba4136e2784d",
+        ".ref/devices/742/asset-manifest.json": "01bf6820d21f81632ce0001d98086b4b95da5dc96a0ce2ea4b45b5f748c418c8",
+        ".ref/devices/742/static/js/3666.9e3f3856.chunk.js": "ea76345bb0a0492aa9abb645ad99ed774f6afe665db22727dc8bc4c6d5d0b896",
+        ".ref/devices/742/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/742/static/js/main.8d6fde51.js": "549a7b0a4656ae9869b8af834f555bacb552362e179d583a63279c4f40e05f51",
+        ".ref/devices/742/static/css/main.68eaa13b.css": "8196f4e83214fb1105c7633c1e9c27f8c26c7ddb97e31178b77162d00c7e8b61",
+        ".ref/devices/742/static/css/3666.9a2178fb.chunk.css": "7b6f45c770080d0fbcd0c3b9b42f867af6c918b7f8e5020ad19d9879b9df94e0",
+        ".ref/devices/742/static/css/8995.5aace32b.chunk.css": "cff598023f33e7643cbc811b99626210cee55f5d6c637611e3c408d3217b9cac",
+        ".ref/devices/746/asset-manifest.json": "5782970604620611073b80134fbd1dde0cef321854f6c3777958b4cf7b8e005b",
+        ".ref/devices/746/static/js/6498.86d76d1a.chunk.js": "e8cf975f0d6737be756bac3860dc761684c4c43596c6530b6abcb579bc0a9c13",
+        ".ref/devices/746/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/746/static/js/main.dded1bab.js": "437631aa42f64d5c9e90044fb8544252393a92ac32e7f023e82d2a164eed2397",
+        ".ref/devices/746/static/css/main.edb9022c.css": "d5a16a51b17a91b945729e123b8c3baf5a65737a9b9263291051c18d262102aa",
+        ".ref/devices/746/static/css/6498.16d225ad.chunk.css": "2e45e69563eee93c4bb009c153cad5c420a3904655a5f2b8bd338ce6657d6a84",
+        ".ref/devices/746/static/css/1891.10858493.chunk.css": "e63c097e728f163dd54a62b129825247b7394b01fa66bd5db598853e05f88ac8",
+        ".ref/devices/747/asset-manifest.json": "e90c28709710d8527f1ac4908cd4210115694fa7cadc3db3d5c104449870e4a3",
+        ".ref/devices/747/static/js/7727.590e023e.chunk.js": "f82ecbd7bda968dcbc15dbc07367515e641a0aaa9b2e2bac8db38485891b2bc4",
+        ".ref/devices/747/static/media/icon_sync.c57b3cca.svg": "e7c72851a993cda96c2ba0a71a4f8475dfd31808e639559995448fb8b3ffbe22",
+        ".ref/devices/747/static/js/main.f948f1bc.js": "9d1b228c405931b82ed87b58883557957aed7254a26ab560dcf7bcbbb4966bbf",
+        ".ref/devices/747/static/css/main.f5337ae6.css": "0bfbe4986f20600279672a685480b7fbf6d48d0d618efaf54457d667537fe947",
+        ".ref/devices/747/static/css/7727.2410bc0a.chunk.css": "8ca5e5b535f94f02ce8aa21c051b172a7c0e925332017d10e6b4e9b44307a601",
+        ".ref/devices/747/static/css/8295.a349fa37.chunk.css": "266a9ea031b254a2e4ee988da72fd37aa2ec1be5d75eebcc10c78564a85cae26"
       }
     }
   ]

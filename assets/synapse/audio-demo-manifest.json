@@ -22,9 +22,73 @@
     "source": ".ref/devices/3942/static/js/70.f296e7d2.chunk.js",
     "source_sha256": "538a2cf45ac8f845c1e8766c6a0b4ffbe11fd2704ee860b86310b61eab8e4d5d",
     "output": "assets/synapse/audio-demo-play.svg",
-    "output_sha256": "b022524c132cb9e3159fa00e2c235e0dbe7d05d79e60fc4ef7e440809a19892d",
+    "output_sha256": "45b56fc8e3758f9ba915db0681c20a522227ca255632f50196c37b740bb9be0b",
     "component_offset": 306154,
     "width": 20,
     "height": 20
+  },
+  {
+    "source": ".ref/devices/1392/static/css/main.b8aa0aec.css",
+    "source_sha256": "30220546d16b48c57d2fe6b422bb72137f39ea9c3e793b289c64145ac0586b91",
+    "font_offset": 369454,
+    "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99",
+    "equivalent_sources": [
+      {
+        "source": ".ref/devices/1392/static/css/main.b8aa0aec.css",
+        "source_sha256": "30220546d16b48c57d2fe6b422bb72137f39ea9c3e793b289c64145ac0586b91",
+        "font_offset": 369454,
+        "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99"
+      },
+      {
+        "source": ".ref/devices/1442/static/css/main.bd5a7c95.css",
+        "source_sha256": "c38164acbdb804327caa8ec33a3c914e1cbc727df20835158ceafea18f3980fb",
+        "font_offset": 373631,
+        "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99"
+      },
+      {
+        "source": ".ref/devices/3942/static/css/main.e8c6de08.css",
+        "source_sha256": "a08de2935a47fc8e7f760b3f5d8965d5d328cd7c540787b257a99d4f04a2a6df",
+        "font_offset": 371931,
+        "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99"
+      }
+    ],
+    "codepoint": 61952,
+    "glyph_name": "uniF200",
+    "output": "assets/synapse/audio-demo-control-play.svg",
+    "output_sha256": "d81b9ba9f2eb523a20bc694838aaea4fd14f66aa988b7ee7ca9970273048949a",
+    "width": 1024,
+    "height": 1024
+  },
+  {
+    "source": ".ref/devices/1392/static/css/main.b8aa0aec.css",
+    "source_sha256": "30220546d16b48c57d2fe6b422bb72137f39ea9c3e793b289c64145ac0586b91",
+    "font_offset": 369454,
+    "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99",
+    "equivalent_sources": [
+      {
+        "source": ".ref/devices/1392/static/css/main.b8aa0aec.css",
+        "source_sha256": "30220546d16b48c57d2fe6b422bb72137f39ea9c3e793b289c64145ac0586b91",
+        "font_offset": 369454,
+        "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99"
+      },
+      {
+        "source": ".ref/devices/1442/static/css/main.bd5a7c95.css",
+        "source_sha256": "c38164acbdb804327caa8ec33a3c914e1cbc727df20835158ceafea18f3980fb",
+        "font_offset": 373631,
+        "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99"
+      },
+      {
+        "source": ".ref/devices/3942/static/css/main.e8c6de08.css",
+        "source_sha256": "a08de2935a47fc8e7f760b3f5d8965d5d328cd7c540787b257a99d4f04a2a6df",
+        "font_offset": 371931,
+        "font_sha256": "82f00f228a613ff3054a0631923c5e6c839ae94c0907d2c30f6d135b12136a99"
+      }
+    ],
+    "codepoint": 61973,
+    "glyph_name": "uniF215",
+    "output": "assets/synapse/audio-demo-control-fullscreen.svg",
+    "output_sha256": "8ee3eea1c3fc0b63c6374babd9b8ece0721f16185b391a79cdbc037937fcc23b",
+    "width": 1024,
+    "height": 1024
   }
 ]

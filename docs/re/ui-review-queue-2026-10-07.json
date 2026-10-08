@@ -16327,7 +16327,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 580,
@@ -19066,7 +19075,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 614,
@@ -20815,7 +20833,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 642,
@@ -23653,7 +23680,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 678,
@@ -23785,7 +23821,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 679,
@@ -23917,7 +23962,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 688,
@@ -26326,7 +26380,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 719,
@@ -26458,7 +26521,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 720,
@@ -26590,7 +26662,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 721,
@@ -27052,7 +27133,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 728,
@@ -27745,7 +27835,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 740,
@@ -27910,7 +28009,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 741,
@@ -28042,7 +28150,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 742,
@@ -28174,7 +28291,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 746,
@@ -28339,7 +28465,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "Current ACTUATION all/selected sync icon-only actions, retained raw equal make/release values, source row typography/geometry, per-product factory gates and 720 default secondary synchronization; AnalogGenVersion warning; scoped all-sync disable timer.",
+          "evidence": "docs/re/keyboard-actuation-sync-current-evidence.json",
+          "fix_id": "keyboard-actuation-sync-source-controls",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 747,
@@ -35910,7 +36045,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "三款音频 Demo 的真实三控件、来源 glyph、控制条、页面间距、封面 fit 与透明本地浮动偏好复选框",
+          "evidence": "docs/re/audio-demo-current-evidence.json",
+          "fix_id": "audio-demo-source-presentation",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 1392,
@@ -38418,7 +38562,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "三款音频 Demo 的真实三控件、来源 glyph、控制条、页面间距、封面 fit 与透明本地浮动偏好复选框",
+          "evidence": "docs/re/audio-demo-current-evidence.json",
+          "fix_id": "audio-demo-source-presentation",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 1442,
@@ -46500,7 +46653,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "三款音频 Demo 的真实三控件、来源 glyph、控制条、页面间距、封面 fit 与透明本地浮动偏好复选框",
+          "evidence": "docs/re/audio-demo-current-evidence.json",
+          "fix_id": "audio-demo-source-presentation",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 3942,
@@ -48093,7 +48255,16 @@
       "route": "/settings/",
       "assigned_group": "public_pages",
       "review_status": "requires_local_root_and_individual_review",
-      "runtime_validation": "not_run"
+      "runtime_validation": "not_run",
+      "partial_reviews": [
+        {
+          "behavior": "独立 Settings 的当前字体加载、Software 标题/禁用动作、360×60 空预览、标签和 About 分隔符",
+          "evidence": "docs/re/settings-presentation-current-evidence.json",
+          "fix_id": "settings-source-presentation",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "route": "/sophie-lite/",
@@ -48160,6 +48331,15 @@
       "review_evidence": [
         "docs/re/application-review-current.md",
         "docs/re/profiles-ui-current.md"
+      ],
+      "partial_reviews": [
+        {
+          "behavior": "当前 DeviceGames 挂载祖先取消公共 800px 最小宽度，按 calc(100vw - 40px) 和媒体条件布局",
+          "evidence": "docs/re/profiles-content-current-evidence.json",
+          "fix_id": "profiles-popup-source-minimum",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
       ]
     },
     {
@@ -48178,7 +48358,16 @@
       "route": "/systray/systrayv2/",
       "assigned_group": "public_pages",
       "review_status": "requires_local_root_and_individual_review",
-      "runtime_validation": "not_run"
+      "runtime_validation": "not_run",
+      "partial_reviews": [
+        {
+          "behavior": "托盘源行高、min-height 外框、分层边框与原图；未登录 360×60 请求和工作区定位；当前宿主 Chromium Views 菜单链及本地 HMENU 差异",
+          "evidence": "docs/re/tray-presentation-current-evidence.json",
+          "fix_id": "tray-source-presentation",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     }
   ],
   "limitations": [

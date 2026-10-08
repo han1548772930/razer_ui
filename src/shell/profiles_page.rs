@@ -36,8 +36,10 @@ fn popup_width(viewport: f32, device: bool) -> f32 {
         let width = (viewport - 40.)
             .min(if viewport <= 900. { 800. } else { 1050. })
             .max(0.);
-        // Only .profiles-link-games cancels choose-a-mat's 800px minimum.
-        if device { width.max(800.) } else { width }
+        // Both mounted ancestries cancel choose-a-mat's 800px minimum:
+        // main `.profiles-link-games .choose-a-mat` and current lazy 9449
+        // `.device_to_linked_game .choose-a-mat` explicitly use min-width:0.
+        width
     }
 }
 

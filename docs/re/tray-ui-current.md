@@ -6,7 +6,11 @@
 
 主窗口 X/原生关闭按当前 `closeWindowAction=HIDE` 隐藏，托盘 Synapse 恢复保留的 GPUI 实体。Exit 排空已请求写入，不自动保存未提交草稿；固件升级保护保留，退出写失败恢复窗口并显示错误。托盘创建失败时关闭退出，避免留下不可恢复的隐藏窗口。没有实现 Electron renderer hibernation 或 host force-close-window。
 
-`tray-icon` 与 `muda` 提供 Windows 原生菜单，单应用顺序为 Synapse、分隔、Settings、Log In、分隔、Exit；tooltip 为 Razer。未构造其他应用安装状态或账户会话。通知区图标按系统小图标尺寸选择当前 ICO 原始16/20/24/32/40/48/64帧，当前应用菜单图标用20帧；不缩放512帧、不改色或透明度。齿轮和用户图按当前 host `getCachedThemeIcon` 保留原始 PNG 像素和尺寸：齿轮14×14、浅色用户12×16、深色用户14×14，已移除资源准备时统一缩放到20×20的处理。`muda 0.21.0` Windows `to_hbitmap` 仍把菜单图像绘入16×16位图，未证明与 Electron 原生菜单像素一致；应用图标的安装目录来源和主题判断也需继续核对。
+当前宿主的右键菜单实际经过 Electron 41.2.0 `NotifyIcon::PopUpContextMenu` → Chromium Views `MenuRunner`，并非 Win32 HMENU；宿主还固定 `nativeTheme.themeSource="dark"`。此前把两者视为同一种原生菜单是不准确的。
+
+本地保留 `tray-icon` / `muda` 的 HMENU 适配器，单应用顺序为 Synapse、分隔、Settings、Log In、分隔、Exit；tooltip 为 Razer。用户允许少量托盘框架视觉差异，并要求不修改本地第三方依赖。菜单绘制、系统字体、背景、间距和圆角差异没有消除；缺少的 GPUI 菜单样式接口已整理为 [待提交 issue](../gpui-popup-menu-issue.md)，未提交到外部平台。Windows 图标选择改为读取实际 HMENU 的 `COLOR_MENU`，不再错误地以 `AppsUseLightTheme` 推断菜单背景。此处保留原始深浅图标并确保原生适配器内的可读性，是明确的框架差异，不能称为官方固定深色呈现。
+
+未构造其他应用安装状态或账户会话。通知区图标按系统小图标尺寸选择当前 ICO 原始16/20/24/32/40/48/64帧，当前应用菜单图标用20帧；不缩放512帧、不改色或透明度。齿轮和用户图按当前 host `getCachedThemeIcon` 保留原始 PNG 像素和尺寸：齿轮14×14、浅色用户12×16、深色用户14×14。`muda 0.21.0` Windows `to_hbitmap` 仍把菜单图像绘入16×16位图；应用图标的安装目录来源也未接入。
 
 注册在主循环开始后进行，以 set_tooltip 的 NIM_MODIFY 结果确认，失败最多尝试四次。诊断先清 LastError，记录窗口归属、完整性级别、提权和作业 UI 限制；NIM_ADD/set_visible 的库返回值不足以证明 Windows 注册成功。已有环境取证显示工作区可继承 Low Mandatory Level 会使 exe 以 Low 运行而无法注册 Medium Explorer 通知区；本地输出目录约束见 [开发说明](../development.md)。本次没有运行托盘或更改 ACL。
 
@@ -14,9 +18,15 @@
 
 ## 面板与账户分支
 
-未登录默认显示60px登录行与60px单应用区，宽360、Roboto16/1.22、源背景/边框；应用区单独持有1px上边框，内部启动按钮为59px，悬停不改变分隔线。登录、启动和账户名字按钮显式覆盖 Base Button 默认1倍行高；启动标题按源 `.launcher .title` 大写，并保留省略处理。按压只降低启动图标透明度，外框保留源700px最大高度和默认箭头。
+未登录 DOM 挂载60px登录行与60px单应用区，宽360、Roboto16/1.22、源背景/边框；实际可见范围取决于网页请求的视口高度，不能把 DOM 子节点总高直接当窗口高。应用区单独持有1px上边框，内部启动按钮为59px，悬停不改变分隔线。登录、启动和账户名字按钮显式覆盖 Base Button 默认1倍行高；启动标题按源 `.launcher .title` 大写，并保留省略处理。按压只降低启动图标透明度，外框保留源700px最大高度和默认箭头。根容器修正为源 `min-height:100%`，允许内容撑高；此前 `height:100%` 会改变外框下边线与内容溢出的布局关系。
 
-网页请求高度按当前源码单数 `.app.list-unstyled` 查询；当前渲染实际为 `.apps`，未登录期只计算60px标题高度，host minimum_height 为200。本地窗口当前为360×200；源码先按请求高度计算纵坐标，本地按实际200px高度定位，两者的 host `setBounds`、最小高度和纵向夹取链尚未完整统一。未声称窗口位置、混合DPI/多屏/非底部任务栏像素完全一致。
+网页请求高度按当前源码单数 `.app.list-unstyled` 查询；当前渲染实际为 `.apps`，未登录期只计算60px标题高度。已补查 preload → host `SET_BOUNDS` → Electron `BaseWindow::SetBounds` → `NativeWindowViews::SetBounds`：`resizable:false` 时设置新的最小/最大尺寸为请求尺寸。因此 host 初始 minimum_height=200 不能作为最终高度下限，之前的360×200判断已纠正。Windows 未登录分支按360×60请求、`trayY-60`定位，保留源码右侧10px间距并去掉仅账户/body分支拥有的纵向夹取；再次点击已显示面板只聚焦，不重新对齐。源 `body overflow:hidden` 对应本地视口裁切，启动图标保留32px不缩小。
+
+独立复核补齐宿主实际创建链：`convertFeatureToWindowOptions` 在 policy6 时给出 frameless/transparent 并保留布尔 `resizable:false`，`Tab/common.js` 的 `new BrowserWindow({...t,...})` 继续传递它；Windows `CanResize()` 在 frameless 分支直接读取 `resizable_`。源码 `597/a` 的第一轮横向限制使用主屏 **WorkRect** 宽度（字段 width，或左右端点绝对值之差），不是 MonitorRect 宽；本地第一轮已改成同样的工作区范围，保留后续独立的左右端点判断。源码使用 Electron DIP 坐标，部分 monitor 字段只除 dpiScaleX、其他字段不除；本地仍使用物理坐标和窗口 scale_factor 适配，尚未证明混合DPI或所有任务栏位置像素等价。
+
+阴影也不能只读创建参数：宿主 `b` 对布尔值原样返回，`hasShadow:0!==b(r.hasShadow,1)` 会把传入的 false 转成 true。当前 Electron Windows 构造仍在 translucent 且 frameless 时将 `params.shadow_type` 设为 `kNone`；这一条件链已保留原文证据，没有通过运行观察确认最终窗口阴影。
+
+60px仅对应当前无账户分支，不能据此认定账户面板也是60px；真实账户驱动、body内容测量、400–700px动态请求和通知页复用Widgets高度仍未接通。源码 DOM 中只有 `user.item.id` 成立才挂载 navbar / `systrayBody`。本地默认 SignedOut 且没有真实账户发布者，因此与已登录官方面板的整体结构存在功能性差异，不能把它归为允许的轻微托盘样式差异。字体资产已注册Roboto，但实际回退、混合DPI/多屏/非底部任务栏尚未运行验收。
 
 `TraySession` 明确区分 SignedOut、Guest、Authenticated。账户头部、访客/用户头像、Guest或razerId、登录/View Online 按钮、Widgets/Notifications导航、空内容及通知加载呈现都已有实际组件。默认仍 SignedOut；没有真实账户发布者驱动这些分支，不能把本地访客标签当作 host session。头像/名字、通知已加载为空与尚未加载分别保留状态。
 
@@ -33,6 +43,7 @@ Settings、quick-panel、Widgets、Notifications 四种命令都打开当前独�
 - [当前线上源校验](tray-live-source-check.json)、[菜单与窗口来源](tray-source-receipts.json)、[关闭链](save-close-current-source.json)。
 - [UI/CSS](tray-ui-current-evidence.json)、[账户组件/提示](tray-account-current-evidence.json)、[ICO原始帧](tray-icon-validation.json)。
 - [当前呈现修正](tray-presentation-current-evidence.json)保留本轮JS AST、CSS、host图像加载和PNG尺寸收据；维护检查 `node tools/audit-tray-presentation.cjs` 与 `.work/resource-env/Scripts/python.exe tools/validate-tray-assets.py`。
+- [窗口与框架链](tray-window-current-evidence.json)保留静态PE版本串/摘要、Electron版本固定URL/摘要、host/preload至尺寸约束的源片段和明确的平台差异；维护工具 `python tools/audit-tray-window-current.py`，可用 `--fetch` 仅下载惰性文本来源，不执行它。
 - 维护工具 `prepare-tray-account.cjs`、`audit-tray-account.cjs`、`prepare-tray-account-assets.py`、`tray_assets.py`；主资源清单保留图像输入输出摘要。
 
 这些收据记录静态来源和取证时文件，不能据编译/摘要匹配声称真实窗口或登录服务已经验收。应用、测试、安装器、厂商JavaScript和DLL均不在开发验证执行范围。

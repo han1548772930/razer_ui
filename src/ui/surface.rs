@@ -1095,6 +1095,35 @@ pub(crate) fn check_item(
     window: &mut Window,
     cx: &mut App,
 ) -> BaseButton {
+    check_item_with_style(
+        id,
+        label,
+        checked,
+        disabled,
+        CheckItemStyle {
+            unchecked_background: rgb(0x111111).into(),
+            tick_bottom_origin: (0.6, 10.),
+        },
+        window,
+        cx,
+    )
+}
+
+/// Source CSS variants, without changing the default used by other pages.
+pub(crate) struct CheckItemStyle {
+    pub(crate) unchecked_background: Hsla,
+    pub(crate) tick_bottom_origin: (f32, f32),
+}
+
+pub(crate) fn check_item_with_style(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    checked: bool,
+    disabled: bool,
+    style: CheckItemStyle,
+    window: &mut Window,
+    cx: &mut App,
+) -> BaseButton {
     let element_id = id.into();
     let label = label.into();
     let tick_top = Presence::new((element_id.clone(), "tick-top"), checked)
@@ -1129,9 +1158,9 @@ pub(crate) fn check_item(
                     rgb(0x737373)
                 })
                 .bg(if checked {
-                    rgb(0x44d62c)
+                    Hsla::from(rgb(0x44d62c))
                 } else {
-                    rgb(0x111111)
+                    style.unchecked_background
                 })
                 .hover(|style| style.border_color(rgb(0x44d62c)))
                 // `.check-text`：方框内相对定位、左移 30px、上移 2px。
@@ -1146,21 +1175,21 @@ pub(crate) fn check_item(
                         .child(first_letter_uppercase(label.clone())),
                 )
                 .when(checked, |view| {
-                    view.child(check_tick(tick_top, tick_bottom))
+                    view.child(check_tick(tick_top, tick_bottom, style.tick_bottom_origin))
                 }),
         )
 }
 
 /// `.check-box:before/:after` 的两段勾线（`rotate(-145deg)` 长 15.4px、
 /// `rotate(-50deg)` 长 9.6px，宽 3px、`#111`），长度按 `ticktop`/`tickbottom` 动画插值。
-fn check_tick(tick_top: f32, tick_bottom: f32) -> AnyElement {
+fn check_tick(tick_top: f32, tick_bottom: f32, bottom_origin: (f32, f32)) -> AnyElement {
     canvas(
         move |_, _, _| (),
         move |bounds, _, window, _| {
             let scale = f32::from(bounds.size.width) / 20.;
             for (x, y, angle, length) in [
                 (8.6_f32, 16.4_f32, -145_f32, 15.4 * tick_top),
-                (0.6, 10., -50., 9.6 * tick_bottom),
+                (bottom_origin.0, bottom_origin.1, -50., 9.6 * tick_bottom),
             ] {
                 let angle = angle.to_radians();
                 let start = bounds.origin + point(px(x * scale), px(y * scale));

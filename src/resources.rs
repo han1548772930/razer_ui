@@ -37,6 +37,8 @@ const STREAM_MIXER_ASSETS: &[(&str, &[u8])] =
 const SNAP_TAP_ASSETS: &[(&str, &[u8])] = include!("../assets/synapse/snap-tap-embedded.rs");
 const KEYBOARD_PROPERTIES_ASSETS: &[(&str, &[u8])] =
     include!("../assets/synapse/keyboard-properties-embedded.rs");
+const KEYBOARD_ACTUATION_ASSETS: &[(&str, &[u8])] =
+    include!("../assets/synapse/keyboard-actuation-embedded.rs");
 const CHROMA_STUDIO_HOST_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/host-chroma-studio-favicon.svg",
     include_bytes!("../assets/synapse/host-chroma-studio-favicon.svg"),
@@ -45,6 +47,9 @@ const AUDIO_OLED_RUNTIME_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/audio-oled-runtime-warning.svg",
     include_bytes!("../assets/synapse/audio-oled-runtime-warning.svg"),
 )];
+mod audio_demo_controls {
+    include!("../assets/synapse/audio-demo-controls-embedded.rs");
+}
 const MOUSE_POLLING_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/polling-info.svg",
     include_bytes!("../assets/synapse/polling-info.svg"),
@@ -61,6 +66,9 @@ const RECEIVER_PARENT_ASSETS: &[(&str, &[u8])] = &[
 ];
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
+        if let Some(bytes) = audio_demo_controls::audio_demo_controls_load(path) {
+            return Ok(Some(Cow::Borrowed(bytes)));
+        }
         if let Some((_, bytes)) = ASSETS
             .iter()
             .chain(MODULE_SERVICE_ASSETS)
@@ -81,6 +89,7 @@ impl AssetSource for SynapseAssets {
             .chain(STREAM_MIXER_ASSETS)
             .chain(SNAP_TAP_ASSETS)
             .chain(KEYBOARD_PROPERTIES_ASSETS)
+            .chain(KEYBOARD_ACTUATION_ASSETS)
             .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
             .chain(MOUSE_POLLING_ASSETS)
@@ -93,6 +102,7 @@ impl AssetSource for SynapseAssets {
     }
     fn list(&self, path: &str) -> anyhow::Result<Vec<SharedString>> {
         let mut items = gpui_kit::assets::AllAssets.list(path)?;
+        items.extend(audio_demo_controls::audio_demo_controls_list(path));
         items.extend(
             ASSETS
                 .iter()
@@ -114,6 +124,7 @@ impl AssetSource for SynapseAssets {
                 .chain(STREAM_MIXER_ASSETS)
                 .chain(SNAP_TAP_ASSETS)
                 .chain(KEYBOARD_PROPERTIES_ASSETS)
+                .chain(KEYBOARD_ACTUATION_ASSETS)
                 .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)
                 .chain(MOUSE_POLLING_ASSETS)

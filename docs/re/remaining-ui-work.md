@@ -9,8 +9,8 @@
 | 接收器 | 真实硬件通知、完整绑定元数据/固件状态、164/241 的条件控件及独立模式；见 [当前契约](receiver-ui-current.md) |
 | 鼠标 | Sensitivity Matcher 主体/向导及状态、完整 DualLink/dock 拓扑、OTFS 编辑锁发布者、各型号真实 Rate 查询、数字框外的窗口级滚轮；见 [当前契约](mouse-ui-current.md) |
 | Studio | Generate 属性根、Wheel/Tidal 中心点画布、颜色/渐变/时长共享控件边界、图层分组拖排、配置/导入导出/关联及真实 LED/取色/区域服务；已挂载的 Wave/Wheel/Tidal/Audio 和 Wave 角度圆盘不再列为缺失项 |
-| 键盘 | 快速触发完整编辑器、各型号条件和输入映射、Snap Tap 的真实观察与精确输入服务；Menu/Copilot 状态行及已接 Snap Tap 本地编辑不重复列为缺失 |
-| 音频与 Control Pod | EQ/混音完整预设流、输入通道增删、电平与真实播放设备列表、1382 完整父映射及应用级未保存保护、真实 validDevices 发布者；已有局部 Playback/EQ/混音编辑和选择保留 |
+| 键盘 | 快速触发完整编辑器、各型号条件和输入映射、Snap Tap 的真实观察与精确输入服务；15 款 ACTUATION 的同步控件已局部核对，混合选择优先级、完整映射归一化、动画及实时查询仍缺；Menu/Copilot 状态行及已接 Snap Tap 本地编辑不重复列为缺失 |
+| 音频与 Control Pod | EQ/混音完整预设流、输入通道增删、电平与真实播放设备列表、1382 完整父映射及应用级未保存保护、真实 validDevices 发布者；1392/1442/3942 Demo 的播放、seek、计时、全屏及浮动媒体服务未接通，静态外观修复不算播放功能完成；已有局部 Playback/EQ/混音编辑和选择保留 |
 | 手柄、显示器及系统附件 | 各型号校准/遥测/运行条件；2636 校准 UI 和两款 Raptor 六页已部分接入，仍须逐条件审查 |
 | OLED | 真实编码 worker/上传/进度、BLE/dongle 条件、语言下载、遥测及运行数据；本地编辑器不能等同设备确认 |
 | 独立应用与公共页面 | Profiles 真实游戏目录及剩余传输边界，Settings 宿主目录与启动分支，托盘账户/通知/Widgets，IoT、安装和固件服务状态，各页完整弹层/响应式/动画 |

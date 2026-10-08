@@ -10825,7 +10825,7 @@
   "native": [
     {
       "path": "src/shell/profiles_page.rs",
-      "sha256": "db99e1c7a006a61622f9c8cae3573d222d6e12284128581e23721d2d584667aa"
+      "sha256": "776b28570e34e01b6d88812ed0e4c817bd9f28aee6fb14a5487a487203757398"
     },
     {
       "path": "src/shell/profiles_page/devices.rs",
@@ -10842,7 +10842,7 @@
   ],
   "verified_changes": [
     "Games toolbar 52px outer height while content starts 50px; Devices content follows 52px navigation",
-    "900px grid minimum belongs to Games only; DeviceGames retains the uncancelled 800px popup minimum",
+    "900px grid minimum belongs to Games only; both mounted popup ancestries cancel the base 800px popup minimum",
     "Games clear-search collapses; Add clear-search keeps its input; filter/order clicks do not dismiss an empty input",
     "Add mounts only program rows: removed unmatched empty-message content and unforwarded goBack control",
     "Profile dropdown changes local assignment target without selecting a hardware profile",
@@ -10855,7 +10855,7 @@
   "limitations": [
     "No application, build, test or downloaded-JavaScript execution; no rendered acceptance",
     "CSS normal line-height, browser form-control font defaults and mixed three-column intrinsic shrinking require separate metric validation",
-    "DeviceGames intermediate viewport auto/shrink-to-fit width is still a native adaptation; minimum/media bounds audited",
+    "Both Games/Add and DeviceGames use explicit calc(100vw - 40px); DeviceGames current lazy selector cancels the base 800px minimum; media bounds audited",
     "Shared SynapseSelect has source sizing and menu data but instantaneous hover border; no shared dropdown edits in this batch",
     "Native 32-unit validator rejects an overlong edit; browser maxlength may truncate a paste. Product metadata applies its own final whitespace trim.",
     "Profile menu import/export now mounts local selection and decoded preview UI; product conversion/application and official file output remain unfinished (profiles-transfer-current-evidence.json). Source window-blur, deletion popup overflow adjustment and exact focus/keyboard parity need follow-up",

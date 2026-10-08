@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "framework_sources": [
+    {
+      "path": ".ref/framework/electron-41.2.0/DEPS",
+      "url": "https://raw.githubusercontent.com/electron/electron/v41.2.0/DEPS",
+      "bytes": 6510,
+      "sha256": "8ad245d6ceae6b50002f3e41bb2a644b581685167b810a6e8647d0a0908bb8df"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/ui/win/notify_icon.cc",
+      "url": "https://raw.githubusercontent.com/electron/electron/v41.2.0/shell/browser/ui/win/notify_icon.cc",
+      "bytes": 8812,
+      "sha256": "cc3ef8fb24c9b471942ed41bbaade6562b01f1e56fbd80d8124ba116e2b0980f"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/api/electron_api_base_window.cc",
+      "url": "https://raw.githubusercontent.com/electron/electron/v41.2.0/shell/browser/api/electron_api_base_window.cc",
+      "bytes": 42973,
+      "sha256": "6f0ea9c0aaa20efe3cfe547d668c3d6418094f505d1bab67afee33b476a4b4a6"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/native_window_views.cc",
+      "url": "https://raw.githubusercontent.com/electron/electron/v41.2.0/shell/browser/native_window_views.cc",
+      "bytes": 65057,
+      "sha256": "fa84eca5b8215f7ea83d1ddda809b6f67fe3c000acfa3c0f9f35a33e0bd14e67"
+    }
+  ],
+  "nodes": [
+    {
+      "path": ".ref/applications/systray/systrayv2/static/js/main.9579c403.js",
+      "start": 9439,
+      "end": 9750,
+      "source": "a=e=>{if(e){if(e.WorkRect.width&&e.WorkRect.height)return{width:e.WorkRect.width,height:e.WorkRect.height};if(e.WorkRect.bottom&&e.WorkRect.right)return{width:Math.abs(Math.abs(e.WorkRect.right)-Math.abs(e.WorkRect.left)),height:Math.abs(Math.abs(e.WorkRect.bottom)-Math.abs(e.WorkRect.top))}}};async function c",
+      "sha256": "f77242abe6648164d2da401814b0dd4cd872526d81811caa455c69b85beb06b2"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/main.js",
+      "start": 9149,
+      "end": 9173,
+      "source": "l.themeSource=\"dark\",en=",
+      "sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/main.js",
+      "start": 41227,
+      "end": 41522,
+      "source": "case D.SET_BOUNDS:{const e=_o(n);if(e){const o={};if(\"number\"!=typeof i.x||\"number\"!=typeof i.y)return void console.log(\"setBound -> no bound valid\",o);o.x=i.x,o.y=i.y,\"number\"==typeof i.width&&(o.width=i.width),\"number\"==typeof i.height&&(o.height=i.height),e.setBounds(o)}break}case\"getBounds\"",
+      "sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/preload.js",
+      "start": 5990,
+      "end": 6126,
+      "source": "setBounds:(...t)=>4===t.length?e.invoke(\"electronAction\",{action:a.SET_BOUNDS,x:t[0],y:t[1],width:t[2],height:t[3]}):()=>{},getUserApps:",
+      "sha256": "b5a7c038a9d31f2536c11a6f091e34648195ac5b716ff6435c297ca387e40a7b"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/lib/common.js",
+      "start": 4224,
+      "end": 4264,
+      "source": "resizable:b(r.resizable,!0),canMinimize:",
+      "sha256": "b7bfa2eec3da3d20e33add539e6606338c27aa6484bf0c7097a13959a3374dce"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/lib/common.js",
+      "start": 3115,
+      "end": 4855,
+      "source": "module.exports.convertFeatureToWindowOptions=r=>{let s=e.join(a,\"Razer/RazerAppEngine/User Data/Apps/\",r.app_icon_path??\"\");if(!(t.existsSync(s)&&t.lstatSync(s).isFile()||(s=A,t.existsSync(s)))){const t=e.join(n,\"Apps\",\"Common\",\"RazerAppEngine.ico\");console.log(`convertFeatureToWindowOptions() iconPath not exists: ${s}, use default: `,t),s=t}let i=r.policy,l=6!==+r.policy&&8!==+r.policy,p=\"default\",c={};5===+r.policy&&(p=\"hidden\"),([\"gms-proxy\",\"lighting-engine\",\"remote-sync-worker\"].includes(r.app_name)||7===+r.policy)&&(i=7,r.skipTaskbar=!1,l=!0,p=\"default\"),8===+r.policy&&(c.x=+r.x,c.y=+r.y);let m={};return this.isMacOS()&&(m={trafficLightPosition:{x:20,y:15}}),{frame:l,transparent:6===+r.policy||8===+r.policy,width:+r.width||0,height:+r.height||0,zoom:b(r.zoom,1),darkTheme:\"true\"===r.dark_theme,browser_visible:b(r.browser_visible,1),tab_visible:b(r.tab_visible,1),show:!!b(r.browser_visible,1),minHeight:b(r.minimum_height,o.minimumHeight),minWidth:b(r.minimum_width,o.minimumWidth),alwaysOnTop:b(r.always_on_top,0),canHibernate:1===b(r.canHibernate,1),icon:s,center:b(r.center,5===+r.policy),resizable:b(r.resizable,!0),canMinimize:r.canMinimize??!0,canMaximize:r.canMaximize??!0,title:r.title??S(r.app_name),appName:r.app_name,orgAppName:r.org_app_name,autoHideMenuBar:r.autoHideMenuBar??!0,skipTaskbar:r.skipTaskbar??!1,useContentSize:r.useContentSize??!1,hasShadow:0!==b(r.hasShadow,1),isLaunchBackgroundOnStart:!!r.isLaunchBackgroundOnStart,policy:+i,titleBarStyle:p,attachToWindow:r.attachToWindow??null,referrerUrl:r.referrerUrl??\"\",...c,...m,webPreferences:{preload:e.join(__dirname,\"../preload.js\"),backgroundThrottling:!1,additionalArguments:[`--razer-page-name=win-${r?.app_name}`,T]}}},module.exports.isWindowOS=",
+      "sha256": "b7bfa2eec3da3d20e33add539e6606338c27aa6484bf0c7097a13959a3374dce"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/lib/common.js",
+      "start": 2516,
+      "end": 2640,
+      "source": "b=(e,t)=>{let o=1;return void 0===e?t:(\"string\"==typeof e&&(o=x(e)?+e:t),\"number\"==typeof e||\"boolean\"==typeof e?e:o)},S=e=>",
+      "sha256": "b7bfa2eec3da3d20e33add539e6606338c27aa6484bf0c7097a13959a3374dce"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/lib/common.js",
+      "start": 4490,
+      "end": 4547,
+      "source": "hasShadow:0!==b(r.hasShadow,1),isLaunchBackgroundOnStart:",
+      "sha256": "b7bfa2eec3da3d20e33add539e6606338c27aa6484bf0c7097a13959a3374dce"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/components/Tab/common.js",
+      "start": 10697,
+      "end": 11281,
+      "source": "function ve(o,n,t){const d=\"createWindow()\";console.log(`${d} url:${o}, name:${n}, options:`,t,\" ==>\");const w=8===+t.policy&&(n===g||n===h);l.filter(e=>\"razer-settings\"!==e.appName).find(e=>e.appName===n)&&!L.appLaunchedList.includes(n)&&(L.appLaunchedList.push(n),z()),(!n||P.get(n)&&De.windowHibernateStatus(n)!==m.HIBERNATED)&&(n=e()),De.windowHibernateStatus(n)===m.HIBERNATED&&console.log(\"restore from hibernated state\",n);const u=w?function(){const e=t.orgAppName||t.appName,o=ue(e);if(o&&!o.isDestroyed())return o}():null,y=new i({...t,transparent:w||t.transparent,parent:u})",
+      "sha256": "7262ee43326e3960b0159547909282434421aba1cb000c01a6a96fda068f0532"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/components/Tab/LeftSystray.js",
+      "start": 3216,
+      "end": 3569,
+      "source": "createSystrayWindow(t){const i=`${this.appHost}${e.SYSTRAY_LEFT}/`,n=s({app_name:\"systray-left\",width:300,minimum_width:300,height:200,minimum_height:200,policy:6,browser_visible:0,always_on_top:!0,skipTaskbar:!0,useContentSize:!0,hasShadow:!1,resizable:!1});this.hasError=!1,this.loadSuccess=!1,this.leftSystray=o(i,\"systray-left\",n),this.alignWindow()",
+      "sha256": "2e916360f1d87097266d76da43b3caad761d144de1a254e374c094e3592a3677"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/api/electron_api_base_window.cc",
+      "start": 11930,
+      "end": 12130,
+      "source": "void BaseWindow::SetBounds(const gfx::Rect& bounds,\n                           gin::Arguments* const args) {\n  bool animate = false;\n  args->GetNext(&animate);\n  window_->SetBounds(bounds, animate);\n}",
+      "sha256": "6f0ea9c0aaa20efe3cfe547d668c3d6418094f505d1bab67afee33b476a4b4a6"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/native_window_views.cc",
+      "start": 27520,
+      "end": 28031,
+      "source": "void NativeWindowViews::SetBounds(const gfx::Rect& bounds, bool animate) {\n#if BUILDFLAG(IS_WIN)\n  if (is_moving_ || is_resizing_) {\n    pending_bounds_change_ = bounds;\n  }\n#endif\n\n#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)\n  // On Linux and Windows the minimum and maximum size should be updated with\n  // window size when window is not resizable.\n  if (!CanResize()) {\n    SetMaximumSize(bounds.size());\n    SetMinimumSize(bounds.size());\n  }\n#endif\n\n  widget()->SetBounds(LogicalToWidgetBounds(bounds));\n}",
+      "sha256": "fa84eca5b8215f7ea83d1ddda809b6f67fe3c000acfa3c0f9f35a33e0bd14e67"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/native_window_views.cc",
+      "start": 32621,
+      "end": 32786,
+      "source": "bool NativeWindowViews::CanResize() const {\n#if BUILDFLAG(IS_WIN)\n  return has_frame() ? resizable_ && thick_frame_ : resizable_;\n#else\n  return resizable_;\n#endif\n}",
+      "sha256": "fa84eca5b8215f7ea83d1ddda809b6f67fe3c000acfa3c0f9f35a33e0bd14e67"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/native_window_views.cc",
+      "start": 7895,
+      "end": 8328,
+      "source": "// On Windows we rely on the CanResize() to indicate whether window can be\n  // resized, and it should be set before window is created.\n  options.Get(options::kResizable, &resizable_);\n  options.Get(options::kMinimizable, &minimizable_);\n  options.Get(options::kMaximizable, &maximizable_);\n\n  // Transparent window must not have thick frame.\n  options.Get(\"thickFrame\", &thick_frame_);\n  if (transparent())\n    thick_frame_ = false;",
+      "sha256": "fa84eca5b8215f7ea83d1ddda809b6f67fe3c000acfa3c0f9f35a33e0bd14e67"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/native_window_views.cc",
+      "start": 10589,
+      "end": 10818,
+      "source": "// The given window is most likely not rectangular since it is translucent and\n  // has no standard frame, don't show a shadow for it.\n  if (IsTranslucent() && !has_frame())\n    params.shadow_type = InitParams::ShadowType::kNone;",
+      "sha256": "fa84eca5b8215f7ea83d1ddda809b6f67fe3c000acfa3c0f9f35a33e0bd14e67"
+    },
+    {
+      "path": ".ref/framework/electron-41.2.0/shell/browser/ui/win/notify_icon.cc",
+      "start": 6739,
+      "end": 7821,
+      "source": "void NotifyIcon::PopUpContextMenu(const gfx::Point& pos,\n                                  base::WeakPtr<ElectronMenuModel> menu_model) {\n  // Returns if context menu isn't set.\n  if (menu_model == nullptr && menu_model_ == nullptr)\n    return;\n\n  // Set our window as the foreground window, so the context menu closes when\n  // we click away from it.\n  if (!SetForegroundWindow(window_))\n    return;\n\n  // Cancel current menu if there is one.\n  CloseContextMenu();\n\n  // Show menu at mouse's position by default.\n  gfx::Rect rect(pos, gfx::Size());\n  if (pos.IsOrigin())\n    rect.set_origin(display::Screen::Get()->GetCursorScreenPoint());\n\n  if (menu_model) {\n    menu_runner_ = std::make_unique<views::MenuRunner>(\n        menu_model.get(), views::MenuRunner::HAS_MNEMONICS);\n  } else {\n    menu_runner_ = std::make_unique<views::MenuRunner>(\n        menu_model_, views::MenuRunner::HAS_MNEMONICS);\n  }\n  menu_runner_->RunMenuAt(nullptr, nullptr, rect,\n                          views::MenuAnchorPosition::kTopLeft,\n                          ui::mojom::MenuSourceType::kMouse);\n}",
+      "sha256": "cc3ef8fb24c9b471942ed41bbaade6562b01f1e56fbd80d8124ba116e2b0980f"
+    }
+  ],
+  "geometry": {
+    "path": ".ref/applications/systray/systrayv2/static/js/main.9579c403.js",
+    "sha256": "f77242abe6648164d2da401814b0dd4cd872526d81811caa455c69b85beb06b2",
+    "start": 9734,
+    "end": 11134,
+    "source": "async function c(e,t,n,s){let c=d();const l=700;let u=360,p=l;const _=document.querySelector(\".header-2\");if(_){u=360,p=_.clientHeight;const e=document.querySelector(\".app.list-unstyled\");e&&(p+=e.clientHeight)}i.A.log(`window.resizeTo(${u}, ${p})`);let h=r.t.prevX||window.screenX,f=r.t.prevY||window.screenY;\"undefined\"===typeof e&&\"undefined\"===typeof t||(h=e,f=t),\"undefined\"!==typeof n&&\"undefined\"!==typeof s&&(h=n,f=s,r.t.prevX=n,r.t.prevY=s);const g=f;f-=p,h-=u/2;const E=await o.A.getMonitorInfo(),m=null===E||void 0===E?void 0:E.find(e=>{let{isPrimaryMonitor:t}=e;return t}),{width:y,height:S}=a(m);if(m){if(h+u>y&&(h=y-u-10),h+u>m.WorkRect.right/m.dpiScaleX){h=h-Math.abs(h+u-m.WorkRect.right/m.dpiScaleX)-10}h<m.WorkRect.left&&(h=m.WorkRect.left)}if(m&&c){var v;const e=c.children;if(p=(null===(v=Array.from(e))||void 0===v?void 0:v.reduce((e,t)=>e+(null===t||void 0===t?void 0:t.offsetHeight),0))+153,p<400?p=400:p>l&&(p=l),f=f+l-p,f<m.WorkRect.top){f+=Math.abs(f-m.WorkRect.top)}const t=Math.ceil(.5*m.dpiScaleY);(f+p)*m.dpiScaleY>S+t&&(p=Math.min(S/m.dpiScaleY*.7,l),f=g-p),document.querySelector(\"#systrayBody\").style.maxHeight=p-153+\"px\"}\"function\"!==typeof o.A.setBounds?(i.A.log(`window.moveTo(${h}, ${f})`),window.moveTo(h,f)):(i.A.log(`zxc window.setBounds(${h}, ${f}, ${u}, ${p})`),o.A.setBounds(h,f,u,p)),r.t.prevWidth=u,r.t.prevHeight=p,c&&(r.t.bodyPrevHeight=c.offsetHeight)}"
+  },
+  "archive_chain": {
+    "path": ".ref/host-4.0.827/ARCHIVE-CHAIN.json",
+    "sha256": "19fdc6eb7ab48845e63ab264f8e272313d9d80a6a7a1a6a51285d317a67eda3a",
+    "outer_sha256": "d5e490647548389481321528fd7e0e1d536f0f8b92bf62747768e4ec3e9bc45d",
+    "inner_sha256": "9d4765d46c5c5e1ff9c11d16452bd12a9eb43f14cd70be893fa843df3882cd90"
+  },
+  "executable": {
+    "path": ".work/tray-native-current/win-unpacked/RazerAppEngine.exe",
+    "bytes": 222780104,
+    "sha256": "9b796816dc65318d496a0caa10eebf8b0814987e92cb19607fd406e92fb5e0dc",
+    "electron": "41.2.0",
+    "chromium": "146.0.7680.179",
+    "execution": "none",
+    "extraction": "7-Zip static archive read: current verified internal package entry win-unpacked/RazerAppEngine.exe"
+  },
+  "conclusion": [
+    "Signed-out renderer requests 360x60; the source's singular .app query misses .apps.",
+    "Non-resizable Electron windows reset min/max constraints to requested setBounds size.",
+    "Signed-out placement has a 10px right-edge gap and no account/body vertical clamp.",
+    "The renderer's first horizontal clamp uses primary WorkRect width, not monitor width.",
+    "Host createWindow preserves resizable:false; Windows frameless CanResize reads resizable_.",
+    "hasShadow:false is converted to true by strict 0!==boolean; Electron still disables shadow for translucent frameless windows.",
+    "Host forces dark theme; retained HMENU and its native-palette icon choice are user-accepted platform differences."
+  ],
+  "remaining": [
+    "Mixed-monitor DPI and real windows are not validated; renderer DIP coordinates and partly divided monitor fields are not a proven pixel-equivalent match to the physical-coordinate adapter.",
+    "Account sessions, dynamic body height and native menu visual parity remain incomplete."
+  ],
+  "runtime_validation": "not_run"
+}

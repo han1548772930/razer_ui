@@ -21,11 +21,11 @@ for (const [module, name, snippets] of [
   [43, '$n', ['className:"device-tile"', 'className:"device-name"', 'className:"device-edition"']],
   [43, 'Ua', ['Y=e=>{L(t=>(0,n.A)((0,n.A)({},t),{},{activeProfileIndex:e}))}',
     'selectOption:Y', '"LINKED GAMES TO ".concat(se)', 'maxLength:32', 'const l=(0,pe.$B)(r,e)',
-    'extraClass:"no-popup"', 'show:!P.showLinkedGames', 'close:B,goBack:B']],
+    'extraClass:"no-popup"', 'show:!P.showLinkedGames', 'close:B,goBack:B', 'className:"device_to_linked_game"']],
   [8844, 'm', ['removeSearchResult=()=>{this.setState({searchKey:"",searching:!1}', 'this.navRef.current', 'this.searchRef.current']],
   [3137, 'f', ['removeSearch=()=>{this.setState({searchText:""}', 'className:"content",children:this.renderAppRows()',
     'name:this.props.t(i.II$)', 'extraClass:this.props.extraClass']],
-  [5529, 'r', ['void 0!==this.props.goBack?', 'this.props.name', 'className:"close"']],
+  [5529, 'r', ['void 0!==this.props.goBack?', 'this.props.name', 'className:"close"', 'className:"choose-a-mat linked-games-popup"']],
   [1867, 'p', ['t.findIndex(t=>t.name===e)']],
   [7693, 'I', ['className:"linked-game-tile ', 'r?(0,u.jsxs)("div",{className:"linked-profile"', 'extraClass:"indeterminate"']],
 ]) for (const snippet of snippets) check(code(module, name), snippet, `${module}/${name}`);
@@ -46,8 +46,13 @@ for (const [selector, declarations] of [
   ['.listDevices_wrapper .list-device', ['padding:0 20px 80px']],
   ['.main-nav li:hover .tooltip', ['margin-left:15px', 'margin-top:30px', 'padding:8px 10px']],
   ['.choose-a-mat', ['width:1050px!important']],
+  ['.device_to_linked_game .choose-a-mat', ['min-width:0', 'width:calc(100vw - 40px)']],
   ['.device_to_linked_game .linked-game-tile.add-new .game-footer', ['padding:0', 'font-size:14px', 'line-height:16px']],
 ]) for (const declaration of declarations) check(rule(selector)?.declarations || '', declaration, selector);
+const deviceWide = rule('.device_to_linked_game .choose-a-mat.linked-games-popup');
+check(deviceWide?.conditions.join(' ') || '', '@media(min-width:1600px)', 'DeviceGames wide media');
+check(deviceWide?.declarations || '', 'width:1300px!important', 'DeviceGames wide media');
+check(deviceWide?.declarations || '', 'max-width:none', 'DeviceGames wide media');
 const iconMap = {
   '.main-nav .not-grey': 'profiles-add.svg', '.main-nav .add:hover': 'profiles-add-hover.svg',
   '.main-nav .refresh_games': 'profiles-scan.svg', '.main-nav .refresh_games:hover': 'profiles-scan-hover.svg',
@@ -73,11 +78,12 @@ const nativePaths = ['src/shell/profiles_page.rs', 'src/shell/profiles_page/devi
   'src/shell/profiles_page/controls.rs', 'src/ui/source_tooltip.rs'];
 const [main, devices, controls, tooltip] = nativePaths.map(read);
 for (const snippet of ['.h(surface::css(52.))', 'body.mt(-surface::css(2.))',
-  'self.view == ProfilesView::Games', 'width.max(800.)', '.font_family("Roboto")',
+  'self.view == ProfilesView::Games', 'Both mounted ancestries cancel', '.font_family("Roboto")',
   'on_clear(event, window, cx)', 'controls::nav_tip(']) check(main, snippet, 'native main');
 for (const forbidden of ['profiles-add-back', 'Game discovery service unavailable', 'GAME_NOT_SEE']) {
   if (main.includes(forbidden)) problems.push(`Unmatched Add content remains: ${forbidden}`);
 }
+if (main.includes('width.max(800.)')) problems.push('Current lazy DeviceGames selector cancels the base 800px popup minimum');
 if (devices.includes('.select_profile(')) problems.push('Assignment target must not activate the hardware profile');
 if (devices.includes('.child("✓")')) problems.push('Font checkmark must be source CSS geometry');
 for (const snippet of ['value.encode_utf16().count() <= 32', 'profile.name == name', 'controls::trim_name(',
@@ -92,7 +98,7 @@ const report = {
   method: 'Acorn module-local declarations and current mounted JSX/handlers; static CSS preserving media conditions; byte-identical icons',
   components, css, icons, native: nativePaths.map(file => ({path: file, sha256: hash(read(file))})),
   verified_changes: ['Games toolbar 52px outer height while content starts 50px; Devices content follows 52px navigation',
-    '900px grid minimum belongs to Games only; DeviceGames retains the uncancelled 800px popup minimum',
+    '900px grid minimum belongs to Games only; both mounted popup ancestries cancel the base 800px popup minimum',
     'Games clear-search collapses; Add clear-search keeps its input; filter/order clicks do not dismiss an empty input',
     'Add mounts only program rows: removed unmatched empty-message content and unforwarded goBack control',
     'Profile dropdown changes local assignment target without selecting a hardware profile',
@@ -103,7 +109,7 @@ const report = {
     'Profiles toolbar source tooltip position +15/+30, immediate visibility; current icon bytes unchanged'],
   limitations: ['No application, build, test or downloaded-JavaScript execution; no rendered acceptance',
     'CSS normal line-height, browser form-control font defaults and mixed three-column intrinsic shrinking require separate metric validation',
-    'DeviceGames intermediate viewport auto/shrink-to-fit width is still a native adaptation; minimum/media bounds audited',
+    'Both Games/Add and DeviceGames use explicit calc(100vw - 40px); DeviceGames current lazy selector cancels the base 800px minimum; media bounds audited',
     'Shared SynapseSelect has source sizing and menu data but instantaneous hover border; no shared dropdown edits in this batch',
     'Native 32-unit validator rejects an overlong edit; browser maxlength may truncate a paste. Product metadata applies its own final whitespace trim.',
     'Profile menu import/export now mounts local selection and decoded preview UI; product conversion/application and official file output remain unfinished (profiles-transfer-current-evidence.json). Source window-blur, deletion popup overflow adjustment and exact focus/keyboard parity need follow-up',

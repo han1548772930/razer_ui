@@ -139,11 +139,12 @@
     "Inherited body 1.22 line height explicitly overrides Base Button defaults.",
     "60px apps container owns its border; the 59px launcher row is a separate child.",
     "Single launcher title follows uppercase and ellipsis rules.",
+    "Tray root preserves source min-height:100% rather than a fixed viewport-height border box.",
     "Theme menu PNGs retain official pixels and dimensions without preparation-time resizing."
   ],
   "remaining": [
     "Real-window appearance, fonts, keyboard focus, DPI and hover are not run.",
-    "muda 0.21.0 Windows to_hbitmap draws all custom menu icons into a 16x16 bitmap; Electron output parity is not established.",
+    "Host uses forced-dark Chromium Views; retained HMENU presentation and native-palette icons are an accepted framework difference.",
     "Account transport, populated widgets/notifications, multi-app catalog and dynamic popup bounds remain incomplete."
   ],
   "runtime_validation": "not_run"

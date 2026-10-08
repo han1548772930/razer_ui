@@ -1,0 +1,734 @@
+{
+  "schema_version": 1,
+  "method": "Static Acorn/CSS source parsing only. No reference JavaScript, application, DLL or tests executed.",
+  "manifest": {
+    "path": ".ref/applications/settings/asset-manifest.json",
+    "sha256": "21ab9657bad4cda156e453142f54a2ebf604814047214e273c7c621723f26b34"
+  },
+  "css_load_order": {
+    "index": {
+      "path": ".ref/applications/settings/index.html",
+      "sha256": "86538b53c32b32334dbb7d4f73e00fd9788bf4a27644a3039ad1ee24fb7fa55e"
+    },
+    "initial": "/settings/static/css/main.a418d266.css",
+    "root_chunk": "97.394f9404.chunk.css before8821 renders root",
+    "widget_mount": "9762/ye and3414/Se ->1422/i body-widgets ->3765/i widget-col ->7693/A connected component ->widget class"
+  },
+  "observations": {
+    "typography": "main body retains line-height 1.22; lazy 97 body,html sets Roboto16; widgets set14",
+    "installed_header": "RazerF5 22/weight300/green/flex1 0 auto; separate vertically centered disabled14px action",
+    "launcher_preview": "Mounted even when filtered L=[]; 360x60/border707070/margin-bottom20",
+    "input_labels": "Preview/order/systray/language use bold uppercase .settings .input-label",
+    "about_links": "Three literal pipe divider nodes with6px side margins; default cursor; Connect With Us uppercase"
+  },
+  "receipts": [
+    {
+      "module": 8821,
+      "name": "ss",
+      "path": ".ref/applications/settings/static/js/97.d87e27ff.chunk.js",
+      "sha256": "b5e5db708c2a18ccee559922b232944a3901d2d28443d53a2fd8314e8320c7e1",
+      "offset": 190482,
+      "end": 193232,
+      "source": "class ss extends i.Component{constructor(e){super(e),this.addEventExitButton=()=>{const e=document.querySelector(\".header-avatar\");if(e){this.observerHeaderAvatar=new MutationObserver(function(e){e.forEach(function(e){if(e.target.classList.contains(\"active\")){const e=document.querySelector(\".header-avatar .dropdown-item:last-child\"),t=Yo.A.get(\"windowNames\");let n=Ve.C39;t&&(n=t.synapseApp.name),e.addEventListener(\"click\",()=>{console.log(\"exit\"),RazerApp.broadcastMessage({action:\"app-closing\",payload:\"synapse-app\"}),is.closeTab(n)})}})});const t={attributes:!0,childList:!1,characterData:!1};this.observerHeaderAvatar.observe(e,t)}},this.setWindowName=()=>{let e=Yo.A.get(\"windowNames\");e?(e=(0,l.A)((0,l.A)({},e),{},{synapseApp:{name:window.name}}),Yo.A.set(\"windowNames\",e)):Yo.A.set(\"windowNames\",{synapseApp:{name:window.name}})},this.loadTittleName=()=>{document.title=(0,E.JN)(we.cnI)},this.setDisplaySaveAlertRef=e=>{this.setDisplaySaveAlert=e},this.changeView=e=>{this.view=e,this.updateView()},this.updateView=()=>{console.log(this.view,this.state.active_view),this.view!==this.state.active_view&&this.setState({active_view:this.view},()=>{this.props.changeSelectedTab(this.view)})},this.openSetting=()=>{ce.A.getWindowServiceClients().then(e=>{JSON.parse(e).find(e=>\"settings-synapse\"===e.windowName)&&ce.A.activateWindowServiceClient(\"settings-synapse\")})},this.openFeedback=()=>{const e=new URLSearchParams(\"\");e.append(\"app\",\"razer-settings\"),e.append(\"path\",window.location.pathname),ri(\"/feedback/?\"+e.toString(),\"feedback-razer-settings\",ii,ai)};const t=[{id:1,name:we.GD6},{id:2,name:we.n6W},{id:3,name:we.iRj}],n=t[0].name;this.state={nav:t,active_view:n},this.observerHeaderAvatar=null}componentDidMount(){this.setWindowName(),this.loadTittleName()}componentWillUnmount(){this.observerHeaderAvatar&&this.observerHeaderAvatar.disconnect()}componentDidUpdate(e){this.props.selectedTab!==e.selectedTab&&this.changeView(this.props.selectedTab),this.props.lang!==e.lang&&this.loadTittleName()}render(){return(0,ee.jsxs)(he,{children:[(0,ee.jsx)(os,{title:(0,E.JN)(we.cnI,{_lang:this.props.lang}),isDashboard:!0,showLinkedGames:!1,hasUnsavedChanges:!1,currentTabNavigation:0,tabNavigations:[],currentApp:\"\",openSetting:this.openSetting,openFeedback:this.openFeedback,isShowProfileMigrationIcon:!1}),(0,ee.jsx)(yo,{navs:this.state.nav,activeView:this.state.active_view,changeView:this.changeView}),(0,ee.jsx)(ue.A,{extraClass:\"no-name-bar\",children:(0,ee.jsx)(uo,{$name:this.state.active_view,children:{[we.GD6]:(0,ee.jsx)(go,{lazy:()=>Promise.all([n.e(439),n.e(921)]).then(n.bind(n,9302))}),[we.n6W]:(0,ee.jsx)(go,{lazy:()=>n.e(762).then(n.bind(n,9762))}),[we.iRj]:(0,ee.jsx)(go,{lazy:()=>n.e(414).then(n.bind(n,3414))})}})})]})}}"
+    },
+    {
+      "module": 9302,
+      "name": "ee",
+      "path": ".ref/applications/settings/static/js/921.dfdde98f.chunk.js",
+      "sha256": "278e86f857920973cecc55f66c46d25870aa84c861f71eb32cc18d961ece86cb",
+      "offset": 22211,
+      "end": 23036,
+      "source": "e=>{console.log(\"\\ud83d\\ude80 ~ file: InstalledSoftware.js:24 ~ InstalledSoftware ~ props:\",e);const t=(0,i.useState)(!1),a=(0,n.A)(t,2),s=a[0],r=a[1],o=(0,i.useRef)(new Map),p=(0,i.useCallback)(()=>{r(!0)},[]),u=e=>t=>{o.current.set(e.name,t)};return(0,d.jsxs)(\"div\",{className:\"installed-software\",children:[(0,d.jsxs)(\"div\",{className:\"title-bar\",children:[(0,d.jsx)(\"div\",{className:\"title\",children:(0,d.jsx)(l.A,{text:c.TEXT_INSTALLED})}),(0,d.jsx)(\"div\",{className:\"installed-action flex\",children:(0,d.jsx)(\"div\",{className:\"action disabled\",children:(0,d.jsx)(l.A,{text:c.TEXT_AUTO_UPDATE_ENABLED})})})]}),(0,d.jsx)(\"div\",{className:\"installed-items\",children:e.installedApps.map(t=>(0,d.jsx)($,{item:t,isBeta:e.isBeta,showPatchNoteModal:p,addToUpdateManager:u(t)},t.name))}),(0,d.jsx)(f,{isMounted:s,setShow:r})]})}"
+    },
+    {
+      "module": 9762,
+      "name": "ye",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 34933,
+      "end": 35330,
+      "source": "()=>(0,f.jsx)(\"div\",{id:\"settings\",className:\"settings\",children:(0,f.jsx)(ue.A,{children:(0,f.jsxs)(pe.A,{children:[(0,f.jsx)(me.A,{children:(0,f.jsx)(he.A,{title:u.TEXT_QUICK_LAUNCHER,children:(0,f.jsx)(x,{})})}),(0,f.jsxs)(me.A,{children:[(0,f.jsx)(he.A,{title:u.GENERAL,children:(0,f.jsx)(fe,{})}),(0,f.jsx)(he.A,{title:u.TEXT_WIDGETS,children:(0,f.jsx)(de,{name:\"setting-widget\"})})]})]})})})"
+    },
+    {
+      "module": 9762,
+      "name": "x",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 13253,
+      "end": 16393,
+      "source": "(0,r.connect)(e=>({lang:e.languageReducer.lang,apps:e.app.items}),{})(function(e){let t=e.name,n=e.lang,r=e.apps;const m=new URL(window.location.href).href.includes(\"appsbeta\"),g=(0,s.useState)(()=>{let e=c.A.get(y);return Array.isArray(e)||(e=S(r)),e=e.map(e=>null===e?{}:e),e}),x=(0,a.A)(g,2),E=x[0],N=x[1],b=(0,s.useState)({}),j=(0,a.A)(b,2),R=j[0],C=j[1],M=(0,s.useState)([]),O=(0,a.A)(M,2),_=O[0],D=O[1];(0,s.useEffect)(()=>{const e=async()=>{console.log(\"running initLauncher\",c.A.get(y));let e=c.A.get(y);const t=await v.A.getInstalledRazerAppEngineProduct();if(D(t),Array.isArray(e))e=e.map(e=>r.some(t=>e.name===t.name)&&(\"app\"!==e.type||t.includes(e.name))?e:{}),N(e);else{if(!Array.isArray(r))return;e=S(r.filter(e=>!(\"app\"===e.type&&!t.includes(e.name)))),N(e)}c.A.set(y,e)};return e(),v.A.on(v.A.eventNames.UNINSTALL_APP,e),()=>{v.A.off(v.A.eventNames.UNINSTALL_APP,e)}},[r]),(0,s.useEffect)(()=>{v.A.getInstalledRazerAppEngineProduct().then(e=>{D(e)})},[]);const L=E.filter(e=>e.name&&(\"website\"===e.type||RazerApp.isAppInstalled(e.name))).filter(e=>!(\"app\"===e.type&&!_.includes(e.name))),I=(0,l.v)(r,{title:1}).filter(e=>!(\"app\"===e.type&&!_.includes(e.name))),k=o().useMemo(()=>r.filter(e=>e.name&&(\"website\"===e.type||RazerApp.isAppInstalled(e.name))),[r]);return(0,f.jsxs)(\"section\",{\"data-name\":t,className:\"section launcher\",children:[(0,f.jsx)(\"div\",{className:\"input-label\",children:(0,f.jsx)(p.A,{text:u.PREVIEW})}),(0,f.jsx)(\"ul\",{className:\"apps-\".concat(L.length,\" apps list-unstyled\"),children:L.map(e=>(0,f.jsxs)(\"li\",{className:e.name,children:[(0,f.jsx)(\"div\",{style:{backgroundImage:\"url(\".concat(A(e,m),\")\")},className:\"icon \"}),1===L.length?(0,f.jsx)(\"div\",{className:\"title\",children:w(e,n)}):null]},e.name))}),(0,f.jsx)(\"div\",{className:\"input-label\",children:(0,f.jsx)(p.A,{text:u.ORDER_FROM_LEFT_TO_RIGHT})}),(0,f.jsx)(\"ul\",{className:\"slots list-unstyled\",children:[...Array(5).keys()].map(e=>{const t=E[e]||{};return(0,f.jsxs)(\"li\",{children:[(0,f.jsxs)(\"div\",{className:\"title\",children:[(0,f.jsx)(p.A,{text:u.SLOT}),\" \",e+1]}),(0,f.jsxs)(d.A,{type:\"icon\",className:\"launcher-dropdown-selector \"+t.name,icon:A(t,m),value:\"string\"===typeof t.name?w(t,n):(0,h.JN)(u.NONE),onClick:()=>R[e]?{}:C({[e]:!0}),dropdownProps:{isMounted:R[e],position:\"bottom left\",maxHeight:351,onHidden:()=>C((0,i.A)((0,i.A)({},R),{},{[e]:!1}))},children:[(0,f.jsxs)(\"div\",{onClick:()=>{C({});let t=[...E];t[e]={},t.find(e=>null===e)&&(t=t.map(e=>null===e?{}:e)),N(t),c.A.set(y,t)},className:\"dropdown-item \".concat(t.name?k.length<2?\"disabled\":\"\":\"active\"),children:[(0,f.jsx)(\"div\",{className:\"icon\"}),(0,f.jsx)(p.A,{text:u.NONE})]}),I.map(s=>{const o=A(s,m);return(0,f.jsxs)(\"div\",{onClick:()=>{C({});let t=[...E];const n=t.findIndex(e=>e.name===s.name);n>-1&&(t[n]={}),t[e]=s,t.find(e=>null===e)&&(t=t.map(e=>null===e?{}:e)),N(t),c.A.set(y,t)},className:\"dropdown-item \".concat(s.name,\" \").concat(t.name===s.name?\"active\":\"\"),children:[(0,f.jsx)(\"div\",{style:o?{backgroundImage:\"url(\".concat(o,\")\")}:null,className:\"icon\"}),(0,f.jsx)(\"div\",{className:\"title\",children:w(s,n)})]},s.name)})]})]},t.name+String(e))})})]})})"
+    },
+    {
+      "module": 9762,
+      "name": "fe",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 33937,
+      "end": 34929,
+      "source": "e=>{let t=e.name,n=void 0===t?\"systray-icon\":t;const o=(0,r.useSelector)(e=>e.app.items),i=(0,s.useState)(!1),l=(0,a.A)(i,2),h=l[0],m=l[1],g=(0,s.useState)(()=>c.A.get(ve)||{type:\"showMenu\"}),v=(0,a.A)(g,2),y=v[0],A=v[1],w=[{type:\"showMenu\"},...o.filter(e=>\"website\"!==e.type).map(e=>({type:\"launch\",payload:e.name}))];return(0,f.jsx)(\"section\",{\"data-name\":n,className:\"section\",children:(0,f.jsxs)(\"div\",{className:\"item\",children:[(0,f.jsx)(\"div\",{className:\"input-label\",children:(0,f.jsx)(p.A,{text:u.SYSTRAY_ICON})}),(0,f.jsx)(\"div\",{className:\"desc\",children:(0,f.jsx)(p.A,{text:u.SYSTRAY_ICON_DESC})}),(0,f.jsx)(d.A,{className:\"sys-icon-dropdown-selector\",value:ge(y),onClick:()=>h?{}:m(!0),dropdownProps:{isMounted:h,position:\"bottom left\",maxHeight:\"none\",onHidden:()=>m(!1)},children:w.map(e=>(0,f.jsx)(\"div\",{onClick:()=>{m(!1),A(e),c.A.set(ve,e)},className:\"\".concat(y.type===e.type&&y.payload===e.payload?\"active\":\"\",\" dropdown-item\"),children:ge(e)},e.payload||e.type))})]})})}"
+    },
+    {
+      "module": 3414,
+      "name": "Se",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 38578,
+      "end": 38880,
+      "source": "function(){return(0,p.jsx)(\"div\",{id:\"settings\",className:\"settings\",children:(0,p.jsx)(je.A,{children:(0,p.jsxs)(Oe.A,{children:[(0,p.jsx)(Ne.A,{children:(0,p.jsx)(Ee.A,{title:a.zmI,children:(0,p.jsx)(u,{})})}),(0,p.jsx)(Ne.A,{children:(0,p.jsx)(Ee.A,{title:a.OZV,children:(0,p.jsx)(be,{})})})]})})})}"
+    },
+    {
+      "module": 3414,
+      "name": "u",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 11191,
+      "end": 12059,
+      "source": "(0,h.A)(function(e){let t=e.name,n=e.lang,h=e.updateLanguage,d=e.translationsImporter;const u=(0,i.useState)(!1),v=(0,r.A)(u,2),m=v[0],f=v[1];return(0,i.useEffect)(()=>{RazerApp.on(\"languageChange\",e=>{console.log(\"languageChange\",e),h(e,d)})},[]),(0,p.jsx)(\"section\",{\"data-name\":t,className:\"section\",children:(0,p.jsxs)(\"div\",{className:\"item\",children:[(0,p.jsx)(\"div\",{className:\"input-label\",children:(0,p.jsx)(c.A,{text:a.Npv})}),(0,p.jsx)(o.A,{value:l(n),onClick:()=>m?{}:f(!0),dropdownProps:{isMounted:m,position:\"bottom left\",maxHeight:\"none\",onHidden:()=>f(!1)},children:s.Fc.map(e=>(0,p.jsx)(\"div\",{onClick:()=>{f(!1),h(e,d),RazerApp.setLanguage(e)},className:\"dropdown-item \".concat(e===n.toLowerCase()?\"active\":\"\"),children:l(e)},e))})]})})},e=>({lang:e.languageReducer.lang,translationsImporter:()=>n.e(442).then(n.bind(n,8442))}),{updateLanguage:d.Cf})"
+    },
+    {
+      "module": 3414,
+      "name": "be",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 35643,
+      "end": 38520,
+      "source": "(0,v.connect)(e=>({lang:e.languageReducer.lang}),{})(function(e){let t=e.name,n=e.lang;const l=(0,i.useState)(\"\"),o=(0,r.A)(l,2),a=o[0],h=o[1];(0,i.useEffect)(()=>{d()},[]),(0,i.useEffect)(()=>{Array.from(document.querySelectorAll(\".social-item\")).filter(e=>{var t,n,i;return null===e||void 0===e||null===(t=e.lastChild)||void 0===t||null===(n=t.className)||void 0===n||null===(i=n.includes)||void 0===i?void 0:i.call(n,\"tooltip\")}).forEach(e=>{e.lastChild.clientWidth&&(e.lastChild.style.left=-e.lastChild.clientWidth/2+14+\"px\")})},[n]);const d=async()=>{try{const e=await(async e=>{const t=await caches.match(new URL(e,location.href),{ignoreSearch:!0});if(t)return t.json();const n=await fetch(e);return 200===n.status?await n.json():{buildVersion:0,gitMetadata:{buildTime:0}}})(\"/systray/systrayv2/manifest.json\");console.log(\"\\ud83d\\ude80 ~ file: AboutSetting.js ~ line 25 ~ getAppVersion ~ data\",e),h((e.version||\"\").replace(\"1.\",\"4.\")+\".\"+e.buildVersion)}catch(e){console.error(\"\\ud83d\\ude80 ~ file: AboutSetting.js ~ line 34 ~ getAppVersion ~ e\",e);const t=RazerApp.getAppData(\"chroma-app\",\"version\");h(\"4.\"+t)}},u=e=>()=>{xe.A.openExternalWindow(e)};return(0,p.jsxs)(\"section\",{\"data-name\":t,className:\"section about\",children:[(0,p.jsx)(\"div\",{className:\"logo\"}),(0,p.jsx)(\"div\",{className:\"version\",children:(0,p.jsx)(c.A,{text:j.VERSION,data:{number:a}})}),(0,p.jsxs)(\"div\",{className:\"copyright\",children:[(0,p.jsx)(c.A,{text:j.COPYRIGHT,data:{year:(new Date).getFullYear()}}),(0,p.jsx)(\"br\",{}),(0,p.jsx)(c.A,{text:j.TRADEMARK})]}),(0,p.jsxs)(\"div\",{className:\"links\",children:[(0,p.jsx)(x,{href:s.my,target:\"_blank\",className:\"btn-text\",rel:\"noopener noreferrer\",children:(0,p.jsx)(c.A,{text:j.FAQ})}),(0,p.jsx)(\"div\",{className:\"divider\",children:\"|\"}),(0,p.jsx)(x,{href:s.FG,target:\"_blank\",className:\"btn-text\",rel:\"noopener noreferrer\",children:(0,p.jsx)(c.A,{text:j.TEXT_TERMS_OF_SERVICE})}),(0,p.jsx)(\"div\",{className:\"divider\",children:\"|\"}),(0,p.jsx)(x,{href:s.rg,className:\"btn-text\",children:(0,p.jsx)(c.A,{text:j.TEXT_PRIVACY_POLICY})}),(0,p.jsx)(\"div\",{className:\"divider\",children:\"|\"}),(0,p.jsx)(x,{href:s.g4,target:\"_blank\",className:\"btn-text\",children:(0,p.jsx)(c.A,{text:j.TEXT_OPEN_SOURCE_SOFTWARE_NOTICE})})]}),(0,p.jsx)(\"div\",{className:\"copyright\",style:{textTransform:\"uppercase\"},children:(0,p.jsx)(c.A,{text:j.CONNECT_WITH_US})}),(0,p.jsx)(\"div\",{className:\"social-container\",children:(0,p.jsx)(\"div\",{className:\"social-item\",onClick:u(\"https://insider.razer.com/index.php\"),children:(0,p.jsx)(we,{})},\"social-insider\")}),(0,p.jsx)(\"div\",{className:\"social-container\",children:Object.entries(ye).map(e=>{let t=(0,r.A)(e,2),n=t[0],i=t[1];return(0,p.jsxs)(\"div\",{onClick:u(i.link),className:\"social-item\",children:[i.component,(0,p.jsx)(\"div\",{className:\"tooltip\",children:(0,p.jsx)(c.A,{text:j[i.translationType]})})]},\"social\"+n)})})]})})"
+    },
+    {
+      "module": 9762,
+      "name": "pe-import",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 33666,
+      "end": 33673,
+      "source": "n(1422)"
+    },
+    {
+      "module": 9762,
+      "name": "me-import",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 33688,
+      "end": 33695,
+      "source": "n(3765)"
+    },
+    {
+      "module": 9762,
+      "name": "he-import",
+      "path": ".ref/applications/settings/static/js/762.98d21f1a.chunk.js",
+      "sha256": "dc81bdfc01d7a37fcede73dd345db0220ae040b9dba3c2ca81e5a81f1ebebcf1",
+      "offset": 33677,
+      "end": 33684,
+      "source": "n(7693)"
+    },
+    {
+      "module": 3414,
+      "name": "Oe-import",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 38539,
+      "end": 38546,
+      "source": "n(1422)"
+    },
+    {
+      "module": 3414,
+      "name": "Ne-import",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 38561,
+      "end": 38568,
+      "source": "n(3765)"
+    },
+    {
+      "module": 3414,
+      "name": "Ee-import",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 38550,
+      "end": 38557,
+      "source": "n(7693)"
+    },
+    {
+      "module": 1422,
+      "name": "widget-collection",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 5752,
+      "end": 5917,
+      "source": "class s extends i.Component{render(){const e=this.props,t=e.children,n=e.className;return(0,r.jsx)(\"div\",{className:\"body-widgets flex \".concat(n||\"\"),children:t})}}"
+    },
+    {
+      "module": 3765,
+      "name": "widget-column",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 5994,
+      "end": 6160,
+      "source": "class s extends i.Component{render(){const e=this.props,t=e.children,n=e.direction;var i=\"widget-col col-\".concat(n);return(0,r.jsx)(\"div\",{className:i,children:t})}}"
+    },
+    {
+      "module": 7693,
+      "name": "widget-export",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 5566,
+      "end": 5684,
+      "source": "(0,s.connect)(e=>{var t;return{currentFWVersion:null===(t=e.deviceReducer)||void 0===t?void 0:t.currentFWVersion}})(m)"
+    },
+    {
+      "module": 7693,
+      "name": "widget-class",
+      "path": ".ref/applications/settings/static/js/414.717cc452.chunk.js",
+      "sha256": "69bd277c93b77630bbc862436e80083fc6ab353aa46569685a75a51326c568e4",
+      "offset": 1429,
+      "end": 5528,
+      "source": "class m extends i.Component{constructor(e){super(e),this.toggleSwitch=()=>{this.props.toggleSwitch()},this.positionTip=()=>{const e=document.querySelector(\".main-container > #body-wrapper\"),t=this.tipDiv.current,n=this.helpRef.current,i=null===n||void 0===n?void 0:n.closest(\".widget\");if(!t||!n||!i)return;const r=i.getBoundingClientRect();t.style.position=\"fixed\",t.style.right=\"auto\",t.style.visibility=\"visible\",t.style.opacity=\"1\";let s=r.right-14-t.offsetWidth,l=r.top+34;if(t.style.left=\"\".concat(s,\"px\"),t.style.top=\"\".concat(l,\"px\"),!e)return;const o=e.getBoundingClientRect();let a=t.getBoundingClientRect();if(a.right>o.right&&(s=o.right-14-t.offsetWidth,t.style.left=\"\".concat(s,\"px\"),a=t.getBoundingClientRect()),a.left<o.left&&(s=o.left+14,t.style.left=\"\".concat(s,\"px\"),a=t.getBoundingClientRect()),a.bottom>o.bottom){const e=n.getBoundingClientRect();s=e.right+8,l=e.top,t.style.left=\"\".concat(s,\"px\"),t.style.top=\"\".concat(l,\"px\"),a=t.getBoundingClientRect(),a.right>o.right&&(s=e.left-8-a.width,t.style.left=\"\".concat(s,\"px\")),a=t.getBoundingClientRect(),a.bottom>o.bottom&&(l-=a.bottom-o.bottom+10,t.style.top=\"\".concat(l,\"px\"))}},this.onHover=()=>{this.setState({showTip:!0},this.positionTip)},this.onLeave=()=>{this.setState({showTip:!1})};const t=this.props.active;this.state={active:t,showTip:!1,showFWUpdateTip:!1,tooltipX:0,tooltipY:0},this.tipDiv=r().createRef(),this.tipRef=r().createRef(),this.helpRef=r().createRef(),this._tipX=0,this._tipY=0}UNSAFE_componentWillReceiveProps(e){void 0!==e.active&&this.state.active!==e.active&&this.setState({active:e.active})}render(){var e;const t=this.props,n=t.id,i=t.title,r=t.tips,s=t.centerTips,a=t.children,m=t.hasSwitch,f=void 0!==m&&m,g=t.disableSwitchTips,w=t.extraClass,x=t.customStyle,y=t.extraTitle,b=t.besideTitle,j=t.increaseZIndex,O=t.supportsShortcut,E=t.disable,N=t.renderShortcut,S=t.keyPressed,C=t.hasTutorialButton,A=t.allowHtml,k=t.currentFWVersion,I=t.hasFWUpdate,T=void 0!==I&&I,L=t.fwUpdateComponent,R=t.isHyperPolling,_=void 0!==R&&R,P=(t.ignoreBottomOverflow,this.toggleSwitch),M=this.state.active,H=(null===(e=v.DeviceInfo)||void 0===e?void 0:e.featureMinFw)||{},z=(0,u.ju)(L,H,k)&&T;var D=\"widget \".concat(_?\"hyperPolling\":\"\",\" \").concat(w||\"\",\" \").concat(j?\"increase-zindex\":\"\",\" \").concat(z?\"disabled\":\"\"),W=void 0!==r?(0,o.jsxs)(o.Fragment,{children:[(0,o.jsx)(\"div\",{className:\"help\",ref:this.helpRef,role:\"button\",\"aria-label\":(0,p.JN)(r),onMouseOver:this.onHover,onMouseLeave:this.onLeave}),this.state.showTip&&(0,l.createPortal)((0,o.jsx)(\"div\",{className:\"tip body-widget-tip-portal\",ref:this.tipDiv,children:\"string\"!==typeof r?r:(0,o.jsx)(h.A,{text:r})}),document.body),C?(0,o.jsx)(\"div\",{className:\"tutorial-icon widget-tutorial-icon\",onClick:this.props.onClickTutorialButton}):null]}):null,B=f?(0,o.jsxs)(\"div\",{className:\"widget-switch\",children:[(0,o.jsx)(c,{disable:this.props.disable,active:M,onClick:P,className:S||\"\"}),g&&E?(0,o.jsx)(\"p\",{className:\"widget-switch-tooltip\",children:(0,o.jsx)(h.A,{text:g})}):null]}):null,F=\"\"!==i?(0,o.jsxs)(\"div\",{className:\"titleRow\",children:[(0,o.jsxs)(\"div\",{className:\"title\",children:[(0,o.jsx)(h.A,{text:i,allowHtml:A}),B,b]}),(0,o.jsx)(\"div\",{children:y}),O?N:null]}):null;return(0,o.jsxs)(\"div\",{className:\"widget-container\",children:[(0,o.jsxs)(\"div\",{className:D,id:n,style:x,children:[F,a,W]}),s&&(D.includes(\"disabled\")||!1===M)&&(0,o.jsx)(\"p\",{className:\"widget-body-tooltip\",children:(0,o.jsx)(h.A,{text:s})}),z&&(0,o.jsx)(\"div\",{className:\"warning-fw-update\",onMouseEnter:e=>{const t=e.clientX,n=e.clientY+25;this._tipX=t,this._tipY=n,this.setState({showFWUpdateTip:!0,tooltipX:t,tooltipY:n})},onMouseMove:e=>{const t=e.clientX,n=e.clientY+25;this._tipX===t&&this._tipY===n||(this._tipX=t,this._tipY=n,this.setState({tooltipX:t,tooltipY:n}))},onMouseLeave:()=>{this.setState({showFWUpdateTip:!1})},style:{zIndex:100},children:(0,o.jsx)(h.A,{text:d.AG3})}),z&&this.state.showFWUpdateTip&&(0,o.jsx)(\"div\",{className:\"warning-fw-update-tip\",style:{top:this.state.tooltipY,left:this.state.tooltipX},children:(0,o.jsx)(h.A,{text:d.ssg})})]})}}"
+    },
+    {
+      "name": "bootstrap",
+      "path": ".ref/applications/settings/static/js/main.eda30dd1.js",
+      "sha256": "12368ae1d2a359e479951a1fb95242c6c7a5510581b75bee784bd8bab62741a0",
+      "offset": 75536,
+      "end": 75687,
+      "source": "Promise.all([r.e(575),r.e(97)]).then(r.bind(r,8821)).then(e=>{let r=e.default;t().createRoot(document.getElementById(\"root\")).render((0,E.jsx)(r,{}))})"
+    }
+  ],
+  "css": [
+    {
+      "path": ".ref/applications/settings/static/css/main.a418d266.css",
+      "sha256": "a8ea1ce96a4f90a2c21357b0165304f46ca27f83a76b9ddf32b80f462b235d81",
+      "offset": 3481,
+      "selector": "body",
+      "conditions": [],
+      "declarations": "background-color:#191919;color:#ccc;font-size:14px;line-height:1.22;overflow:hidden",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#191919",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "1.22",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/97.394f9404.chunk.css",
+      "sha256": "6045fbb50e96fe9a383ffd09aea5b44c9ba0aa844a0adf8645ccdc1d5f6a3cfe",
+      "offset": 42117,
+      "selector": "body,html",
+      "conditions": [],
+      "declarations": "background-color:#222;color:#ccc;font-family:Roboto,sans-serif;font-size:16px;height:100%;margin:0;max-width:1920px;min-height:720px;overflow:hidden;-webkit-user-select:none;user-select:none;width:100%",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#222",
+          "important": false
+        },
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "font-family",
+          "value": "Roboto,sans-serif",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "16px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "100%",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "0",
+          "important": false
+        },
+        {
+          "property": "max-width",
+          "value": "1920px",
+          "important": false
+        },
+        {
+          "property": "min-height",
+          "value": "720px",
+          "important": false
+        },
+        {
+          "property": "overflow",
+          "value": "hidden",
+          "important": false
+        },
+        {
+          "property": "-webkit-user-select",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "user-select",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/97.394f9404.chunk.css",
+      "sha256": "6045fbb50e96fe9a383ffd09aea5b44c9ba0aa844a0adf8645ccdc1d5f6a3cfe",
+      "offset": 109139,
+      "selector": ".body-widgets .widget",
+      "conditions": [],
+      "declarations": "background-color:#111;border-radius:5px;flex:0 0 auto;font-size:14px;height:auto;margin:10px auto;max-width:600px;min-width:600px;padding:30px 40px;position:relative;transition:height .2s;will-change:height",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#111",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "5px",
+          "important": false
+        },
+        {
+          "property": "flex",
+          "value": "0 0 auto",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "auto",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "10px auto",
+          "important": false
+        },
+        {
+          "property": "max-width",
+          "value": "600px",
+          "important": false
+        },
+        {
+          "property": "min-width",
+          "value": "600px",
+          "important": false
+        },
+        {
+          "property": "padding",
+          "value": "30px 40px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "height .2s",
+          "important": false
+        },
+        {
+          "property": "will-change",
+          "value": "height",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/97.394f9404.chunk.css",
+      "sha256": "6045fbb50e96fe9a383ffd09aea5b44c9ba0aa844a0adf8645ccdc1d5f6a3cfe",
+      "offset": 191133,
+      "selector": ".disabled",
+      "conditions": [],
+      "declarations": "opacity:.3;pointer-events:none",
+      "properties": [
+        {
+          "property": "opacity",
+          "value": ".3",
+          "important": false
+        },
+        {
+          "property": "pointer-events",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/921.08e5c8d7.chunk.css",
+      "sha256": "4aa3b142707fe5e63bd6ee94dabc3690855f3c3f5991f6de290933a1e962cfe0",
+      "offset": 431,
+      "selector": ".software-tab .title",
+      "conditions": [],
+      "declarations": "color:#44d62c;flex:1 0 auto;font-family:RazerF5;font-size:22px;font-weight:300;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#44d62c",
+          "important": false
+        },
+        {
+          "property": "flex",
+          "value": "1 0 auto",
+          "important": false
+        },
+        {
+          "property": "font-family",
+          "value": "RazerF5",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "22px",
+          "important": false
+        },
+        {
+          "property": "font-weight",
+          "value": "300",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/921.08e5c8d7.chunk.css",
+      "sha256": "4aa3b142707fe5e63bd6ee94dabc3690855f3c3f5991f6de290933a1e962cfe0",
+      "offset": 600,
+      "selector": ".installed-software",
+      "conditions": [],
+      "declarations": "margin-bottom:20px;width:100%",
+      "properties": [
+        {
+          "property": "margin-bottom",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "100%",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/921.08e5c8d7.chunk.css",
+      "sha256": "4aa3b142707fe5e63bd6ee94dabc3690855f3c3f5991f6de290933a1e962cfe0",
+      "offset": 650,
+      "selector": ".installed-software .title-bar",
+      "conditions": [],
+      "declarations": "display:flex",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/921.08e5c8d7.chunk.css",
+      "sha256": "4aa3b142707fe5e63bd6ee94dabc3690855f3c3f5991f6de290933a1e962cfe0",
+      "offset": 694,
+      "selector": ".installed-software .title-bar>.installed-action",
+      "conditions": [],
+      "declarations": "align-items:center",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/921.08e5c8d7.chunk.css",
+      "sha256": "4aa3b142707fe5e63bd6ee94dabc3690855f3c3f5991f6de290933a1e962cfe0",
+      "offset": 762,
+      "selector": ".installed-software .title-bar>.installed-action>div",
+      "conditions": [],
+      "declarations": "flex:0 0 auto;margin:0 10px",
+      "properties": [
+        {
+          "property": "flex",
+          "value": "0 0 auto",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "0 10px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/921.08e5c8d7.chunk.css",
+      "sha256": "4aa3b142707fe5e63bd6ee94dabc3690855f3c3f5991f6de290933a1e962cfe0",
+      "offset": 843,
+      "selector": ".installed-software .action",
+      "conditions": [],
+      "declarations": "color:#707070;font-size:14px;text-decoration:underline",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#707070",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "text-decoration",
+          "value": "underline",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/762.226a09dd.chunk.css",
+      "sha256": "e2d6a8b35dba810752229577e10dada08acb0c6b1ec14b3c76b00dbf142b1a46",
+      "offset": 1321,
+      "selector": ".settings .input-label",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;font-weight:700;margin-bottom:10px;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "font-weight",
+          "value": "700",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/762.226a09dd.chunk.css",
+      "sha256": "e2d6a8b35dba810752229577e10dada08acb0c6b1ec14b3c76b00dbf142b1a46",
+      "offset": 8200,
+      "selector": ".section.launcher>.apps",
+      "conditions": [],
+      "declarations": "background-color:#111;border:1px solid #707070;display:flex;flex-wrap:wrap;height:60px;justify-content:space-around;margin-bottom:20px;width:360px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#111",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #707070",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "flex-wrap",
+          "value": "wrap",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "60px",
+          "important": false
+        },
+        {
+          "property": "justify-content",
+          "value": "space-around",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "360px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/414.2e30559c.chunk.css",
+      "sha256": "222a0b50bbafe963a630831968b0bd7b76ecab2c4327b23cb333456b6120f879",
+      "offset": 1321,
+      "selector": ".settings .input-label",
+      "conditions": [],
+      "declarations": "align-items:center;display:flex;font-weight:700;margin-bottom:10px;text-transform:uppercase",
+      "properties": [
+        {
+          "property": "align-items",
+          "value": "center",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        },
+        {
+          "property": "font-weight",
+          "value": "700",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "text-transform",
+          "value": "uppercase",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/414.2e30559c.chunk.css",
+      "sha256": "222a0b50bbafe963a630831968b0bd7b76ecab2c4327b23cb333456b6120f879",
+      "offset": 8637,
+      "selector": ".section.about>.links",
+      "conditions": [],
+      "declarations": "margin-bottom:30px;margin-top:20px;-webkit-user-select:none;user-select:none",
+      "properties": [
+        {
+          "property": "margin-bottom",
+          "value": "30px",
+          "important": false
+        },
+        {
+          "property": "margin-top",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "-webkit-user-select",
+          "value": "none",
+          "important": false
+        },
+        {
+          "property": "user-select",
+          "value": "none",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/414.2e30559c.chunk.css",
+      "sha256": "222a0b50bbafe963a630831968b0bd7b76ecab2c4327b23cb333456b6120f879",
+      "offset": 8736,
+      "selector": ".section.about>.links>a",
+      "conditions": [],
+      "declarations": "cursor:default;display:inline-block;font-size:14px;text-decoration:underline",
+      "properties": [
+        {
+          "property": "cursor",
+          "value": "default",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "inline-block",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "text-decoration",
+          "value": "underline",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/settings/static/css/414.2e30559c.chunk.css",
+      "sha256": "222a0b50bbafe963a630831968b0bd7b76ecab2c4327b23cb333456b6120f879",
+      "offset": 8884,
+      "selector": ".section.about>.links>.divider",
+      "conditions": [],
+      "declarations": "color:#999;margin:0 6px",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#999",
+          "important": false
+        },
+        {
+          "property": "margin",
+          "value": "0 6px",
+          "important": false
+        }
+      ]
+    }
+  ],
+  "implementation": {
+    "path": "src/shell/settings_window.rs",
+    "sha256_lf": "8f8e04680cfc8085538729b5cb53737135e4e45b76ca57fe6b82043f13fa4323"
+  },
+  "runtime_validation": "not_run",
+  "remaining": "Installed-app/widget catalogs and launcher state publisher unavailable; window/layout/focus/pixels not runtime validated."
+}

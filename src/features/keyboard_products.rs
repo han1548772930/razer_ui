@@ -185,9 +185,7 @@ impl KeyboardProductWorkspace {
         if self.page != key {
             self.leave_snap_tap(window, cx);
             self.dismiss_calibration(window, cx);
-            if let Some(state) = &mut self.actuation {
-                state.selected.clear();
-            }
+            self.clear_actuation_selection();
             self.page = key.into();
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
@@ -206,6 +204,7 @@ impl KeyboardProductWorkspace {
         self.factory_default_profile = factory_default_profile;
         if factory_default_profile {
             self.dismiss_calibration(window, cx);
+            self.clear_actuation_selection();
         }
         cx.notify();
     }
@@ -234,9 +233,7 @@ impl KeyboardProductWorkspace {
         self.selected_key = None;
         self.hovered_key = None;
         self.restore_snap_tap(window, cx);
-        if let Some(state) = &mut self.actuation {
-            state.selected.clear();
-        }
+        self.clear_actuation_selection();
         self.syncing = true;
         for (path, slider) in &self.sliders {
             if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {

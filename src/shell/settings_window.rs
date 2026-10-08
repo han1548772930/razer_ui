@@ -67,6 +67,15 @@ fn language_choices() -> Vec<Choice> {
         .collect()
 }
 
+// Current Settings lazy CSS `.settings .input-label`, used by both General
+// and Systray. Appearance only; the existing entities retain interaction.
+fn input_label(key: &str) -> Div {
+    h_flex()
+        .font_weight(FontWeight::BOLD)
+        .mb(surface::css(10.))
+        .child(text(key).to_uppercase())
+}
+
 pub(super) struct SettingsWindow {
     selected: String,
     language: Entity<SelectState<Vec<Choice>>>,
@@ -114,22 +123,45 @@ impl SettingsWindow {
         }
     }
 
-    fn software(&self, _cx: &App) -> AnyElement {
+    fn software(&self, cx: &App) -> AnyElement {
         // 9302/ie initializes installedApps=[]; neither the Rust modules nor
         // the reference package proves anything is installed on this machine.
         v_flex()
             .max_w(surface::css(1220.))
             .w_full()
             .mx_auto()
+            .mb(surface::css(20.))
             .child(
-                h_flex().child(div().child(text("TEXT_INSTALLED"))).child(
-                    div()
-                        .text_color(crate::ui::theme::SettingsWindowColors::installed_action())
-                        .opacity(0.3)
-                        .underline()
-                        .mx(surface::css(10.))
-                        .child(text("TEXT_AUTO_UPDATE_ENABLED")),
-                ),
+                div()
+                    .flex()
+                    .w_full()
+                    .child(
+                        div()
+                            .id("host-settings-installed-title")
+                            .flex_grow(1.)
+                            .flex_shrink_0()
+                            .flex_basis(auto())
+                            .font_family("RazerF5")
+                            .text_size(surface::css(22.))
+                            .font_weight(FontWeight::LIGHT)
+                            .text_color(cx.theme().primary)
+                            .child(text("TEXT_INSTALLED").to_uppercase()),
+                    )
+                    .child(
+                        h_flex().child(
+                            div()
+                                .id("host-settings-auto-update")
+                                .flex_shrink_0()
+                                .text_size(surface::css(14.))
+                                .text_color(
+                                    crate::ui::theme::SettingsWindowColors::installed_action(),
+                                )
+                                .opacity(0.3)
+                                .underline()
+                                .mx(surface::css(10.))
+                                .child(text("TEXT_AUTO_UPDATE_ENABLED")),
+                        ),
+                    ),
             )
             .into_any_element()
     }
@@ -138,13 +170,21 @@ impl SettingsWindow {
         // Empty, unavailable host catalog: no fabricated installed app choices,
         // widget checkboxes or launch actions. These are the source's empty rows.
         let launcher = surface::panel(text("TEXT_QUICK_LAUNCHER"), cx)
-            .child(div().mb(surface::css(10.)).child(text("PREVIEW")))
-            .child(div().h(surface::css(20.)))
+            .child(input_label("PREVIEW"))
+            // x renders the `.apps` list even when L=[]; keep its outline
+            // and 60px height rather than collapsing it into a 20px spacer.
             .child(
                 div()
-                    .mb(surface::css(10.))
-                    .child(text("ORDER_FROM_LEFT_TO_RIGHT")),
+                    .id("host-settings-launcher-preview")
+                    .w(surface::css(360.))
+                    .h(surface::css(60.))
+                    .flex_shrink_0()
+                    .mb(surface::css(20.))
+                    .bg(cx.theme().group_box)
+                    .border_1()
+                    .border_color(crate::ui::theme::SettingsWindowColors::installed_action()),
             )
+            .child(input_label("ORDER_FROM_LEFT_TO_RIGHT"))
             .children((1..=5).map(|slot| {
                 v_flex()
                     .mb(surface::css(if slot == 5 { 0. } else { 20. }))
@@ -167,13 +207,8 @@ impl SettingsWindow {
                     )
             }));
         let general = surface::panel(text("GENERAL"), cx)
-            .child(div().mb(surface::css(10.)).child(text("SYSTRAY_ICON")))
-            .child(
-                div()
-                    .mb(surface::css(10.))
-                    .text_color(cx.theme().muted_foreground)
-                    .child(text("SYSTRAY_ICON_DESC")),
-            )
+            .child(input_label("SYSTRAY_ICON"))
+            .child(div().mb(surface::css(10.)).child(text("SYSTRAY_ICON_DESC")))
             .child(self.tray_action.clone());
         h_flex()
             .items_start()
@@ -226,7 +261,6 @@ impl SettingsWindow {
                 h_flex()
                     .flex_wrap()
                     .justify_center()
-                    .gap(surface::css(6.))
                     .mt(surface::css(20.))
                     .mb(surface::css(30.))
                     .children(
@@ -237,16 +271,30 @@ impl SettingsWindow {
                             "TEXT_OPEN_SOURCE_SOFTWARE_NOTICE",
                         ]
                         .into_iter()
-                        .map(|key| {
-                            gpui_kit::base::Link::new(key)
+                        .flat_map(|key| {
+                            let link = gpui_kit::base::Link::new(key)
                                 .href(source().links[key].clone())
                                 .accessibility_label(text(key))
                                 .open_with(|url, _, _, cx| cx.open_url(url))
                                 .text_color(cx.theme().muted_foreground)
                                 .underline()
+                                .cursor_default()
                                 .hover(|s| s.text_color(cx.theme().foreground))
                                 .focus_visible(|s| s.bg(cx.theme().secondary_hover))
                                 .child(text(key))
+                                .into_any_element();
+                            let mut items = Vec::with_capacity(2);
+                            if key != "FAQ" {
+                                items.push(
+                                    div()
+                                        .mx(surface::css(6.))
+                                        .text_color(cx.theme().muted_foreground)
+                                        .child("|")
+                                        .into_any_element(),
+                                );
+                            }
+                            items.push(link);
+                            items
                         }),
                     ),
             )
@@ -254,7 +302,7 @@ impl SettingsWindow {
                 div()
                     .text_center()
                     .text_color(cx.theme().muted_foreground)
-                    .child(text("CONNECT_WITH_US")),
+                    .child(text("CONNECT_WITH_US").to_uppercase()),
             )
             .child(
                 h_flex()
@@ -294,7 +342,7 @@ impl SettingsWindow {
             .child(
                 v_flex().w(surface::css(600.)).child(
                     surface::panel(text("LANGUAGE"), cx)
-                        .child(div().mb(surface::css(10.)).child(text("LANGUAGE")))
+                        .child(input_label("LANGUAGE"))
                         .child(
                             surface::select(&self.language)
                                 .id("host-settings-language")
@@ -326,7 +374,10 @@ impl Render for SettingsWindow {
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .font_family("Roboto")
-            .text_size(surface::css(14.))
+            // The shared 97 stylesheet overrides main's 14px body size with
+            // 16px. Widgets retain their own 14px; line-height stays 1.22.
+            .text_size(surface::css(16.))
+            .line_height(relative(1.22))
             .child(TitleBar::new().child(text("SETTINGS_HEADER")))
             .child(
                 h_flex()
