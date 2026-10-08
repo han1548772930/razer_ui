@@ -9182,7 +9182,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "power_slider_presentation_and_release",
+          "evidence": "docs/re/power-range-current-evidence.json",
+          "fix_id": "power-range-source-presentation-release",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 182,
@@ -28695,7 +28704,16 @@
         "static_validation"
       ],
       "runtime_validation": "not_run",
-      "dll_writeback": "deferred"
+      "dll_writeback": "deferred",
+      "partial_reviews": [
+        {
+          "behavior": "power_slider_presentation_and_release",
+          "evidence": "docs/re/power-range-current-evidence.json",
+          "fix_id": "power-range-source-presentation-release",
+          "runtime_validation": "not_run",
+          "complete_page": false
+        }
+      ]
     },
     {
       "product_id": 777,

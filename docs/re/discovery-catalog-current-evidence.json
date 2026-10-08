@@ -65,7 +65,7 @@
     "isNotChromaDevice": "is_not_chroma_device"
   },
   "output": "src/backend/discovery_catalog.json",
-  "sha256": "0f23f7deb205e9762ad3080d2c082ac719644ad2db2da8f5c56622a236fbd2c0",
+  "sha256": "3cce46adc5c70ea1d4c2d406b963fa94235f0e6c01f7349fd8c02033e99a3506",
   "entries": 330,
   "scalar_dongle_rows": 93,
   "array_dongle_rows": 2,
@@ -114,5 +114,29 @@
         "product_id": 2594
       }
     ]
-  }
+  },
+  "middleware": {
+    "path": "docs/re/middleware-device-bindings-current.json",
+    "sha256": "580b23201e31eaed3bb2d98c59c20679f09361d7a625dd3f6cc36a3990624c56",
+    "method": "Manifest-scoped static AST inventory, no vendor execution",
+    "scope_products": 332
+  },
+  "middleware_rows": 328,
+  "middleware_unresolved_rows": 4,
+  "middleware_dongle_rows": 99,
+  "middleware_claim_interface_rows": 301,
+  "middleware_only_dongle_rows": [
+    104,
+    164,
+    179,
+    207,
+    241,
+    1420,
+    1465,
+    2676,
+    3909,
+    3940,
+    3949,
+    4126
+  ]
 }

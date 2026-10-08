@@ -66,6 +66,38 @@
       "exact_pixels": true
     },
     {
+      "output": "assets/synapse/tray-gear-light.rgba",
+      "size": [
+        14,
+        14
+      ],
+      "exact_pixels": true
+    },
+    {
+      "output": "assets/synapse/tray-gear-dark.rgba",
+      "size": [
+        14,
+        14
+      ],
+      "exact_pixels": true
+    },
+    {
+      "output": "assets/synapse/tray-user-light.rgba",
+      "size": [
+        12,
+        16
+      ],
+      "exact_pixels": true
+    },
+    {
+      "output": "assets/synapse/tray-user-dark.rgba",
+      "size": [
+        14,
+        14
+      ],
+      "exact_pixels": true
+    },
+    {
       "output": "assets/synapse/tray-native.rgba",
       "size": [
         16,

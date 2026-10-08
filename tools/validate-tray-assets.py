@@ -24,13 +24,17 @@ for entry in icons:
         assert decoded.tobytes() == target.read_bytes(), target
     assert hashlib.sha256(target.read_bytes()).hexdigest() == entry['sha256']
     checked.append({'output': entry['output'], 'size': size, 'exact_pixels': True})
-native, = [entry for entry in records if entry.get('conversion') == 'exact-png']
-assert native['source'] == '.ref/host-4.0.827/electron/resources/images/rzAppEngine.png'
-with Image.open(ROOT / native['source']) as decoded:
-    assert decoded.size == (16, 16)
-    assert decoded.convert('RGBA').tobytes() == (ROOT / native['output']).read_bytes()
-assert hashlib.sha256((ROOT / native['output']).read_bytes()).hexdigest() == native['sha256']
-checked.append({'output': native['output'], 'size': [16, 16], 'exact_pixels': True})
+pngs = [entry for entry in records if entry.get('conversion') == 'exact-png'
+        and entry['output'].startswith('assets/synapse/tray-')]
+assert {Path(entry['source']).name for entry in pngs} == {
+    'rzAppEngine.png', 'gear-black.png', 'gear-white.png', 'user-black.png', 'user-white.png'}
+for entry in pngs:
+    assert entry['source'].startswith('.ref/host-4.0.827/electron/resources/images/')
+    with Image.open(ROOT / entry['source']) as decoded:
+        assert decoded.size == (entry['width'], entry['height'])
+        assert decoded.convert('RGBA').tobytes() == (ROOT / entry['output']).read_bytes()
+    assert hashlib.sha256((ROOT / entry['output']).read_bytes()).hexdigest() == entry['sha256']
+    checked.append({'output': entry['output'], 'size': [entry['width'], entry['height']], 'exact_pixels': True})
 (ROOT / 'docs/re/tray-icon-validation.json').write_text(
     json.dumps({'verification': 'Static resource comparison; no application executed.', 'icons': checked}, indent=2)
     + '\n', encoding='utf-8')

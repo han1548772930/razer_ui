@@ -763,7 +763,20 @@ impl DeviceWorkspace {
             &state,
             window,
             move |this, _, event, window, cx| {
-                if let SliderEvent::Change(value) = event {
+                // Source power sliders preview in component state while dragging;
+                // their onMouseUp commits changeValue once. Other range controls
+                // retain their existing event policy.
+                let power_range = matches!(target, Control::Idle | Control::LowPower);
+                let value = match event {
+                    SliderEvent::Change(_) if power_range => {
+                        cx.notify();
+                        return;
+                    }
+                    SliderEvent::Change(value) => Some(value),
+                    SliderEvent::Release(value) if power_range => Some(value),
+                    SliderEvent::Release(_) => None,
+                };
+                if let Some(value) = value {
                     if target == Control::LowPower
                         && this.mouse_polling_scope(cx).is_some()
                         && !this.mouse_low_power_enabled()
@@ -1275,7 +1288,7 @@ impl Render for DeviceWorkspace {
         } else {
             let page = match self.page {
                 Tab::Performance => self.performance_page(cx),
-                Tab::Power => self.power_page(cx),
+                Tab::Power => self.power_page(window, cx),
                 Tab::Calibration => self.calibration_page(cx),
                 Tab::Lighting => self.lighting_page(cx),
                 Tab::Sound => self.sound_page(cx),

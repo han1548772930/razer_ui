@@ -9,6 +9,9 @@ pub(crate) mod device_changes;
 pub(crate) mod device_identity;
 pub(crate) mod device_reads;
 pub(crate) mod discovery;
+pub(crate) mod native_library;
+pub(crate) mod native_query;
+pub(crate) mod native_read;
 pub(crate) mod receiver_capabilities;
 mod receiver_catalog;
 pub(crate) mod receiver_protocol;
@@ -122,7 +125,9 @@ const BLOCKING_ENGINES: &[&str] = &["SysUtilsNative"];
 
 /// 该引擎是否受到加载限制。
 pub fn blocks_load(stem: &str) -> bool {
-    BLOCKING_ENGINES.contains(&stem)
+    BLOCKING_ENGINES
+        .iter()
+        .any(|name| name.eq_ignore_ascii_case(stem))
 }
 
 /// 引擎目录。**只读静态数据，不碰 DLL**，任何线程都可安全调用。
@@ -143,6 +148,42 @@ pub fn resolve_path(stem: &str) -> Option<PathBuf> {
 /// 引擎 DLL 的两处安装位置。**只读文件系统**，线程安全。
 pub fn engine_paths() -> EnginePaths {
     EnginePaths::discover()
+}
+
+/// 按生成清单解析某个原生库的候选路径。**只读**：只给候选，不加载、不校验 ABI。
+///
+/// `id` 取自 `assets/data/native-library-inventory.json`；该清单由
+/// `tools/generate-native-library-inventory.cjs` 对原代码全量生成，
+/// 因此新增或变更原生库只需重新生成，Rust 里不写死任何产品。
+pub fn native_library_candidates(
+    id: &str,
+    product_id: Option<u32>,
+) -> Option<Vec<(String, PathBuf)>> {
+    let library = native_library::find(id)?;
+    let installed = EnginePaths::discover();
+    let programs_root = installed
+        .common_dll
+        .as_ref()
+        .and_then(|directory| directory.parent())
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\Program Files\Razer\RazerAppEngine"));
+    let user_data_root = installed
+        .apps_common
+        .as_ref()
+        .and_then(|directory| directory.parent())
+        .and_then(|directory| directory.parent())
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("LOCALAPPDATA")
+                .map(PathBuf::from)
+                .map(|root| root.join("Razer/RazerAppEngine/User Data"))
+        })?;
+    Some(
+        native_library::candidate_paths(library, product_id, &programs_root, &user_data_root)
+            .into_iter()
+            .map(|(rule, path)| (format!("{rule:?}"), path))
+            .collect(),
+    )
 }
 
 /// 一次引擎探测的结果。

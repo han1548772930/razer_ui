@@ -31,6 +31,28 @@ pub(crate) enum ServiceRequest {
     HidDevices,
     /// Physical USB devices, including products without a HID collection.
     UsbDevices,
+    /// Read-only version query on any library the generated native inventory
+    /// declares. Only a no-argument string-returning `GetDLLVersion`/`GetDllVersion`
+    /// prefix is accepted, so no mutation can be requested through it.
+    NativeLibraryVersion {
+        library: String,
+        #[serde(default)]
+        product_id: Option<u32>,
+    },
+    /// Read-only getter on a declared device library
+    /// (`Get*`/`Is*`/`Has*` with one `string` argument). Mutating exports are
+    /// refused in the worker; see `backend::native_read`.
+    NativeLibraryGetter {
+        library: String,
+        export: String,
+        device_id: String,
+        product_id: Option<u32>,
+    },
+    NativeLibrarySnapshot {
+        library: String,
+        device_container_id: String,
+        product_id: u32,
+    },
     /// A source-described query, scoped to a currently observed physical path.
     DeviceRead {
         target: super::device_reads::DeviceReadTarget,
@@ -65,6 +87,26 @@ pub(crate) enum ServiceRequest {
     },
     ShortcutEvents,
     Shutdown,
+}
+
+/// Diagnostic CLI requests use the same bounded worker and cleanup as the UI.
+/// This function is a runtime entrypoint, never a static verification command.
+pub(crate) fn isolated_request(request: ServiceRequest) -> anyhow::Result<Value> {
+    let mut client = ServiceClient::spawn()?;
+    let result = client.request(request);
+    let shutdown = if client.is_stopped() {
+        Ok(Value::Null)
+    } else {
+        client.request(ServiceRequest::Shutdown)
+    };
+    match (result, shutdown) {
+        (Ok(value), Ok(_)) => Ok(value),
+        (Err(error), Ok(_)) => Err(error),
+        (Ok(_), Err(error)) => Err(error.context("查询后的 worker 关闭失败")),
+        (Err(error), Err(shutdown)) => {
+            Err(error.context(format!("worker 关闭同时失败：{shutdown:#}")))
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -186,7 +228,10 @@ impl ServiceClient {
         }
         let shutting_down = matches!(request, ServiceRequest::Shutdown);
         let starting_recorder = matches!(request, ServiceRequest::StartMacroRecording);
-        let reading_device = matches!(request, ServiceRequest::DeviceRead { .. });
+        let reading_device = matches!(
+            request,
+            ServiceRequest::DeviceRead { .. } | ServiceRequest::NativeLibrarySnapshot { .. }
+        );
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1);
         let mut frame = serde_json::to_vec(&RequestEnvelope { id, request })?;

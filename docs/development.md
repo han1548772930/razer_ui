@@ -1,6 +1,6 @@
 # 开发与静态检查
 
-本项目按当前官方源逐项实现 UI，使用 [GPUI Kit 约定](../skills/gpui-kit/SKILL.md)和[设计约定](../skills/gpui-kit-design-guides/SKILL.md)。组件需要稳定身份、状态所有者、焦点与清理路径；原版特有布局和交互以实际挂载源码为准。
+本项目按当前官方源逐项实现 UI，使用用户指定的 `D:\rust_test\gpui-kit\skills` 中的 [GPUI Kit 约定](../../gpui-kit/skills/gpui-kit/SKILL.md)和[设计约定](../../gpui-kit/skills/gpui-kit-design-guides/SKILL.md)。组件需要稳定身份、状态所有者、焦点与清理路径；原版特有布局和交互以实际挂载源码为准。
 
 允许的 Rust 检查：
 

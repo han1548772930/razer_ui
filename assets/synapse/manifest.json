@@ -16308,41 +16308,41 @@
       "source": ".ref/host-4.0.827/electron/resources/images/gear-black.png",
       "output": "assets/synapse/tray-gear-light.rgba",
       "source_sha256": "df6220984a30d61af0aad6c2693de6ac04e45593498f2451db57077e1a0a9886",
-      "sha256": "d0e937dd3ea2bf088378d7080d41eb7ff64672edfd8762ee3e9298947e573fa4",
-      "width": 20,
-      "height": 20,
+      "sha256": "33892a0b56b919587845e46a195f849f546eff9e9da5d8aaeb6a1fe2d02e4ea7",
+      "width": 14,
+      "height": 14,
       "format": "rgba8",
-      "conversion": "lanczos"
+      "conversion": "exact-png"
     },
     {
       "source": ".ref/host-4.0.827/electron/resources/images/gear-white.png",
       "output": "assets/synapse/tray-gear-dark.rgba",
       "source_sha256": "195d3b079248f44304de5f40cc815fdf9be26342b6804181f42ecbf5d50d9906",
-      "sha256": "78f24e1e4076fe7ac34be07d665224782a385122895716b37ebda4eb4f151193",
-      "width": 20,
-      "height": 20,
+      "sha256": "7747f51f284ded6599cc7decd8b2d6e76f7403890b0090ed905968172134a1a0",
+      "width": 14,
+      "height": 14,
       "format": "rgba8",
-      "conversion": "lanczos"
+      "conversion": "exact-png"
     },
     {
       "source": ".ref/host-4.0.827/electron/resources/images/user-black.png",
       "output": "assets/synapse/tray-user-light.rgba",
       "source_sha256": "5dae90d3ef26e3e47726927e64d6e07d1f60ce6422907a47e62b33fb6a102b1d",
-      "sha256": "81d614be82fd6060b0ef21047e576a456d64a3c1ced8141e0951be78f8d85bb0",
-      "width": 20,
-      "height": 20,
+      "sha256": "e430ab0949f04ccb836e4922153b362dc846ee274fcdcb84e827eff4143f7a8b",
+      "width": 12,
+      "height": 16,
       "format": "rgba8",
-      "conversion": "lanczos"
+      "conversion": "exact-png"
     },
     {
       "source": ".ref/host-4.0.827/electron/resources/images/user-white.png",
       "output": "assets/synapse/tray-user-dark.rgba",
       "source_sha256": "5fe98270d16a1549dbe08143b2572cefc3b10affde9b89c7150b0a0e6de9ddaf",
-      "sha256": "4dc75a3c6b628fbd65c00a582c2e13792903c443e79e34195a7b17ee1fceff68",
-      "width": 20,
-      "height": 20,
+      "sha256": "92b2729cb9449c6ab5d48d717ee13ea02818f2a2adcea0fc530981d92b2238fc",
+      "width": 14,
+      "height": 14,
       "format": "rgba8",
-      "conversion": "lanczos"
+      "conversion": "exact-png"
     },
     {
       "source": ".ref/applications/systray/systrayv2/static/media/logo_synapse.d685ec10.svg",
@@ -16650,7 +16650,7 @@
       "sha256": "50585b9e80ec0661766ed679df1031e87a0e802d85b1b96c67d7769661bae771",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "L\u00fcftergeschwindigkeit",
+      "text": "Lüftergeschwindigkeit",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16690,7 +16690,7 @@
       "sha256": "d38ac3f8c0e0e21a2e1b744d94162c538db20a598c863484126e34518e3632c2",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "\u30d5\u30a1\u30f3\u901f\u5ea6",
+      "text": "ファン速度",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16700,7 +16700,7 @@
       "sha256": "9002d053c44fecb0c3419095ba706dd93a0ab2a5b69a5f5548f4374cfcf7e5b1",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "\ud32c \uc18d\ub3c4",
+      "text": "팬 속도",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16720,7 +16720,7 @@
       "sha256": "d216a69752f53604bb973a020fa3e9006d61b8ede4923802da4d38cf41b940ba",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "\u0421\u043a\u043e\u0440\u043e\u0441\u0442\u044c \u0432\u0440\u0430\u0449\u0435\u043d\u0438\u044f \u0432\u0435\u043d\u0442\u0438\u043b\u044f\u0442\u043e\u0440\u0430",
+      "text": "Скорость вращения вентилятора",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16730,7 +16730,7 @@
       "sha256": "b46eb9997ebe2548ea9c9990bff8009cfe978b9f20093c67c4ae8e3e27913ccc",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "\u98ce\u6247\u8f6c\u901f",
+      "text": "风扇转速",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {
@@ -16740,7 +16740,7 @@
       "sha256": "22402ccf606038092a8d3d7afa3db3e9ef815ff67066c7d4956a2f7fdef33901",
       "source_kind": "font_glyph_outline",
       "evidence": "docs/re/armory-cooling-axis-resources.json",
-      "text": "\u98a8\u6247\u901f\u5ea6",
+      "text": "風扇速度",
       "transform": "Current source axis text, font size and 270-degree rotation; named local system fallback where required."
     },
     {

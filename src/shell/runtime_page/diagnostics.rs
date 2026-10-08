@@ -73,6 +73,42 @@ fn query(value: &Option<Result<Value, String>>) -> Value {
     }
 }
 
+/// Declared native libraries and whether any source-derived candidate path
+/// exists. Presence is file-system evidence only: no library is loaded here, so
+/// a present file must not read as a working feature and a missing one must not
+/// read as a failure of the device itself.
+fn native_libraries() -> Value {
+    use crate::backend::{native_library, native_library_candidates};
+    json!({
+        "scope": "generated inventory + file presence only; no library is loaded",
+        "source": "assets/data/native-library-inventory.json",
+        "declared": native_library::all().len(),
+        "declared_functions": native_library::declared_function_count(),
+        "libraries": native_library::all().iter().map(|library| {
+            let candidates = native_library_candidates(&library.id, None).unwrap_or_default();
+            let present: Vec<&str> = candidates
+                .iter()
+                .filter(|(_, path)| path.is_file())
+                .map(|(rule, _)| rule.as_str())
+                .collect();
+            json!({
+                "id": library.id,
+                "kind": format!("{:?}", library.kind),
+                "files": library.file_names,
+                "rules": library.path_rules,
+                "declared_functions": library.declared_functions.len(),
+                "load_blocked": crate::backend::blocks_load(&library.id),
+                "verified_resources": library.resources.len(),
+                "source_verified_container_queries": library.products.iter().map(|product|json!({
+                    "product_id":product,
+                    "exports":crate::backend::native_read::readable_exports(library,*product),
+                })).collect::<Vec<_>>(),
+                "present_rules": present,
+            })
+        }).collect::<Vec<_>>(),
+    })
+}
+
 impl Readings {
     /// Called by the connection actor after all queries finish, never by render.
     pub(super) fn write_diagnostic_report(&self) -> anyhow::Result<PathBuf> {
@@ -88,6 +124,10 @@ impl Readings {
                     "product_id": device.product_id(),
                     "connection_observation": format!("{:?}", device.connection()),
                     "read_values": device.read_values(),
+                    // Declared-but-unqueried: which native libraries this product's
+                    // own app declares. Naming them is not a read result.
+                    "declared_libraries": crate::backend::native_library::libraries_for_product(device.product_id())
+                        .iter().map(|library| library.id.clone()).collect::<Vec<_>>(),
                 })).collect::<Vec<_>>(),
                 "errors": snapshot.errors(),
             }),
@@ -111,6 +151,15 @@ impl Readings {
                 "successful_fields": self.discovery.as_ref().and_then(|result| result.as_ref().ok()).map_or(0, read_count),
                 "complete_profile_read": false,
             },
+            "native_libraries": native_libraries(),
+            "native_device_values": self.native.iter().map(|observation|json!({
+                "product_id":observation.product_id,"device_container_id":observation.container,
+                "library":observation.library,
+                "query":match &observation.result {
+                    Ok(value)=>json!({"status":"received","response":value}),
+                    Err(error)=>json!({"status":"failed","error":error}),
+                },
+            })).collect::<Vec<_>>(),
         });
         let parent = path.parent().context("设备发现记录目录无效")?;
         std::fs::create_dir_all(parent).context("无法创建设备发现记录目录")?;

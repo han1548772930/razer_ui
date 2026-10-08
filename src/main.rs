@@ -163,6 +163,80 @@ fn main() {
         return;
     }
 
+    // Version diagnostics use the same isolated worker, verified resources and
+    // timeout as UI requests. Product DLLs require their manifest product ID.
+    if let Some(pos) = args.iter().position(|arg| arg == "--dll-version") {
+        let Some(library) = args.get(pos + 1) else {
+            println!(
+                "用法：--dll-version <库ID> [productId]（ID 见 assets/data/native-library-inventory.json）"
+            );
+            return;
+        };
+        let product_id = match args
+            .get(pos + 2)
+            .map(|value| value.parse::<u32>())
+            .transpose()
+        {
+            Ok(value) => value,
+            Err(error) => {
+                println!("productId 无效：{error}");
+                return;
+            }
+        };
+        match backend::runtime::isolated_request(
+            backend::runtime::ServiceRequest::NativeLibraryVersion {
+                library: library.clone(),
+                product_id,
+            },
+        ) {
+            Ok(value) => println!(
+                "{}",
+                serde_json::to_string_pretty(&value).unwrap_or_default()
+            ),
+            Err(error) => println!("{library} 版本查询失败：{error:#}"),
+        }
+        return;
+    }
+
+    // `--dll-get <库ID> <导出名> <设备ID> [productId]`：执行一次只读 getter。
+    //
+    // Requires current wrapper call/session and official PE evidence. The worker
+    // validates the observed ContainerId; export name prefixes are insufficient.
+    if let Some(pos) = args.iter().position(|arg| arg == "--dll-get") {
+        let (Some(library), Some(export), Some(device_id)) =
+            (args.get(pos + 1), args.get(pos + 2), args.get(pos + 3))
+        else {
+            println!("用法：--dll-get <库ID> <导出名> <设备ID> [productId]");
+            return;
+        };
+        let product_id = match args
+            .get(pos + 4)
+            .map(|value| value.parse::<u32>())
+            .transpose()
+        {
+            Ok(value) => value,
+            Err(error) => {
+                println!("productId 无效：{error}");
+                return;
+            }
+        };
+        match backend::runtime::isolated_request(
+            backend::runtime::ServiceRequest::NativeLibraryGetter {
+                library: library.clone(),
+                export: export.clone(),
+                device_id: device_id.clone(),
+                product_id,
+            },
+        ) {
+            Ok(value) => println!(
+                "{}",
+                serde_json::to_string_pretty(&value).unwrap_or_default()
+            ),
+            Err(error) => println!("{library}.{export} 读取失败：{error:#}"),
+        }
+        return;
+    }
+
     // `--selftest`：在不开窗的情况下验证功能层与持久化往返。
     //
     // 说明：真正的配置路径是 `%APPDATA%\razer_ui\profiles.json`，

@@ -222,7 +222,71 @@ impl NativeRuntime {
         match request {
             ServiceRequest::HidDevices => hid::enumerate(),
             ServiceRequest::UsbDevices => usb::enumerate(),
+            ServiceRequest::NativeLibraryVersion {
+                library,
+                product_id,
+            } => crate::backend::native_query::version(&library, product_id),
+            ServiceRequest::NativeLibraryGetter {
+                library,
+                export,
+                device_id,
+                product_id,
+            } => {
+                let (observed_product, before) = native_target(&device_id, product_id)?;
+                crate::backend::native_read::getter(
+                    &library,
+                    &export,
+                    &device_id,
+                    Some(observed_product),
+                    || {
+                        let (_, current) = native_target(&device_id, Some(observed_product))?;
+                        for key in ["path", "device_instance_id", "device_container_id"] {
+                            anyhow::ensure!(
+                                before[key]
+                                    .as_str()
+                                    .zip(current[key].as_str())
+                                    .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b)),
+                                "DLL 查询期间设备身份发生变化"
+                            );
+                        }
+                        anyhow::ensure!(
+                            before["product_id"] == current["product_id"],
+                            "DLL 查询期间物理 PID 发生变化"
+                        );
+                        Ok(())
+                    },
+                )
+            }
             ServiceRequest::DeviceRead { target, kind } => device_reads::query(&target, kind),
+            ServiceRequest::NativeLibrarySnapshot {
+                library,
+                device_container_id,
+                product_id,
+            } => {
+                let (_, before) = native_target(&device_container_id, Some(product_id))?;
+                crate::backend::native_read::snapshot(
+                    &library,
+                    &device_container_id,
+                    product_id,
+                    || {
+                        let (_, current) = native_target(&device_container_id, Some(product_id))?;
+                        for key in ["path", "device_instance_id", "device_container_id"] {
+                            anyhow::ensure!(
+                                before[key]
+                                    .as_str()
+                                    .zip(current[key].as_str())
+                                    .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b)),
+                                "DLL 查询期间设备身份发生变化"
+                            );
+                        }
+                        anyhow::ensure!(
+                            before["product_id"] == current["product_id"],
+                            "DLL 查询期间物理 PID 发生变化"
+                        );
+                        Ok(())
+                    },
+                )
+            }
             ServiceRequest::StartMacroRecording => self.start_macro_recording(),
             ServiceRequest::StopMacroRecording => self.stop_macro_recording(),
             ServiceRequest::MacroRecordingEvents => Ok(self.macro_recorder.events()),
@@ -362,4 +426,58 @@ impl NativeRuntime {
             }
         }
     }
+}
+
+/// Native container getters require a real, uniquely observed physical device.
+/// This uses the same current USB enumeration and product identity projection
+/// as discovery; arbitrary CLI strings and local profiles are not observations.
+fn native_target(container: &str, expected_product: Option<u32>) -> anyhow::Result<(u32, Value)> {
+    use crate::backend::device_identity::{self, IdentityLookup};
+    anyhow::ensure!(
+        receiver::valid_container(container),
+        "查询须使用非零真实 ContainerId"
+    );
+    let observation = usb::enumerate()?;
+    anyhow::ensure!(
+        observation["complete"] == Value::Bool(true)
+            && observation["failures"]
+                .as_array()
+                .is_some_and(Vec::is_empty),
+        "物理 USB 枚举不完整，暂不查询 DLL"
+    );
+    let candidates: Vec<_> = observation["devices"]
+        .as_array()
+        .context("USB 设备数组缺失")?
+        .iter()
+        .filter(|device| {
+            device["vendor_id"].as_u64() == Some(0x1532)
+                && device["device_container_id"]
+                    .as_str()
+                    .is_some_and(|id| id.eq_ignore_ascii_case(container))
+        })
+        .collect();
+    anyhow::ensure!(
+        candidates.len() == 1,
+        "ContainerId 对应的真实 Razer USB 设备不唯一或已离线"
+    );
+    let device = candidates[0];
+    for key in ["path", "device_instance_id"] {
+        anyhow::ensure!(
+            device[key].as_str().is_some_and(|value| !value.is_empty()),
+            "物理 USB 身份缺少 {key}"
+        );
+    }
+    let physical_pid = u32::try_from(device["product_id"].as_u64().context("物理 USB PID 缺失")?)?;
+    let IdentityLookup::Unique(identity) = device_identity::lookup(physical_pid) else {
+        bail!("物理 PID {physical_pid} 没有唯一的当前源码产品归属");
+    };
+    anyhow::ensure!(
+        !identity.is_dongle && !identity.is_ble,
+        "接收器或 BLE PID 不能冒充直接原生设备"
+    );
+    anyhow::ensure!(
+        expected_product.is_none_or(|product| product == identity.product_id),
+        "DLL 查询产品与真实 USB 身份不符"
+    );
+    Ok((identity.product_id, device.clone()))
 }

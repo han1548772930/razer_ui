@@ -51,7 +51,7 @@ fn current_target(target: &DeviceReadTarget, cap: &DeviceReadCapability) -> anyh
         observed["vendor_id"] == cap.vendor_id
             && observed["product_id"] == pid
             && observed["claim_interface"] == claim_interface
-            && observed["feature_report_bytes"] == cap.report_bytes
+            && observed["feature_report_bytes"].is_u64()
             && observed["device_container_id"]
                 .as_str()
                 .is_some_and(|id| id.eq_ignore_ascii_case(&target.device_container_id)),

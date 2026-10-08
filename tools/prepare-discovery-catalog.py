@@ -9,6 +9,12 @@ ROOT = Path(__file__).resolve().parents[1]
 AVAILABLE = ROOT / '.ref/applications/synapse/dashboard/AvailableDevices.json'
 DEVELOPMENT = ROOT / '.ref/discovery/catalogs/inDevelopmentDevices.json'
 DUAL_LINK = ROOT / '.ref/applications/synapse/dashboard/DualDongleCompatibleDevices.json'
+# Per-product middleware DeviceInfo, statically extracted for every product by
+# tools/audit-middleware-device-bindings.cjs. It is the source the original
+# runtime itself reads for claimInterface/dongleId/bleId/category, so identity
+# facts the dashboard catalog omits come from here for *all* products instead of
+# being special-cased per product id.
+MIDDLEWARE_BINDINGS = ROOT / 'docs/re/middleware-device-bindings-current.json'
 FIELDS = {
     'productId': 'product_id', 'repId': 'rep_id', 'dongleId': 'dongle_id',
     'bleId': 'ble_id', 'xBoxId': 'xbox_id', 'wiredId': 'wired_id',
@@ -33,6 +39,39 @@ def source(path):
     assert receipt['sha256'] == digest
     return json.loads(data), dict(path=relative(path), sha256=digest, acquisition=receipt)
 
+
+def middleware_identity():
+    """Per-product DeviceInfo facts, keyed by product id, from the AST audit."""
+    data = MIDDLEWARE_BINDINGS.read_bytes()
+    binding = json.loads(data)
+    assert binding['scope_products'] >= 300, 'Re-run tools/audit-middleware-device-bindings.cjs'
+    facts, unresolved = {}, 0
+    for row in binding['products']:
+        product_id = row.get('product_id')
+        candidates = row.get('device_info_candidates') or []
+        if len(candidates) != 1:
+            unresolved += 1
+            continue
+        values = candidates[0].get('values') or {}
+        if values.get('productId') != product_id:
+            unresolved += 1
+            continue
+        entry = {}
+        if type(values.get('dongleId')) is int:
+            entry['dongle_id'] = values['dongleId']
+        if type(values.get('bleId')) is int:
+            entry['ble_id'] = values['bleId']
+        if type(values.get('claimInterface')) is int:
+            entry['claim_interface'] = values['claimInterface']
+        if isinstance(values.get('category'), str):
+            entry['category'] = values['category']
+        if entry:
+            entry['receipt'] = candidates[0]['receipt']
+            facts[product_id] = entry
+    receipt = dict(path=relative(MIDDLEWARE_BINDINGS), sha256=hashlib.sha256(data).hexdigest(),
+                   method=binding['method'], scope_products=binding['scope_products'])
+    return facts, receipt, unresolved
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
@@ -40,6 +79,7 @@ def main():
     available, available_receipt = source(AVAILABLE)
     development, development_receipt = source(DEVELOPMENT)
     dual_link, dual_link_receipt = source(DUAL_LINK)
+    middleware_facts, middleware_receipt, middleware_unresolved = middleware_identity()
     # Current host removes inDevelopment from available before classification.
     # This current catalog is empty; refuse silently changing those semantics.
     assert development == [], 'Re-audit current inDevelopment precedence before publishing'
@@ -58,7 +98,14 @@ def main():
             assert key not in ARRAY_ONLY or isinstance(value, list)
             assert key not in SCALAR_ONLY or type(value) is int
         # Optional fields stay absent; scalar-versus-array and source order stay exact.
-        rows.append({FIELDS[key]: value for key, value in entry.items()})
+        row = {FIELDS[key]: value for key, value in entry.items()}
+        # Middleware-level facts (claimInterface/dongleId/bleId/category) are kept
+        # in a separate sub-object: the dashboard projection above stays lossless,
+        # and the original's host HD versus middleware distinction stays visible.
+        facts = middleware_facts.get(entry['productId'])
+        if facts is not None:
+            row['middleware'] = facts
+        rows.append(row)
         aliases = set()
         for key in ('productId', 'repId', 'dongleId', 'bleId', 'xBoxId', 'wiredId', 'psModeIds'):
             value = entry.get(key)
@@ -79,6 +126,16 @@ def main():
         usb_alias_count=len(usb_aliases), peer_alias_count=len(peer_aliases),
         usb_ambiguities={str(pid): rows for pid, rows in sorted(usb_aliases.items()) if len(rows) > 1},
         peer_ambiguities={str(pid): rows for pid, rows in sorted(peer_aliases.items()) if len(rows) > 1},
+        middleware=middleware_receipt,
+        middleware_rows=sum('middleware' in row for row in rows),
+        middleware_unresolved_rows=middleware_unresolved,
+        middleware_dongle_rows=sum('dongle_id' in row.get('middleware', {}) for row in rows),
+        middleware_claim_interface_rows=sum('claim_interface' in row.get('middleware', {}) for row in rows),
+        # Rows the dashboard catalog leaves without a dongleId but the product's own
+        # middleware DeviceInfo declares one; identity is generated, never per-product.
+        middleware_only_dongle_rows=sorted(
+            row['product_id'] for row in rows
+            if 'dongle_id' in row.get('middleware', {}) and type(row.get('dongle_id')) is not int),
     )
     evidence = ROOT / 'docs/re/discovery-catalog-current-evidence.json'
     evidence_data = (json.dumps(receipts, ensure_ascii=False, indent=2) + '\n').encode('utf-8')

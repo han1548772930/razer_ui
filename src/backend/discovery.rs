@@ -186,6 +186,49 @@ fn text<'a>(value: &'a Value, key: &str) -> Option<&'a str> {
         .filter(|text| !text.trim().is_empty())
 }
 
+/// Source-compatible HID interface selection.
+///
+/// The original `rzHidDevices.connectHidDevice` filters the enumerated list by
+/// `productId`+`vendorId`+`deviceContainerId` and then requires
+/// `interface === claimInterface`; it never compares the feature report length.
+/// Keep exactly that as the selection rule, and only *prefer* collections whose
+/// observed feature length equals the source capability so a device that exposes
+/// several matching collections keeps a deterministic order.
+fn select_interface_paths<'a>(
+    items: &'a [Value],
+    vendor_id: u16,
+    product_id: u32,
+    claim_interface: u8,
+    expected_feature_bytes: usize,
+    container: &str,
+) -> Vec<&'a str> {
+    let mut matching: Vec<(&str, Option<u64>)> = Vec::new();
+    let mut seen = BTreeSet::new();
+    for item in items {
+        if item["vendor_id"].as_u64() != Some(u64::from(vendor_id))
+            || item["product_id"].as_u64() != Some(u64::from(product_id))
+            || item["claim_interface"].as_i64() != Some(i64::from(claim_interface))
+            || !text(item, "device_container_id")
+                .is_some_and(|id| id.eq_ignore_ascii_case(container))
+        {
+            continue;
+        }
+        let Some(path) = text(item, "path") else {
+            continue;
+        };
+        if !seen.insert(path.to_ascii_lowercase()) {
+            continue;
+        }
+        matching.push((path, item["feature_report_bytes"].as_u64()));
+    }
+    let expected = expected_feature_bytes as u64;
+    let (mut preferred, mut rest): (Vec<_>, Vec<_>) = matching
+        .into_iter()
+        .partition(|(_, bytes)| *bytes == Some(expected));
+    preferred.append(&mut rest);
+    preferred.into_iter().map(|(path, _)| path).collect()
+}
+
 /// Current host `connectHidDevice` walks matching collections until one opens.
 /// Multiple collections in one container are not multiple physical receivers.
 fn receiver_requests(
@@ -200,25 +243,18 @@ fn receiver_requests(
         .ok()
         .and_then(super::receiver_capabilities::capability)
         .context("此产品的无线状态查询协议尚未完成当前原码核实")?;
-    let mut seen = BTreeSet::new();
-    let paths: Vec<_> = items
-        .iter()
-        .filter(|item| {
-            item["vendor_id"].as_u64() == Some(u64::from(capability.vendor_id))
-                && item["product_id"].as_u64() == Some(u64::from(capability.product_id))
-                && item["claim_interface"].as_i64() == Some(i64::from(capability.claim_interface))
-                && item["feature_report_bytes"].as_u64() == Some(capability.report_bytes as u64)
-                && text(item, "device_container_id")
-                    .is_some_and(|id| id.eq_ignore_ascii_case(container))
-        })
-        .filter_map(|item| text(item, "path"))
-        .filter(|path| seen.insert(path.to_ascii_lowercase()))
-        .collect();
-    ensure!(
-        !paths.is_empty(),
-        "接收器 PID {product_id} 的查询接口缺失：需要接口 {}、{} 字节 Feature；请查看 HID 枚举详情",
+    let paths = select_interface_paths(
+        items,
+        capability.vendor_id,
+        u32::from(capability.product_id),
         capability.claim_interface,
         capability.report_bytes,
+        container,
+    );
+    ensure!(
+        !paths.is_empty(),
+        "接收器 PID {product_id} 的查询接口缺失：需要接口 {}（源不再比对 Feature 长度）；请查看 HID 枚举详情",
+        capability.claim_interface,
     );
     Ok(paths
         .into_iter()
@@ -521,19 +557,16 @@ fn read_observed_values(
         } else {
             capability.claim_interface
         };
-        let mut paths = BTreeSet::new();
-        let targets = items
-            .iter()
-            .filter(|item| {
-                item["vendor_id"] == capability.vendor_id
-                    && item["product_id"] == observed.physical_product_id
-                    && item["claim_interface"] == claim_interface
-                    && item["feature_report_bytes"] == capability.report_bytes
-                    && text(item, "device_container_id")
-                        .is_some_and(|id| id.eq_ignore_ascii_case(&observed.container))
-            })
-            .filter_map(|item| text(item, "path"))
-            .filter(|path| paths.insert(path.to_ascii_lowercase()))
+        let paths = select_interface_paths(
+            items,
+            capability.vendor_id,
+            observed.physical_product_id,
+            claim_interface,
+            capability.report_bytes,
+            &observed.container,
+        );
+        let targets = paths
+            .into_iter()
             .map(|path| DeviceReadTarget {
                 product_id: observed.product_id,
                 physical_product_id: observed.physical_product_id,

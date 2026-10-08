@@ -134,6 +134,9 @@ fn select_target(
         .context("接口缺少有效产品 ID")?;
     let selected = capability(product_id).context("当前产品没有源代码核验的接收器查询能力")?;
     let target = exact[0];
+    // Source `connectHidDevice` matches VID/PID/container/interface only; the
+    // feature length is an observation of the interface we are about to use, not
+    // a selection rule. Keep it present and truthful instead of requiring a value.
     ensure!(
         target["vendor_id"] == selected.vendor_id
             && target["product_id"] == selected.product_id
@@ -141,12 +144,11 @@ fn select_target(
                 .as_str()
                 .is_some_and(|value| value.eq_ignore_ascii_case(container))
             && target["claim_interface"] == selected.claim_interface
-            && target["feature_report_bytes"] == selected.report_bytes,
-        "请求路径不是源匹配接口：VID {:04X}/PID {:04X}、接口 {}、{} 字节 Feature",
+            && target["feature_report_bytes"].is_u64(),
+        "请求路径不是源匹配接口：VID {:04X}/PID {:04X}、接口 {}（Feature 长度按实际枚举记录）",
         selected.vendor_id,
         selected.product_id,
         selected.claim_interface,
-        selected.report_bytes,
     );
     ensure!(
         target["device_instance_id"]

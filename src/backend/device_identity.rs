@@ -23,6 +23,23 @@ impl Ids {
     }
 }
 
+/// Per-product `DeviceInfo` facts declared by the product's own middleware bundle.
+///
+/// Generated for every product by `tools/audit-middleware-device-bindings.cjs` and
+/// projected by `tools/prepare-discovery-catalog.py`; no product id is special-cased.
+/// The original runtime reads `claimInterface`/`dongleId`/`bleId`/`category` from here.
+#[derive(Debug, Deserialize)]
+struct MiddlewareFacts {
+    #[serde(default)]
+    dongle_id: Option<u32>,
+    #[serde(default)]
+    ble_id: Option<u32>,
+    #[serde(default)]
+    claim_interface: Option<u8>,
+    #[serde(default)]
+    category: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct CatalogProduct {
@@ -43,10 +60,18 @@ struct CatalogProduct {
     monitor_port_ids: Option<Vec<u32>>,
     #[serde(default)]
     is_not_chroma_device: bool,
+    #[serde(default)]
+    middleware: Option<MiddlewareFacts>,
 }
 impl CatalogProduct {
     fn route(&self) -> u32 {
         self.rep_id.filter(|id| *id != 0).unwrap_or(self.product_id)
+    }
+    fn middleware_dongle(&self) -> Option<u32> {
+        self.middleware.as_ref().and_then(|facts| facts.dongle_id)
+    }
+    fn middleware_ble(&self) -> Option<u32> {
+        self.middleware.as_ref().and_then(|facts| facts.ble_id)
     }
     fn matches(&self, raw: u32) -> bool {
         self.product_id == raw
@@ -55,6 +80,8 @@ impl CatalogProduct {
             || contains(&self.ble_id, raw)
             || contains(&self.xbox_id, raw)
             || contains(&self.wired_id, raw)
+            || self.middleware_dongle() == Some(raw)
+            || self.middleware_ble() == Some(raw)
             || self
                 .ps_mode_ids
                 .as_ref()
@@ -66,8 +93,8 @@ impl CatalogProduct {
             real_product_id: raw,
             source_product_id: self.product_id,
             catalog_index,
-            is_dongle: contains(&self.dongle_id, raw),
-            is_ble: contains(&self.ble_id, raw),
+            is_dongle: contains(&self.dongle_id, raw) || self.middleware_dongle() == Some(raw),
+            is_ble: contains(&self.ble_id, raw) || self.middleware_ble() == Some(raw),
             is_xbox: contains(&self.xbox_id, raw),
             is_playstation: self
                 .ps_mode_ids
@@ -182,6 +209,8 @@ pub(crate) fn lookup(raw_pid: u32) -> IdentityLookup {
 
 /// Current 34340/he: dongleId === queried productId. Preserve all candidates
 /// rather than silently selecting Array.find's first row or filtering siblings.
+/// `he` compares the product's own `DeviceInfo.dongleId`, which the generated
+/// middleware facts carry for products the dashboard catalog omits.
 pub(crate) fn lookup_receiver_peer(raw_pid: u32, match_product_id: bool) -> IdentityLookup {
     classify(
         raw_pid,
@@ -194,6 +223,7 @@ pub(crate) fn lookup_receiver_peer(raw_pid: u32, match_product_id: bool) -> Iden
                         .dongle_id
                         .as_ref()
                         .is_some_and(|ids| ids.scalar_equals(raw_pid))
+                    || entry.middleware_dongle() == Some(raw_pid)
             })
             .map(|(index, entry)| {
                 let mut identity = entry.identity(raw_pid, index);
@@ -203,6 +233,25 @@ pub(crate) fn lookup_receiver_peer(raw_pid: u32, match_product_id: bool) -> Iden
             })
             .collect(),
     )
+}
+
+/// Source-declared HID interface number for a product, when its middleware
+/// `DeviceInfo` declares one. Consumers must not hardcode an interface per product.
+pub(crate) fn claim_interface(product_id: u32) -> Option<u8> {
+    catalog()
+        .iter()
+        .find(|entry| entry.product_id == product_id)
+        .and_then(|entry| entry.middleware.as_ref())
+        .and_then(|facts| facts.claim_interface)
+}
+
+/// Source-declared middleware category (`ACCESSORY`, `MOUSE`, `KEYBOARD`, ...).
+pub(crate) fn middleware_category(product_id: u32) -> Option<&'static str> {
+    catalog()
+        .iter()
+        .find(|entry| entry.product_id == product_id)
+        .and_then(|entry| entry.middleware.as_ref())
+        .and_then(|facts| facts.category.as_deref())
 }
 
 /// Only for the source monitor observation branch, after its serial query.

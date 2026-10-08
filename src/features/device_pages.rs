@@ -241,6 +241,50 @@ impl DeviceWorkspace {
             .into_any_element()
     }
 
+    // Current power pages mount the value-tip range directly (182 CD -> 130.T,
+    // 777 SM -> AM), without a `.content` wrapper or extra bottom margin.
+    fn power_range(
+        &self,
+        key: Control,
+        minimum: &str,
+        maximum: &str,
+        disabled: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let state = &self.controls.sliders[&key];
+        let value = state.read(cx).value().start();
+        let progress = state.read(cx).percentage().end;
+        let opacity = surface::fade_opacity(
+            ("power-range-labels", state.entity_id()),
+            if disabled { 0.3 } else { 1. },
+            300,
+            window,
+            cx,
+        );
+        div()
+            .id(SharedString::from(format!("control-{key:?}")))
+            .relative()
+            .w_full()
+            .child(
+                crate::ui::source_slider::SourceSlider::new(state, progress)
+                    .tip(Some(format!("{value:.0}")))
+                    .enabled(!disabled),
+            )
+            .child(
+                h_flex()
+                    .absolute()
+                    .bottom(surface::css(-2.))
+                    .w_full()
+                    .justify_between()
+                    .text_size(surface::css(14.))
+                    .opacity(opacity)
+                    .child(minimum.to_owned())
+                    .child(maximum.to_owned()),
+            )
+            .into_any_element()
+    }
+
     pub(super) fn calibration_page(&self, cx: &mut Context<Self>) -> AnyElement {
         let tracking = &self.settings().tracking;
         // 182 LD renders the welcome and the fixed-width widget as direct
@@ -453,7 +497,7 @@ impl DeviceWorkspace {
             .into_any_element()
     }
 
-    pub(super) fn power_page(&self, cx: &mut Context<Self>) -> AnyElement {
+    pub(super) fn power_page(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let state = self.settings();
         let headset = self.pid() == 777;
         let power_panel = if headset {
@@ -480,7 +524,7 @@ impl DeviceWorkspace {
         surface::page_columns()
             .child(surface::page_column(
                 power_panel
-                    .gap(surface::css(10.))
+                    .gap_0()
                     .child(surface::h1_body(
                         if headset {
                             crate::i18n::t_or(
@@ -495,12 +539,12 @@ impl DeviceWorkspace {
                         },
                         cx,
                     ))
-                    .child(self.source_range(
+                    .child(self.power_range(
                         Control::Idle,
                         if headset { "5" } else { "1" },
-                        None,
                         if headset { "60" } else { "15" },
                         headset && !state.power_enabled,
+                        window,
                         cx,
                     )),
             ))
@@ -514,7 +558,7 @@ impl DeviceWorkspace {
                         ),
                         cx,
                     )
-                    .gap(surface::css(10.))
+                    .gap_0()
                     .child(surface::h1_body(
                         crate::i18n::t_or(
                             "LOW_POWER_MODE_DESC",
@@ -522,22 +566,25 @@ impl DeviceWorkspace {
                         ),
                         cx,
                     ))
-                    .child(self.source_range(
+                    .child(self.power_range(
                         Control::LowPower,
                         "5%",
-                        None,
                         "100%",
                         !self.mouse_low_power_enabled(),
+                        window,
                         cx,
                     ))
                     .when(!self.mouse_low_power_enabled(), |this| {
-                        this.child(surface::note(
-                            crate::i18n::t_or(
-                                "LOW_POWER_MODE_WARN",
-                                "回报率高于 1000 Hz 时无法调整此选项。",
-                            ),
-                            cx,
-                        ))
+                        this.child(
+                            surface::note(
+                                crate::i18n::t_or(
+                                    "LOW_POWER_MODE_WARN",
+                                    "回报率高于 1000 Hz 时无法调整此选项。",
+                                ),
+                                cx,
+                            )
+                            .mt(surface::css(15.)),
+                        )
                     }),
                 ))
             })

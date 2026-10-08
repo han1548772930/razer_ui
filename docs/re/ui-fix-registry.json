@@ -788,6 +788,76 @@
         ".ref/devices/784/static/css/main.03a1d509.css": "2c27201cca0a8a0d5623b36fc53d07b5c873fa46c4b41c81c56ddba98cc9146b",
         ".ref/devices/784/static/js/main.3094caa4.js": "3751063a619bd163a7ac9d8bf238a5452154ecf20fbaf04fcaaee4275b65a1f2"
       }
+    },
+    {
+      "id": "tray-source-presentation",
+      "behavior": "托盘按钮源行高、应用区与启动行边框分层、标题大写省略及原始菜单PNG像素和尺寸",
+      "contract": "docs/re/tray-ui-current.md",
+      "implementation": {
+        "src/shell/tray.rs": "5081f3b62926d1d8f62b1d37ff78c5d84fc6ce4bfbe94d8dbf839ee87067a4cc",
+        "src/shell/tray/account.rs": "8a5e8d995ad0ec84f54434c411a80caaa40606e272aaea4a34ba0b3854cb483e",
+        "tools/tray_assets.py": "7caa46d067221a809e7c9ebc8a1e21e428e64e85e8273080112015aa58e0c9d5",
+        "tools/validate-tray-assets.py": "1a8c109b86e75e07f42f8651cd82d01d094654b8e9912169530ac593c4928e85",
+        "tools/audit-tray-presentation.cjs": "4141903e7c757d3665071e181c0e1af81f3baf3e3681bf455215133a93b9c2d1",
+        "assets/synapse/manifest.json": "a30fd9076a50eeb403d5d1c910aabd5952dfcaefa39a90c4cfa4a3b1069526f8",
+        "assets/synapse/tray-gear-dark.rgba": "7747f51f284ded6599cc7decd8b2d6e76f7403890b0090ed905968172134a1a0",
+        "assets/synapse/tray-gear-light.rgba": "33892a0b56b919587845e46a195f849f546eff9e9da5d8aaeb6a1fe2d02e4ea7",
+        "assets/synapse/tray-user-dark.rgba": "92b2729cb9449c6ab5d48d717ee13ea02818f2a2adcea0fc530981d92b2238fc",
+        "assets/synapse/tray-user-light.rgba": "e430ab0949f04ccb836e4922153b362dc846ee274fcdcb84e827eff4143f7a8b"
+      },
+      "evidence": {
+        "docs/re/tray-presentation-current-evidence.json": "3bad68d49879e12638821b5954a9724e74c96be63aab7f3ce168023a7b5a5d77",
+        "docs/re/tray-icon-validation.json": "f8812cd8923883b260099e2f23ccf74981cd9b23cd5414b5cb99e9b021858dfe"
+      },
+      "checks": [
+        "node tools/audit-tray-presentation.cjs",
+        "node tools/audit-tray-account.cjs",
+        ".work/resource-env/Scripts/python.exe tools/validate-tray-assets.py",
+        "cargo check --locked --all-targets"
+      ],
+      "remaining": "muda原生菜单16px绘制、真实窗口、账户/Widget数据、动态高度和纵向定位未验收",
+      "state": "implemented_static_checked",
+      "runtime_validation": "not_run",
+      "source_inputs": {
+        ".ref/applications/systray/systrayv2/asset-manifest.json": "61ee57bcc40a28bd007239168ed66c042e6a0e7093b0b15fe3d6a4c6dc36a9dc",
+        ".ref/applications/systray/systrayv2/static/js/554.2573b048.chunk.js": "e492fee599908243b58597175bb101a8e44c2357fee6fbec341efac7653a439f",
+        ".ref/applications/systray/systrayv2/static/css/554.7cdbd936.chunk.css": "af7e89ac1df1c2e5e0f423fe6695f2845f9a43705ce9747c3740e92a30e951c3",
+        ".ref/applications/systray/systrayv2/static/css/main.1665f0a2.css": "80da6f78c2b4a93ca3d0db69f3ee0dbbdcbfd9e05490b7e4fec2f48040944e71",
+        ".ref/host-4.0.827/electron/lib/systrayIconCache.js": "5a01ca1e9c0fcf7f578b735b09da31b942f35aff8aff286d9944714d25fb1a00",
+        ".ref/host-4.0.827/electron/resources/images/gear-black.png": "df6220984a30d61af0aad6c2693de6ac04e45593498f2451db57077e1a0a9886",
+        ".ref/host-4.0.827/electron/resources/images/gear-white.png": "195d3b079248f44304de5f40cc815fdf9be26342b6804181f42ecbf5d50d9906",
+        ".ref/host-4.0.827/electron/resources/images/user-black.png": "5dae90d3ef26e3e47726927e64d6e07d1f60ce6422907a47e62b33fb6a102b1d",
+        ".ref/host-4.0.827/electron/resources/images/user-white.png": "5fe98270d16a1549dbe08143b2572cefc3b10affde9b89c7150b0a0e6de9ddaf"
+      }
+    },
+    {
+      "id": "power-range-source-presentation-release",
+      "behavior": "当前182/777电源控件采用源滑条绘制和间距，拖动预览保留状态、释放才提交本地草稿",
+      "contract": "docs/re/mouse-ui-current.md",
+      "implementation": {
+        "src/features/device_pages.rs": "2a007e7e2b23db32d9bc8363756e52de48711c1893f200a33da32627b24ff09b",
+        "src/features/workspace.rs": "342486674963b9fe8d4b444563a2b320412d2dd4ca2a028a6772d3ba3216235f",
+        "src/ui/source_slider.rs": "34751b3be1345ed383844b65c5af66f4b2b044faa714bca6b232cfb853e92bab",
+        "tools/audit-power-range-current.cjs": "c8588e21f303f5a65070542dcf096b88f3b1eb1be02388922d41346685ee5278"
+      },
+      "evidence": {
+        "docs/re/power-range-current-evidence.json": "f81b7fb39d60d0ff5989b95361384c145a894b8dde82f5c42bf8b0cc733fea33"
+      },
+      "checks": [
+        "node tools/audit-power-range-current.cjs",
+        "cargo check --locked --all-targets"
+      ],
+      "remaining": "键盘一致性、外部观察打断拖动、实际焦点和像素未验收；DLL写回后置",
+      "state": "implemented_static_checked",
+      "runtime_validation": "not_run",
+      "source_inputs": {
+        ".ref/devices/182/asset-manifest.json": "3b10a13f94ab33fd41b0918cedd818ee2871dd9a23a35776cc5b3642f0248424",
+        ".ref/devices/182/static/js/main.db20a7c4.js": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+        ".ref/devices/182/static/css/main.48c20423.css": "dec1b71e91cc5e261b9c84bfcdfe501d5c6aa7f16491e103561a5fd69e916a1e",
+        ".ref/devices/777/asset-manifest.json": "771c86aa006c854de1a3e29308bf27da76a3506357d348cd90e020159e68c39e",
+        ".ref/devices/777/static/js/main.eb70ce38.js": "7c3cc1d1ff8a95bd42462c8bb0f3b9573276d9bc35e103e805d9d02ce18053b4",
+        ".ref/devices/777/static/css/main.e4bab2aa.css": "28d5a7ea7b3c38cff5a467b325203841f21cdd14a213e274ffcddc7cf9843427"
+      }
     }
   ]
 }

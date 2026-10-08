@@ -32,9 +32,17 @@ struct Readings {
     hid: Option<Result<Value, String>>,
     version: Option<Result<Value, String>>,
     audio: Option<Result<Value, String>>,
+    native: Vec<NativeReading>,
     discovery: Option<Result<DiscoverySnapshot, String>>,
     services_requested: bool,
     diagnostic_report: Option<Result<std::path::PathBuf, String>>,
+}
+
+struct NativeReading {
+    product_id: u32,
+    container: String,
+    library: String,
+    result: Result<Value, String>,
 }
 
 #[derive(Clone)]
@@ -57,6 +65,10 @@ impl Readings {
             vec![&self.usb, &self.hid]
         };
         required.iter().any(|result| !matches!(result, Some(Ok(_))))
+            || self.native.iter().any(|reading| match &reading.result {
+                Ok(value) => value["status"] != "received",
+                Err(_) => true,
+            })
             || self.discovery.as_ref().is_some_and(|result| match result {
                 Ok(snapshot) => !snapshot.errors().is_empty(),
                 Err(_) => true,
@@ -125,6 +137,7 @@ impl RuntimeBridge {
                                             hid: Some(Err(error.clone())),
                                             version: services.then(|| Err(error.clone())),
                                             audio: services.then(|| Err(error.clone())),
+                                            native: Vec::new(),
                                             discovery: Some(Err(error)),
                                             services_requested: services,
                                             diagnostic_report: None,
@@ -224,12 +237,42 @@ fn read_services(
             .request(ServiceRequest::AudioDevices)
             .map_err(|error| format!("{error:#}"))
     });
+    let mut native = Vec::new();
+    if services {
+        if let Ok(snapshot) = &discovery {
+            for device in snapshot.devices() {
+                for library in
+                    crate::backend::native_library::libraries_for_product(device.product_id())
+                {
+                    if crate::backend::native_read::readable_exports(library, device.product_id())
+                        .is_empty()
+                    {
+                        continue;
+                    }
+                    let result = client
+                        .request(ServiceRequest::NativeLibrarySnapshot {
+                            library: library.id.clone(),
+                            device_container_id: device.container().to_owned(),
+                            product_id: device.product_id(),
+                        })
+                        .map_err(|error| format!("{error:#}"));
+                    native.push(NativeReading {
+                        product_id: device.product_id(),
+                        container: device.container().to_owned(),
+                        library: library.id.clone(),
+                        result,
+                    });
+                }
+            }
+        }
+    }
     Readings {
         connected: !client.is_stopped(),
         usb: Some(usb),
         hid: Some(hid),
         version,
         audio,
+        native,
         discovery: Some(discovery),
         services_requested: services,
         diagnostic_report: None,
@@ -528,6 +571,24 @@ impl Render for RuntimePanel {
             .when_some(self.readings.audio.as_ref(), |this, result| {
                 this.child(reading("音频设备", result, cx))
             })
+            .children(self.readings.native.iter().map(|observation| {
+                let label = match &observation.result {
+                    Ok(value) => format!("产品 {} · {}：读取 {} 项，{} 项失败；完整配置尚未读取。",
+                        observation.product_id,observation.library,
+                        value["fields"].as_object().map_or(0, |fields|fields.len()),
+                        value["errors"].as_object().map_or(0, |fields|fields.len())),
+                    Err(error) => format!("产品 {} · {} 读取失败：{error}",observation.product_id,observation.library),
+                };
+                let fields = observation.result.as_ref().ok().and_then(|value|value["fields"].as_object());
+                let errors = observation.result.as_ref().ok().and_then(|value|value["errors"].as_object());
+                div().child(surface::note(label,cx)).when(self.details, |view| {
+                    view.children(fields.into_iter().flat_map(|fields|fields.iter()).map(|(export,value)| {
+                        div().whitespace_normal().child(format!("{export}：{}",display_value(&value["value"])))
+                    })).children(errors.into_iter().flat_map(|errors|errors.iter()).map(|(export,error)| {
+                        div().whitespace_normal().text_color(cx.theme().danger).child(format!("{export}：{}",display_value(error)))
+                    }))
+                }).into_any_element()
+            }))
             .when(self.readings.hid.is_some(), |this| {
                 this.child(
                     Button::new("runtime-details")

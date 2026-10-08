@@ -31,10 +31,13 @@ def prepare(root, out):
                 conversion = 'exact-ico-frame'
         else:
             with Image.open(original) as image:
-                prepared = image.convert('RGBA').resize((size, size), Image.Resampling.LANCZOS)
-                conversion = 'lanczos'
+                # Current systrayIconCache.getCachedThemeIcon loads PNGs without
+                # resize; user-black is deliberately rectangular (12x16).
+                prepared = image.convert('RGBA')
+                conversion = 'exact-png'
         target.write_bytes(prepared.tobytes())
-        record(original, target, width=size, height=size, format='rgba8', conversion=conversion)
+        record(original, target, width=prepared.width, height=prepared.height,
+               format='rgba8', conversion=conversion)
     source = root / '.ref/applications/systray/systrayv2/static/media/logo_synapse.d685ec10.svg'
     target = out / 'tray-synapse.svg'
     target.write_bytes(source.read_bytes())

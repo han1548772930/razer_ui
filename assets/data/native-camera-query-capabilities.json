@@ -1,0 +1,803 @@
+{
+  "schema_version": 1,
+  "source_sha256": "b511f0bc4c81be6b9c5cfe43d7e44423b2de8dea8a57fa99a99ca165f2da7c7c",
+  "products": [
+    {
+      "product_id": 3594,
+      "library": "RzNative_GenericCamera",
+      "file": "RzNative_GenericCamera_v1.0.36.1.dll",
+      "default_file": "RzNative_GenericCamera.dll",
+      "install_relative_path": "common/3594/RzNative_GenericCamera_v1.0.36.1.dll",
+      "bytes": 914120,
+      "sha256": "daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2",
+      "md5": "e2585ef0a9ee51b1d97335d1cc2a7693",
+      "version": "GetDLLVersion",
+      "initialize": "DeviceInitialize",
+      "terminate": "DeviceTerminate",
+      "release": "FreeMalloc",
+      "missing_exports": [],
+      "getters": [
+        {
+          "name": "GetAntiFlicker",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAudioFunction",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAutoExposureMetering",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAutoframingSpeedAndSize",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetBacklightCompensation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetBrightness",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraExposure",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraFlash",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraFocus",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraIris",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraLowLightCompensation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraPan",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraRoll",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraTilt",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraZoom",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetColorEnable",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetContrast",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetEdition",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetEVCompensation",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFDAFMode",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFirmwareVersion",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFixedMJPEGQuality",
+          "returns": "int",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetGain",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetGamma",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetHue",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetISOSensitivity",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetMirrorVideo",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSaturation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSerialNumber",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSharpness",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetShutterLimitControl",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetShutterSpeed",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetStreamingStatus",
+          "returns": "bool",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetUVCExtCmdStatus",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetWatermark",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetWhiteBalance",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 3595,
+      "library": "RzNative_GenericCamera",
+      "file": "RzNative_GenericCamera_v1.0.35.0.dll",
+      "default_file": "RzNative_GenericCamera.dll",
+      "install_relative_path": "common/3595/RzNative_GenericCamera_v1.0.35.0.dll",
+      "bytes": 910536,
+      "sha256": "84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7",
+      "md5": "b80dbda99a68fbaeaac9b4bc4f4516e9",
+      "version": "GetDLLVersion",
+      "initialize": "DeviceInitialize",
+      "terminate": "DeviceTerminate",
+      "release": "FreeMalloc",
+      "missing_exports": [
+        "GetShutterLimitControl"
+      ],
+      "getters": [
+        {
+          "name": "GetAntiFlicker",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAudioFunction",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAutoExposureMetering",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAutoframingSpeedAndSize",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetBacklightCompensation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetBrightness",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraExposure",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraFlash",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraFocus",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraIris",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraLowLightCompensation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraPan",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraRoll",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraTilt",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraZoom",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetColorEnable",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetContrast",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetEdition",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetEVCompensation",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFDAFMode",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFirmwareVersion",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFixedMJPEGQuality",
+          "returns": "int",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetGain",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetGamma",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetHue",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetISOSensitivity",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetMirrorVideo",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSaturation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSerialNumber",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSharpness",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetShutterSpeed",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetStreamingStatus",
+          "returns": "bool",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetUVCExtCmdStatus",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetWatermark",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetWhiteBalance",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 3596,
+      "library": "RzNative_GenericCamera",
+      "file": "RzNative_GenericCamera_v1.0.35.0.dll",
+      "default_file": "RzNative_GenericCamera.dll",
+      "install_relative_path": "common/3596/RzNative_GenericCamera_v1.0.35.0.dll",
+      "bytes": 910536,
+      "sha256": "84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7",
+      "md5": "b80dbda99a68fbaeaac9b4bc4f4516e9",
+      "version": "GetDLLVersion",
+      "initialize": "DeviceInitialize",
+      "terminate": "DeviceTerminate",
+      "release": "FreeMalloc",
+      "missing_exports": [
+        "GetShutterLimitControl"
+      ],
+      "getters": [
+        {
+          "name": "GetAntiFlicker",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAudioFunction",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAutoExposureMetering",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetAutoframingSpeedAndSize",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetBacklightCompensation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetBrightness",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraExposure",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraFlash",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraFocus",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraIris",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraLowLightCompensation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraPan",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraRoll",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraTilt",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetCameraZoom",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetColorEnable",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetContrast",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetEdition",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetEVCompensation",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFDAFMode",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFirmwareVersion",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetFixedMJPEGQuality",
+          "returns": "int",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetGain",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetGamma",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetHue",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetISOSensitivity",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetMirrorVideo",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSaturation",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSerialNumber",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetSharpness",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetShutterSpeed",
+          "returns": "long",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetStreamingStatus",
+          "returns": "bool",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetUVCExtCmdStatus",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetWatermark",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        },
+        {
+          "name": "GetWhiteBalance",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ]
+        }
+      ]
+    }
+  ]
+}

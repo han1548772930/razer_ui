@@ -4,6 +4,8 @@
 
 开发验证仅静态读取源码、wrapper、PE 与资源，并允许格式化及 `cargo check --locked --all-targets`；不运行应用、worker、测试、安装器、下载的 JavaScript 或 DLL。以下实现状态不表示已执行 native 验收。UI 编辑、增删改、Apply/Save 和明确标注的本地草稿仍在当前范围；设备/服务写回与 DLL 持久化后置。
 
+原生件全量清单见 [原生件功能总表](dll-function-inventory.md)：生成资产 `assets/data/native-library-inventory.json` 覆盖全部 DLL 及其声明函数，身份事实由 `tools/prepare-discovery-catalog.py` 合并逐产品 middleware `DeviceInfo` 生成。HID 接口选择按源码只比对 `vendorId`/`productId`/`deviceContainerId`/`interface`，Feature 长度只作偏好排序与实际观察值，不再作为拒绝条件。
+
 ## 请求、返回与消费者
 
 请求定义在 [runtime.rs](../../src/backend/runtime.rs)，分派在 [runtime_native.rs](../../src/backend/runtime_native.rs)。表中保留现有写操作，避免把整个 `ServiceRequest` 误称为只读接口；该枚举本身没有强制只读门禁。

@@ -268,6 +268,7 @@ impl Render for TrayPopup {
                 .pb(surface::css(1.))
                 .bg(login_bg)
                 .text_color(login_text)
+                .line_height(relative(1.22))
                 .on_hover(cx.listener(|this, hovered, _, cx| {
                     this.login_hovered = *hovered;
                     cx.notify();
@@ -289,6 +290,8 @@ impl Render for TrayPopup {
             }))
             .w_full()
             .h_full()
+            .max_h(surface::css(700.))
+            .cursor(CursorStyle::default())
             .bg(TrayColors::surface())
             .border_1()
             .border_color(TrayColors::border())
@@ -302,58 +305,72 @@ impl Render for TrayPopup {
                     .child(self.account_body(window, cx))
             })
             .child(
-                gpui_kit::base::Button::new("tray-launch-synapse")
-                    .group("tray-launcher")
-                    .accessibility_label(text("host", "RAZER_SYNAPSE"))
+                div()
+                    .id("tray-apps")
                     .w_full()
                     .h(surface::css(60.))
                     .flex_shrink_0()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .px(surface::css(10.))
                     .border_t_1()
                     .border_color(TrayColors::surface())
-                    .bg(launcher_bg)
-                    .text_size(surface::css(12.))
-                    .text_color(launcher_text)
-                    .gap(surface::css(10.))
-                    .on_hover(cx.listener(|this, hovered, _, cx| {
-                        this.launcher_hovered = *hovered;
-                        if !hovered {
-                            this.launcher_pressed = false;
-                        }
-                        cx.notify();
-                    }))
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.launcher_pressed = true;
-                            cx.notify();
-                        }),
-                    )
-                    .on_mouse_up(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.launcher_pressed = false;
-                            cx.notify();
-                        }),
-                    )
-                    .on_mouse_up_out(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.launcher_pressed = false;
-                            cx.notify();
-                        }),
-                    )
-                    .focus_visible(|s| s.border_1().border_color(cx.theme().primary))
+                    .bg(TrayColors::launcher())
                     .child(
-                        img("synapse/tray-synapse.svg")
-                            .size(surface::css(32.))
-                            .opacity(icon_opacity),
-                    )
-                    .child(text("host", "RAZER_SYNAPSE"))
-                    .on_click(cx.listener(|this, _, _, _| this.command("synapse"))),
+                        gpui_kit::base::Button::new("tray-launch-synapse")
+                            .group("tray-launcher")
+                            .accessibility_label(text("host", "RAZER_SYNAPSE"))
+                            .w_full()
+                            .h(surface::css(59.))
+                            .flex_shrink_0()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .px(surface::css(10.))
+                            .bg(launcher_bg)
+                            .text_size(surface::css(12.))
+                            .line_height(relative(1.22))
+                            .text_color(launcher_text)
+                            .gap(surface::css(10.))
+                            .on_hover(cx.listener(|this, hovered, _, cx| {
+                                this.launcher_hovered = *hovered;
+                                if !hovered {
+                                    this.launcher_pressed = false;
+                                }
+                                cx.notify();
+                            }))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    this.launcher_pressed = true;
+                                    cx.notify();
+                                }),
+                            )
+                            .on_mouse_up(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    this.launcher_pressed = false;
+                                    cx.notify();
+                                }),
+                            )
+                            .on_mouse_up_out(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    this.launcher_pressed = false;
+                                    cx.notify();
+                                }),
+                            )
+                            .focus_visible(|s| s.border_1().border_color(cx.theme().primary))
+                            .child(
+                                img("synapse/tray-synapse.svg")
+                                    .size(surface::css(32.))
+                                    .opacity(icon_opacity),
+                            )
+                            .child(
+                                div()
+                                    .min_w_0()
+                                    .truncate()
+                                    .child(text("host", "RAZER_SYNAPSE").to_uppercase()),
+                            )
+                            .on_click(cx.listener(|this, _, _, _| this.command("synapse"))),
+                    ),
             )
     }
 }
@@ -438,24 +455,34 @@ fn native_menu(cx: &App) -> anyhow::Result<Menu> {
             MenuEntry::Separator => menu.append(&PredefinedMenuItem::separator())?,
             MenuEntry::Action { id, label, icon } => {
                 if let Some(icon) = icon {
-                    let bytes: &[u8] = match icon {
+                    // getCachedThemeIcon preserves the source PNG dimensions;
+                    // only getCachedProductIcon requests a 20x20 application icon.
+                    let (bytes, width, height): (&[u8], u32, u32) = match icon {
                         MenuIcon::Application => {
-                            include_bytes!("../../assets/synapse/tray-app.rgba")
+                            (include_bytes!("../../assets/synapse/tray-app.rgba"), 20, 20)
                         }
-                        MenuIcon::Settings if dark => {
-                            include_bytes!("../../assets/synapse/tray-gear-dark.rgba")
-                        }
-                        MenuIcon::Settings => {
-                            include_bytes!("../../assets/synapse/tray-gear-light.rgba")
-                        }
-                        MenuIcon::Account if dark => {
-                            include_bytes!("../../assets/synapse/tray-user-dark.rgba")
-                        }
-                        MenuIcon::Account => {
-                            include_bytes!("../../assets/synapse/tray-user-light.rgba")
-                        }
+                        MenuIcon::Settings if dark => (
+                            include_bytes!("../../assets/synapse/tray-gear-dark.rgba"),
+                            14,
+                            14,
+                        ),
+                        MenuIcon::Settings => (
+                            include_bytes!("../../assets/synapse/tray-gear-light.rgba"),
+                            14,
+                            14,
+                        ),
+                        MenuIcon::Account if dark => (
+                            include_bytes!("../../assets/synapse/tray-user-dark.rgba"),
+                            14,
+                            14,
+                        ),
+                        MenuIcon::Account => (
+                            include_bytes!("../../assets/synapse/tray-user-light.rgba"),
+                            12,
+                            16,
+                        ),
                     };
-                    let image = tray_icon::menu::Icon::from_rgba(bytes.to_vec(), 20, 20)?;
+                    let image = tray_icon::menu::Icon::from_rgba(bytes.to_vec(), width, height)?;
                     menu.append(&IconMenuItem::with_id(id, label, true, Some(image), None))?;
                 } else {
                     menu.append(&MenuItem::with_id(id, label, true, None))?;

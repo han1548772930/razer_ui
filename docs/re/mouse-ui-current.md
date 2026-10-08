@@ -32,6 +32,8 @@
 
 ## 验证与继续工作
 
+182 电源页已沿当前 `MM -> mM -> DM/PM -> CM/pM -> CD -> 130.T` 核对滑条，777 共享电源入口也沿 `KG -> kG -> zG -> wG -> SM -> AM` 独立核对。电源控件改用已有源码绘制层：6px轨道、16px圆形滑块、按8px内缩定位的自适应数值气泡，以及底部-2px的端点标签。说明保留自身10px下边距，移除额外容器间距和不存在的15px滑条下边距；低能耗禁用警告保留源15px上边距。拖动时只预览保留的 SliderState，释放后提交本地草稿，不调用DLL写入或报告设备保存成功。证据见 [电源控件](power-range-current-evidence.json)，检查为 `node tools/audit-power-range-current.cjs`。这项只覆盖电源控件，键盘一致性、外部观察打断拖动和真实窗口仍待验收，不能计作完整产品验收。
+
 表面校准尚未完整复刻。70 的当前 `TAB_CALIBRATION` 挂载 `rR -> sR/nR`：卡片来自 `calibration.profiles`，选择写 `selectedProfile.guid`，产品 `DEVICE_SUPPORTED_MATS` 只用于过滤新增目录。现共享页面已移除把目录当设备配置的伪造选中动作及源中不存在的 `calibration.selectedSurface` 写入；静态目录保留为信息，明确设备校准配置尚未读取。欢迎层、真实配置卡/菜单、添加抽屉/校准流程、多配置时的 1..10 抬升范围与 `featureAccess` 条件仍待接入，不能由目录或本地草稿推定运行配置。证据见 [表面校准边界](mouse-surface-calibration-current-evidence.json)，静态检查为 `audit-mouse-surface-calibration.cjs --check`。
 
 `audit-feature-capabilities.py --check`检查编号 Rust 模块及已重构共享组件的 PID 字面量分支。能力只扩到独立核实的产品；当前目录不足以表示所有鼠标 UI 已完成。源码/资源检查和编译通过不代表实际连接、设备读写或窗口验收。已修项以 [修复登记](ui-fix-registry.json)为准。

@@ -281,3 +281,5 @@
 !/tools/review-studio-properties-current.cjs
 !/tools/validate-ui-fix-registry.py
 !/tools/validate-current-docs.py
+!/tools/audit-tray-presentation.cjs
+!/tools/audit-power-range-current.cjs

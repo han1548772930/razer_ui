@@ -132,6 +132,7 @@ impl TrayPopup {
                 BaseButton::new("tray-account-name")
                     .min_w_0()
                     .mr(surface::css(10.))
+                    .line_height(relative(1.22))
                     .text_color(TrayColors::selected_text())
                     .font_weight(FontWeight::BOLD)
                     .on_click(cx.listener(move |this, _, _, _| this.command(command)))
