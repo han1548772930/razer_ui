@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 /// Identifies a logical HID collection, not a physical product or receiver peer.
-/// Preserve raw path bytes and usage pair (OpenLogi's macOS collection rule).
+/// Preserve raw path bytes and usage pair so distinct collections stay distinct.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct HidNode {
     pub path: Vec<u8>,

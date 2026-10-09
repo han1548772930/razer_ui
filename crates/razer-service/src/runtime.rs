@@ -29,6 +29,7 @@ pub fn run_worker() -> i32 {
         let result = match envelope.request {
             request @ (ServiceRequest::HidNodes
             | ServiceRequest::HidNodeRead { .. }
+            | ServiceRequest::HidNodeWrite { .. }
             | ServiceRequest::HidNodeReceiverStatus { .. }) => portable.request(request),
             request => {
                 #[cfg(windows)]

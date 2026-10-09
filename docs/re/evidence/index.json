@@ -1,0 +1,277 @@
+{
+  "schema_version": 1,
+  "method": "Lossless ZIP/GZIP; original evidence bytes unchanged; identical JSON uses one canonical archive",
+  "files": [
+    {
+      "original_path": "docs/re/accessory-product-evidence.json",
+      "archive_path": "docs/re/evidence/accessory-product-evidence.json.zip",
+      "member": "accessory-product-evidence.json",
+      "original_bytes": 20395836,
+      "original_sha256": "f92427f8e7e74197720e32c5aa07ea469d01c1fbb93d392a0368acc11fc307a9",
+      "archive_bytes": 2925839,
+      "archive_sha256": "f92bb442fea08e58a66d8e3c019df14076d089f960978da5d68388d0f3102041"
+    },
+    {
+      "original_path": "docs/re/accessory-system-source.json",
+      "archive_path": "docs/re/evidence/accessory-system-source.json.zip",
+      "member": "accessory-system-source.json",
+      "original_bytes": 2395577,
+      "original_sha256": "22f6c462f1518d52665beee33c77c09a2b944679bc233741dab3e497d96f57e2",
+      "archive_bytes": 291292,
+      "archive_sha256": "9d4ec3e1ee3a378b445003230962ee38a31c5bd8d6241cf66d848d79b7592519"
+    },
+    {
+      "original_path": "docs/re/all-product-page-chains-current.json",
+      "archive_path": "docs/re/evidence/all-product-page-chains-current.json.zip",
+      "member": "all-product-page-chains-current.json",
+      "original_bytes": 4785076,
+      "original_sha256": "ad4ab5c8e2aaf6b636fbb98538dab91b35bb2aaf477002aead09cbcccf3d038d",
+      "archive_bytes": 182423,
+      "archive_sha256": "01160d26d25d4f0bafce1b298d6c35be6e4f7e7e5d77ccd0fc1a15735d6aacfb"
+    },
+    {
+      "original_path": "docs/re/application-native-current-evidence.json",
+      "archive_path": "docs/re/evidence/application-native-current-evidence.json.zip",
+      "member": "application-native-current-evidence.json",
+      "original_bytes": 14947452,
+      "original_sha256": "71a6b7ad9a43d05bc004e8b0dbc348631c69eb720c6a2546a82f2d4cdc8ac05e",
+      "archive_bytes": 1125667,
+      "archive_sha256": "0a202852a2f556298fa5c6c066eba272217f60ee7cc6dc21a1aaeda9c405c7b8"
+    },
+    {
+      "original_path": "docs/re/application-ui-details-current.json",
+      "archive_path": "docs/re/evidence/application-ui-details-current.json.zip",
+      "member": "application-ui-details-current.json",
+      "original_bytes": 63149206,
+      "original_sha256": "b8668f63368d3955f2f69656eacbcdff05442e9c7deb6330921bdb7a8feb13cf",
+      "archive_bytes": 6484175,
+      "archive_sha256": "ad5317b21de708ebbd136c54674ce612119593f72eeb26809d5f20ded6675b26"
+    },
+    {
+      "original_path": "docs/re/audio-additional-evidence.json",
+      "archive_path": "docs/re/evidence/audio-additional-evidence.json.zip",
+      "member": "audio-additional-evidence.json",
+      "original_bytes": 3206820,
+      "original_sha256": "13ba8403ad5eab61c31de4d08ac273acd52d574c593276a8de7f21974642d9bb",
+      "archive_bytes": 424197,
+      "archive_sha256": "be71b3524e0406f05738070b0534898640b7f0ad8ab46b40b711d43fe2efe99a"
+    },
+    {
+      "original_path": "docs/re/audio-product-evidence.json",
+      "archive_path": "docs/re/evidence/audio-product-evidence.json.zip",
+      "member": "audio-product-evidence.json",
+      "original_bytes": 51238718,
+      "original_sha256": "b00bf2a1b0426c12ab156a56b0de65f2cf496f35eacf08108d49e2c4da388291",
+      "archive_bytes": 6572514,
+      "archive_sha256": "a4d71283f8d34a3f5f69c096b912ff4ca7e120105f2a2f2badccfe9696e5a68f"
+    },
+    {
+      "original_path": "docs/re/audio-product-pages.json",
+      "archive_path": "docs/re/evidence/audio-product-pages.json.zip",
+      "member": "audio-product-pages.json",
+      "original_bytes": 35829198,
+      "original_sha256": "e10b5dd2ebd3b2aac40997a7c17bf98a2da970cda82a513afd491d2084bdcf04",
+      "archive_bytes": 4205067,
+      "archive_sha256": "a1b81ca56028624e3720d41c7aecdb443b688a53f6f6b2eee1720e8509ca8058"
+    },
+    {
+      "original_path": "docs/re/camera-preview-current-evidence.json",
+      "archive_path": "docs/re/evidence/camera-preview-current-evidence.json.zip",
+      "member": "camera-preview-current-evidence.json",
+      "original_bytes": 2612145,
+      "original_sha256": "8d096300b26cabb4854b5e09da669989937b6faddc057f24457738e267a55f6d",
+      "archive_bytes": 601074,
+      "archive_sha256": "b69307494965e88c32b8613a564043c6adf52295e72c5f99bef801f6aa5c02c8"
+    },
+    {
+      "original_path": "docs/re/camera-product-evidence.json",
+      "archive_path": "docs/re/evidence/camera-product-evidence.json.zip",
+      "member": "camera-product-evidence.json",
+      "original_bytes": 3306467,
+      "original_sha256": "f6e5ac0b568ea0ea62d89306825d43eb9daa30061ed92db6e1e1061f24ed3c45",
+      "archive_bytes": 412557,
+      "archive_sha256": "05dc03546911b6bf5484148ed1582b8d24d01eb1b04328c2a09e52d3fcb4d175"
+    },
+    {
+      "original_path": "docs/re/gamepad-product-evidence.json",
+      "archive_path": "docs/re/evidence/gamepad-product-evidence.json.zip",
+      "member": "gamepad-product-evidence.json",
+      "original_bytes": 3595748,
+      "original_sha256": "9d86eff793d155baeb3808850625e42a4a6c960bf8f5566315a0ca3c8ab80ddb",
+      "archive_bytes": 574058,
+      "archive_sha256": "64189a267c6c120bcb429efc0f8aaeeb9bd39942faeab0d408c12c957b1266a4"
+    },
+    {
+      "original_path": "docs/re/host-full-asar-current-evidence.json",
+      "archive_path": "docs/re/evidence/host-full-asar-current-evidence.json.zip",
+      "member": "host-full-asar-current-evidence.json",
+      "original_bytes": 6177197,
+      "original_sha256": "60f66f073c2fbb34b7364918656b86a821b8c1f9b2013c925730cc09654aba06",
+      "archive_bytes": 652313,
+      "archive_sha256": "feb3a40f58c51feb24e263d67f8f66a02dff3af57ff070f850c4248f8229e2b4"
+    },
+    {
+      "original_path": "docs/re/keyboard-gaming-review-2026-10-07.json",
+      "archive_path": "docs/re/evidence/keyboard-gaming-review-2026-10-07.json.zip",
+      "member": "keyboard-gaming-review-2026-10-07.json",
+      "original_bytes": 2305395,
+      "original_sha256": "610d74235388597fa1d9b3ca835bad94ddc44e9e6e752592a8462b82cf88502b",
+      "archive_bytes": 502170,
+      "archive_sha256": "09ef366d351e26f82539b780a29109b10ee255b4ed99ecfd7d8f2b3795279e8d"
+    },
+    {
+      "original_path": "docs/re/keyboard-product-pages.json",
+      "archive_path": "docs/re/evidence/keyboard-product-pages.json.zip",
+      "member": "keyboard-product-pages.json",
+      "original_bytes": 31602239,
+      "original_sha256": "499803e94addadc04d26683133e9e6ea027a979b1c492cb8422239af10c9d68a",
+      "archive_bytes": 4192696,
+      "archive_sha256": "19cf178fab467aabc56a52b7e6716acec00236f931de627a6bb7e74455e92517"
+    },
+    {
+      "original_path": "docs/re/middleware-device-bindings-current.json",
+      "archive_path": "docs/re/evidence/middleware-device-bindings-current.json.zip",
+      "member": "middleware-device-bindings-current.json",
+      "original_bytes": 3216364,
+      "original_sha256": "580b23201e31eaed3bb2d98c59c20679f09361d7a625dd3f6cc36a3990624c56",
+      "archive_bytes": 299585,
+      "archive_sha256": "9fe68c7627c00359ede5605eb09710ce536a8f8bb564325bc3b0833a12b2f771"
+    },
+    {
+      "original_path": "docs/re/middleware-source-acquisition-current.json",
+      "archive_path": "docs/re/evidence/middleware-source-acquisition-current.json.zip",
+      "member": "middleware-source-acquisition-current.json",
+      "original_bytes": 10139642,
+      "original_sha256": "80cc76e2d52d82a23d42ca1fdcb6f22b789d5a08d87c9597cfc4f7d8ac2af77e",
+      "archive_bytes": 1924749,
+      "archive_sha256": "2d049668f2e96348a1de15ebaa0c92f4228a08304c18f67bb738fe81134ed06d"
+    },
+    {
+      "original_path": "docs/re/mouse-page-source.json",
+      "archive_path": "docs/re/evidence/mouse-page-source.json.zip",
+      "member": "mouse-page-source.json",
+      "original_bytes": 35696596,
+      "original_sha256": "eafafb873aafa9a9a9626cd84da81d71ad9d4c71d29620240619c25ab8e73005",
+      "archive_bytes": 3933894,
+      "archive_sha256": "3fd919f568beeb7d53c5c85ab0c4db82938568c6e6b9aab723194dd196ac13af"
+    },
+    {
+      "original_path": "docs/re/mouse-product-source.json",
+      "archive_path": "docs/re/evidence/mouse-product-source.json.zip",
+      "member": "mouse-product-source.json",
+      "original_bytes": 3503597,
+      "original_sha256": "0001fe990946b568313977906f42be637e3e57292b9930b9aaafa5821de662f6",
+      "archive_bytes": 145748,
+      "archive_sha256": "8ed6c389774c5addc1be5c8916fdad6533a8c8ee3efd41f59b6e1e35b747428f"
+    },
+    {
+      "original_path": "docs/re/native-3886-legacy-hue-current-evidence.json",
+      "archive_path": "docs/re/evidence/native-3886-legacy-hue-current-evidence.json.zip",
+      "member": "native-3886-legacy-hue-current-evidence.json",
+      "original_bytes": 2731487,
+      "original_sha256": "5be5df779588d33715d56503fca5d8e0789309056e2ba97270d9950aa7f9e470",
+      "archive_bytes": 529037,
+      "archive_sha256": "2e582b28e9dca93f97ab700ccd00eabdfff4d09601bb2f8802262f770417eff6"
+    },
+    {
+      "original_path": "docs/re/native-chains-current-evidence.json",
+      "archive_path": "docs/re/evidence/native-chains-current-evidence.json.zip",
+      "member": "native-chains-current-evidence.json",
+      "original_bytes": 4477972,
+      "original_sha256": "7101bb02ecc3e6fd0e013445eda1d93d435a09b1a7fa6a5d85ed6f086e86567b",
+      "archive_bytes": 629453,
+      "archive_sha256": "bf592b71d3f8cf5fdecb4488857b82348a3caaf216945acd0316eb4934032f28"
+    },
+    {
+      "original_path": "docs/re/native-library-full-current-inventory.json",
+      "archive_path": "docs/re/evidence/native-library-full-current-inventory.json.zip",
+      "member": "native-library-full-current-inventory.json",
+      "original_bytes": 13457659,
+      "original_sha256": "096596ad43047cef40b3de5a4324396b57871a3063c141dd20cdb6e28eb6065d",
+      "archive_bytes": 762236,
+      "archive_sha256": "8a73a1b242d7aaa393d29d5ccf4ecf2139890247660c9941d0858edae63ff47f"
+    },
+    {
+      "original_path": "docs/re/product-catalog.json",
+      "archive_path": "docs/re/evidence/product-catalog.json.zip",
+      "member": "product-catalog.json",
+      "original_bytes": 2302446,
+      "original_sha256": "9bfc0b3b39af69ca4f741bcdf4cebbeda227657ef7e6c5997b2e4a382664dcac",
+      "archive_bytes": 204449,
+      "archive_sha256": "6969c73c80751b951da192ff97c34b10eb7e6df3bd9655bd76edae1f7f253928"
+    },
+    {
+      "original_path": "docs/re/product-content-current-evidence.json",
+      "archive_path": "docs/re/evidence/product-content-current-evidence.json.zip",
+      "member": "product-content-current-evidence.json",
+      "original_bytes": 2821557,
+      "original_sha256": "6e0a11b69f65482cb5e887ee02e833af20471364aeb314527ffe9b6194c15b71",
+      "archive_bytes": 86603,
+      "archive_sha256": "edef277912668d178cb209cc6ea300639683051efae437568b348d5e780d7d55"
+    },
+    {
+      "original_path": "docs/re/product-page-semantic-batches-current.json",
+      "archive_path": "docs/re/product-page-semantic-batches-current.json.gz",
+      "member": "product-page-semantic-batches-current.json",
+      "original_bytes": 66752560,
+      "original_sha256": "a1420bcca1ad1ba4dc5306e2649820e181ba8362343154669d5db90386d6346c",
+      "archive_bytes": 3518445,
+      "archive_sha256": "b70be5dacc051a06c267139c10aa6d4aaf4cefaa99e933f18c6bce3932ec23b6",
+      "compression": "gzip"
+    },
+    {
+      "original_path": "docs/re/product-ui-details-current.json",
+      "archive_path": "docs/re/evidence/product-ui-details-current.json.zip",
+      "member": "product-ui-details-current.json",
+      "original_bytes": 41971928,
+      "original_sha256": "3263cda92840b21eec7896ce959e13dfe8f4c6f073d1329db7af3e1af758356a",
+      "archive_bytes": 2618660,
+      "archive_sha256": "60131b27eac6dd1390446207d009de99f60cefd09d2145438bb8b0e7545d2e2e"
+    },
+    {
+      "original_path": "docs/re/shared-ui-controls-current.json",
+      "archive_path": "docs/re/evidence/shared-ui-controls-current.json.zip",
+      "member": "shared-ui-controls-current.json",
+      "original_bytes": 6343150,
+      "original_sha256": "4bb1c410d35e6b9abbcab89e17cfed64069185af203019f2231e69878a2f0679",
+      "archive_bytes": 452226,
+      "archive_sha256": "bab1c708c8fb8e7fb9142d881fbf952f909823a1cd267f668f6aedea7b9b7c07"
+    },
+    {
+      "original_path": "docs/re/source-help-evidence.json",
+      "archive_path": "docs/re/evidence/source-help-evidence.json.zip",
+      "member": "source-help-evidence.json",
+      "original_bytes": 47720126,
+      "original_sha256": "5fbf5a22c246952a8348bf14f80d7651086465373fc0e4df32e4253484e7655b",
+      "archive_bytes": 6194416,
+      "archive_sha256": "1066d7516c2773b0592240788f016d7544532ef5fd8c72ccb59e9c6d3eb928a0"
+    },
+    {
+      "original_path": "docs/re/source-product-pages.json",
+      "archive_path": "docs/re/evidence/source-product-pages.json.zip",
+      "member": "source-product-pages.json",
+      "original_bytes": 37675239,
+      "original_sha256": "8d9fa59cc79ee98a5d6c405c5bab27d7e0f88b1f380151759e208badb7f6843d",
+      "archive_bytes": 4374404,
+      "archive_sha256": "f509ee6e0ccc060a55943185e19659bce92fd419074d0bc3ba276cf6f462dee4"
+    },
+    {
+      "original_path": "docs/re/system-products-resolved.json",
+      "archive_path": "docs/re/evidence/system-products-resolved.json.zip",
+      "member": "system-products-resolved.json",
+      "original_bytes": 2702180,
+      "original_sha256": "11c26618c554188af27087c3f58d1869d4e61f797e1b40070042799dcff0c242",
+      "archive_bytes": 575821,
+      "archive_sha256": "64d5d023d9e80c9cbb12241f10a1124f033de22126dde5e3f8173c066c1e271c"
+    },
+    {
+      "original_path": "docs/re/ui-style-sources-current.json",
+      "archive_path": "docs/re/evidence/ui-style-sources-current.json.zip",
+      "member": "ui-style-sources-current.json",
+      "original_bytes": 26545528,
+      "original_sha256": "ad525299247bc8921d34b10ed4a611c23542e0c6c40972082143bdae6ea8f0c3",
+      "archive_bytes": 2286400,
+      "archive_sha256": "2e42930c5c0a9e6ddeb025d43c2b25b5c9971e25d3cdfa4d8dd5d99071a0735a"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # 已有产品页内容核验（2026-10-05，未完成）
 
-本轮按用户要求检查页面内容，不把 tab、图标、导航注册、JSON 描述符覆盖率当作页面一致性证据。只读取当前 `.ref/devices/<pid>/` 中 manifest 声明的 JS/CSS；没有启动应用、构建、测试或执行供应商 JS/DLL。
+当前页面内容审查，不把 tab、图标、导航注册、JSON 描述符覆盖率当作页面一致性证据。只读取当前 `.ref/devices/<pid>/` 中 manifest 声明的 JS/CSS；没有启动应用、构建、测试或执行供应商 JS/DLL。
 
 可复查收据：`product-content-current-evidence.json`。维护工具：`tools/audit-product-content-current.cjs --check`，需要现有 `.work/audit-js/node_modules` 提供 Acorn。它分别报告公共外层、Nommo 已复核组件和相机外层；没有“所有页面已一致”的判定。
 

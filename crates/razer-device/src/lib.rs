@@ -3,6 +3,7 @@ pub mod backend;
 pub mod device_identity;
 pub mod device_query;
 pub mod device_reads;
+pub mod device_writes;
 pub mod protocol;
 pub mod receiver_capabilities;
 pub mod receiver_catalog;

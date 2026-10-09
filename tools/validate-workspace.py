@@ -3,6 +3,7 @@ from pathlib import Path
 import hashlib
 import json
 import re
+import subprocess
 import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,8 +68,32 @@ for entry in architecture['current_packages']:
     assert len(list((ROOT/'crates'/entry['name']/'src').rglob('*.rs')))==entry['rust_files'],entry['name']
 
 reference=json.loads((ROOT/'docs/re/reference-src-current.json').read_text('utf-8'))
-for entry in reference['files']:
-    assert hashlib.sha256((ROOT/entry['path']).read_bytes()).hexdigest()==entry['sha256'],entry['path']
+if (ROOT/'src').is_dir():
+    for entry in reference['files']:
+        assert hashlib.sha256((ROOT/entry['path']).read_bytes()).hexdigest()==entry['sha256'],entry['path']
+    reference_location='local reference'
+else:
+    # The obsolete Rust tree was removed in the current repository. Verify its
+    # preserved Git bytes without restoring files or using them as build input.
+    # The receipt was made from a Windows git archive: 443 files have CRLF,
+    # whereas Git stores LF. Accept only the exact recorded byte digest of the
+    # blob or its LF-to-CRLF checkout representation, never normalized content.
+    specifications=''.join(f"{reference['commit']}:{entry['path']}\n" for entry in reference['files'])
+    process=subprocess.run(['git','cat-file','--batch'],input=specifications.encode(),
+                           stdout=subprocess.PIPE,stderr=subprocess.PIPE,cwd=ROOT,check=True)
+    output=process.stdout;offset=0;checkout_files=0
+    for entry in reference['files']:
+        end=output.index(b'\n',offset);header=output[offset:end].split()
+        assert len(header)==3 and header[1]==b'blob',entry['path']
+        size=int(header[2]);offset=end+1;body=output[offset:offset+size]
+        if hashlib.sha256(body).hexdigest()!=entry['sha256']:
+            assert b'\r' not in body,entry['path']
+            checkout=body.replace(b'\n',b'\r\n')
+            assert hashlib.sha256(checkout).hexdigest()==entry['sha256'],entry['path']
+            checkout_files+=1
+        offset+=size;assert output[offset:offset+1]==b'\n';offset+=1
+    assert offset==len(output)
+    reference_location=f'Git reference ({checkout_files} exact CRLF archive representations)'
 relocation=json.loads((ROOT/'docs/re/workspace-relocation-current.json').read_text('utf-8'))
 for entry in relocation['current_files']:
     assert hashlib.sha256((ROOT/entry['path']).read_bytes()).hexdigest()==entry['sha256'],entry['path']
@@ -91,4 +116,4 @@ for name in ['razer-hid','razer-device']:
 transport=(ROOT/'crates/razer-service/src/runtime_hid_transport.rs').read_text('utf-8')
 assert 'libloading' not in transport and 'include_bytes!' not in transport
 assert 'with_backend' in transport
-print(f'Workspace: {len(packages)-1} independent libraries + UI/agent executables; {len(reference["files"])} original files unchanged; {len(source_files)} active Rust files UTF-8; include/dependency boundaries and relocation fingerprints valid')
+print(f'Workspace: {len(packages)-1} independent libraries + UI/agent executables; {len(reference["files"])} original files verified in {reference_location}; {len(source_files)} active Rust files UTF-8; include/dependency boundaries and relocation fingerprints valid')

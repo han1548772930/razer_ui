@@ -12,7 +12,7 @@
 
 这实现了所有现存第一方宿主 JS 的静态索引，下面对关键跨文件链做了语义阅读。它**不等于已经逐个解释 3,052 个函数的所有分支**，也不等于已经恢复 `.node`、DLL、EXE 的 C/C++ 原始源码。目录外的 node_modules 内部、服务进程内部、远程接口实现和原生二进制内部仍有边界，详见第 11 节。
 
-完整包来源另由 [ASAR全量提取收据](host-full-asar-current-evidence.json) 覆盖10,076个条目，包含此前未提取的node_modules与12个unpacked原生插件本体。它与本节106个第一方JS的语义索引是不同分母：依赖文件如今已取得，依赖每个函数的逻辑仍没有全部审阅。signed native条目与ASAR元数据hash/size的差异保留在收据及 [版本审计](current-host-version-audit.md)，不宣称二者匹配。
+完整包来源另由 [ASAR全量提取收据](evidence/host-full-asar-current-evidence.json.zip) 覆盖10,076个条目，包含此前未提取的node_modules与12个unpacked原生插件本体。它与本节106个第一方JS的语义索引是不同分母：依赖文件如今已取得，依赖每个函数的逻辑仍没有全部审阅。signed native条目与ASAR元数据hash/size的差异保留在收据及 [版本审计](current-host-version-audit.md)，不宣称二者匹配。
 
 ## 2. 分层与状态归属
 
@@ -234,4 +234,4 @@ systray 网页尺寸、Widgets 类别/电池/配置、launcher 页脚与版本�
 
 通用加载层已进一步追到 [当前宿主FFI语义](host-ffi-current.md) 与 [原文证据](host-ffi-current-evidence.json)：分别记录Main/Sub与实际注入SysUtils的legacy ffiMain，核对通道复用、参数、指针、回调、dispatch、ready/超时/退出和依赖ABI。此补充不将native正文或产品调用者未知升级为已恢复。
 
-本次完成的是**宿主架构全文件索引和关键生命周期链重审**。项目仍应按 [ui-readonly-first-roadmap.md](ui-readonly-first-roadmap.md) 区分原链证实、静态接入、未连接服务、本地草稿和 deferred DLL write-back；本文件不会把未经动态核实的功能改写成已成功。
+本次完成的是**宿主架构全文件索引和关键生命周期链重审**。项目仍应按 [ui-readonly-first-roadmap.md](ui-readonly-first-roadmap.md) 区分原链证实、静态接入、未连接服务、本地草稿、设备/服务写入、应答确认与未实现消费者；本文件不会把未经动态核实的功能改写成已成功。

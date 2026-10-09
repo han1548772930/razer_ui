@@ -316,6 +316,9 @@
 !/tools/review-studio-properties-current.cjs
 !/tools/validate-ui-fix-registry.py
 !/tools/validate-current-docs.py
+!/tools/evidence-store.py
+!/tools/audit-assets-current.py
+!/tools/audit-device-write-capabilities.cjs
 !/tools/audit-tray-presentation.cjs
 !/tools/audit-power-range-current.cjs
 !/tools/audit-tray-window-current.py

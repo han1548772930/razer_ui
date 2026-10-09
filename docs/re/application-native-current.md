@@ -2,7 +2,7 @@
 
 本轮将全部 24 个目录端点、22 个有 HTML 的应用、755 个当前 JS 文件都纳入静态解析及原生边界检索，补充此前产品 middleware/host 库表之外的旧 FFILibrary、音频独立应用、更新器、区域选择及外部进程调用者。**全量扫描完成不等于 22 个应用的全部业务分支完成**。本节逐条说明已追到的实际 wrapper、初始化来源、返回消费及清理，余下动态目标和业务挂载边界单独标明。
 
-证据来自 [专用 JSON](application-native-current-evidence.json)，维护工具为 `node tools/audit-application-native-current.cjs --check`；原 [全应用入口/模块图](all-application-chains-current.md) 保留原范围，本工具没有改动其生成器。每个来源匹配当前应用目录与模块索引的 SHA-256，收据为实际完整 AST 源码切片，offset/end 使用 UTF-16 代码单元、end 不包含尾端。没有运行厂商 JS、应用、DLL、helper、构建或测试。
+证据来自 [专用 JSON](evidence/application-native-current-evidence.json.zip)，维护工具为 `node tools/audit-application-native-current.cjs --check`；原 [全应用入口/模块图](all-application-chains-current.md) 保留原范围，本工具没有改动其生成器。每个来源匹配当前应用目录与模块索引的 SHA-256，收据为实际完整 AST 源码切片，offset/end 使用 UTF-16 代码单元、end 不包含尾端。没有运行厂商 JS、应用、DLL、helper、构建或测试。
 
 ## 全量范围与计数的准确含义
 

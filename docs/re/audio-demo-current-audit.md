@@ -52,4 +52,27 @@ CSS 规则。1392/1442 manifest 中虽存在 `1491` 视频通用样式，它只�
 进度条的浏览器行盒、悬停提示和 disabled 呈现、字体 glyph 的最终基线位置仍未运行比对，
 不能把控件数量、控制条和封面修复算作完整视觉验收。官方 seek/play/pause/onTimeUpdate/循环播放
 依赖真实媒体实例，完整 fullscreen 与 floating window 同样未接入；禁用媒体控件是明确的功能
-缺口，不是 DLL 写回后置所省略的 UI 草稿操作。浮动偏好仍可编辑并保持独立实体状态。
+缺口，媒体服务与设备设置写入属于独立链路。浮动偏好仍可编辑并保持独立实体状态。
+
+## 播放服务边界
+
+The three current audio demo roots mount a poster button for a real video with
+an audio track. This workspace has no native media player transport, so the
+poster cannot produce sound or report playback progress.
+
+The poster action remains keyboard and pointer accessible. On an explicit click
+it records a local request and shows `音频演示播放服务未接入`. The source-sized
+control bar is present after that request. Its actual current mounted source
+disables default controls and includes only play, progress and fullscreen; the
+previous volume, mute and percentage preview were unsupported additions and
+have been removed. The bar uses the source 40px height, zero padding, 5px radius
+and translucent background. Its play/fullscreen outlines come from the current
+product CSS's embedded font. Media controls remain disabled until an audible
+transport is connected; they do not simulate time, playback or a successful
+service response. The independent floating preference remains editable.
+
+This is a real functionality gap: source play/pause/seek events, elapsed time,
+duration, looping, fullscreen and the floating window require the media player.
+Media playback and device-setting writes have separate transports and lifecycles. Detailed source receipts,
+remaining progress geometry and runtime limits are recorded in
+[the current audit](audio-demo-current-audit.md).

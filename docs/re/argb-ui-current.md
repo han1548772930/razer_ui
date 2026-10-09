@@ -47,4 +47,4 @@
 
 extract-wired-argb.cjs / extract-wireless-argb.cjs 的 --check 核对当前挂载、字段和文案；validate-wired-argb.py / validate-wireless-argb.py 核对源 hash、精确区间、源图、派生层、提示和原生标记。资源准备工具只处理静态资产。当前核验通过不代表像素、焦点、缩放、弹层/滚动和连续输入已运行验收。
 
-仍需真实只读状态 publisher、按产品完成正式编辑/本地 Apply/Save 消费链、Chroma 安装/同步状态和剩余控件细节。UI 操作与本地草稿保持当前范围；DLL 修改、设备/服务写回后置。没有运行应用、测试、下载的 JavaScript 或 DLL。
+仍需真实只读状态 publisher、按产品完成正式编辑/本地 Apply/Save 消费链、Chroma 安装/同步状态和剩余控件细节。UI 操作与本地草稿保持当前范围；DLL 修改与设备/服务写回尚未接通。没有运行应用、测试、下载的 JavaScript 或 DLL。

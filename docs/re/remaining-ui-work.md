@@ -16,6 +16,6 @@
 | 独立应用与公共页面 | Profiles 真实游戏目录及剩余传输边界，Settings 宿主目录与启动分支，托盘账户/通知/Widgets，IoT、安装和固件服务状态，各页完整弹层/响应式/动画 |
 | Armory | 实时遥测、固件过旧警告、连接后的性能/Hyperboost/Fixed RPM 条件及剩余复杂产品根；已准备的产品位图不再列为缺失 |
 
-各项只能依据对应产品当前实际挂载链扩大覆盖，不能由共享组件或资源存在推定已支持。DLL 写回后置不构成省略 UI 编辑与保存的理由。运行与视觉验收统一保持未完成。
+各项只能依据对应产品当前实际挂载链扩大覆盖，不能由共享组件或资源存在推定已支持。UI 编辑、设备/服务提交和持久化均需接入各自真实链路；本地保存不能替代设备确认。运行与视觉验收统一保持未完成。
 
-原码细节与本项目实现缺口分开维护。本轮新增 [产品控件树/参数/事件](product-ui-details-current.md)、[共享控件合同](shared-ui-controls-current.md)、[应用逐端点细节](application-ui-details-current.md)、[全量样式/字体](ui-style-sources-current.md)；241 Lighting/Help已细读，但尚未据此改动Rust或将登记项改为已验收。继续需要所有产品各分支的业务数据流、完整picker/installer、最终CSS级联、动态状态生产者及当前实现逐项对照；新增语法收据不清除这些缺口。
+原码细节与本项目实现缺口分开维护。当前证据包括 [产品控件树/参数/事件](product-ui-details-current.md)、[共享控件合同](shared-ui-controls-current.md)、[应用逐端点细节](application-ui-details-current.md)、[全量样式/字体](ui-style-sources-current.md)；241 Lighting/Help已细读，但尚未据此改动Rust或将登记项改为已验收。继续需要所有产品各分支的业务数据流、完整picker/installer、最终CSS级联、动态状态生产者及当前实现逐项对照；新增语法收据不清除这些缺口。

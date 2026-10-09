@@ -1,9 +1,9 @@
 # 当前原代码全量逆向地图
 
-当前实现已整体分包，见 [workspace 架构](workspace-architecture-current.md) 和 [跨平台 HID 查询](cross-platform-hid-current.md)。原 Rust `src/` 保留为不参与编译的比较参考；厂商依据仍使用当前源。
+当前实现已整体分包，见 [workspace 架构](workspace-architecture-current.md) 和 [跨平台 HID 查询](cross-platform-hid-current.md)。旧 Rust `src/` 已从工作区删除；444 份文件的比较记录保留在 Git commit `dc7911e2327bc5efda679537552c86eace701296` 和 [原字节索引](reference-src-current.json)，不参与编译或厂商行为取证。
 
 
-本文是整个原项目的总入口：把宿主、独立应用、产品页面、middleware、原生插件、DLL 与服务分层后再连接起来。用户要求所有实现以原代码为依据；因此“文件取得”“声明解析”“调用链追通”“内部实现恢复”“本项目接入”和“运行验收”分别记录。不能把任一层的清单或成功解析当作全部原代码恢复。
+本文是整个原项目的总入口：把启动/退出、宿主、模块、后台服务、账户、网络、安全、存储、系统集成、安装更新、独立应用、产品页面、middleware 与原生件连接起来。所有实现必须有当前原代码依据；“文件取得”“声明解析”“调用链追通”“内部实现恢复”“本项目接入”和“运行验收”分别记录。不能把任一层的清单或成功解析当作全部原代码恢复。
 
 设备直连的下一层证据已进入 [DLL 内部与设备通信逆向](dll-device-communication-current.md)：对全部已取得的 58 产品 DLL、4 CommonDLL 和 19 Windows 原生插件逐文件核对字节、导出和内部指令，保存 57960 个分析图入口。入口与潜在路径不是完整函数语义。产品 1342 的 [二级 DLL 分发与报文](audio-mixer-dll-protocol-current.md) 已追到 37 项属性表、GetProcAddress 指针存取及四个 report helper，其他未知继续保留；[OpenLogi 参考](openlogi-device-communication-review.md) 仅提供架构对照，不作为 Razer 协议依据。
 
@@ -25,34 +25,62 @@
 
 生产JS通常是压缩后的真实发布代码。AST可恢复其模块、表达式和控制结构，但没有原始source map时不能声称恢复编译前TypeScript/JSX文件、原变量名或原注释。原字节保留为事实依据，解释性名称/伪码与原符号分开登记。
 
-## 全量目录的入口
+## 全程序范围与实现缺口
+
+下表同时包含有界面和无界面的功能。每项均需恢复调用者、参数、状态来源、返回消费、错误/取消、订阅与释放；“已索引”只表示能够定位原文。“未闭合”保留在全量范围内，不由路由、默认值、本地草稿或库名推定实现完成。
+
+| 功能域 | 当前原链证据 | 本项目实现与未闭合边界 |
+| --- | --- | --- |
+| 启动、命令行、环境与单实例 | [宿主](host-architecture-current.md) §3；`main.js`、`parseCmdParams`、`getAppHost`、`globalNodeVar` | `razer-app`/`razer-shell` 已有启动编排；官方参数、启动集合、恢复文件、单实例及失败重试尚未逐项等价 |
+| 窗口、页签、标题栏、休眠与恢复 | [窗口策略](host-window-policy-current-audit.md)、[窗口契约](display-window-contract.md) | 壳窗口与导航已局部实现；实际 WebContents 生命周期、休眠策略、焦点与运行几何未闭合 |
+| IPC、worker、异步请求与资源释放 | [FFI 主/子进程](host-ffi-current.md)、宿主 §5/9 | `razer-agent`/`razer-ipc`/`razer-service` 已有隔离请求；每种原通道的队列、超时、取消、退出 callback 与过期响应仍需逐项核对 |
+| 应用/模块注册、下载、安装与卸载 | [模块](module-registry-audit.md)、[模块状态](module-service-ui-current.md)、[应用端到端](application-end-to-end-current.md) | 注册和部分本地操作已有；真实安装资源缓存、包校验、安装/卸载服务及状态生产者未闭合 |
+| 账户、Guest、凭证、登录与退出 | 宿主 §6/10；`preload.js`、`getIdentityFeature`、`identityPipe`；[托盘](tray-ui-current.md) | 本地 Guest 展示不能代替认证；账户 API、凭证、安全存储、命名管道接收服务及登录/退出传播未闭合 |
+| 网络、代理、host/token、功能开关 | 宿主 §3/10；`request`、`useProxy`、`parseApplicationHostToken`、`getAppFeature` | 静态端点/开关已有原文；真实返回、离线重试、认证与条件激活未接成完整运行链；远端服务器内部源码未取得 |
+| 内存/窗口/键存储、配置与迁移 | 宿主 §2/7/10；`MemoryStorage`、`WindowStorage`、`KeyStorage`、`migrateProductionData`；[工作区](shell-workspace-current.md) | `razer-storage` 保存本项目草稿；官方 schema、作用域、变更事件、迁移与设备/引擎持久化必须分别实现 |
+| 主程序更新、重启与旧版本清理 | 宿主 §9；`mainSubFunction`、AIO、`relaunchWithLauncher`、`RzPowerTool.exe` | 已有包/版本来源；下载、校验、安装、恢复、清理工具内部及全部失败分支未闭合 |
+| 固件更新与配对 | [固件](firmware-update-current-audit.md)、[接收器](receiver-ui-current.md)、[多设备配对](multi-pairing-ui-current.md) | 部分 UI/本地状态已有；真实扫描、配对、固件写入、进度与完成/失败回调未实现等价链 |
+| 设备发现、身份、连接与热插拔 | [身份](device-identity-current-contract.md)、[跨平台 HID](cross-platform-hid-current.md) | USB/HID 和部分接收器查询已有；BLE、串口、网络、monitor 等分支、通知、重连及身份代际尚未全覆盖 |
+| 全部产品、配置与设备读写 | [产品目录](16-product-catalog.md)、[DLL 功能](dll-function-inventory.md)、[内部通信](dll-device-communication-current.md) | 331 产品有 UI 入口；源核实的部分查询及产品 182 两项直接写入已有 agent 路由，页面写事件尚未连接；全部能力/产品的协议与二进制语义未完成 |
+| 宏、映射、全局快捷键与输入服务 | [Macro](macro-ui-current.md)、[快捷键](shortcuts-ui-current.md)、[服务机器码](host-service-machine-code-current.md) | 本地编辑及部分录制/服务接口已有；完整映射协议、回调、播放、设备持久化和输入生命周期未闭合 |
+| 灯光、Studio、IoT、LampArray 与触觉 | [Studio](studio-ui-current.md)、[Aether](aether-ui-current.md)、宿主 `lighting/IoT/LampArray/wss` | 部分本地编辑/控件已有；帧引擎、区域、取色、网络发现、写入/确认及触觉服务未全接入 |
+| 系统音频、THX、Mixer、相机与媒体 | [应用原生链](application-native-current.md)、[Mixer 协议](audio-mixer-dll-protocol-current.md)、[相机](camera-presentation-current-audit.md)、[音频 Demo](audio-demo-current-audit.md) | 部分枚举接口、控件和报文 helper 已追踪；COM/驱动、DSP 字段、音视频 transport、编码与播放尚未闭合 |
+| 托盘、Widgets、通知与深链 | [托盘](tray-ui-current.md)、[Widgets](tray-widgets-current.md)、宿主 §8/10 | 左/右键界面局部实现；真实账户、通知/小组件发布者仍缺；通知 HMAC key、safeStorage、URI 验证与消费链未完整接入 |
+| 操作系统、服务控制、兼容与安全 | 宿主 §9/10；`serviceFunction`、`exeCompatibility`、`security`、`RzMutx` | 平台适配已有独立边界；EXE 服务启动/停止、设备安全、兼容检测、互斥及系统事件需分别恢复，不能由 DLL 名称替代 |
+| 语言、字体、资源、布局与交互状态 | [样式/字体](ui-style-sources-current.md)、[共享控件](shared-ui-controls-current.md)、[资源](resources-current.md) | `razer-i18n`/`razer-assets`/`razer-widgets` 已分工；缺失素材、动态级联、全部条件、键盘/焦点、动画及缩放验收未完成 |
+| 日志、诊断、telemetry 与错误恢复 | 宿主 `useLogger/extraInfo/memory_telemetry/sentry`；[设备诊断](device-changes-native.md) | 本项目已有诊断记录；官方采集、错误格式、过滤/上报策略和完整恢复路径未逐项等价 |
+| 第三方依赖、原生插件、辅助进程与卸载退出 | [ASAR 收据](evidence/host-full-asar-current-evidence.json.zip)、[宿主](host-architecture-current.md) §9–11 | 取得文件与依赖清单独立登记；`.node`/DLL/EXE 内部、引擎/驱动/远端依赖及整体退出顺序未全部恢复；不是仅审查第一方页面 |
+
+完整验收须把上述各域连成真实流程，包括部分失败、断连、身份变化、超时、取消、隐藏/卸载和迟到事件。当前无任何“全程序功能等价”验收结论；静态检查通过也不证明硬件或窗口行为成功。
+
+## 全量证据入口
 
 | 层级 | 全量机器记录与可读契约 | 查找方式 |
 | --- | --- | --- |
 | 所有当前本地源文件 | [字节与 manifest 摘要](full-source-corpus-current-evidence.json)、[完整压缩证据](full-source-corpus-current-evidence.json.gz) | 摘要 `detail` 指向完整JSON；其中 `files[].path/sha256/http`、`manifests[].targets/statuses`、`issues` 与 `absent_bodies` 可逐文件查找 |
 | 宿主、窗口、IPC、账户、存储、更新 | [宿主全链](host-architecture-current.md)、[AST 文件/锚点](host-architecture-current-evidence.json) | 模块路径、原方法、输入/输出、生命周期及未追通边界 |
 | 宿主通用FFI与SysUtils实际调用层 | [通道/参数/回调/错误/退出](host-ffi-current.md)、[原文证据](host-ffi-current-evidence.json) | 当前Main/Sub、实际legacy注入、ffi-napi-rz依赖；ready与设备状态、FreeFFI与显式卸载分别记录 |
-| 完整宿主ASAR和原生addon本体 | [完整提取收据](host-full-asar-current-evidence.json)、[来源与差异](current-host-version-audit.md) | 10,076条目含node_modules；原生unpacked的metadata差异明确保留 |
-| middleware缺失脚本补取 | [完整取得状态](middleware-source-acquisition-current.md)、[逐文件结果](middleware-source-acquisition-current.json) | 固定331份webpackManifest、只补原声明文件；每产品URL/hash/错误/断点独立保存 |
+| 完整宿主ASAR和原生addon本体 | [完整提取收据](evidence/host-full-asar-current-evidence.json.zip)、[来源与差异](current-host-version-audit.md) | 10,076条目含node_modules；原生unpacked的metadata差异明确保留 |
+| middleware缺失脚本补取 | [完整取得状态](middleware-source-acquisition-current.md)、[逐文件结果](evidence/middleware-source-acquisition-current.json.zip) | 固定331份webpackManifest、只补原声明文件；每产品URL/hash/错误/断点独立保存 |
 | middleware全语法与模块候选 | [语法摘要](middleware-code-current-summary.json)、[完整索引](middleware-code-current-evidence.json.gz) | 28,931声明JS路径、28,304独立内容全部Acorn解析；模块/require/lazy/action均为带源范围的结构候选 |
 | 产品身份、导航、根和独立模式 | [产品目录](16-product-catalog.md)、[注册审计](product-registration-audit.md) | PID、edition、原类别、源码 owner、displayMode、导航对象 offset |
-| 产品逐页组件、状态及命令候选 | [产品页面链](all-product-page-chains-current.md)、[机器索引](all-product-page-chains-current.json) | 独立页面身份与组件引用；静态调用和未解析分支分开 |
-| 产品页面内部控件、子项顺序与动作 | [页面细节](product-ui-details-current.md)、[机器索引](product-ui-details-current.json) | 逐组件 JSX/createElement、动态class/style/props、children/key、父条件、事件及局部声明；代表页另附人工语义，候选不等于运行DOM |
-| 全量逐页语义批次 | [逐页批次](product-page-semantic-batches-current.md)、[机器索引](product-page-semantic-batches-current.json) | 331产品/1452页逐页保留根、UI、事件、状态、条件、循环和graph unresolved；所有页面partial，不能把静态候选视为service/DLL闭合 |
-| 共享控件交互和调用方 | [控件细节](shared-ui-controls-current.md)、[原文证据](shared-ui-controls-current.json) | slider/number/dropdown/profile/tab/modal/tooltip的实际defaults、键鼠、校验与caller条件；跨产品复用与未审变体分开 |
+| 产品逐页组件、状态及命令候选 | [产品页面链](all-product-page-chains-current.md)、[机器索引](evidence/all-product-page-chains-current.json.zip) | 独立页面身份与组件引用；静态调用和未解析分支分开 |
+| 产品页面内部控件、子项顺序与动作 | [页面细节](product-ui-details-current.md)、[机器索引](evidence/product-ui-details-current.json.zip) | 逐组件 JSX/createElement、动态class/style/props、children/key、父条件、事件及局部声明；代表页另附人工语义，候选不等于运行DOM |
+| 全量逐页语义批次 | [逐页批次](product-page-semantic-batches-current.md)、[机器索引](product-page-semantic-batches-current.json.gz) | 331产品/1452页逐页保留根、UI、事件、状态、条件、循环和graph unresolved；所有页面partial，不能把静态候选视为service/DLL闭合 |
+| 共享控件交互和调用方 | [控件细节](shared-ui-controls-current.md)、[原文证据](evidence/shared-ui-controls-current.json.zip) | slider/number/dropdown/profile/tab/modal/tooltip的实际defaults、键鼠、校验与caller条件；跨产品复用与未审变体分开 |
 | 产品样式与资源 | [页面样式链](all-product-layout-chains-current.md) | 挂载class到当前CSS规则/资源；动态class与层叠未知保留 |
-| 全页面样式加载、字体和基础元素 | [样式来源](ui-style-sources-current.md)、[原文证据](ui-style-sources-current.json) | 353份HTML的style/link顺序、2110处manifest CSS引用、font-face/根与元素规则/at-rule；预加载、异步声明与最终级联分开 |
+| 全页面样式加载、字体和基础元素 | [样式来源](ui-style-sources-current.md)、[原文证据](evidence/ui-style-sources-current.json.zip) | 353份HTML的style/link顺序、2110处manifest CSS引用、font-face/根与元素规则/at-rule；预加载、异步声明与最终级联分开 |
 | 独立应用 | [应用目录](17-application-catalog.md)、[应用入口链](all-application-chains-current.md)、[机器索引](all-application-chains-current.json) | route → HTML → manifest → webpack 入口；404 不作空应用 |
-| 公共与独立应用页面内部细节 | [应用细节](application-ui-details-current.md)、[原文证据](application-ui-details-current.json) | 控件参数/顺序/条件/事件、来源样式及人工分支审读；22 HTML与24端点的未知分别记录 |
+| 公共与独立应用页面内部细节 | [应用细节](application-ui-details-current.md)、[原文证据](evidence/application-ui-details-current.json.zip) | 控件参数/顺序/条件/事件、来源样式及人工分支审读；22 HTML与24端点的未知分别记录 |
 | 应用端到端链路 | [端到端说明](application-end-to-end-current.md)、[端到端证据](application-end-to-end-current.json) | 24端点从UI锚点到bridge/IPC、host action、FFI/service/native边界、返回与未闭合错误/清理；全部保持partial |
-| 全应用原生与外部进程调用者 | [逐应用语义](application-native-current.md)、[全量原文](application-native-current-evidence.json) | 755 JS中4789显式边界位置、10597源码收据、23人工锚点；THX/Updater/Ring/Studio/Alexa/FW，bundle共享类与实际初始化分开 |
+| 全应用原生与外部进程调用者 | [逐应用语义](application-native-current.md)、[全量原文](evidence/application-native-current-evidence.json.zip) | 755 JS中4789显式边界位置、10597源码收据、23人工锚点；THX/Updater/Ring/Studio/Alexa/FW，bundle共享类与实际初始化分开 |
 | 独立应用DLL官方资源来源 | [当前调用链与缺口](application-native-current.md)、[2026-10-09元数据证据](application-resource-metadata-current-evidence.json) | 12份官方JSON/XML响应；旧appcast/403与安装资源缓存分开，不据此称已取得最新稳定DLL |
 | Virtual Ring Light独立原生/页面链 | [语义解释](ring-light-ui-current.md)、[原文锚点](ring-light-current-evidence.json) | 五种hash页面、控制盘与原生ring、授权、设置、本地存储、FFILibrary声明；仅部分语义恢复 |
 | 托盘左右键、完整Widgets与通知分支 | [当前托盘契约](tray-ui-current.md)、[语义原文](tray-semantic-current-evidence.json) | 135条原文、11组语义合同；宿主菜单/点击、实际账户与安装条件、六种widget和storage动作，后端发布者尚未穷尽 |
 | 接收器页面深读（源产品241） | [接收器契约](receiver-ui-current.md)、[Pairing原文](receiver-241-semantics-current-evidence.json)、[Lighting/Help原文](receiver-lighting-help-current-evidence.json) | 源样本的readiness、单双绑定/在线/轮询限制、配对状态机/HID；Lighting三卡/八效果及Help两列/复制/固件/确认，实际flags与共享分支分开 |
 | DLL、插件、辅助程序及加载链 | [原生件总表](dll-function-inventory.md)、[当前读取契约](dll-readonly-inventory.md) | library → manifest 产品归属 → loader/ABI → callsite/session → 实际 PE 文件 |
 | caller传入DLL的实际实例与工厂 | [逐类/参数语义](native-factory-current.md)、[875作用域完整证据](native-factory-current-evidence.json.gz)、[摘要](native-factory-current-summary.json) | 330产品/28924声明JS；329直接实例链、545条件工厂链；3886旧Hue另有独立链已闭合到manager/init/event，运行资源值与feature激活仍分项未知 |
-| 3886旧Hue实际调用链 | [3886 Hue契约](native-3886-legacy-hue-current.md)、[原文证据](native-3886-legacy-hue-current-evidence.json) | C6→P2→philipsHueMgr/CX→installedResources精确name+usedBy筛选→path/init→registerHueEvent；hasDll/filePath/DLL身份/返回值仍属运行时未知 |
+| 3886旧Hue实际调用链 | [3886 Hue契约](native-3886-legacy-hue-current.md)、[原文证据](evidence/native-3886-legacy-hue-current-evidence.json.zip) | C6→P2→philipsHueMgr/CX→installedResources精确name+usedBy筛选→path/init→registerHueEvent；hasDll/filePath/DLL身份/返回值仍属运行时未知 |
 | 宿主服务 DLL 函数正文 | [读链伪码与解释](host-service-machine-code-current.md)、[机器码证据](host-service-machine-code-current-evidence.json) | 导出RVA → thunk/虚表 → 任务closure →服务线程；实际函数正文覆盖单列 |
 | 本项目实现与缺口 | [产品覆盖](native-product-coverage.md)、[缺口](remaining-ui-work.md)、[修复登记](ui-fix-registry.json) | 源链和 Rust 接入分别看；有路由不算 UI 完成 |
 
@@ -135,11 +163,11 @@ flowchart TD
 | lighting / IoT / THX / 相机 / 固件升级 | 各自专用引擎 | 分发编号、数据buffer、句柄、worker/编码/网络/服务、写入权限与完成回调 |
 | RzPowerTool / Security / EngineMon 等 EXE | 辅助进程 | spawn 参数、stdio/退出状态、进程生命周期；不能计作 DLL 导出 |
 
-读取操作也可能触发 DllMain、Initialize、订阅和服务会话，不能称“无副作用”。本轮只静态逆向，不加载任何原生件。源码中的 setter/mutation仍整理到链路表，但本项目 DLL 写回后置；UI操作、本地草稿与写回边界见 [读取契约](dll-readonly-inventory.md)。
+读取操作也可能触发 DllMain、Initialize、订阅和服务会话，不能称“无副作用”。本轮只静态逆向，不加载任何原生件。查询、setter/mutation、订阅及退出分别整理到链路表。当前 Rust 查询与 DLL 服务接口见 [读取契约](dll-readonly-inventory.md)，两项直接 HID 写入的协议/路由及未接入页面见 [写入契约](device-write-current.md)。
 
 全量middleware与5个host包装器声明审计覆盖3238个源文件、48种逻辑库、762个唯一静态归属候选签名，另有4项签名冲突及2332个未归属条目/20组。检测到的875个init直接接受caller DLL参数的作用域已隔离为未确认，不能用默认PE同名导出补归属。该检测不穷尽动态表达式与跨类传播；48库也不覆盖所有独立应用的旧FFILibrary路径。Virtual Ring Light已另按实际无参init调用追到fallback、保存getProc编码冲突与返回消费边界。
 
-这875个输入作用域现逐一补了当前init/导出正文，向调用侧追到329条直接实例/参数链（IoT154、audio capture175）及545条条件工厂/存储链（ASRock154、Hue v2 154、THX237）；1个旧单文件Hue实际调用方仍未闭。安装资源getter、installedResources常量键、name/usedBy筛选与userDataDir/Apps/filePath拼接有各自原文。computed factory的真实索引/导出/async return、嵌套字段赋值、跨模块别名和instanceof门控分别保留；构造器存在、条件激活、缓存实际返回和DLL加载成功仍不能混为同一结论。未将新链路强写进原762签名归属或Rust资产。
+这875个输入作用域现逐一补了当前init/导出正文，向调用侧追到329条直接实例/参数链（IoT154、audio capture175）及545条条件工厂/存储链（ASRock154、Hue v2 154、THX237）；1个单文件Hue实际调用方已由 [3886 专项链路](native-3886-legacy-hue-current.md) 单独追踪；通用工厂索引仍保留该未解记录。安装资源getter、installedResources常量键、name/usedBy筛选与userDataDir/Apps/filePath拼接有各自原文。computed factory的真实索引/导出/async return、嵌套字段赋值、跨模块别名和instanceof门控分别保留；构造器存在、条件激活、缓存实际返回和DLL加载成功仍不能混为同一结论。未将新链路强写进原762签名归属或Rust资产。
 
 本轮新追踪 mapping/simple 两库的8个导出与100段机器码。`simpleGetVersionInfo` → apps_service_thread → IO线程、`simpleEnumerateAudioDevices` → audio_service_thread、`getGlobalMode` → device_mode_service_thread，均经过任务与回调，不在导出入口同步返回硬件值。`getGlobalShortcuts` 的任务闭包有 `virtualKey/modifiers/argument` JSON 键证据；模式序列化追出 `hypershift`、`otfs` 仅true时出现、非空 `globalmode` 及记录字段，timeTick从record qword转无符号十进制文本后交JSON插入，原始单位/时钟仍未知。音频最终枚举停在动态audio实例虚表，不把字符串helper当枚举实现。完整序列化、线程退出和其他库正文仍须逐节点恢复，见 [读链文档](host-service-machine-code-current.md) 的RVA表与未知边界。
 

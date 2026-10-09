@@ -4,7 +4,7 @@
 
 ## 全量静态范围
 
-依据仍为 2026-10-02 固定的当前产品/应用源码，本轮没有重新请求所有线上页面。维护工具为 `tools/audit-ui-style-sources-current.cjs`；[完整证据](ui-style-sources-current.json) 持有每份 HTML/manifest/CSS 的实际字节 SHA-256、UTF-16 原文区间、选择器、条件与声明顺序。没有读取旧前端或旧宿主目录。
+依据仍为 2026-10-02 固定的当前产品/应用源码，本轮没有重新请求所有线上页面。维护工具为 `tools/audit-ui-style-sources-current.cjs`；[完整证据](evidence/ui-style-sources-current.json.zip) 持有每份 HTML/manifest/CSS 的实际字节 SHA-256、UTF-16 原文区间、选择器、条件与声明顺序。没有读取旧前端或旧宿主目录。
 
 | 内容 | 已提取范围 |
 | --- | ---: |

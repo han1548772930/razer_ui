@@ -1,6 +1,6 @@
 {
   "method": "Acorn lexical resolution of mounted source components; no vendor execution",
-  "generator_sha256": "b54ae3e27f9d343730abb3decaff88e3d30ec963358139a32e4a3e0e0dbd9962",
+  "generator_sha256": "6afd5ce1abfa0ab653be8fa354a0639997651e58be44fa1aa3c0356cde70988c",
   "resolver_sha256": "fb74171c7186a5cb1b3db2b2dc64bf99c259e9cccc964cd9db7aa362c3d688f8",
   "products": [
     {

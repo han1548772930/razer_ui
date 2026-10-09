@@ -2,7 +2,7 @@
 
 本页把22个实际HTML应用的控件、条件、原回调与样式来源展开，补充 [应用结构链](all-application-chains-current.md) 和 [应用native链](application-native-current.md)。范围还含两个无当前HTML的登记端点。来源保持2026-10-02固定的当前生产语料，本轮2026-10-09仅静态读取，没有运行应用、厂商JS、DLL、构建或测试，也没有修改Rust实现。
 
-[独立机器证据](application-ui-details-current.json)保留165个应用内UI来源文件的18,432个JSX/createElement候选、3,619个事件属性、23,420条与字面class/基础元素匹配的CSS、全部所遇font-face原文、51个人工语义锚点和475段已逐字节重验的既有细节原文。每段收据都有原文件SHA-256、UTF-16开始/结束区间和片段SHA-256；CSS条件与声明顺序保留。此前旧式 `Object(jsx)` 与现代 `(0,jsx)` 分别按AST解包，不因CRA编译形式漏掉Natalie页面。
+[独立机器证据](evidence/application-ui-details-current.json.zip)保留165个应用内UI来源文件的18,432个JSX/createElement候选、3,619个事件属性、23,420条与字面class/基础元素匹配的CSS、全部所遇font-face原文、51个人工语义锚点和475段已逐字节重验的既有细节原文。每段收据都有原文件SHA-256、UTF-16开始/结束区间和片段SHA-256；CSS条件与声明顺序保留。此前旧式 `Object(jsx)` 与现代 `(0,jsx)` 分别按AST解包，不因CRA编译形式漏掉Natalie页面。
 
 这些数字是源码索引数量：共享控件、副本、SVG与未挂载分支都可能在其中。子控件记录的是原调用顺序；CSS、portal或flex可改变实际视觉顺序。回调属性不等于独立业务功能，字符串class匹配不等于浏览器computed style。**完整UI语义完成数仍为0**。本页不复核本地Rust是否符合这些来源，也不把已有本地草稿计为原设备保存。
 
@@ -105,4 +105,4 @@ Feedback的完整ps类保留分类/校验/提交中disabled、日志确认、错
 
 维护工具 [audit-application-ui-details-current.cjs](../../tools/audit-application-ui-details-current.cjs) 的 `--check` 重读当前源、验证应用图/HTML/CSS hash、全部片段及既有细节原文，并对比独立JSON。它不运行React、WebView、GPUI或DLL。机器记录的 `file_details.ui_calls` 可查每个控件props、条件祖先和子项次序，`semantic_anchors` 查完整人工作用域，`applications.css` 查selector/条件/原声明；动态class、props spread、未解析label、跨iframe/广播对端仍需沿引用展开。
 
-接下来仍要逐页把原点击/输入→state/reducer→host/native/网络→失败/取消→卸载闭合；每种displayMode、popup及产品能力不能被24端点表替代。本页所列UI编辑/增删/Apply/Save/Cancel全部继续在接入范围；本地draft、host偏好、外部文件和设备/服务DLL持久化须分别标明。只有设备/服务DLL写回后置，不允许删掉UI操作或用空集合/计时器/source stub伪造真实成功。
+接下来仍要逐页把原点击/输入→state/reducer→host/native/网络→失败/取消→卸载闭合；每种displayMode、popup及产品能力不能被24端点表替代。本页所列UI编辑/增删/Apply/Save/Cancel全部继续在接入范围；本地draft、host偏好、外部文件和设备/服务DLL持久化须分别标明。设备/服务 DLL 写回仍有实现缺口；UI 操作、提交响应与真实状态均需核实，不能用空集合/计时器/source stub 伪造成功。

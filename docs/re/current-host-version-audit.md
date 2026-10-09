@@ -47,6 +47,6 @@
 
 本次使用已提取的当前 4.0.827 文件，重新建立 [host-architecture-current.md](host-architecture-current.md) 与 [静态机器证据](host-architecture-current-evidence.json)：112 个 JS/CJS 中的 106 个第一方文件全部静态解析，另 6 个明确第三方文件保留 hash/排除理由。补充启动、窗口/页签、18 个 IPC 入口、Guest/账户 named pipe、状态发布、托盘左右键、服务管理、升级收尾与退出链。静态文件索引和关键链语义审阅不等于已恢复全部函数或 DLL 内部原始源码；本次没有重新抓取线上版本，也没有执行宿主、DLL、安装器或测试。
 
-此前的210文件是“全部非node_modules”的提取范围，不是完整ASAR。当前已用 [extract-current-host-asar.py](../../tools/extract-current-host-asar.py) 补取全部 **10,076** 个ASAR条目（10,063 packed与13 unpacked），包含依赖源码和12个原生addon本体；原有文件逐字节比较，不覆盖冲突。完整 [提取收据](host-full-asar-current-evidence.json) 保留每条路径、hash、size与integrity结果。仍使用上文已验证的同一官方包和ASAR，不执行其中代码。
+此前的210文件是“全部非node_modules”的提取范围，不是完整ASAR。当前已用 [extract-current-host-asar.py](../../tools/extract-current-host-asar.py) 补取全部 **10,076** 个ASAR条目（10,063 packed与13 unpacked），包含依赖源码和12个原生addon本体；原有文件逐字节比较，不覆盖冲突。完整 [提取收据](evidence/host-full-asar-current-evidence.json.zip) 保留每条路径、hash、size与integrity结果。仍使用上文已验证的同一官方包和ASAR，不执行其中代码。
 
 10,063个packed条目均满足ASAR字节及分块integrity；unpacked JS也匹配。12个unpacked addon的官方archive字节比ASAR元数据大，且与元数据integrity不同，差异原样登记；不截断、不声称哈希匹配。这种差异可能来自打包后签名，但此提取检查不单独证明原因；本体来源由完整官方内层archive SHA-256及实际条目保证。`--check` 对packed重读ASAR，对unpacked重核当前提取字节与收据。全部依赖取得也不代表逐函数语义或整个Electron框架逆向已经完成。

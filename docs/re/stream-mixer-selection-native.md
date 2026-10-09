@@ -32,7 +32,7 @@
 
 UI 文案明确为“本地草稿”，不宣称保存成功或设备已启用；本批未新增设备写请求，也不把官方 reducer 的 pending/广播队列伪造成成功响应。
 
-## 只读数据未接通 / 写回后置
+## 真实观察与设备写入缺口
 
 当前已确认的观察动作是 `MW_UPDATE_ACTIVE_STREAM_MIXER_TO_UI`（payload 投影为 active）、`MW_SET_PLAYBACK_DEVICES_TO_UI`（payload.playbackDevices → 名称列表）和 `MW_SET_PLAYBACK_MIX_DEVICE_TO_UI`（payload → 当前名称）。`StreamMixerObservation` 表示这些投影，不表示 DLL ABI。
 

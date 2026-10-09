@@ -2,7 +2,7 @@
 
 2026-10-03 静态核验。注册 331 个已有官方 UI 入口的 ID，其中 321 个在上一轮清单中尚未注册。此数字是产品 ID 数，不是独立型号数、已完成界面数或可操作硬件数。
 
-维护工具 [generate-product-registry.cjs](../../tools/generate-product-registry.cjs) 从 [product-catalog.json](product-catalog.json) 读取导航，通过当前维护中 `inventory-razer-interfaces.cjs` 的扫描器 SHA-256 核对原始 AST 清单，并重新核对每份导航源码的 SHA-256。工具用 Acorn 静态解析 363 个导航数组及 1452 个页面对象，核对每页实际 `component` 或 `renderComponent` 源表达式；从未执行下载的代码。
+维护工具 [generate-product-registry.cjs](../../tools/generate-product-registry.cjs) 从 [product-catalog.json](evidence/product-catalog.json.zip) 读取导航，通过当前维护中 `inventory-razer-interfaces.cjs` 的扫描器 SHA-256 核对原始 AST 清单，并重新核对每份导航源码的 SHA-256。工具用 Acorn 静态解析 363 个导航数组及 1452 个页面对象，核对每页实际 `component` 或 `renderComponent` 源表达式；从未执行下载的代码。
 
 生成的 [逐 ID 记录](product-registration-audit.json) 和 [Rust 注册表](../../crates/razer-catalog/src/registry_data.rs) 保留产品 ID、官方名称、原分类、edition、原导航顺序、原始页面 ID、翻译键/字面量、组件表达式、条件 class、源码路径和偏移。连接别名和父产品关系完整保存在逐 ID 记录，不合并成同一型号。没有 UI 入口的另外 265 个候选 ID 未被伪造成可用界面。
 

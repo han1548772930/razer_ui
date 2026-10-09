@@ -4,7 +4,7 @@
 
 ## 来源与完整范围
 
-- [全目录 MW 清单](middleware-device-bindings-current.json)：官方目录与已有当前 UI 共 332 个产品入口；329 个已解析导出的 DeviceInfo（含 105→104 的源别名）。162 的当前源内联声明 productId=163；3886 使用内联身份对象；这两项尚未证明导出绑定，单独保留原文。680 的官方 MW HTML/manifest 返回 404，缺源没有用旧版替代。
+- [全目录 MW 清单](evidence/middleware-device-bindings-current.json.zip)：官方目录与已有当前 UI 共 332 个产品入口；329 个已解析导出的 DeviceInfo（含 105→104 的源别名）。162 的当前源内联声明 productId=163；3886 使用内联身份对象；这两项尚未证明导出绑定，单独保留原文。680 的官方 MW HTML/manifest 返回 404，缺源没有用旧版替代。
 - [宿主当前链](device-identity-current-evidence.json)：4.0.827 的 `checkAllRzDevice` 分别合并 USB、BLE、IoT、monitor；`getRazerDevices` 再更新 HID。`HD/_checkUSBDetail` 区分 product/rep/dongle/ble/wired/xbox/PS/monitor 别名。8 项 AST 均附当前路径、SHA-256、区间和原文。
 - [完整身份目录](discovery-catalog-current-evidence.json)：330 行 AvailableDevices 原样投影，不将数组 dongleId 误当标量匹配；歧义保留。目录本身不产生连接观察。
 - [原生 USB 证据](usb-native-current-evidence.json)：当前 detection.node 的 SHA-256 和 USB_DEVICE GUID 静态核验；它没有独立 C 枚举导出。本地使用 Windows SetupAPI，不能称为调用厂商 DLL 的独立枚举 API。HID Feature 收发仍使用已核验原版 HID.node C 导出。

@@ -1,16 +1,18 @@
 # DLL 与设备只读接入当前契约
 
+查询接口与状态观察保留独立契约；`DeviceWrite`/`HidNodeWrite` 通过跨平台 HID 接入两项已核实的直接设备设置，当前覆盖和消费者缺口见 [直接写入契约](device-write-current.md)。开发仅静态核对 DLL 与 wrapper，不执行 DLL 或硬件命令。
+
 通用宿主加载/返回层新增 [当前FFI语义](host-ffi-current.md) 与 [原文证据](host-ffi-current-evidence.json)：通道复用、参数展开、pointer释放、async错误、子进程ready/超时/退出、SysUtils独立legacy实例均按实际源码区分；它不证明产品native函数已执行或设备读取成功。
 
-2026-10-09 全原代码链路补充：[当前宿主与 middleware DLL/原生组件链路](dll-function-inventory.md)、[逐库/逐产品机器记录](native-chains-current-evidence.json)、[本次新逆向的宿主服务函数正文](host-service-machine-code-current.md)。本文件仍登记 Rust 接入契约，不以源码函数存在、静态 ABI 声明或机器码逆向代替设备运行结果。全量文档清单解析 3238 份 FFI JS，得到 48 个逻辑库、762 个唯一静态归属候选声明、4 个签名冲突、58 份产品 DLL 和 4 份官方 CommonDLL；2332 个未归属条目按签名/原因合并为 20 组，包含 1 条缺 manifest 记录。Rust 消费的应用资产仍是 963 声明/369 来源旧快照；差异包含新增扫描与旧归属被降为 unknown，此轮未覆盖资产，新增静态证据不表示新增运行时接入。
+2026-10-09 全原代码链路补充：[当前宿主与 middleware DLL/原生组件链路](dll-function-inventory.md)、[逐库/逐产品机器记录](evidence/native-chains-current-evidence.json.zip)、[本次新逆向的宿主服务函数正文](host-service-machine-code-current.md)。本文件仍登记 Rust 接入契约，不以源码函数存在、静态 ABI 声明或机器码逆向代替设备运行结果。全量文档清单解析 3238 份 FFI JS，得到 48 个逻辑库、762 个唯一静态归属候选声明、4 个签名冲突、58 份产品 DLL 和 4 份官方 CommonDLL；2332 个未归属条目按签名/原因合并为 20 组，包含 1 条缺 manifest 记录。Rust 消费的应用资产仍是 963 声明/369 来源旧快照；差异包含新增扫描与旧归属被降为 unknown，此轮未覆盖资产，新增静态证据不表示新增运行时接入。
 
 本文对应当前 Rust 请求、消费者和静态源码证据。当前官方 host 为静态提取的 4.0.827，身份见 [host 版本审计](current-host-version-audit.md)；产品读取参数来自当前 middleware。文件存在、导出存在、能力登记、查询代码存在和硬件读取成功不能互相替代。
 
-开发验证仅静态读取源码、wrapper、PE 与资源，并允许格式化及 `cargo check --locked --all-targets`；不运行应用、worker、测试、安装器、下载的 JavaScript 或 DLL。以下实现状态不表示已执行 native 验收。UI 编辑、增删改、Apply/Save 和明确标注的本地草稿仍在当前范围；设备/服务写回与 DLL 持久化后置。
+开发验证仅静态读取源码、wrapper、PE 与资源，并允许格式化及 `cargo check --locked --all-targets`；不运行应用、worker、测试、安装器、下载的 JavaScript 或 DLL。以下实现状态不表示已执行 native 验收。UI 编辑、增删改、Apply/Save、本地草稿、设备/服务读写与持久化分别记录。当前 DLL 接口及直接写入的覆盖以具体请求和消费者为准；本地草稿不能作为设备确认。
 
-原生件全量清单见 [原生件功能总表](dll-function-inventory.md) 及 [全量文档清单](native-library-full-current-inventory.json)。应用资产 `assets/data/native-library-inventory.json` 是旧接入快照，不能继续声称覆盖此次全量文件集；身份事实由 `tools/prepare-discovery-catalog.py` 合并逐产品 middleware `DeviceInfo` 生成。HID 接口选择按源码只比对 `vendorId`/`productId`/`deviceContainerId`/`interface`，Feature 长度只作偏好排序与实际观察值，不再作为拒绝条件。
+原生件全量清单见 [原生件功能总表](dll-function-inventory.md) 及 [全量文档清单](evidence/native-library-full-current-inventory.json.zip)。应用资产 `assets/data/native-library-inventory.json` 是旧接入快照，不能继续声称覆盖此次全量文件集；身份事实由 `tools/prepare-discovery-catalog.py` 合并逐产品 middleware `DeviceInfo` 生成。HID 接口选择按源码只比对 `vendorId`/`productId`/`deviceContainerId`/`interface`，Feature 长度只作偏好排序与实际观察值，不再作为拒绝条件。
 
-2026-10-09 进一步追回 [875 个动态 DLL init 作用域的实际工厂/参数链](native-factory-current.md)：329 直接实例/实参链、545 带条件 ASRock/Hue/THX 工厂或跨模块存储链、1 个旧单文件 Hue caller 未闭。原版 selector 读取 `installedResources` 缓存后按 name、usedBy、filePath 传入 init，不能用产品 manifest 或默认 DLL 字面量代替实际响应。source caller 路径空值分支、共享代码是否激活和运行库身份分别登记；这批新证据没有改变当前 Rust 接入契约或伪造 DLL 成功。
+2026-10-09 进一步追回 [875 个动态 DLL init 作用域的实际工厂/参数链](native-factory-current.md)：329 直接实例/实参链、545 带条件 ASRock/Hue/THX 工厂或跨模块存储链、1 个单文件 Hue caller 已另有专项追踪，见 [3886 链路](native-3886-legacy-hue-current.md)。原版 selector 读取 `installedResources` 缓存后按 name、usedBy、filePath 传入 init，不能用产品 manifest 或默认 DLL 字面量代替实际响应。source caller 路径空值分支、共享代码是否激活和运行库身份分别登记；这批新证据没有改变当前 Rust 接入契约或伪造 DLL 成功。
 
 ## 请求、返回与消费者
 
@@ -30,7 +32,7 @@
 | `StopMacroRecording` | `stopMacroRecording`，保留回调至事件排空 | Macro actor；生命周期变更，停止错误不能冒充录制已结束 |
 | `MacroRecordingEvents` | 消费本地录制事件队列 | 本身不安装 native callback，也不是无状态快照 |
 | `SuspendMacroMappings` / `ResumeMacroMappings` | `disableMapping` / `enableMapping` | Macro 录制协调；临时改变服务映射状态，不是纯查询，也不等于设备宏持久化 |
-| `RegisterShortcut` | 安装 `setGlobalShortcutEventCallback`，再 `registerGlobalShortcut` | 注册/改变运行状态；后置写操作，未作为普通只读 UI 入口 |
+| `RegisterShortcut` | 安装 `setGlobalShortcutEventCallback`，再 `registerGlobalShortcut` | 注册/改变运行状态；与普通查询分开核对，实际消费者见快捷键契约 |
 | `UnregisterShortcut` | `unregisterGlobalShortcut` | 注销/改变运行状态，同上 |
 | `SubmitGlobalShortcutMappings` | `localStorageSetItem("synapseGlobalShortcuts", JSON({appEngine}))` | 原引擎存储写入；mappings/hash 形状检查不等于完整生成协议证明 |
 | `ShortcutEvents` | 本地队列最多取 512 项 | 不新增 DLL 调用；事件订阅只在 RegisterShortcut 路径安装 |
@@ -146,7 +148,7 @@ Dashboard 的 getWirelessDevices 另要求 isMultiPairingDevice、setupStatus=re
 
 catalog、resolve_path、EnginePaths 为文件系统/静态数据查询。EngineLibrary::load/discover、probe_engine/--probe 均加载 DLL，不是静态 PE 检查；导出名字不证明参数 ABI。SysUtilsNative 加载限制保留，旧探测经历不替代当前生命周期证据。
 
-[ffiLightingDriver.js](../../.ref/host-4.0.827/electron/modules/lighting/ffiLightingDriver.js) SHA-256 `6c47b657aaaf44d899b936ac6cf0fde6c1b5f0ff50c824c887f84b783cccc64c`。GetDllVersion 属性 673–699 为 char*()，FreeString540–571 为 void(pointer)，getDllVersion 方法 2141–2417 复制字符串后调用同库 FreeString。Startup468–487、Shutdown488–508、Configure509–539 分别为 void()、void()、char*(string)。version 有加载前提；startup/shutdown 为生命周期变更；configure/handshake 执行注册和模式命令，属于后置写操作。
+[ffiLightingDriver.js](../../.ref/host-4.0.827/electron/modules/lighting/ffiLightingDriver.js) SHA-256 `6c47b657aaaf44d899b936ac6cf0fde6c1b5f0ff50c824c887f84b783cccc64c`。GetDllVersion 属性 673–699 为 char*()，FreeString540–571 为 void(pointer)，getDllVersion 方法 2141–2417 复制字符串后调用同库 FreeString。Startup468–487、Shutdown488–508、Configure509–539 分别为 void()、void()、char*(string)。version 有加载前提；startup/shutdown 为生命周期变更；configure/handshake 执行注册和模式命令，属于状态变更，不能作为普通查询。
 
 RzLightingEngineApi、SysUtilsNative 完整方法 ABI、全局映射读取 schema、localStorageGetItem 对应完整映射读取路径、产品 profile/OLED/Studio LED/设备区域/固件专用查询仍需逐项当前证据。不能由 setter 反推 getter，或由路由/描述符声称 UI 及读取完成。backend::protocol 纯数据模型不等于设备 I/O；Windows 年份/版本/WDL 支持判断是系统查询，不属于 Razer DLL ABI。
 

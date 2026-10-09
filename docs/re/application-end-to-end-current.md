@@ -2,7 +2,7 @@
 
 This document records the static chain that can be proven from the current source snapshot: UI renderer → preload bridge → Electron main IPC → host service/native wrapper/DLL boundary → returned state and rendering. It is an index of source evidence, not a runtime trace. The source freeze is 2026-10-02; the audit was generated on 2026-10-09.
 
-The machine-readable record is [application-end-to-end-current.json](application-end-to-end-current.json), with the reproducible compressed copy [application-end-to-end-current.json.gz](application-end-to-end-current.json.gz). The generator is [audit-application-end-to-end-current.cjs](../../tools/audit-application-end-to-end-current.cjs). It reads the current UI semantic-anchor evidence and the current host 4.0.827 architecture/FFI evidence, then records exact source slices from `.ref/host-4.0.827/electron/preload.js` and `main.js`.
+The machine-readable record is [application-end-to-end-current.json](application-end-to-end-current.json); the identical compressed copy has been removed. The generator is [audit-application-end-to-end-current.cjs](../../tools/audit-application-end-to-end-current.cjs). It reads the current UI semantic-anchor evidence and the current host 4.0.827 architecture/FFI evidence, then records exact source slices from `.ref/host-4.0.827/electron/preload.js` and `main.js`.
 
 ## What is closed and what is not
 

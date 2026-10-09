@@ -96,7 +96,7 @@ GUI 页面、壳层、设置、Dashboard、托盘均不依赖 `razer-service` �
 
 ## 参考与验证
 
-原 [src/README.md](../../src/README.md) 目录保留 commit `dc7911e2327bc5efda679537552c86eace701296` 的 444 个文件，见 [字节记录](reference-src-current.json)。它是旧 Rust 比较副本，不是厂商证据，不参与编译，不应继续修改。厂商依据仍是 AGENTS.md 指定的现行 `.ref` 源码。
+当前仓库已删除旧 `src/` 目录，不恢复该目录。重构前的 444 个 Rust 文件保留在 Git commit `dc7911e2327bc5efda679537552c86eace701296`，见 [字节记录](reference-src-current.json)；静态检查核对 Git blob 或其精确 LF→CRLF 存档表示的 SHA；原索引中 443 份采用 Windows CRLF、1 份与 blob 字节一致，不恢复旧目录。它们是旧 Rust 比较副本，不是厂商证据，不参与编译。厂商依据仍是 AGENTS.md 指定的现行 `.ref` 源码。
 
 [迁移映射](workspace-relocation-current.json) 记录归属、拆分及最终指纹。维护工具和 Markdown 路径随实际迁移更新；历史实现指纹不表示新包重新完成了原功能审计。资源、源生成能力、语言、字体和 fixture 保留。通讯行为单独见 [跨平台 HID 契约](cross-platform-hid-current.md)。
 

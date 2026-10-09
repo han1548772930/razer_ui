@@ -1,6 +1,6 @@
 # 产品 3886 当前 Hue/native 单文件链路
 
-审计日期：2026-10-09。依据当前 `.ref/middleware/3886/main.df6f64c941b9efded61e.js` 的 Acorn AST 与实际字节哈希，未执行 vendor JS、应用或 DLL。机器证据见 [native-3886-legacy-hue-current-evidence.json](native-3886-legacy-hue-current-evidence.json)，生成器见 [audit-native-3886-legacy-hue.cjs](../../tools/audit-native-3886-legacy-hue.cjs)。
+审计日期：2026-10-09。依据当前 `.ref/middleware/3886/main.df6f64c941b9efded61e.js` 的 Acorn AST 与实际字节哈希，未执行 vendor JS、应用或 DLL。机器证据见 [native-3886-legacy-hue-current-evidence.json](evidence/native-3886-legacy-hue-current-evidence.json.zip)，生成器见 [audit-native-3886-legacy-hue.cjs](../../tools/audit-native-3886-legacy-hue.cjs)。
 
 ## 已闭合的静态链路
 

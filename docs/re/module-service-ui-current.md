@@ -34,7 +34,7 @@ Available Modules 使用本页 `ne` 的五成员及顺序：Alexa、Macro、link
 
 ## 仍需完成
 
-真实安装/卸载/固件服务快照生产者、完整重连更新和 beta/Armory 特性查询仍未连接。详情 `detail.srcImage` 缺经过验证的资源映射，保留源尺寸空区，不拿同 PID Dashboard 缩略图替代，也不假装 onError 已发生。尾部 `animated_startup_dotted_scaling.d5d9ac9c.svg` 仍缺；确认框 DOM 50ms 溢出滚动/帮助高度、部分 tooltip/按钮细节及实际字体、焦点、滚动、动画尚未验收。DLL 写回后置不等于免除 UI 操作及只读观察工作。
+真实安装/卸载/固件服务快照生产者、完整重连更新和 beta/Armory 特性查询仍未连接。详情 `detail.srcImage` 缺经过验证的资源映射，保留源尺寸空区，不拿同 PID Dashboard 缩略图替代，也不假装 onError 已发生。尾部 `animated_startup_dotted_scaling.d5d9ac9c.svg` 仍缺；确认框 DOM 50ms 溢出滚动/帮助高度、部分 tooltip/按钮细节及实际字体、焦点、滚动、动画尚未验收。UI 操作、观察与服务提交均需补齐真实调用链。
 
 ## 维护证据
 

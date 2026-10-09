@@ -42,7 +42,7 @@ busy防重复picker；关闭或Local/Cloud切换递增代际，迟到结果不�
 
 ## 剩余项
 
-导入应用到本地配置草稿、宏集合导入、完整产品规范化、官方envelope编码和文件落盘仍属于当前UI工作，不能划入DLL写回后置。Da的Snap Tap默认mode、dongle polling默认值需要真实DeviceInfo/DEFAULTPROFILE；Synapse3 SharedWorker迁移未实现。
+导入应用到本地配置草稿、宏集合导入、完整产品规范化、官方envelope编码和文件落盘仍有实现缺口；本地配置、外部文件和设备/引擎持久化分别核对。Da的Snap Tap默认mode、dongle polling默认值需要真实DeviceInfo/DEFAULTPROFILE；Synapse3 SharedWorker迁移未实现。
 
 Games非空正常/removed/missing卡片、详情/封面、安装程序列表/扫描/多选exe/url Browse/拖放、IOT子设备及editionName/图标、Last/Most Played仍缺真实输入或实现。现有DeviceGames关联订阅不替代全局安装目录。窄窗flex收缩、溢出导航、正常行高、通用Select过渡、特殊GAMEPAD菜单条件、删除框DOM溢出/额外高度、window-blur、焦点/IME/缩放/tooltip裁剪与运行视觉继续待验收。
 

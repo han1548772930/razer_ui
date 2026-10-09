@@ -223,6 +223,7 @@ impl NativeRuntime {
         match request {
             ServiceRequest::HidNodes
             | ServiceRequest::HidNodeRead { .. }
+            | ServiceRequest::HidNodeWrite { .. }
             | ServiceRequest::HidNodeReceiverStatus { .. } => {
                 bail!("便携查询必须由设备会话入口分派")
             }
@@ -264,6 +265,9 @@ impl NativeRuntime {
                 )
             }
             ServiceRequest::DeviceRead { target, kind } => device_reads::query(&target, kind),
+            ServiceRequest::DeviceWrite { target, setting } => {
+                device_reads::write(&target, &setting)
+            }
             ServiceRequest::NativeLibrarySnapshot {
                 library,
                 device_container_id,

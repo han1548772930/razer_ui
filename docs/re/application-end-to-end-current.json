@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source_freeze_date": "2026-10-02",
   "audit_date": "2026-10-09",
-  "generator_sha256": "9a4d3de1faefa5bf92f59a4a026f0486f3f0cc03876caa304d7ffdb29ef7a1da",
+  "generator_sha256": "f2f8972b9baded6264e7412884c5fcb320bed2a584a5f79c778b1b5f5883740d",
   "method": "Static endpoint chain map built from current UI semantic anchors plus exact host preload/main source slices and existing host architecture/FFI boundaries. No runtime execution.",
   "offset_unit": "UTF-16 JavaScript code units",
   "summary": {
@@ -808,6 +808,6 @@
     "Host service/native wrappers, remote APIs, device middleware and DLL internals remain separate source boundaries; no success is inferred from method names or default values.",
     "Local draft, host storage, app service, simple service, legacy FFILibrary and modern ffiPreload writes are tagged separately but are not runtime-confirmed here.",
     "Errors, cancellation and cleanup fields report source-observed branches and unresolved ownership, not tested behavior.",
-    "No endpoint is semantically complete; device/service DLL write-back remains deferred."
+    "No endpoint is semantically complete; device/service write APIs and returned-state consumers retain implementation gaps."
   ]
 }

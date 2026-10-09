@@ -1,10 +1,10 @@
 # 当前宿主与 middleware 原生组件、DLL 链路
 
-2026-10-09 重新核查。唯一宿主依据是 `.ref/host-4.0.827/`，产品依据是 `.ref/middleware/<productId>/` 的 HTTP 收据、manifest、AST 与指定 DLL 字节。旧计数、未重新审计的偏移和“全部 PE 导出均未检查”等结论已撤销。逐库、逐产品、逐函数详单见 [完整机器记录](native-chains-current-evidence.json)。
+2026-10-09 重新核查。唯一宿主依据是 `.ref/host-4.0.827/`，产品依据是 `.ref/middleware/<productId>/` 的 HTTP 收据、manifest、AST 与指定 DLL 字节。旧计数、未重新审计的偏移和“全部 PE 导出均未检查”等结论已撤销。逐库、逐产品、逐函数详单见 [完整机器记录](evidence/native-chains-current-evidence.json.zip)。
 
 本次新增 DLL 函数正文逆向。FFI 声明、PE 导出和页面注册不能证明厂商完整 C++ 源码已经恢复；完整恢复整库的数量仍为 0。
 
-**统计与应用资产边界**：middleware 补采已完成；本次静态扫描当前 middleware 全文件集与 5 个宿主 wrapper，解析 3238 份包含 FFI 声明的 JS，产出独立的 [全量文档清单](native-library-full-current-inventory.json)。该清单使用保守的动态 DLL 归属检查，不覆盖 Rust 正在消费的 `assets/data/native-library-inventory.json`；后者仍是 48 库 / 963 声明 / 369 来源的旧接入快照。本文件与链路证据采用新文档清单，不能据此声称应用已经新增 DLL 能力或运行验收成功。
+**统计与应用资产边界**：middleware 补采已完成；本次静态扫描当前 middleware 全文件集与 5 个宿主 wrapper，解析 3238 份包含 FFI 声明的 JS，产出独立的 [全量文档清单](evidence/native-library-full-current-inventory.json.zip)。该清单使用保守的动态 DLL 归属检查，不覆盖 Rust 正在消费的 `assets/data/native-library-inventory.json`；后者仍是 48 库 / 963 声明 / 369 来源的旧接入快照。本文件与链路证据采用新文档清单，不能据此声称应用已经新增 DLL 能力或运行验收成功。
 
 ## 范围与机器记录
 
@@ -98,18 +98,18 @@ audCapNative、ThxV3Native 的声明表及 PE 本体已取得，但此次复核�
 
 已继续追上述 875 个 caller-DLL 作用域，覆盖 330 个产品环境、28924 份 manifest 声明 JS。新增 [工厂与实参读链](native-factory-current.md)、[计数摘要](native-factory-current-summary.json) 和 [逐作用域压缩证据](native-factory-current-evidence.json.gz)，不再只停在类内回退字面量。相关 2631 个模块上下文解析失败 0；所有 init 正文、导出、真实构造器、调用参数和 unresolved 原因都保留源 hash/range。
 
-329 个作用域追回直接实例/实参链：154 IoT 的 `new → 字段 → init(path)`，175 capture 的 `new → 立即调用函数参数 → initialize(path)`；它们的资源选择器及 `installedResources` getter/常量键均逐份解析。545 个作用域追回带条件链：154 ASRock 的计算 factory/异步 return，154 Hue 的嵌套字段赋值，再接通用 hasDll dispatcher；237 THX 的 lazy 或直接 import → 真实 class → new → runtimeData 字段 → 另一模块别名或直接字段 → init 实参。类身份检查和词法遮蔽门禁分别核对，feature 是否激活分支仍未知。只剩产品 3886 旧单文件 Hue 的 1 个 caller 上下文未闭，不把引用候选算作实际初始化。
+329 个作用域追回直接实例/实参链：154 IoT 的 `new → 字段 → init(path)`，175 capture 的 `new → 立即调用函数参数 → initialize(path)`；它们的资源选择器及 `installedResources` getter/常量键均逐份解析。545 个作用域追回带条件链：154 ASRock 的计算 factory/异步 return，154 Hue 的嵌套字段赋值，再接通用 hasDll dispatcher；237 THX 的 lazy 或直接 import → 真实 class → new → runtimeData 字段 → 另一模块别名或直接字段 → init 实参。类身份检查和词法遮蔽门禁分别核对，feature 是否激活分支仍未知。通用工厂索引保留产品 3886 单文件 Hue 的 1 个未解 caller；[3886 专项链路](native-3886-legacy-hue-current.md) 已另行追踪该调用方，不把引用候选算作实际初始化。
 
 原版选择的是安装缓存中的 `name/usedBy/filePath`，不是根据同名 PE 导出决定 DLL。IoT 在 selector 无匹配时仍可能进入 init 默认回退；capture 的实际 caller 在返回路径为空时跳过 initialize。THX 按 `thxv3` 或产品 ID 筛选 THXNativeDLL/RzNative 资源，失败、顺序和子进程状态均影响链路。完整条件见专项文档。静态调用链仍不证明共享 manager 被页面激活、实际缓存记录或运行库身份；因此没有修改 762 候选签名归属或应用资产。
 
 ## 包插件与内部正文边界
 
-官方外层 native 条目 29 项。[完整 ASAR 提取](host-full-asar-current-evidence.json) 后，12 unpacked 插件加 4 CommonDLL 共 16 外层条目有核对字节；其余外层图形库/辅助 EXE 在此只有包清单。全部 58 `.node` 包含跨平台 Sentry stacktrace/usb prebuild，证据 packaged_native_addons 保留身份和 PE；非 PE 只登记魔数。
+官方外层 native 条目 29 项。[完整 ASAR 提取](evidence/host-full-asar-current-evidence.json.zip) 后，12 unpacked 插件加 4 CommonDLL 共 16 外层条目有核对字节；其余外层图形库/辅助 EXE 在此只有包清单。全部 58 `.node` 包含跨平台 Sentry stacktrace/usb prebuild，证据 packaged_native_addons 保留身份和 PE；非 PE 只登记魔数。
 
 12 unpacked 插件实际 signed 包字节与 ASAR 声明 size/hash 不同，保留双方值，不截断后伪称相同。来源由官方 internal package SHA 保障。BLE/Serial/FFI/ref/MJPEG/通知已有本体/wrapper，不代表所有内部函数已逆向。
 
 新 [服务函数正文](host-service-machine-code-current.md) 给出 bytes → 导出 RVA → singleton thunk → 构造器证明虚表 → 内部 query/生命周期 → closure → apps/audio/device-mode 线程。HID 七函数另见 [HID](receiver-native-hid-current-evidence.json)。Rust 当前请求/消费者/限制见 [只读接入契约](dll-readonly-inventory.md)。
 
-本次仅修改文档/静态工具/证据；没有修改 Rust/UI，没有加载 DLL、运行应用/厂商 JS/测试/安装器。设备/服务写回后置，UI 操作和本地草稿仍在范围，不删 UI、不伪造硬件成功。
+本次仅修改文档/静态工具/证据；没有修改 Rust/UI，没有加载 DLL、运行应用/厂商 JS/测试/安装器。完整功能包括 UI 操作、设备/服务读写与持久化；本地草稿和真实响应分别记录，不伪造硬件成功。
 
 检查：`node tools/generate-native-library-inventory.cjs --output=docs/re/native-library-full-current-inventory.json --check`；`node tools/audit-native-chains-current.cjs --check`；`node --max-old-space-size=4096 tools/audit-native-factories-current.cjs --check`；`python -X utf8 tools/audit-host-service-code-current.py --check`。最后一项只执行 dumpbin 读取 PE。没有重新生成应用使用的清单或运行其 DLL。

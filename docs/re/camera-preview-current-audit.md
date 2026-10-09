@@ -60,3 +60,15 @@ metadata, initial state, mount distinctions, locale keys, SVGs and native wiring
 tooltips and 3 resolution warning groups. Formatting and the parent task's
 `cargo check --locked --all-targets` are the permitted Rust checks. No application,
 build, test, installer, downloaded JavaScript or DLL was executed.
+
+## Legacy-camera surface and media boundary
+
+3587/3589/3590 retain `layout="legacy-camera"` and the `TAB_CUSTOMIZE` preview. The current CSS `.camera_setting .main_preview` declares a 292px height, `#222` background, `margin-top:20px`, relative positioning and `z-index:0`; it does not declare a width. The native renderer currently reserves 520×292. The containing-block width and its layout still require verification; 520px must not be presented as a width proved by this rule.
+
+| Product | Current CSS / SHA-256 | Rule |
+| --- | --- | --- |
+| 3587 | `.ref/devices/3587/static/css/main.19999b36.css` / `44e4091f06c4e47f0ed850a65cd9b6dfadc0a133b4f3925420468183e30b5de2` | UTF-16 `[390074,390238)`: `.camera_setting .main_preview{align-items:center;background-color:#222;display:flex;height:292px;justify-content:center;margin-top:20px;position:relative;z-index:0}` |
+| 3589 | `.ref/devices/3589/static/css/main.0273b8ab.css` / `7b247bcd0347338b1509544e2d6d86ed9f4d204c937563c0af58e640ded6437e` | UTF-16 `[390074,390238)`: `.camera_setting .main_preview{align-items:center;background-color:#222;display:flex;height:292px;justify-content:center;margin-top:20px;position:relative;z-index:0}` |
+| 3590 | `.ref/devices/3590/static/css/main.0273b8ab.css` / `7b247bcd0347338b1509544e2d6d86ed9f4d204c937563c0af58e640ded6437e` | UTF-16 `[390074,390238)`: `.camera_setting .main_preview{align-items:center;background-color:#222;display:flex;height:292px;justify-content:center;margin-top:20px;position:relative;z-index:0}` |
+
+Static descriptors and local profile defaults do not supply a camera frame or an enumeration transport. The native surfaces contain an explicit unavailable state, with no sample frame, timer or fabricated device result. Media enumeration, transport, live loading/error and source-width parity remain incomplete. Current advanced-camera mounting and geometry are recorded in [the presentation contract](camera-presentation-current-audit.md).

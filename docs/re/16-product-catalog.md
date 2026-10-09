@@ -8,7 +8,7 @@
 
 331个注册入口有363组导航、1419主导航页和33独立模式页。当前全量根图、状态/条件/命令候选见[逐产品逐页面链](all-product-page-chains-current.md)；颜色/布局/字体资源的原CSS依据见[样式资源链](all-product-layout-chains-current.md)。完整记录均带当前路径、SHA-256和原文偏移。
 
-[原始产品目录](product-catalog.json)、[注册依据](product-registration-audit.md)保留HTTP收据和身份。当前[页面覆盖](native-product-coverage.md)与[分组审查](product-review-current.md)仍是partial_native；没有任何一款被宣布完全逆向或全部接入。
+[原始产品目录](evidence/product-catalog.json.zip)、[注册依据](product-registration-audit.md)保留HTTP收据和身份。当前[页面覆盖](native-product-coverage.md)与[分组审查](product-review-current.md)仍是partial_native；没有任何一款被宣布完全逆向或全部接入。
 
 | 产品 ID | 原目录名称 | 当前UI入口 | 注册页（主 / 独立） |
 | --- | --- | --- | ---: |

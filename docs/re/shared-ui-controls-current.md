@@ -2,7 +2,7 @@
 
 审计日期：2026-10-09。依据仅为当前 `.ref/devices/` 的 manifest 声明 JS/CSS，以及覆盖 331 个注册产品的当前页面引用图。本页补充**具体控件行为**，不把相同组件名称、webpack ID 或方法签名当成行为相同，也不宣称整个共享控件库已经完成语义审计。未执行厂商 JavaScript、应用、DLL、构建或测试。
 
-机器证据：[shared-ui-controls-current.json](shared-ui-controls-current.json)。生成器：[audit-shared-ui-controls-current.cjs](../../tools/audit-shared-ui-controls-current.cjs)。源码区间采用 UTF-16 code unit，`end` 不包含，哈希为实际 UTF-8 文件字节的 SHA-256。JSON 的 `seeds`、`methods`、`events`、`defaults`、`callers`、`guards`、`helpers`、`css`、`fonts` 均保留原文与区间，不能用本页概括代替这些证据。
+机器证据：[shared-ui-controls-current.json](evidence/shared-ui-controls-current.json.zip)。生成器：[audit-shared-ui-controls-current.cjs](../../tools/audit-shared-ui-controls-current.cjs)。源码区间采用 UTF-16 code unit，`end` 不包含，哈希为实际 UTF-8 文件字节的 SHA-256。JSON 的 `seeds`、`methods`、`events`、`defaults`、`callers`、`guards`、`helpers`、`css`、`fonts` 均保留原文与区间，不能用本页概括代替这些证据。
 
 ## 语义入口与源文件身份
 

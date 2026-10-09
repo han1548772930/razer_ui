@@ -115,6 +115,7 @@ impl AssetSource for SynapseAssets {
                 .chain(AUDIO_OLED_BANNER_ASSETS)
                 .chain(AUDIO_OLED_SYSTEM_ASSETS)
                 .chain(TRAY_ACCOUNT_ASSETS)
+                .chain(TRAY_WIDGET_ASSETS)
                 .chain(SETTINGS_WINDOW_ASSETS)
                 .chain(CHROMA_SETTINGS_ASSETS)
                 .chain(CHROMA_STUDIO_ASSETS)

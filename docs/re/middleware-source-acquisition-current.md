@@ -2,7 +2,7 @@
 
 2026-10-09。本次处理已有当前源码库中的 `.ref/middleware/<productId>/webpackManifest.json`，补取每份固定清单已声明而本地缺失的 JS。此前已取得 HTML、manifest、入口脚本和部分 chunk 并不等于 middleware 代码已全量取得：初始 **331 份清单共有 27,544 个缺失产品/文件路径，按文件名去重仍有 26,603 个**。
 
-维护工具：[acquire-all-middleware-sources.py](../../tools/acquire-all-middleware-sources.py)。聚合状态、全部 manifest SHA-256、原缺项列表定位、实际成功/未成功项及字节数见 [middleware-source-acquisition-current.json](middleware-source-acquisition-current.json)。**以其中 `all_original_missing_acquired`、`verified_paths`、`unresolved_paths` 为实际完成状态；文档存在或任务启动不表示下载完成。**
+维护工具：[acquire-all-middleware-sources.py](../../tools/acquire-all-middleware-sources.py)。聚合状态、全部 manifest SHA-256、原缺项列表定位、实际成功/未成功项及字节数见 [middleware-source-acquisition-current.json](evidence/middleware-source-acquisition-current.json.zip)。**以其中 `all_original_missing_acquired`、`verified_paths`、`unresolved_paths` 为实际完成状态；文档存在或任务启动不表示下载完成。**
 
 本次最终结果：**27,544 个初始缺项全部取得，共 876,645,965 字节，未解决项 0，当前固定 middleware 清单中的 JS 缺项 0**。第一轮的 12 个临时读取超时/网关错误在恢复轮全部成功；随后 `--verify-only` 再次校验全部取得字节、对应 HTTP 收据以及 331 份固定 manifest SHA，通过。这里只声明清单 JS 的来源取得完成；下文的语义逆向、source map 与二进制边界仍存在。
 

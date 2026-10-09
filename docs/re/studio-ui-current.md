@@ -63,4 +63,4 @@ stop 可选择、增删、拖动和改色。180px 原画布按像素中心取样
 
 维护入口为 `prepare-chroma-studio.cjs`、`prepare-chroma-studio-properties.cjs`、`prepare-chroma-studio-color.cjs`、`prepare-chroma-studio-layers.cjs`、`validate-chroma-studio.py`、`validate-chroma-studio-layers.py`、`audit-chroma-studio-window.py`，属性专项另有 `review-studio-properties-current.cjs`。工具只静态解析当前源码与资源；55 项原 SVG 及各自 manifest/source/output 收据继续保留。
 
-真实设备选择、paramsMixed、屏幕区域/采样、原生取色、引擎/帧传输和读状态发布者仍未完整接通；DLL 写回后置。字体 normal/fallback、所有窗口输入、动画和像素没有运行验收。允许格式化与 `cargo check --locked --all-targets`，未运行应用、构建、测试、安装器、下载 JavaScript 或 DLL。
+真实设备选择、paramsMixed、屏幕区域/采样、原生取色、引擎/帧传输和读状态发布者仍未完整接通；真实引擎/设备写入尚未接通。字体 normal/fallback、所有窗口输入、动画和像素没有运行验收。允许格式化与 `cargo check --locked --all-targets`，未运行应用、构建、测试、安装器、下载 JavaScript 或 DLL。

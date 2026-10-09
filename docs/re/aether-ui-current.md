@@ -34,7 +34,7 @@ Quick/Advanced是互斥Tab内容，初始本地视图为Quick；选中状态有�
 
 正式Aether尚无IoT服务状态发布者，`Observation`的状态只有隔离预览样例提供；request在预览记录action/payload，正式页显示服务不可用，不宣称设备已改名、删除、接管、闪烁或写入。样例60/45LED及样例名称不进入实际产品观察。
 
-以下仍属当前UI与只读范围，不能借DLL写回后置而省略：真实IoT设备列表/选择、在线/锁定/电源/Override/检测数量观察，Lighting产品效果及Chroma Studio profile目录/当前选择，Override真实说明/图标分支、效果参数编辑、Advanced安装/可用性分支、真实锁定/离线覆盖层，以及Lighting的本地Apply/Save意图与草稿持久化。已有CUSTOMIZED本地布局保存不等于Lighting编辑已完成。设备命名、移除、接管、电源、识别及LED配置的设备/服务写回另待集成。
+以下仍需完整接入：真实IoT设备列表/选择、在线/锁定/电源/Override/检测数量观察，Lighting产品效果及Chroma Studio profile目录/当前选择，Override真实说明/图标分支、效果参数编辑、Advanced安装/可用性分支、真实锁定/离线覆盖层，以及Lighting的本地Apply/Save意图与草稿持久化。已有CUSTOMIZED本地布局保存不等于Lighting编辑已完成。设备命名、移除、接管、电源、识别及LED配置的设备/服务写回尚未接通。
 
 HELP内部全部子分支、提示框viewport边界、滚动/平滑居中、字体连续文字换行、焦点及各DPI实际画面尚未验收。页面保持partial，不登记完整产品完成。
 

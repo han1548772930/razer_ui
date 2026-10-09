@@ -44,7 +44,7 @@ impl PortableRuntime {
         Ok(result)
     }
 
-    fn revalidate(&mut self, node: &HidNode) -> anyhow::Result<()> {
+    fn revalidate(node: &HidNode) -> anyhow::Result<()> {
         let current = with_backend(|backend| backend.enumerate())?;
         ensure!(
             current.iter().filter(|value| *value == node).count() == 1,
@@ -95,7 +95,7 @@ impl PortableRuntime {
                 let started = Instant::now();
                 let deadline = || deadline(started);
                 let device = with_backend(|backend| backend.open(&node))?;
-                self.revalidate(&node)?;
+                Self::revalidate(&node)?;
                 let transaction = self.transaction(
                     &node,
                     &cap.source_class,
@@ -109,7 +109,7 @@ impl PortableRuntime {
                     transaction,
                     deadline,
                 )?;
-                self.revalidate(&node)?;
+                Self::revalidate(&node)?;
                 deadline()?;
                 Ok(
                     json!({"node":node,"product_id":product_id,"reading":reading,
@@ -117,6 +117,58 @@ impl PortableRuntime {
                     "transport_metadata":device.metadata(),"elapsed_ms":started.elapsed().as_millis() as u64,
                     "identity_scope":"hid_collection", "evidence":"docs/re/mouse-read-capabilities-current-evidence.json"}),
                 )
+            }
+            ServiceRequest::HidNodeWrite {
+                node,
+                product_id,
+                setting,
+            } => {
+                let cap =
+                    device_reads::capability(product_id).context("产品没有源核实的基础查询能力")?;
+                let write_cap = razer_device::device_writes::capability(product_id)
+                    .context("产品没有源核实的直接写入能力")?;
+                razer_device::device_writes::prepare(write_cap, &setting)?;
+                ensure!(
+                    node.vendor_id == cap.vendor_id
+                        && cap.direct_pids.contains(&u32::from(node.product_id))
+                        && node.interface_number == i32::from(cap.claim_interface),
+                    "HID 写入节点不符合源产品/接口选择"
+                );
+                let IdentityLookup::Unique(identity) =
+                    device_identity::lookup(u32::from(node.product_id))
+                else {
+                    bail!("写入目标没有唯一的直接设备身份");
+                };
+                ensure!(
+                    identity.product_id == product_id && !identity.is_dongle && !identity.is_ble,
+                    "写入入口只接受已核实的直接设备，不接受接收器或 BLE 路由"
+                );
+                let started = Instant::now();
+                let device = with_backend(|backend| backend.open(&node))?;
+                let result = razer_device::device_writes::apply(
+                    device.as_ref(),
+                    cap,
+                    &setting,
+                    || {
+                        self.transaction(
+                            &node,
+                            &cap.source_class,
+                            cap.transaction_prefix,
+                            cap.transaction_modulus,
+                        )
+                    },
+                    || {
+                        ensure!(
+                            started.elapsed() < Duration::from_secs(20),
+                            "设备写入已超过确认期限"
+                        );
+                        Self::revalidate(&node)
+                    },
+                )?;
+                Ok(json!({"node":node,"product_id":product_id,"result":result,
+                    "source_class":cap.source_class,"transport_metadata":device.metadata(),
+                    "identity_scope":"hid_collection","elapsed_ms":started.elapsed().as_millis() as u64,
+                    "evidence":"docs/re/device-write-capabilities-current-evidence.json"}))
             }
             ServiceRequest::HidNodeReceiverStatus { node } => {
                 let cap = receiver_capabilities::capability(node.product_id)
@@ -128,7 +180,7 @@ impl PortableRuntime {
                 );
                 let started = Instant::now();
                 let device = with_backend(|backend| backend.open(&node))?;
-                self.revalidate(&node)?;
+                Self::revalidate(&node)?;
                 let transaction = self.transaction(
                     &node,
                     &cap.source_class,
@@ -139,7 +191,7 @@ impl PortableRuntime {
                     device_query::read_receiver(device.as_ref(), cap, transaction, || {
                         deadline(started)
                     })?;
-                self.revalidate(&node)?;
+                Self::revalidate(&node)?;
                 deadline(started)?;
                 let rows = devices
                     .into_iter()

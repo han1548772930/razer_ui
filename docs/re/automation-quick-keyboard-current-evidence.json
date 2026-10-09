@@ -1161,7 +1161,7 @@
     }
   ],
   "native": {
-    "path": "src/features/automation/quick_macro.rs",
+    "path": "crates/razer-pages/src/features/automation/quick_macro.rs",
     "capture": "Only empty + starts a session. Any normal keyup or modifier release stops it. Duplicates are ignored and the limit is ten. Escape records during capture, closes otherwise. No extra + appears beside existing keys.",
     "input": "The source 28px temporary Start typing input owns initial focus. After the first key it unmounts and the enclosing capture listener retains focus.",
     "modifiers": "Windows GPUI emits Ctrl/Alt/Shift/Windows as ModifiersChanged, so rising edges append source key labels and falling edges stop capture.",

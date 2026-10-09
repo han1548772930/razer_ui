@@ -142,8 +142,8 @@
     {
       "name": "razer-device",
       "kind": "library",
-      "rust_files": 9,
-      "rust_lines": 1054,
+      "rust_files": 10,
+      "rust_lines": 1250,
       "dependencies": []
     },
     {
@@ -178,7 +178,7 @@
       "name": "razer-ipc",
       "kind": "library",
       "rust_files": 2,
-      "rust_lines": 442,
+      "rust_lines": 460,
       "dependencies": [
         "razer-device"
       ]
@@ -224,7 +224,7 @@
       "name": "razer-service",
       "kind": "library",
       "rust_files": 14,
-      "rust_lines": 2827,
+      "rust_lines": 2927,
       "dependencies": [
         "razer-catalog",
         "razer-device",

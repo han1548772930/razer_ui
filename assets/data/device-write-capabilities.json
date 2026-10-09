@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": 182,
+      "source_class": "rzDevice25DualLinkMouse",
+      "min_dpi": 100,
+      "max_dpi": 30000,
+      "polling_codes": {
+        "RATE_8000Hz": 1,
+        "RATE_4000Hz": 2,
+        "RATE_2000Hz": 4,
+        "RATE_1000Hz": 8,
+        "RATE_500Hz": 16,
+        "RATE_250Hz": 32,
+        "RATE_125Hz": 64
+      },
+      "writes": [
+        {
+          "kind": "dpi",
+          "method": "setDpiLevel",
+          "command": [
+            7,
+            4,
+            5
+          ],
+          "selector": 0,
+          "read_kind": "dpi",
+          "min_response_bytes": 7
+        },
+        {
+          "kind": "polling",
+          "method": "setUSBHighSpeedPollingRate",
+          "command": [
+            2,
+            0,
+            64
+          ],
+          "selector": 1,
+          "read_kind": "polling",
+          "min_response_bytes": 2
+        }
+      ]
+    }
+  ]
+}

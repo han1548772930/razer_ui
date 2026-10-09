@@ -10,7 +10,7 @@
 
 ## 可回查的数据结构
 
-- [轻量索引](product-ui-details-current.json)：产品/页面/组件 IDs、页面根、原调用链 edges、unknowns、统计与语义契约；范围按 UTF-16 零起点左闭右开。
+- [轻量索引](evidence/product-ui-details-current.json.zip)：产品/页面/组件 IDs、页面根、原调用链 edges、unknowns、统计与语义契约；范围按 UTF-16 零起点左闭右开。
 - [完整 gzip JSON](product-ui-details-current.json.gz)：每个组件的原文 source、路径、字节 SHA-256，以及每项嵌套证据的 offset/end/node_type。每行一个产品记录，适合流式读取；解压后 1605130343 字节，不应一次加载全部到内存。
 - ui_elements 按原调用出现次序记录 callee、组件表达式、完整 ordered props/spreads、jsx 第三 key 参数、原 children 的数组/分支/迭代顺序、事件、class/style 和文案表达式。createElement 的 children 来自第三及后续参数。
 - lexical_parent_element 仅是 AST 的嵌套关系；opaque props/helper_object_arguments/helper_children_candidates 不推断合并顺序或最终 props。静态 literal 使用 static_value，不覆盖原 value 范围。

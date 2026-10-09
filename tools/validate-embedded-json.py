@@ -14,13 +14,14 @@ application, tests or downloaded JavaScript.
 from __future__ import annotations
 
 import json
+import importlib
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "src"
-INCLUDE = re.compile(r'include_str!\("([^"]+\.json)"\)')
+production_modules = importlib.import_module("audit-assets-current").production_modules
+INCLUDE = re.compile(r'include_str!\(\s*"([^"]+\.json)"\s*\)')
 STRUCT = re.compile(
     r"#\[derive\((?P<derives>[^)]*)\)\]\s*(?P<attributes>(?:#\[[^\]]*\]\s*)*)"
     r"(?:pub(?:\([^)]*\))?\s+)?struct\s+(?P<name>\w+)\s*(?:<[^>]*>)?\s*\{(?P<body>[^}]*)\}",
@@ -31,6 +32,9 @@ FIELD = re.compile(r"(?P<attributes>(?:#\[[^\]]*\]\s*)*)(?:pub(?:\([^)]*\))?\s+)
 SERDE_DEFAULT = re.compile(r"serde\([^)]*\bdefault\b")
 # The include site declares its target type through a OnceLock or a turbofish.
 DECLARED = (
+    re.compile(r"let\s+\w+\s*:\s*(\w+)\s*=\s*serde_json::from_str\s*\($"),
+    re.compile(r"from_str::<Vec<(\w+)>>\s*\($"),
+    re.compile(r"from_str::<(\w+)>\s*\($"),
     re.compile(r"OnceLock<Vec<(\w+)>>"),
     re.compile(r"OnceLock<(\w+)>"),
     re.compile(r"from_str::<Vec<(\w+)>>"),
@@ -197,24 +201,29 @@ def main() -> int:
     # declared type at the include site is resolved against every scanned file.
     # Names are reused across features (`Spec` appears in many), so the same file
     # wins and an ambiguous name is reported instead of guessed.
-    defined: dict[str, list[tuple[str, dict]]] = {}
-    for source in sorted(SRC.rglob("*.rs")):
+    sources = production_modules()
+    defined: dict[str, list[tuple[Path, dict]]] = {}
+    for source in sources:
         for name, fields in load_structs(source.read_text(encoding="utf-8")).items():
-            defined.setdefault(name, []).append((source.name, fields))
+            defined.setdefault(name, []).append((source, fields))
 
     def resolve(name: str | None, source: Path) -> tuple[str | None, dict | None]:
         if not name or name not in defined:
             return None, None
         candidates = defined[name]
         for file, fields in candidates:
-            if file == source.name:
+            if file == source:
                 return name, fields
+        same_crate = [(file, fields) for file, fields in candidates
+                      if file.relative_to(ROOT).parts[:2] == source.relative_to(ROOT).parts[:2]]
+        if len(same_crate) == 1:
+            return name, same_crate[0][1]
         if len(candidates) == 1:
             return name, candidates[0][1]
         return name, None
 
-    for source in sorted(SRC.rglob("*.rs")):
-        text = source.read_text(encoding="utf-8")
+    for source in sources:
+        text = source.read_text(encoding="utf-8").split("#[cfg(test)]\nmod tests")[0]
         structs = load_structs(text)
         aliases = dict(TYPE_ALIAS.findall(text))
         for match in INCLUDE.finditer(text):
@@ -250,7 +259,7 @@ def main() -> int:
             resolved, fields = resolve(declared, source)
             if resolved and fields is None:
                 skipped.append(
-                    f"{relative}: `{resolved}` is defined in several files ({', '.join(name for name, _ in defined[resolved])})"
+                    f"{relative}: `{resolved}` is defined in several files ({', '.join(file.relative_to(ROOT).as_posix() for file, _ in defined[resolved])})"
                 )
                 continue
             if fields is not None:
@@ -269,7 +278,7 @@ def main() -> int:
             if not structs:
                 skipped.append(
                     f"{relative}: no Deserialize struct in {source.name}"
-                    + (f" and `{declared}` is not defined in src" if declared else "")
+                    + (f" and `{declared}` is not resolved in production modules" if declared else "")
                 )
                 continue
             lookup = lambda name: resolve(name, source)[1]

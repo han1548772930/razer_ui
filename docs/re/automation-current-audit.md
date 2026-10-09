@@ -112,10 +112,10 @@ retain the current source range, fragment and source/output hashes.
   [current program picker evidence](automation-quick-program-current-audit.md).
   Native type-menu row icons, the source capture-session keyup behavior,
   pill hover/delete overlays and their 200ms transitions are now implemented;
-  see [current keyboard capture evidence](automation-quick-keyboard-current-audit.md).
+  see [current keyboard capture evidence](automation-current-audit.md).
   The type menu now uses the source 8/12px option insets, selected text,
   300ms trigger/arrow transitions and immediate conditional mounting;
-  see [current menu evidence](automation-quick-menu-current-audit.md).
+  see [current menu evidence](automation-current-audit.md).
   Caps Lock physical edges, browser-default trigger metrics and rendered
   focus/animation parity remain unresolved. Game browser/link editing and
   global-shortcut assignment remain follow-up work; their buttons continue to
@@ -125,13 +125,14 @@ retain the current source range, fragment and source/output hashes.
   reports unavailable and does not generate a code.
 - Source row background transitions (300ms) now have matching hover/pressed
   color states in the native row buttons. Action/text transitions (200ms),
-  exact selector icon slots, original headset-toggle SVGs and anchored delete
-  confirmation placement are still pending. Existing native controls supply
+  exact selector icon slots and original headset-toggle SVGs remain pending.
+  Existing native controls supply
   keyboard behavior but are not evidence of exact source animations.
-- The delete confirmation currently occupies its source-colored region inside
-  the editor; it has not yet been converted to the original anchored overlay.
-- No rendered geometry, platform font metrics, focus paths or animation timing
-  have been observed because the user prohibits running apps/tests.
+- The delete confirmation uses the anchored overlay recorded in
+  [the current delete contract](automation-delete-current-audit.md); its
+  resolved geometry, focus and resize behavior have not been run.
+- Rendered geometry, platform font metrics, focus paths and animation timing
+  remain unverified; development checks are static only.
 
 These limits mean that this is a substantial native continuation, not a claim
 that product 3946 is already pixel-identical or feature-complete.
@@ -163,3 +164,35 @@ Integration API: `Automation::new(&Device,window,cx)`, `supports_page(pid,key)`,
 `snapshot()`, `restore(Option<&Value>,window,cx)`, `dismiss(window,cx)`,
 `AutomationChanged`, and `open_preview(window,cx)`. Resource embedding consumes
 `assets/synapse/automation-manifest.json`.
+
+## 快捷宏键盘捕获与按键显示
+
+2026-10-05。重新沿当前 3946 manifest 定位 `aH`（6920385–6931761），核对真实挂载的键盘分支、`Te` 开始捕获回调、document keydown/keyup 效果、`tH` 类型图标、`eH` 删除图标与有序 CSS。没有执行下载 JavaScript。
+
+修复此前可持续追加按键、缺少捕获会话的实现。仅空列表的 `+` 开始录入；显示源 28px `Start typing` 输入，首次按键后切换到 pill 并保持监听焦点。任一 keyup 结束录入；去重、最多十键。录入时 Escape 作为按键，非录入时关闭弹框。已有按键旁不添加源码没有的继续录入入口，清空或逐个删除后重新出现 `+`。
+
+GPUI Windows 将 Ctrl、Alt、Shift、Windows 独立发为 `ModifiersChanged`，现按按下边沿收集标签、任一释放结束会话。Caps Lock 事件只提供锁定状态，无法还原物理释放；这项仍有差距，没有模拟按键事件。
+
+按键已补 8×10px 内边距、13px 文本、4px 圆角、`+` 分隔符和源 `eH` 24px 删除叠层，采用源正常/悬停/按下颜色、200ms ease 边框与透明度过渡。宏类型已在当前选项与四个菜单项中显示同一 `tH` 原图标；初始 Action 显示 0.3 透明度键盘图标。删除 SVG 由维护提取器静态转换，纳入原有 automation 资源 manifest（24 项）。
+
+类型选择器已移除框架 Select，改为当前源按钮菜单；行内边距、选中文字、箭头旋转与实际条件挂载见 [菜单审计](automation-current-audit.md)。Caps Lock、系统截获组合键、渲染像素、字体与实际焦点未运行验证。保存仍只产生本地宏候选，未增加执行器或伪造服务结果。
+
+允许的静态验证：`node tools/audit-automation-quick-keyboard.cjs --check`、`node tools/extract-automation.cjs --check`、`python tools/validate-automation.py`、rustfmt；统一 `cargo check --locked --all-targets` 由主任务完成。没有运行应用、构建、测试、安装器、下载 JavaScript 或 DLL。
+
+完整源码范围、挂载分支、CSS 与资源哈希见 [automation-quick-keyboard-current-evidence.json](automation-quick-keyboard-current-evidence.json)。
+
+## 快捷宏类型菜单
+
+2026-10-05。从当前产品 manifest 解析 `aH`、`tH`、`Jv`，重新核对菜单 JSX、切换/清空/外部 mousedown 回调及有序 CSS；资源复用当前 automation manifest 的四个类型图标与 `icon_expand`，没有写公共资源。
+
+原生已移除框架 Select。控制区域高27px、行高17px；菜单为黑底、`#515151` 边框、距控制区域1px，宽度至少等于控制区域、最高180px。最终生效的选项内边距是上下8px、左右12px，20px图标构成36px行；最小高度仍为源30px。只有菜单内已选项目的文字显示绿色，控制区域保持灰色；没有框架勾选图标或额外列表游标。
+
+箭头复用当前源 SVG，槽位29×25px、图片大小10px，持久存在的箭头以300ms ease在0与180度间旋转；控制边框的hover/open同样采用300ms ease。菜单的CSS虽声明height/max-height 200ms，但实际JSX是 `k && menu`：初次挂载时已匹配open样式，关闭则直接卸载，没有闭态节点、延迟打开回调或 `@starting-style`。因此本实现按实际挂载链即时显示/移除菜单，没有添加源码未触发的展开收起动画。
+
+触发按钮切换打开状态；菜单外mousedown关闭，触发按钮自身不被外部处理器提前关闭。选择任何项目（包括重复选择同类型）都按源清空动作并关闭菜单。普通原生按钮提供Tab、Enter和Space；未添加源码没有的方向键列表操作。Escape继续由外层快捷宏处理：非录制状态关闭弹框，录制状态记为按键。
+
+选中后原生把焦点还给触发按钮，避免被卸载选项使GPUI失去按键路由；浏览器原页面对已移除焦点节点的处理并不完全相同。源CSS未覆盖按钮默认padding，原生保留6px水平按钮内边距，浏览器默认padding/基线仍未实测。字体度量、视口边缘定位、Tab顺序和真实动画未运行验证，不能据此声称像素一致。
+
+`node tools/audit-automation-quick-menu.cjs --check` 静态核对条件挂载、完整原组件、最终CSS级联、图标字节与原生接入；键盘和Program现有审计同步保留。只执行静态解析与格式检查，未运行应用、构建、测试或下载代码。统一cargo check由主任务执行。
+
+详见 [automation-quick-menu-current-evidence.json](automation-quick-menu-current-evidence.json)。

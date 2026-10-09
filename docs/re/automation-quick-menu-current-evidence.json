@@ -774,7 +774,7 @@
     }
   ],
   "native": {
-    "path": "src/features/automation/quick_macro.rs",
+    "path": "crates/razer-pages/src/features/automation/quick_macro.rs",
     "selection": "Source order and original colored tH icons. Only the committed menu row text is green; the trigger stays #ccc. No framework checkmark, automatic list cursor or extra listbox key commands.",
     "geometry": "27px trigger, 17px line-height, 29x25 chevron slot and 10px original SVG background. Final option padding is 8px/12px; 20px artwork yields 36px rows. Black menu has #515151 border, 1px gap, width max(trigger, measured content), max-height 180px, horizontal clipping and vertical overflow.",
     "motion": "Persistent trigger border and arrow use 300ms ease. The source menu node is conditional k&&JSX, so it mounts in the already-open selector and unmounts immediately; declared height .2s/max-height .2s is not translated into an invented mounted closed-state animation.",

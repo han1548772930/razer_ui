@@ -30,6 +30,13 @@ pub enum ServiceRequest {
         product_id: u32,
         kind: razer_device::device_reads::DeviceReadKind,
     },
+    /// Typed direct-device write; source capability, live identity, reply and
+    /// readback are checked by the agent. No arbitrary reports or exports.
+    HidNodeWrite {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        setting: razer_device::device_writes::DeviceWriteSetting,
+    },
     HidNodeReceiverStatus {
         node: razer_device::backend::HidNode,
     },
@@ -61,6 +68,10 @@ pub enum ServiceRequest {
     DeviceRead {
         target: razer_device::device_reads::DeviceReadTarget,
         kind: razer_device::device_reads::DeviceReadKind,
+    },
+    DeviceWrite {
+        target: razer_device::device_reads::DeviceReadTarget,
+        setting: razer_device::device_writes::DeviceWriteSetting,
     },
     /// Observe global input through the current mapping-engine recorder.
     /// These requests do not submit macros or mappings to a device.
@@ -247,6 +258,10 @@ impl ServiceClient {
         }
         let shutting_down = matches!(request, ServiceRequest::Shutdown);
         let starting_recorder = matches!(request, ServiceRequest::StartMacroRecording);
+        let writing_device = matches!(
+            request,
+            ServiceRequest::DeviceWrite { .. } | ServiceRequest::HidNodeWrite { .. }
+        );
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
@@ -278,6 +293,9 @@ impl ServiceClient {
             Duration::from_secs(25)
         } else if starting_recorder {
             Duration::from_secs(20)
+        } else if writing_device {
+            // Retained route: pre-read, setter acknowledgement, then readback.
+            Duration::from_secs(30)
         } else if reading_device {
             // Relay reads bracket the device query with two bounded peer
             // observations, so the ordinary single-query limit is insufficient.

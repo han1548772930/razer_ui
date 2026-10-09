@@ -183,3 +183,46 @@ pub(super) fn query(target: &DeviceReadTarget, kind: DeviceReadKind) -> anyhow::
         "transport_metadata":transport_metadata, "elapsed_ms":started.elapsed().as_millis() as u64,"evidence":"docs/re/mouse-read-capabilities-current-evidence.json"}),
     )
 }
+
+pub(super) fn write(
+    target: &DeviceReadTarget,
+    setting: &razer_device::device_writes::DeviceWriteSetting,
+) -> anyhow::Result<Value> {
+    use razer_device::device_writes;
+    ensure!(
+        target.peer_product_id.is_none(),
+        "接收器转发写入尚未按产品原码核实；不会把直接设备命令发给接收器"
+    );
+    let cap =
+        device_reads::capability(target.product_id).context("产品没有源核实的基础读取能力")?;
+    let write_cap =
+        device_writes::capability(target.product_id).context("产品没有源核实的设备写入能力")?;
+    device_writes::prepare(write_cap, setting)?;
+    let before = current_target(target, cap)?;
+    verify_routing(target, cap)?;
+    let started = Instant::now();
+    let validate = || -> anyhow::Result<()> {
+        ensure!(
+            started.elapsed() < Duration::from_secs(20),
+            "设备写入已超过确认期限"
+        );
+        ensure!(
+            current_target(target, cap)?["device_instance_id"] == before["device_instance_id"],
+            "写入期间设备实例发生变化"
+        );
+        Ok(())
+    };
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let feature_bytes = before["feature_report_bytes"]
+        .as_u64()
+        .and_then(|count| usize::try_from(count).ok())
+        .context("写入目标缺少实际 Feature Report 长度")?;
+    let device = hid_transport::open(&target.path, feature_bytes)?;
+    let result =
+        device_writes::apply(&device, cap, setting, || transaction(target, cap), validate)?;
+    Ok(
+        json!({"target":target,"result":result,"source_class":cap.source_class,
+        "transport_metadata":device.metadata(),"elapsed_ms":started.elapsed().as_millis() as u64,
+        "evidence":"docs/re/device-write-capabilities-current-evidence.json"}),
+    )
+}

@@ -2,7 +2,7 @@
 
 2026-10-09。按 [OpenLogi 审阅](openlogi-device-communication-review.md) 拆分 backend、协议、设备会话和观察状态。参考 commit 为 `1505c6525470bc0a38ae3ba79d70e950347d2532`，不采用 Logitech HID++ 报文。
 
-现有 Windows 鼠标/接收器查询已经走 `razer-device::backend::FeatureTransport`，由 `razer-hid` 实现，不再提取或加载官方 `HID.node`。契约归协议层，依赖方向为 `razer-hid → razer-device`，协议、模型和资源不依赖系统 HID 后端。其他 DLL、COM 音频和宿主服务仍在 `razer-service`；不声称全部 DLL 功能已经替换。直接查询只覆盖原能力资产中核验的命令，设备配置写回仍后置。
+现有 Windows 鼠标/接收器查询已经走 `razer-device::backend::FeatureTransport`，由 `razer-hid` 实现，不再提取或加载官方 `HID.node`。契约归协议层，依赖方向为 `razer-hid → razer-device`，协议、模型和资源不依赖系统 HID 后端。其他 DLL、COM 音频和宿主服务仍在 `razer-service`；不声称全部 DLL 功能已经替换。直接查询只覆盖原能力资产中核验的命令。已接入 agent/IPC 的直接 DPI/USB 回报率入口及限制见 [写入契约](device-write-current.md)。
 
 [机器证据](cross-platform-hid-current-evidence.json) 复核官方 PE 的 4 个代码范围及 hidapi 的 7 份源码收据。原件为现行 host 的 `node-rz-hid/build/Release/HID.node`，SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`。
 

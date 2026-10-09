@@ -1,6 +1,7 @@
 """Validate bundled resources against the local reference, without third-party modules."""
 import base64
 import hashlib
+import importlib
 import json
 import math
 import re
@@ -43,7 +44,7 @@ def validate_provenance(value):
             validate_provenance(nested)
     elif isinstance(value, str):
         assert not value.startswith((".ref/frontend/", ".ref/synapse-asar/",
-                                     ".ref/host-4.0.821/")), value
+                                     ".ref/host-4.0.821/", ".work/latest-source-check/host-4.0.821/")), value
         prefix = ".ref/applications/synapse/dashboard/"
         if value.startswith(prefix + "static/"):
             assert value[len(prefix):] in dashboard_assets, value
@@ -145,7 +146,7 @@ def validate_oled_family(family, receipt_path):
     oled_entries = json.loads((directory / f"audio-oled-{family}-assets.json").read_text(encoding="utf-8"))
     oled_include = (directory / f"audio-oled-{family}-embedded.rs").read_text(encoding="utf-8")
     resource_code = (ROOT / "crates/razer-assets/src/lib.rs").read_text(encoding="utf-8")
-    assert f'include!("../assets/synapse/audio-oled-{family}-embedded.rs")' in resource_code
+    assert f'include!("../../../assets/synapse/audio-oled-{family}-embedded.rs")' in resource_code
     assert resource_code.count(f'.chain(AUDIO_OLED_{family.upper()}_ASSETS)') == 2, family
     family_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', oled_include)
     assert len(family_keys) == len(oled_entries)
@@ -444,6 +445,73 @@ assert all(item.get("rx") == "10" and item.get("ry") == "10" and item.get("opaci
            for item in ellipses)
 assert ellipses[1].get("stroke-width") == "4"
 
+# Later resource families use independent receipts instead of the shared table.
+# Verify their output hashes and current-source hashes before extending coverage.
+supplemental_outputs = {}
+def supplemental_receipts(value):
+    if isinstance(value, list):
+        for row in value:
+            supplemental_receipts(row)
+    elif isinstance(value, dict):
+        name = value.get("output", value.get("path"))
+        sha = value.get("output_sha256", value.get("sha256"))
+        if isinstance(name, str) and name.startswith("assets/") and sha:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha, name
+            supplemental_outputs[name] = sha
+        source = value.get("source", value.get("path"))
+        source_sha = value.get("source_sha256")
+        if source_sha is None and "output" not in value:
+            source_sha = value.get("sha256")
+        if isinstance(source, str) and source.startswith(".ref/") and source_sha:
+            validate_provenance(source)
+            assert hashlib.sha256((ROOT / source).read_bytes()).hexdigest() == source_sha, source
+        for row in value.values():
+            if isinstance(row, (dict, list)):
+                supplemental_receipts(row)
+
+for receipt in (
+    "chroma-settings-current-evidence", "gamepad-2636-calibration-current-evidence",
+    "profiles-transfer-current-evidence", "monitor-pages-review-current-evidence",
+    "receiver-pairing-current-evidence", "mouse-polling-model-current-evidence",
+):
+    supplemental_receipts(json.loads((ROOT / f"docs/re/{receipt}.json").read_text("utf-8")))
+supplemental_receipts(json.loads((directory / "tray-widget-assets.json").read_text("utf-8")))
+supplemental_receipts(json.loads((directory / "audio-demo-manifest.json").read_text("utf-8")))
+actuation = json.loads((ROOT / "docs/re/keyboard-actuation-sync-current-evidence.json").read_text("utf-8"))
+for product in actuation["products"]:
+    icon = product.get("icon", product.get("sync_icon"))
+    if icon is None:
+        continue
+    validate_provenance(icon["path"])
+    data = (ROOT / icon["path"]).read_bytes()
+    assert hashlib.sha256(data).hexdigest() == icon["sha256"]
+    output = "assets/synapse/keyboard-actuation-sync.svg"
+    assert (ROOT / output).read_bytes() == data
+    supplemental_outputs[output] = icon["sha256"]
+
+asset_audit = importlib.import_module("audit-assets-current").audit()
+assert not asset_audit["errors"], asset_audit["errors"]
+for key, rows in asset_audit["registrations"].items():
+    for row in rows:
+        target = ROOT / row["file"]
+        filename = target.relative_to(directory).as_posix()
+        if filename in expected:
+            continue
+        assert row["file"] in supplemental_outputs, (key, "Missing supplemental output receipt")
+        data = target.read_bytes()
+        if target.suffix == ".svg":
+            assert ET.fromstring(data).tag.endswith("svg"), target
+        elif target.suffix == ".mov":
+            assert data[4:8] == b"ftyp", target
+        elif target.suffix == ".png":
+            assert data[:8] == b"\x89PNG\r\n\x1a\n", target
+            assert all(size > 0 for size in struct.unpack(">II", data[16:24])), target
+        elif target.suffix == ".webp":
+            webp_metadata(data)
+        else:
+            raise AssertionError((target, "Supplemental format needs explicit validation"))
+        expected.add(filename)
+
 # Literal image paths cover only direct consumers; dynamic mapping, direction,
 # DPI and variant consumers are audited separately instead of called unused.
 for source_path in (ROOT / "crates").rglob("*.rs"):
@@ -561,4 +629,5 @@ print(f"Validated {len(entries)} source/output hashes, image formats and embedde
       f"{len(snap_keys)} Snap Tap SVGs; {len(properties_keys)} Keyboard Properties SVGs; "
       f"{len(image_map['requests'])} Webpack requests, {len(resolved)} product variants; "
       f"{len(dashboard_requests)} Dashboard variants; "
-      f"{len(layouts)} keyboard layouts / {sum(len(layout['keys']) for layout in layouts)} input shapes")
+      f"{len(layouts)} keyboard layouts / {sum(len(layout['keys']) for layout in layouts)} input shapes; "
+      f"{len(supplemental_outputs)} supplemental output receipts / {asset_audit['summary']['runtime_keys']} total runtime keys")

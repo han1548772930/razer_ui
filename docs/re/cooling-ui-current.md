@@ -2,7 +2,7 @@
 
 本文覆盖 3893 Hanbo、3900 PWM 控制器、3907 Laptop Cooling Pad 的 Performance。3858/3880 显示器统一见 [monitor-ui-current.md](monitor-ui-current.md)，3921 Core X V2 的独立 fan 模型见 [corex-fan-current-audit.md](corex-fan-current-audit.md)；共享工作区存在不代表这些产品全部完成。
 
-当前依据为 [accessory-system-source.json](accessory-system-source.json)、[准备收据](accessory-system-native-audit.json)与实际 [AccessorySystemProductWorkspace](../../crates/razer-pages/src/features/accessory_system_products.rs)。提取工具仅解析当前产品 bundle；本次复核了相关产品源文件 hash、Rust 范围/状态/草稿处理，没有执行厂商代码或重用旧源符号。
+当前依据为 [accessory-system-source.json](evidence/accessory-system-source.json.zip)、[准备收据](accessory-system-native-audit.json)与实际 [AccessorySystemProductWorkspace](../../crates/razer-pages/src/features/accessory_system_products.rs)。提取工具仅解析当前产品 bundle；本次复核了相关产品源文件 hash、Rust 范围/状态/草稿处理，没有执行厂商代码或重用旧源符号。
 
 | 产品 | 当前本地内容 | 尚需真实观察或 UI 完成 |
 | --- | --- | --- |
@@ -18,4 +18,4 @@ Cooling Pad Fixed 范围为 Low500–2000、Medium1500–2500、High1900–3200 
 
 Lighting 的 3893/3907 初值来自各自 reducer 种子，DEFAULTPROFILE 只含身份时不能漏掉这部分；来源见 [accessory-controls-audit.json](accessory-controls-audit.json)。Hanbo 遵守 hideLightingIdle；3929 的灯光在唯一 Customize 内，不能增造 Lighting 页签。这些说明不替代各产品 Lighting 主体的单独核验。
 
-本地草稿与实际设备模式、RPM、电源、温度及服务限制分开；未知读数保持未知。UI 编辑、增删改、Apply/Save 继续在当前范围，DLL 写回后置。只做静态源码/资源校验及允许的格式/编译检查，未运行应用、测试、安装器、下载 JavaScript 或 DLL；视觉、输入和设备往返仍未验证。
+本地草稿与实际设备模式、RPM、电源、温度及服务限制分开；未知读数保持未知。UI 编辑、增删改、Apply/Save 继续在当前范围，真实设备/服务写回尚未接通。只做静态源码/资源校验及允许的格式/编译检查，未运行应用、测试、安装器、下载 JavaScript 或 DLL；视觉、输入和设备往返仍未验证。
