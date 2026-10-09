@@ -2,6 +2,8 @@
 
 本文是整个原项目的总入口：把宿主、独立应用、产品页面、middleware、原生插件、DLL 与服务分层后再连接起来。用户要求所有实现以原代码为依据；因此“文件取得”“声明解析”“调用链追通”“内部实现恢复”“本项目接入”和“运行验收”分别记录。不能把任一层的清单或成功解析当作全部原代码恢复。
 
+设备直连的下一层证据已进入 [DLL 内部与设备通信逆向](dll-device-communication-current.md)：对全部已取得的 58 产品 DLL、4 CommonDLL 和 19 Windows 原生插件逐文件核对字节、导出和内部指令，保存 57960 个分析图入口。入口与潜在路径不是完整函数语义。产品 1342 的 [二级 DLL 分发与报文](audio-mixer-dll-protocol-current.md) 已追到 37 项属性表、GetProcAddress 指针存取及四个 report helper，其他未知继续保留；[OpenLogi 参考](openlogi-device-communication-review.md) 仅提供架构对照，不作为 Razer 协议依据。
+
 ## 来源与证据等级
 
 当前官方宿主来源为静态提取的 **4.0.827**，不是本机仍安装的4.0.821。版本与包链见 [宿主审计](current-host-version-audit.md)。Dashboard 及产品/应用以各自当前 HTTP 与 manifest 收据为依据，见 [Dashboard 来源](20-current-source-version.md)。本轮不重新声称已经核验2026-10-09所有在线端点的实时最新版本。

@@ -1,0 +1,1266 @@
+{
+  "schema_version": 1,
+  "method": "Byte-verified current PE + dumpbin static instructions + bounded intraprocedural CFG and direct-call traversal",
+  "inputs": [
+    {
+      "path": "docs/re/native-library-pe-current-evidence.json",
+      "sha256": "4a485c9692d42e1557d7af0ba9d94f31f23878cc5c01af9077e6d6fe2008bf07",
+      "bytes": 900652
+    },
+    {
+      "path": "docs/re/host-native-library-pe-current-evidence.json",
+      "sha256": "17453b64dbe39396b4dfb8e1948c6a57e2a7433cb884e3df02fe8e60cd405df8",
+      "bytes": 88381
+    },
+    {
+      "path": "docs/re/host-full-asar-current-evidence.json",
+      "sha256": "60f66f073c2fbb34b7364918656b86a821b8c1f9b2013c925730cc09654aba06",
+      "bytes": 6177197
+    }
+  ],
+  "generator_sha256": "c74e9b1722d7235fa058d5cbd5a52cdaf047fdd4195d5bf2648ac28f5f98fd9a",
+  "disassembler_sha256": "ba0de9bc9a7aff36bbd90864c2be372d6b3d312c8077f44d394807f703f17091",
+  "evidence": {
+    "path": "docs/re/dll-device-communication-current.json.gz",
+    "sha256": "002f22492188475cc558fe85748a1f1264ee08edb2d01254701e834ac9992f16",
+    "bytes": 26811920,
+    "decompressed_sha256": "c56cbd808ee04e0de78e5a04f2df1dac1ab414a0de20ca5777780f52805af37b"
+  },
+  "summary": {
+    "unique_current_pe_files": 81,
+    "aliases": 81,
+    "product_dll_files": 58,
+    "host_common_dll_files": 4,
+    "exports": 2831,
+    "analyzed_graph_entries": 57960,
+    "syntactic_api_paths": 8791,
+    "api_path_categories": {
+      "com_activation": 344,
+      "device_enumeration": 527,
+      "device_ioctl": 11,
+      "dynamic_loading": 5951,
+      "file_or_pipe": 1519,
+      "hid_feature": 52,
+      "hid_metadata": 55,
+      "media_foundation": 48,
+      "network_socket": 175,
+      "service_management": 105,
+      "winusb": 4
+    },
+    "entire_dll_semantics_completed": 0,
+    "device_commands_sent": 0
+  },
+  "files": [
+    {
+      "path": ".ref/host-4.0.827/native-evidence/CommonDLL/SysUtilsNative.dll",
+      "sha256": "01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 89,
+      "analyzed_graph_entries": 1554,
+      "exports_with_api_paths": 69,
+      "exports_with_unresolved_indirect_calls": 72,
+      "api_path_categories": {
+        "com_activation": 8,
+        "device_enumeration": 5,
+        "device_ioctl": 1,
+        "dynamic_loading": 208,
+        "file_or_pipe": 11,
+        "hid_feature": 1,
+        "network_socket": 1
+      }
+    },
+    {
+      "path": ".ref/host-4.0.827/native-evidence/CommonDLL/mapping_engine.dll",
+      "sha256": "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 267,
+      "analyzed_graph_entries": 1305,
+      "exports_with_api_paths": 265,
+      "exports_with_unresolved_indirect_calls": 265,
+      "api_path_categories": {
+        "dynamic_loading": 795,
+        "file_or_pipe": 528
+      }
+    },
+    {
+      "path": ".ref/host-4.0.827/native-evidence/CommonDLL/simple_service.dll",
+      "sha256": "f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 89,
+      "analyzed_graph_entries": 1151,
+      "exports_with_api_paths": 87,
+      "exports_with_unresolved_indirect_calls": 89,
+      "api_path_categories": {
+        "dynamic_loading": 261,
+        "file_or_pipe": 172
+      }
+    },
+    {
+      "path": ".ref/host-4.0.827/native-evidence/CommonDLL/simple_service_v1.2.2.9.dll",
+      "sha256": "2c24c80c8d3ea19d84f223ec58ae2b9b02c882f578e06b2c8272c545c1dbfd5d",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 89,
+      "analyzed_graph_entries": 1151,
+      "exports_with_api_paths": 87,
+      "exports_with_unresolved_indirect_calls": 89,
+      "api_path_categories": {
+        "dynamic_loading": 261,
+        "file_or_pipe": 172
+      }
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/@abandonware/bluetooth-hci-socket/build/Release/bluetooth_hci_socket.node",
+      "sha256": "9797ca74448b0d84794af44bfe6ade6a7010c81c2fa596f6fef6e4a4441f194c",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 0,
+      "analyzed_graph_entries": 0,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/@sentry/node-native-stacktrace/lib/stack-trace-win32-x64-108.node",
+      "sha256": "832753b0e8f6c6e199430179c4b0972d03391ffca3c19bc81ee1e8074433e8f9",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 1,
+      "analyzed_graph_entries": 1,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/@sentry/node-native-stacktrace/lib/stack-trace-win32-x64-115.node",
+      "sha256": "be85eded62b50952b22b941eafa8ce08b804ed47d267d131086d8a83bfbc93ff",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 1,
+      "analyzed_graph_entries": 1,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/@sentry/node-native-stacktrace/lib/stack-trace-win32-x64-127.node",
+      "sha256": "e0e89171fe365fab9fd15450adbaf3b35e76a1a6114ede27a16c56b96ce95369",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 1,
+      "analyzed_graph_entries": 1,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/@sentry/node-native-stacktrace/lib/stack-trace-win32-x64-137.node",
+      "sha256": "1cb194a53914ae401fae8b112423652b813fdabe5cf74c6da6d8886ae141a3e2",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 1,
+      "analyzed_graph_entries": 1,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/@sentry/node-native-stacktrace/lib/stack-trace-win32-x64-147.node",
+      "sha256": "809b0c0b50800cf8e575e7f3a16cccdb37264de58eb6739b286a9e817c3b2d2c",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 1,
+      "analyzed_graph_entries": 2,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/@serialport/bindings-cpp/build/Release/bindings.node",
+      "sha256": "ad8397da04d13508a94bbe5a61dc154145ca03187797d5c574c06705b1a05a3d",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 2,
+      "analyzed_graph_entries": 3,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 1,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/ffi-napi-rz/build/Release/ffi_bindings.node",
+      "sha256": "543b068fea0c3878380fb2b30508ad4fd970fcbb9ec0df6d24a163633be3512a",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 2,
+      "analyzed_graph_entries": 3,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 1,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/mjpeg-hotpatch/build/Release/mjpeg-hotpatch.node",
+      "sha256": "5fb00db24123bc25fd418d783bad24eab38e3f44e0941480e4671ddc0ec06a81",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 2,
+      "analyzed_graph_entries": 7,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 1,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/node-ble-rz/build/Release/binding.node",
+      "sha256": "196568febfb06c495a28e9206d18363db3474e9c7acd949ce041d437159cc8a2",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 2,
+      "analyzed_graph_entries": 3,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 1,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/node-ble-rz/build/Release/noble.node",
+      "sha256": "ce517c0d909b48b5ec3b1bc796fcd9a107c5ba96a75b4b7f861c0efd1f30874d",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 0,
+      "analyzed_graph_entries": 0,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/node-rz-ble-endpoint-detection/build/Release/detection.node",
+      "sha256": "d5c680965d558be4381aee898ba9c451b4c4e50bd78dc4a67579487eead93f13",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 0,
+      "analyzed_graph_entries": 0,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/node-rz-hid/build/Release/HID.node",
+      "sha256": "f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 23,
+      "analyzed_graph_entries": 286,
+      "exports_with_api_paths": 9,
+      "exports_with_unresolved_indirect_calls": 14,
+      "api_path_categories": {
+        "device_enumeration": 16,
+        "device_ioctl": 2,
+        "dynamic_loading": 12,
+        "file_or_pipe": 11
+      }
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/node-rz-notification/build/Release/rzNotification.node",
+      "sha256": "5bdea80bf1fb8ef93003f56ebd624e07c25942bfa8b7b2105317c16ccf059e5e",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 2,
+      "analyzed_graph_entries": 664,
+      "exports_with_api_paths": 1,
+      "exports_with_unresolved_indirect_calls": 1,
+      "api_path_categories": {
+        "dynamic_loading": 3,
+        "file_or_pipe": 3
+      }
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/ref-napi/build/Release/binding.node",
+      "sha256": "8d6c9e66609fcc2901d5f821005e72dd6a83abae352ee90b04cdacaac047cbaa",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 2,
+      "analyzed_graph_entries": 3,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 1,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/rz-usb-detect/build/Release/detection.node",
+      "sha256": "2009eb2e0853c329612c53416664ab016f287d601edb9ba07dfd981e16cf6f3b",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 0,
+      "analyzed_graph_entries": 0,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/usb/prebuilds/win32-arm64/node.napi.node",
+      "sha256": "6448e3aa0bbe6b7fe6ef7df256e25bbe21983f42c25b9dfe6edb66439a92e579",
+      "machine": 43620,
+      "status": "architecture_not_analyzed",
+      "semantic_status": "partial",
+      "exports": 2,
+      "analyzed_graph_entries": 0,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/usb/prebuilds/win32-ia32/node.napi.node",
+      "sha256": "9cbed3ae21915d0e2452e7723f80367077b3c35ff54c436bcc256d44ceeb1ff7",
+      "machine": 332,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 0,
+      "analyzed_graph_entries": 0,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/host-4.0.827/node_modules/usb/prebuilds/win32-x64/node.napi.node",
+      "sha256": "ffa217ade441b6ea2af52e4a3d3dc2159593499d74f03c7a734c996c60baee56",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 0,
+      "analyzed_graph_entries": 0,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/RzAudioUtil_v1.0.1.1.dll",
+      "sha256": "012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 6,
+      "analyzed_graph_entries": 510,
+      "exports_with_api_paths": 4,
+      "exports_with_unresolved_indirect_calls": 5,
+      "api_path_categories": {
+        "dynamic_loading": 12
+      }
+    },
+    {
+      "path": ".ref/native-libraries/0278fc29d16fa8334d22b8d62347f73ba9819139ef02ee10d20f1aa0ec7d1d56/RzIntelOverClockDLL_v1.2.23.0.dll",
+      "sha256": "0278fc29d16fa8334d22b8d62347f73ba9819139ef02ee10d20f1aa0ec7d1d56",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 14,
+      "analyzed_graph_entries": 304,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 12,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/08d79db95def4026a78ebfaee3ecfa736295462efb33e8f27864d1004fd8903c/thxvadvirtualroutenative_3942_v1.0.8.0.dll",
+      "sha256": "08d79db95def4026a78ebfaee3ecfa736295462efb33e8f27864d1004fd8903c",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 72,
+      "analyzed_graph_entries": 900,
+      "exports_with_api_paths": 72,
+      "exports_with_unresolved_indirect_calls": 72,
+      "api_path_categories": {
+        "com_activation": 4,
+        "dynamic_loading": 216
+      }
+    },
+    {
+      "path": ".ref/native-libraries/0bcff6300613d8888610799e0a8f8b0c89014df7623f9d88315e895d26780c28/RzIntelOverClockDLL_v1.0.21.0.dll",
+      "sha256": "0bcff6300613d8888610799e0a8f8b0c89014df7623f9d88315e895d26780c28",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 13,
+      "analyzed_graph_entries": 301,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 11,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/0d88696c023364588ac2c21624f1ea1074db74defab1f67a41f60d5866b2d4d5/ThxV4Native_v1.1.3.0.dll",
+      "sha256": "0d88696c023364588ac2c21624f1ea1074db74defab1f67a41f60d5866b2d4d5",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 16,
+      "analyzed_graph_entries": 3196,
+      "exports_with_api_paths": 15,
+      "exports_with_unresolved_indirect_calls": 16,
+      "api_path_categories": {
+        "dynamic_loading": 45,
+        "file_or_pipe": 4,
+        "network_socket": 6
+      }
+    },
+    {
+      "path": ".ref/native-libraries/0ebfed724e5fbcbd1ea9ba9456a2ed2dee704bf7b1466cfe30e4bdb3341d9783/RzNative_0D06_v1.0.9.0.dll",
+      "sha256": "0ebfed724e5fbcbd1ea9ba9456a2ed2dee704bf7b1466cfe30e4bdb3341d9783",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 24,
+      "analyzed_graph_entries": 484,
+      "exports_with_api_paths": 7,
+      "exports_with_unresolved_indirect_calls": 19,
+      "api_path_categories": {
+        "com_activation": 7,
+        "device_enumeration": 7,
+        "dynamic_loading": 2,
+        "file_or_pipe": 1
+      }
+    },
+    {
+      "path": ".ref/native-libraries/12ae7a3ac98727b2e8151c244be3e92c4dab179f827f123ce6b91d97401c64f8/RzNative_0D09_v1.0.8.0.dll",
+      "sha256": "12ae7a3ac98727b2e8151c244be3e92c4dab179f827f123ce6b91d97401c64f8",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 24,
+      "analyzed_graph_entries": 483,
+      "exports_with_api_paths": 7,
+      "exports_with_unresolved_indirect_calls": 19,
+      "api_path_categories": {
+        "com_activation": 7,
+        "device_enumeration": 7,
+        "dynamic_loading": 2,
+        "file_or_pipe": 1
+      }
+    },
+    {
+      "path": ".ref/native-libraries/1544d6cba1844f35c863d4b540fb68cb037b5f3cb86fad08705f9b000c94b83f/philipshuev2_v2.0.18.0.dll",
+      "sha256": "1544d6cba1844f35c863d4b540fb68cb037b5f3cb86fad08705f9b000c94b83f",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 23,
+      "analyzed_graph_entries": 775,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 21,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a/RzNative_058e_v1.0.15.0.dll",
+      "sha256": "15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 24,
+      "analyzed_graph_entries": 207,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 19,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8/RzNative_0E08_v1.0.16.0.dll",
+      "sha256": "1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 88,
+      "analyzed_graph_entries": 533,
+      "exports_with_api_paths": 45,
+      "exports_with_unresolved_indirect_calls": 84,
+      "api_path_categories": {
+        "com_activation": 44,
+        "device_enumeration": 12,
+        "media_foundation": 8
+      }
+    },
+    {
+      "path": ".ref/native-libraries/25e02087a7667d1a1557eec141992fd1c3df2014c152d3a8069deeafec03e22e/blade2Native_v1.0.43.0.dll",
+      "sha256": "25e02087a7667d1a1557eec141992fd1c3df2014c152d3a8069deeafec03e22e",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 46,
+      "analyzed_graph_entries": 1192,
+      "exports_with_api_paths": 43,
+      "exports_with_unresolved_indirect_calls": 44,
+      "api_path_categories": {
+        "com_activation": 13,
+        "device_enumeration": 51,
+        "dynamic_loading": 138,
+        "file_or_pipe": 81
+      }
+    },
+    {
+      "path": ".ref/native-libraries/2c578011d5835e9a0ac5dd6b08a735f1bc90ff7880755d23caf62967969f6111/RzNative_056a_v1.0.3.0.dll",
+      "sha256": "2c578011d5835e9a0ac5dd6b08a735f1bc90ff7880755d23caf62967969f6111",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 29,
+      "analyzed_graph_entries": 218,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 24,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/3535570263eea4e9273e75eb744286f93cf6f9d271b66b5d2f67d2b6f6995dde/RzNative_0543_v1.0.12.1.dll",
+      "sha256": "3535570263eea4e9273e75eb744286f93cf6f9d271b66b5d2f67d2b6f6995dde",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 41,
+      "analyzed_graph_entries": 641,
+      "exports_with_api_paths": 23,
+      "exports_with_unresolved_indirect_calls": 37,
+      "api_path_categories": {
+        "com_activation": 11,
+        "device_enumeration": 7,
+        "dynamic_loading": 2,
+        "file_or_pipe": 1,
+        "hid_feature": 21,
+        "hid_metadata": 2
+      }
+    },
+    {
+      "path": ".ref/native-libraries/38cd5bed362817cd79c38f54b87ba1c4c9f489c02a760067f78774f21969796d/RzASRock_v1.0.12.0.dll",
+      "sha256": "38cd5bed362817cd79c38f54b87ba1c4c9f489c02a760067f78774f21969796d",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 22,
+      "analyzed_graph_entries": 778,
+      "exports_with_api_paths": 8,
+      "exports_with_unresolved_indirect_calls": 19,
+      "api_path_categories": {
+        "file_or_pipe": 23
+      }
+    },
+    {
+      "path": ".ref/native-libraries/3d774d1582156a6ca0a69bd65c950599139206c5b06cc7103af4828b151d8bda/bladeNative_v1.0.15.1.dll",
+      "sha256": "3d774d1582156a6ca0a69bd65c950599139206c5b06cc7103af4828b151d8bda",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 24,
+      "analyzed_graph_entries": 704,
+      "exports_with_api_paths": 20,
+      "exports_with_unresolved_indirect_calls": 21,
+      "api_path_categories": {
+        "com_activation": 5,
+        "device_enumeration": 8,
+        "dynamic_loading": 60
+      }
+    },
+    {
+      "path": ".ref/native-libraries/48b542a7034eca9b4128d86693ffbe2e1748ffd6a58c15091ea5a53e2ae55bdd/RzNative_0E06_v1.0.13.1.dll",
+      "sha256": "48b542a7034eca9b4128d86693ffbe2e1748ffd6a58c15091ea5a53e2ae55bdd",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 37,
+      "analyzed_graph_entries": 894,
+      "exports_with_api_paths": 33,
+      "exports_with_unresolved_indirect_calls": 34,
+      "api_path_categories": {
+        "com_activation": 2,
+        "device_enumeration": 12,
+        "dynamic_loading": 99,
+        "file_or_pipe": 6,
+        "media_foundation": 8
+      }
+    },
+    {
+      "path": ".ref/native-libraries/5094f6d12a37f7f63ac1ecd797572c7796d41fcca83d94a24528543122b54599/RzIntelOverClock_v1.1.21.0.dll",
+      "sha256": "5094f6d12a37f7f63ac1ecd797572c7796d41fcca83d94a24528543122b54599",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 19,
+      "analyzed_graph_entries": 388,
+      "exports_with_api_paths": 8,
+      "exports_with_unresolved_indirect_calls": 17,
+      "api_path_categories": {
+        "file_or_pipe": 16
+      }
+    },
+    {
+      "path": ".ref/native-libraries/54b8d53c215c7992ab949aa75db1cd92706bdd1fb4a488a1efcdb695141f68c5/RzUMASDKWrapper_v1.0.3.0.dll",
+      "sha256": "54b8d53c215c7992ab949aa75db1cd92706bdd1fb4a488a1efcdb695141f68c5",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 17,
+      "analyzed_graph_entries": 309,
+      "exports_with_api_paths": 1,
+      "exports_with_unresolved_indirect_calls": 15,
+      "api_path_categories": {
+        "dynamic_loading": 2
+      }
+    },
+    {
+      "path": ".ref/native-libraries/55b50c56e92c582a39ef034c4e3c0d71be246ec15f945005286847b8f15c73ef/RzIntelOverClock_v1.2.23.0.dll",
+      "sha256": "55b50c56e92c582a39ef034c4e3c0d71be246ec15f945005286847b8f15c73ef",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 19,
+      "analyzed_graph_entries": 400,
+      "exports_with_api_paths": 7,
+      "exports_with_unresolved_indirect_calls": 17,
+      "api_path_categories": {
+        "file_or_pipe": 14
+      }
+    },
+    {
+      "path": ".ref/native-libraries/5d2bcb82f6e288394a58199e72dde4c13e1fd03174cd55ff39d7a3d9fdfbffb0/RzNative_0E05_v1.0.15.1.dll",
+      "sha256": "5d2bcb82f6e288394a58199e72dde4c13e1fd03174cd55ff39d7a3d9fdfbffb0",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 38,
+      "analyzed_graph_entries": 898,
+      "exports_with_api_paths": 33,
+      "exports_with_unresolved_indirect_calls": 34,
+      "api_path_categories": {
+        "com_activation": 2,
+        "device_enumeration": 12,
+        "dynamic_loading": 99,
+        "file_or_pipe": 6,
+        "media_foundation": 8
+      }
+    },
+    {
+      "path": ".ref/native-libraries/5de7cbbcdb0ddb70e5622d6570fb2debb5186ae1182e693d4f212e5df1ec835a/ThxV3Native_v1.1.42.1.dll",
+      "sha256": "5de7cbbcdb0ddb70e5622d6570fb2debb5186ae1182e693d4f212e5df1ec835a",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 231,
+      "analyzed_graph_entries": 1612,
+      "exports_with_api_paths": 206,
+      "exports_with_unresolved_indirect_calls": 208,
+      "api_path_categories": {
+        "com_activation": 8,
+        "device_enumeration": 8,
+        "dynamic_loading": 618
+      }
+    },
+    {
+      "path": ".ref/native-libraries/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b/Razer_Upgrade_SDK.dll",
+      "sha256": "6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 6,
+      "analyzed_graph_entries": 122,
+      "exports_with_api_paths": 3,
+      "exports_with_unresolved_indirect_calls": 1,
+      "api_path_categories": {
+        "device_enumeration": 12,
+        "file_or_pipe": 3,
+        "hid_feature": 6,
+        "hid_metadata": 12,
+        "winusb": 4
+      }
+    },
+    {
+      "path": ".ref/native-libraries/661390780318d2c8d850e07d0c2b29266c56eb185910c8501f2c40adbfc0305a/cpuidsdk64_v1.3.1.2.dll",
+      "sha256": "661390780318d2c8d850e07d0c2b29266c56eb185910c8501f2c40adbfc0305a",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 1,
+      "analyzed_graph_entries": 1,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 0,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/6f6c875527ca8a147ef07a2737979a5fa4af1f11b99f5e26be5128bc77baca73/blade2Native_v1.0.50.0.dll",
+      "sha256": "6f6c875527ca8a147ef07a2737979a5fa4af1f11b99f5e26be5128bc77baca73",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 47,
+      "analyzed_graph_entries": 1269,
+      "exports_with_api_paths": 44,
+      "exports_with_unresolved_indirect_calls": 45,
+      "api_path_categories": {
+        "com_activation": 13,
+        "device_enumeration": 51,
+        "dynamic_loading": 141,
+        "file_or_pipe": 83
+      }
+    },
+    {
+      "path": ".ref/native-libraries/70c26607d0b6728ea2818519630e604366b165161376e2d659a9cf9a1ea5d648/RzAV_v1.0.0.10.dll",
+      "sha256": "70c26607d0b6728ea2818519630e604366b165161376e2d659a9cf9a1ea5d648",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 11,
+      "analyzed_graph_entries": 592,
+      "exports_with_api_paths": 8,
+      "exports_with_unresolved_indirect_calls": 9,
+      "api_path_categories": {
+        "com_activation": 1,
+        "dynamic_loading": 24
+      }
+    },
+    {
+      "path": ".ref/native-libraries/7966cf2f6deaf18a277acafed433063afec7db9f5c4275729601aab40b54eb9e/RzAMDOverClockDLL_v1.1.15.0.dll",
+      "sha256": "7966cf2f6deaf18a277acafed433063afec7db9f5c4275729601aab40b54eb9e",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 12,
+      "analyzed_graph_entries": 920,
+      "exports_with_api_paths": 7,
+      "exports_with_unresolved_indirect_calls": 10,
+      "api_path_categories": {
+        "com_activation": 12,
+        "file_or_pipe": 6,
+        "service_management": 33
+      }
+    },
+    {
+      "path": ".ref/native-libraries/7f8f6ae7dd4e96a012727f9569a7cec415ad67e28ca9ce192847a72f768d0334/RzAMDOverClock_v1.0.17.0.dll",
+      "sha256": "7f8f6ae7dd4e96a012727f9569a7cec415ad67e28ca9ce192847a72f768d0334",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 19,
+      "analyzed_graph_entries": 196,
+      "exports_with_api_paths": 8,
+      "exports_with_unresolved_indirect_calls": 17,
+      "api_path_categories": {
+        "file_or_pipe": 15
+      }
+    },
+    {
+      "path": ".ref/native-libraries/8099160275f98c1fee56497a46b83a32ef49fb8d67436bd46556ce31c67c9790/RzNative_0517.dll",
+      "sha256": "8099160275f98c1fee56497a46b83a32ef49fb8d67436bd46556ce31c67c9790",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 11,
+      "analyzed_graph_entries": 563,
+      "exports_with_api_paths": 5,
+      "exports_with_unresolved_indirect_calls": 8,
+      "api_path_categories": {
+        "com_activation": 3,
+        "dynamic_loading": 15
+      }
+    },
+    {
+      "path": ".ref/native-libraries/821ba042908d3bcdc5bf7e099c1a1160bbb1246f62184ab63a85ce6f752fa101/audCapNative_v1.0.2.0.dll",
+      "sha256": "821ba042908d3bcdc5bf7e099c1a1160bbb1246f62184ab63a85ce6f752fa101",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 13,
+      "analyzed_graph_entries": 747,
+      "exports_with_api_paths": 12,
+      "exports_with_unresolved_indirect_calls": 13,
+      "api_path_categories": {
+        "com_activation": 4,
+        "dynamic_loading": 38
+      }
+    },
+    {
+      "path": ".ref/native-libraries/828499b9ef1146214032bc9fe60f448369fa050c0c3598d59b7c2827bd685edb/RzNative_05a6_v1.0.7.0.dll",
+      "sha256": "828499b9ef1146214032bc9fe60f448369fa050c0c3598d59b7c2827bd685edb",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 24,
+      "analyzed_graph_entries": 207,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 19,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7/RzNative_GenericCamera_v1.0.35.0.dll",
+      "sha256": "84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 101,
+      "analyzed_graph_entries": 1114,
+      "exports_with_api_paths": 98,
+      "exports_with_unresolved_indirect_calls": 99,
+      "api_path_categories": {
+        "com_activation": 45,
+        "device_enumeration": 27,
+        "dynamic_loading": 294,
+        "file_or_pipe": 8,
+        "media_foundation": 8
+      }
+    },
+    {
+      "path": ".ref/native-libraries/8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca/ThxVADCarolNative_v1.0.13.0.dll",
+      "sha256": "8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 68,
+      "analyzed_graph_entries": 853,
+      "exports_with_api_paths": 68,
+      "exports_with_unresolved_indirect_calls": 68,
+      "api_path_categories": {
+        "com_activation": 4,
+        "dynamic_loading": 204
+      }
+    },
+    {
+      "path": ".ref/native-libraries/87e07bf624706203eea9925fc3ec1787ab7d097c3fc4f55009176e5b676077f1/BladeNative_v1.0.10.1.dll",
+      "sha256": "87e07bf624706203eea9925fc3ec1787ab7d097c3fc4f55009176e5b676077f1",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 22,
+      "analyzed_graph_entries": 738,
+      "exports_with_api_paths": 19,
+      "exports_with_unresolved_indirect_calls": 20,
+      "api_path_categories": {
+        "com_activation": 5,
+        "device_enumeration": 8,
+        "dynamic_loading": 57
+      }
+    },
+    {
+      "path": ".ref/native-libraries/8ae90d8fea237c1ca062906383f878cf191a0c5d367e92233c2892ea3a2278f2/thxvadvirtualroutenative_1442_v1.0.6.0.dll",
+      "sha256": "8ae90d8fea237c1ca062906383f878cf191a0c5d367e92233c2892ea3a2278f2",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 72,
+      "analyzed_graph_entries": 900,
+      "exports_with_api_paths": 72,
+      "exports_with_unresolved_indirect_calls": 72,
+      "api_path_categories": {
+        "com_activation": 4,
+        "dynamic_loading": 216
+      }
+    },
+    {
+      "path": ".ref/native-libraries/8c0b60c7011d6b3841bee6ef9d37719720288222abc8b656a9e494f7bdb77f4f/blade2Native_v1.0.46.0.dll",
+      "sha256": "8c0b60c7011d6b3841bee6ef9d37719720288222abc8b656a9e494f7bdb77f4f",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 47,
+      "analyzed_graph_entries": 1213,
+      "exports_with_api_paths": 44,
+      "exports_with_unresolved_indirect_calls": 45,
+      "api_path_categories": {
+        "com_activation": 13,
+        "device_enumeration": 51,
+        "dynamic_loading": 141,
+        "file_or_pipe": 83
+      }
+    },
+    {
+      "path": ".ref/native-libraries/8e8f6923624762935d70b72f58bec00808db84df740340047919b53331130a0a/ThxV4Native_v1.1.1.0.dll",
+      "sha256": "8e8f6923624762935d70b72f58bec00808db84df740340047919b53331130a0a",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 16,
+      "analyzed_graph_entries": 3200,
+      "exports_with_api_paths": 15,
+      "exports_with_unresolved_indirect_calls": 16,
+      "api_path_categories": {
+        "dynamic_loading": 45,
+        "file_or_pipe": 4,
+        "network_socket": 6
+      }
+    },
+    {
+      "path": ".ref/native-libraries/8eaccd31629fd23bc43b9518fff2994272bdd7da359d8fe6deb547c4950730f4/ThxV4Native_v1.1.2.0.dll",
+      "sha256": "8eaccd31629fd23bc43b9518fff2994272bdd7da359d8fe6deb547c4950730f4",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 16,
+      "analyzed_graph_entries": 3196,
+      "exports_with_api_paths": 15,
+      "exports_with_unresolved_indirect_calls": 16,
+      "api_path_categories": {
+        "dynamic_loading": 45,
+        "file_or_pipe": 4,
+        "network_socket": 6
+      }
+    },
+    {
+      "path": ".ref/native-libraries/9134a79a2aac0d3ca48087fe2ad62ab29b44ad334c9d85edf36171c7ea79caaf/RzAudioUtil_v1.0.3.1.dll",
+      "sha256": "9134a79a2aac0d3ca48087fe2ad62ab29b44ad334c9d85edf36171c7ea79caaf",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 7,
+      "analyzed_graph_entries": 488,
+      "exports_with_api_paths": 6,
+      "exports_with_unresolved_indirect_calls": 7,
+      "api_path_categories": {
+        "com_activation": 1,
+        "dynamic_loading": 18
+      }
+    },
+    {
+      "path": ".ref/native-libraries/94e0cfa6121cea0ad0275547fb507cfc725022cf68263a9d3ed97ed998a9374a/RzIntelOverClockDLL_v1.1.21.0.dll",
+      "sha256": "94e0cfa6121cea0ad0275547fb507cfc725022cf68263a9d3ed97ed998a9374a",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 14,
+      "analyzed_graph_entries": 304,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 12,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/9779234a43451b4500d4a4fe51a6b9e5750924ffb7facf499ce7a071cf7cc336/razer_soma_pro_routing_client_1.2.1.59_2.dll",
+      "sha256": "9779234a43451b4500d4a4fe51a6b9e5750924ffb7facf499ce7a071cf7cc336",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 163,
+      "analyzed_graph_entries": 2678,
+      "exports_with_api_paths": 139,
+      "exports_with_unresolved_indirect_calls": 156,
+      "api_path_categories": {
+        "dynamic_loading": 417,
+        "file_or_pipe": 7,
+        "network_socket": 52
+      }
+    },
+    {
+      "path": ".ref/native-libraries/9f0ee89c1e003d2990880babc7612fa76d0259a716b955fbc0a7d34d5de8a418/RzAMDOverClock_v1.1.15.0.dll",
+      "sha256": "9f0ee89c1e003d2990880babc7612fa76d0259a716b955fbc0a7d34d5de8a418",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 19,
+      "analyzed_graph_entries": 183,
+      "exports_with_api_paths": 8,
+      "exports_with_unresolved_indirect_calls": 17,
+      "api_path_categories": {
+        "file_or_pipe": 15
+      }
+    },
+    {
+      "path": ".ref/native-libraries/a55c0305b4b683a82a13f3062b042420ba4d8540ec49807d0c3b319a2261a333/blade2Native_v1.0.45.0.dll",
+      "sha256": "a55c0305b4b683a82a13f3062b042420ba4d8540ec49807d0c3b319a2261a333",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 47,
+      "analyzed_graph_entries": 1212,
+      "exports_with_api_paths": 44,
+      "exports_with_unresolved_indirect_calls": 45,
+      "api_path_categories": {
+        "com_activation": 13,
+        "device_enumeration": 51,
+        "dynamic_loading": 141,
+        "file_or_pipe": 83
+      }
+    },
+    {
+      "path": ".ref/native-libraries/aaf21e02a34db9ac603bd7a97721226486af8bf383707e70eef43b95159b140e/thx_carol_routing_client_v1.0.80.0.dll",
+      "sha256": "aaf21e02a34db9ac603bd7a97721226486af8bf383707e70eef43b95159b140e",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 61,
+      "analyzed_graph_entries": 3122,
+      "exports_with_api_paths": 37,
+      "exports_with_unresolved_indirect_calls": 54,
+      "api_path_categories": {
+        "dynamic_loading": 111,
+        "file_or_pipe": 7,
+        "network_socket": 52
+      }
+    },
+    {
+      "path": ".ref/native-libraries/ac93e7e9beb1e6e8652b2bbf21801d9d9387ed90a173e314a8fdef9c61aa46bd/RzNative_056f_v1.0.8.0.dll",
+      "sha256": "ac93e7e9beb1e6e8652b2bbf21801d9d9387ed90a173e314a8fdef9c61aa46bd",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 29,
+      "analyzed_graph_entries": 222,
+      "exports_with_api_paths": 0,
+      "exports_with_unresolved_indirect_calls": 24,
+      "api_path_categories": {}
+    },
+    {
+      "path": ".ref/native-libraries/ae2799059f4dae73daa2349bb9dfcca0e535483663d9ef1b1f18a45fea97c395/RzIntelOverClock_v1.0.21.0.dll",
+      "sha256": "ae2799059f4dae73daa2349bb9dfcca0e535483663d9ef1b1f18a45fea97c395",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 18,
+      "analyzed_graph_entries": 398,
+      "exports_with_api_paths": 6,
+      "exports_with_unresolved_indirect_calls": 16,
+      "api_path_categories": {
+        "file_or_pipe": 12
+      }
+    },
+    {
+      "path": ".ref/native-libraries/af10595e3ce6cf9b394488e1929fc6e3d54a887c6be62b66260d7ee507c9e8f2/CmMixerLib_v1.0.1.0.dll",
+      "sha256": "af10595e3ce6cf9b394488e1929fc6e3d54a887c6be62b66260d7ee507c9e8f2",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 9,
+      "analyzed_graph_entries": 214,
+      "exports_with_api_paths": 6,
+      "exports_with_unresolved_indirect_calls": 5,
+      "api_path_categories": {
+        "com_activation": 6,
+        "device_enumeration": 13,
+        "device_ioctl": 1,
+        "file_or_pipe": 3,
+        "hid_feature": 1,
+        "hid_metadata": 5
+      }
+    },
+    {
+      "path": ".ref/native-libraries/b06973af45bcc6cc6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c/RzNative_0542_v1.0.25.0.dll",
+      "sha256": "b06973af45bcc6cc6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 41,
+      "analyzed_graph_entries": 641,
+      "exports_with_api_paths": 23,
+      "exports_with_unresolved_indirect_calls": 36,
+      "api_path_categories": {
+        "com_activation": 11,
+        "device_enumeration": 7,
+        "dynamic_loading": 2,
+        "file_or_pipe": 1,
+        "hid_feature": 21,
+        "hid_metadata": 2
+      }
+    },
+    {
+      "path": ".ref/native-libraries/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802/razer_clio_x_routing_client_v1.2.0.51.dll",
+      "sha256": "b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 163,
+      "analyzed_graph_entries": 3212,
+      "exports_with_api_paths": 138,
+      "exports_with_unresolved_indirect_calls": 155,
+      "api_path_categories": {
+        "dynamic_loading": 414,
+        "file_or_pipe": 7,
+        "network_socket": 52
+      }
+    },
+    {
+      "path": ".ref/native-libraries/d3cf6173a2e8bb7af0a1066da3bd9d6038270884b6fcdc5afdaefd349755da5d/RzNative_053E_v1.0.16.0.dll",
+      "sha256": "d3cf6173a2e8bb7af0a1066da3bd9d6038270884b6fcdc5afdaefd349755da5d",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 46,
+      "analyzed_graph_entries": 492,
+      "exports_with_api_paths": 32,
+      "exports_with_unresolved_indirect_calls": 38,
+      "api_path_categories": {
+        "com_activation": 1,
+        "device_enumeration": 28,
+        "device_ioctl": 2,
+        "dynamic_loading": 85,
+        "file_or_pipe": 13
+      }
+    },
+    {
+      "path": ".ref/native-libraries/d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b/RzNative_0E03_v1.0.16.1.dll",
+      "sha256": "d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 37,
+      "analyzed_graph_entries": 903,
+      "exports_with_api_paths": 33,
+      "exports_with_unresolved_indirect_calls": 34,
+      "api_path_categories": {
+        "com_activation": 2,
+        "device_enumeration": 12,
+        "dynamic_loading": 99,
+        "file_or_pipe": 6,
+        "media_foundation": 8
+      }
+    },
+    {
+      "path": ".ref/native-libraries/daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2/RzNative_GenericCamera_v1.0.36.1.dll",
+      "sha256": "daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 103,
+      "analyzed_graph_entries": 1117,
+      "exports_with_api_paths": 100,
+      "exports_with_unresolved_indirect_calls": 101,
+      "api_path_categories": {
+        "com_activation": 45,
+        "device_enumeration": 27,
+        "dynamic_loading": 300,
+        "file_or_pipe": 8,
+        "media_foundation": 8
+      }
+    },
+    {
+      "path": ".ref/native-libraries/dc9af9a15330512ac89b6544205c08b9ffadef3fef2d390a01ead9482ca79105/RzASRockDLL_v1.0.12.0.dll",
+      "sha256": "dc9af9a15330512ac89b6544205c08b9ffadef3fef2d390a01ead9482ca79105",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 28,
+      "analyzed_graph_entries": 1029,
+      "exports_with_api_paths": 20,
+      "exports_with_unresolved_indirect_calls": 22,
+      "api_path_categories": {
+        "com_activation": 16,
+        "device_enumeration": 68,
+        "device_ioctl": 3,
+        "dynamic_loading": 9,
+        "file_or_pipe": 66,
+        "hid_metadata": 34,
+        "service_management": 9
+      }
+    },
+    {
+      "path": ".ref/native-libraries/e22f6289255816dfa82d02a77afea385eaede7d479a5966a908de35663f9df6e/bladeNative_v1.0.12.1.dll",
+      "sha256": "e22f6289255816dfa82d02a77afea385eaede7d479a5966a908de35663f9df6e",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 24,
+      "analyzed_graph_entries": 699,
+      "exports_with_api_paths": 20,
+      "exports_with_unresolved_indirect_calls": 21,
+      "api_path_categories": {
+        "com_activation": 5,
+        "device_enumeration": 8,
+        "dynamic_loading": 60
+      }
+    },
+    {
+      "path": ".ref/native-libraries/e45d400a3cc1af287e7787ca38c66ff4e071f138e013c91c57ec39acc22aaf8e/RzAMDOverClock_v1.0.15.0.dll",
+      "sha256": "e45d400a3cc1af287e7787ca38c66ff4e071f138e013c91c57ec39acc22aaf8e",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 19,
+      "analyzed_graph_entries": 198,
+      "exports_with_api_paths": 8,
+      "exports_with_unresolved_indirect_calls": 17,
+      "api_path_categories": {
+        "file_or_pipe": 15
+      }
+    },
+    {
+      "path": ".ref/native-libraries/e55e0e56cde4d2af41328fa13d28a5447a7d28d919537ef095d208dc8f314498/bladeNative_v1.0.13.1.dll",
+      "sha256": "e55e0e56cde4d2af41328fa13d28a5447a7d28d919537ef095d208dc8f314498",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 24,
+      "analyzed_graph_entries": 699,
+      "exports_with_api_paths": 20,
+      "exports_with_unresolved_indirect_calls": 21,
+      "api_path_categories": {
+        "com_activation": 5,
+        "device_enumeration": 8,
+        "dynamic_loading": 60
+      }
+    },
+    {
+      "path": ".ref/native-libraries/e8a1ca0efae2f7f3a73f2402d3110cc2ca1b54b19a836ca22859dd23ec3d1159/ScarlettNative_v1.0.11.0.dll",
+      "sha256": "e8a1ca0efae2f7f3a73f2402d3110cc2ca1b54b19a836ca22859dd23ec3d1159",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 66,
+      "analyzed_graph_entries": 822,
+      "exports_with_api_paths": 60,
+      "exports_with_unresolved_indirect_calls": 65,
+      "api_path_categories": {
+        "device_enumeration": 11,
+        "device_ioctl": 2,
+        "dynamic_loading": 180,
+        "file_or_pipe": 8,
+        "hid_feature": 2
+      }
+    },
+    {
+      "path": ".ref/native-libraries/f2db7a896be775d7104171e354378e3e55c212efa05ff1f1e6ae9d378de746d8/RzAMDOverClockDLL_v1.0.15.0.dll",
+      "sha256": "f2db7a896be775d7104171e354378e3e55c212efa05ff1f1e6ae9d378de746d8",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 12,
+      "analyzed_graph_entries": 735,
+      "exports_with_api_paths": 6,
+      "exports_with_unresolved_indirect_calls": 10,
+      "api_path_categories": {
+        "com_activation": 12,
+        "file_or_pipe": 6,
+        "service_management": 30
+      }
+    },
+    {
+      "path": ".ref/native-libraries/f7c0ddebcb635c27b022292c3c3446870d0010b6160fb6074c1dd9d09206e0e2/RzAMDOverClockDLL_v1.0.17.0.dll",
+      "sha256": "f7c0ddebcb635c27b022292c3c3446870d0010b6160fb6074c1dd9d09206e0e2",
+      "machine": 34404,
+      "status": "export_graph_partial",
+      "semantic_status": "partial",
+      "exports": 12,
+      "analyzed_graph_entries": 898,
+      "exports_with_api_paths": 7,
+      "exports_with_unresolved_indirect_calls": 10,
+      "api_path_categories": {
+        "com_activation": 12,
+        "file_or_pipe": 6,
+        "service_management": 33
+      }
+    }
+  ],
+  "limitations": [
+    "Direct paths are syntactic only; argument types, path feasibility and protocol bytes remain unresolved.",
+    "Dynamic calls, virtual dispatch, callback entrypoints and initialization reachability are not closed.",
+    "Graphs start at exports, not every internal routine or node registration callback.",
+    "CLR IL is not decoded; native exports do not establish managed internal semantics.",
+    "ARM64 bytes are verified but architecture is not analyzed here.",
+    "No application, DLL, vendor JavaScript or device command was executed."
+  ]
+}

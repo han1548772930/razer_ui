@@ -28,6 +28,9 @@
 !/tools/audit-application-ui-details-current.cjs
 !/tools/audit-application-end-to-end-current.cjs
 !/tools/audit-native-3886-legacy-hue.cjs
+!/tools/audit-openlogi-reference.cjs
+!/tools/audit-dll-device-communication.py
+!/tools/audit-cmmixer-protocol-current.py
 !/tools/extract-all-product-page-chains.cjs
 !/tools/extract-all-application-chains.cjs
 !/tools/extract-all-product-layout-chains.cjs
