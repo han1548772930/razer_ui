@@ -286,3 +286,7 @@
 !/tools/audit-tray-window-current.py
 !/tools/audit-keyboard-actuation-sync.cjs
 !/tools/audit-settings-presentation-current.cjs
+!/tools/audit-tray-state-source.cjs
+!/tools/audit-tray-widgets-current.py
+!/tools/audit-tray-footer-current.cjs
+!/tools/prepare-tray-widget-assets.py

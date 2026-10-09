@@ -39,7 +39,11 @@ for (const fact of ['self.settings_tip_task = None', 'self.settings_tip_mounted 
 }
 assert(tray.includes('this.hover_settings(false, cx)'), 'Window blur does not dismiss settings tooltip');
 assert(tray.includes('"login" | "account-guest-logout"'), 'Guest command silently dropped');
-assert(tray.includes('session: TraySession::SignedOut'), 'Unconnected host must remain signed out');
+assert(tray.includes('session: TraySession::Guest') && tray.includes('not an observed Razer'),
+  'Local Guest presentation must disclose its unconnected account boundary');
+const state = JSON.parse(read('docs/re/tray-state-current-evidence.json'));
+assert(Object.keys(state.state_contract.initial_user_item).length === 0,
+  'Source initial account must remain separate from local Guest presentation');
 assert(node('he').includes('minimum_height:768,minimum_width:1e3'), 'Tray settings minimum override changed');
 assert(tray.includes('command == "settings-quick-panel"'), 'Settings gear option lost');
 const settings = read('src/shell/settings_window.rs');

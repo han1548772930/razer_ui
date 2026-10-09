@@ -22,8 +22,8 @@ impl DesktopTray {
         // KSNI does not expose panel-icon bounds. Center the auxiliary window
         // using GPUI display geometry instead of assuming a Windows taskbar.
         let options = WindowOptions {
-            window_bounds: Some(WindowBounds::centered(size(px(360.), px(200.)), cx)),
-            window_min_size: Some(size(px(360.), px(200.))),
+            window_bounds: Some(WindowBounds::centered(size(px(360.), px(400.)), cx)),
+            window_min_size: Some(size(px(360.), px(60.))),
             window_background: WindowBackgroundAppearance::Transparent,
             titlebar: None,
             show: true,
@@ -35,7 +35,8 @@ impl DesktopTray {
             ..Default::default()
         };
         self.popup = Some(gpui_kit::open_window(options, cx, |window, cx| {
-            let popup = cx.new(|cx| TrayPopup::new(sender, window, cx));
+            let popup =
+                cx.new(|cx| TrayPopup::new(sender, window, cx, self.widget_devices.clone()));
             popup.read(cx).focus.focus(window, cx);
             popup
         })?);

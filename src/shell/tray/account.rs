@@ -1,5 +1,6 @@
 //! Current systrayv2 554: oe/he/Oe/_e. See tray-account-current-evidence.json.
 //! The real account channel and populated widgets/notifications remain pending.
+use super::widgets::widget_list_with_click;
 use super::*;
 use gpui_kit::base::Button as BaseButton;
 
@@ -126,17 +127,25 @@ impl TrayPopup {
                     .rounded_full()
                     .overflow_hidden()
                     .on_click(cx.listener(move |this, _, _, _| this.command(command)))
-                    .child(img(avatar).size_full()),
+                    // Image clipping needs its own radius in GPUI; the source
+                    // background image is clipped by the avatar's 50% radius.
+                    .child(
+                        img(avatar)
+                            .size_full()
+                            .rounded_full()
+                            .object_fit(ObjectFit::Contain),
+                    ),
             )
             .child(
                 BaseButton::new("tray-account-name")
                     .min_w_0()
                     .mr(surface::css(10.))
+                    .justify_start()
                     .line_height(relative(1.22))
                     .text_color(TrayColors::selected_text())
                     .font_weight(FontWeight::BOLD)
                     .on_click(cx.listener(move |this, _, _, _| this.command(command)))
-                    .child(div().truncate().child(name)),
+                    .child(div().block().truncate().child(name)),
             )
             .child(
                 BaseButton::new("tray-view-online")
@@ -153,6 +162,10 @@ impl TrayPopup {
                     .line_height(relative(1.))
                     .text_color(TrayColors::text())
                     .opacity(opacity)
+                    // `.btn-outline-white` overrides the shared button
+                    // opacity states; its own pressed surface is transparent.
+                    .hover(|button| button.bg(TrayColors::border()))
+                    .active(|button| button.bg(Hsla::transparent_black()))
                     .on_click(cx.listener(move |this, _, _, _| this.command(command)))
                     .child(label.to_uppercase()),
             )
@@ -164,13 +177,18 @@ impl TrayPopup {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> AnyElement {
-        let mut tabs = h_flex()
+        // Source `.navbar` and its independent `.tabs` are flex rows with
+        // default cross-axis stretch; centering the navbar shortens the gear.
+        let navbar = div()
             .id("tray-navbar")
+            .flex()
+            .items_stretch()
             .relative()
             .w_full()
             .flex_shrink_0()
             .border_t_1()
             .border_color(TrayColors::launcher());
+        let mut tabs = div().id("tray-tabs").flex().items_stretch();
         for (section, id, key) in [
             (TraySection::Widgets, "tray-tab-widgets", "TEXT_WIDGETS"),
             (
@@ -250,83 +268,125 @@ impl TrayPopup {
             window,
             cx,
         );
-        tabs.child(
-            BaseButton::new("tray-navbar-settings")
-                .relative()
-                .accessibility_label(text("popup", "TEXT_SETTINGS"))
-                .ml_auto()
-                .px(surface::css(23.))
-                .bg(settings_bg)
-                .on_hover(cx.listener(|this, hovered, _, cx| this.hover_settings(*hovered, cx)))
-                .on_click(cx.listener(|this, _, _, _| this.command("settings-quick-panel")))
-                .child(
-                    svg()
-                        .path("synapse/tray-settings-current.svg")
-                        .w(surface::css(14.026))
-                        .h(surface::css(14.))
-                        .text_color(settings_fg),
-                )
-                .when(self.settings_tip_mounted, |button| {
-                    button.child(
-                        deferred(
-                            div()
-                                .absolute()
-                                .top_full()
-                                .right_0()
-                                .w(surface::css(300.))
-                                .flex()
-                                .justify_end()
-                                .opacity(tip_opacity)
-                                .child(
-                                    gpui_kit::base::Tooltip::new("tray-settings-tip")
-                                        .bg(TrayColors::border())
-                                        .border_1()
-                                        .border_color(TrayColors::tooltip_border())
-                                        .text_color(TrayColors::text())
-                                        .text_size(surface::css(14.))
-                                        .line_height(relative(1.22))
-                                        .text_left()
-                                        .px(surface::css(8.))
-                                        .py(surface::css(7.))
-                                        .child(text("popup", "TEXT_SETTINGS")),
-                                ),
-                        )
-                        .with_priority(1060),
+        navbar
+            .child(tabs)
+            .child(
+                BaseButton::new("tray-navbar-settings")
+                    .relative()
+                    .flex()
+                    .items_center()
+                    .flex_shrink_0()
+                    .accessibility_label(text("popup", "TEXT_SETTINGS"))
+                    .ml_auto()
+                    .px(surface::css(23.))
+                    .bg(settings_bg)
+                    .on_hover(cx.listener(|this, hovered, _, cx| this.hover_settings(*hovered, cx)))
+                    .on_click(cx.listener(|this, _, _, _| this.command("settings-quick-panel")))
+                    .child(
+                        svg()
+                            .path("synapse/tray-settings-current.svg")
+                            .w(surface::css(14.026))
+                            .h(surface::css(14.))
+                            .text_color(settings_fg),
                     )
-                }),
-        )
-        .child(
-            div()
-                .absolute()
-                .left_0()
-                .top_full()
-                .w_full()
-                .h(surface::css(2.))
-                .bg(TrayColors::launcher()),
-        )
-        .into_any_element()
+                    .when(self.settings_tip_mounted, |button| {
+                        button.child(
+                            deferred(
+                                div()
+                                    .absolute()
+                                    .top_full()
+                                    .right_0()
+                                    .w(surface::css(300.))
+                                    .flex()
+                                    .justify_end()
+                                    .opacity(tip_opacity)
+                                    .child(
+                                        gpui_kit::base::Tooltip::new("tray-settings-tip")
+                                            .bg(TrayColors::border())
+                                            .border_1()
+                                            .border_color(TrayColors::tooltip_border())
+                                            .text_color(TrayColors::text())
+                                            .text_size(surface::css(14.))
+                                            .line_height(relative(1.22))
+                                            .text_left()
+                                            .px(surface::css(8.))
+                                            .py(surface::css(7.))
+                                            .child(text("popup", "TEXT_SETTINGS")),
+                                    ),
+                            )
+                            .with_priority(1060),
+                        )
+                    }),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .left_0()
+                    .top_full()
+                    .w_full()
+                    .h(surface::css(2.))
+                    .bg(TrayColors::launcher()),
+            )
+            .into_any_element()
     }
 
     pub(super) fn account_body(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        // c() supplies maxHeight = window height - 153. Source body remains
-        // 547px; the native dynamic window placement still needs full auditing.
+        // Re marks the body `.taller` only when there are no launchers.
+        // c() supplies maxHeight = window height - 153 CSS pixels. Use the
+        // same rem conversion as the 547px height and 306px minimum.
+        let popup = cx.entity().downgrade();
+        let revision = self.widget_revision;
+        let measure_widgets = self.section == TraySection::Widgets;
         let body = div()
+            .on_children_prepainted(move |bounds, window, cx| {
+                if !measure_widgets {
+                    return;
+                }
+                // Like 597/c's child.offsetHeight sum, measure the resolved
+                // body children, not the clipped scroll viewport or spinner.
+                let css_pixel = f32::from(surface::css(1.).to_pixels(window.rem_size()));
+                let height = bounds
+                    .iter()
+                    .map(|child| (f32::from(child.size.height) / css_pixel).round())
+                    .sum();
+                let popup = popup.clone();
+                // Release the render/paint stack before updating the entity.
+                window.defer(cx, move |window, cx| {
+                    let _ = popup.update(cx, |view, cx| {
+                        if view.widget_revision == revision {
+                            view.observe_widget_height(height, window, cx);
+                        }
+                    });
+                });
+            })
             .id("tray-body")
+            .block()
             .relative()
             .w_full()
             .h(surface::css(547.))
-            .max_h((window.viewport_size().height - px(153.)).max(px(0.)))
+            .when(self.launchers.is_empty(), |body| {
+                body.min_h(surface::css(306.))
+            })
+            .max_h(
+                (window.viewport_size().height - surface::css(153.).to_pixels(window.rem_size()))
+                    .max(px(0.)),
+            )
             .flex_shrink_0()
             .overflow_x_hidden()
             .overflow_y_scroll();
         if self.section == TraySection::Widgets {
+            let devices = self.sender.clone();
+            let application = self.sender.clone();
             return body
-                .child(self.empty_body(
-                    "TEXT_WIDGETS_PLACEHOLDER",
-                    "TEXT_CHANGE_wIDGETS_SETTINGS",
-                    "settings-widgets",
-                    window,
-                    cx,
+                .child(widget_list_with_click(
+                    &self.widget_devices,
+                    text("popup", "TEXT_WIDGETS_PLACEHOLDER"),
+                    move |device, _, _, _| {
+                        let _ = devices.try_send(Event::Device(device.id.clone()));
+                    },
+                    move |_, _, _| {
+                        let _ = application.try_send(Event::Menu("synapse".into()));
+                    },
                 ))
                 .into_any_element();
         }
@@ -366,6 +426,41 @@ impl TrayPopup {
         }
     }
 
+    /// Source 597/c: sum(body child.offsetHeight) + 153, clamped to 400..700.
+    /// This reader is safe in click callbacks: layout runs only in prepaint.
+    /// Until the first measurement, use the source account lower bound.
+    pub(super) fn requested_height(&self) -> f32 {
+        if self.session == TraySession::SignedOut {
+            return 60.;
+        }
+        (self.widget_height.unwrap_or(0.) + 153.).clamp(400., 700.)
+    }
+
+    fn observe_widget_height(&mut self, height: f32, window: &mut Window, cx: &mut Context<Self>) {
+        self.widget_height = Some(height);
+        #[cfg(target_os = "windows")]
+        {
+            let requested = self.requested_height();
+            if self.session != TraySession::SignedOut
+                && native::visible(window)
+                && self.placed_height != Some(requested)
+                && let Some(placement) =
+                    native::popup_placement(window, self.anchor, true, requested)
+            {
+                self.placed_height = Some(requested);
+                self.resize_task = Some(cx.spawn_in(window, async move |_, cx| {
+                    // WM_SIZE may reenter GPUI: apply outside the entity update.
+                    cx.background_spawn(async move {
+                        placement.apply();
+                    })
+                    .await;
+                }));
+            }
+        }
+        #[cfg(not(target_os = "windows"))]
+        let _ = (window, cx);
+    }
+
     fn empty_body(
         &self,
         message: &str,
@@ -382,7 +477,12 @@ impl TrayPopup {
             .text_center()
             .text_size(surface::css(14.))
             .text_color(TrayColors::text())
-            .child(div().mb(surface::css(10.)).child(text("popup", message)))
+            .child(
+                div()
+                    .block()
+                    .mb(surface::css(10.))
+                    .child(text("popup", message)),
+            )
             .child(
                 text_button(command, window, cx)
                     .on_click(move |_, _, _| {
@@ -428,6 +528,9 @@ fn text_button(id: &'static str, window: &mut Window, cx: &mut App) -> BaseButto
     BaseButton::new(id)
         .text_color(color)
         .opacity(opacity)
+        // Ae/ye renders an actual `<button>`: the current main stylesheet's
+        // `button { line-height:1 }` wins over the inherited body 1.22.
+        .line_height(relative(1.))
         .on_hover(window.listener_for(&state, |state, hovered, _, cx| {
             state.hovered = *hovered;
             if !hovered {

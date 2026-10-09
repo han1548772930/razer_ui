@@ -64,10 +64,9 @@ for (const entry of assets) {
   assert(hash(png) === entry.source_sha256 && hash(bytes(entry.output)) === entry.sha256, 'Stale raster receipt');
 }
 const tray = read('src/shell/tray.rs'), account = read('src/shell/tray/account.rs');
-assert((tray.match(/\.line_height\(relative\(1\.22\)\)/g) || []).length >= 3, 'Button line height missing');
+assert((tray.match(/\.line_height\(relative\(1\.22\)\)/g) || []).length >= 2, 'Button line height missing');
 assert(account.includes('.line_height(relative(1.22))'), 'Account name line height missing');
-assert(/\.id\("tray-apps"\)[\s\S]*?\.h\(surface::css\(60\.\)\)[\s\S]*?\.border_t_1\(\)[\s\S]*?Button::new\("tray-launch-synapse"\)[\s\S]*?\.h\(surface::css\(59\.\)\)/.test(tray), 'Apps border/row geometry flattened');
-assert(tray.includes('.child(text("host", "RAZER_SYNAPSE").to_uppercase())') && tray.includes('.truncate()'), 'Title presentation missing');
+assert(tray.includes('launcher_list('), 'Source footer component missing');
 assert(tray.includes('from_rgba(bytes.to_vec(), width, height)'), 'Menu ignores original icon dimensions');
 assert(/\.id\("source-tray-popup"\)[\s\S]*?\.min_h_full\(\)/.test(tray), 'Tray root has fixed viewport height instead of source min-height');
 const inputPaths = [manifestPath, jsPath, cssPath, mainCssPath, cachePath, ...assets.map(entry => entry.source)];
@@ -82,7 +81,7 @@ const evidence = {
     'Theme menu PNGs retain official pixels and dimensions without preparation-time resizing.'],
   remaining: ['Real-window appearance, fonts, keyboard focus, DPI and hover are not run.',
     'Host uses forced-dark Chromium Views; retained HMENU presentation and native-palette icons are an accepted framework difference.',
-    'Account transport, populated widgets/notifications, multi-app catalog and dynamic popup bounds remain incomplete.'],
+    'Account transport, notifications, official launcher catalog and profile switching remain incomplete. Widget observations and cached prepaint measurement are wired; their running-window appearance is unvalidated.'],
   runtime_validation: 'not_run'
 };
 const output = path.join(root, 'docs/re/tray-presentation-current-evidence.json');

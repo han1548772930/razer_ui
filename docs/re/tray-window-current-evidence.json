@@ -163,9 +163,10 @@
     "extraction": "7-Zip static archive read: current verified internal package entry win-unpacked/RazerAppEngine.exe"
   },
   "conclusion": [
-    "Signed-out renderer requests 360x60; the source's singular .app query misses .apps.",
+    "Signed-out renderer requests 360x60; the source's singular .app query misses .apps; account branches use the dynamic 400–700px viewport.",
     "Non-resizable Electron windows reset min/max constraints to requested setBounds size.",
-    "Signed-out placement has a 10px right-edge gap and no account/body vertical clamp.",
+    "Placement keeps the 10px right-edge gap; account body children are measured in GPUI prepaint, then cached and clamped with the source +153/400..700 formula. First layout uses the 400px lower bound.",
+    "Click/update paths read cached height without invoking layout. Deferred measurement updates preserve the tray anchor and suppress unchanged-height resize requests; native resize runs outside the entity update.",
     "The renderer's first horizontal clamp uses primary WorkRect width, not monitor width.",
     "Host createWindow preserves resizable:false; Windows frameless CanResize reads resizable_.",
     "hasShadow:false is converted to true by strict 0!==boolean; Electron still disables shadow for translucent frameless windows.",
@@ -173,7 +174,7 @@
   ],
   "remaining": [
     "Mixed-monitor DPI and real windows are not validated; renderer DIP coordinates and partly divided monitor fields are not a proven pixel-equivalent match to the physical-coordinate adapter.",
-    "Account sessions, dynamic body height and native menu visual parity remain incomplete."
+    "Account sessions and native menu visual parity remain incomplete; GPUI measurement scheduling is an adapter and has not been validated in a running window."
   ],
   "runtime_validation": "not_run"
 }

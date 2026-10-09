@@ -98,8 +98,19 @@ def main():
     assert any('frame:l,transparent:6===+r.policy||8===+r.policy' in node
                and 'l=6!==+r.policy&&8!==+r.policy' in node for node in snippets)
     implementation = (ROOT / "src/shell/tray/windows.rs").read_text(encoding="utf-8")
-    assert 'let height = (60. * scale)' in implementation
-    assert 'let y = tray_y - height;' in implementation
+    assert 'let height = view.requested_height();' in implementation
+    assert 'view.anchor = native::popup_anchor(window, rect);' in implementation
+    assert 'let (tray_x, tray_y) = anchor?;' in implementation
+    account = (ROOT / "src/shell/tray/account.rs").read_text(encoding="utf-8")
+    assert 'pub(super) fn requested_height(&self) -> f32' in account
+    assert '(self.widget_height.unwrap_or(0.) + 153.).clamp(400., 700.)' in account
+    assert '.on_children_prepainted(' in account and 'window.defer(cx,' in account
+    assert 'view.widget_revision == revision' in account
+    assert 'self.placed_height != Some(requested)' in account
+    assert 'native::popup_placement(window, self.anchor, true, requested)' in account
+    for file in (ROOT / 'src/shell/tray').glob('*.rs'):
+        assert 'layout_as_root' not in file.read_text(encoding='utf-8'), file
+    assert 'let mut y = tray_y - height;' in implementation
     assert 'let right_gap = (10. * scale)' in implementation
     assert 'let primary_width = (work.right.abs() - work.left.abs()).abs();' in implementation
     assert 'y = work.bottom - height' not in implementation
@@ -118,15 +129,16 @@ def main():
                     chromium="146.0.7680.179", execution="none",
                     extraction="7-Zip static archive read: current verified internal package entry win-unpacked/RazerAppEngine.exe"),
                     conclusion=[
-                    "Signed-out renderer requests 360x60; the source's singular .app query misses .apps.",
+                    "Signed-out renderer requests 360x60; the source's singular .app query misses .apps; account branches use the dynamic 400–700px viewport.",
                     "Non-resizable Electron windows reset min/max constraints to requested setBounds size.",
-                    "Signed-out placement has a 10px right-edge gap and no account/body vertical clamp.",
+                    "Placement keeps the 10px right-edge gap; account body children are measured in GPUI prepaint, then cached and clamped with the source +153/400..700 formula. First layout uses the 400px lower bound.",
+                    "Click/update paths read cached height without invoking layout. Deferred measurement updates preserve the tray anchor and suppress unchanged-height resize requests; native resize runs outside the entity update.",
                     "The renderer's first horizontal clamp uses primary WorkRect width, not monitor width.",
                     "Host createWindow preserves resizable:false; Windows frameless CanResize reads resizable_.",
                     "hasShadow:false is converted to true by strict 0!==boolean; Electron still disables shadow for translucent frameless windows.",
                     "Host forces dark theme; retained HMENU and its native-palette icon choice are user-accepted platform differences."],
                     remaining=["Mixed-monitor DPI and real windows are not validated; renderer DIP coordinates and partly divided monitor fields are not a proven pixel-equivalent match to the physical-coordinate adapter.",
-                    "Account sessions, dynamic body height and native menu visual parity remain incomplete."],
+                    "Account sessions and native menu visual parity remain incomplete; GPUI measurement scheduling is an adapter and has not been validated in a running window."],
                     runtime_validation="not_run")
     serialized = json.dumps(evidence, indent=2, ensure_ascii=False) + "\n"
     if args.write:

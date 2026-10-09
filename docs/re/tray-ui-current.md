@@ -14,21 +14,25 @@
 
 注册在主循环开始后进行，以 set_tooltip 的 NIM_MODIFY 结果确认，失败最多尝试四次。诊断先清 LastError，记录窗口归属、完整性级别、提权和作业 UI 限制；NIM_ADD/set_visible 的库返回值不足以证明 Windows 注册成功。已有环境取证显示工作区可继承 Low Mandatory Level 会使 exe 以 Low 运行而无法注册 Medium Explorer 通知区；本地输出目录约束见 [开发说明](../development.md)。本次没有运行托盘或更改 ACL。
 
-单击等待200ms后显示/定位/聚焦面板；再次单击不切换为隐藏。双击取消单击等待，并读取本地 Settings 的 ShowMenu 选择。失焦300ms隐藏，隐藏取消未完成显示任务；后台原生调整尺寸完成后才显示，避免 WM_SIZE 重入。系统 launch 分支及多应用目录仍未接入。
+单击等待200ms后转发当前 host 的 `click`，由 renderer 读取窗口状态并切换显示/隐藏；双击取消单击等待并聚焦面板。失焦300ms隐藏，隐藏取消未完成显示任务；后台原生调整尺寸完成后才显示，避免 WM_SIZE 重入。系统 launch 分支及多应用目录仍未接入。
 
 ## 面板与账户分支
 
 未登录 DOM 挂载60px登录行与60px单应用区，宽360、Roboto16/1.22、源背景/边框；实际可见范围取决于网页请求的视口高度，不能把 DOM 子节点总高直接当窗口高。应用区单独持有1px上边框，内部启动按钮为59px，悬停不改变分隔线。登录、启动和账户名字按钮显式覆盖 Base Button 默认1倍行高；启动标题按源 `.launcher .title` 大写，并保留省略处理。按压只降低启动图标透明度，外框保留源700px最大高度和默认箭头。根容器修正为源 `min-height:100%`，允许内容撑高；此前 `height:100%` 会改变外框下边线与内容溢出的布局关系。
 
-网页请求高度按当前源码单数 `.app.list-unstyled` 查询；当前渲染实际为 `.apps`，未登录期只计算60px标题高度。已补查 preload → host `SET_BOUNDS` → Electron `BaseWindow::SetBounds` → `NativeWindowViews::SetBounds`：`resizable:false` 时设置新的最小/最大尺寸为请求尺寸。因此 host 初始 minimum_height=200 不能作为最终高度下限，之前的360×200判断已纠正。Windows 未登录分支按360×60请求、`trayY-60`定位，保留源码右侧10px间距并去掉仅账户/body分支拥有的纵向夹取；再次点击已显示面板只聚焦，不重新对齐。源 `body overflow:hidden` 对应本地视口裁切，启动图标保留32px不缩小。
+网页请求高度按当前源码单数 `.app.list-unstyled` 查询；当前渲染实际为 `.apps`，未登录期只计算60px标题高度。已补查 preload → host `SET_BOUNDS` → Electron `BaseWindow::SetBounds` → `NativeWindowViews::SetBounds`：`resizable:false` 时设置新的最小/最大尺寸为请求尺寸。因此 host 初始 minimum_height=200 不能作为最终高度下限，之前的360×200判断已纠正。Windows 未登录分支按360×60请求、`trayY-60`定位，保留源码右侧10px间距并去掉仅账户/body分支拥有的纵向夹取；源 `body overflow:hidden` 对应本地独立 viewport 裁切，源 `.systray` 本身是固定360px块容器。账户导航保留 `.navbar` 与独立 `.tabs` 两层，齿轮按钮拉伸到整行；本地不再用纵向 flex 代替块容器。
 
 独立复核补齐宿主实际创建链：`convertFeatureToWindowOptions` 在 policy6 时给出 frameless/transparent 并保留布尔 `resizable:false`，`Tab/common.js` 的 `new BrowserWindow({...t,...})` 继续传递它；Windows `CanResize()` 在 frameless 分支直接读取 `resizable_`。源码 `597/a` 的第一轮横向限制使用主屏 **WorkRect** 宽度（字段 width，或左右端点绝对值之差），不是 MonitorRect 宽；本地第一轮已改成同样的工作区范围，保留后续独立的左右端点判断。源码使用 Electron DIP 坐标，部分 monitor 字段只除 dpiScaleX、其他字段不除；本地仍使用物理坐标和窗口 scale_factor 适配，尚未证明混合DPI或所有任务栏位置像素等价。
 
 阴影也不能只读创建参数：宿主 `b` 对布尔值原样返回，`hasShadow:0!==b(r.hasShadow,1)` 会把传入的 false 转成 true。当前 Electron Windows 构造仍在 translucent 且 frameless 时将 `params.shadow_type` 设为 `kNone`；这一条件链已保留原文证据，没有通过运行观察确认最终窗口阴影。
 
-60px仅对应当前无账户分支，不能据此认定账户面板也是60px；真实账户驱动、body内容测量、400–700px动态请求和通知页复用Widgets高度仍未接通。源码 DOM 中只有 `user.item.id` 成立才挂载 navbar / `systrayBody`。本地默认 SignedOut 且没有真实账户发布者，因此与已登录官方面板的整体结构存在功能性差异，不能把它归为允许的轻微托盘样式差异。字体资产已注册Roboto，但实际回退、混合DPI/多屏/非底部任务栏尚未运行验收。
+60px仅对应当前无账户分支。当前源码 `597/c` 的账户高度为 body 子节点 `offsetHeight` 总和加153，夹取到400–700px；通知页复用Widgets高度。本地在 `on_children_prepainted` 中读取实际子节点高度，通过 `window.defer` 缓存测量结果，再在实体更新之外调整原生窗口。首次布局前用账户下限400px，不再固定700px；点击与设备状态更新只读缓存，不调用布局 API。设备行变化递增布局版本，旧回调不能覆盖新数据，调整尺寸保留托盘锚点且忽略未变化的高度。源码 `_f` 实为无操作函数，本地布局观察是 GPUI 适配，不应称为官方 devicecount 触发的窗口重排。
 
-`TraySession` 明确区分 SignedOut、Guest、Authenticated。账户头部、访客/用户头像、Guest或razerId、登录/View Online 按钮、Widgets/Notifications导航、空内容及通知加载呈现都已有实际组件。默认仍 SignedOut；没有真实账户发布者驱动这些分支，不能把本地访客标签当作 host session。头像/名字、通知已加载为空与尚未加载分别保留状态。
+2026-10-09用户报告的左键崩溃来自此前 `requested_height` 在点击/实体更新中调用 `layout_as_root`，违反 GPUI 阶段限制；该调用已删除。修复只经过静态检查，没有运行托盘验证。
+
+源码 DOM 中只有 `user.item.id` 成立才挂载 navbar / `systrayBody`，源初始 user.item 为 `{}`、launchers 为 `[]`。本地现在挂载 Guest 展示分支，并提供一行激活当前进程的 Synapse 页脚；这是本地呈现选择，真实账户和官方 launcher catalog/preferences 发布者尚未接通，不代表读取到了 Guest 凭证或官方安装应用列表。字体资产已注册Roboto，但实际回退、混合DPI/多屏/非底部任务栏尚未运行验收。
+
+`TraySession` 明确区分 SignedOut、Guest、Authenticated。账户头部、访客/用户头像、Guest或razerId、登录/View Online 按钮、Widgets/Notifications导航、设备行、空内容及通知加载呈现都已有实际组件。当前默认仅用于源 Guest 展示分支；没有真实账户发布者驱动 Authenticated 分支，不能把本地访客标签当作 host session。头像/名字、通知已加载为空与尚未加载分别保留状态。
 
 设置齿轮提示立即挂载，100ms后开始100ms linear淡入；离开/窗口失焦淡出，100ms后卸载，重入取消旧任务。提示宽300、右对齐、位于按钮下、padding7/8、边框灰、14px/1.22、层级1060。空Widgets/Notifications设置按钮保留100ms颜色与按压透明度；访客按钮发 account-guest-logout，未连接服务时明确报错，不伪造登出/登录成功。
 
@@ -36,7 +40,7 @@ Settings、quick-panel、Widgets、Notifications 四种命令都打开当前独�
 
 ## 剩余项
 
-真实账户登录/登出/在线档案、通知和Widgets数据、安装目录发现、多应用菜单/启动/退出、Exit All、系统launch双击动作及动态内容高度仍未接入。当前头部/空态组件的存在不代表账户数据读取成功。按住鼠标移动时 GPUI hover 与 DOM hover 存在边缘差异；原生菜单、焦点、透明窗口、字号、DPI和动画均未运行验收。
+设备行接入已有实际连接/电量观察；图标使用当前源码分类 SVG，产品名称使用当前来源目录的语言字段。当前配置名称若来自本地工作区草稿，会用提示标识本地状态，不能作为设备活动配置读取成功的证据。真实账户登录/登出/在线档案、通知、完整Widgets状态字段、配置切换、官方安装目录与启动偏好、多应用菜单/启动/退出、Exit All、系统launch双击动作仍未接入。当前头部/空态组件的存在不代表账户数据读取成功。按住鼠标移动时 GPUI hover 与 DOM hover 存在边缘差异；原生菜单、焦点、透明窗口、字号、动态高度、DPI和动画均未运行验收。
 
 ## 保留证据
 
@@ -44,6 +48,7 @@ Settings、quick-panel、Widgets、Notifications 四种命令都打开当前独�
 - [UI/CSS](tray-ui-current-evidence.json)、[账户组件/提示](tray-account-current-evidence.json)、[ICO原始帧](tray-icon-validation.json)。
 - [当前呈现修正](tray-presentation-current-evidence.json)保留本轮JS AST、CSS、host图像加载和PNG尺寸收据；维护检查 `node tools/audit-tray-presentation.cjs` 与 `.work/resource-env/Scripts/python.exe tools/validate-tray-assets.py`。
 - [窗口与框架链](tray-window-current-evidence.json)保留静态PE版本串/摘要、Electron版本固定URL/摘要、host/preload至尺寸约束的源片段和明确的平台差异；维护工具 `python tools/audit-tray-window-current.py`，可用 `--fetch` 仅下载惰性文本来源，不执行它。
+- [账户与应用状态边界](tray-state-current-evidence.json)、[设备行与图标](tray-widgets-current.md)、[页脚与版本](tray-footer-current-evidence.json)分别保留当前源码状态生产者、492组件和页脚CSS/版本依据。
 - 维护工具 `prepare-tray-account.cjs`、`audit-tray-account.cjs`、`prepare-tray-account-assets.py`、`tray_assets.py`；主资源清单保留图像输入输出摘要。
 
 这些收据记录静态来源和取证时文件，不能据编译/摘要匹配声称真实窗口或登录服务已经验收。应用、测试、安装器、厂商JavaScript和DLL均不在开发验证执行范围。

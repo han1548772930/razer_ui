@@ -34,7 +34,7 @@ fn default_edition(pid: u32) -> u32 {
         .unwrap_or(0)
 }
 
-fn product_name(pid: u32, edition: u32, locale: &str) -> String {
+pub(crate) fn product_name(pid: u32, edition: u32, locale: &str) -> String {
     translation(pid, edition, locale)
         .map(|value| value.product.clone())
         .or_else(|| crate::product::registered(pid).map(|product| product.name().to_owned()))

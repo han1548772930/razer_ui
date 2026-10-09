@@ -11,6 +11,7 @@ use std::collections::BTreeMap;
 mod preview_catalog;
 pub(crate) use preview_catalog::{
     apply_preview_names, preview_edition_label, preview_product_label,
+    product_name as source_product_name,
 };
 
 use crate::domain::{DeviceFeatures, LightingEffect, LightingZone};

@@ -172,6 +172,54 @@ pub struct AppShell {
     app_picker: Entity<app_picker::AppPicker>,
 }
 impl AppShell {
+    fn tray_widgets(&self, cx: &App) -> Vec<tray::TrayWidgetDevice> {
+        self.devices
+            .iter()
+            .filter_map(|workspace| {
+                let device = workspace.read(cx).snapshot(cx);
+                if device.dashboard.connection_observation.is_none() {
+                    return None;
+                }
+                let icon = tray::widget_category_icon(device.category);
+                let profile = device
+                    .profiles
+                    .iter()
+                    .find(|profile| profile.id == device.active_profile)
+                    .map(|profile| tray::TrayWidgetProfile {
+                        name: profile.name.clone(),
+                        disabled: device.profiles.len() < 2,
+                        has_dropdown: true,
+                        local_draft: device.dashboard.local_snapshot,
+                    });
+                let battery = device
+                    .current_power_status()
+                    .filter(|power| (0..=100).contains(&power.level))
+                    .map(|power| tray::TrayWidgetBattery::Percent {
+                        level: power.level as u8,
+                        charging: power.is_charging(),
+                    });
+                Some(tray::TrayWidgetDevice {
+                    id: workspace.read(cx).identity(cx),
+                    icon: icon.into(),
+                    // 5492/y selects productName[zh-cn] for Chinese and en
+                    // otherwise. Source catalog strings are presentation,
+                    // independent of the observed hardware values.
+                    title: crate::demo::source_product_name(
+                        device.product_id,
+                        device.edition_id,
+                        if crate::i18n::locale().eq_ignore_ascii_case("zh-cn") {
+                            "zh-cn"
+                        } else {
+                            "en"
+                        },
+                    ),
+                    profile,
+                    battery,
+                })
+            })
+            .collect()
+    }
+
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let (
             mut devices,

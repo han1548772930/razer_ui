@@ -22,6 +22,11 @@ use tray_icon::{
 };
 
 mod account;
+mod launcher;
+mod widgets;
+use launcher::{TrayLauncher, launcher_list, version_badge};
+pub(crate) use widgets::category_icon as widget_category_icon;
+pub(crate) use widgets::{TrayWidgetBattery, TrayWidgetDevice, TrayWidgetProfile};
 
 actions!(tray_popup, [Dismiss]);
 
@@ -29,6 +34,7 @@ pub(super) enum Event {
     Icon(tray_icon::TrayIconEvent),
     Dismiss,
     Menu(String),
+    Device(String),
 }
 
 fn text(group: &str, key: &str) -> String {
@@ -94,10 +100,15 @@ struct TrayPopup {
     focus: FocusHandle,
     blur_task: Option<Task<()>>,
     show_task: Option<Task<()>>,
+    resize_task: Option<Task<()>>,
+    widget_height: Option<f32>,
+    widget_revision: u64,
+    #[cfg(target_os = "windows")]
+    anchor: Option<(i32, i32)>,
+    #[cfg(target_os = "windows")]
+    placed_height: Option<f32>,
     _activation: Subscription,
     login_hovered: bool,
-    launcher_hovered: bool,
-    launcher_pressed: bool,
     // All three source account surfaces exist. A real host-session publisher
     // must select the branch; local workspace data is not an account response.
     session: TraySession,
@@ -112,6 +123,8 @@ struct TrayPopup {
     settings_tip_visible: bool,
     settings_tip_task: Option<Task<()>>,
     notifications_loaded_empty: bool,
+    widget_devices: Vec<TrayWidgetDevice>,
+    launchers: Vec<TrayLauncher>,
 }
 
 #[allow(dead_code)]
@@ -132,6 +145,7 @@ impl TrayPopup {
         sender: async_channel::Sender<Event>,
         window: &mut Window,
         cx: &mut Context<Self>,
+        widget_devices: Vec<TrayWidgetDevice>,
     ) -> Self {
         let activation = cx.observe_window_activation(window, |this, window, cx| {
             this.blur_task = None;
@@ -154,13 +168,19 @@ impl TrayPopup {
             focus: cx.focus_handle(),
             blur_task: None,
             show_task: None,
+            resize_task: None,
+            widget_height: None,
+            widget_revision: 0,
+            #[cfg(target_os = "windows")]
+            anchor: None,
+            #[cfg(target_os = "windows")]
+            placed_height: None,
             _activation: activation,
             login_hovered: false,
-            launcher_hovered: false,
-            launcher_pressed: false,
-            // There is no host user session in the local shell.  This keeps
-            // the audited `!user.item.id` branch as the visible default.
-            session: TraySession::SignedOut,
+            // Present the source's Guest surface for the local account-less
+            // shell. This is a presentation choice, not an observed Razer
+            // session: source Guest itself requires a real user.item.id.
+            session: TraySession::Guest,
             section: TraySection::Widgets,
             account_hovered: false,
             account_pressed: false,
@@ -172,12 +192,20 @@ impl TrayPopup {
             settings_tip_visible: false,
             settings_tip_task: None,
             notifications_loaded_empty: false,
+            widget_devices,
+            // This running process supplies one real local activation target.
+            // It does not imply the official installedModules/apps registry
+            // or the user's launcher preferences have been read.
+            launchers: vec![TrayLauncher {
+                name: "synapse".into(),
+                title: text("host", "RAZER_SYNAPSE"),
+                logo: "synapse/tray-synapse.svg".into(),
+            }],
         }
     }
 
     /// Mount a host-provided session branch once the real account channel is
-    /// available.  Until then the signed-out branch remains visible and no
-    /// local fixture is presented as an account.
+    /// available. The local Guest presentation is not an authenticated account.
     #[allow(dead_code)]
     fn set_session(&mut self, session: TraySession) {
         self.session = session;
@@ -192,6 +220,11 @@ impl TrayPopup {
 
     fn command(&self, id: &str) {
         let _ = self.sender.try_send(Event::Menu(id.to_owned()));
+    }
+
+    pub(super) fn set_widget_devices(&mut self, devices: Vec<TrayWidgetDevice>) {
+        self.widget_devices = devices;
+        self.widget_revision = self.widget_revision.wrapping_add(1);
     }
 }
 impl Render for TrayPopup {
@@ -221,39 +254,9 @@ impl Render for TrayPopup {
             window,
             cx,
         );
-        let launcher_bg = motion::transition(
-            "tray-launcher-background",
-            if self.launcher_hovered {
-                TrayColors::border()
-            } else {
-                TrayColors::launcher()
-            },
-            transition(),
-            window,
-            cx,
-        );
-        let launcher_text = motion::transition(
-            "tray-launcher-foreground",
-            if self.launcher_hovered {
-                TrayColors::hover_text()
-            } else {
-                TrayColors::muted()
-            },
-            transition(),
-            window,
-            cx,
-        );
-        let icon_opacity = motion::transition(
-            "tray-launcher-icon-opacity",
-            if self.launcher_pressed { 0.3_f32 } else { 1. },
-            Transition::new(Duration::from_millis(100)).easing(Easing::Linear),
-            window,
-            cx,
-        );
         // Re: no user.item.id => header-2 + launchers, without navbar/widgets.
-        // Guest/notification content is mounted only after a real host
-        // session event calls `set_session`; local workspace data is never
-        // used as an account response.
+        // The local Guest presentation uses the same account DOM branch;
+        // local workspace data is never used as a Razer account response.
         let signed_out = self.session == TraySession::SignedOut;
         let account_surface = if signed_out {
             gpui_kit::base::Button::new("tray-login")
@@ -281,21 +284,20 @@ impl Render for TrayPopup {
             self.account_header(window, cx)
         };
 
-        v_flex()
+        // `.systray` is a fixed-width block, not a flex column. Its content
+        // may exceed the window; `body { overflow:hidden }` clips the viewport.
+        let panel = div()
             .id("source-tray-popup")
             .key_context("TrayPopup")
             .track_focus(&self.focus)
             .on_action(cx.listener(|this, _: &Dismiss, _, _| {
                 let _ = this.sender.try_send(Event::Dismiss);
             }))
-            .w_full()
+            .w(surface::css(360.))
             // Source sets min-height:100%, not height:100%. The root must
             // grow around its header/list; the browser viewport clips it.
             .min_h_full()
             .max_h(surface::css(700.))
-            // Current main CSS `body { overflow:hidden }` clips content to
-            // the renderer's requested viewport, including the 60px branch.
-            .overflow_hidden()
             .cursor(CursorStyle::default())
             .bg(TrayColors::surface())
             .border_1()
@@ -309,75 +311,24 @@ impl Render for TrayPopup {
                 root.child(self.account_navigation(window, cx))
                     .child(self.account_body(window, cx))
             })
-            .child(
-                div()
-                    .id("tray-apps")
-                    .w_full()
-                    .h(surface::css(60.))
-                    .flex_shrink_0()
-                    .border_t_1()
-                    .border_color(TrayColors::surface())
-                    .bg(TrayColors::launcher())
-                    .child(
-                        gpui_kit::base::Button::new("tray-launch-synapse")
-                            .group("tray-launcher")
-                            .accessibility_label(text("host", "RAZER_SYNAPSE"))
-                            .w_full()
-                            .h(surface::css(59.))
-                            .flex_shrink_0()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .px(surface::css(10.))
-                            .bg(launcher_bg)
-                            .text_size(surface::css(12.))
-                            .line_height(relative(1.22))
-                            .text_color(launcher_text)
-                            .gap(surface::css(10.))
-                            .on_hover(cx.listener(|this, hovered, _, cx| {
-                                this.launcher_hovered = *hovered;
-                                if !hovered {
-                                    this.launcher_pressed = false;
-                                }
-                                cx.notify();
-                            }))
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(|this, _, _, cx| {
-                                    this.launcher_pressed = true;
-                                    cx.notify();
-                                }),
-                            )
-                            .on_mouse_up(
-                                MouseButton::Left,
-                                cx.listener(|this, _, _, cx| {
-                                    this.launcher_pressed = false;
-                                    cx.notify();
-                                }),
-                            )
-                            .on_mouse_up_out(
-                                MouseButton::Left,
-                                cx.listener(|this, _, _, cx| {
-                                    this.launcher_pressed = false;
-                                    cx.notify();
-                                }),
-                            )
-                            .focus_visible(|s| s.border_1().border_color(cx.theme().primary))
-                            .child(
-                                img("synapse/tray-synapse.svg")
-                                    .size(surface::css(32.))
-                                    .flex_shrink_0()
-                                    .opacity(icon_opacity),
-                            )
-                            .child(
-                                div()
-                                    .min_w_0()
-                                    .truncate()
-                                    .child(text("host", "RAZER_SYNAPSE").to_uppercase()),
-                            )
-                            .on_click(cx.listener(|this, _, _, _| this.command("synapse"))),
-                    ),
-            )
+            .when(!self.launchers.is_empty(), |panel| {
+                let sender = self.sender.clone();
+                panel.child(launcher_list(
+                    &self.launchers,
+                    move |launcher, _, _| {
+                        let _ = sender.try_send(Event::Menu(launcher.name.clone()));
+                    },
+                    window,
+                    cx,
+                ))
+            });
+        div()
+            .id("tray-viewport")
+            .relative()
+            .size_full()
+            .overflow_hidden()
+            .child(panel)
+            .child(version_badge("1.1.97"))
     }
 }
 
@@ -386,11 +337,13 @@ pub(in crate::shell) struct DesktopTray {
     icon_size: u32,
     popup: Option<(AnyWindowHandle, Entity<TrayPopup>)>,
     sender: async_channel::Sender<Event>,
+    widget_devices: Vec<TrayWidgetDevice>,
 }
 
 impl DesktopTray {
     pub(in crate::shell) fn new(
         cx: &App,
+        widget_devices: Vec<TrayWidgetDevice>,
     ) -> anyhow::Result<(Self, async_channel::Receiver<Event>)> {
         let (sender, receiver) = async_channel::unbounded();
         let (icon, icon_size) = notification_icon()?;
@@ -418,6 +371,7 @@ impl DesktopTray {
                 icon_size,
                 popup: None,
                 sender,
+                widget_devices,
             },
             receiver,
         ))
@@ -434,6 +388,20 @@ impl DesktopTray {
         }
         if let Some((_, popup)) = &self.popup {
             popup.update(cx, |_, cx| cx.notify());
+        }
+    }
+
+    pub(in crate::shell) fn set_widget_devices(
+        &mut self,
+        devices: Vec<TrayWidgetDevice>,
+        cx: &mut App,
+    ) {
+        self.widget_devices = devices.clone();
+        if let Some((_, popup)) = &self.popup {
+            popup.update(cx, |view, cx| {
+                view.set_widget_devices(devices);
+                cx.notify();
+            });
         }
     }
 
@@ -536,7 +504,7 @@ impl crate::shell::AppShell {
         if self.tray.is_some() {
             return true;
         }
-        let (tray, receiver) = match DesktopTray::new(cx) {
+        let (tray, receiver) = match DesktopTray::new(cx, self.tray_widgets(cx)) {
             Ok(value) => value,
             Err(error) => {
                 self.status = format!("托盘初始化失败：{error}");
@@ -608,9 +576,9 @@ impl crate::shell::AppShell {
                         .await;
                     let _ = this.update(cx, |this, cx| {
                         if let Some(tray) = &mut this.tray {
-                            // 原版左键：不可见时先对齐，再转发 `{action:"click"}` 并聚焦，
-                            // 不会因为再次点击而隐藏（隐藏由失焦 300ms 负责）。
-                            if let Err(error) = tray.show_popup(false, cx) {
+                            // Host forwards `click`; renderer Je reads
+                            // getWindowStatus and toggles browser visibility.
+                            if let Err(error) = tray.show_popup(true, cx) {
                                 this.status = error.to_string();
                             }
                         }
@@ -625,6 +593,19 @@ impl crate::shell::AppShell {
             Event::Dismiss => {
                 if let Some(tray) = &mut self.tray {
                     tray.hide_popup(cx);
+                }
+            }
+            Event::Device(key) => {
+                if let Some(tray) = &mut self.tray {
+                    tray.hide_popup(cx);
+                }
+                if self
+                    .devices
+                    .iter()
+                    .any(|workspace| workspace.read(cx).identity(cx) == key)
+                {
+                    show_main(window);
+                    self.navigate(super::Location::Device(key), window, cx);
                 }
             }
             Event::Menu(command) => {

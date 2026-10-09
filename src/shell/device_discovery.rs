@@ -192,6 +192,10 @@ impl AppShell {
         };
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
+        let tray_widgets = self.tray_widgets(cx);
+        if let Some(tray) = &mut self.tray {
+            tray.set_widget_devices(tray_widgets, cx);
+        }
         cx.notify();
     }
 
@@ -348,6 +352,10 @@ impl AppShell {
         }
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
+        let tray_widgets = self.tray_widgets(cx);
+        if let Some(tray) = &mut self.tray {
+            tray.set_widget_devices(tray_widgets, cx);
+        }
         cx.notify();
     }
 
@@ -412,6 +420,10 @@ impl AppShell {
         }
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
+        let tray_widgets = self.tray_widgets(cx);
+        if let Some(tray) = &mut self.tray {
+            tray.set_widget_devices(tray_widgets, cx);
+        }
         cx.notify();
     }
 

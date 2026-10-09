@@ -145,7 +145,7 @@
   "remaining": [
     "Real-window appearance, fonts, keyboard focus, DPI and hover are not run.",
     "Host uses forced-dark Chromium Views; retained HMENU presentation and native-palette icons are an accepted framework difference.",
-    "Account transport, populated widgets/notifications, multi-app catalog and dynamic popup bounds remain incomplete."
+    "Account transport, notifications, official launcher catalog and profile switching remain incomplete. Widget observations and cached prepaint measurement are wired; their running-window appearance is unvalidated."
   ],
   "runtime_validation": "not_run"
 }

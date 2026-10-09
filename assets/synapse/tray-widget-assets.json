@@ -1,0 +1,498 @@
+[
+  {
+    "category": "KEYBOARD",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 4730,
+    "literal_end": 5135,
+    "output": "assets/synapse/tray-widget-category-keyboard.svg",
+    "output_sha256": "6c83162945c76012009d305ed73fe364ce6abe060a30ce16871ad9c155782b94",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "MOUSE",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 5136,
+    "literal_end": 6082,
+    "output": "assets/synapse/tray-widget-category-mouse.svg",
+    "output_sha256": "73b1fe43403f0d1c74ae111132872dc7ca9628f6947a05778b685a3510e87679",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "MOUSEMAT",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 6083,
+    "literal_end": 6305,
+    "output": "assets/synapse/tray-widget-category-mousemat.svg",
+    "output_sha256": "7bc4e0e2ae8f41eba5f8935b074eeca938cd256d19d03f2111bf37f8540cd6e9",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "ACCESSORY",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 6306,
+    "literal_end": 6817,
+    "output": "assets/synapse/tray-widget-category-accessory.svg",
+    "output_sha256": "9e6f968dd76410badd16004944e885535bb697d96d50f88529cc47cda726720a",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "CHROMAHDK",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 6818,
+    "literal_end": 8074,
+    "output": "assets/synapse/tray-widget-category-chromahdk.svg",
+    "output_sha256": "b428974ca9c37f84c61606b69b34abf760b4e380231bd53c5fa33b732ae0e736",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "KEYPAD",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 8075,
+    "literal_end": 9686,
+    "output": "assets/synapse/tray-widget-category-keypad.svg",
+    "output_sha256": "f80ed47209ea7df4544fc45de747b5bac9445231787df12f0f42bffc8d44f820",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "SYSTEM",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 9687,
+    "literal_end": 9882,
+    "output": "assets/synapse/tray-widget-category-system.svg",
+    "output_sha256": "b21962d9a7216addd0c06fc6ad019e53a3aa503f9587f08aeb22050a0f3e3443",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "MOUSEPLUSMAT",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 9883,
+    "literal_end": 10787,
+    "output": "assets/synapse/tray-widget-category-mouseplusmat.svg",
+    "output_sha256": "b7c12c4ce6058a0a90b1d0ca4b4838beede646ca552722d13a578cbd9df20553",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "EGPU",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 10788,
+    "literal_end": 11368,
+    "output": "assets/synapse/tray-widget-category-egpu.svg",
+    "output_sha256": "5ee90aad4ee27da5e46e11099354f6a6a6c1a8928fefece053cda186305e2ebc",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "AUDIO",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 11369,
+    "literal_end": 12213,
+    "output": "assets/synapse/tray-widget-category-audio.svg",
+    "output_sha256": "c61e3a8c3a9614dc6c90a3f11b23e161faa8b941b9d4c526b1695a8675b0040e",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "CASE",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 12214,
+    "literal_end": 12845,
+    "output": "assets/synapse/tray-widget-category-case.svg",
+    "output_sha256": "a2742ec88acc55403b1278f1b9d301a53c6731779003603c2719b29323e85ebc",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "MONITOR",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 12846,
+    "literal_end": 13140,
+    "output": "assets/synapse/tray-widget-category-monitor.svg",
+    "output_sha256": "314844e2c33da701c28839e3fe3cc5b5e28530452d38e1a3b5fca78d1fe8f240",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "CAMERA",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 13141,
+    "literal_end": 13609,
+    "output": "assets/synapse/tray-widget-category-camera.svg",
+    "output_sha256": "0ca1fa2d98d373c2fdff7810643f090df1ec3e8622a96dc65fcb5202985f4354",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "MICROPHONE",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 13610,
+    "literal_end": 14001,
+    "output": "assets/synapse/tray-widget-category-microphone.svg",
+    "output_sha256": "a6417e43b334583cca20935ee941afcf601d4b65419b9e44250c6c483617557c",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "ARGB_CONTROLLER",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 14002,
+    "literal_end": 15264,
+    "output": "assets/synapse/tray-widget-category-argb_controller.svg",
+    "output_sha256": "7cec7f9d3d055739800bb38b1207412b1e2baf9e3b1654371ea2bdf6b76e7eae",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "GAME_CAPTURE_CARD",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 15265,
+    "literal_end": 15409,
+    "output": "assets/synapse/tray-widget-category-game_capture_card.svg",
+    "output_sha256": "a98796713e356dbb8f1cff84f960c4cfce0a666b5c19594b41871dae2479cb84",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "MIXER_AUDIO",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 15410,
+    "literal_end": 16133,
+    "output": "assets/synapse/tray-widget-category-mixer_audio.svg",
+    "output_sha256": "b1a6f7e89a1dfad92a147639546aec8de2f385ba8ca6e58f46f4589e0878baa2",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "STRIP",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 16134,
+    "literal_end": 29585,
+    "output": "assets/synapse/tray-widget-category-strip.svg",
+    "output_sha256": "f6525d7ed36b4f686e773474add8e907171e7eeb05a7a9119fac9000c6b80e2f",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "KEY_LIGHT",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 29586,
+    "literal_end": 33472,
+    "output": "assets/synapse/tray-widget-category-key_light.svg",
+    "output_sha256": "366974735bb8736e5e5693839e5b1caa2a99af3b05406b6e7b2d11fc50941708",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "LAMP",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 33473,
+    "literal_end": 37644,
+    "output": "assets/synapse/tray-widget-category-lamp.svg",
+    "output_sha256": "f615180be28695c067e903b2cd575de39c8b65e1b649cd0aa6b9bd723c0c7cce",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "BULB",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 37645,
+    "literal_end": 41887,
+    "output": "assets/synapse/tray-widget-category-bulb.svg",
+    "output_sha256": "477bf33eb06f10fdce8c5d52ea05df30e8cbbc1b8693622f23c44333386985f3",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "SPEAKER",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 41888,
+    "literal_end": 42330,
+    "output": "assets/synapse/tray-widget-category-speaker.svg",
+    "output_sha256": "c4e82b8e188eaa38d54534d119194eb39882cdbadf7a76ccf9c8cc39ec009bd6",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "STREAM_CONTROLLER",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 42331,
+    "literal_end": 43279,
+    "output": "assets/synapse/tray-widget-category-stream_controller.svg",
+    "output_sha256": "77e24e17d66adac17bc5a2c845eb986d40b71ae80b498a4f0487c92428acc398",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "MAINBOARD",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 43280,
+    "literal_end": 43721,
+    "output": "assets/synapse/tray-widget-category-mainboard.svg",
+    "output_sha256": "d786eb44db9c390c4528b22f800cff8725f7d2c96634cdc1fced14af065cf4e2",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "GAMEPAD",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 43722,
+    "literal_end": 49492,
+    "output": "assets/synapse/tray-widget-category-gamepad.svg",
+    "output_sha256": "e1639a4125a0903bf0de5de35667c684ff97b4de449fbe71f17d4d15c7f735eb",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "SPEAKER_HEAD_CUSHION",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 49493,
+    "literal_end": 50961,
+    "output": "assets/synapse/tray-widget-category-speaker_head_cushion.svg",
+    "output_sha256": "8e9dd11b52b57c509bf1633090c9a951e6e3d18644a81b81b63a984da1b2cf4e",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "SPEAKER_HEAD_CUSHION_CLIO_X",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 50962,
+    "literal_end": 51621,
+    "output": "assets/synapse/tray-widget-category-speaker_head_cushion_clio_x.svg",
+    "output_sha256": "84d3b3b12cf97bdee936709ad7c7a2265cbc832812b55e470e1edbe8dd3b68cb",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "CHAIR",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 51622,
+    "literal_end": 53551,
+    "output": "assets/synapse/tray-widget-category-chair.svg",
+    "output_sha256": "2fb5442d4d13f844ff3a8f3378bc3721f161739eeef5d481e87acabcb2708b82",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "LIQUID_CONTROLLER",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 53552,
+    "literal_end": 54430,
+    "output": "assets/synapse/tray-widget-category-liquid_controller.svg",
+    "output_sha256": "f07bfdd46b9998bb4f955390f1ceb990f7424434c06ce1aa854c4701cd55aeb7",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "EARBUDS",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 54431,
+    "literal_end": 55605,
+    "output": "assets/synapse/tray-widget-category-earbuds.svg",
+    "output_sha256": "a2c89179a74565dfad2bd22974029384268382cb6d6c39973b6fe05e6665fa3d",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "category": "EARPHONES",
+    "source": ".ref/applications/systray/systrayv2/static/js/492.2b959cf3.chunk.js",
+    "source_sha256": "2448ab0a55a7b1c56c531cf7b57257d7f8762b09a9b144a248d5b1fbb2bdfdcb",
+    "literal_start": 55606,
+    "literal_end": 56782,
+    "output": "assets/synapse/tray-widget-category-earphones.svg",
+    "output_sha256": "a2c89179a74565dfad2bd22974029384268382cb6d6c39973b6fe05e6665fa3d",
+    "method": "Static u literal + M SVG serialization"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-0.bd52ee72.svg",
+    "source_sha256": "432c23a30812a4a9fd1553af746da1765bbaa9005d07028fa873d9e8c0407572",
+    "output": "assets/synapse/tray-widget-battery-0.svg",
+    "output_sha256": "432c23a30812a4a9fd1553af746da1765bbaa9005d07028fa873d9e8c0407572",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-10.75e879ae.svg",
+    "source_sha256": "d3228c2e69209b4b04eb800ba061a166584a88c9629daaedb06b2b9d588c6297",
+    "output": "assets/synapse/tray-widget-battery-10.svg",
+    "output_sha256": "d3228c2e69209b4b04eb800ba061a166584a88c9629daaedb06b2b9d588c6297",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-20.8ee2d3e2.svg",
+    "source_sha256": "81815beafe2a0fbd94c60f0b0152693969e3b682a475fba6e501d6898ace331b",
+    "output": "assets/synapse/tray-widget-battery-20.svg",
+    "output_sha256": "81815beafe2a0fbd94c60f0b0152693969e3b682a475fba6e501d6898ace331b",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-30.a165e8b8.svg",
+    "source_sha256": "0ec9a7eb0569bc72f66e6af777bbe06c07944e3f280d2040e4701f50499338c9",
+    "output": "assets/synapse/tray-widget-battery-30.svg",
+    "output_sha256": "0ec9a7eb0569bc72f66e6af777bbe06c07944e3f280d2040e4701f50499338c9",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-40.89463c7a.svg",
+    "source_sha256": "54ceae3ecb61832849c189f79bcbf7b6c90336288a860cfdc00aca64bc0cfed0",
+    "output": "assets/synapse/tray-widget-battery-40.svg",
+    "output_sha256": "54ceae3ecb61832849c189f79bcbf7b6c90336288a860cfdc00aca64bc0cfed0",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-50.aef48272.svg",
+    "source_sha256": "474a720dfe01d6ed958db169b170404e31d25e836b238af3dca6598ece321d80",
+    "output": "assets/synapse/tray-widget-battery-50.svg",
+    "output_sha256": "474a720dfe01d6ed958db169b170404e31d25e836b238af3dca6598ece321d80",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-60.468df912.svg",
+    "source_sha256": "7ae624125ce7704203c2219a887fd34ef7ef143f4c74d791d69a0582565e4610",
+    "output": "assets/synapse/tray-widget-battery-60.svg",
+    "output_sha256": "7ae624125ce7704203c2219a887fd34ef7ef143f4c74d791d69a0582565e4610",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-70.0a9b3f68.svg",
+    "source_sha256": "2ae132fab5dbe18e65cb31c761f1bad39d17706aa74d35b8f7a0a8c880ac8bec",
+    "output": "assets/synapse/tray-widget-battery-70.svg",
+    "output_sha256": "2ae132fab5dbe18e65cb31c761f1bad39d17706aa74d35b8f7a0a8c880ac8bec",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-80.73550195.svg",
+    "source_sha256": "670304254cdcf76255979db2d5c73565d1b131133a8d425b23ce2efd91560216",
+    "output": "assets/synapse/tray-widget-battery-80.svg",
+    "output_sha256": "670304254cdcf76255979db2d5c73565d1b131133a8d425b23ce2efd91560216",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-90.6ec1f3a3.svg",
+    "source_sha256": "7192f27ee2ddb8e0e567b0c6bf353d50b30ff8fdfeb096ee41f763d531af3f3d",
+    "output": "assets/synapse/tray-widget-battery-90.svg",
+    "output_sha256": "7192f27ee2ddb8e0e567b0c6bf353d50b30ff8fdfeb096ee41f763d531af3f3d",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-100.de49333f.svg",
+    "source_sha256": "faa3e5bf1edefccf6482210a875a3a9d21dbedeacc466841f59b9ba3601f22bd",
+    "output": "assets/synapse/tray-widget-battery-100.svg",
+    "output_sha256": "faa3e5bf1edefccf6482210a875a3a9d21dbedeacc466841f59b9ba3601f22bd",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-charging.99e70522.svg",
+    "source_sha256": "ad95c5a3a474ba4aa3102c35e459f05a0f9ef966e7da627cc394b41a6ec55bc7",
+    "output": "assets/synapse/tray-widget-battery-charging.svg",
+    "output_sha256": "ad95c5a3a474ba4aa3102c35e459f05a0f9ef966e7da627cc394b41a6ec55bc7",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-charging-100.d01170a4.svg",
+    "source_sha256": "a40a6a4fb260d58ce86f61c00f238bdcc867a7520df2eb1c318134d53453af3c",
+    "output": "assets/synapse/tray-widget-battery-charging-100.svg",
+    "output_sha256": "a40a6a4fb260d58ce86f61c00f238bdcc867a7520df2eb1c318134d53453af3c",
+    "method": "Original current manifest SVG bytes"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-100.svg",
+    "output_sha256": "7d4f3aad71180853a3f6160764c860e40a0025e1b96d8680ad5369ac8bf1dc83",
+    "method": "Source view fragment #100",
+    "viewBox": "0 0 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-90.svg",
+    "output_sha256": "8868409168788c7fdae0d8383cfede82262bf141127508199c19ab561b840a84",
+    "method": "Source view fragment #90",
+    "viewBox": "0 40 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-80.svg",
+    "output_sha256": "d091c7d15e990119970ce13c25836346975c49d720e53e7f698d9d9085607e2a",
+    "method": "Source view fragment #80",
+    "viewBox": "0 80 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-70.svg",
+    "output_sha256": "d110a3140add101d191a328db9ea6da18152c1aa2af1390cf806227ad374f96a",
+    "method": "Source view fragment #70",
+    "viewBox": "0 120 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-60.svg",
+    "output_sha256": "1a3d87743bc00b07b1e8502584b342d85429be2da9affbaa205204aa18fc2ac9",
+    "method": "Source view fragment #60",
+    "viewBox": "0 160 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-50.svg",
+    "output_sha256": "00ef93d0ef1d0fe1b641eb3dedfd83474636769742ab25eb918977a41963a25c",
+    "method": "Source view fragment #50",
+    "viewBox": "0 200 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-40.svg",
+    "output_sha256": "23758e0280dc1cd87b65246f784bfa9654a1e251bcedfaf62ba58168f784a9e4",
+    "method": "Source view fragment #40",
+    "viewBox": "0 240 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-30.svg",
+    "output_sha256": "3ce6e5b6a6a920c53727378b725d7f48af8bd8a4557e698cc2c97e24a2973855",
+    "method": "Source view fragment #30",
+    "viewBox": "0 280 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-20.svg",
+    "output_sha256": "ac98a939876d1d181845816dd008ec097db79a7abe645e19328665ea0f27f572",
+    "method": "Source view fragment #20",
+    "viewBox": "0 320 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-10.svg",
+    "output_sha256": "20d5b30c9adec98f8298082c6d66d19a1bd82943ef3f3639e699bc10715c0a38",
+    "method": "Source view fragment #10",
+    "viewBox": "0 360 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/battery-paused.baae9df7.svg",
+    "source_sha256": "d0944ee687f29f9ee5a0e04521ccbfd52df36bddbc09c3dfd0a6009afcc5ddeb",
+    "output": "assets/synapse/tray-widget-battery-paused-0.svg",
+    "output_sha256": "7cde6e177cc9be88bd4d2abf63d1528f350e0b60c27b9edad08c4a40a54cd4ac",
+    "method": "Source view fragment #0",
+    "viewBox": "0 400 20 20"
+  },
+  {
+    "source": ".ref/applications/systray/systrayv2/static/media/icon_device_off.0b957d0a.svg",
+    "source_sha256": "97652f4aa571bbed596e60cca384eae849c9bc284157e1205e9f16fb8e8f3ba3",
+    "output": "assets/synapse/tray-widget-battery-off.svg",
+    "output_sha256": "97652f4aa571bbed596e60cca384eae849c9bc284157e1205e9f16fb8e8f3ba3",
+    "method": "Original current manifest SVG bytes"
+  }
+]

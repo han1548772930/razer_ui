@@ -1,5 +1,5 @@
 //! Windows HWND placement, visibility, foreground and notification diagnostics.
-use super::{DesktopTray, Dismiss, TrayPopup};
+use super::{DesktopTray, Dismiss, TrayPopup, TraySession};
 use gpui_kit::*;
 
 impl DesktopTray {
@@ -32,7 +32,7 @@ impl DesktopTray {
                 ..Default::default()
             };
             self.popup = Some(gpui_kit::open_window(options, cx, |window, cx| {
-                cx.new(|cx| TrayPopup::new(sender, window, cx))
+                cx.new(|cx| TrayPopup::new(sender, window, cx, self.widget_devices.clone()))
             })?);
         }
         let (handle, popup) = self.popup.as_ref().expect("created tray popup");
@@ -43,14 +43,19 @@ impl DesktopTray {
                 view.blur_task = None;
                 if toggle && (native::visible(window) || view.show_task.is_some()) {
                     view.show_task = None;
+                    view.resize_task = None;
                     native::hide(window);
                 } else {
+                    let account_branch = view.session != TraySession::SignedOut;
+                    let height = view.requested_height();
                     // LeftSystray.addHandler aligns only while hidden; another
                     // click focuses the existing panel without moving it.
                     let placement = if native::visible(window) {
                         None
                     } else {
-                        rect.and_then(|rect| native::popup_placement(window, rect))
+                        view.anchor = native::popup_anchor(window, rect);
+                        view.placed_height = Some(height);
+                        native::popup_placement(window, view.anchor, account_branch, height)
                     };
                     view.show_task = Some(cx.spawn_in(window, async move |this, cx| {
                         if let Some(placement) = placement {
@@ -83,7 +88,10 @@ impl DesktopTray {
 
     pub(in crate::shell) fn hide_popup(&mut self, cx: &mut App) {
         if let Some((handle, popup)) = &self.popup {
-            popup.update(cx, |view, _| view.show_task = None);
+            popup.update(cx, |view, _| {
+                view.show_task = None;
+                view.resize_task = None;
+            });
             let _ = handle.update(cx, |_, window, _| native::hide(window));
         }
     }
@@ -359,14 +367,29 @@ pub(in crate::shell) mod native {
             }
         }
     }
-    /// Current renderer `c()` signed-out branch: `.header-2` is 60px;
-    /// its singular `.app.list-unstyled` query does not find the `.apps` list.
-    /// Preserve that source behavior rather than inventing a 120/200px request.
-    /// Only the account/body branch clamps Y and calculates a dynamic height.
+    // Capture the fallback screen coordinates once per opening, like c()'s
+    // prevX/prevY. Reusing the resized window's top-left would move it upward
+    // again on every deferred measurement when Explorer has no icon rect.
+    pub(in crate::shell) fn popup_anchor(
+        window: &Window,
+        rect: Option<tray_icon::Rect>,
+    ) -> Option<(i32, i32)> {
+        if let Some(rect) = rect {
+            return Some((rect.position.x as i32, rect.position.y as i32));
+        }
+        let address = hwnd(window)?;
+        let mut bounds = windows_sys::Win32::Foundation::RECT::default();
+        (unsafe { GetWindowRect(address, &mut bounds) } != 0).then_some((bounds.left, bounds.top))
+    }
+
+    /// Current renderer `c()` requests 60px for signed-out and the measured
+    /// child height +153 clamped to 400–700px for account branches.
     /// Mixed-monitor DPI still needs real-window verification.
     pub(in crate::shell) fn popup_placement(
         window: &Window,
-        rect: tray_icon::Rect,
+        anchor: Option<(i32, i32)>,
+        account_branch: bool,
+        requested_height: f32,
     ) -> Option<PopupPlacement> {
         use windows_sys::Win32::Graphics::Gdi::{
             GetMonitorInfoW, MONITOR_DEFAULTTOPRIMARY, MONITORINFO, MonitorFromPoint,
@@ -382,30 +405,39 @@ pub(in crate::shell) mod native {
             cbSize: std::mem::size_of::<MONITORINFO>() as u32,
             ..Default::default()
         };
-        if unsafe { GetMonitorInfoW(monitor, &mut info) } == 0 {
-            return None;
-        }
+        let monitor_known = unsafe { GetMonitorInfoW(monitor, &mut info) } != 0;
         let scale = window.scale_factor();
         let width = (360. * scale).round() as i32;
-        let height = (60. * scale).round() as i32;
-        let work = info.rcWork;
-        let tray_x = rect.position.x as i32;
-        let tray_y = rect.position.y as i32;
-        let y = tray_y - height;
+        let mut height = (requested_height * scale).round() as i32;
+        // c() still resizes when no align payload has arrived: it uses the
+        // current screenX/screenY instead of leaving the initial 300x200 window.
+        let (tray_x, tray_y) = anchor?;
+        let mut y = tray_y - height;
         let mut x = tray_x - width / 2;
         let right_gap = (10. * scale).round() as i32;
         // 597/a uses the primary WorkRect width, not its monitor width.
         // Preserve the first clamp separately from the later right/left
         // checks: side taskbars can make these two widths differ.
-        let primary_width = (work.right.abs() - work.left.abs()).abs();
-        if x + width > primary_width {
-            x = primary_width - width - right_gap;
-        }
-        if x + width > work.right {
-            x -= (x + width - work.right).abs() + right_gap;
-        }
-        if x < work.left {
-            x = work.left;
+        if monitor_known {
+            let work = info.rcWork;
+            let primary_width = (work.right.abs() - work.left.abs()).abs();
+            if x + width > primary_width {
+                x = primary_width - width - right_gap;
+            }
+            if x + width > work.right {
+                x -= (x + width - work.right).abs() + right_gap;
+            }
+            if x < work.left {
+                x = work.left;
+            }
+            if account_branch {
+                y = y.max(work.top);
+                if y + height > work.bottom + (0.5 * scale).ceil() as i32 {
+                    height =
+                        (((work.bottom - work.top) as f32 * 0.7).min(700. * scale)).round() as i32;
+                    y = tray_y - height;
+                }
+            }
         }
         Some(PopupPlacement {
             address,
