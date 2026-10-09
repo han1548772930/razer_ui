@@ -158,7 +158,7 @@ def main():
             'controls': controls_for(raw, pages, ROOT),
         })
         audit.append({'product_id':pid,'keys':len(keys),'shapes':len(shapes),'non_geometric_inputs':missing,'viewbox':viewbox,'source_geometry':raw['default_groups']['source'],'svg_source':asset.get('source')if svg else None})
-    output = ROOT / 'src/features/keyboard_products_data.json'
+    output = ROOT / 'crates/razer-pages/src/features/keyboard_products_data.json'
     output.write_text(json.dumps(products, ensure_ascii=False, separators=(',', ':')), encoding='utf8')
     (ROOT/'docs/re/keyboard-product-geometry.json').write_text(json.dumps(audit,indent=2),encoding='utf8')
     (ROOT/'assets/synapse/keyboard-product-manifest.json').write_text(json.dumps(list(artwork.values()),indent=2),encoding='utf8')

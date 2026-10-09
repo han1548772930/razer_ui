@@ -8,7 +8,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const fact = (condition, message) => { if (!condition) throw Error(message); };
 const expectedProducts = [164, 241, 778, 784, 3871, 3884, 3886, 3946];
 const upstream = JSON.parse(read('docs/re/source-profile-menu-current-evidence.json'));
-const data = JSON.parse(read('src/features/source_profile_menu_data.json'));
+const data = JSON.parse(read('crates/razer-pages/src/features/source_profile_menu_data.json'));
 const texts = new Map();
 function currentText(file) {
   fact(/^\.ref\/devices\/\d+\/static\/(js|css)\//.test(file), `Unexpected reference path: ${file}`);
@@ -124,7 +124,7 @@ for (const asset of assets) {
   }
   asset.sha256 = hash(source);
 }
-const nativePath='src/features/source_workspace/profile_transfer.rs', native=read(nativePath), compact=native.replace(/\s+/g,'');
+const nativePath='crates/razer-pages/src/features/source_workspace/profile_transfer.rs', native=read(nativePath), compact=native.replace(/\s+/g,'');
 for (const fragment of ['profiles.into_iter()', 'selected: pid == 3886 || profile.id == active', 'select_all: false',
   'row.selected = this.select_all', 'this.select_all = !this.select_all', 'row.selected = *checked',
   'cx.prompt_for_paths(PathPromptOptions', 'multiple: false', 'this.pid == 3886 ||', 'extension.eq_ignore_ascii_case("synapse4")',
@@ -137,7 +137,7 @@ for (const fragment of ['profiles.into_iter()', 'selected: pid == 3886 || profil
   fact(compact.includes(fragment.replace(/\s+/g,'')), `Missing native transfer contract: ${fragment}`);
 }
 fact(!native.includes('razer-ui-profile') && !/std::fs|File::|process::|serde_json::to/.test(native), 'Transfer must not substitute local JSON or execute/read user-selected files');
-const actions=read('src/features/source_workspace/profile_actions.rs'), workspace=read('src/features/source_workspace.rs');
+const actions=read('crates/razer-pages/src/features/source_workspace/profile_actions.rs'), workspace=read('crates/razer-pages/src/features/source_workspace.rs');
 fact(actions.includes('SourceProfileTransfer::new') && actions.includes('cx.subscribe_in(') && actions.includes('SourceProfileTransferClosed'), 'Actual profile menu route missing');
 fact(workspace.includes('mod profile_transfer;') && workspace.includes('.children(self.profile_transfer.clone())'), 'Transfer entity is not mounted');
 const report={schema_version:1, method:'Current per-product mounted receipts re-bound to source; Acorn syntax and current manifest CSS parsed without execution.',

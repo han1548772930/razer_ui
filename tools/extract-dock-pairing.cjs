@@ -83,6 +83,6 @@ for(const pid of [164,241]){
   specs.push({product_id:pid,page:page.key,config,labels,states:states[0],assets,translations});
   evidence.push({product_id:pid,source_files:receipt.source_files,label_source:{path:labelFile,sha256:hash(part.source)},labels,locale_receipts,css,manifest:{path:manifestPath,sha256:hash(read(manifestPath))},urls:[...new Set(urls)],components:page.components.filter(c=>c.path===componentPath&&c.offset<100000).map(({path,offset,end,source})=>({path,offset,end,source:source.replace(/data:image\/[^"\s]+/g,'[embedded bitmap omitted; retained in hashed source]')}))});
 }
-emit('src/features/dock_pairing_data.json',specs);
+emit('crates/razer-pages/src/features/dock_pairing_data.json',specs);
 emit('docs/re/dock-pairing-current-evidence.json',{method:'Acorn literal extraction and current mounted component receipts; vendor JavaScript never executed',generator_sha256:hash(fs.readFileSync(__filename)),products:evidence});
 console.log('Resolved both dock pairing pages, labels, states and resource declarations.');

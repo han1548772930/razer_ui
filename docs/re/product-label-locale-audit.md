@@ -14,7 +14,7 @@
 3. **机检闸门**：`python tools/audit-locale-keys.py --check` 现在覆盖 409 个字面量
    `t("KEY")` 调用，任何一个不存在的键都会失败（本轮新增 27 个键，0 缺失）。
 
-## 鼠标页（`src/features/mouse_products.rs`）
+## 鼠标页（`crates/razer-pages/src/features/mouse_products.rs`）
 
 | 原字面量 | 语言键 | 依据 |
 | --- | --- | --- |
@@ -52,7 +52,7 @@ we.TK1:Lamborghini, we.Rb7:Ambient_Effect}`），两跳解析后得到
 
 未知输入/效果不再编中文，而是原样显示内部名（原版对未知项也是原样显示），并有测试固定这条回退。
 
-## 键盘页（`src/features/keyboard_products.rs`）
+## 键盘页（`crates/razer-pages/src/features/keyboard_products.rs`）
 
 | 原字面量 | 语言键 | 依据 |
 | --- | --- | --- |

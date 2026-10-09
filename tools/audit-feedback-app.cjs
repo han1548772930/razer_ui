@@ -11,11 +11,11 @@ const source = '.ref/applications/feedback/static/js/496.003ef6c6.chunk.js';
 const css = '.ref/applications/feedback/static/css/496.d9e63f8f.chunk.css';
 const js = read(source);
 const cssText = read(css);
-const shell = read('src/shell.rs');
-const service = read('src/shell/service_pages.rs');
-const hostTabs = read('src/shell/host_tabs.rs');
-const page = read('src/shell/feedback_page.rs');
-const select = read('src/ui/synapse_select.rs');
+const shell = read('crates/razer-shell/src/shell.rs');
+const service = read('crates/razer-app-pages/src/service_pages.rs');
+const hostTabs = read('crates/razer-shell/src/shell/host_tabs.rs');
+const page = read('crates/razer-app-pages/src/feedback_page.rs');
+const select = read('crates/razer-widgets/src/synapse_select.rs');
 const problems = [];
 const app = new Source('feedback');
 const component = app.binding(4496, 'ps');
@@ -168,8 +168,8 @@ const report = {
   css: {path: css, sha256: hash(css), rules: cssRules.filter(row => row.selector.startsWith('.page-feedback') || row.selector.startsWith('.page.page-feedback') || row.selector.startsWith('textarea.form-control') || row.selector.startsWith('.input-container') || row.selector === '.email~.input-container>textarea.form-control')},
   constants: {loader_module: 3272, constants_module: 4166, values: constants, subject_guard: 50},
   local_boundary: 'Feedback remains a local guest draft. Submit (including either log choice) reports unavailable; no remote API or log collection runs. The unmounted renderLeft log-export controls are not reproduced. Privacy uses its current source URLs; service success is not synthesized.',
-  native_page: {path: 'src/shell/feedback_page.rs', sha256: hash('src/shell/feedback_page.rs'), popup: 'GPUI Base DialogPopup provides popup hit-test occlusion; Dialog owns Escape, backdrop cancellation and focus trapping.'},
-  native_route: {shell: 'src/shell.rs', tabs: 'src/shell/host_tabs.rs', location: 'Location::Feedback', identity: 'feedback-synapse', retained_entity: 'feedback_page', host_policy: 3, container: 'Named tab in the existing host window.'},
+  native_page: {path: 'crates/razer-app-pages/src/feedback_page.rs', sha256: hash('crates/razer-app-pages/src/feedback_page.rs'), popup: 'GPUI Base DialogPopup provides popup hit-test occlusion; Dialog owns Escape, backdrop cancellation and focus trapping.'},
+  native_route: {shell: 'crates/razer-shell/src/shell.rs', tabs: 'crates/razer-shell/src/shell/host_tabs.rs', location: 'Location::Feedback', identity: 'feedback-synapse', retained_entity: 'feedback_page', host_policy: 3, container: 'Named tab in the existing host window.'},
   verification_scope: 'Static AST, CSS, native source fragments and routing checks; no downloaded JavaScript, application or tests executed. Fragment checks are not an execution-equivalence proof. Dialog pixel geometry, popup hit testing, keyboard focus restoration and link rendering still require an authorized runtime review.',
   problems,
 };

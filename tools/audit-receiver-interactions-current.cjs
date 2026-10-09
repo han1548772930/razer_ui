@@ -62,11 +62,11 @@ const products = definitions.map(([id, module, names]) => {
   };
 });
 const nativeFiles = [
-  'src/features/dock_pairing.rs',
-  'src/features/dock_pairing/state.rs',
-  'src/features/dock_pairing/dialog.rs',
-  'src/features/dock_pairing/observation.rs',
-  'src/features/source_controls/receiver.rs',
+  'crates/razer-pages/src/features/dock_pairing.rs',
+  'crates/razer-pages/src/features/dock_pairing/state.rs',
+  'crates/razer-pages/src/features/dock_pairing/dialog.rs',
+  'crates/razer-pages/src/features/dock_pairing/observation.rs',
+  'crates/razer-pages/src/features/source_controls/receiver.rs',
 ];
 const result = {
   method: 'Current manifest-declared AST callbacks and CSS; no vendor execution or UI execution',

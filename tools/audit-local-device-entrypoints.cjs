@@ -41,17 +41,17 @@ walk(acorn.parse(pickerText, {ecmaVersion: 'latest'}), node => {
 if (!installerError || !readyFilter) throw Error('Missing current picker install-error/readiness source');
 
 const requirements = {
-  'src/features/product_workspace.rs': ['pub(crate) fn has_local_page', 'Body::Source(workspace) => workspace.read(cx).has_local_page()'],
-  'src/features/source_workspace.rs': ['pub(crate) fn has_local_page', 'page.role() == ProductPageRole::Help', 'FamilyBody::Pending => false', 'self.dock_pairing.is_some()', 'self.supplement.is_some()', 'super::audio_products::supports_page', 'super::accessory_system_products::supports_page'],
-  'src/shell/main_pages.rs': ['fn local_installation_entry', 'SetupStatus::Waiting', 'SetupStatus::Downloading', 'SetupStatus::Installing', 'SetupStatus::Syncing', 'SetupStatus::InstallCanceled', 'SetupStatus::Error', 'device.dashboard.no_alive_sign != Some(true)', 'dashboard_device::can_focus(device)'],
-  'src/shell/main_pages/dashboard_cards.rs': ['workspace.has_local_page(cx)', 'open_without_installation: local_installation_entry(device, supported)', 'if restart', 'Location::Device(key.clone())'],
-  'src/shell/main_pages/dashboard_device.rs': ['fn can_focus', '!min_firmware(device)', '!preset_loading(device)', '!power_off(device)', 'mixer_system_check_failed', 'SetupStatus::Updating | SetupStatus::RestartRequired'],
-  'src/shell/main_pages/dashboard_device_card.rs': ['let installation_gate = !self.open_without_installation', 'source_spinner && !retry && installation_gate', '!ready && installation_gate', 'fields.no_alive_sign == Some(true)', 'let ready = device.setup_status == SetupStatus::Ready'],
-  'src/shell/app_picker.rs': ['(self.ready || self.open_without_installation)', 'open_without_installation: false', '&& !self.mixer_failed', '&& !self.powered_off'],
-  'src/shell/app_picker_host.rs': ['workspace.has_local_page(cx)', '.ready(device.setup_status == SetupStatus::Ready)', '.mixer_failed(', 'super::main_pages::local_installation_entry('],
-  'src/shell.rs': ['let mut local_page_devices = std::collections::BTreeSet::new()', 'workspace.has_local_page(cx)', 'local_page_devices.insert(', 'page.sync_local_devices(&devices, local_page_devices, cx)', 'workspace.has_local_page(cx))'],
-  'src/shell/devices_modules_catalog.rs': ['local_page_devices: BTreeSet<(u32, String, String)>', 'local_page_devices: BTreeSet::new()', 'self.local_page_devices = local_page_devices'],
-  'src/shell/module_service_rows.rs': ['fn local_service_device', 'fn local_page_service_device', 'self.local_page_devices', '.contains(&identity)', '.then_some(device)', 'if let Some(device) = self.local_page_service_device(row)', 'let local = self.local_service_device(row).cloned()'],
+  'crates/razer-pages/src/features/product_workspace.rs': ['pub(crate) fn has_local_page', 'Body::Source(workspace) => workspace.read(cx).has_local_page()'],
+  'crates/razer-pages/src/features/source_workspace.rs': ['pub(crate) fn has_local_page', 'page.role() == ProductPageRole::Help', 'FamilyBody::Pending => false', 'self.dock_pairing.is_some()', 'self.supplement.is_some()', 'super::audio_products::supports_page', 'super::accessory_system_products::supports_page'],
+  'crates/razer-dashboard/src/lib.rs': ['fn local_installation_entry', 'SetupStatus::Waiting', 'SetupStatus::Downloading', 'SetupStatus::Installing', 'SetupStatus::Syncing', 'SetupStatus::InstallCanceled', 'SetupStatus::Error', 'device.dashboard.no_alive_sign != Some(true)', 'dashboard_device::can_focus(device)'],
+  'crates/razer-shell/src/shell/main_pages/dashboard_cards.rs': ['workspace.has_local_page(cx)', 'open_without_installation: local_installation_entry(device, supported)', 'if restart', 'Location::Device(key.clone())'],
+  'crates/razer-dashboard/src/dashboard_device.rs': ['fn can_focus', '!min_firmware(device)', '!preset_loading(device)', '!power_off(device)', 'mixer_system_check_failed', 'SetupStatus::Updating | SetupStatus::RestartRequired'],
+  'crates/razer-dashboard/src/dashboard_device_card.rs': ['let installation_gate = !self.open_without_installation', 'source_spinner && !retry && installation_gate', '!ready && installation_gate', 'fields.no_alive_sign == Some(true)', 'let ready = device.setup_status == SetupStatus::Ready'],
+  'crates/razer-app-pages/src/app_picker.rs': ['(self.ready || self.open_without_installation)', 'open_without_installation: false', '&& !self.mixer_failed', '&& !self.powered_off'],
+  'crates/razer-shell/src/shell/app_picker_host.rs': ['workspace.has_local_page(cx)', '.ready(device.setup_status == SetupStatus::Ready)', '.mixer_failed(', 'super::main_pages::local_installation_entry('],
+  'crates/razer-shell/src/shell.rs': ['let mut local_page_devices = std::collections::BTreeSet::new()', 'workspace.has_local_page(cx)', 'local_page_devices.insert(', 'page.sync_local_devices(&devices, local_page_devices, cx)', 'workspace.has_local_page(cx))'],
+  'crates/razer-app-pages/src/devices_modules_catalog.rs': ['local_page_devices: BTreeSet<(u32, String, String)>', 'local_page_devices: BTreeSet::new()', 'self.local_page_devices = local_page_devices'],
+  'crates/razer-app-pages/src/module_service_rows.rs': ['fn local_service_device', 'fn local_page_service_device', 'self.local_page_devices', '.contains(&identity)', '.then_some(device)', 'if let Some(device) = self.local_page_service_device(row)', 'let local = self.local_service_device(row).cloned()'],
 };
 const implementation = Object.entries(requirements).map(([path, tokens]) => {
   const source = fs.readFileSync(path, 'utf8');

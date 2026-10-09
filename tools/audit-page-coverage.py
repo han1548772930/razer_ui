@@ -112,15 +112,15 @@ def self_test() -> int:
     return 1 if failures else 0
 
 FAMILIES = {
-    "mouse": ("src/features/mouse_products.rs", "src/features/mouse_products_data.json"),
-    "keyboard": ("src/features/keyboard_products.rs", "src/features/keyboard_products_data.json"),
-    "gamepad": ("src/features/gamepad_products.rs", "src/features/gamepad_products_data.json"),
-    "system": ("src/features/system_products.rs", "src/features/system_products_data.json"),
+    "mouse": ("crates/razer-pages/src/features/mouse_products.rs", "crates/razer-pages/src/features/mouse_products_data.json"),
+    "keyboard": ("crates/razer-pages/src/features/keyboard_products.rs", "crates/razer-pages/src/features/keyboard_products_data.json"),
+    "gamepad": ("crates/razer-pages/src/features/gamepad_products.rs", "crates/razer-pages/src/features/gamepad_products_data.json"),
+    "system": ("crates/razer-pages/src/features/system_products.rs", "crates/razer-pages/src/features/system_products_data.json"),
     "accessory_system": (
-        "src/features/accessory_system_products.rs",
-        "src/features/accessory_system_products_data.json",
+        "crates/razer-pages/src/features/accessory_system_products.rs",
+        "crates/razer-pages/src/features/accessory_system_products_data.json",
     ),
-    "audio": ("src/features/audio_products.rs", "src/features/audio_products_data.json"),
+    "audio": ("crates/razer-pages/src/features/audio_products.rs", "crates/razer-pages/src/features/audio_products_data.json"),
 }
 
 
@@ -255,7 +255,7 @@ def standalone_pages() -> dict:
     never reach the family renderer: the standalone root implements them. Both
     facts come from the generated registry.
     """
-    text = (ROOT / "src/product/registry_data.rs").read_text(encoding="utf-8")
+    text = (ROOT / "crates/razer-catalog/src/registry_data.rs").read_text(encoding="utf-8")
     navigation = re.compile(
         r'ProductNavigation \{ key: "(?P<key>[^"]+)", owner: "(?P<owner>[^"]*)", '
         r'display_mode: "(?P<mode>[^"]*)", source: "(?P<source>[^"]*)", '
@@ -309,7 +309,7 @@ SUPPLEMENT = supplement_pages()
 AUDIO_DEMOS = {
     product["product_id"]
     for product in json.loads(
-        (ROOT / "src/features/audio_demo_data.json").read_text(encoding="utf-8")
+        (ROOT / "crates/razer-pages/src/features/audio_demo_data.json").read_text(encoding="utf-8")
     )
 }
 

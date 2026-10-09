@@ -24,11 +24,11 @@ fact(link && has(link,'right','-25px') && has(link,'top','-2px') && has(link,'wi
 const original = `${source.directory}/static/media/icon_external_link.48227e72.svg`, asset = 'assets/synapse/external-link.svg';
 fact(read(original) === read(asset), 'Existing external-link image differs from current Dashboard');
 fact(read('assets/synapse/embedded.rs').includes('synapse/external-link.svg'), 'External-link is not embedded');
-const native = read('src/shell/module_service_rows.rs');
+const native = read('crates/razer-app-pages/src/module_service_rows.rs');
 const compact = native.replace(/\s+/g, '');
 for (const fragment of ['struct ServiceProgressBar', 'window.use_keyed_state', 'Duration::from_millis(300)', 'Duration::from_millis(1)', '.rounded(surface::css(15.))', '.overflow_hidden()', '.value(self.percent)', '.bg(MainPageColors.service_progress_track())', '.bg(MainPageColors.service_progress_fill())', '.right(surface::css(-25.))', '.top(surface::css(-2.))', 'service_icon_with_warning(row, None, warning, cx)', 'RESTART_SYNAPSE_REQUIRED']) fact(compact.includes(fragment.replace(/\s+/g,'')), `Missing native row presentation: ${fragment}`);
 fact(!native.includes('crate::resources::dashboard_image('), 'Description must not substitute dashboard artwork for detail.srcImage');
-const theme = read('src/ui/theme.rs');
+const theme = read('crates/razer-widgets/src/theme.rs');
 fact(/fn service_progress_track[\s\S]*?rgb\(0x2c5824\)/.test(theme) && /fn service_progress_fill[\s\S]*?rgb\(0x44d62c\)/.test(theme), 'Source progress palette missing');
 const report = {
   method: 'Manifest-owned current Dashboard AST/CSS and existing asset hash comparison; no reference execution.',

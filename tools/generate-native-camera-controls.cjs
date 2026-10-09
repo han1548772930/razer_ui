@@ -445,7 +445,7 @@ for(const p of configs.filter(p=>p.family==='camera')) {
  output.push(result);
  receipts.push({sharpness_gain_rows:sharpnessGain,product_id:pid,source:file,sha256:hash(source),localization_source:textFile,localization_sha256:hash(textSource),config_source:p.config.path,config_offset:p.config.offset,pages:result.pages.map(pg=>({key:pg.key,control_keys:pg.sections.flatMap(s=>s.controls.map(c=>c.key)),source_navigation_offset:p.navigation.flatMap(n=>n.items).find(i=>i.name.value===pg.key)?.offset})),limitations});
 }
-fs.writeFileSync(path.join(root,'src/features/source_controls_data.json'),JSON.stringify(output,null,2)+'\n');
+fs.writeFileSync(path.join(root,'crates/razer-pages/src/features/source_controls_data.json'),JSON.stringify(output,null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/camera-controls-source.json'),JSON.stringify({schema_version:1,scanner_sha256:hash(fs.readFileSync(__filename)),products:receipts},null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/camera-stepper-current-evidence.json'),JSON.stringify({schema_version:1,scanner_sha256:hash(fs.readFileSync(__filename)),products:stepperReceipts},null,2)+'\n');
 presentation.write();

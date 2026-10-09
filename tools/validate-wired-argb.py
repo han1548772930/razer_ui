@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 load = lambda path: json.loads((ROOT / path).read_text(encoding='utf-8'))
 digest = lambda path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
-specs = load('src/features/wired_argb_data.json')
+specs = load('crates/razer-pages/src/features/wired_argb_data.json')
 evidence = load('docs/re/wired-argb-current-evidence.json')
 manifest = load('assets/synapse/wired-argb-manifest.json')
 assert evidence['generator_sha256'] == digest('tools/extract-wired-argb.cjs')
@@ -107,7 +107,7 @@ for record in evidence['products']:
     else:
         # 778 是主板布局，源里没有这两个图标与其提示。
         assert 'icon-detection-wrapper' not in compact, record['product_id']
-shared = (ROOT / 'src/ui/hover_tip.rs').read_text(encoding='utf8')
+shared = (ROOT / 'crates/razer-widgets/src/hover_tip.rs').read_text(encoding='utf8')
 for marker in (
     'pub(crate) enum SourceTipPlacement {',
     'BottomLeft,',
@@ -124,7 +124,7 @@ for marker in (
     'TooltipColors::border()',
 ):
     assert marker in shared, marker
-native = (ROOT / 'src/features/wired_argb.rs').read_text(encoding='utf8')
+native = (ROOT / 'crates/razer-pages/src/features/wired_argb.rs').read_text(encoding='utf8')
 for marker in (
     'enum WiredIcon {',
     'hovered_icon: Option<WiredIcon>,',
@@ -154,7 +154,7 @@ for record in evidence['products']:
         'ledCount:\'<spanstyle="color:#44d62c">\'',
     ):
         assert fragment in compact, (record['product_id'], fragment)
-port = (ROOT / 'src/features/wired_argb/port.rs').read_text(encoding='utf8')
+port = (ROOT / 'crates/razer-pages/src/features/wired_argb/port.rs').read_text(encoding='utf8')
 for marker in (
     'hovered_info: bool,',
     'hovered_info: false,',
@@ -182,7 +182,7 @@ for record in evidence['products']:
         'jsx)("div",{className:"tip",children:',
     ):
         assert fragment in compact, (record['product_id'], fragment)
-port = (ROOT / 'src/features/wired_argb/port.rs').read_text(encoding='utf8')
+port = (ROOT / 'crates/razer-pages/src/features/wired_argb/port.rs').read_text(encoding='utf8')
 for marker in ('surface::help_control(', '.absolute()', '.right(surface::css(10.))',
                '.top(surface::css(10.))'):
     assert marker in port, marker

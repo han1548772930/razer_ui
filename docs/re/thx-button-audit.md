@@ -13,6 +13,6 @@
 | `.profile-del div.thx-btn` | `background-color:#fd4949;border:1px solid #0000004d;color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:4px 5px` | 删除/重置确认弹层的红按钮仍在 `profile_confirmation` 里由 `ProfileAlertColors` 提供（含 777 的覆盖），因此没有做成第三个变体 |
 | `.import-profile-btn-group .thx-btn` | `border:1px solid #0000004d;font-family:Roboto;font-size:12px;height:100%;width:fit-content` | 按钮 27px 高、12px 字、1px `#0000004d` 边框、`min-width:90px` |
 
-本地实现是 [profile.rs](../../src/features/profile.rs) 里的 `profile_dialog_button(id, label, ThxKind, cx)`，两个对话框（关联游戏、配置文件导入/导出）的取消/关闭按钮用 `ThxKind::Test`、确认/保存按钮用 `ThxKind::Primary`。
+本地实现是 [profile.rs](../../crates/razer-pages/src/features/profile.rs) 里的 `profile_dialog_button(id, label, ThxKind, cx)`，两个对话框（关联游戏、配置文件导入/导出）的取消/关闭按钮用 `ThxKind::Test`、确认/保存按钮用 `ThxKind::Primary`。
 
 `transition:opacity .3s` 与按下态 `opacity:.6` 尚未做插值——本轮只做到静态色 + 悬停透明度，原值记在上面。删除确认里的红色按钮没有并入 `ThxKind`：它需要按产品（777）切换边框与文字色，且已有独立实现。

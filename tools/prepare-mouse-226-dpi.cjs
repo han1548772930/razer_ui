@@ -93,6 +93,6 @@ const assets=names.map(([name,target])=>{
 function output(file,value){const text=JSON.stringify(value,null,2)+'\n';if(process.argv.includes('--check')){if(read(file)!==text)throw Error('Stale '+file);}else fs.writeFileSync(path.join(root,file),text);}
 // The runtime dispatches by declared capability; this source receipt registers
 // only the product whose mounted Ft implementation and reducer were audited.
-output('src/features/mouse_dpi_grid_data.json',[{product_id:226,min:values.minDPI,max:values.maxDPI,step:values.dpiStep,editing_enabled_default:editingEnabledDefault,segments}]);
+output('crates/razer-pages/src/features/mouse_dpi_grid_data.json',[{product_id:226,min:values.minDPI,max:values.maxDPI,step:values.dpiStep,editing_enabled_default:editingEnabledDefault,segments}]);
 output('docs/re/mouse-226-dpi-current-evidence.json',{product_id:226,method:'AST/CSS and finite arithmetic evaluation only; UTF-16 offsets',manifest:{path:manifestPath,sha256:hash(read(manifestPath))},receipts,labels,css,assets});
 console.log(`226 stages/grid: ${receipts.length} AST receipts, ${css.reduce((n,c)=>n+c.rules.length,0)} CSS rules, ${assets.length} assets`);

@@ -2,7 +2,7 @@
 
 当前产品 769 源为 `.ref/devices/769/static/js/main.ad1113f8.js`，SHA-256 `3d1660626594af99c54c622b2e1caf3190e172e8703392a65286e81b9a3fff9d`；CSS 为 main.341edb83.css。实际组件、十语言、灯效、archetype 与资源见 [当前证据](hue-current-evidence.json)和 [资源 manifest](../../assets/synapse/hue-manifest.json)。Xo 未收到 renderProfileBar，Hue 不显示普通设备配置下拉。
 
-[HueWorkspace](../../src/features/hue.rs)由 SourceProductWorkspace 实际挂载；onboarding/bridge/brightness/effects 分别拥有对应内容。正式入口初始未配对，缺少 Hue 通信 adapter，扫描等操作不可用；预览为独立实体，样例网桥、灯具和娱乐区不进入实时设备列表或配置。
+[HueWorkspace](../../crates/razer-pages/src/features/hue.rs)由 SourceProductWorkspace 实际挂载；onboarding/bridge/brightness/effects 分别拥有对应内容。正式入口初始未配对，缺少 Hue 通信 adapter，扫描等操作不可用；预览为独立实体，样例网桥、灯具和娱乐区不进入实时设备列表或配置。
 
 ## 当前内容与状态规则
 

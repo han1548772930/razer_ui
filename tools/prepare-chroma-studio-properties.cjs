@@ -105,7 +105,7 @@ for(const relative of [...new Set(Object.values(manifest.files))].filter(v=>v.en
  if(rules.length)css.push({path:file,sha256:hash(raw),rules});
 }
 const evidence={method:'Current manifest-declared JavaScript parsed as Acorn AST; literal extraction and JSX inventory only. No vendor code execution. Null in extracted literals represents source undefined.',manifest:{path:manifestPath,sha256:hash(fs.readFileSync(path.join(root,manifestPath)))},receipts,jsx:Object.fromEntries(ids.map(id=>[id,inventory(id)])),css,keyframes,missing_css:missingCSS};
-for(const[file,obj]of [['src/features/chroma_studio_properties_data.json',data],['docs/re/chroma-studio-properties-source.json',evidence]]){
+for(const[file,obj]of [['crates/razer-pages/src/features/chroma_studio_properties_data.json',data],['docs/re/chroma-studio-properties-source.json',evidence]]){
  const text=JSON.stringify(obj,null,2)+'\n',target=path.join(root,file);
  if(process.argv.includes('--check')){if(fs.readFileSync(target,'utf8')!==text)throw Error(`Stale ${file}`);}else fs.writeFileSync(target,text);
 }

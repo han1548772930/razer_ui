@@ -52,11 +52,11 @@ for (const value of Object.values(manifest.files).filter(file => /\.css$/.test(f
   css.push(...parseCSS(raw).filter(rule => /macro-keyboard|macro-pill|macro-type-select|quick-macro-section__icon/.test(rule.selector)).map(rule => ({path:cssPath, sha256:hash(raw), ...rule})));
 }
 fact(css.some(rule => rule.selector === '.macro-pill>span,.macro-pill__delete'), 'Missing opacity transition CSS');
-const nativePath = 'src/features/automation/quick_macro.rs', native = read(nativePath), compact = native.replace(/\s+/g,'');
+const nativePath = 'crates/razer-pages/src/features/automation/quick_macro.rs', native = read(nativePath), compact = native.replace(/\s+/g,'');
 for (const fragment of ['capturing: bool', 'capture_modifiers: Modifiers', 'capture_key_down', '.on_key_up(', '.on_modifiers_changed(', 'self.keys.is_empty() && !self.capturing', 'self.keys.len() < 10', 'window.prevent_default()', 'cx.stop_propagation()', 'self.capture.focus(window, cx)', 'fn type_selector', 'item.content(self.kind == item.value)', 'Duration::from_millis(200)', 'motion::Easing::Ease', 'automation-quick-macro-delete.svg', 'this.keys.retain(|key| key != &remove_key)', '"keyboard" | "" => self.keyboard_field(window, cx)']) {
   fact(compact.includes(fragment.replace(/\s+/g,'')), `Missing native contract: ${fragment}`);
 }
-fact(read('src/features/automation/editor.rs').includes('.keyboard(false)'), 'Outer dialog must delegate Escape to quick editor');
+fact(read('crates/razer-pages/src/features/automation/editor.rs').includes('.keyboard(false)'), 'Outer dialog must delegate Escape to quick editor');
 fact(!/std::process|Command::new|ShellExecute|LoadLibrary/.test(native), 'Quick macro unexpectedly executes a target');
 const report = {
   method: 'Current manifest and Acorn AST; literal SVG and ordered CSS receipts; reference code is never evaluated.',

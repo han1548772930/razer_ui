@@ -41,7 +41,7 @@ const evidence = {
   data,
 };
 for (const [file, value] of [
-  ['src/shell/devices_modules_catalog.json', data],
+  ['crates/razer-app-pages/src/devices_modules_catalog.json', data],
   ['docs/re/devices-modules-current-catalog.json', evidence],
 ]) {
   const text = JSON.stringify(value, null, 2) + '\n';

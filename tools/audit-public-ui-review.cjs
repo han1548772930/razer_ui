@@ -83,12 +83,12 @@ const endpoints = catalog.applications.map(app => {
   return {route:app.route, recorded_html_status:app.endpoints['index.html']?.http_status,
     current_files:current, review_status:'Per-page status is documented in application-review-current.md; manifest presence is not UI completion.'};
 });
-const nativePaths = ['src/preferences.rs','src/shell/settings_page.rs','src/shell/settings_window.rs',
-  'src/shell/settings_systray_action.rs','src/shell/profiles_page.rs','src/shell/profiles_page/devices.rs',
-  'src/features/profile_collection.rs','src/features/product_workspace.rs','src/features/workspace.rs',
-  'src/features/source_workspace.rs','src/features/control_pod_audio.rs',
-  'src/shell/chroma_page.rs','src/features/chroma_studio.rs','src/features/chroma_studio_properties.rs',
-  'src/shell/feedback_page.rs','src/shell/chroma_window.rs'];
+const nativePaths = ['crates/razer-state/src/lib.rs','crates/razer-settings/src/settings_page.rs','crates/razer-settings/src/settings_window.rs',
+  'crates/razer-settings/src/settings_systray_action.rs','crates/razer-app-pages/src/profiles_page.rs','crates/razer-app-pages/src/profiles_page/devices.rs',
+  'crates/razer-pages/src/features/profile_collection.rs','crates/razer-pages/src/features/product_workspace.rs','crates/razer-pages/src/features/workspace.rs',
+  'crates/razer-pages/src/features/source_workspace.rs','crates/razer-pages/src/features/control_pod_audio.rs',
+  'crates/razer-app-pages/src/chroma_page.rs','crates/razer-pages/src/features/chroma_studio.rs','crates/razer-pages/src/features/chroma_studio_properties.rs',
+  'crates/razer-app-pages/src/feedback_page.rs','crates/razer-shell/src/shell/chroma_window.rs'];
 const report = {
   date:'2026-10-07',
   method:'Manifest-scoped Acorn parsing and exact current source hashes. Native render/lifecycle review is documented separately; source parsing alone is not UI completion.',

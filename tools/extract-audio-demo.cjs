@@ -197,14 +197,14 @@ const descriptors = products.map(product => {
     defaults:{path:mainPath,sha256:hash(main),offset:defaultsOffset,source:defaults},css,
     playback_status:'not_implemented'};
 });
-emit('src/features/audio_demo_data.json',descriptors);
+emit('crates/razer-pages/src/features/audio_demo_data.json',descriptors);
 emit('docs/re/audio-demo-current-evidence.json', {
   method:'Acorn lexical resolution of mounted source components; no vendor execution',
   generator_sha256:hash(fs.readFileSync(__filename)),
   resolver_sha256:hash(fs.readFileSync(path.join(__dirname,'source-help-ast.cjs'))), products,
   presentation_audits:descriptors.map(d=>({product_id:d.product_id,presentation:d.presentation,cascade_evidence:d.cascade_evidence})),
 });
-const nativeDemo = fs.readFileSync(path.join(root,'src/features/audio_demo.rs'),'utf8');
+const nativeDemo = fs.readFileSync(path.join(root,'crates/razer-pages/src/features/audio_demo.rs'),'utf8');
 if (!nativeDemo.includes('surface::check_item_with_style(') || !nativeDemo.includes('Colors::unchecked_background()')
     || !nativeDemo.includes('tick_bottom_origin: (0.8, 10.2)')) throw Error('Demo checkbox ignores its source style');
 if (!nativeDemo.includes('surface::css(self.spec.presentation.button_width)') || !nativeDemo.includes('surface::css(self.spec.presentation.glyph_size)'))

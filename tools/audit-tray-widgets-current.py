@@ -85,7 +85,7 @@ def main() -> None:
     for asset in assets:
         assert digest(ROOT / asset['source']) == asset['source_sha256']
         assert digest(ROOT / asset['output']) == asset['output_sha256']
-    implementation = (ROOT / 'src/shell/tray/widgets.rs').read_text(encoding='utf8')
+    implementation = (ROOT / 'crates/razer-tray/src/widgets.rs').read_text(encoding='utf8')
     assert '.mr(surface::css(10.))' not in implementation
     assert 'source_category_icon' in implementation
     assert 'widget_list_with_click' in implementation
@@ -93,7 +93,7 @@ def main() -> None:
     embedded = (ROOT / 'assets/synapse/tray-widget-embedded.rs').read_text(encoding='utf8')
     for asset in assets:
         assert asset['output'].removeprefix('assets/') in embedded
-    resources = (ROOT / 'src/resources.rs').read_text(encoding='utf8')
+    resources = (ROOT / 'crates/razer-assets/src/lib.rs').read_text(encoding='utf8')
     assert '.chain(TRAY_WIDGET_ASSETS)' in resources
     evidence = {
         "schema_version": 2,
@@ -109,7 +109,7 @@ def main() -> None:
         "section_title_receipt": excerpt(SECTION_CSS, section_fact),
         "assets": assets,
         "implementation": {
-            "path": "src/shell/tray/widgets.rs",
+            "path": "crates/razer-tray/src/widgets.rs",
             "source_contract": [
                 "40px category SVG from current u/M/f; bare SVG has no .icon trailing margin",
                 "only info margin-left contributes the 10px icon-to-text gap",

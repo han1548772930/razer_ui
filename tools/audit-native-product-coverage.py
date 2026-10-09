@@ -41,15 +41,15 @@ def main():
     read('tools/audit-native-product-coverage.py')
     registry = load('docs/re/product-registration-audit.json')['products']
     families = ['mouse', 'keyboard', 'gamepad', 'audio', 'system', 'accessory_system']
-    specs = {name: index(f'src/features/{name}_products_data.json') for name in families}
-    controls = index('src/features/source_controls_data.json')
-    accessories = index('src/features/accessory_controls_data.json')
+    specs = {name: index(f'crates/razer-pages/src/features/{name}_products_data.json') for name in families}
+    controls = index('crates/razer-pages/src/features/source_controls_data.json')
+    accessories = index('crates/razer-pages/src/features/accessory_controls_data.json')
     assert not controls.keys() & accessories.keys(), 'Ambiguous SourceControls product'
     controls.update(accessories)
-    oled = index('src/features/keyboard_oled_data.json')
+    oled = index('crates/razer-pages/src/features/keyboard_oled_data.json')
     assert not controls.keys() & oled.keys(), 'Ambiguous OLED product'
     controls.update(oled)
-    helps = index('src/features/source_help_data.json')
+    helps = index('crates/razer-pages/src/features/source_help_data.json')
     # The renderer requires per-navigation-page metadata. The old links-only
     # schema silently deserialized to an empty list before October 3's fix.
     for pid, help_record in helps.items():
@@ -58,39 +58,39 @@ def main():
         assert len(offsets) == len(set(offsets)), f'Ambiguous Help page: {pid}'
     branches = {}
     for family in families:
-        source = read(f'src/features/{family}_products.rs')
+        source = read(f'crates/razer-pages/src/features/{family}_products.rs')
         if 'match self.page.as_str()' in source:
             switch = source.split('match self.page.as_str()', 1)[1]
             branches[family] = set(re.findall(r'"([A-Z_]+)"\s*=>', switch))
-    read('src/features/source_workspace.rs')
-    read('src/features/product_workspace.rs')
-    read('src/features/source_help.rs')
-    read('src/features/source_controls.rs')
-    read('src/features/source_controls/oled_presets.rs')
-    read('src/features/accessory_system_products/corex_fan.rs')
-    read('src/features/corex_fan_data.json')
-    read('src/features/keyboard_actuation.rs')
-    read('src/features/keyboard_calibration.rs')
-    calibration = index('src/features/keyboard_calibration_data.json')
-    read('src/features/audio_demo.rs')
-    audio_demos = index('src/features/audio_demo_data.json')
-    hue = load('src/features/hue_data.json')
+    read('crates/razer-pages/src/features/source_workspace.rs')
+    read('crates/razer-pages/src/features/product_workspace.rs')
+    read('crates/razer-pages/src/features/source_help.rs')
+    read('crates/razer-pages/src/features/source_controls.rs')
+    read('crates/razer-pages/src/features/source_controls/oled_presets.rs')
+    read('crates/razer-pages/src/features/accessory_system_products/corex_fan.rs')
+    read('crates/razer-pages/src/features/corex_fan_data.json')
+    read('crates/razer-pages/src/features/keyboard_actuation.rs')
+    read('crates/razer-pages/src/features/keyboard_calibration.rs')
+    calibration = index('crates/razer-pages/src/features/keyboard_calibration_data.json')
+    read('crates/razer-pages/src/features/audio_demo.rs')
+    audio_demos = index('crates/razer-pages/src/features/audio_demo_data.json')
+    hue = load('crates/razer-pages/src/features/hue_data.json')
     assert hue['product_id'] == 769
-    for file in ['src/features/hue.rs', 'src/features/hue/onboarding.rs', 'src/features/hue/bridge.rs',
-                 'src/features/hue/brightness.rs', 'src/features/hue/effects.rs', 'src/features/hue/preview.rs']:
+    for file in ['crates/razer-pages/src/features/hue.rs', 'crates/razer-pages/src/features/hue/onboarding.rs', 'crates/razer-pages/src/features/hue/bridge.rs',
+                 'crates/razer-pages/src/features/hue/brightness.rs', 'crates/razer-pages/src/features/hue/effects.rs', 'crates/razer-pages/src/features/hue/preview.rs']:
         read(file)
     dedicated_pages = {}
     for feature in ['dock_pairing', 'wired_argb', 'wireless_argb', 'aether_strip', 'automation']:
-        descriptor = load(f'src/features/{feature}_data.json')
+        descriptor = load(f'crates/razer-pages/src/features/{feature}_data.json')
         rows = descriptor if isinstance(descriptor, list) else [descriptor]
-        read(f'src/features/{feature}.rs')
-        for path in sorted((ROOT / f'src/features/{feature}').glob('*.rs')):
+        read(f'crates/razer-pages/src/features/{feature}.rs')
+        for path in sorted((ROOT / f'crates/razer-pages/src/features/{feature}').glob('*.rs')):
             read(path.relative_to(ROOT).as_posix())
         for row in rows:
             dedicated_pages[(row['product_id'], row['page'])] = feature
-    for path in sorted((ROOT / 'src/features/source_workspace').glob('*.rs')):
+    for path in sorted((ROOT / 'crates/razer-pages/src/features/source_workspace').glob('*.rs')):
         read(path.relative_to(ROOT).as_posix())
-    actuation = index('src/features/keyboard_actuation_data.json')
+    actuation = index('crates/razer-pages/src/features/keyboard_actuation_data.json')
     for pid, keyboard in specs['keyboard'].items():
         if 'ACTUATION' in keyboard['pages']:
             assert pid in actuation, f'Missing actuation descriptor: {pid}'
@@ -104,54 +104,54 @@ def main():
     # 它们算作已复核。
     # 说法只覆盖已核对的部分：页面路由、可达性与该产品存在的当前源码数据。
     # 页面内部逐字段的数据来源没有逐页核对，因此不写进依据里。
-    mats_data = 'src/product.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 src/features/settings.rs:374 的逐产品效果表'
+    mats_data = 'crates/razer-catalog/src/lib.rs:10 AUDITED_MOUSE_MAT_IDS、:59 MOUSE_MATS（模块 9228 的方向常量）与 crates/razer-model/src/settings.rs:374 的逐产品效果表'
     legacy_reaudit = {}
     for pid in (3072, 3073, 3074, 3076, 3077, 3078, 3080):
         legacy_reaudit[(pid, 'TAB_LIGHTING')] = (
-            'mousemat_lighting: src/features/device_pages.rs:472 lighting_page，'
-            f'src/nav.rs:37 只给出 Lighting 页；产品数据见 {mats_data}'
+            'mousemat_lighting: crates/razer-pages/src/features/device_pages.rs:472 lighting_page，'
+            f'crates/razer-pages/src/nav.rs:37 只给出 Lighting 页；产品数据见 {mats_data}'
         )
     legacy_reaudit[(182, 'TAB_CUSTOMIZE')] = (
-        'device_customize: src/features/customize_page.rs，src/nav.rs:29 可达；'
-        '182 有当前源码规格 src/features/mouse_products.rs:128 '
-        'source_product（src/features/mouse_products_data.json，含 source_sha256）'
+        'device_customize: crates/razer-pages/src/features/customize_page.rs，crates/razer-pages/src/nav.rs:29 可达；'
+        '182 有当前源码规格 crates/razer-pages/src/features/mouse_products.rs:128 '
+        'source_product（crates/razer-pages/src/features/mouse_products_data.json，含 source_sha256）'
     )
     legacy_reaudit[(182, 'TAB_PERFORMANCE')] = (
-        'device_performance: src/features/device_pages.rs:34 performance_page，'
-        'src/nav.rs:30 可达；规格文件里存在 DPI/回报率字段（页面内部取值未逐字段核对）'
+        'device_performance: crates/razer-pages/src/features/device_pages.rs:34 performance_page，'
+        'crates/razer-pages/src/nav.rs:30 可达；规格文件里存在 DPI/回报率字段（页面内部取值未逐字段核对）'
     )
     legacy_reaudit[(182, 'TAB_POWER')] = (
-        'device_power: src/features/device_pages.rs:405 power_page，src/nav.rs:32 可达；'
+        'device_power: crates/razer-pages/src/features/device_pages.rs:405 power_page，crates/razer-pages/src/nav.rs:32 可达；'
         '规格文件里存在 power_slider/low_power_slider/low_battery_slider 字段'
     )
     legacy_reaudit[(182, 'TAB_CALIBRATION')] = (
-        'device_calibration: src/features/device_pages.rs:189 calibration_page，'
-        'src/nav.rs:33 可达；规格文件里存在 calibration/smart_lift_max/smart_landing_max 字段'
+        'device_calibration: crates/razer-pages/src/features/device_pages.rs:189 calibration_page，'
+        'crates/razer-pages/src/nav.rs:33 可达；规格文件里存在 calibration/smart_lift_max/smart_landing_max 字段'
     )
     legacy_reaudit[(653, 'TAB_CUSTOMIZE')] = (
-        'keyboard_customize: src/nav.rs:35 给出 Customize 页；653 的当前源码布局数据见 '
-        'src/resources.rs:176 的 assets/synapse/keyboard-653-layouts.json 与 keyboard-653-deviceconfig.json'
+        'keyboard_customize: crates/razer-pages/src/nav.rs:35 给出 Customize 页；653 的当前源码布局数据见 '
+        'crates/razer-assets/src/lib.rs:176 的 assets/synapse/keyboard-653-layouts.json 与 keyboard-653-deviceconfig.json'
     )
     legacy_reaudit[(653, 'TAB_LIGHTING')] = (
-        'device_lighting: src/features/device_pages.rs:472 lighting_page，src/nav.rs:35 可达；'
-        '653 的效果表见 src/features/settings.rs:377 与 :380'
+        'device_lighting: crates/razer-pages/src/features/device_pages.rs:472 lighting_page，crates/razer-pages/src/nav.rs:35 可达；'
+        '653 的效果表见 crates/razer-model/src/settings.rs:377 与 :380'
     )
     for tab in ('TAB_SOUND', 'TAB_MIC'):
         legacy_reaudit[(777, tab)] = (
-            'device_audio: src/features/audio_page.rs 渲染，src/nav.rs:36 给出 Sound/Mic 页；'
-            '182/653/777 的注册导航里没有 TAB_AUDIO（src/product/registry_data.rs，'
+            'device_audio: crates/razer-pages/src/features/audio_page.rs 渲染，crates/razer-pages/src/nav.rs:36 给出 Sound/Mic 页；'
+            '182/653/777 的注册导航里没有 TAB_AUDIO（crates/razer-catalog/src/registry_data.rs，'
             '由 tools/generate-product-registry.cjs 从各自 bundle 的导航常量生成；'
             '全库只有 3872/3873 声明该页）'
         )
     legacy_reaudit[(777, 'TAB_LIGHTING')] = (
-        'device_lighting: src/features/device_pages.rs:472 lighting_page，src/nav.rs:36 可达；'
-        '777 的效果表见 src/features/settings.rs:384 与 :387'
+        'device_lighting: crates/razer-pages/src/features/device_pages.rs:472 lighting_page，crates/razer-pages/src/nav.rs:36 可达；'
+        '777 的效果表见 crates/razer-model/src/settings.rs:384 与 :387'
     )
     legacy_reaudit[(777, 'TAB_POWER')] = (
-        'device_power: src/features/device_pages.rs:405 power_page，src/nav.rs:36 可达'
+        'device_power: crates/razer-pages/src/features/device_pages.rs:405 power_page，crates/razer-pages/src/nav.rs:36 可达'
     )
-    legacy_help = ('device_help: src/features/help_page.rs:111 help_page；'
-                   'src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 '
+    legacy_help = ('device_help: crates/razer-pages/src/features/help_page.rs:111 help_page；'
+                   'crates/razer-pages/src/features/help_page.rs:21 support_links 对 182/653/777 给出各自 bundle 的 '
                    'DeviceInfo 链接，其余产品走 audited_mouse_mat；十个产品都未进入 source_help 描述符')
     for pid in (182, 653, 777, 3072, 3073, 3074, 3076, 3077, 3078, 3080):
         legacy_reaudit[(pid, 'HELP')] = legacy_help

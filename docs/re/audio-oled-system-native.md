@@ -48,7 +48,7 @@ selector 提供的 `info` 传入 `vv`。数字电量显示百分号并按 `>75 /
 当前中文 `deviceLabel`，其他情况使用初始 `info.label`。
 
 尺寸、间距及颜色取自收据内当前 CustomizeSystemInfo/DisplayWidget CSS，集中颜色定义位于
-`src/features/audio_oled_system_theme.rs`。标签为 11px、标题为 12px、正文为 14px；
+`crates/razer-pages/src/features/audio_oled_system_theme.rs`。标签为 11px、标题为 12px、正文为 14px；
 幻灯片 255×63px、槽 128×38px、OLED 内容 232×64px。标签/添加提示使用源 300ms 线性淡入、
 300px 宽度与 29/40px top；配置帮助沿用当前 DropTips。公共弹层使用同源 Tn 外壳、焦点管理
 及已接入的源入场动画，不添加原关闭分派中不存在的退出动画。

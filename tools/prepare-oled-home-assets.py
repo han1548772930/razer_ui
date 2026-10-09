@@ -44,7 +44,7 @@ def webp_animation_metadata(content):
     return dimensions, loop, delays
 
 
-data_path = ROOT / 'src/features/keyboard_oled_editor_data.json'
+data_path = ROOT / 'crates/razer-pages/src/features/keyboard_oled_editor_data.json'
 data = json.loads(data_path.read_text(encoding='utf-8'))
 module = ROOT / data['source']['path']
 assert digest(module.read_bytes()) == data['source']['sha256']

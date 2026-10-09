@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const hash = s => crypto.createHash('sha256').update(s).digest('hex');
-const product = JSON.parse(read('src/features/keyboard_products_data.json')).find(p => p.product_id === 691);
+const product = JSON.parse(read('crates/razer-pages/src/features/keyboard_products_data.json')).find(p => p.product_id === 691);
 const page = JSON.parse(read('docs/re/keyboard-product-pages.json')).products
   .find(p => p.product_id === 691).pages.find(p => p.key === 'OLED');
 const source = read(page.path);
@@ -56,7 +56,7 @@ for (const key of ['OLED_BRIGHTNESS_TITLE','OLED_BRIGHTNESS_DESC','OLED_TIME_TO_
   if (!main.includes('="'+key+'"')) throw Error('Missing source translation '+key);
 }
 const field = 'oled';
-const editorData = JSON.parse(read('src/features/keyboard_oled_editor_data.json'));
+const editorData = JSON.parse(read('crates/razer-pages/src/features/keyboard_oled_editor_data.json'));
 if(editorData.source.sha256!==mainFile.sha256) throw Error('OLED editor defaults are stale');
 const section = (title, description, control) => ({title, description, controls:[control]});
 const output = [{product_id:691, device_fields:[field], profile:{oled:{oledBrightness:50,
@@ -92,7 +92,7 @@ output[0].pages[0].sections.unshift({title:'OLED_HOME_SCREEN_DISPLAY_TITLE',
     ,{key:'691:oled-presets',kind:'oled_presets',label:'OLED_HOME_SCREEN_DISPLAY_TITLE',
       path:'/oled/homeScreenDisplay/selected',disabled_unless:'/oled/homeScreenDisplay/enabled',source:homeDisplay}
   ]});
-fs.writeFileSync(path.join(root,'src/features/keyboard_oled_data.json'), JSON.stringify(output)+'\n');
+fs.writeFileSync(path.join(root,'crates/razer-pages/src/features/keyboard_oled_data.json'), JSON.stringify(output)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/keyboard-oled-current-evidence.json'),JSON.stringify({
   source_files:[mainFile,{path:page.path,sha256:page.sha256}],initial,layout,
   home_display:homeDisplay,status:'partial',pending:['home-screen previews, card layout and editors','language download transport and gating',

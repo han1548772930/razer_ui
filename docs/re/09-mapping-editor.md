@@ -1,6 +1,6 @@
 # 映射编辑器：源码对照与本地实现
 
-实现入口为 `src/features/mapping_editor.rs`、`mapping_keys.rs`；各产品的当前 JS/CSS 与提取数据定义可用功能和编辑条件。
+实现入口为 `crates/razer-pages/src/features/mapping_editor.rs`、`mapping_keys.rs`；各产品的当前 JS/CSS 与提取数据定义可用功能和编辑条件。
 
 ## 原始证据
 
@@ -56,6 +56,6 @@ Hypershift 排除 **即时灵敏度**。底部 `CycleUpSensitivityStages` 同时
 
 增加的行为回归覆盖符号到物理键转换、旧 `Ctrl++` 回读、未知字段保留、数字回退 / 边界、网站补全 / 无效值、按布局与层过滤、Hypershift 灵敏度真实限制、原值恢复不标脏、未知值不阻塞其他配置、Specific 不可指向当前 profile。原有录制、保存 / 丢弃 / 继续编辑、主点击限制、UTF-16 文本上限测试保留。
 
-[焦点回归源码](../../src/features/mapping_focus_tests.rs) 覆盖拒绝切键后返回原输入、干净及未保存抽屉关闭、切页、全局保存释放编辑器焦点，以及保存不抢占其他弹层。编辑器和抽屉另补实际下拉选择、左右 Shift、Turbo 同步、Tab 滚动和筛选移除行的回归源码；均只做编译检查。
+[焦点回归源码](../../crates/razer-pages/src/features/mapping_focus_tests.rs) 覆盖拒绝切键后返回原输入、干净及未保存抽屉关闭、切页、全局保存释放编辑器焦点，以及保存不抢占其他弹层。编辑器和抽屉另补实际下拉选择、左右 Shift、Turbo 同步、Tab 滚动和筛选移除行的回归源码；均只做编译检查。
 
-[Macro 回归源码](../../src/features/mapping_macro_tests.rs) 使用真实 click/press 覆盖普通键播放/次数/保存与放弃、空库到达/Configure 导航、删除后修复、重命名与类型改变、临时次数禁存和键盘滚轮播放限制；没有运行这些测试或执行宏。
+[Macro 回归源码](../../crates/razer-pages/src/features/mapping_macro_tests.rs) 使用真实 click/press 覆盖普通键播放/次数/保存与放弃、空库到达/Configure 导航、删除后修复、重命名与类型改变、临时次数禁存和键盘滚轮播放限制；没有运行这些测试或执行宏。

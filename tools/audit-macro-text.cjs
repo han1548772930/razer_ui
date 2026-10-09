@@ -66,8 +66,8 @@ const evidence={
   labels:Object.fromEntries(['$V8','ZDi','pjv','qQ4','Hiw','Y6o'].map(name=>[name,source.literal(37927,source.exported(37927,name))])),
   action:source.literal(4173,source.exported(4173,'Lt')),
   native:{verification:'Reviewed file fingerprints; not rendered or runtime verification',files:Object.fromEntries([
-    'src/shell/macro_page.rs','src/shell/macro_page/body.rs','src/shell/macro_page/text.rs',
-    'src/shell/macro_page/text_emoji.rs','src/shell/macro_page/text_overlay.rs','src/features/shortcuts.rs',
+    'crates/razer-app-pages/src/macro_page.rs','crates/razer-app-pages/src/macro_page/body.rs','crates/razer-app-pages/src/macro_page/text.rs',
+    'crates/razer-app-pages/src/macro_page/text_emoji.rs','crates/razer-app-pages/src/macro_page/text_overlay.rs','crates/razer-pages/src/features/shortcuts.rs',
   ].map(file=>[file,hash(fs.readFileSync(path.join(root,file)))]))},
   unscopedCss:{classes:unmatchedClasses,matchingRules:0,scope:'Every stylesheet in the current Macro manifest'},
   css,assets,data_counts:{groups:groups.reduce((sum,group)=>sum+group.values.length,0),search:data.search.length,variants:Object.keys(data.variants).length},
@@ -81,7 +81,7 @@ const evidence={
       'category title uses unscoped emoji_popup_main_label; variant children use unscoped emoji_popup_main_item; scoped CSS does not match them'],
   },
 };
-for(const [file,value] of [['src/shell/macro_page/text_data.json',data],['docs/re/macro-text-current-evidence.json',evidence]]) {
+for(const [file,value] of [['crates/razer-app-pages/src/macro_page/text_data.json',data],['docs/re/macro-text-current-evidence.json',evidence]]) {
   const target=path.join(root,file), text=JSON.stringify(value,null,2)+'\n';
   if(process.argv.includes('--check')) {if(fs.readFileSync(target,'utf8')!==text)throw Error('Stale '+file);}
   else fs.writeFileSync(target,text);

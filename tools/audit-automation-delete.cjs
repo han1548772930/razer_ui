@@ -63,7 +63,7 @@ const css = parseCSS(cssText).filter(rule =>
   || /^\.automation-footer/.test(rule.selector) || /^\.Dialog_(backDrop|modal)__[^ ]+$/.test(rule.selector)
   || ['.modal', '.modal-patch-notes .modal-footer', '.automation-modal.modal'].includes(rule.selector))
   .map(rule => ({path: cssPath, sha256: hash(cssText), ...rule}));
-const nativePath = 'src/features/automation/delete_confirmation.rs', native = read(nativePath), compact = native.replace(/\s+/g, '');
+const nativePath = 'crates/razer-pages/src/features/automation/delete_confirmation.rs', native = read(nativePath), compact = native.replace(/\s+/g, '');
 for (const fragment of ['footer.origin.y - footer.size.height - surface::css(12.).to_pixels(window.rem_size())', 'let left = anchor.origin.x',
   '.w(surface::css(300.))', '.max_h(surface::css(130.))', '.h(surface::css(27.))', '.min_w(surface::css(100.))',
   '.on_cancel(|_, _, _| false)', '.on_ok(|_, _, _| false)', '.close_on_backdrop_press(false)',
@@ -73,10 +73,10 @@ for (const fragment of ['footer.origin.y - footer.size.height - surface::css(12.
   'if self.resolved', 'synapse/automation-delete-action.svg']) {
   fact(compact.includes(fragment.replace(/\s+/g, '')), `Missing native deletion contract: ${fragment}`);
 }
-const editor = read('src/features/automation/editor.rs');
+const editor = read('crates/razer-pages/src/features/automation/editor.rs');
 fact(editor.includes('.children(self.delete_confirmation.clone())') && editor.includes('.child(self.delete_trigger(window, cx))')
   && editor.includes('self.delete_footer_bounds.clone()') && !editor.includes('self.deleting'), 'Delete confirmation is not mounted in the editor');
-const owner = read('src/features/automation.rs');
+const owner = read('crates/razer-pages/src/features/automation.rs');
 fact(owner.includes('EditorEvent::Delete(id) =>') && owner.includes('this.rules.retain(|r| r.id != *id)')
   && owner.includes('self.editor = Some(editor.clone())'), 'Real automation deletion flow is missing');
 const report = {
@@ -96,7 +96,7 @@ const report = {
     keyboard: 'Neither mounted EH nor ZL defines Escape/Enter dismissal. Native consumes dialog Cancel/Confirm actions without deleting or closing the parent. Explicit buttons remain keyboard accessible.',
   },
   asset: {path: iconPath, sha256: hash(icon), source: 'Current vM SVG with supplied customWidth/customHeight=24; preserves 0 0 10 12 viewBox and currentColor path.'},
-  native: {editor: 'src/features/automation/editor.rs', popup: nativePath,
+  native: {editor: 'crates/razer-pages/src/features/automation/editor.rs', popup: nativePath,
     reachability: 'Actual 3946 Customize → existing automation row Edit → footer Delete. Add mode disables Delete.',
     focus: 'Retained Base Dialog/DialogPopup focus trap; initial focus Cancel. Cancel returns focus to original Delete button and retains all draft fields.',
     commit: 'One-shot decision guard; Confirm closes editor then emits Delete(original.id), matching source reset/close-before-remove ordering. No draft Save and no backend success are synthesized.',

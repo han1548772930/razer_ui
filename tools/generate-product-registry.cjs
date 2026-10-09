@@ -269,7 +269,7 @@ for (const p of rows) {
 }
 output.push(']');
 const files = new Map([
-  ['src/product/registry_data.rs', output.join('\n') + '\n'],
+  ['crates/razer-catalog/src/registry_data.rs', output.join('\n') + '\n'],
   ['docs/re/product-registration-audit.json', JSON.stringify(audit, null, 2) + '\n'],
 ]);
 if (inspectIds) {

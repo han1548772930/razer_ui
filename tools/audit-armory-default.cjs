@@ -51,7 +51,7 @@ for (const name of ['main.c0e644c4.css', '458.d86e844b.chunk.css']) {
     }
   }
 }
-const local = read('src/shell/armory_page.rs'), shell = read('src/shell.rs');
+const local = read('crates/razer-app-pages/src/armory_page.rs'), shell = read('crates/razer-shell/src/shell.rs');
 const problems = [];
 const banner = source.snippet(3026, source.binding(3026, 'a'));
 const bannerKeys = Object.fromEntries(['$JL', 'HBy'].map(name => [name,

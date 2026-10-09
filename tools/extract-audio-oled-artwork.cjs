@@ -72,5 +72,5 @@ const css=cssPaths.flatMap(file=>parseCSS(read(file)).filter(r=>/CustomizeAnimat
 const data={product_id:1383,fps,labels,animations,images,emotes,default_emote:'face-tongue-animated'};
 const evidence={method:'Current 1383 manifest, literal AST and CSS only; no vendor JavaScript executed.',manifest:{path:`${directory}/asset-manifest.json`,sha256:hash(read(`${directory}/asset-manifest.json`))},receipts,assets,icons,css};
 const check=process.argv.slice(2).join(' ')==='--check';if(process.argv.length>2&&!check)throw Error('Unknown argument');
-for(const [file,payload] of [['src/features/audio_oled_artwork_data.json',data],['docs/re/audio-oled-artwork-current-evidence.json',evidence]]){const bytes=JSON.stringify(payload,null,2)+'\n';if(check){if(read(file)!==bytes)throw Error(`Stale ${file}`);}else fs.writeFileSync(path.join(root,file),bytes);}
+for(const [file,payload] of [['crates/razer-pages/src/features/audio_oled_artwork_data.json',data],['docs/re/audio-oled-artwork-current-evidence.json',evidence]]){const bytes=JSON.stringify(payload,null,2)+'\n';if(check){if(read(file)!==bytes)throw Error(`Stale ${file}`);}else fs.writeFileSync(path.join(root,file),bytes);}
 console.log(`1383 artwork: ${animations.length} animation slots, ${images.length} image slots, ${emotes.length} lazy emotes and ${icons.length} literal SVGs resolved.`);

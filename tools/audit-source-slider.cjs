@@ -108,7 +108,7 @@ for(const {product,file,manifest} of sources){
 }
 
 // The shared local layer must still carry the same geometry and colors.
-const slider='src/ui/source_slider.rs',sliderText=read(slider);
+const slider='crates/razer-widgets/src/source_slider.rs',sliderText=read(slider);
 for(const marker of ['if tip.is_some() { 64. } else { 36. }','bottom(surface::css(25.))','h(surface::css(6.))',
   'rounded(surface::css(3.))','bottom(surface::css(42.))','bottom(surface::css(20.))','h(surface::css(16.))',
   'size(surface::css(16.))','rounded(surface::css(8.))','ml(surface::css(-8.))','.left(surface::css(8.))',
@@ -122,15 +122,15 @@ for(const marker of ['source_thumb(&self.state, self.enabled, window, cx)',
   'Duration::from_millis(300)','Easing::Ease','ThumbBackground(target.into())',
   '.capture_any_mouse_down(','.on_mouse_up_out('])
   assert(sliderText.includes(marker),'source slider motion lost '+marker);
-const theme=read('src/ui/theme.rs');
+const theme=read('crates/razer-widgets/src/theme.rs');
 for(const color of ['0x44d62c4d','0x44d62c','0x5d5d5d','0x383838','0x212121'])
   assert(theme.includes(`rgb(${color})`)||theme.includes(`rgba(${color})`),'SliderColors lost '+color);
 
 // Products that already draw this slider from the shared layer.
-const accessory=read('src/features/accessory_system_products.rs');
+const accessory=read('crates/razer-pages/src/features/accessory_system_products.rs');
 assert(accessory.includes('SourceSlider::new(slider, self.slider_progress(path)).enabled(enabled)'),
   'Accessory slider rows no longer mount the shared source slider');
-const oled=read('src/features/audio_oled.rs');
+const oled=read('crates/razer-pages/src/features/audio_oled.rs');
 assert(oled.includes('SourceSlider::new(state, progress).tip(Some(format!("{value:.0}")))'),
   'OLED brightness slider no longer mounts the shared source slider with its value tip');
 
@@ -142,9 +142,9 @@ const evidence={method:'Static CSS parsing plus local source fingerprints; vendo
     transform:'No transform endpoint in these selectors; no movement animation is invented',
     tip:'Later transition:left 0s,opacity 0s overrides the earlier opacity .3s declaration',
     validation:'Static parsing only. No runtime interaction, pixel or DPI acceptance.'},
-  local:{slider:{path:slider,sha256:hash(slider)},theme:{path:'src/ui/theme.rs',sha256:hash('src/ui/theme.rs')},
-    call_sites:[{path:'src/features/accessory_system_products.rs',sha256:hash('src/features/accessory_system_products.rs')},
-      {path:'src/features/audio_oled.rs',sha256:hash('src/features/audio_oled.rs')}]}};
+  local:{slider:{path:slider,sha256:hash(slider)},theme:{path:'crates/razer-widgets/src/theme.rs',sha256:hash('crates/razer-widgets/src/theme.rs')},
+    call_sites:[{path:'crates/razer-pages/src/features/accessory_system_products.rs',sha256:hash('crates/razer-pages/src/features/accessory_system_products.rs')},
+      {path:'crates/razer-pages/src/features/audio_oled.rs',sha256:hash('crates/razer-pages/src/features/audio_oled.rs')}]}};
 const target='docs/re/source-slider-current-evidence.json',serialized=JSON.stringify(evidence,null,2)+'\n';
 if(process.argv.includes('--check'))
   assert(read(target)===serialized,'docs/re/source-slider-current-evidence.json is stale');

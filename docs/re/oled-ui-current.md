@@ -40,7 +40,7 @@ Media 暂存 info/visualizer；文字可放 top/bottom，可视化有三种原�
 
 System 已挂载本地编辑器，包含三张双槽幻灯片、九个源标签及协议 type、3/5/10 秒、摄氏/华氏、三种日期格式和 12H/24H。只有 Apply 写入设备所有的 `oled.system`；源默认 CPU/GPU/日期等样例只用于预览，不是实时采样。
 
-System 仍用文本预览，九份当前源 SVG 未接到该 691 renderer：cpu_usage、cpu_temp、gpu_usage、gpu_temp、memory、date、time、laptop_battery、keyboard_battery。不能因为 1383 有自己的 System 资源就视为 691 已完成。原始 System 卡呈现、拖放/槽位全流程、幻灯片服务调度与语言更新仍需逐项对照；已挂载编辑器不等于完整复刻。源默认与编辑器描述符保留在[691 编辑数据](../../src/features/keyboard_oled_editor_data.json)。
+System 仍用文本预览，九份当前源 SVG 未接到该 691 renderer：cpu_usage、cpu_temp、gpu_usage、gpu_temp、memory、date、time、laptop_battery、keyboard_battery。不能因为 1383 有自己的 System 资源就视为 691 已完成。原始 System 卡呈现、拖放/槽位全流程、幻灯片服务调度与语言更新仍需逐项对照；已挂载编辑器不等于完整复刻。源默认与编辑器描述符保留在[691 编辑数据](../../crates/razer-pages/src/features/keyboard_oled_editor_data.json)。
 
 ## 691 本地裁剪与资源处理
 

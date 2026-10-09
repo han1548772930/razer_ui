@@ -123,9 +123,9 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
   const styles=cssFiles.map(file=>({path:file,sha256:hash(read(file)),rules:parseCSS(read(file)).filter(rule=>
     /body,html|body-wrapper|body-widgets|widget-col|titleRow|\.widget \.help|\.h1-body|config-wrapper|HomeScreenDisplay_|DisplayWidget_|OLEDLanguage_|OLEDScreensaver_|DimKeyboardLighting_|polling-btn-set|customize-polling-rate-button|keyboard-btn-size|^\.slider/.test(rule.selector))}));
   assert(styles.some(s=>s.path.includes('/5171.')), 'Lazy base CSS absent');
-  const files=['src/features/source_controls.rs','src/features/source_controls/oled_page.rs',
-    'src/features/source_controls/oled_home_cards.rs','src/features/source_controls/oled_presets.rs','src/features/keyboard_products.rs',
-    'src/features/source_workspace/profile_bar.rs','src/features/source_controls/oled_system_editor.rs'];
+  const files=['crates/razer-pages/src/features/source_controls.rs','crates/razer-pages/src/features/source_controls/oled_page.rs',
+    'crates/razer-pages/src/features/source_controls/oled_home_cards.rs','crates/razer-pages/src/features/source_controls/oled_presets.rs','crates/razer-pages/src/features/keyboard_products.rs',
+    'crates/razer-pages/src/features/source_workspace/profile_bar.rs','crates/razer-pages/src/features/source_controls/oled_system_editor.rs'];
   const local=Object.fromEntries(files.map(file=>[file,hash(read(file))]));
   assert(read(files[1]).includes('surface::page_column') && read(files[1]).includes('surface::css(530.)'), 'OLED local columns/screensaver width drift');
   assert(!read(files[3]).includes('fn render_home_mode_branch'), 'Legacy invented preview branch returned');
@@ -158,7 +158,7 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
     'isMounted:']) {
     assert(dialSource.includes(token), 'Command dial help markup drift: ' + token);
   }
-  const keyboardControls = read('src/features/keyboard_controls.rs');
+  const keyboardControls = read('crates/razer-pages/src/features/keyboard_controls.rs');
   for (const token of ['dial_help_hovered', '.id("dial-help")', 'source_hover_tip_element(',
     'SourceTipPlacement::BottomRight', 'rgba(0xffffff4d)', 'rgba(0x4a4a4aff)']) {
     assert(keyboardControls.includes(token), 'Missing native command-dial help contract: ' + token);
@@ -185,7 +185,7 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
   for (const token of ['className:"icon-add"', 'tooltip:', 'getTextItem']) {
     assert(dialSource.includes(token), 'Dial add button markup drift: ' + token);
   }
-  const attributeTip = read('src/ui/attribute_tip.rs');
+  const attributeTip = read('crates/razer-widgets/src/attribute_tip.rs');
   for (const token of ['pub(crate) fn attribute_tip(', '.right_0()', '.top_full()', '.mt(surface::css(5.))',
     '.px(surface::css(10.))', '.py(surface::css(8.))', 'TooltipColors::border()', 'TooltipColors::background()',
     'TooltipColors::foreground()', '.whitespace_nowrap()', 'Animation::new(Duration::from_millis(300))']) {
@@ -203,7 +203,7 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
   for (const token of ['attribute_tip_group(', '!reset && !open', '"dial-confirm-trigger"']) {
     assert(keyboardControls.includes(token), 'Delete tooltip condition not wired: ' + token);
   }
-  const attributeTipSrc = read('src/ui/attribute_tip.rs');
+  const attributeTipSrc = read('crates/razer-widgets/src/attribute_tip.rs');
   for (const token of ['pub(crate) fn attribute_tip_group(', '.group_hover(group, |style| style.opacity(1.))',
     '.opacity(0.)']) {
     assert(attributeTipSrc.includes(token), 'Missing grouped attribute tooltip contract: ' + token);
@@ -220,7 +220,7 @@ if (process.argv.includes('--assets') || process.argv.includes('--assets-check')
   const attributeTooltip = {css: tipCssFile, declaration: tipDecl,
     delete_condition: 'source tooltip=R?void0:DELETE, local !reset && !open + attribute_tip_group (group_hover opacity; the source 300ms linear fade is not reachable from the &App-only trigger closure)',
     icon_switch: 'dial_icon_button(kit_tooltip) — dial-add false (attribute badge), dial-expand true (source mark unlocated)',
-    native: 'src/ui/attribute_tip.rs attribute_tip/attribute_tip_group + dial_add_hovered on the 691 dial add button'};
+    native: 'crates/razer-widgets/src/attribute_tip.rs attribute_tip/attribute_tip_group + dial_add_hovered on the 691 dial add button'};
   const evidence={schema_version:1,date:'2026-10-05',product_id:691,
     method:'Current manifest ownership, Acorn AST and CSS parsing only; no app, build, test or vendor code execution.',
     boot:mainReceipt(boot),css_loader:mainReceipt(cssLoader),bindings,styles,local,dial_help:dialHelp,attribute_tooltip:attributeTooltip,

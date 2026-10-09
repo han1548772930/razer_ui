@@ -71,7 +71,7 @@ def main():
                      "image_mount": {"source": navigation["source"],
                                      "sha256": navigation["sha256"], "component": component,
                                      "sharpness_gain_rendered": False}})
-    native = (ROOT / "src/features/source_controls.rs").read_text(encoding="utf-8")
+    native = (ROOT / "crates/razer-pages/src/features/source_controls.rs").read_text(encoding="utf-8")
     for output in ASSETS.values():
         assert "synapse/" + output in native, output
     report = {"schema_version": 1,

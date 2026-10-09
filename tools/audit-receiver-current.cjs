@@ -46,8 +46,8 @@ const staticAssets=[['icon_close.svg','assets/synapse/mapping-close.svg'],['tool
  if(hash(bytes)!==hash(fs.readFileSync(path.join(root,prepared))))throw Error('Receiver shared asset mismatch: '+key);
  return {path:file,sha256:hash(bytes),prepared,source:bytes.toString('utf8')};
 });
-const native=['src/features/source_controls/receiver.rs','src/features/source_controls/receiver_indicator_data.json','src/features/source_controls.rs','src/ui/source_tooltip.rs','src/ui/surface.rs'].map(path=>({path,sha256:hash(read(path))}));
+const native=['crates/razer-pages/src/features/source_controls/receiver.rs','crates/razer-pages/src/features/source_controls/receiver_indicator_data.json','crates/razer-pages/src/features/source_controls.rs','crates/razer-widgets/src/source_tooltip.rs','crates/razer-widgets/src/surface.rs'].map(path=>({path,sha256:hash(read(path))}));
 const evidence={product_id:179,method:'Acorn module scope, current mounted Windows root, literal SVG JSX and CSS rules; no vendor JS execution',generator_sha256:hash(fs.readFileSync(__filename)),manifest:{path:s.directory+'/asset-manifest.json',sha256:hash(read(s.directory+'/asset-manifest.json'))},html:{path:s.directory+'/index.html',sha256:hash(read(s.directory+'/index.html'))},windows_predicate:receipt(3249,'t'),components:snippets,supporting_components:supportingComponents,static_assets:staticAssets,labels,css:{path:cssFile,sha256:hash(css),rules},assets,native};
-save('src/features/source_controls/receiver_indicator_data.json',JSON.stringify(modes,null,2)+'\n');
+save('crates/razer-pages/src/features/source_controls/receiver_indicator_data.json',JSON.stringify(modes,null,2)+'\n');
 save('docs/re/receiver-current-evidence.json',JSON.stringify(evidence,null,2)+'\n');
 console.log(`Current receiver: ${rules.length} CSS rules, ${assets.length} SVG layers, Windows mounted pairing and indicator verified.`);

@@ -83,7 +83,7 @@ for product in source['products']:
                         'dp=2,Np=20,cp=500,up=3200', 'QUIET:3,BALANCED:4,PERFORMANCE:5'):
             assert snippet in main, snippet
     elif pid == 3921:
-        fan = json.loads((ROOT / 'src/features/corex_fan_data.json').read_text(encoding='utf8'))
+        fan = json.loads((ROOT / 'crates/razer-pages/src/features/corex_fan_data.json').read_text(encoding='utf8'))
         assert fan['curves'] == config['DEFAULT_CURVES']
         assert fan['source_files'] == product['source_files']
         spec['initial'] = {'fanCurve': fan['initial']}
@@ -98,7 +98,7 @@ for product in source['products']:
                    'coverage': 'native local controls; hardware integration and visual parity incomplete'})
 
 assert {p['product_id'] for p in products} == {3858, 3880, 3893, 3900, 3907, 3921}
-(ROOT / 'src/features/accessory_system_products_data.json').write_text(
+(ROOT / 'crates/razer-pages/src/features/accessory_system_products_data.json').write_text(
     json.dumps(products, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (ROOT / 'docs/re/accessory-system-native-audit.json').write_text(json.dumps({
     'schema_version': 1, 'source_evidence_sha256': hashlib.sha256(EVIDENCE.read_bytes()).hexdigest(),

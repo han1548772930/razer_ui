@@ -42,8 +42,8 @@ const value={method:'Current manifest-scoped Acorn and CSS parsing; no vendor ex
     remaining:'Six-parent Phased hierarchy depends on the still-incomplete Phased editor; browser file-input baseline, DOM virtualization lifecycle and final pixels are not runtime-verified',
   },
   native:{verification:'Reviewed file fingerprints, not runtime tests',files:Object.fromEntries([
-    'src/shell/macro_page/launch.rs','src/shell/macro_page.rs','src/shell/macro_page/state.rs','src/shell/macro_page/body.rs',
-    'src/shell/macro_page/text.rs','src/shell/macro_page/text_overlay.rs','src/shell/macro_page/unsaved.rs',
+    'crates/razer-app-pages/src/macro_page/launch.rs','crates/razer-app-pages/src/macro_page.rs','crates/razer-app-pages/src/macro_page/state.rs','crates/razer-app-pages/src/macro_page/body.rs',
+    'crates/razer-app-pages/src/macro_page/text.rs','crates/razer-app-pages/src/macro_page/text_overlay.rs','crates/razer-app-pages/src/macro_page/unsaved.rs',
     'tools/macro_assets.py','tools/prepare-macro-assets.py',
   ].map(file=>[file,hash(fs.readFileSync(path.join(root,file)))]))},
 };

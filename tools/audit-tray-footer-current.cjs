@@ -99,7 +99,7 @@ const output = {
     note: 'Two launcher items share the fixed 60px apps container; they do not create a 700px window. The account formula applies to systrayBody children, not launcher count.',
   },
   implementation_boundary: {
-    launcher_component: 'src/shell/tray/launcher.rs accepts observed launchers only; no fixed Synapse fixture.',
+    launcher_component: 'crates/razer-tray/src/launcher.rs accepts observed launchers only; no fixed Synapse fixture.',
     version: 'Caller must pass audited source version; Cargo package version is not substituted.',
     runtime_validation: 'not_run',
   },

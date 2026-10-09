@@ -66,14 +66,14 @@ assert(cssRules.screensaverSelected?.includes('2px solid #44d62c')&&cssRules.scr
 assert(cssRules.track?.includes('bottom:25px')&&cssRules.track.includes('height:6px')&&cssRules.tip?.includes('bottom:42px'),'Shared slider geometry changed');
 
 // ── 本地实现 ─────────────────────────────────────────────────────────────────
-const rust=read('src/features/audio_oled.rs'),parent=read('src/features/audio_products.rs'),sliderLayer=read('src/ui/source_slider.rs');
+const rust=read('crates/razer-pages/src/features/audio_oled.rs'),parent=read('crates/razer-pages/src/features/audio_products.rs'),sliderLayer=read('crates/razer-widgets/src/source_slider.rs');
 const native={
-  'src/features/audio_oled.rs':hash('src/features/audio_oled.rs'),
-  'src/features/audio_products.rs':hash('src/features/audio_products.rs'),
-  'src/features/audio_products_data.json':hash('src/features/audio_products_data.json'),
+  'crates/razer-pages/src/features/audio_oled.rs':hash('crates/razer-pages/src/features/audio_oled.rs'),
+  'crates/razer-pages/src/features/audio_products.rs':hash('crates/razer-pages/src/features/audio_products.rs'),
+  'crates/razer-pages/src/features/audio_products_data.json':hash('crates/razer-pages/src/features/audio_products_data.json'),
   'tools/prepare-audio-products.cjs':hash('tools/prepare-audio-products.cjs'),
-  'src/ui/source_slider.rs':hash('src/ui/source_slider.rs'),
-  'src/ui/theme.rs':hash('src/ui/theme.rs'),
+  'crates/razer-widgets/src/source_slider.rs':hash('crates/razer-widgets/src/source_slider.rs'),
+  'crates/razer-widgets/src/theme.rs':hash('crates/razer-widgets/src/theme.rs'),
 };
 for(const marker of ['KRAKEN_OLED_LEFT_COLUMN','kraken_oled_brightness_slider','surface::css(48.)','surface::css(260.)','surface::css(68.)','0x166809','0x111111','apply_label','image_options'])
   assert(rust.includes(marker)||parent.includes(marker),'Local OLED implementation lost '+marker);
@@ -85,7 +85,7 @@ assert(rust.includes('surface::page_columns()')&&rust.includes('surface::page_co
 assert(parent.includes('self.spec.product_id == 1383 && key == "TAB_OLED"'),'Local OLED root is no longer dispatched');
 assert(parent.includes('this.staged.insert'),'Language staging is no longer implemented');
 
-const data=JSON.parse(read('src/features/audio_products_data.json'));
+const data=JSON.parse(read('crates/razer-pages/src/features/audio_products_data.json'));
 const product=data.find(p=>p.product_id===1383),page=product?.pages.find(p=>p.key==='TAB_OLED');
 assert(page,'1383 TAB_OLED descriptor missing');
 const byTitle=Object.fromEntries(page.sections.map(s=>[s.title,s]));

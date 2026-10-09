@@ -13,7 +13,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 digest = lambda data: hashlib.sha256(data).hexdigest()
-specs = json.loads((ROOT / 'src/features/wired_argb_data.json').read_text(encoding='utf-8'))
+specs = json.loads((ROOT / 'crates/razer-pages/src/features/wired_argb_data.json').read_text(encoding='utf-8'))
 records = []
 for spec in specs:
     for asset in spec['assets']:

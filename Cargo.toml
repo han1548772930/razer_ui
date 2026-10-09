@@ -2,8 +2,46 @@
 name = "razer_ui"
 version = "0.1.0"
 edition = "2024"
+autobins = false
+
+[[bin]]
+name = "razer_ui"
+path = "app/main.rs"
+
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["."]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
 
 [dependencies]
+razer-app.workspace = true
+
+[workspace.dependencies]
+razer-agent = { path = "crates/razer-agent" }
+razer-dashboard={path="crates/razer-dashboard"}
+razer-tray={path="crates/razer-tray"}
+razer-settings={path="crates/razer-settings"}
+razer-discovery={path="crates/razer-discovery"}
+razer-platform = { path = "crates/razer-platform" }
+razer-ipc = { path = "crates/razer-ipc" }
+razer-app-pages = { path = "crates/razer-app-pages" }
+razer-app = { path = "crates/razer-app" }
+razer-assets = { path = "crates/razer-assets" }
+razer-catalog = { path = "crates/razer-catalog" }
+razer-device = { path = "crates/razer-device" }
+razer-hid = { path = "crates/razer-hid" }
+razer-i18n = { path = "crates/razer-i18n" }
+razer-model = { path = "crates/razer-model" }
+razer-pages = { path = "crates/razer-pages" }
+razer-service = { path = "crates/razer-service" }
+razer-shell = { path = "crates/razer-shell" }
+razer-state = { path = "crates/razer-state" }
+razer-storage = { path = "crates/razer-storage" }
+razer-widgets = { path = "crates/razer-widgets" }
 gpui-kit = "0.7"
 anyhow = "1"
 async-channel = "2"
@@ -21,27 +59,16 @@ regex = "1"
 uuid = { version = "1", features = ["v4"] }
 md5 = "0.8"
 libloading = "0.8"
+# Portable Feature Report backend. Protocol and logical device routing stay in Rust.
+# Linux uses hidraw without a libudev development-library requirement; Windows
+# and macOS use hidapi's statically linked system backends, not Razer DLLs.
+hidapi = { version = "=2.6.7", default-features = false, features = ["linux-native-basic-udev", "macos-shared-device"] }
 # 与 gpui-component 内部使用的是同一套 i18n（`rust_i18n::i18n!` + `t!`）。
 rust-i18n = "4"
 
 
-[target.'cfg(windows)'.dependencies]
 raw-window-handle = "0.6.2"
-windows-sys = { version = "0.61.2", features = [
-  "Win32_Foundation",
-  "Win32_Graphics_Gdi",
-  "Win32_Devices_HumanInterfaceDevice",
-  "Win32_Devices_DeviceAndDriverInstallation",
-  "Win32_Devices_Properties",
-  "Win32_Storage_FileSystem",
-  "Win32_System_Threading",
-  "Win32_System_JobObjects",
-  "Win32_System_Registry",
-  "Win32_System_SystemInformation",
-  "Win32_Security",
-  "Win32_UI_WindowsAndMessaging",
-] }
-
+windows-sys = "0.61.2"
 
 [profile.dev]
 codegen-units = 16
@@ -52,6 +79,3 @@ split-debuginfo = "unpacked"
 lto = true
 opt-level = 3
 codegen-units = 1
-
-[dev-dependencies]
-gpui-kit = { version = "0.7", features = ["test-support"] }

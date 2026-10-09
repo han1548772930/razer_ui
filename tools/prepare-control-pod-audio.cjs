@@ -60,6 +60,6 @@ const closeBytes=fs.readFileSync(path.join(root,closeSource));
 if(!closeBytes.equals(fs.readFileSync(path.join(root,closeOutput))))throw Error('1382 close asset differs from shared source');
 const assets=[{source:closeSource,output:closeOutput,sha256:hash(closeBytes)}];
 function output(file,text){const target=path.join(root,file);if(check){if(fs.readFileSync(target,'utf8')!==text)throw Error('Stale '+file);}else fs.writeFileSync(target,text);}
-output('src/features/control_pod_audio_data.json',JSON.stringify(data,null,2)+'\n');
+output('crates/razer-pages/src/features/control_pod_audio_data.json',JSON.stringify(data,null,2)+'\n');
 output('docs/re/control-pod-audio-current-evidence.json',JSON.stringify({product_id:1382,method:'Static webpack parsing; no vendor execution',receipts,css,assets},null,2)+'\n');
 console.log(`Control Pod audio: ${receipts.length} source receipts; ${css.length} CSS files`);

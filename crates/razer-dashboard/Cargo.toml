@@ -1,0 +1,16 @@
+[package]
+name="razer-dashboard"
+version.workspace=true
+edition.workspace=true
+
+[dependencies]
+gpui-kit.workspace=true
+serde_json.workspace=true
+razer-model.workspace=true
+razer-state.workspace=true
+razer-i18n.workspace=true
+razer-widgets.workspace=true
+razer-assets.workspace=true
+
+[dev-dependencies]
+gpui-kit={workspace=true,features=["test-support"]}

@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p
 const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(path.join(root,p))).digest('hex');
 const primary=JSON.parse(read('docs/re/audio-product-evidence.json'));
 const additional=JSON.parse(read('docs/re/audio-additional-evidence.json'));
-const products=JSON.parse(read('src/features/audio_products_data.json'));
+const products=JSON.parse(read('crates/razer-pages/src/features/audio_products_data.json'));
 const coverage=JSON.parse(read('docs/re/audio-product-native-coverage.json'));
 const assert=(ok,message)=>{if(!ok)throw Error(message);};
 const scanner='tools/extract-audio-evidence.cjs';
@@ -58,6 +58,6 @@ for(const p of products){
   for(const preset of eq.presets)assert(preset.bands.length===eq.frequencies.length&&preset.bands.every(v=>typeof v==='number'&&v>=eq.min&&v<=eq.max),'Invalid EQ data '+p.product_id+'/'+eq.key+'/'+preset.key);
  }
 }
-const result={schema_version:1,verification:'Static receipts and descriptor validation only; no application, build or tests executed',parser_sha256:sha(scanner),generator_sha256:sha('tools/prepare-audio-products.cjs'),rust_sha256:sha('src/features/audio_products.rs'),data_sha256:sha('src/features/audio_products_data.json'),products:products.length,source_files:sources.size,controls,equalizers,empty_pages:empty};
+const result={schema_version:1,verification:'Static receipts and descriptor validation only; no application, build or tests executed',parser_sha256:sha(scanner),generator_sha256:sha('tools/prepare-audio-products.cjs'),rust_sha256:sha('crates/razer-pages/src/features/audio_products.rs'),data_sha256:sha('crates/razer-pages/src/features/audio_products_data.json'),products:products.length,source_files:sources.size,controls,equalizers,empty_pages:empty};
 fs.writeFileSync(path.join(root,'docs/re/audio-product-validation.json'),JSON.stringify(result,null,2)+'\n');
 console.log(`Validated ${products.length} products, ${controls} controls, ${equalizers} EQs and ${sources.size} current source hashes; ${empty.length} empty pages remain explicit.`);

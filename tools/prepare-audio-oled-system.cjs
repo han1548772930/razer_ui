@@ -67,7 +67,7 @@ assets.push({id:'help',src:'static/media/tooltip_questionmark.96138d2f.svg',outp
 const data={product_id:1383,default:defaults,tags:tagAssets,slide_titles:titles,intervals,date_formats:dateFormats,labels,dots,batteries,icons:{...Object.fromEntries(icons.map(i=>[i.id,i.output])),help:'synapse/audio-oled-1383-system-help.svg'}};
 const evidence={method:'1383 current manifest, Acorn AST literal/export resolution, CSS receipts; no downloaded code execution. Offsets: UTF-16 code units.',manifest:{path:manifestPath,sha256:hash(read(manifestPath))},receipts,assets,icons,css};
 const flags=process.argv.slice(2);if(flags.some(f=>f!=='--check'))throw Error('Unknown argument');
-for(const [file,content]of [['src/features/audio_oled_system_data.json',data],['docs/re/audio-oled-system-source.json',evidence]]){
+for(const [file,content]of [['crates/razer-pages/src/features/audio_oled_system_data.json',data],['docs/re/audio-oled-system-source.json',evidence]]){
  const out=JSON.stringify(content,null,2)+'\n';if(flags.includes('--check')){if(read(file)!==out)throw Error(`Stale ${file}`);}else fs.writeFileSync(path.join(root,file),out);
 }
 console.log('1383 System Info: nine tags, three fixed slides, defaults, source editor and CSS resolved.');

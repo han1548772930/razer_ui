@@ -32,7 +32,7 @@ for name in refactored:
             f"Literal product-number match: {name}")
 
 products = {int(pid) for pid in re.findall(r"RegisteredProduct \{ id: (\d+)",
-            (ROOT / "src/product/registry_data.rs").read_text(encoding="utf-8"))}
+            (ROOT / "crates/razer-catalog/src/registry_data.rs").read_text(encoding="utf-8"))}
 catalog_names = ["mouse_scroll_wheel_data.json", "mouse_dpi_grid_data.json",
                  "mouse_dpi_rows_data.json", "mouse_properties_data.json"]
 count = 0

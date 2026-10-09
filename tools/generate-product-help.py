@@ -125,5 +125,5 @@ for pid in sorted(pending):
     row["pages"] = capabilities[pid]
     assert not row["guide_overrides"], f"Edition guide overrides need explicit support: {pid}"
     data.append(row)
-(ROOT / "src/features/source_help_data.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+(ROOT / "crates/razer-pages/src/features/source_help_data.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(f"Prepared {len(data)} products, {sum(len(r['pages']) for r in data)} mounted Help pages.")

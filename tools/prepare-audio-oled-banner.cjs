@@ -133,7 +133,7 @@ const evidence = {method:'Current manifest AST/CSS, no vendor code execution; of
     rationale:'No class/id/type on Ug textarea; .key-config and .video-react are absent from its mounted ancestor chain. div border-box does not match textarea and box-sizing does not inherit.',
     ua_receipt:'docs/re/current-browser-ua-evidence.json',ua_sha256:hash(read('docs/re/current-browser-ua-evidence.json')),computed:textarea}};
 const flags=process.argv.slice(2);if(flags.some(f=>f!=='--check'))throw Error('Unknown argument');
-for(const [file,object]of [['src/features/audio_oled_banner_data.json',data],['docs/re/audio-oled-banner-current-evidence.json',evidence]]){
+for(const [file,object]of [['crates/razer-pages/src/features/audio_oled_banner_data.json',data],['docs/re/audio-oled-banner-current-evidence.json',evidence]]){
   const output=JSON.stringify(object,null,2)+'\n';if(flags.includes('--check')){if(read(file)!==output)throw Error(`Stale ${file}`);}else fs.writeFileSync(path.join(root,file),output);
 }
 console.log(`1383 Banner: ${fonts.length} fonts, ${sizes.length} sizes, 8 images, 11 icons, four scroll directions audited.`);

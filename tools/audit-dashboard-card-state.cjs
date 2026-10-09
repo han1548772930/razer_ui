@@ -60,7 +60,7 @@ walk(deviceClass, node => {
   }
 });
 if(powerStateWriters.length!==3) throw Error('Missing scoped standby/battery writers');
-const powerNative=read('src/shell/main_pages/dashboard_device.rs');
+const powerNative=read('crates/razer-dashboard/src/dashboard_device.rs');
 for(const token of ['previous_support', 'previous_state', 'previous_hide', 'previous_show',
   'state.displayed.accept_standby(fields)', 'self.observed.with_battery', 'self.observed.icon.clone()'])
   if(!powerNative.includes(token)) throw Error('Missing sticky power projection '+token);
@@ -70,8 +70,8 @@ for(const literal of ['stroke-linecap="square"','values="0 50 50;180 50 50;720 5
   if(!spinner.includes(literal)) throw Error(`Spinner contract changed: ${literal}`);
 }
 const implementation = [
-  'src/shell/main_pages/dashboard_device_card.rs', 'src/shell/main_pages/dashboard_device.rs',
-  'src/shell/main_pages/dashboard_cards.rs', 'src/shell/main_pages/dashboard_grid.rs',
+  'crates/razer-dashboard/src/dashboard_device_card.rs', 'crates/razer-dashboard/src/dashboard_device.rs',
+  'crates/razer-shell/src/shell/main_pages/dashboard_cards.rs', 'crates/razer-dashboard/src/dashboard_grid.rs',
 ].map(file=>({path:file,sha256:hash(read(file))}));
 const report={verification:'Current module-local AST, final CSS, maintained resource preparation and hash checks. No application, build, test or reference JavaScript was executed.',
   contracts,labels,css:{path:cssPath,sha256:hash(css),rules,keyframes},spinner:{path:spinnerPath,sha256:hash(spinner),source:spinner},assets,batteryMasks,powerLifecycle,powerStateWriters,implementation,

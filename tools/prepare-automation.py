@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 ROOT=Path(__file__).resolve().parents[1]
 digest=lambda b:hashlib.sha256(b).hexdigest()
-spec=json.loads((ROOT/'src/features/automation_data.json').read_text(encoding='utf8'))
+spec=json.loads((ROOT/'crates/razer-pages/src/features/automation_data.json').read_text(encoding='utf8'))
 records=[]
 for asset in spec['assets']:
     source,output=ROOT/asset['source'],ROOT/asset['output']

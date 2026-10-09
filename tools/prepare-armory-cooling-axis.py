@@ -122,7 +122,7 @@ for file in sorted((ROOT / 'locales').glob('*.json')):
     labels[locale] = prepare(locale, translations['FAN_SPEED'], locale, 12, 14)
 units = {key: prepare(key, text, 'en', 14, 16) for key, text in [('percent','%'),('rpm','RPM')]}
 data = {'labels': labels, 'units': units}
-emit(ROOT / 'src/features/armory_product/cooling_axis_data.json', json.dumps(data, ensure_ascii=False, indent=2)+'\n')
+emit(ROOT / 'crates/razer-pages/src/features/armory_product/cooling_axis_data.json', json.dumps(data, ensure_ascii=False, indent=2)+'\n')
 emit(ROOT / 'docs/re/armory-cooling-axis-resources.json', json.dumps({
     'method': 'Static TrueType glyph outlines, GPOS kern pair adjustment, current source font sizes and rotation. No application execution.',
     'source_evidence': 'docs/re/armory-remaining-roots-current-evidence.json',

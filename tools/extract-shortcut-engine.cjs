@@ -11,7 +11,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, folder, 'asset-manif
 if (!Object.values(manifest.files).some(name => folder + name.replace(/^\.\//, '') === input)) {
   throw Error('Keyboard source is not declared by the current Dashboard manifest');
 }
-const output = path.join(root, 'src/features/shortcut_engine_keys.rs');
+const output = path.join(root, 'crates/razer-pages/src/features/shortcut_engine_keys.rs');
 const source = fs.readFileSync(path.join(root, input), 'utf8');
 const ast = acorn.parse(source, { ecmaVersion: 'latest' });
 let keyModule;

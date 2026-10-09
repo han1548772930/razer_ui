@@ -1,0 +1,33 @@
+[package]
+name = "razer-app-pages"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono.workspace = true
+razer-catalog.workspace = true
+razer-settings.workspace = true
+razer-storage.workspace = true
+razer-ipc.workspace = true
+razer-platform.workspace = true
+gpui-kit.workspace = true
+async-channel.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+roxmltree.workspace = true
+uuid.workspace = true
+md5.workspace = true
+razer-assets.workspace = true
+razer-i18n.workspace = true
+razer-model.workspace = true
+razer-pages.workspace = true
+razer-widgets.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+raw-window-handle.workspace = true
+windows-sys = { workspace = true, features = [
+  "Win32_Foundation", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }

@@ -1,0 +1,27 @@
+[package]
+name = "razer-pages"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+razer-ipc.workspace = true
+razer-platform.workspace = true
+razer-i18n.workspace = true
+razer-device.workspace = true
+razer-state.workspace = true
+gpui-kit.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+regex.workspace = true
+uuid.workspace = true
+md5.workspace = true
+semver.workspace = true
+razer-assets.workspace = true
+razer-catalog.workspace = true
+razer-model.workspace = true
+razer-widgets.workspace = true
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }

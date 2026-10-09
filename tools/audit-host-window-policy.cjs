@@ -172,9 +172,9 @@ const pairingOpen = one(pairingCallback, node => node.type === 'CallExpression'
 requireFact(dashboard.snippet(22534, pairingCallback).includes('"multiDevicePairing"')
   && dashboard.snippet(22534, pairingCallback).includes('"containerId"'), 'Pairing route contract changed');
 
-const shell = read('src/shell.rs');
-const tabs = read('src/shell/host_tabs.rs');
-const windowLayer = read('src/shell/display_window.rs');
+const shell = read('crates/razer-shell/src/shell.rs');
+const tabs = read('crates/razer-shell/src/shell/host_tabs.rs');
+const windowLayer = read('crates/razer-shell/src/shell/display_window.rs');
 const pairingStart = shell.indexOf('fn open_product_pairing_tab(');
 const chromaStart = shell.indexOf('fn open_chroma_window(', pairingStart);
 const moduleStart = shell.indexOf('fn open_module_tab(');
@@ -217,7 +217,7 @@ const report = {
     open_helper: dashboard.receipt(84058, openFunction), query_named_target: dashboard.receipt(43112, queryName), activate_named_target: dashboard.receipt(43112, focusName),
     registry_module: 54420, registry_rows: registryRows,
     pairing: {module: 22534, source_policy: 3, helper_import: dashboard.receipt(22534, pairingImport), callback: dashboard.receipt(22534, pairingCallback), open_call: dashboard.receipt(22534, pairingOpen)}},
-  local: {checked_files: ['src/shell.rs', 'src/shell/host_tabs.rs', 'src/shell/display_window.rs'],
+  local: {checked_files: ['crates/razer-shell/src/shell.rs', 'crates/razer-shell/src/shell/host_tabs.rs', 'crates/razer-shell/src/shell/display_window.rs'],
     module_opening: 'Named host tabs through open_module_tab -> navigate; source names are preserved.',
     os_window_guard: 'display_window::open_or_focus rejects WindowPolicy::Same.',
     pairing_exception: 'Product pairing follows source sameWindow/policy=3 by navigating to a named host tab. The tab name preserves the source container/product/serial identity and is reused on repeat opens.'},

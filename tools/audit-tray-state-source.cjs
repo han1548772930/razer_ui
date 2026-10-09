@@ -126,11 +126,11 @@ for (const predicate of [
 }
 const manifestPath = source.directory + '/asset-manifest.json';
 inputs.set(manifestPath, hash(bytes(manifestPath)));
-const tray = read('src/shell/tray.rs');
+const tray = read('crates/razer-tray/src/lib.rs');
 assert(tray.includes('session: TraySession::Guest'), 'Tray must mount the source guest presentation branch');
 assert(tray.includes('launchers: vec![TrayLauncher'), 'Review local activation-target presentation boundary');
 assert(tray.includes('not an observed Razer'), 'Local Guest must not claim an observed account');
-const backend = read('src/backend/mod.rs');
+const backend = read('crates/razer-service/src/lib.rs');
 assert(backend.includes('BLOCKING_ENGINES: &[&str] = &["SysUtilsNative"]'), 'SysUtils ABI load boundary changed');
 const output = {
   schema_version: 1, method: 'Acorn static AST only; no reference JS, app or DLL execution',
@@ -143,7 +143,7 @@ const output = {
     account: 'userGet/userDataChange are renderer identity/storage events backed by existing auth credentials and user data, not device-query results.',
   },
   implementation_boundary: {
-    files: ['src/shell/tray.rs', 'src/backend/mod.rs', 'src/backend/runtime.rs'],
+    files: ['crates/razer-tray/src/lib.rs', 'crates/razer-service/src/lib.rs', 'crates/razer-service/src/runtime.rs'],
     account_publisher: 'Not connected; the local tray mounts only the source Guest presentation branch and does not claim a signed-in identity.',
     launcher_publisher: 'Official catalog/preferences publisher not connected; one Synapse footer row activates this running local process. It is not an observed official apps/installedModules/launchers result.',
     available_next_step: 'A worker simpleGetUserApps query can publish installed-app observations after ABI/PE registration. It cannot replace source apps/installedModules/launchers/user storage state.',

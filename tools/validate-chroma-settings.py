@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 evidence = json.loads((ROOT / "docs/re/chroma-settings-current-evidence.json").read_text(encoding="utf-8"))
 embedded = (ROOT / "assets/synapse/chroma-settings-embedded.rs").read_text(encoding="utf-8")
-resources = (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+resources = (ROOT / "crates/razer-assets/src/lib.rs").read_text(encoding="utf-8")
 assert resources.count(".chain(CHROMA_SETTINGS_ASSETS)") == 2
 assert len(evidence["outputAssets"]) == 25
 for asset in evidence["outputAssets"]:

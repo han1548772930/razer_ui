@@ -40,7 +40,7 @@ def visit(path):
         visit(child)
 
 
-visit(ROOT / "src/main.rs")
+visit(ROOT / "crates/razer-app/src/lib.rs")
 direct = collections.defaultdict(set)
 for path in sorted(modules):
     # Current inline test modules are terminal; exclude their asserted paths.

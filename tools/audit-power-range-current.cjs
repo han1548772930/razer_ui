@@ -74,7 +74,7 @@ for (const pid of [182, 777]) {
   }
   products.push({product_id:pid, path:jsPath, nodes, rules});
 }
-const pages = read('src/features/device_pages.rs'), workspace = read('src/features/workspace.rs');
+const pages = read('crates/razer-pages/src/features/device_pages.rs'), workspace = read('crates/razer-pages/src/features/workspace.rs');
 const powerPage = pages.slice(pages.indexOf('pub(super) fn power_page'), pages.indexOf('pub(super) fn lighting_page'));
 assert((powerPage.match(/self\.power_range\(/g) || []).length === 2 && !powerPage.includes('self.source_range('), 'Power page still uses the generic slider');
 assert((powerPage.match(/\.gap_0\(\)/g) || []).length === 2 && powerPage.includes('.mt(surface::css(15.))'), 'Power margins differ');

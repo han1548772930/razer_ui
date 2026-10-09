@@ -115,7 +115,7 @@ def main():
         # he uses strict scalar equality; arrays are deliberately not flattened here.
         if type(entry.get('dongleId')) is int:
             peer_aliases[entry['dongleId']].append(dict(catalog_index=index, product_id=entry['productId']))
-    output = ROOT / 'src/backend/discovery_catalog.json'
+    output = ROOT / 'crates/razer-device/src/discovery_catalog.json'
     data = (json.dumps(rows, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     receipts = dict(
         method='Lossless field projection of all current AvailableDevices rows; no runtime observations. Host HD aliases and middleware he strict scalar matches remain separate.',
@@ -158,7 +158,7 @@ def main():
         peer_rows.append(dict(dongle_id=entry['DeviceDonglePid'], category=entry['DeviceType'],
                               product_name={'en': selected['Name'], 'zh-cn': selected['CHSName']}))
     assert len({row['dongle_id'] for row in peer_rows}) == len(peer_rows)
-    peer_output = ROOT / 'src/backend/receiver_peer_catalog.json'
+    peer_output = ROOT / 'crates/razer-device/src/receiver_peer_catalog.json'
     peer_data = (json.dumps(peer_rows, ensure_ascii=False, indent=2) + '\n').encode('utf-8')
     peer_evidence = ROOT / 'docs/re/receiver-peer-names-current-evidence.json'
     peer_evidence_data = (json.dumps(dict(method='Static current catalog fallback names, never edition or connection observations.',

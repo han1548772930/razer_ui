@@ -14,7 +14,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const digest = text => crypto.createHash('sha256').update(text).digest('hex');
 const check = process.argv.includes('--check');
 
-const tablePath = 'src/features/display-mode-roots.json';
+const tablePath = 'crates/razer-pages/src/features/display-mode-roots.json';
 const table = JSON.parse(read(tablePath));
 const audit = JSON.parse(read(table.source));
 const receiptPath = 'docs/re/display-mode-roots-audit.json';
@@ -45,9 +45,9 @@ const implementations = {
   chromaApp: {
     status: 'partial-ui',
     local: [
-      'src/features/chroma_product.rs (popup root, table-driven selection)',
-      'src/features/product_workspace.rs (chroma_device_page / has_chroma_device_page)',
-      'src/shell/chroma_page.rs (.box-item-device card opens the popup without a gate when a lighting page exists)',
+      'crates/razer-pages/src/features/chroma_product.rs (popup root, table-driven selection)',
+      'crates/razer-pages/src/features/product_workspace.rs (chroma_device_page / has_chroma_device_page)',
+      'crates/razer-app-pages/src/chroma_page.rs (.box-item-device card opens the popup without a gate when a lighting page exists)',
     ],
     rule: 'product has a root chromaApp branch AND a local lighting page; 28 Audio products additionally require the generated root-to-own-Lighting component match (including the LIGHTING key of 1465)',
     boundary: 'root availability does not prove complete controls; per-product Audio gaps and shared-workspace rules are recorded in shell-workspace-current.md and the dedicated Nommo evidence',
@@ -55,27 +55,27 @@ const implementations = {
   multiDevicePairing: {
     status: 'entry-wired-service-unconnected',
     local: [
-      'src/shell/display_window.rs (source-derived pairing tab identity)',
-      'src/shell/host_tabs.rs (named product pairing tabs)',
-      'src/shell/pairing_page.rs (host-tab page for /synapse/multipairing/)',
+      'crates/razer-shell/src/shell/display_window.rs (source-derived pairing tab identity)',
+      'crates/razer-shell/src/shell/host_tabs.rs (named product pairing tabs)',
+      'crates/razer-app-pages/src/pairing_page.rs (host-tab page for /synapse/multipairing/)',
     ],
     rule: 'Dashboard device box opens/reuses a named host tab using source container/product/serial identity',
     boundary: 'device services stay unconnected; missing allMasters remains the original empty state',
   },
   macro: {
     status: 'entry-elsewhere-product-bodies-unreviewed',
-    local: ['src/shell/macro_page.rs (macro application host tab)'],
+    local: ['crates/razer-app-pages/src/macro_page.rs (macro application host tab)'],
     rule: 'the product-side macro branch only appears inside the macro application iframe, so the same page is opened there',
     boundary: 'macro service, recording and device binding remain unconnected',
   },
   armory: {
     status: 'partial-ui',
     local: [
-      'src/features/workspace.rs (armory_mapping_page: mapping surface without product chrome)',
-      'src/features/product_workspace.rs (armory_device_page / has_armory_device_page)',
-      'src/features/armory_product.rs (source-audited product images, 3893/3907 specialized bodies and category-limited 3894 root)',
-      'src/shell/armory_page/device_root.rs (device panel, iframe height by device type)',
-      'src/shell.rs (share entry opens the device panel next to the share form)',
+      'crates/razer-pages/src/features/workspace.rs (armory_mapping_page: mapping surface without product chrome)',
+      'crates/razer-pages/src/features/product_workspace.rs (armory_device_page / has_armory_device_page)',
+      'crates/razer-pages/src/features/armory_product.rs (source-audited product images, 3893/3907 specialized bodies and category-limited 3894 root)',
+      'crates/razer-app-pages/src/armory_page/device_root.rs (device panel, iframe height by device type)',
+      'crates/razer-shell/src/shell.rs (share entry opens the device panel next to the share form)',
     ],
     rule:
       'product has a root armory branch AND either a local mapping page or the independently audited armory_product renderer; 3894 requires Accessory/Mousepad category',
@@ -90,8 +90,8 @@ for (const [mode, ids] of Object.entries(table.modes)) {
 }
 
 // 3. The chromaApp popup must stay table-driven and gated on a real local page.
-const chroma = read('src/features/chroma_product.rs');
-const rootsModule = read('src/features/display_mode_roots.rs');
+const chroma = read('crates/razer-pages/src/features/chroma_product.rs');
+const rootsModule = read('crates/razer-pages/src/features/display_mode_roots.rs');
 assert(
   /include_str!\("display-mode-roots\.json"\)/.test(rootsModule),
   'display mode roots module no longer reads the generated table'
@@ -102,10 +102,10 @@ assert(
   /has_root_branch\(DisplayModeRoot::ChromaApp, product_id\)/.test(chroma),
   'chromaApp membership no longer consults the generated table'
 );
-const workspace = read('src/features/product_workspace.rs');
+const workspace = read('crates/razer-pages/src/features/product_workspace.rs');
 assert(/has_chroma_app_root\(device\.product_id\)/.test(workspace), 'workspace does not consult the chromaApp table');
 assert(/supports_lighting_page\(\)/.test(workspace), 'workspace no longer requires a local lighting page');
-const audioChroma = JSON.parse(read('src/features/audio_chroma_modes.json'));
+const audioChroma = JSON.parse(read('crates/razer-pages/src/features/audio_chroma_modes.json'));
 const audioModeEvidence = JSON.parse(read('docs/re/product-mode-current-components.json'));
 assert(audioChroma.length === 28, 'audio chroma root-to-page scope changed without a new audit');
 for (const route of audioChroma) {
@@ -114,9 +114,9 @@ for (const route of audioChroma) {
     && evidence.body_min_width === route.body_min_width,
     `audio chroma route ${route.product_id} does not match its component/CSS receipt`);
 }
-assert(/supports_chroma_lighting_page\(self\.device\.product_id\)/.test(read('src/features/source_workspace.rs')),
+assert(/supports_chroma_lighting_page\(self\.device\.product_id\)/.test(read('crates/razer-pages/src/features/source_workspace.rs')),
   'audio mode selection no longer checks the audited product list');
-const chromaPage = read('src/shell/chroma_page.rs');
+const chromaPage = read('crates/razer-app-pages/src/chroma_page.rs');
 assert(/has_chroma_device_page\(cx\)/.test(chromaPage), 'chroma device card does not use the page capability');
 assert(
   /min-width: unset/.test(chroma),
@@ -127,14 +127,14 @@ assert(/\.px\(css\(20\.\)\)/.test(chromaPage) && /\.pb\(css\(20\.\)\)/.test(chro
 assert(/opacity\(0\.3\)/.test(chromaPage), '.box-item-device .disabled branch is missing');
 
 // 4. The armory device panel must keep the audited frame heights and entry.
-const deviceRoot = read('src/shell/armory_page/device_root.rs');
+const deviceRoot = read('crates/razer-app-pages/src/armory_page/device_root.rs');
 assert(/DeviceCategory::Keypad => 460\./.test(deviceRoot), 'KEYPAD frame height drifted from 460px');
 assert(
   /DeviceCategory::Headset \| DeviceCategory::Audio => 340\./.test(deviceRoot),
   'HEADSET/AUDIO frame height drifted from 340px'
 );
 assert(/_ => 420\./.test(deviceRoot), 'default frame height drifted from 420px');
-const productWorkspace = read('src/features/product_workspace.rs');
+const productWorkspace = read('crates/razer-pages/src/features/product_workspace.rs');
 assert(
   /has_root_branch\(DisplayModeRoot::Armory/.test(productWorkspace),
   'armory root is not table-driven'
@@ -143,7 +143,7 @@ assert(
   /workspace\.armory_mapping_page\(window, cx\)/.test(productWorkspace),
   'armory root no longer mounts the mapping surface'
 );
-const shell = read('src/shell.rs');
+const shell = read('crates/razer-shell/src/shell.rs');
 assert(
   /page\.open_device_root\(entity\.clone\(\), window, cx\)/.test(shell),
   'the share entry no longer opens the armory device panel'

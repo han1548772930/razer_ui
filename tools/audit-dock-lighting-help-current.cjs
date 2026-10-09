@@ -59,7 +59,7 @@ for(const pid of [164,179,241]) {
   products.push({product_id:pid,page:'HELP',navigation_offset:page.offset,components:{help:current},
     findings:['Native permanent-disabled Reset confirmation replaced for this independently reviewed product by a local pending reset request and discard; no hardware reset or profile clearing.']});
 }
-const native=['src/features/source_help.rs','src/features/source_controls.rs','src/features/accessory_controls_data.json'];
+const native=['crates/razer-pages/src/features/source_help.rs','crates/razer-pages/src/features/source_controls.rs','crates/razer-pages/src/features/accessory_controls_data.json'];
 const output='docs/re/dock-lighting-help-review-current-evidence.json';
 const value={method:'Acorn exact nodes, lexical binding resolution, current normal lighting branch and Help reset callbacks; no vendor execution',generator_sha256:hash(read('tools/audit-dock-lighting-help-current.cjs')),products,native:native.map(path=>({path,sha256:hash(read(path))}))};
 const serialized=JSON.stringify(value,null,2)+'\n';

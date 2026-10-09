@@ -32,7 +32,7 @@ Dashboard 和 App Picker 可绕过本地内容的安装遮挡，但须同时满�
 
 ## 产品独立正文
 
-`chromaApp` 必须同时具有当前源根分支与实际本地 Lighting body。Audio 的 28 产品由各自根、连接包装、renderer 和普通 Lighting 调用关系生成白名单：[逐产品证据](product-mode-current-components.json)、[实际路由表](../../src/features/audio_chroma_modes.json)。1465 使用 `LIGHTING` 键，其余不能据家族名自动开放。
+`chromaApp` 必须同时具有当前源根分支与实际本地 Lighting body。Audio 的 28 产品由各自根、连接包装、renderer 和普通 Lighting 调用关系生成白名单：[逐产品证据](product-mode-current-components.json)、[实际路由表](../../crates/razer-pages/src/features/audio_chroma_modes.json)。1465 使用 `LIGHTING` 键，其余不能据家族名自动开放。
 
 独立正文读取同一产品工作区的编辑状态，不修改主宿主当前页。1303/1304 根仅取消 main-container 最小宽度，body-wrapper 保留 600px；另 26 根同时取消二者最小宽度。源 body padding 为 `10px 20px 20px`，背景 `#222`；不同产品的 serial 条件也分别保留在证据中。
 

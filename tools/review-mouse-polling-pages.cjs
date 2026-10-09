@@ -7,7 +7,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const input='docs/re/mouse-page-source.json',pages=JSON.parse(read(input));
 const configs=JSON.parse(read('docs/re/mouse-product-source.json'));
 const native=JSON.parse(read('docs/re/native-product-coverage.json'));
-const implementation=read('src/features/mouse_products.rs');
+const implementation=read('crates/razer-pages/src/features/mouse_products.rs');
 const rows=[];
 for(const product of pages.products){
  const page=product.pages.find(p=>p.key==='TAB_PERFORMANCE');
@@ -107,7 +107,7 @@ for(const product of pages.products){
 }
 const output={date:'2026-10-07',scope:'Each listed current mouse ordinary Performance Polling subtree only; not page/product completion',
  method:'Current file SHA + original UTF-16 slices + Acorn expression boundaries + root/alias/connect/JSX mount paths; no reference execution',
- inputs:[{path:input,sha256:hash(read(input))}],implementation:{path:'src/features/mouse_products.rs',sha256:hash(implementation)},
+ inputs:[{path:input,sha256:hash(read(input))}],implementation:{path:'crates/razer-pages/src/features/mouse_products.rs',sha256:hash(implementation)},
  summary:{pages:rows.length,source_subtrees:rows.filter(r=>r.review!=='pending-source-mount').length,
   local_fix:rows.filter(r=>r.review==='source-subtree-reviewed-local-fix').length,
   source_gaps:rows.filter(r=>r.review==='source-subtree-reviewed-gap').length,

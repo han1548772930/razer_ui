@@ -76,7 +76,7 @@ const popupComponent = source.snippet(34198, source.binding(34198, 'v'));
 const outerWrapper = source.snippet(81787, source.binding(81787, 'l'));
 if (!popupComponent.includes('extraClasses:e.classes') || !popupComponent.includes('className:e.classes')
     || !outerWrapper.includes('className:e.extraClasses')) throw Error('Double popup wrapper changed');
-const textNativePath = 'src/features/shortcuts_text.rs';
+const textNativePath = 'crates/razer-pages/src/features/shortcuts_text.rs';
 const assets = [];
 function asset(original, output, inline, directory = '.ref/devices/182/static/media') {
   const sourcePath = `${directory}/${original}`;
@@ -161,7 +161,7 @@ if (!process.argv.includes('--check')) {
   fs.writeFileSync(embeddedPath,embedded);
 }
 for (const [file, value] of [
-  ['src/features/shortcuts_current.json', data],
+  ['crates/razer-pages/src/features/shortcuts_current.json', data],
   ['docs/re/shortcuts-current-ui-evidence.json', evidence],
 ]) {
   const text = JSON.stringify(value, null, 2) + '\n';

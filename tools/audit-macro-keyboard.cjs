@@ -21,7 +21,7 @@ const names=Object.fromEntries(Object.entries(literal(90857,s.binding(90857,'Y')
 const extended=literal(13139,s.binding(13139,'d'));
 const data={keys,names,extended};
 function output(file,value){const text=JSON.stringify(value,null,2)+'\n',target=path.join(root,file);if(process.argv.includes('--check')){if(fs.readFileSync(target,'utf8')!==text)throw Error('Stale '+file);}else fs.writeFileSync(target,text);}
-output('src/shell/macro_page/keyboard_data.json',data);
+output('crates/razer-app-pages/src/macro_page/keyboard_data.json',data);
 const templates=[13139,47990].map(id=>{let result;walk(s.module(id).fn,node=>{if(node.type==='Property'&&key(node.key)==='keyboard'&&node.value.type==='ObjectExpression')result={...s.receipt(id,node.value),value:literal(id,node.value)};});if(result?.value.Type!==1||result.value.KeyEvent.State!==null)throw Error('Keyboard template changed');return result;});
 const directory=s.directory,manifest=JSON.parse(fs.readFileSync(path.join(root,directory,'asset-manifest.json'),'utf8'));
 const css=[...new Set(Object.values(manifest.files))].filter(f=>f.endsWith('.css')).map(f=>{const file=directory+'/'+f.slice(2),text=fs.readFileSync(path.join(root,file),'utf8');return {file,sha256:hash(text),rules:parseCSS(text).filter(r=>/InputKey_|ShortcutKey_|CustomInput_|MacroItem_flex_container|MacroItem_functional_item|^\.mr10$/.test(r.selector))};});
@@ -33,7 +33,7 @@ const directionAssets=[['icon_key_down.4d5fb90e.svg','key-down.svg',9919],['icon
   if(!bytes.equals(fs.readFileSync(path.join(root,asset)))||!embedded.includes('"synapse/macro/'+out+'"'))throw Error('Key direction asset differs or is unregistered');
   return {original,asset,sha256:hash(bytes),module:s.receipt(id,s.module(id).fn)};
 });
-const nativeFiles=['src/features/macro_library.rs','src/shell/macro_page.rs','src/shell/macro_page/state.rs','src/shell/macro_page/body.rs','src/shell/macro_page/unsaved.rs','src/shell/macro_page/keyboard.rs','src/shell/macro_page/row_actions.rs','src/shell/macro_page/keyboard_windows.rs'];
+const nativeFiles=['crates/razer-pages/src/features/macro_library.rs','crates/razer-app-pages/src/macro_page.rs','crates/razer-app-pages/src/macro_page/state.rs','crates/razer-app-pages/src/macro_page/body.rs','crates/razer-app-pages/src/macro_page/unsaved.rs','crates/razer-app-pages/src/macro_page/keyboard.rs','crates/razer-app-pages/src/macro_page/row_actions.rs','crates/razer-app-pages/src/macro_page/keyboard_windows.rs'];
 // --data-only is useful while implementing the independently extracted data.
 if(process.argv.includes('--data-only')){console.log('144 ordered keys and keyboard layout names extracted.');process.exit(0);}
 output('docs/re/macro-keyboard-current-evidence.json',{
@@ -42,7 +42,7 @@ output('docs/re/macro-keyboard-current-evidence.json',{
   mutations:Object.fromEntries(['O','C','R','M','P'].map(n=>[n,s.receipt(25572,s.binding(25572,n))])),
   catalogue:s.receipt(46114,s.binding(46114,'o')),display:s.receipt(90857,s.binding(90857,'F')),templates,css,
   placeholder:s.literal(37927,s.exported(37927,'bAs')),
-  data:{path:'src/shell/macro_page/keyboard_data.json',sha256:hash(fs.readFileSync(path.join(root,'src/shell/macro_page/keyboard_data.json'))),keys:keys.length,layouts:Object.keys(names).length},
+  data:{path:'crates/razer-app-pages/src/macro_page/keyboard_data.json',sha256:hash(fs.readFileSync(path.join(root,'crates/razer-app-pages/src/macro_page/keyboard_data.json'))),keys:keys.length,layouts:Object.keys(names).length},
   asset:{original,asset,byte_equal:true,sha256:hash(fs.readFileSync(path.join(root,asset)))},directionAssets,
   contract:{capture:'Single key; both down/up; keydown 92->91 only; Enter versus NumpadEnter and ShiftRight override; 150ms debounce; outside/blur immediate commit.',pair:'Standard/Phased create down/up sharing a local event identity; Sequence creates one null-state event. Updates propagate by identity, preserving row parity; lone rows retain their old state as in 25572.C.',clear:'pn passes empty inputID, yn dereferences the missing entry before updates. Native clear preserves this no-change result without reproducing the exception.',boundary:'Windows current-thread/current-window message capture only; no Razer inputredirect, device mappings or global-shortcut service. Unknown systemKeyboardLayout is not fabricated: outer US fallback and inner default names. Non-Windows raw capture unavailable.'},
   native:{verification:'Source review and file fingerprints, not runtime verification',files:Object.fromEntries(nativeFiles.map(f=>[f,hash(fs.readFileSync(path.join(root,f)))]))}

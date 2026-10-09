@@ -54,10 +54,10 @@ const assets=names.map(name=>{
     ||!embedded.includes(`"synapse/macro/${name}.svg"`)) throw Error('Unverified asset '+output);
   return entry;
 });
-const files=['src/features/macro_library.rs','src/shell/macro_page.rs','src/shell/macro_page/state.rs',
-  'src/shell/macro_page/body.rs','src/shell/macro_page/selection.rs','src/shell/macro_page/row_actions.rs',
-  'src/shell/macro_page/row_drag.rs','src/shell/macro_page/row_controls.rs',
-  'src/shell/macro_page/phased.rs','src/shell/macro_page/row_view.rs'];
+const files=['crates/razer-pages/src/features/macro_library.rs','crates/razer-app-pages/src/macro_page.rs','crates/razer-app-pages/src/macro_page/state.rs',
+  'crates/razer-app-pages/src/macro_page/body.rs','crates/razer-app-pages/src/macro_page/selection.rs','crates/razer-app-pages/src/macro_page/row_actions.rs',
+  'crates/razer-app-pages/src/macro_page/row_drag.rs','crates/razer-app-pages/src/macro_page/row_controls.rs',
+  'crates/razer-app-pages/src/macro_page/phased.rs','crates/razer-app-pages/src/macro_page/row_view.rs'];
 const native=files.map(path=>({path,sha256:hash(read(path))}));
 const page=read(files[1]), body=read(files[3]), actions=read(files[5]), drag=read(files[6]), phased=read(files[8]), rowView=read(files[9]);
 for(const [text, token] of [[rowView,'this.drop_actions(drag, index + 1, cx)'],

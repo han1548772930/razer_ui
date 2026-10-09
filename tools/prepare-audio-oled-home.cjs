@@ -90,7 +90,7 @@ const systemLabelKeys=Object.fromEntries(tags.filter(n=>property(n,'id')).map(n=
 const data={product_id:1383,labels,home,media,animations:animations.map(({id,name,asset})=>({id,name,asset})),images:images.map(({id,name,asset})=>({id,name,asset})),emote:emoteAsset,banner:bannerAsset,visualizers,headset,battery_default:batteryDefault,system_info:systemInfo,system_label_keys:systemLabelKeys,system_slides:slides,system_interval:value(79826,property(system,'timeBetweenSlides')),banner_text:value(79826,property(property(property(defaults,'banner'),'text'),'value')),banner_font:value(9483,binding(9483,'r'))[0].name,banner_font_size:value(9483,binding(9483,'a'))[8].name};
 const evidence={method:'Manifest-declared current 1383 Acorn AST and CSS only. Offsets use UTF-16 code units. No vendor JavaScript executed.',manifest:{path:`${directory}/asset-manifest.json`,sha256:hash(read(`${directory}/asset-manifest.json`))},receipts,assets,icons,shared:[{src:'static/media/icon_close.55fe41f1.svg',output:'assets/synapse/mapping-close.svg'}],css,keyframes:animationsCSS,fonts};
 const flags=process.argv.slice(2);if(flags.some(f=>f!=='--check'))throw Error('Unknown argument');
-for(const [file,content]of [['src/features/audio_oled_home_data.json',data],['docs/re/audio-oled-home-source.json',evidence]]){
+for(const [file,content]of [['crates/razer-pages/src/features/audio_oled_home_data.json',data],['docs/re/audio-oled-home-source.json',evidence]]){
  const out=JSON.stringify(content,null,2)+'\n';if(flags.includes('--check')){if(read(file)!==out)throw Error(`Stale ${file}`);}else fs.writeFileSync(path.join(root,file),out);
 }
 console.log('1383 OLED home: seven card branches, 15 fps presets, media editor and current CSS resolved statically.');

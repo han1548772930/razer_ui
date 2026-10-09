@@ -46,7 +46,7 @@ for path, markers in checks:
                          'source': source[offset:offset + length]})
     receipts.append({'path': path, 'sha256': hashlib.sha256(data).hexdigest(), 'snippets': snippets})
 
-for filename in ('src/features/workspace.rs', 'src/features/source_workspace.rs', 'src/shell.rs'):
+for filename in ('crates/razer-pages/src/features/workspace.rs', 'crates/razer-pages/src/features/source_workspace.rs', 'crates/razer-shell/src/shell.rs'):
     source = (ROOT / filename).read_text(encoding='utf-8')
     for removed in ('"save-profile"', '"discard-profile"', '"source-product-save"',
                     '"source-product-discard"', '"close-save"', '"close-discard"',

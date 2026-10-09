@@ -5,10 +5,10 @@ const {parseCSS}=require('./css-source.cjs');
 const root=path.resolve(__dirname,'..'), check=process.argv.includes('--check');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const requireValue=(v,message)=>{if(!v)throw Error(message);return v;};
-const catalog=JSON.parse(read('src/features/mouse_products_data.json'));
+const catalog=JSON.parse(read('crates/razer-pages/src/features/mouse_products_data.json'));
 const pages=JSON.parse(read('docs/re/mouse-page-source.json')).products;
 // The independently maintained three-mode audit owns this existing capability.
-const specs=JSON.parse(read('src/features/mouse_scroll_wheel_data.json')).filter(spec=>Array.isArray(spec.defaults.disabledModes));
+const specs=JSON.parse(read('crates/razer-pages/src/features/mouse_scroll_wheel_data.json')).filter(spec=>Array.isArray(spec.defaults.disabledModes));
 const reports=[];
 function definitions(block){
  const result=new Map();
@@ -168,7 +168,7 @@ for(const product of catalog.filter(product=>product.profile.scrollWheel&&!Array
    levels:hasLevels?[0,4,1]:null,disabled_modes:false}});
 }
 specs.sort((a,b)=>a.product_id-b.product_id);
-for(const[file,value]of[['src/features/mouse_scroll_wheel_data.json',specs],['docs/re/mouse-scroll-wheel-current-evidence.json',{method:'Current mounted AST/CSS and CONFIG only; no vendor execution',products:reports}]]){
+for(const[file,value]of[['crates/razer-pages/src/features/mouse_scroll_wheel_data.json',specs],['docs/re/mouse-scroll-wheel-current-evidence.json',{method:'Current mounted AST/CSS and CONFIG only; no vendor execution',products:reports}]]){
  const output=JSON.stringify(value,null,2)+'\n';if(check)requireValue(read(file)===output,'Stale '+file);else fs.writeFileSync(path.join(root,file),output);
 }
 console.log(`Scroll wheel: ${specs.length} source capabilities; ${reports.filter(report=>report.status==='no_scroll_editor_in_current_declared_js').length} profile-only false positives excluded`);

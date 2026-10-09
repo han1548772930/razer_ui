@@ -33,9 +33,9 @@
 
 ## 本地对应实现及保存范围
 
-[header_status.rs](../../src/shell/header_status.rs) 原先只包含离线、更新、兼容模式的独立预览；它不曾实现上述 `R`。现由 [header_unsaved.rs](../../src/shell/header_unsaved.rs) 补回条件菜单。没有恢复本地额外的常驻 `save-all`。
+[header_status.rs](../../crates/razer-shell/src/shell/header_status.rs) 原先只包含离线、更新、兼容模式的独立预览；它不曾实现上述 `R`。现由 [header_unsaved.rs](../../crates/razer-shell/src/shell/header_unsaved.rs) 补回条件菜单。没有恢复本地额外的常驻 `save-all`。
 
-[DeviceWorkspace](../../src/features/workspace.rs) 将已提交设备配置差异 `committed_pending()` 与尚未提交的映射编辑草稿区分开：
+[DeviceWorkspace](../../crates/razer-pages/src/features/workspace.rs) 将已提交设备配置差异 `committed_pending()` 与尚未提交的映射编辑草稿区分开：
 
 - 条件菜单仅列出已提交配置与本机保存版本不同的设备，按设备身份生成稳定 ID。设置表单和快捷键编辑草稿不进入列表。
 - “全部保存”调用独立 `Profiles` 范围，只捕获设备配置模型；不调用映射编辑器的 `prepare_save`，映射草稿仍由编辑器自身验证并提交。它也不提交设置和快捷键编辑草稿。
@@ -56,7 +56,7 @@
 
 ## 删除常驻保存按钮暴露的快捷键问题
 
-[Shortcuts](../../src/features/shortcuts.rs) 的“保存快捷键”、离开编辑器时选择保存、确认删除，原来只改变内存 `items`；[AppShell](../../src/shell.rs) 的 `ShortcutsChanged` 订阅仅 `notify()`。删除常驻保存按钮后，只剩退出时全量保存或设备保存顺带提交，不能视为独立保存已完成。
+[Shortcuts](../../crates/razer-pages/src/features/shortcuts.rs) 的“保存快捷键”、离开编辑器时选择保存、确认删除，原来只改变内存 `items`；[AppShell](../../crates/razer-shell/src/shell.rs) 的 `ShortcutsChanged` 订阅仅 `notify()`。删除常驻保存按钮后，只剩退出时全量保存或设备保存顺带提交，不能视为独立保存已完成。
 
 现已让已提交快捷键列表复用辅助偏好的串行 writer：
 
@@ -73,6 +73,6 @@
 
 ## 验证范围
 
-已静态复核上述当前官方组件及 CSS，格式化修改的 Rust。新增 [header_unsaved_tests.rs](../../src/shell/header_unsaved_tests.rs) 的条件显示、项目关闭、Escape、两个操作、保存中禁用和显示/隐藏延迟回归源码；补充 [shortcuts_tests.rs](../../src/features/shortcuts_tests.rs) 的旧写入完成、后续提交和草稿隔离，以及 [mapping_focus_tests.rs](../../src/features/mapping_focus_tests.rs) 的配置徽标与映射草稿隔离、混合状态回退和目标失效保护。关闭队列状态回归见 [save_queue_tests.rs](../../src/shell/save_queue_tests.rs)。
+已静态复核上述当前官方组件及 CSS，格式化修改的 Rust。新增 [header_unsaved_tests.rs](../../crates/razer-shell/src/shell/header_unsaved_tests.rs) 的条件显示、项目关闭、Escape、两个操作、保存中禁用和显示/隐藏延迟回归源码；补充 [shortcuts_tests.rs](../../crates/razer-pages/src/features/shortcuts_tests.rs) 的旧写入完成、后续提交和草稿隔离，以及 [mapping_focus_tests.rs](../../crates/razer-pages/src/features/mapping_focus_tests.rs) 的配置徽标与映射草稿隔离、混合状态回退和目标失效保护。关闭队列状态回归见 [save_queue_tests.rs](../../crates/razer-shell/src/shell/save_queue_tests.rs)。
 
 本子任务没有运行应用、build、测试、下载 JS 或 DLL。主任务统一执行的 `cargo check --locked --all-targets`、`cargo fmt --all -- --check`、资源静态检查均已通过；上述新增测试源码已纳入全目标编译检查，没有运行交互测试或实窗验收。

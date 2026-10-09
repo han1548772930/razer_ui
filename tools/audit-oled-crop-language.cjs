@@ -43,7 +43,7 @@ if (!component('Wi').includes('"language"===n')
     || !component('Ui').includes('CANCEL_OLED_LANGUAGE_UPDATE'))
   throw Error('Language progress/cancel contract changed');
 
-const product = JSON.parse(read('src/features/keyboard_products_data.json'))
+const product = JSON.parse(read('crates/razer-pages/src/features/keyboard_products_data.json'))
   .find(p => p.product_id === 691);
 const mainFile = product.source_files.find(file => /\/main\./.test(file.path));
 const main = read(mainFile.path);
@@ -76,8 +76,8 @@ if (!zoom) throw Error('Cropper zoom ratio formula changed');
 const cssFile = '.ref/devices/691/static/css/OLED.a636cf4a.chunk.css';
 const css = read(cssFile);
 const cropRules = parseCSS(css).filter(rule => /animation-crop/.test(rule.selector));
-const native = read('src/features/source_controls/oled_presets.rs');
-const controls = read('src/features/source_controls.rs');
+const native = read('crates/razer-pages/src/features/source_controls/oled_presets.rs');
+const controls = read('crates/razer-pages/src/features/source_controls.rs');
 for (const token of ['local_crop: Option<CropPlacement>', 'item.local_crop = Some(placement)',
   'cropped_preview(', 'restore_oled_custom_presets', 'restore_preset_selection',
   'kind.accepts_data_url(source)', 'target.normalize()']) {

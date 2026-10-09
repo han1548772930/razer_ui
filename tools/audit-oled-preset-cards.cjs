@@ -61,8 +61,8 @@ const assets = [['_e', 'replace'], ['De', 'reset']].map(([symbol, name]) => {
     source_offset: receipt.offset, source_end: receipt.end, source_kind: 'inline_svg_literal',
     transform: 'Static literal createElement SVG serialization'};
 });
-const nativeFiles = ['src/features/source_controls/oled_presets.rs',
-  'src/features/source_controls/oled_home_cards.rs', 'src/features/source_controls/oled_page.rs'];
+const nativeFiles = ['crates/razer-pages/src/features/source_controls/oled_presets.rs',
+  'crates/razer-pages/src/features/source_controls/oled_home_cards.rs', 'crates/razer-pages/src/features/source_controls/oled_page.rs'];
 const native = nativeFiles.map(path => ({path, text: fs.readFileSync(path, 'utf8')}));
 for (const token of ['.grid_cols(3)', '.mt(surface::css(30.))', '.child(t(self.kind.description()))',
   '.title(t(kind.editor_title()))', 'cropped_preview_scaled(', 'if hovered { 1.1 } else { 1. }',

@@ -5,7 +5,7 @@
 The current Kiyo roots mount a live camera preview either alongside the
 `CAMERA` control column (3592/3594/3595/3596) or inside the shared
 `TAB_CUSTOMIZE` widget (3587/3589/3590). The static product descriptors in
-`src/features/source_controls_data.json` provide the controls and profile
+`crates/razer-pages/src/features/source_controls_data.json` provide the controls and profile
 defaults, but they do not provide a camera frame or a device-enumeration
 transport.  The existing runtime therefore cannot claim a live frame.
 

@@ -100,6 +100,6 @@ walk(ast,n=>{
  }
  if(n.type==='AssignmentExpression'&&n.start>4269000&&n.start<4281000&&['renderProfileBar','renderProfileBarIcon','enableSwitchProfile'].includes(n.left.property?.name))headerFragments.push({owner:'ZS',method:n.left.property.name,offset:n.start,end:n.end,source:source.slice(n.start,n.end)});
 });
-emit('src/features/aether_strip_data.json',{product_id:784,page:'CUSTOMIZED',labels,translations,initial});
+emit('crates/razer-pages/src/features/aether_strip_data.json',{product_id:784,page:'CUSTOMIZED',labels,translations,initial});
 emit('docs/re/aether-strip-current-evidence.json',{method:'Acorn literal and JSX SVG extraction; downloaded JavaScript never evaluated',generator_sha256:hash(fs.readFileSync(__filename)),source_files:[...receipt.source_files,{path:cssPath,sha256:hash(css)}],translationReceipts,initial_source:{offset:initialNode.start,end:initialNode.end},contracts,geometry,assets,media,header:{mounted_on_all_pages:true,sync_disabled_pages:['HELP','CUSTOMIZED'],dropdown_disabled_pages:['CUSTOMIZED'],has_gamer_room:true,fragments:headerFragments},components:[...receipt.pages[0].components.filter(c=>c.offset>=4594111).map(({path,offset,end,source})=>({path,offset,end,source})),...['Sg','Gl','ol','El','sl'].map(symbol=>{const n=defs.get(symbol);return {path:sourcePath,symbol,offset:n.start,end:n.end,source:source.slice(n.start,n.end)}})]});
 console.log('Extracted Aether Light Strip layout, four shapes, four side markers, action icons and 10 current locales.');

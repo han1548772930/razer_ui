@@ -42,8 +42,8 @@ for(const product of mw.products){
  const text=cache.get(receipt.path);fact(hash(text)===receipt.sha256&&text.slice(receipt.offset,receipt.end)===receipt.source,'Changed current DeviceInfo '+product.product_id);
  targets[product.product_id]=candidate.values;targetSources.push({product_id:product.product_id,...receipt});
 }
-output('src/shell/profiles_page/transfer_data.json',JSON.stringify({labels,targets},null,2)+'\n');
-const native=['src/shell/profiles_page/transfer.rs','src/shell/profiles_page/transfer_codec.rs','src/shell/profiles_page/transfer_view.rs','src/shell/profiles_page/devices.rs'];
+output('crates/razer-app-pages/src/profiles_page/transfer_data.json',JSON.stringify({labels,targets},null,2)+'\n');
+const native=['crates/razer-app-pages/src/profiles_page/transfer.rs','crates/razer-app-pages/src/profiles_page/transfer_codec.rs','crates/razer-app-pages/src/profiles_page/transfer_view.rs','crates/razer-app-pages/src/profiles_page/devices.rs'];
 output('docs/re/profiles-transfer-current-evidence.json',JSON.stringify({method:'Current source AST/CSS/asset inspection only; no vendor JavaScript execution',receipts,css,assets,targetSources,
  native:native.filter(p=>fs.existsSync(path.join(root,p))).map(path=>({path,sha256:hash(read(path))})),
  boundaries:['UI selections and decoded import rows are local transfer intents; no device command is sent.','Native draft profiles are not encoded as vendor profiles. Full product conversion/write-out remains separate work.','Cloud is the current source in-development branch; no fabricated cloud data.']},null,2)+'\n');

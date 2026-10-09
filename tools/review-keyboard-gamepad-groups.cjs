@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'..'),check=process.argv.includes('--check');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const keyboards=JSON.parse(read('docs/re/keyboard-product-pages.json')).products;
 const products=JSON.parse(read('docs/re/source-product-pages.json')).products;
-const gamepads=JSON.parse(read('src/features/gamepad_products_data.json'));
+const gamepads=JSON.parse(read('crates/razer-pages/src/features/gamepad_products_data.json'));
 const key=n=>n?.name??n?.value;
 function expression(source,offset){const a=acorn.parseExpressionAt(source,offset,{ecmaVersion:'latest'});return a.type==='SequenceExpression'?a.expressions[0]:a;}
 function navigation(page){
@@ -56,13 +56,13 @@ for(const product of keyboards)for(const page of product.pages.filter(p=>['ACTUA
   if(targets.length!==1)throw Error('Ambiguous rapid trigger editor '+product.product_id);
   row.subtrees.push({kind:'rapid-trigger-editor',...mounted(r,targets[0])});
   row.review='mounted rapid-trigger editor reviewed as a confirmed missing native UI; remaining controls pending';
-  row.native='src/features/keyboard_actuation.rs provides initial actuation-point editing; it is not the full source page.';
+  row.native='crates/razer-pages/src/features/keyboard_actuation.rs provides initial actuation-point editing; it is not the full source page.';
   row.remaining=['Rapid Trigger editor and source-specific Snap Tap controls','Vertical actuation presentation, mixed-selection rules and whole-page reset confirmation','Real sensor/adjustment observation and full UI/input acceptance'];
  }else if(page.key==='OLED'){
-  row.native='src/features/source_controls/oled_page.rs and OLED editor modules implement local controls, previews and Apply drafts; root receipt does not revalidate their behavior.';
+  row.native='crates/razer-pages/src/features/source_controls/oled_page.rs and OLED editor modules implement local controls, previews and Apply drafts; root receipt does not revalidate their behavior.';
   row.remaining=['Review each current home card and preset/editor flow against the already implemented modules','Language download and live device observation branches; native tooltip/layout parity','End-to-end input, focus, animation and original visual acceptance'];
  }else{
-  row.native='src/features/keyboard_calibration.rs contains the existing 740/746 page and modal; this batch verifies only the current page root.';
+  row.native='crates/razer-pages/src/features/keyboard_calibration.rs contains the existing 740/746 page and modal; this batch verifies only the current page root.';
   row.remaining=['Re-audit all modal states, key status rendering, cancellation/profile-change lifecycle and factory-profile conditions','Real calibration service state observation; no simulated live success','Full layout/input/animation acceptance'];
  }
  keyboardRows.push(row);
@@ -89,14 +89,14 @@ for(const spec of gamepads){
    if(targets.length!==(split?2:1))throw Error('Unexpected calibration family '+spec.product_id);
    for(const target of targets)row.subtrees.push({kind:target.source.includes('trigger-calibration-popup__')?'trigger-calibration-popup':split?'per-side-thumbstick-calibration-popup':'thumbstick-calibration-wizard',...mounted(r,target)});
    row.review='current calibration subtree reviewed as a confirmed native UI gap';
-   row.native='src/features/gamepad_products.rs::calibration currently has a description, two disabled buttons and an unavailable-service note.';
+   row.native='crates/razer-pages/src/features/gamepad_products.rs::calibration currently has a description, two disabled buttons and an unavailable-service note.';
    row.remaining=split?
     ['Per-side thumbstick popup: selection, step progress, source artwork/simulator, error and cancellation states','Separate trigger calibration popup: meter, timer, step/error states and source artwork','Real state/query integration without fabricated samples or success; DLL writeback remains deferred']:
     ['Source warning/confirmation and multistep thumbstick wizard, original artwork, simulator and step indicator','Product-specific directions, progress, cancellation and error presentation','Real state/query integration without fabricated samples or success; DLL writeback remains deferred'];
    if(spec.product_id===2636){
     row.review='current five-step thumbstick UI implemented with local start/stop/retry intentions and a scoped genuine-observation seam; static verification only';
     row.native_state='partial';
-    row.native='src/features/gamepad_calibration.rs and gamepad_calibration_state.rs: original edition artwork, SVG stepper, input visualization, direction/LB overlays, rotation gating, source error modal, cancellation and retry; no hardware writes.';
+    row.native='crates/razer-pages/src/features/gamepad_calibration.rs and gamepad_calibration_state.rs: original edition artwork, SVG stepper, input visualization, direction/LB overlays, rotation gating, source error modal, cancellation and retry; no hardware writes.';
     row.prior_evidence='docs/re/gamepad-2636-calibration-current-evidence.json';
     row.remaining=['Connect current-source read/query observations; no real tester/calibration data has been supplied or executed','Viewport scaling, product-contained error placement and native visual/input acceptance remain unverified','DLL calibration mutation/writeback remains deferred; local intentions never acknowledge device calibration'];
    }
@@ -116,7 +116,7 @@ const summary={keyboard_special_pages:keyboardRows.length,actuation_rapid_editor
  gamepad_products:gamepads.length,gamepad_pages:gamepadRows.length,trigger_subtrees:gamepadRows.filter(r=>r.page_key==='TRIGGERS').length,
  calibration_ui_gaps:gamepadRows.filter(r=>r.page_key==='TAB_CALIBRATION'&&r.native_state!=='partial').length,calibration_ui_partial:gamepadRows.filter(r=>r.page_key==='TAB_CALIBRATION'&&r.native_state==='partial').length,calibration_subtrees:gamepadRows.filter(r=>r.page_key==='TAB_CALIBRATION').reduce((n,r)=>n+r.subtrees.length,0),
  completed_pages:0,completed_products:0};
-const inputs=['docs/re/keyboard-product-pages.json','docs/re/source-product-pages.json','src/features/gamepad_products_data.json'].map(file=>({path:file,sha256:hash(read(file))}));
+const inputs=['docs/re/keyboard-product-pages.json','docs/re/source-product-pages.json','crates/razer-pages/src/features/gamepad_products_data.json'].map(file=>({path:file,sha256:hash(read(file))}));
 const output={date:'2026-10-07',scope:'Grouped current-source review queue. Root evidence is navigation coverage only; it never means UI completion.',method:'Current file SHA-256, actual navigation AST, component UTF-16 slices/AST and root/alias/connect/JSX mount paths; vendor code never executed',inputs,summary,keyboard_rows:keyboardRows,gamepad_rows:gamepadRows};
 const destination='docs/re/keyboard-gamepad-groups-review-2026-10-07.json',text=JSON.stringify(output,null,2)+'\n';
 if(check){if(read(destination)!==text)throw Error('Stale '+destination);}else fs.writeFileSync(path.join(root,destination),text);

@@ -18,10 +18,10 @@ const sha256 = b => crypto.createHash('sha256').update(b).digest('hex');
 
 const SRC = '.ref/applications/rz-app-menu/static/js/main.83ced465.js';
 const js = read(SRC);
-const shell = read('src/shell.rs');
-const service = read('src/shell/service_pages.rs');
-const pickerHost = read('src/shell/app_picker_host.rs');
-const hostTabs = read('src/shell/host_tabs.rs');
+const shell = read('crates/razer-shell/src/shell.rs');
+const service = read('crates/razer-app-pages/src/service_pages.rs');
+const pickerHost = read('crates/razer-shell/src/shell/app_picker_host.rs');
+const hostTabs = read('crates/razer-shell/src/shell/host_tabs.rs');
 const problems = [];
 
 // 1) 打开参数枚举。

@@ -49,14 +49,14 @@ fact(property('.macro-type-select__menu','margin-top') === '1px', 'Menu gap chan
 const assets = JSON.parse(read('assets/synapse/automation-manifest.json')).filter(asset => asset.output.includes('automation-quick-macro-') && !asset.output.endsWith('-delete.svg') || asset.output.endsWith('automation-icon_expand.svg'));
 fact(assets.length === 5, 'Expected four type icons and current chevron');
 for (const asset of assets) fact(hash(read(asset.source)) === asset.source_sha256 && hash(read(asset.output)) === asset.output_sha256, `Changed current asset ${asset.output}`);
-const nativePath = 'src/features/automation/quick_macro.rs', native = read(nativePath), compact = native.replace(/\s+/g,'');
+const nativePath = 'crates/razer-pages/src/features/automation/quick_macro.rs', native = read(nativePath), compact = native.replace(/\s+/g,'');
 fact(!/Select::new|SelectState|SelectEvent|SelectItem/.test(native), 'Framework Select is still rendered or retained');
 for (const fragment of ['fn type_selector', 'if self.type_menu_open', 'this.type_menu_open = !this.type_menu_open', 'self.type_menu_open = false', 'type_trigger_bounds.contains(&event.position)', 'Duration::from_millis(300)', '.easing(motion::Easing::Ease)', 'std::f32::consts::PI', 'automation-icon_expand.svg', '.w(surface::css(29.)).h(surface::css(25.))', '.size(surface::css(10.))', '.max_h(surface::css(180.))', '.px(surface::css(12.)).py(surface::css(8.))', '.min_h(surface::css(30.))', 'item.content(self.kind == item.value)', 'item.content(false)', 'this.set_kind(item.value, window, cx)', 'deferred(menu).priority(3)']) {
   fact(compact.includes(fragment.replace(/\s+/g,'')), `Missing native menu contract: ${fragment}`);
 }
 const nativeSelector = native.slice(native.indexOf('fn type_selector'), native.indexOf('fn next_name_for'));
 fact(!/IconName::Check|Presence::|Sequence::|with_animation|from_millis\(200\)/.test(nativeSelector), 'Unproven menu checkmark or entrance/exit animation');
-const data = JSON.parse(read('src/features/automation_data.json')).quick_macro_types;
+const data = JSON.parse(read('crates/razer-pages/src/features/automation_data.json')).quick_macro_types;
 let previousType = -1;
 for (const type of data) {
   const index = compact.indexOf(`value:"${type.value}",label:"${type.label}"`.replace(/\s+/g,''));

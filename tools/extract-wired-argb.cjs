@@ -128,6 +128,6 @@ for(const pid of [778,3871]){
   specs.push(spec);
   evidence.push({product_id:pid,profile_bar:{sync_icon_enabled_page:profileEnabledPage,condition:profileConditions[0],label_export:receipt(profileLabel),consumers:profileConsumers,initial:receipt(profileDefault)},state_scope:{owner:'device/localstorage',default_profile:receipt(defaultProfile),persistence},source_files:pending.source_files,config:receipt(config),fan_counts:receipt(fans),locale_map:receipt(localeMap),css:{path:cssPath,sha256:hash(css),rules},manifest:{path:manifestPath,sha256:hash(read(manifestPath))},components:page.components.map(({path,offset,end,source})=>({path,offset,end,source})),reducers,editReducers});
 }
-emit('src/features/wired_argb_data.json',specs);
+emit('crates/razer-pages/src/features/wired_argb_data.json',specs);
 emit('docs/re/wired-argb-current-evidence.json',{method:'Acorn static literals and source receipts; vendor code never executed',generator_sha256:hash(fs.readFileSync(__filename)),products:evidence});
 console.log('Resolved both wired ARGB pages, ten locales, limits, illustrations and current CSS.');

@@ -16,7 +16,7 @@ def verify(row):
     assert source[row['offset'] * 2:row['end'] * 2].decode('utf-16-le') == row['source']
 
 evidence = read('docs/re/audio-oled-artwork-current-evidence.json')
-data = read('src/features/audio_oled_artwork_data.json')
+data = read('crates/razer-pages/src/features/audio_oled_artwork_data.json')
 assert data['product_id'] == 1383 and data['fps'] == 15
 assert len(data['animations']) == 6 and len(data['images']) == 10 and len(data['emotes']) == 104
 assert data['default_emote'] == 'face-tongue-animated'
@@ -47,8 +47,8 @@ for row in data['emotes']:
     assert 'assets/' + row['asset'] in registered
 for row in data['animations'] + data['images']:
     assert (ROOT / 'assets' / row['asset']).is_file()
-native = (ROOT / 'src/features/audio_oled_artwork.rs').read_text(encoding='utf8')
-crop = (ROOT / 'src/features/audio_oled_artwork_crop.rs').read_text(encoding='utf8')
+native = (ROOT / 'crates/razer-pages/src/features/audio_oled_artwork.rs').read_text(encoding='utf8')
+crop = (ROOT / 'crates/razer-pages/src/features/audio_oled_artwork_crop.rs').read_text(encoding='utf8')
 for marker in ('pub(super) fn default_value', 'pub(super) fn normalize', 'pub(super) fn preview',
                'enabled_count == 1', 'self.draft["selectedIdx"] = json!(selected)',
                'owner.draft["oledHome"][key] = value', 'cx.emit(AudioProductChanged)',

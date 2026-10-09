@@ -64,15 +64,15 @@ for (const pid of [1303,1304,3592,3594,3595,3596]) {
   products.push({product_id:pid, manifest:{path:manifestPath,sha256:hash(manifestPath)},
     css:{path:cssPath,sha256:hash(cssPath)},rules,states});
 }
-const nativePath = 'src/ui/stepper.rs', native = read(nativePath);
+const nativePath = 'crates/razer-widgets/src/stepper.rs', native = read(nativePath);
 for (const marker of ['reveal_spinners_on_hover: false', 'self.hovered || self.focused',
   'Duration::from_millis(100)', 'Easing::Linear', 'button.invisible()',
   'else if at_limit && !self.custom_keymapping', '.on_hover(cx.listener(']) {
   assert(native.includes(marker), `Missing native spinner policy: ${marker}`);
 }
-const nommo = 'src/features/audio_nommo_effects.rs';
+const nommo = 'crates/razer-pages/src/features/audio_nommo_effects.rs';
 assert(read(nommo).includes('.reveal_spinners_on_hover()'), 'Nommo did not opt into source visibility');
-assert(!read('src/features/source_controls.rs').includes('.reveal_spinners_on_hover()'), 'Camera lost always-visible policy');
+assert(!read('crates/razer-pages/src/features/source_controls.rs').includes('.reveal_spinners_on_hover()'), 'Camera lost always-visible policy');
 const result = {method:'Static CSS cascade for the actual Nommo modes-area and camera stepper rules; no vendor execution',
   offset_unit:'UTF-16 code units', generator_sha256:hash('tools/audit-stepper-visibility.cjs'),products,
   native:{path:nativePath,sha256:hash(nativePath)},

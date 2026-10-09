@@ -144,7 +144,7 @@ expected.update(filename for _, filename in service_keys)
 def validate_oled_family(family, receipt_path):
     oled_entries = json.loads((directory / f"audio-oled-{family}-assets.json").read_text(encoding="utf-8"))
     oled_include = (directory / f"audio-oled-{family}-embedded.rs").read_text(encoding="utf-8")
-    resource_code = (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+    resource_code = (ROOT / "crates/razer-assets/src/lib.rs").read_text(encoding="utf-8")
     assert f'include!("../assets/synapse/audio-oled-{family}-embedded.rs")' in resource_code
     assert resource_code.count(f'.chain(AUDIO_OLED_{family.upper()}_ASSETS)') == 2, family
     family_keys = re.findall(r'\("([^"]+)", include_bytes!\("([^"]+)"\)', oled_include)
@@ -262,7 +262,7 @@ assert hashlib.sha256(icon_bytes).hexdigest() == favicon["sha256"]
 assert ET.fromstring(icon_bytes).tag.endswith("svg")
 assert 'href="./favicon.svg"' in (ROOT / ".ref/applications/synapse/chroma-studio/index.html").read_text(encoding="utf-8")
 favicon_key = favicon["output"].removeprefix("assets/")
-assert favicon_key in (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+assert favicon_key in (ROOT / "crates/razer-assets/src/lib.rs").read_text(encoding="utf-8")
 assert Path(favicon_key).name not in expected
 expected.add(Path(favicon_key).name)
 root_keys.append((favicon_key, Path(favicon_key).name))
@@ -283,7 +283,7 @@ for row in kitsune["assets"]:
     assert (row["output"].removeprefix("assets/"), output.name) in kitsune_keys
     assert output.name not in expected
     expected.add(output.name)
-resource_source = (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+resource_source = (ROOT / "crates/razer-assets/src/lib.rs").read_text(encoding="utf-8")
 assert resource_source.count(".chain(KITSUNE_ASSETS)") == 2
 
 gamepad_dialog = json.loads((ROOT / "docs/re/gamepad-2636-dialog-current-evidence.json").read_text(encoding="utf-8"))
@@ -367,7 +367,7 @@ for icon in runtime_evidence["icons"]:
     output = ROOT / "assets" / icon["output"]
     assert output.read_text(encoding="utf-8") == icon["svg"]
     assert ET.fromstring(icon["svg"]).tag.endswith("svg")
-    assert icon["output"] in (ROOT / "src/resources.rs").read_text(encoding="utf-8")
+    assert icon["output"] in (ROOT / "crates/razer-assets/src/lib.rs").read_text(encoding="utf-8")
     assert output.name not in expected
     expected.add(output.name)
 
@@ -446,7 +446,7 @@ assert ellipses[1].get("stroke-width") == "4"
 
 # Literal image paths cover only direct consumers; dynamic mapping, direction,
 # DPI and variant consumers are audited separately instead of called unused.
-for source_path in (ROOT / "src").rglob("*.rs"):
+for source_path in (ROOT / "crates").rglob("*.rs"):
     for asset in re.findall(r'"(synapse/[\w.-]+\.(?:png|svg|webp))"', source_path.read_text(encoding="utf-8")):
         assert asset.removeprefix("synapse/") in expected, (source_path, asset)
 # The original Customize caller supplies layout one when old device data has no

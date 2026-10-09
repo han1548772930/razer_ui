@@ -88,7 +88,7 @@ const empty_color=value(6257,s.exported(6257,'FU'));
 const data={defaults,effects,gradients,playback,empty_color,tools:value(6257,node(6257,'R')),zoom_levels:value(6257,node(6257,'T')),locales,assets:Object.fromEntries(assets.map(a=>[a.name,a.output.replace(/^assets\//,'')]))};
 const evidence={method:'Current independent Studio; static Acorn and CSS parsing, no vendor execution.',route:'/synapse/chroma-studio/',manifest:{path:`${s.directory}/asset-manifest.json`,sha256:hash(fs.readFileSync(path.join(root,s.directory,'asset-manifest.json')))},receipts,css,assets};
 const check=process.argv.includes('--check');
-for(const[file,obj]of [['src/features/chroma_studio_data.json',data],['docs/re/chroma-studio-source.json',evidence]]){
+for(const[file,obj]of [['crates/razer-pages/src/features/chroma_studio_data.json',data],['docs/re/chroma-studio-source.json',evidence]]){
  const out=JSON.stringify(obj,null,2)+'\n',target=path.join(root,file);
  if(check){if(fs.readFileSync(target,'utf8')!==out)throw Error(`Stale ${file}`);}else fs.writeFileSync(target,out);
 }

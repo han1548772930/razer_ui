@@ -97,18 +97,18 @@ def main():
     assert any('has_frame() ? resizable_ && thick_frame_ : resizable_' in node for node in snippets)
     assert any('frame:l,transparent:6===+r.policy||8===+r.policy' in node
                and 'l=6!==+r.policy&&8!==+r.policy' in node for node in snippets)
-    implementation = (ROOT / "src/shell/tray/windows.rs").read_text(encoding="utf-8")
+    implementation = (ROOT / "crates/razer-tray/src/windows.rs").read_text(encoding="utf-8")
     assert 'let height = view.requested_height();' in implementation
     assert 'view.anchor = native::popup_anchor(window, rect);' in implementation
     assert 'let (tray_x, tray_y) = anchor?;' in implementation
-    account = (ROOT / "src/shell/tray/account.rs").read_text(encoding="utf-8")
+    account = (ROOT / "crates/razer-tray/src/account.rs").read_text(encoding="utf-8")
     assert 'pub(super) fn requested_height(&self) -> f32' in account
     assert '(self.widget_height.unwrap_or(0.) + 153.).clamp(400., 700.)' in account
     assert '.on_children_prepainted(' in account and 'window.defer(cx,' in account
     assert 'view.widget_revision == revision' in account
     assert 'self.placed_height != Some(requested)' in account
     assert 'native::popup_placement(window, self.anchor, true, requested)' in account
-    for file in (ROOT / 'src/shell/tray').glob('*.rs'):
+    for file in (ROOT / 'crates/razer-shell/src/shell/tray').glob('*.rs'):
         assert 'layout_as_root' not in file.read_text(encoding='utf-8'), file
     assert 'let mut y = tray_y - height;' in implementation
     assert 'let right_gap = (10. * scale)' in implementation
@@ -116,7 +116,7 @@ def main():
     assert 'y = work.bottom - height' not in implementation
     assert 'AppsUseLightTheme' not in implementation
     assert 'if native::visible(window)' in implementation
-    tray = (ROOT / "src/shell/tray.rs").read_text(encoding="utf-8")
+    tray = (ROOT / "crates/razer-tray/src/lib.rs").read_text(encoding="utf-8")
     assert 'fn menu_is_dark(_cx: &App) -> bool' in tray
     assert '.with_menu(Box::new(native_menu(cx)?))' in tray
     evidence = dict(schema_version=1, framework_sources=receipts, nodes=nodes,

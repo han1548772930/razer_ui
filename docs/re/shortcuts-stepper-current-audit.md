@@ -37,6 +37,6 @@ The default and `.in_modes_area()` layouts remain unchanged. The new Macro calle
 
 ## Verification and limits
 
-`rustfmt --edition 2024 --check src/ui/stepper.rs` and `node tools/audit-shortcuts-stepper.cjs --check` passed. Acorn is loaded from the existing `.work/audit-js/node_modules` dependency cache using `NODE_PATH`.
+`rustfmt --edition 2024 --check crates/razer-widgets/src/stepper.rs` and `node tools/audit-shortcuts-stepper.cjs --check` passed. Acorn is loaded from the existing `.work/audit-js/node_modules` dependency cache using `NODE_PATH`.
 
 This is static verification, not a rendered pixel comparison. Existing native maximum-length validation allows one additional character whenever the draft starts with minus; source HTML adds that character when its current value compares numerically less than zero. Save rejection of incomplete drafts in native typed persistence is an integration adaptation, not a source validation rule.

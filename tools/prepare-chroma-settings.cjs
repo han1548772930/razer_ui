@@ -91,8 +91,8 @@ for(const [file,specs]of [
 }
 const versionManifestPath='.ref/applications/chroma-app/dashboard/manifest.json',versionManifest=JSON.parse(read(versionManifestPath));
 const version=['4',...versionManifest.version.split('.').slice(1),versionManifest.buildVersion].join('.');
-emit('src/shell/chroma_settings_data.json',{labels,translations,languages,tutorialKeys,version,socials:socials.map(({name,link,label,viewBox})=>({name,link,label,viewBox}))});
+emit('crates/razer-app-pages/src/chroma_settings_data.json',{labels,translations,languages,tutorialKeys,version,socials:socials.map(({name,link,label,viewBox})=>({name,link,label,viewBox}))});
 emit('assets/synapse/chroma-settings-embedded.rs','&[\n'+outputAssets.map(({path:p})=>{const name=path.basename(p);return `    ("synapse/${name}", include_bytes!("${name}")),`;}).join('\n')+'\n]\n');
-const native=['src/shell/chroma_settings.rs','src/shell/chroma_window.rs','src/shell/chroma_page.rs','src/shell/profile_migration.rs','src/shell/release_notes.rs','src/ui/theme.rs','src/resources.rs'].map(path=>({path,sha256:hash(read(path))}));
+const native=['crates/razer-app-pages/src/chroma_settings.rs','crates/razer-shell/src/shell/chroma_window.rs','crates/razer-app-pages/src/chroma_page.rs','crates/razer-app-pages/src/profile_migration.rs','crates/razer-app-pages/src/release_notes.rs','crates/razer-widgets/src/theme.rs','crates/razer-assets/src/lib.rs'].map(path=>({path,sha256:hash(read(path))}));
 emit('docs/re/chroma-settings-current-evidence.json',{method:'Manifest-scoped Acorn/CSS parsing; no vendor code, app, tests or DLL execution.',receipts,css,assets,outputAssets,socials,native,version:{path:versionManifestPath,sha256:hash(read(versionManifestPath)),value:version}});
 console.log(`Chroma Settings: ${receipts.length} AST receipts, ${css.length} CSS rules, ${Object.keys(translations).length} locales, ${outputAssets.length} SVG assets ${check?'checked':'prepared'}.`);

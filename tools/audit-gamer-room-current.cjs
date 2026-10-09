@@ -56,7 +56,7 @@ const hotspotPath = 'docs/re/gamer-room-hotspot-current-evidence.json';
 const hotspot = JSON.parse(fs.readFileSync(path.join(root, hotspotPath), 'utf8'));
 if (hash(fs.readFileSync(path.join(root, hotspot.source.path))) !== hotspot.source.sha256)
   throw Error('Recovered current hotspot source changed');
-const hotspotData = 'src/shell/gamer_room_hotspot_data.json';
+const hotspotData = 'crates/razer-app-pages/src/gamer_room_hotspot_data.json';
 if (JSON.stringify(JSON.parse(fs.readFileSync(path.join(root, hotspotData), 'utf8'))) !== JSON.stringify(hotspot.data))
   throw Error('Hotspot timeline no longer matches its XML receipt');
 const applicationManifest = JSON.parse(fs.readFileSync(path.join(root, source.directory, 'asset-manifest.json'), 'utf8'));
@@ -75,7 +75,7 @@ const receipt = {
   hotspot: {path: hotspotPath, sha256: hash(fs.readFileSync(path.join(root, hotspotPath))),
     data: hotspotData, data_sha256: hash(fs.readFileSync(path.join(root, hotspotData))),
     recovery: hotspot.recovery, pulse_css: pulseCss},
-  consumers: ['src/shell/gamer_room.rs', 'src/shell/gamer_room_devices.rs', 'src/shell/gamer_room_presentation.rs', 'src/shell/gamer_room_hotspot.rs'],
+  consumers: ['crates/razer-app-pages/src/gamer_room.rs', 'crates/razer-app-pages/src/gamer_room_devices.rs', 'crates/razer-app-pages/src/gamer_room_presentation.rs', 'crates/razer-app-pages/src/gamer_room_hotspot.rs'],
   boundaries: [
     'No source backdrop-filter primitive in the locked GPUI renderer: 5px hotspot and 30px marketing blur remain unresolved.',
     'Hotspot SVG was recovered using its current manifest content fingerprint and parsed as XML. This is not an independent live-download byte comparison.',

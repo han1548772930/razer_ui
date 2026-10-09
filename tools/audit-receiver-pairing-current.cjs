@@ -78,8 +78,8 @@ for (const asset of assets) {
 }
 const nativePaths = ['receiver.rs', 'receiver_page.rs', 'receiver_page_state.rs', 'receiver_page_state_tests.rs',
   'receiver_pairing_state.rs', 'receiver_pairing_view.rs', 'receiver_pairing_state_tests.rs']
-  .map(file => 'src/features/source_controls/' + file);
-const parentNative = read('src/features/source_controls/receiver_page.rs');
+  .map(file => 'crates/razer-pages/src/features/source_controls/' + file);
+const parentNative = read('crates/razer-pages/src/features/source_controls/receiver_page.rs');
 for (const id of ['receiver-pairing-widget', 'receiver-parent-empty', 'receiver-parent-binding',
   'receiver-parent-loading', 'receiver-paired-name', 'receiver-configure-device', 'receiver-parent-unpair']) {
   if (!parentNative.includes('"' + id + '"')) throw Error('Missing parent widget ID: ' + id);
@@ -87,7 +87,7 @@ for (const id of ['receiver-pairing-widget', 'receiver-parent-empty', 'receiver-
 if (!read(nativePaths[0]).includes('self.receiver_pairing_widget(cx)')) throw Error('Unmounted Te widget');
 for (const layer of ['base', 'sweep']) {
   const asset = 'synapse/receiver/connection-skeleton-' + layer + '.svg';
-  if (!parentNative.includes(asset) || !read('src/resources.rs').includes(asset)) throw Error('Unregistered skeleton ' + layer);
+  if (!parentNative.includes(asset) || !read('crates/razer-assets/src/lib.rs').includes(asset)) throw Error('Unregistered skeleton ' + layer);
 }
 const data = { translations };
 const evidence = {
@@ -110,12 +110,12 @@ const evidence = {
   css: { path: cssPath, sha256: hash(css), rules },
   assets,
   native: nativePaths.map(file => ({ path: file, sha256: hash(read(file)) })),
-  supporting_native: ['src/features/source_workspace.rs', 'src/features/source_workspace/tests.rs',
-    'src/resources.rs', 'src/ui/theme.rs'].map(file => ({ path: file, sha256: hash(read(file)) })),
-  test_support_ids: [...(parentNative + read('src/features/source_controls/receiver_pairing_view.rs')).matchAll(/(?:\.id|BaseButton::new)\("(receiver-[^"]+)"\)/g)].map(match => match[1]),
+  supporting_native: ['crates/razer-pages/src/features/source_workspace.rs', 'crates/razer-pages/src/features/source_workspace/tests.rs',
+    'crates/razer-assets/src/lib.rs', 'crates/razer-widgets/src/theme.rs'].map(file => ({ path: file, sha256: hash(read(file)) })),
+  test_support_ids: [...(parentNative + read('crates/razer-pages/src/features/source_controls/receiver_pairing_view.rs')).matchAll(/(?:\.id|BaseButton::new)\("(receiver-[^"]+)"\)/g)].map(match => match[1]),
 };
 for (const [file, value] of [
-  ['src/features/source_controls/receiver_pairing_data.json', data],
+  ['crates/razer-pages/src/features/source_controls/receiver_pairing_data.json', data],
   ['docs/re/receiver-pairing-current-evidence.json', evidence],
 ]) {
   const content = JSON.stringify(value, null, 2) + '\n';

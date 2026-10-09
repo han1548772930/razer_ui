@@ -4,7 +4,7 @@
 
 源码位置为 `51278/Ug`（编辑器）、`Hg`（预览）、`Bg`（CSS 模块映射）、`Mv`（850px 弹层选择），`9483`（图片、字体、字号）和 `79826/T/I`（初始状态、Banner reducer）。完整文件哈希、UTF-16 摘录范围、SVG 字面量、CSS 与关键帧见 [源码收据](audio-oled-banner-current-evidence.json)，独立静态验证见 [审计](audio-oled-banner-static-audit.json)。
 
-实现文件为 `src/features/audio_oled_banner.rs`、独立数据 JSON 和主题文件。提供 8 张原版 Banner 图片、图片开关及上/下位置、64 个原版字体选项、14 个字号、字号增减、粗体/斜体/下划线、四向滚动、暂停、100ms 后重播、恢复默认、取消与应用。图片按源 CSS `grayscale(100%)` 转换并保留 alpha；11 枚图标从当前 React SVG 字面量静态序列化。19 项资源使用独立 embedded 表，未改写共享 manifest。
+实现文件为 `crates/razer-pages/src/features/audio_oled_banner.rs`、独立数据 JSON 和主题文件。提供 8 张原版 Banner 图片、图片开关及上/下位置、64 个原版字体选项、14 个字号、字号增减、粗体/斜体/下划线、四向滚动、暂停、100ms 后重播、恢复默认、取消与应用。图片按源 CSS `grayscale(100%)` 转换并保留 alpha；11 枚图标从当前 React SVG 字面量静态序列化。19 项资源使用独立 embedded 表，未改写共享 manifest。
 
 文字限制按源码的实际尺寸判断：水平 `offsetWidth > 920`；垂直在图片开启时 `offsetHeight > 176`、关闭时 `> 256`。超限按末尾 UTF-16 单元删减，字符计数也使用 UTF-16。若删减留下孤立代理单元，Rust 字符串保存其显示用的 U+FFFD；未声称能够保留 JavaScript 的无效 UTF-16 原始编码。
 

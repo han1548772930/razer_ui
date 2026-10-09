@@ -12,8 +12,8 @@ checks every input SHA-256 again before generating native settings.
 
 The complete receipts are `system-products-resolved.json` and
 `system-products-native-audit.json`. Native data is
-`src/features/system_products_data.json`; its owner is
-`SystemProductWorkspace` in `src/features/system_products.rs`.
+`crates/razer-pages/src/features/system_products_data.json`; its owner is
+`SystemProductWorkspace` in `crates/razer-pages/src/features/system_products.rs`.
 
 ## Product coverage
 

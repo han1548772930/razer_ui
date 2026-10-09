@@ -102,7 +102,7 @@ const assets = [
     declaration: original.startsWith('icon_close.') ? '1700 CSS url(), not the media manifest' : 'current Macro JS/CSS'};
 });
 const nativeCatalogs = ['keyboard', 'mouse'].map(kind => {
-  const file = `src/features/${kind}_products_data.json`;
+  const file = `crates/razer-pages/src/features/${kind}_products_data.json`;
   const bytes = fs.readFileSync(path.join(root, file));
   const products = JSON.parse(bytes);
   return {path: file, sha256: hash(bytes),
@@ -122,7 +122,7 @@ const receipt = {
   source: {path: scope.file, sha256: hash(source.text(scope.file))},
   components, localeKeys, css, assets, native_catalogs: nativeCatalogs,
   input_capabilities: {
-    output: 'src/features/macro_input_catalogs.json',
+    output: 'crates/razer-pages/src/features/macro_input_catalogs.json',
     products: inputCatalogs.products.map(({groups, ...catalog}) => catalog),
     physical_groups: {path: mousePath, sha256: hash(mouseText), module: 1368,
       offset: groupsNode.start, end: groupsNode.end, inputs: mouseGroups[0].group.buttonList.length},
@@ -151,9 +151,9 @@ const receipt = {
 };
 const target = path.join(root, 'docs/re/macro-bindings-current-evidence.json');
 const text = JSON.stringify(receipt, null, 2) + '\n';
-const catalogsTarget = path.join(root, 'src/features/macro_input_catalogs.json');
+const catalogsTarget = path.join(root, 'crates/razer-pages/src/features/macro_input_catalogs.json');
 const catalogsData = JSON.stringify(inputCatalogs, null, 2) + '\n';
-const playbackTarget = path.join(root, 'src/shell/macro_page/bindings/playback_182.json');
+const playbackTarget = path.join(root, 'crates/razer-app-pages/src/macro_page/bindings/playback_182.json');
 const playbackData = JSON.stringify(playback, null, 2) + '\n';
 if (process.argv.includes('--check')) {
   if (fs.readFileSync(target, 'utf8') !== text) throw Error('Stale Macro bindings receipt');

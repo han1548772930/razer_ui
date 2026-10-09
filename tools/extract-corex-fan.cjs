@@ -35,5 +35,5 @@ const output={product_id:3921,modes,min_rpm:1000,max_rpm:max,curves,translations
  axes:Object.fromEntries([['gpu','le'],['chassis','oe']].map(([key,symbol])=>[key,product.arrays.find(x=>x.symbol===symbol).value])),
  source_files:product.source_files,rule:'2..20 points; fixed temperature on vertical drag; speed clamped between neighbours; reset both targets in active preset',
  state_source:{path:state.path,offset:state.offset,end:state.end,sha256:hash(state.source)}};
-fs.writeFileSync(path.join(root,'src/features/corex_fan_data.json'),JSON.stringify(output,null,2)+'\n');
+fs.writeFileSync(path.join(root,'crates/razer-pages/src/features/corex_fan_data.json'),JSON.stringify(output,null,2)+'\n');
 console.log('Extracted Core X V2 fan defaults, axes, modes and translations.');

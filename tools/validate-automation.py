@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 load=lambda p:json.loads((ROOT/p).read_text(encoding='utf8'))
 digest=lambda b:hashlib.sha256(b).hexdigest()
-spec=load('src/features/automation_data.json')
+spec=load('crates/razer-pages/src/features/automation_data.json')
 audit=load('docs/re/automation-current-evidence.json')
 assets=load('assets/synapse/automation-manifest.json')
 registered={entry['output']:entry for entry in load('assets/synapse/manifest.json')['entries']}
@@ -49,7 +49,7 @@ for key in color_audit['parameter_labels'].values():
     assert key in spec['translations']['en']
 palette=spec['quick_color_palette']
 assert len(palette)==41 and palette[-1]=='no-color'
-native_palette=(ROOT/'src/features/lighting_color.rs').read_text(encoding='utf8').split('const PRESETS: [u32; 40] = [',1)[1].split('];',1)[0]
+native_palette=(ROOT/'crates/razer-pages/src/features/lighting_color.rs').read_text(encoding='utf8').split('const PRESETS: [u32; 40] = [',1)[1].split('];',1)[0]
 assert palette[:-1]==['#'+color.lower() for color in re.findall(r'0x([a-fA-F0-9]{6})',native_palette)]
 for asset in assets:
     content=(ROOT/asset['source']).read_bytes()

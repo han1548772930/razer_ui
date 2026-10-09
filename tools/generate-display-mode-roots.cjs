@@ -13,7 +13,7 @@ const crypto = require('crypto');
 
 const root = path.resolve(__dirname, '..');
 const auditPath = 'docs/re/display-mode-audit.json';
-const outputPath = 'src/features/display-mode-roots.json';
+const outputPath = 'crates/razer-pages/src/features/display-mode-roots.json';
 const check = process.argv.includes('--check');
 
 const bytes = fs.readFileSync(path.join(root, auditPath));

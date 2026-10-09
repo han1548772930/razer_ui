@@ -32,7 +32,7 @@ entries.push({asset:'synapse/service-firmware-warning.svg',source:source.module(
 // Dedicated include keeps independent resource writers from overwriting each other.
 write('assets/synapse/module-service-embedded.rs', '&[\n' + entries.map(e => `    ("${e.asset}", include_bytes!("${path.basename(e.asset)}") as &[u8]),`).join('\n') + '\n]\n');
 const data = {categories: categories.map(p => p.name), subcategory_parents: Object.keys(source.literal(29228, source.exported(29228, 'Su')))};
-write('src/shell/module_service_source.json', JSON.stringify(data, null, 2)+'\n');
+write('crates/razer-app-pages/src/module_service_source.json', JSON.stringify(data, null, 2)+'\n');
 const cssFiles = ['6505.9782778c.chunk.css', '55.4e8559cb.chunk.css'];
 const css = cssFiles.map(name => {
   const file = `${source.directory}/static/css/${name}`, text = fs.readFileSync(path.join(root, file), 'utf8');

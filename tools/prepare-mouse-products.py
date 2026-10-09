@@ -118,5 +118,5 @@ for product in configs["products"]:
         groups=groups,
         pages=list(mounted), mounted_component_count=sum(len(p["components"]) for p in pages[pid]),
     ))
-(ROOT / "src/features/mouse_products_data.json").write_text(json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+(ROOT / "crates/razer-pages/src/features/mouse_products_data.json").write_text(json.dumps(output, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 print(f"Prepared {len(output)} current mouse specifications.")

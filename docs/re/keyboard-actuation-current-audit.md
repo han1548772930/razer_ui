@@ -1,6 +1,6 @@
 # 键盘触发行程页静态接入
 
-2026-10-03，当前 `.ref/devices/` 中的产品入口和实际挂载页。证据由 `tools/extract-keyboard-actuation.cjs` 静态 Acorn 解析产生，记录于 `src/features/keyboard_actuation_data.json`；未执行下载的 JavaScript。
+2026-10-03，当前 `.ref/devices/` 中的产品入口和实际挂载页。证据由 `tools/extract-keyboard-actuation.cjs` 静态 Acorn 解析产生，记录于 `crates/razer-pages/src/features/keyboard_actuation_data.json`；未执行下载的 JavaScript。
 
 接入 580、614、642、678、679、688、719、720、721、728、740、741、742、746、747 的首批触发点编辑。各产品分别使用其 `DeviceInfo.analogSpecs.actuationInfo`，不把 12 个单位与 1638 个单位的模拟轴换算混用。第一代的显示偏移单独保留；742 的最大行程和 747 的默认值也保留自身定义。
 

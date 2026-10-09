@@ -72,7 +72,7 @@ const lightingNode=binding('TR',6716000,6716600);
 const lightingDefaults=literal(lightingNode.init);
 const paletteNode=binding('dn',6559100,6559900);
 const palette=literal(paletteNode.init);
-const sharedPalette=read('src/features/lighting_color.rs').match(/const PRESETS: \[u32; 40\] = \[([\s\S]*?)\];/);
+const sharedPalette=read('crates/razer-pages/src/features/lighting_color.rs').match(/const PRESETS: \[u32; 40\] = \[([\s\S]*?)\];/);
 const sharedColors=[...sharedPalette[1].matchAll(/0x([a-f0-9]{6})/gi)].map(m=>'#'+m[1].toLowerCase());
 if(JSON.stringify(palette)!==JSON.stringify([...sharedColors,'no-color']))throw Error('Hue palette differs from the shared native picker');
 const effectComponents=[];
@@ -123,7 +123,7 @@ function emit(file,value) {
     if (read(file) !== text) throw Error('Stale Hue output: '+file);
   } else fs.writeFileSync(path.join(root,file),text);
 }
-emit('src/features/hue_data.json',data);
+emit('crates/razer-pages/src/features/hue_data.json',data);
 emit('docs/re/hue-current-evidence.json',{
   method:'Acorn literals and mounted source receipts; downloaded JavaScript is never evaluated',
   generator_sha256:hash(fs.readFileSync(__filename)), source:{path:sourcePath,sha256:hash(source)},

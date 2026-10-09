@@ -4,7 +4,7 @@
 
 ## 页面、观察与本地草稿
 
-[WiredArgbWorkspace](../../src/features/wired_argb.rs) 和 [WirelessArgb](../../src/features/wireless_argb.rs) 已由 SourceProductWorkspace 挂载。正式页尚无端口发现/电源/保护/连接状态服务 adapter，观察缺失时明确不可用；显式开发预览只提供样例，不进入实时设备列表，不产生设备成功或设备保存。
+[WiredArgbWorkspace](../../crates/razer-pages/src/features/wired_argb.rs) 和 [WirelessArgb](../../crates/razer-pages/src/features/wireless_argb.rs) 已由 SourceProductWorkspace 挂载。正式页尚无端口发现/电源/保护/连接状态服务 adapter，观察缺失时明确不可用；显式开发预览只提供样例，不进入实时设备列表，不产生设备成功或设备保存。
 
 端口布局存于设备级 source_device_settings，独立于 Lighting profile。当前源的 portsReducer / ON_SET_PORT_VALUES 管理布局；DEFAULTPROFILE 或 loadActiveProfileSettings 不加载 ports。切换灯效配置不能重置物理布局。本地 schema 不代表已经证明原服务的磁盘存储格式。
 
@@ -35,7 +35,7 @@
 
 两类端口帮助使用当前 widget.help / widget.tip：14px 圆点在 top/right10px，背景 300ms 过渡；提示按共享 surface::help_control 的源几何呈现，不能替换成默认 Kit 延迟提示。
 
-3871/3884/3886 检测和刷新提示已接入即时 hover 挂载及 100ms 淡入，无展示延迟；bottom-left 为目标右缘对齐、下方 5px。LED 数量提示使用 bottom-right 左缘对齐，只把数量着绿。共享实现为 [hover_tip.rs](../../src/ui/hover_tip.rs)，完整窗口边界、遮挡和实窗命中仍需验收。
+3871/3884/3886 检测和刷新提示已接入即时 hover 挂载及 100ms 淡入，无展示延迟；bottom-left 为目标右缘对齐、下方 5px。LED 数量提示使用 bottom-right 左缘对齐，只把数量着绿。共享实现为 [hover_tip.rs](../../crates/razer-widgets/src/hover_tip.rs)，完整窗口边界、遮挡和实窗命中仍需验收。
 
 有线检测图保留原 SVG 路径、mask 及内嵌位图，拆出 2 秒环旋转和 18 条 LED 透明度轨道：0.5 秒亮、0.5 秒灭、0.1 秒错开、1.8 秒循环，减少动态效果时静止。环使用离散帧，不宣称连续像素等价。
 

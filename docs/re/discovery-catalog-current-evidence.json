@@ -64,7 +64,7 @@
     "monitorPortIds": "monitor_port_ids",
     "isNotChromaDevice": "is_not_chroma_device"
   },
-  "output": "src/backend/discovery_catalog.json",
+  "output": "crates/razer-device/src/discovery_catalog.json",
   "sha256": "3cce46adc5c70ea1d4c2d406b963fa94235f0e6c01f7349fd8c02033e99a3506",
   "entries": 330,
   "scalar_dongle_rows": 93,

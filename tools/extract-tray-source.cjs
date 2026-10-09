@@ -76,7 +76,7 @@ read(`${folder}/static/js/main.9579c403.js`);
 read('.ref/host-4.0.827/electron/lib/common.js');
 read('.ref/host-4.0.827/electron/components/Tab/LeftSystray.js');
 read('.ref/host-4.0.827/electron/main.js');
-fs.writeFileSync(path.join(root,'src/shell/tray_strings.json'),JSON.stringify({host:hostStrings,popup},null,2)+'\n');
+fs.writeFileSync(path.join(root,'crates/razer-tray/src/tray_strings.json'),JSON.stringify({host:hostStrings,popup},null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/tray-source-receipts.json'),JSON.stringify({schema_version:1,receipts},null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/tray-ui-current-evidence.json'),JSON.stringify({
   source:`${folder}/static/js/554.2573b048.chunk.js`,branches,

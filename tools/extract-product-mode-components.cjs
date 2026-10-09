@@ -110,7 +110,7 @@ const output = 'docs/re/product-mode-current-components.json';
 const text = JSON.stringify({ schema_version: 1, scanner_sha256: sha(read('tools/extract-product-mode-components.cjs')),
   method: 'Lexically resolved Acorn AST. Compare each current chromaApp renderer with its own registered Lighting component; downloaded JavaScript is never evaluated.',
   products: results }, null, 2) + '\n';
-const routesOutput = 'src/features/audio_chroma_modes.json';
+const routesOutput = 'crates/razer-pages/src/features/audio_chroma_modes.json';
 const routesText = JSON.stringify(results.filter(product => product.mounts_normal_lighting)
   .map(product => ({ product_id: product.product_id, page: product.normal_lighting.key,
     body_min_width: product.body_min_width })), null, 2) + '\n';

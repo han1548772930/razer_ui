@@ -63,7 +63,7 @@ for (const entry of assets) {
   assert(entry.conversion === 'exact-png' && bytes(entry.output).length === entry.width * entry.height * 4, 'Theme raster conversion changed');
   assert(hash(png) === entry.source_sha256 && hash(bytes(entry.output)) === entry.sha256, 'Stale raster receipt');
 }
-const tray = read('src/shell/tray.rs'), account = read('src/shell/tray/account.rs');
+const tray = read('crates/razer-tray/src/lib.rs'), account = read('crates/razer-tray/src/account.rs');
 assert((tray.match(/\.line_height\(relative\(1\.22\)\)/g) || []).length >= 2, 'Button line height missing');
 assert(account.includes('.line_height(relative(1.22))'), 'Account name line height missing');
 assert(tray.includes('launcher_list('), 'Source footer component missing');

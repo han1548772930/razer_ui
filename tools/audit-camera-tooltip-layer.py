@@ -77,7 +77,7 @@ for pid in (3592, 3594, 3595, 3596):
                      'css': {**file_receipt(css_path), 'rules': rules, 'effective': effective},
                      'portal': portal})
 
-shared_path = ROOT / 'src/ui/source_tooltip.rs'
+shared_path = ROOT / 'crates/razer-widgets/src/source_tooltip.rs'
 shared = shared_path.read_text(encoding='utf-8')
 priority = excerpt(shared_path, 'fn draw_priority(')
 assert 'SourceTooltipKind::WidgetTip | SourceTooltipKind::ReceiverWidgetPortal' in priority['source']
@@ -85,14 +85,14 @@ assert re.search(r'\{\s*//[^\n]*\n\s*10001\s*\}\s*else\s*\{\s*200', priority['so
 assert re.search(r'if hovered\s*\{\s*self.hovered_priority.unwrap_or\(default\)\s*\}\s*else\s*\{\s*default', priority['source'])
 assert 'hovered_priority: None' in shared
 assert 'let priority = self.draw_priority(hovered);' in shared and '.with_priority(priority)' in shared
-camera_path = ROOT / 'src/features/source_controls/camera_sections.rs'
+camera_path = ROOT / 'crates/razer-pages/src/features/source_controls/camera_sections.rs'
 camera = excerpt(camera_path, 'SourceTooltip::new(', '.trigger(')
 assert '.hovered_priority(9999)' in camera['source']
 callers = []
-for path in (ROOT / 'src').rglob('*.rs'):
+for path in (ROOT / 'crates').rglob('*.rs'):
     if '.hovered_priority(' in path.read_text(encoding='utf-8'):
         callers.append(path.relative_to(ROOT).as_posix())
-assert callers == ['src/features/source_controls/camera_sections.rs'], callers
+assert callers == ['crates/razer-pages/src/features/source_controls/camera_sections.rs'], callers
 
 deferred_path = dependency('gpui-pre', 'src/elements/deferred.rs')
 window_path = dependency('gpui-pre', 'src/window.rs')
@@ -115,14 +115,14 @@ assert '.with_priority(10 + self.layer)' in framework['dialog']['source']
 for layer in ('sheet_layer', 'dialog_layer', 'notification_layer'):
     assert layer in framework['window_layers']['source']
 assert 'deferred(' not in framework['tooltip_surface']['source']
-parent_content = excerpt(ROOT / 'src/features/source_workspace.rs',
+parent_content = excerpt(ROOT / 'crates/razer-pages/src/features/source_workspace.rs',
                          '.id("source-product-content")', '.children(self.profile_linked_games.clone())')
 assert '.scrollable_both()' in parent_content['source'] and '.child(body)' in parent_content['source']
-camera_root = excerpt(ROOT / 'src/features/source_controls.rs',
+camera_root = excerpt(ROOT / 'crates/razer-pages/src/features/source_controls.rs',
                       'if self.spec.layout.as_deref() == Some("camera") && self.page != "HELP"')
 assert '.child(self.render_camera_column(page, window, cx))' in camera_root['source']
 assert 'deferred(' not in camera_root['source']
-profile_overlay = excerpt(ROOT / 'src/features/source_workspace/profile_transfer.rs',
+profile_overlay = excerpt(ROOT / 'crates/razer-pages/src/features/source_workspace/profile_transfer.rs',
                           'impl Render for SourceProfileTransfer {')
 assert '.layer(3, true)' in profile_overlay['source']
 

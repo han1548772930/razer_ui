@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 load = lambda p: json.loads((ROOT / p).read_text(encoding='utf8'))
 digest = lambda b: hashlib.sha256(b).hexdigest()
-specs = load('src/features/wireless_argb_data.json')
+specs = load('crates/razer-pages/src/features/wireless_argb_data.json')
 audit = load('docs/re/wireless-argb-current-evidence.json')
 assets = load('assets/synapse/wireless-argb-manifest.json')
 assert audit['generator_sha256'] == digest((ROOT / 'tools/extract-wireless-argb.cjs').read_bytes())
@@ -109,8 +109,8 @@ for spec in specs:
         base = ET.fromstring((ROOT / receipt['output']).read_bytes())
         assert not any(n.tag.endswith('rect') for n in base.iter()), (pid, name)
     css = next((ROOT / f'.ref/devices/{pid}/static/css').glob('main.*.css')).read_text(encoding='utf-8')
-    theme = (ROOT / 'src/features/wireless_argb/theme.rs').read_text(encoding='utf-8')
-    native = (ROOT / 'src/features/wireless_argb.rs').read_text(encoding='utf-8')
+    theme = (ROOT / 'crates/razer-pages/src/features/wireless_argb/theme.rs').read_text(encoding='utf-8')
+    native = (ROOT / 'crates/razer-pages/src/features/wireless_argb.rs').read_text(encoding='utf-8')
     for declaration, color in (
         ('.icon-detection:hover .detect-b{fill:#44d62c}', '0x44d62c'),
         ('.icon-detection:active .detect-b{fill:#39a029}', '0x39a029'),
@@ -221,7 +221,7 @@ print('Validated the instant `Gu` hover tooltips (no show delay, `bottom-left`, 
 
 # 本地的即时提示实现：两个带 id 的包装元素用 `on_hover` 直接翻转状态（源 `isMounted`），
 # 提示用 `.tooltip-razer` 的皮肤与 100ms 淡入，位置是 `top:100% + right:0 + 5px`。
-native = (ROOT / 'src/features/wireless_argb.rs').read_text(encoding='utf8')
+native = (ROOT / 'crates/razer-pages/src/features/wireless_argb.rs').read_text(encoding='utf8')
 for marker in (
     'enum ArgbIcon {',
     'hovered_icon: Option<ArgbIcon>,',
@@ -236,7 +236,7 @@ for marker in (
     assert marker in native, marker
 # 提示本体与几何集中在共享的 `crate::ui::hover_tip`（`.tooltip-razer` 的 300px 主框、
 # 皮肤、100ms 淡入，以及 bottom-left 的 `top:100% + right:0 + 5px`）。
-shared = (ROOT / 'src/ui/hover_tip.rs').read_text(encoding='utf8')
+shared = (ROOT / 'crates/razer-widgets/src/hover_tip.rs').read_text(encoding='utf8')
 for marker in (
     'pub(crate) fn source_hover_tip(',
     '.w(surface::css(300.))',
@@ -252,7 +252,7 @@ for marker in (
 assert '.tooltip(self.spec.text("GLITTER_MESSAGE_AUTO_DETECTION"))' not in native
 assert '.tooltip(self.spec.text("GLITTER_MESSAGE_REFRESH_ICON"))' not in native
 print('Validated the native instant icon tooltips (ids, hover state, `.tooltip-razer` skin, '
-      '100ms fade, bottom-left placement) in `src/features/wireless_argb.rs`.')
+      '100ms fade, bottom-left placement) in `crates/razer-pages/src/features/wireless_argb.rs`.')
 
 # LED 数量提示：源两个产品都是 `Gu position:"bottom-right"`，内容由
 # `getTextItem(OT.vml, {ledCount: '<span style="color:#44d62c">N</span>'})` 生成。

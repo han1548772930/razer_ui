@@ -24,7 +24,7 @@ const css = Object.values(manifest.files).filter(f => /\/static\/css\/(main|8190
   return {path: file, sha256: hash(text), rules: parseCSS(text).filter(r =>
     /MacroItem_|\.check-box|\.check-item|ticktop|tickbottom/.test(r.selector))};
 });
-const nativePaths = ['src/shell/macro_page.rs', 'src/shell/macro_page/body.rs', 'src/shell/macro_page/selection.rs', 'src/shell/macro_page/row_actions.rs', 'src/shell/macro_page/row_view.rs'];
+const nativePaths = ['crates/razer-app-pages/src/macro_page.rs', 'crates/razer-app-pages/src/macro_page/body.rs', 'crates/razer-app-pages/src/macro_page/selection.rs', 'crates/razer-app-pages/src/macro_page/row_actions.rs', 'crates/razer-app-pages/src/macro_page/row_view.rs'];
 const native = nativePaths.map(file => ({path: file, sha256: hash(fs.readFileSync(path.join(root, file)))}));
 const body = fs.readFileSync(path.join(root, nativePaths[1]), 'utf8');
 const rowView = fs.readFileSync(path.join(root, nativePaths[4]), 'utf8');

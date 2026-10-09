@@ -4,7 +4,7 @@
 
 [全量源码字节清单](full-source-corpus-current-evidence.json)逐文件记录当前规范目录的 SHA-256、HTTP 收据匹配以及 asset-manifest/webpackManifest 的取得与缺失目标。此清单用于查明资源与源码的来源，不替代本页的实际加载/消费检查；跨层关系入口见 [全量逆向地图](full-source-reverse-map.md)。
 
-[主清单](../../assets/synapse/manifest.json)及各专项清单记录来源路径、源/输出 SHA 和映射；[资源加载器](../../src/resources.rs)消费生成的嵌入表。清单登记、文件存在、加载器注册与页面实际消费分别核对，数量以工具当前输出为准，不维护过期的资源统计快照。
+[主清单](../../assets/synapse/manifest.json)及各专项清单记录来源路径、源/输出 SHA 和映射；[资源加载器](../../crates/razer-assets/src/lib.rs)消费生成的嵌入表。清单登记、文件存在、加载器注册与页面实际消费分别核对，数量以工具当前输出为准，不维护过期的资源统计快照。
 
 维护入口：
 

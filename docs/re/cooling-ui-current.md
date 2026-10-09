@@ -2,7 +2,7 @@
 
 本文覆盖 3893 Hanbo、3900 PWM 控制器、3907 Laptop Cooling Pad 的 Performance。3858/3880 显示器统一见 [monitor-ui-current.md](monitor-ui-current.md)，3921 Core X V2 的独立 fan 模型见 [corex-fan-current-audit.md](corex-fan-current-audit.md)；共享工作区存在不代表这些产品全部完成。
 
-当前依据为 [accessory-system-source.json](accessory-system-source.json)、[准备收据](accessory-system-native-audit.json)与实际 [AccessorySystemProductWorkspace](../../src/features/accessory_system_products.rs)。提取工具仅解析当前产品 bundle；本次复核了相关产品源文件 hash、Rust 范围/状态/草稿处理，没有执行厂商代码或重用旧源符号。
+当前依据为 [accessory-system-source.json](accessory-system-source.json)、[准备收据](accessory-system-native-audit.json)与实际 [AccessorySystemProductWorkspace](../../crates/razer-pages/src/features/accessory_system_products.rs)。提取工具仅解析当前产品 bundle；本次复核了相关产品源文件 hash、Rust 范围/状态/草稿处理，没有执行厂商代码或重用旧源符号。
 
 | 产品 | 当前本地内容 | 尚需真实观察或 UI 完成 |
 | --- | --- | --- |

@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path'), crypto = require('crypto'), ac
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
-const products = JSON.parse(read('src/features/keyboard_products_data.json'));
+const products = JSON.parse(read('crates/razer-pages/src/features/keyboard_products_data.json'));
 const pages = JSON.parse(read('docs/re/keyboard-product-pages.json'));
 const output = [];
 function walk(n, visit) {
@@ -55,5 +55,5 @@ for (const product of products.filter(p => p.pages.includes('ACTUATION'))) {
     source:file.path, source_sha256:file.sha256, page:page.path, page_sha256:page.sha256,
     limitations:['Rapid Trigger, Snap Tap, live adjustment and source animations remain incomplete.']});
 }
-fs.writeFileSync(path.join(root,'src/features/keyboard_actuation_data.json'), JSON.stringify(output,null,2)+'\n');
+fs.writeFileSync(path.join(root,'crates/razer-pages/src/features/keyboard_actuation_data.json'), JSON.stringify(output,null,2)+'\n');
 console.log(`Audited ${output.length} current actuation pages and per-product conversion bounds.`);

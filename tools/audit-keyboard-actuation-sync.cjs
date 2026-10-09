@@ -6,8 +6,8 @@ const {parseCSS} = require('./css-source.cjs');
 const root = path.resolve(__dirname, '..'), check = process.argv.includes('--check');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const fileBytes = file => fs.readFileSync(path.join(root, file));
-const specifications = JSON.parse(read('src/features/keyboard_actuation_data.json'));
-const products = JSON.parse(read('src/features/keyboard_products_data.json'));
+const specifications = JSON.parse(read('crates/razer-pages/src/features/keyboard_actuation_data.json'));
+const products = JSON.parse(read('crates/razer-pages/src/features/keyboard_products_data.json'));
 const mounts = JSON.parse(read('docs/re/keyboard-product-pages.json'));
 function output(file, bytes) {
   bytes = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
@@ -152,11 +152,11 @@ async function main() {
   }
   output('assets/synapse/keyboard-actuation-sync.svg', commonIcon);
   output('assets/synapse/keyboard-actuation-embedded.rs', '&[\n    ("synapse/keyboard-actuation-sync.svg", include_bytes!("keyboard-actuation-sync.svg") as &[u8]),\n]\n');
-  output('src/features/keyboard_actuation_presentation_data.json', JSON.stringify(presentation, null, 2) + '\n');
+  output('crates/razer-pages/src/features/keyboard_actuation_presentation_data.json', JSON.stringify(presentation, null, 2) + '\n');
   output('docs/re/keyboard-actuation-sync-current-evidence.json', JSON.stringify({schema_version: 1,
     method: 'Static Acorn and CSS parsing; UTF-16 offsets; vendor code never evaluated',
     scope: 'Sync all / selected controls, identical make-release payload, warning generation gate and source CSS; full editor remains partial', products: evidence}, null, 2) + '\n');
-  const implementation = read('src/features/keyboard_actuation.rs');
+  const implementation = read('crates/razer-pages/src/features/keyboard_actuation.rs');
   for (const needle of ['actuation-sync-all', 'actuation-sync-selected', 'SYNC_SETTINGS_TO_SELECTED_KEYS', '"AnalogGenVersion"', 'KeyboardActuationColors::warning()', 'if synchronize { raw }', '.left(surface::css(7.))', '.top(surface::css(-5.))', '.w(surface::css(210.))', '.h(surface::css(33.))']) {
     if (!implementation.includes(needle)) throw Error('Missing implementation contract ' + needle);
   }

@@ -42,7 +42,7 @@ def main():
     args = parser.parse_args()
     base_path = ROOT / "docs/re/gamepad-product-evidence.json"
     existing = json.loads(base_path.read_text(encoding="utf-8"))
-    native = json.loads((ROOT / "src/features/gamepad_products_data.json").read_text(encoding="utf-8"))
+    native = json.loads((ROOT / "crates/razer-pages/src/features/gamepad_products_data.json").read_text(encoding="utf-8"))
     native = {p["product_id"]: p for p in native if "TRIGGERS" in p["pages"]}
     assert set(native) == set(PRODUCTS), "Re-audit the affected TRIGGERS products"
     result = []

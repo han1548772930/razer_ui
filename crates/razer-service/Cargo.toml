@@ -1,0 +1,27 @@
+[package]
+name = "razer-service"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+razer-catalog.workspace = true
+razer-ipc.workspace = true
+razer-platform.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+libloading.workspace = true
+md5.workspace = true
+razer-device.workspace = true
+razer-hid.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_Devices_HumanInterfaceDevice",
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_Devices_Properties",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Threading",
+  "Win32_System_Registry",
+  "Win32_Security",
+] }

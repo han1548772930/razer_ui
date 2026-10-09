@@ -37,7 +37,7 @@ for(const [selector,property,value] of [
  ['.DisplayWidget_tooltip__j4KNA','margin-left','285px'],['.DisplayWidget_tooltip__j4KNA','margin-top','-3px'],
  ['.CustomizeAnimation_tooltip__WEWaQ','margin-left','270px'],['.CustomizeImage_tooltip__haCIB','margin-left','270px'],
 ])if(!css.some(r=>r.selector===selector&&r.properties.some(p=>p.property===property&&p.value===value)))throw Error(`Missing CSS contract ${selector}: ${property}:${value}`);
-const local=['src/features/audio_oled_dialog.rs','src/features/audio_oled_tooltip.rs','src/features/audio_oled_media.rs'].map(file=>({path:file,sha256:hash(read(file))}));
+const local=['crates/razer-pages/src/features/audio_oled_dialog.rs','crates/razer-pages/src/features/audio_oled_tooltip.rs','crates/razer-pages/src/features/audio_oled_media.rs'].map(file=>({path:file,sha256:hash(read(file))}));
 const report={product_id:1383,method:'Static Acorn declarations and CSS only; no vendor execution. Offsets are UTF-16 code units.',manifest:{path:`${dir}/asset-manifest.json`,sha256:hash(read(`${dir}/asset-manifest.json`))},receipts,css,local,
  review:{dialog:'Retained focus capture/return, source immediate unmount, 100ms backdrop/300ms top/200ms close background. Width branch remains per editor. Native Base Dialog owns modal semantics.',tooltip:'300px main width measured for collision; p plus DisplayWidget offsets(285,-3) or Artwork offsets(270,0); defaultProps bottom-right; right then left 8px guard; no vertical flip; viewport portal layer1060; 100ms mount fade. Native Tooltip owns accessible role.'}};
 const flags=process.argv.slice(2);if(flags.some(f=>f!=='--check'))throw Error('Unknown argument');

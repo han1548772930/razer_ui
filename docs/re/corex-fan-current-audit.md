@@ -2,7 +2,7 @@
 
 Product 3921 now routes TAB_CUSTOMIZE to the accessory workspace. Its native
 fan editor uses `main.77ab7933.js` and `684.ebbca785.chunk.js`, with hashes and
-reducer-slice provenance in `src/features/corex_fan_data.json`.
+reducer-slice provenance in `crates/razer-pages/src/features/corex_fan_data.json`.
 
 The current product CONFIG supplies three presets and separate GPU/chassis
 curves (47 points in six curves). The reducer's `try` branch reads module 8193's

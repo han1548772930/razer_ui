@@ -1,0 +1,26 @@
+[package]
+name="razer-settings"
+version.workspace=true
+edition.workspace=true
+
+[dependencies]
+razer-device.workspace = true
+anyhow.workspace=true
+gpui-kit.workspace=true
+serde.workspace=true
+serde_json.workspace=true
+async-channel.workspace=true
+chrono.workspace=true
+razer-model.workspace=true
+razer-pages.workspace=true
+razer-state.workspace=true
+razer-catalog.workspace=true
+razer-i18n.workspace=true
+razer-widgets.workspace=true
+razer-platform.workspace=true
+razer-ipc.workspace=true
+razer-storage.workspace=true
+razer-discovery.workspace=true
+
+[dev-dependencies]
+gpui-kit={workspace=true,features=["test-support"]}

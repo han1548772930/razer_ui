@@ -64,8 +64,8 @@ if (!fontFaces.some(face => face.declarations.includes('font-weight:100;')
 for (const contract of ['font-family:Roboto,sans-serif', 'font-size:16px', 'color:#ccc']) {
   requireText(finalBody.declarations, contract, 'final body cascade');
 }
-const nativePaths = ['src/shell/alexa_page.rs', 'src/shell/alexa_page/sections.rs',
-  'src/shell/alexa_page/controls.rs', 'src/ui/source_tooltip.rs'];
+const nativePaths = ['crates/razer-app-pages/src/alexa_page.rs', 'crates/razer-app-pages/src/alexa_page/sections.rs',
+  'crates/razer-app-pages/src/alexa_page/controls.rs', 'crates/razer-widgets/src/source_tooltip.rs'];
 const native = nativePaths.map(p => ({path: p, sha256: hash(read(p))}));
 const local = read(nativePaths[0]), sections = read(nativePaths[1]), controls = read(nativePaths[2]), tooltip = read(nativePaths[3]);
 for (const contract of ['.font_family("Roboto")', '.text_size(css(16.))', 'window.rem_size() * (42. / 16.)', '.mt(css(19.52))']) requireText(local, contract, 'native Alexa root/home');

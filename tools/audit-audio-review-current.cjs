@@ -4,7 +4,7 @@ const fs=require('fs'),path=require('path'),acorn=require('acorn');
 const {walk,hash}=require('./webpack-source.cjs');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const apply=process.argv.includes('--apply'),check=process.argv.includes('--check');
-const specs=JSON.parse(read('src/features/audio_products_data.json'));
+const specs=JSON.parse(read('crates/razer-pages/src/features/audio_products_data.json'));
 const sources=[...JSON.parse(read('docs/re/audio-product-evidence.json')).products,...JSON.parse(read('docs/re/audio-additional-evidence.json')).products];
 const receipts=[],gateFixes=[],products=[];
 const at=(object,pointer)=>pointer.split('/').slice(1).reduce((value,key)=>value?.[key],object);
@@ -66,7 +66,7 @@ for(const spec of specs){
  console.log(`Audio ${spec.product_id}: ${pages.length} pages, ${fileReceipts.length} current source files.`);
 }
 if(apply){
- fs.writeFileSync(path.join(root,'src/features/audio_products_data.json'),JSON.stringify(specs,null,2)+'\n');
+ fs.writeFileSync(path.join(root,'crates/razer-pages/src/features/audio_products_data.json'),JSON.stringify(specs,null,2)+'\n');
  // Only the independently checked gates changed in the base generator. Existing
  // per-feature overlay data and coverage gaps are retained, not regenerated.
  const coverage=JSON.parse(read('docs/re/audio-product-native-coverage.json'));
@@ -74,7 +74,7 @@ if(apply){
  fs.writeFileSync(path.join(root,'docs/re/audio-product-native-coverage.json'),JSON.stringify(coverage,null,2)+'\n');
 }
 if(check&&gateFixes.length)throw Error(`Missing ${gateFixes.length} source brightness gates`);
-const native=['src/features/audio_products.rs','src/features/audio_products_data.json','src/features/stream_mixer.rs','src/features/control_pod_audio.rs'];
+const native=['crates/razer-pages/src/features/audio_products.rs','crates/razer-pages/src/features/audio_products_data.json','crates/razer-pages/src/features/stream_mixer.rs','crates/razer-pages/src/features/control_pod_audio.rs'];
 const result={method:'Current per-product SHA and exact full-file Acorn nodes; page subtrees and explicitly checked lighting gates; not complete UI acceptance',
  generator_sha256:hash(read('tools/audit-audio-review-current.cjs')),products,
  source_lighting_gates:receipts,native:native.map(path=>({path,sha256:hash(read(path))})),

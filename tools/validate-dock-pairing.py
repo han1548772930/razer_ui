@@ -11,7 +11,7 @@ def read(path):
 def digest(path):
     return hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
 
-specs = json.loads(read('src/features/dock_pairing_data.json'))
+specs = json.loads(read('crates/razer-pages/src/features/dock_pairing_data.json'))
 evidence = json.loads(read('docs/re/dock-pairing-current-evidence.json'))
 assert evidence['generator_sha256'] == digest('tools/extract-dock-pairing.cjs')
 assert [s['product_id'] for s in specs] == [164, 241]
@@ -47,7 +47,7 @@ for asset in assets:
         svg = ET.parse(ROOT / asset['output']).getroot()
         assert svg.tag.endswith('svg') and not any(n.tag.endswith('script') for n in svg.iter())
 common = json.loads(read('locales/en.json'))
-files = [ROOT / 'src/features/dock_pairing.rs', *sorted((ROOT / 'src/features/dock_pairing').glob('*.rs'))]
+files = [ROOT / 'crates/razer-pages/src/features/dock_pairing.rs', *sorted((ROOT / 'crates/razer-pages/src/features/dock_pairing').glob('*.rs'))]
 for file in files:
     for key in re.findall(r'\.text\("([A-Z_0-9]+)"\)', file.read_text(encoding='utf-8')):
         assert key in common or any(key in s['translations']['en'] for s in specs), (file.name, key)
@@ -72,20 +72,20 @@ for token in ['Es(e,o)', 'hyperpolling-span-hover${U}', 'onClick:()=>z(e)', '"u"
 assert ('HyperPollingWirelessMouseDock_deviceNameLink__jCiyT{'
         'cursor:pointer;text-decoration:underline}') in dock_chunk_css
 assert ('.body-widgets .widget .hyperpolling-span-hover:hover{color:#44d62c}') in dock_main_css
-dock_native = read('src/features/dock_pairing.rs')
+dock_native = read('crates/razer-pages/src/features/dock_pairing.rs')
 for token in ['pub(crate) struct DeviceLinkRequested', 'known_devices: Vec<(u32, u32)>',
               'pub(crate) fn set_known_devices', 'dock-device-link-', '.cursor_pointer()',
               '.underline()', 'rgb(0x44d62c)', '.split_once("{{deviceName}}")',
               'WorkspaceEvent::OpenDevice' if 'WorkspaceEvent::OpenDevice' in dock_native else '.emit(DeviceLinkRequested']:
     assert token in dock_native, ('dock link not implemented locally', token)
-workspace = read('src/features/workspace.rs')
+workspace = read('crates/razer-pages/src/features/workspace.rs')
 assert 'OpenDevice{product_id:u32,edition_id:u32,}' in re.sub(r'\s+', '', workspace)
-source_workspace = read('src/features/source_workspace.rs')
+source_workspace = read('crates/razer-pages/src/features/source_workspace.rs')
 for token in ['pub(crate) fn set_known_devices', 'DeviceLinkRequested', 'WorkspaceEvent::OpenDevice']:
     assert token in source_workspace, ('dock link not plumbed', token)
-product_workspace = read('src/features/product_workspace.rs')
+product_workspace = read('crates/razer-pages/src/features/product_workspace.rs')
 assert 'pub(crate) fn set_known_devices' in product_workspace
-shell = read('src/shell.rs')
+shell = read('crates/razer-shell/src/shell.rs')
 for token in ['fn sync_known_devices', 'WorkspaceEvent::OpenDevice', 'device.edition_id == *edition_id']:
     assert token in shell, ('shell dock link handling drift', token)
 print('Dock pairing: two current sources, 20 locale maps and 27 resources validated.')

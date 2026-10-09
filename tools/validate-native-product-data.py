@@ -162,7 +162,7 @@ def validate_controls(filename):
 
 
 def validate_oled_home():
-    product, = read('src/features/keyboard_oled_data.json')
+    product, = read('crates/razer-pages/src/features/keyboard_oled_data.json')
     section = product['pages'][0]['sections'][0]
     assert section['title'] == 'OLED_HOME_SCREEN_DISPLAY_TITLE'
     assert section.get('column') is None
@@ -172,7 +172,7 @@ def validate_oled_home():
     assert modes['disabled_unless'] == enabled['path']
     assert [o['value'] for o in modes['options']] == [0, 1, 4, 2, 5, 6, 3]
     assert [o['value'] for o in modes['options'] if o.get('disabled_on_ble')] == [5, 6]
-    editor = read('src/features/keyboard_oled_editor_data.json')
+    editor = read('crates/razer-pages/src/features/keyboard_oled_editor_data.json')
     assert product['profile']['oled']['homeScreenDisplay'] == editor['home_default']
     assert 'oled' in product['device_fields']
     embedded = (ROOT / 'assets/synapse/embedded.rs').read_text(encoding='utf8')
@@ -197,7 +197,7 @@ def validate_oled_home():
 
 
 def validate_help():
-    records = read('src/features/source_help_data.json')
+    records = read('crates/razer-pages/src/features/source_help_data.json')
     registry = read('docs/re/product-registration-audit.json')['products']
     generated = {p['product_id']: p for p in records}
     assert len(generated) == len(records)
@@ -225,8 +225,8 @@ def validate_help():
 
 
 def validate_corex():
-    fan = read('src/features/corex_fan_data.json')
-    product = next(p for p in read('src/features/accessory_system_products_data.json') if p['product_id'] == 3921)
+    fan = read('crates/razer-pages/src/features/corex_fan_data.json')
+    product = next(p for p in read('crates/razer-pages/src/features/accessory_system_products_data.json') if p['product_id'] == 3921)
     assert product['pages'] == ['TAB_CUSTOMIZE']
     assert product['initial']['fanCurve'] == fan['initial']
     assert product['presets'] == fan['curves']
@@ -255,9 +255,9 @@ def validate_corex():
 
 def main():
     result = {'schema_version': 1, 'verification': 'Static data validation; no application or tests executed.',
-              'camera': validate_controls('src/features/source_controls_data.json'),
-              'accessory': validate_controls('src/features/accessory_controls_data.json'),
-              'oled': validate_controls('src/features/keyboard_oled_data.json'),
+              'camera': validate_controls('crates/razer-pages/src/features/source_controls_data.json'),
+              'accessory': validate_controls('crates/razer-pages/src/features/accessory_controls_data.json'),
+              'oled': validate_controls('crates/razer-pages/src/features/keyboard_oled_data.json'),
               'oled_home': validate_oled_home(),
               'corex_fan': validate_corex(),
               'help': validate_help(), 'inputs_sha256': inputs}

@@ -12,7 +12,7 @@
 
 | 项 | 源码 | 本地 |
 | --- | --- | --- |
-| 初建窗口 | `app_name:"systray-left"`, `width:300`, `minimum_width:300`, `height:200`, `minimum_height:200`, `policy:6`, `browser_visible:0`, `always_on_top:!0`, `skipTaskbar:!0`, `useContentSize:!0`, `hasShadow:!1`, `resizable:!1` | `src/shell/tray/windows.rs`：360×200，最小 300×200，无边框透明弹窗、不可缩放 |
+| 初建窗口 | `app_name:"systray-left"`, `width:300`, `minimum_width:300`, `height:200`, `minimum_height:200`, `policy:6`, `browser_visible:0`, `always_on_top:!0`, `skipTaskbar:!0`, `useContentSize:!0`, `hasShadow:!1`, `resizable:!1` | `crates/razer-tray/src/windows.rs`：360×200，最小 300×200，无边框透明弹窗、不可缩放 |
 | 应用自调整 | `let l=700; let u=360, p=l;` → 有 `.header-2` 时 `u=360`、`p=header-2.clientHeight + .app.list-unstyled.clientHeight`，再 `resizeTo(u,p)` | 面板宽 360；高度=标题行 60 + 应用行 60（本地单应用），被最小高 200 夹住 ⇒ 实际 360×200 |
 | 位置 | `h = x - u/2`、`f = y - p`，并按工作区与 `p = min(S/dpiScaleY*0.7, l)` 收缩 | `x = trayX - width/2`、`y = trayY - height`，按 `rcWork` 夹取 |
 | 内容区 | `#systrayBody.style.maxHeight = p - 153 + "px"` | 未单独设高度上限（本地内容仅两行），记录在案 |

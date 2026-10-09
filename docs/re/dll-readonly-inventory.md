@@ -14,7 +14,7 @@
 
 ## 请求、返回与消费者
 
-请求定义在 [runtime.rs](../../src/backend/runtime.rs)，分派在 [runtime_native.rs](../../src/backend/runtime_native.rs)。表中保留现有写操作，避免把整个 `ServiceRequest` 误称为只读接口；该枚举本身没有强制只读门禁。
+请求及客户端定义在 [razer-ipc](../../crates/razer-ipc/src/lib.rs)，worker 分发在 [runtime.rs](../../crates/razer-service/src/runtime.rs) 和 [runtime_native.rs](../../crates/razer-service/src/runtime_native.rs)。表中保留现有写操作，避免把整个 `ServiceRequest` 误称为只读接口；该枚举本身没有强制只读门禁。
 
 | 请求 | 实际边界及返回 | 当前消费者与限制 |
 | --- | --- | --- |
@@ -40,9 +40,9 @@
 
 ## 发现、字段读取与观察生命周期
 
-[runtime_page.rs](../../src/shell/runtime_page.rs) 独立请求 USB 与 HID，再执行发现。一个枚举失败不丢弃另一个真实结果。接口身份先发布到 UI；UI 确认该轮连接/配置作用域后才读取设备字段，确认等待上限 30 秒。显式服务刷新随后独立读取 version/audio。启动发现及 `DeviceChangeMonitor` 热插拔刷新已接线，繁忙期间保留后续刷新请求。
+[runtime_page.rs](../../crates/razer-settings/src/runtime_page.rs) 独立请求 USB 与 HID，再执行发现。一个枚举失败不丢弃另一个真实结果。接口身份先发布到 UI；UI 确认该轮连接/配置作用域后才读取设备字段，确认等待上限 30 秒。显式服务刷新随后独立读取 version/audio。启动发现及 `DeviceChangeMonitor` 热插拔刷新已接线，繁忙期间保留后续刷新请求。
 
-字段实现位于 [device_reads.rs](../../src/backend/device_reads.rs) 和 [runtime_device_reads.rs](../../src/backend/runtime_device_reads.rs)。[生成能力](../../assets/data/device-read-capabilities.json)来自 [当前读取证据](mouse-read-capabilities-current-evidence.json)，仅覆盖实际追踪到的产品/命令。Firmware 返回版本字符串，Battery 返回百分比，Charging 保留实际状态，Polling 返回 Hz，Dpi 返回 X/Y。各字段独立保存观察及错误；充电状态不能推算 100% 电量，能力目录或本地配置不能变成读数。
+字段实现位于 [device_reads.rs](../../crates/razer-device/src/device_reads.rs) 和 [runtime_device_reads.rs](../../crates/razer-service/src/runtime_device_reads.rs)。[生成能力](../../assets/data/device-read-capabilities.json)来自 [当前读取证据](mouse-read-capabilities-current-evidence.json)，仅覆盖实际追踪到的产品/命令。Firmware 返回版本字符串，Battery 返回百分比，Charging 保留实际状态，Polling 返回 Hz，Dpi 返回 X/Y。各字段独立保存观察及错误；充电状态不能推算 100% 电量，能力目录或本地配置不能变成读数。
 
 `DeviceReadTarget` 包含逻辑 product_id、physical_product_id、可选 peer_product_id、真实 container/path。发送前、打开后及返回后校验 VID/PID/interface/report length/container；relay 查询前后重新确认真实在线 peer。无源能力、路径不唯一、身份改变或响应不匹配时失败，不执行原 middleware 整段初始化、模式 setter 或映射任务。
 
@@ -84,22 +84,22 @@
 
 PE 收据中的 app-4.0.827 候选 mapping SHA-256 为 `6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a`，simple 为 `f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b`。候选目录名与文件检查不证明当前安装/运行宿主已升级，也不替代官方包字节比较；源包身份与实际安装状态分别见 host 审计。
 
-ServiceClient 启动本应用隐藏的 `--service-worker`，用 CREATE_NO_WINDOW 和 Job Object KILL_ON_JOB_CLOSE 约束自有子进程；Job 分配失败即失败并清理，不绕过隔离。请求为 JSON，响应前缀 `RAZER_UI_SERVICE `，最大帧 4 MiB，必须匹配序号。vendor 日志不能充当响应；无效/不完整帧、断开、序号错误、fatal、超时不能返回假成功。独立线程写管道，使 worker 在读取请求前阻塞也受请求超时约束。
+ServiceClient 优先启动 GUI 同目录的 `razer_agent`；未提供 agent 的旧开发入口保留本应用的 `--service-worker`，在 GPUI 初始化前分发。客户端及进程清理归 `razer-ipc`，后台执行归 `razer-service`。CREATE_NO_WINDOW 和 Job Object KILL_ON_JOB_CLOSE 约束自有子进程；Job 分配失败即失败并清理，不绕过隔离。请求为 JSON，响应前缀 `RAZER_UI_SERVICE `，最大帧 4 MiB，必须匹配序号。vendor 日志不能充当响应；无效/不完整帧、断开、序号错误、fatal、超时不能返回假成功。独立线程写管道，使 worker 在读取请求前阻塞也受请求超时约束。
 
 普通请求 15 秒，StartMacroRecording20 秒，DeviceRead35 秒（含 relay 前后观察），Shutdown25 秒；native callback 单次 4 秒。callback 超时使 worker poisoned，迟到回调不能满足下一请求。DLL 用 ManuallyDrop 保留至进程退出；无法确认 native 已消费的 C 字符串在超时后也保留至退出，避免悬空内存。关闭只终止自有子进程，不终止外部 Razer 服务。
 
 查询仍可能加载 DLL、执行 DllMain、Initialize 和管理会话；查询意图不是无副作用运行证明。阻塞请求必须在后台处理；开发阶段未执行这些加载和生命周期路径。
 
-## 原生 HID 资产与 C ABI
+## 原生 HID 静态依据与跨平台查询
 
-传输使用当前官方 host 的 node-rz-hid 0.0.31 原生文件及其 plain C 导出；SetupAPI 仅提供当前接口身份/能力。
+当前查询已改用 [跨平台 HID 后端](cross-platform-hid-current.md)，协议归属独立 `razer-device` 包。以下 node-rz-hid 0.0.31 的资产、导出与机器码保留作静态逆向依据，当前查询不再加载这个文件；Windows SetupAPI 仍补充真实接口身份/能力。
 
 - 原始条目：`win-unpacked/resources/app.asar.unpacked/node_modules/node-rz-hid/build/Release/HID.node`。
 - [打包资产](../../assets/native/razer-hid-0.0.31.node)：405,704 字节，SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`。
 - 内层 archive SHA-256 `9d4765d46c5c5e1ff9c11d16452bd12a9eb43f14cd70be893fa843df3882cd90`；ASAR SHA-256 `b2ce8c54dc5c991feef3a24e1880ced57ba88a0f40a687a5b082187ac0a1cca6`。
 - [native 证据](receiver-native-hid-current-evidence.json)含 23 个 PE 导出、5 份反汇编收据；准备工具验证签名文件与 ASAR 未签名大小的差异为 PE certificate tail。
 
-| 导出 / RVA | 当前实现证据 | Rust extern C 边界 |
+| 导出 / RVA | 原件机器码证据 | 原 C ABI |
 | --- | --- | --- |
 | hid_open_path / 0x17250 | RCX 为 NUL path，RAX 为 opaque handle/null | `fn(*const c_char) -> *mut c_void` |
 | hid_send_feature_report / 0x17a10 | RCX handle、RDX bytes、R8 length；HidD_SetFeature | `fn(*mut c_void, *const u8, usize) -> c_int` |
@@ -108,15 +108,15 @@ ServiceClient 启动本应用隐藏的 `--service-worker`，用 CREATE_NO_WINDOW
 
 get-feature 返回实际完成字节数并包含 ReportID，buffer 长度不是已读取长度。Rust 不访问 native handle 内部字段。node.exe 为 delay import，这些 plain C 路径不调用 N-API 注册；加载仍执行 DLL 入口，不能据此在开发时执行它。
 
-[runtime_hid_transport.rs](../../src/backend/runtime_hid_transport.rs)只管理资产落地、字节校验、库/opaque handle 生命周期和 feature 调用，不含 PID 或查询命令。路径为 `%LOCALAPPDATA%/RazerUi/native/<SHA-256>/HID.node`，加载限制为 DLL 目录和系统目录；已有不同字节文件明确失败。
+[runtime_hid_transport.rs](../../crates/razer-service/src/runtime_hid_transport.rs)现在只将 Windows 已观察身份适配至跨平台后端，并核对实际 Feature 长度；没有资产落地或 DLL 加载。打开、descriptor 和 Feature 生命周期由 `razer-hid` 管理，报文及重试由 `razer-device` 管理。其他官方服务/DLL 查询仍保留独立适配，未被这一迁移替代。
 
 USB 枚举另见 [usb-native 证据](usb-native-current-evidence.json)：runtime_usb.rs 使用 USB_DEVICE GUID `a5dcbf10-6530-11d2-901f-00c04fb951ed`，对应当前 detection.node 的静态枚举范围，不加载该 Node/NAN 模块。
 
 ## 接收器 V2 查询协议
 
-[receiver_capabilities.rs](../../src/backend/receiver_capabilities.rs)读取 [生成能力](../../assets/data/receiver-query-capabilities.json)。能力需追踪实际 DeviceInfo、主 feature 配置、工厂分支、继承、传输参数和查询方法；兼容目录成员或共享类存在不足以证明支持。覆盖范围见 [capabilities 证据](receiver-capabilities-current-evidence.json)，未审计/不适用产品保持明确边界。
+[receiver_capabilities.rs](../../crates/razer-device/src/receiver_capabilities.rs)读取 [生成能力](../../assets/data/receiver-query-capabilities.json)。能力需追踪实际 DeviceInfo、主 feature 配置、工厂分支、继承、传输参数和查询方法；兼容目录成员或共享类存在不足以证明支持。覆盖范围见 [capabilities 证据](receiver-capabilities-current-evidence.json)，未审计/不适用产品保持明确边界。
 
-[receiver_protocol.rs](../../src/backend/receiver_protocol.rs)管理 rzDevice25 V2 envelope；[runtime_receiver.rs](../../src/backend/runtime_receiver.rs)按真实接口选择能力。179 链为 `34340/he → getMultipleDeviceWirelessConnectionStatusV2 → 7755/dc → 84816/VO(J) → 30580/IZ(ue)`；工厂 96204/j 的 LINKER 分支选择继承 Linker 的 rzDevice25LinkerUma。源码 hash/UTF-16 位置保存在 [discovery 证据](receiver-discovery-current-evidence.json)。
+[receiver_protocol.rs](../../crates/razer-device/src/receiver_protocol.rs)管理 rzDevice25 V2 envelope；[runtime_receiver.rs](../../crates/razer-service/src/runtime_receiver.rs)按真实接口选择能力。179 链为 `34340/he → getMultipleDeviceWirelessConnectionStatusV2 → 7755/dc → 84816/VO(J) → 30580/IZ(ue)`；工厂 96204/j 的 LINKER 分支选择继承 Linker 的 rzDevice25LinkerUma。源码 hash/UTF-16 位置保存在 [discovery 证据](receiver-discovery-current-evidence.json)。
 
 只发送 `[80,0,191]` 读取命令，90 字节主体加 1 字节 ReportID；第 88 字节为第 2–87 字节 XOR。179 Linker 事务值为 `224 | transactionId++`，达到 31 前回零；其他绑定使用各自 namespace。0x46/0x41 的 source 特殊事务规则不是本 V2 0xBF 规则。
 

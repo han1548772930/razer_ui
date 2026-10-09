@@ -138,6 +138,6 @@ function output(file,value){
   if(process.argv.includes('--check')){if(read(file)!==text)throw Error('Stale '+file);}
   else fs.writeFileSync(path.join(root,file),text);
 }
-output('src/features/mouse_dpi_rows_data.json',capabilities);
+output('crates/razer-pages/src/features/mouse_dpi_rows_data.json',capabilities);
 output('docs/re/mouse-dpi-rows-capability-evidence.json',{method:'Current source AST/CSS only; no reference execution',products:evidence});
 console.log(`DPI rows: ${capabilities.length} audited capabilities; source schemas, description, inset and drag caption registered.`);

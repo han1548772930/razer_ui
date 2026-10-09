@@ -37,7 +37,7 @@ const css=Object.values(manifest.files).filter(file=>/^\.\/static\/css\/(main|81
   const name=source.directory+'/'+file.slice(2),value=fs.readFileSync(path.join(root,name),'utf8');
   return {file:name,sha256:hash(value),rules:parseCSS(value).filter(rule=>/MacroContent_|randomized|\.navbar|\.profile-bar|\.module-nav|pairing|#line|active_name/.test(rule.selector))};
 });
-const nativePaths=['Cargo.toml','Cargo.lock','src/features/macro_library.rs','src/shell/macro_page.rs',...fs.readdirSync(path.join(root,'src/shell/macro_page'),{recursive:true}).filter(file=>file.endsWith('.rs')).map(file=>'src/shell/macro_page/'+file.replaceAll('\\','/'))].sort();
+const nativePaths=['Cargo.toml','Cargo.lock','crates/razer-pages/src/features/macro_library.rs','crates/razer-app-pages/src/macro_page.rs',...fs.readdirSync(path.join(root,'crates/razer-shell/src/shell/macro_page'),{recursive:true}).filter(file=>file.endsWith('.rs')).map(file=>'crates/razer-app-pages/src/macro_page/'+file.replaceAll('\\','/'))].sort();
 const native={verification:'Static reviewed file fingerprints only; not rendered/runtime equivalence',files:Object.fromEntries(nativePaths.map(file=>[file,hash(fs.readFileSync(path.join(root,file)))]))};
 const result={route:'synapse/macro',method:'Current manifest + Acorn scoped bindings/export getters + static CSS; receipts do not certify implemented UI',bindings,modules,css,native};
 const target=path.join(root,'docs/re/macro-full-page-source.json');

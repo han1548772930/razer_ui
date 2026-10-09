@@ -25,7 +25,7 @@ def emit(path, data):
         path.write_bytes(data)
 
 digest = lambda data: hashlib.sha256(data).hexdigest()
-specs = json.loads((ROOT / 'src/features/audio_demo_data.json').read_text(encoding='utf-8'))
+specs = json.loads((ROOT / 'crates/razer-pages/src/features/audio_demo_data.json').read_text(encoding='utf-8'))
 source_hashes = set()
 for spec in specs:
     poster = spec['poster']

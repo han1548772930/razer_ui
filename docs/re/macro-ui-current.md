@@ -78,7 +78,7 @@ Key Binds 使用当前 `ProductWorkspace` 设备/配置实体与观察订阅。�
 
 ## 维护证据与回归入口
 
-`src/shell/macro_page/tests.rs` 使用真实 `TestWindowExt::click/press` 控件路径覆盖教程 New/Next/Done/Skip、配置浮层、Add/Undo/Redo/Save、profile 禁用、未保存 Save/Discard/Escape。录制生命周期用 render-only 状态夹具，不启动 worker。根/列表/状态/行/浮层使用稳定 test-support 标识，按钮沿 Kit instrumentation；这些测试只供全目标编译，尚未执行。
+`crates/razer-app-pages/src/macro_page/tests.rs` 使用真实 `TestWindowExt::click/press` 控件路径覆盖教程 New/Next/Done/Skip、配置浮层、Add/Undo/Redo/Save、profile 禁用、未保存 Save/Discard/Escape。录制生命周期用 render-only 状态夹具，不启动 worker。根/列表/状态/行/浮层使用稳定 test-support 标识，按钮沿 Kit instrumentation；这些测试只供全目标编译，尚未执行。
 
 机器证据保留原始来源、SHA、范围、CSS 和资源事实；收据中的 native 文件指纹只代表取证时文件，不能通过刷哈希宣称整个页面重新验收。当前契约的变化才触发相应静态审计和入口复查。
 

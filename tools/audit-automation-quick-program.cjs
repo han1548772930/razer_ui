@@ -54,7 +54,7 @@ const css = parseCSS(cssText).filter(rule => rule.selector.includes('quick-macro
 const asset = JSON.parse(read('assets/synapse/automation-manifest.json'))
   .find(asset => asset.output === 'assets/synapse/automation-icon_folder.svg');
 fact(asset && read(asset.source) === read(asset.output) && hash(read(asset.source)) === asset.source_sha256, 'Folder asset differs from current source');
-const nativePath = 'src/features/automation/quick_macro.rs', native = read(nativePath), compact = native.replace(/\s+/g, '');
+const nativePath = 'crates/razer-pages/src/features/automation/quick_macro.rs', native = read(nativePath), compact = native.replace(/\s+/g, '');
 for (const fragment of ['program_path: String', 'website: Entity<InputState>', 'multiple: false', 'directories: false',
   'extension.eq_ignore_ascii_case("exe")', 'Ok(Ok(None)) => {}', 'this.picker_generation == generation',
   'self.picker_generation = self.picker_generation.wrapping_add(1)', 'self.program_path.clear()',

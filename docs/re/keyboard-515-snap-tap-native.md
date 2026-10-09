@@ -11,7 +11,7 @@
 
 ## 本地状态与界面
 
-实现位于 `src/features/keyboard_snap_tap.rs`，由 KeyboardProductWorkspace 持有状态，放在 Gaming Mode 下方。框架 Base Button、SynapseSwitch、Dialog、Tooltip/Positioner 和 Animation 提供行为；应用提供当前源码尺寸与颜色。
+实现位于 `crates/razer-pages/src/features/keyboard_snap_tap.rs`，由 KeyboardProductWorkspace 持有状态，放在 Gaming Mode 下方。框架 Base Button、SynapseSwitch、Dialog、Tooltip/Positioner 和 Animation 提供行为；应用提供当前源码尺寸与颜色。
 
 | 操作 | 本地行为 |
 | --- | --- |

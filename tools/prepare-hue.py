@@ -9,7 +9,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 digest = lambda data: hashlib.sha256(data).hexdigest()
-spec = json.loads((ROOT / 'src/features/hue_data.json').read_text(encoding='utf-8'))
+spec = json.loads((ROOT / 'crates/razer-pages/src/features/hue_data.json').read_text(encoding='utf-8'))
 evidence = json.loads((ROOT / 'docs/re/hue-current-evidence.json').read_text(encoding='utf-8'))
 records = []
 for asset in spec['assets']:

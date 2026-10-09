@@ -1,0 +1,12 @@
+[package]
+name = "razer-agent"
+version.workspace = true
+edition.workspace = true
+autobins = false
+
+[[bin]]
+name = "razer_agent"
+path = "src/main.rs"
+
+[dependencies]
+razer-service.workspace = true

@@ -23,7 +23,7 @@ def verify(receipt):
     assert sha(excerpt.encode()) == receipt['sha256'], receipt['path']
 
 
-data = read('src/features/source_controls_data.json')
+data = read('crates/razer-pages/src/features/source_controls_data.json')
 evidence = read('docs/re/camera-presentation-current-evidence.json')
 assert evidence['scanner_sha256'] == sha((ROOT / 'tools/camera-presentation.cjs').read_bytes())
 totals = Counter()

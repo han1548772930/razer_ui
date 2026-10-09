@@ -681,7 +681,7 @@
     }
   ],
   "implementation": {
-    "path": "src/shell/tray/widgets.rs",
+    "path": "crates/razer-tray/src/widgets.rs",
     "source_contract": [
       "40px category SVG from current u/M/f; bare SVG has no .icon trailing margin",
       "only info margin-left contributes the 10px icon-to-text gap",

@@ -22,7 +22,7 @@ registry = {
     int(pid): json.loads(f"[{editions}]")
     for pid, editions in re.findall(
         r"RegisteredProduct \{ id: (\d+),[^\n]*?edition_ids: &\[([^]]*)\]",
-        read("src/product/registry_data.rs"),
+        read("crates/razer-catalog/src/registry_data.rs"),
     )
 }
 assert set(registry) == {row["product_id"] for row in products}

@@ -114,7 +114,7 @@ for (const [part, property, value] of [
   ['up_hover','background-color','#ffffff1a'], ['up_active','background-color','#0000001a'],
 ]) if (resolved[part][property]?.value !== value) throw Error(`Changed cascade: ${part} ${property}`);
 
-const nativePath = 'src/ui/stepper.rs';
+const nativePath = 'crates/razer-widgets/src/stepper.rs';
 const assets = [['up','dcb04520'],['down','349f755c']].map(([direction,fingerprint]) => {
   const original = `stepper_${direction}.${fingerprint}.svg`;
   const sourcePath = `.ref/devices/182/static/media/${original}`;

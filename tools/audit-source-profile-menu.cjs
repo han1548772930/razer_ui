@@ -364,7 +364,7 @@ if (require.main === module) {
   if (process.argv.includes('--check')) {
     if (fs.readFileSync(target, 'utf8') !== output) throw Error('Stale source profile menu evidence');
   } else fs.writeFileSync(target, output);
-  const dataTarget = path.join(root, 'src/features/source_profile_menu_data.json');
+  const dataTarget = path.join(root, 'crates/razer-pages/src/features/source_profile_menu_data.json');
   const data = JSON.stringify({schema_version:1,products,uncovered},null,2)+'\n';
   if (process.argv.includes('--check')) {
     if (fs.readFileSync(dataTarget,'utf8') !== data) throw Error('Stale source profile menu data');

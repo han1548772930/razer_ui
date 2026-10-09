@@ -106,7 +106,7 @@ assert(byName('x').includes('className:"apps-".concat(L.length," apps list-unsty
 assert(!byName('x').includes('L.length>0?'), 'Launcher visibility now conditional');
 assert((byName('be').match(/className:"divider",children:"\|"/g) || []).length === 3, 'About dividers changed');
 assert(byName('be').includes('style:{textTransform:"uppercase"}'), 'Connect With Us transform changed');
-const nativePath = 'src/shell/settings_window.rs';
+const nativePath = 'crates/razer-settings/src/settings_window.rs';
 const native = read(nativePath);
 for (const fact of [
   '.id("host-settings-installed-title")', '.font_family("RazerF5")',

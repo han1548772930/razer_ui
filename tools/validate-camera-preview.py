@@ -24,7 +24,7 @@ def verify(row):
 
 evidence = read('docs/re/camera-preview-current-evidence.json')
 assert evidence['scanner_sha256'] == sha((ROOT / 'tools/camera-preview.cjs').read_bytes())
-data = read('src/features/source_controls_data.json')
+data = read('crates/razer-pages/src/features/source_controls_data.json')
 for product in evidence['products']:
     pid = product['product_id']
     descriptor = next(row for row in data if row['product_id'] == pid)
@@ -62,7 +62,7 @@ for row in evidence['assets']:
     assert len(row['sources']) == 3
     for source in row['sources']:
         verify(source)
-native = (ROOT / 'src/features/source_controls/camera_preview.rs').read_text(encoding='utf-8')
+native = (ROOT / 'crates/razer-pages/src/features/source_controls/camera_preview.rs').read_text(encoding='utf-8')
 for token in ('enabled: None', 'SelectState::new(Vec::new()', 'SourceControlsHelpRequested',
               'SourceControlsPreviewRefreshRequested', 'https://www.razer.com/software/camo',
               'this.set_camera_preview_enabled', 'camera-preview-unable.svg'):

@@ -40,7 +40,7 @@ function stringExports(source) {
   return modules;
 }
 const pages = JSON.parse(read('docs/re/keyboard-product-pages.json')).products;
-const products = JSON.parse(read('src/features/keyboard_products_data.json'));
+const products = JSON.parse(read('crates/razer-pages/src/features/keyboard_products_data.json'));
 const records = [];
 const assets = new Map();
 const symbols = {title:'CBp', introduction:'Q_2', description:'e30', start:'KBw', note:'SWf',
@@ -108,7 +108,7 @@ for (const pid of [740, 746]) {
     service_contract:['initCalibration','calibrateBottom','verifyBottom','calibrateTop','verifyTop','stopCalibration'],
     idle_error_timeout_ms:15000});
 }
-const output = 'src/features/keyboard_calibration_data.json';
+const output = 'crates/razer-pages/src/features/keyboard_calibration_data.json';
 const content = JSON.stringify(records, null, 2) + '\n';
 function emit(output, content) {
   if (check) {

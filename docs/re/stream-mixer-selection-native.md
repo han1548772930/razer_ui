@@ -22,7 +22,7 @@
 - 列表、主开关、当前页面和弹窗状态均在选择事件到达时重查；断开设备、旧菜单确认和禁用状态不能写入草稿。列表仍可在总线静音时选择，禁用由主开关决定。
 - 当前没有列表观察时显示“尚未读取播放设备”，保留本地选择；收到已知列表后才判定设备缺失并展示原警告图标和文案。主开关关闭也不开放警告悬停提示。
 
-实现位于 `src/features/stream_mixer.rs`，由 `AudioProductWorkspace` 持有状态、订阅和本地草稿；`ProductWorkspace → SourceProductWorkspace → AudioProductWorkspace` 提供观察转发入口。只对 3334/3337 创建这些状态和分支。
+实现位于 `crates/razer-pages/src/features/stream_mixer.rs`，由 `AudioProductWorkspace` 持有状态、订阅和本地草稿；`ProductWorkspace → SourceProductWorkspace → AudioProductWorkspace` 提供观察转发入口。只对 3334/3337 创建这些状态和分支。
 
 ## 本地草稿和真实状态
 

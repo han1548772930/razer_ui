@@ -47,7 +47,7 @@ for (const file of cssPaths) {
 }
 const tile = css.find(rule => rule.selector === '.game-tile');
 if (!tile?.declarations.includes('width:290px') || !tile.declarations.includes('height:220px')) throw Error('Game tile geometry changed');
-const shell = read('src/shell.rs'), local = read('src/shell/profiles_page.rs');
+const shell = read('crates/razer-shell/src/shell.rs'), local = read('crates/razer-app-pages/src/profiles_page.rs');
 const problems = [];
 for (const text of ['const ALL: [Self; 2]', 'Self::Games => "GAMES_HEADER"', 'Self::Devices => "DEVICE"',
   'view: ProfilesView::Games', 'history: vec![ProfilesView::Games]', '290.', '220.', '150.',

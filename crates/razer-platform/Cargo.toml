@@ -1,0 +1,18 @@
+[package]
+name = "razer-platform"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-channel.workspace = true
+razer-catalog.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_Devices_Properties",
+  "Win32_System_Registry",
+  "Win32_System_SystemInformation",
+] }

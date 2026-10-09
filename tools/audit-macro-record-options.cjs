@@ -39,7 +39,7 @@ const css=Object.values(mf.files).filter(f=>/^\.\/static\/css\/(main|8190)\..*\.
 });
 const result={generator_sha256:hash(fs.readFileSync(__filename)),method:'Acorn module scopes, whitelisted constant hex parsing and manifest CSS only',contracts,css,
   rules:{type_change:'Only current type remains enabled after any event exists; metadata is saved immediately.',phased:'Unobserved global.macro feature keeps the third radio absent.',delay:'Sequence and Phased hide delay/mouse movement groups and reset them to zero.',shortcut:'Browser key-code order; ignore F12 and left GUI; modifiers commit after release, nonmodifiers commit on keyup; no native global registration implied.'}};
-for(const [file,object]of [['src/shell/macro_page/record_options_data.json',data],['docs/re/macro-record-options-current-evidence.json',result]]){
+for(const [file,object]of [['crates/razer-app-pages/src/macro_page/record_options_data.json',data],['docs/re/macro-record-options-current-evidence.json',result]]){
   const text=JSON.stringify(object,null,2)+'\n',target=path.join(root,file);
   if(process.argv.includes('--check')){if(fs.readFileSync(target,'utf8')!==text)throw Error('Stale '+file)}else fs.writeFileSync(target,text);
 }

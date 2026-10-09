@@ -1,6 +1,6 @@
 # 托盘当前界面、会话与关闭契约
 
-来源为当前 `.ref/host-4.0.827/` 与 systrayv2。公共呈现、翻译和语义命令在 `src/shell/tray.rs`，Windows 注册/原生菜单/窗口位置在 `tray/windows.rs`，账户分支在 `tray/account.rs`。这一区分不表示 macOS/Linux 注册已经完成；官方 host 本身在 macOS 跳过 LeftSystray。
+来源为当前 `.ref/host-4.0.827/` 与 systrayv2。公共呈现、翻译和语义命令在 `crates/razer-tray/src/lib.rs`，Windows 注册/原生菜单/窗口位置在 `tray/windows.rs`，账户分支在 `tray/account.rs`。这一区分不表示 macOS/Linux 注册已经完成；官方 host 本身在 macOS 跳过 LeftSystray。
 
 ## 关闭、图标与点击
 

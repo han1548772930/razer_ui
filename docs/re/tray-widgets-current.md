@@ -1,7 +1,7 @@
 # Current systray populated widgets
 
 The current systray chunk 492 renders populated Synapse widgets from
-`synapse.devices`. `src/shell/tray/widgets.rs` consumes parent observations.
+`synapse.devices`. `crates/razer-tray/src/widgets.rs` consumes parent observations.
 It does not create fixture devices or report simulated device reads.
 
 ## Important correction: effective DOM and selector matching

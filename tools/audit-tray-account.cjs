@@ -28,8 +28,8 @@ for (const fact of ['transition:color .1s ease-in-out,opacity .1s linear',
   'pointer-events:none;position:absolute;transition:opacity .1s linear;width:300px',
   'border:1px solid #5d5d5d', 'padding:7px 8px',
   '.tooltip-razer.bottom-left>.main', 'right:0']) assert(css.includes(fact), 'Missing source CSS: ' + fact);
-const native = read('src/shell/tray/account.rs');
-const tray = read('src/shell/tray.rs');
+const native = read('crates/razer-tray/src/account.rs');
+const tray = read('crates/razer-tray/src/lib.rs');
 for (const fact of ['self.settings_tip_task = None', 'self.settings_tip_mounted = true',
   'self.settings_tip_visible = false', 'Duration::from_millis(100)',
   'self.settings_tip_mounted', '.with_priority(1060)', 'TrayColors::tooltip_border()',
@@ -46,7 +46,7 @@ assert(Object.keys(state.state_contract.initial_user_item).length === 0,
   'Source initial account must remain separate from local Guest presentation');
 assert(node('he').includes('minimum_height:768,minimum_width:1e3'), 'Tray settings minimum override changed');
 assert(tray.includes('command == "settings-quick-panel"'), 'Settings gear option lost');
-const settings = read('src/shell/settings_window.rs');
+const settings = read('crates/razer-settings/src/settings_window.rs');
 assert(/if quick_panel\s*\{\s*size\(px\(1000\.\), px\(768\.\)\)\s*\}\s*else\s*\{\s*size\(px\(600\.\), px\(500\.\)\)/.test(settings),
   'Settings default/gear minimum size branches changed');
 console.log('Tray account: 12 current AST receipts, tooltip/empty-state CSS, native timer and command wiring checked.');

@@ -151,8 +151,8 @@ const zoomRules = parseCSS(css).filter(rule => /zoom-level-slider|animation-crop
 if (!zoomRules.some(rule => rule.selector === '.zoom-level-slider'
     && rule.declarations === 'margin:4px 10px 0;width:150px'))
   throw Error('Crop zoom slider geometry changed');
-const native = read('src/features/source_controls/oled_presets.rs').toString('utf8');
-const geometry = read('src/features/source_controls/oled_crop.rs').toString('utf8');
+const native = read('crates/razer-pages/src/features/source_controls/oled_presets.rs').toString('utf8');
+const geometry = read('crates/razer-pages/src/features/source_controls/oled_crop.rs').toString('utf8');
 for (const token of ['zoom_slider: Entity<SliderState>', 'zoom_level: u8',
   'crop_slider_delta(this.zoom_level, next)', 'this.canvas.zoom_by(delta)',
   'this.zoom_level = 1;', 'slider.set_value(1., window, cx)',

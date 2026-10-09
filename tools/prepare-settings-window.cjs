@@ -136,7 +136,7 @@ for (const [selector, property, value] of [
   ['.social-container .tooltip','bottom','37px'],['.social-container .tooltip','padding','8px 10px'],
   ['[tooltip]:before','line-height','16px'],['[tooltip]:before','top','calc(100% + 5px)'],
 ]) requireFact(hasDeclaration(selector, property, value), `Settings presentation changed: ${selector} ${property}`);
-emit('src/shell/settings_window_data.json',{nav,translations,languages,links,version,socialLinks,toolbarKeys});
+emit('crates/razer-settings/src/settings_window_data.json',{nav,translations,languages,links,version,socialLinks,toolbarKeys});
 emit('docs/re/settings-window-current-evidence.json',{
   schema_version:1,method:'Acorn and maintained CSS receipt parser only; reference JavaScript is never loaded or evaluated.',
   manifest:{path:manifestPath,sha256:hash(read(manifestPath))},

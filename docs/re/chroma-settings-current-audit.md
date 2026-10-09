@@ -44,7 +44,7 @@ Migration 当前 `main.512f18b6.js` 的 `ly` 2933060–2933127 读取 `?app=`，
 
 25 张图包括官方原图复制、SVG 元素静态提取和基于当前 Checkbox CSS 的勾选图。原页面内联 SVG 的 Facebook style 给全部七个社交图提供 `.ellipse/.social` 样式；独立资源必须显式带上这些共享规则，不能只提取各自 path。当前生成器还验证被展平的 g 元素仅有 id，不丢失变换或继承样式。
 
-`assets/synapse/chroma-settings-embedded.rs` 已进入 `SynapseAssets::load/list`。`ChromaSettingsColors` 位于统一 `src/ui/theme.rs`。实际 controls 使用 Base Button/Checkbox/Link；实体订阅随页面持有和释放。
+`assets/synapse/chroma-settings-embedded.rs` 已进入 `SynapseAssets::load/list`。`ChromaSettingsColors` 位于统一 `crates/razer-widgets/src/theme.rs`。实际 controls 使用 Base Button/Checkbox/Link；实体订阅随页面持有和释放。
 
 已执行并通过：
 

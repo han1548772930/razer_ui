@@ -74,8 +74,8 @@ const icons = Object.entries(iconMap).map(([selector, output]) => {
   if (sourceHash !== outputHash) problems.push(`Icon differs from source: ${output}`);
   return {selector, source: input, output, source_sha256: sourceHash, output_sha256: outputHash};
 });
-const nativePaths = ['src/shell/profiles_page.rs', 'src/shell/profiles_page/devices.rs',
-  'src/shell/profiles_page/controls.rs', 'src/ui/source_tooltip.rs'];
+const nativePaths = ['crates/razer-app-pages/src/profiles_page.rs', 'crates/razer-app-pages/src/profiles_page/devices.rs',
+  'crates/razer-app-pages/src/profiles_page/controls.rs', 'crates/razer-widgets/src/source_tooltip.rs'];
 const [main, devices, controls, tooltip] = nativePaths.map(read);
 for (const snippet of ['.h(surface::css(52.))', 'body.mt(-surface::css(2.))',
   'self.view == ProfilesView::Games', 'Both mounted ancestries cancel', '.font_family("Roboto")',

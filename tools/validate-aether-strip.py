@@ -8,9 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 read = lambda path: (ROOT / path).read_text(encoding='utf-8')
 digest = lambda data: hashlib.sha256(data).hexdigest()
-spec = json.loads(read('src/features/aether_strip_data.json'))
+spec = json.loads(read('crates/razer-pages/src/features/aether_strip_data.json'))
 bundle = read('.ref/devices/784/static/js/main.3094caa4.js')
-tip_module_src = read('src/features/aether_strip/source_tip.rs')
+tip_module_src = read('crates/razer-pages/src/features/aether_strip/source_tip.rs')
 evidence = json.loads(read('docs/re/aether-strip-current-evidence.json'))
 assets = json.loads(read('assets/synapse/aether-strip-manifest.json'))
 assert spec['product_id'] == 784 and spec['page'] == 'CUSTOMIZED'
@@ -52,9 +52,9 @@ for asset in assets:
 for svg in evidence['assets']:
     parsed = ET.fromstring(svg['svg'])
     assert parsed.get('viewBox'), svg['name']
-native = read('src/features/aether_strip.rs')
-state = read('src/features/aether_strip/state.rs')
-preview = read('src/features/aether_strip/preview.rs')
+native = read('crates/razer-pages/src/features/aether_strip.rs')
+state = read('crates/razer-pages/src/features/aether_strip/state.rs')
+preview = read('crates/razer-pages/src/features/aether_strip/preview.rs')
 snapshot = native[native.index('pub(crate) fn snapshot'):native.index('pub(crate) fn restore')]
 assert 'bendData' in snapshot
 assert not any(key in snapshot for key in ['detected', 'online', 'locked', 'power_on', 'synapse_override', 'last_request'])
@@ -63,8 +63,8 @@ assert 'SourceProductWorkspace::new' in preview and 'aether_preview_page' in pre
 assert 'self.workspace.clone()' in preview
 assert 'checked_add' in state and 'array.len() > 4' in state
 assert 'stripeLedNumber' in state and 'pollTime' in state and 'sleepInterval' in state
-assert 'SourceSpinner' in read('src/features/aether_strip/presentation.rs')
-for path in [ROOT / 'src/features/aether_strip.rs', *sorted((ROOT / 'src/features/aether_strip').glob('*.rs'))]:
+assert 'SourceSpinner' in read('crates/razer-pages/src/features/aether_strip/presentation.rs')
+for path in [ROOT / 'crates/razer-pages/src/features/aether_strip.rs', *sorted((ROOT / 'crates/razer-pages/src/features/aether_strip').glob('*.rs'))]:
     assert not re.search(r'\b(?:rgb|rgba|hsla)\(', path.read_text(encoding='utf-8')), path
 # 轮播：`.carousel--item` 的盒模型、`.device` 的选中/未选中位移，以及选中项
 # 靠 `scrollLeft = carousel.scrollWidth / 5 * index` 的平滑居中（CSS
@@ -95,7 +95,7 @@ centering = sum(
     if re.search(r'scrollLeft=\w+\.current\.scrollWidth/5\*', path.read_text(encoding='utf-8', errors='replace'))
 )
 assert centering == 7, centering
-device = read('src/features/aether_strip/device.rs')
+device = read('crates/razer-pages/src/features/aether_strip/device.rs')
 for marker in ('justify_center()', '.px(surface::css(30.))', 'let mut device = v_flex()',
                '.opacity(0.5).mt(surface::css(75.))', '.pt(surface::css(28.))',
                'card.child(device)', 'if selected { 237. } else { 154.8 }',
@@ -108,7 +108,7 @@ for marker in ('justify_center()', '.px(surface::css(30.))', 'let mut device = v
                'self.carousel_scroll.set_offset(point(target, px(0.)))'):
     assert marker in device, marker
 assert 'scrollable_both()' not in device, 'the carousel must not draw a scrollbar'
-aether_view = read('src/features/aether_strip.rs')
+aether_view = read('crates/razer-pages/src/features/aether_strip.rs')
 assert 'carousel_scroll: ScrollHandle,' in aether_view
 assert 'carousel_scroll: ScrollHandle::default()' in aether_view
 # 编号指示器：`.indicator--list` 药丸容器 + `.indicator--item` 的配色，以及源码给
@@ -220,7 +220,7 @@ assert 'trigger.origin + point(scale * 2., scale * 34.)' not in tip_module_src
 assert 'Kind::Icon' not in tip_module_src
 assert 'anchor: TipAnchor::Right,' in tip_module_src
 assert 'gap: 5.,' in tip_module_src
-tip_module = read('src/features/aether_strip/source_tip.rs')
+tip_module = read('crates/razer-pages/src/features/aether_strip/source_tip.rs')
 for marker in (
     'pub(super) enum TipAnchor {',
     'Self::Start => trigger.left(),',

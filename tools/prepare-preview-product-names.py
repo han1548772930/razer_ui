@@ -57,7 +57,7 @@ for row in catalog["products"]:
         }
     names[str(pid)] = editions
 
-resource = "src/demo/preview_names.json"
+resource = "crates/razer-model/src/demo/preview_names.json"
 output = json.dumps(names, ensure_ascii=False, indent=2) + "\n"
 if CHECK:
     assert (ROOT / resource).read_text(encoding="utf-8") == output, resource
@@ -82,7 +82,7 @@ report = {
     "resource": {"path": resource, "sha256": digest(resource)},
     "dashboard_names": dashboard,
     "implementation": [{"path": path, "sha256": digest(path)} for path in (
-        "src/demo.rs", "src/demo/preview_catalog.rs", "src/shell/settings_page.rs",
+        "crates/razer-model/src/demo.rs", "crates/razer-model/src/demo/preview_catalog.rs", "crates/razer-settings/src/settings_page.rs",
         "tools/prepare-preview-product-names.py",
     )],
     "sources": receipts,

@@ -1,6 +1,6 @@
 # 515 Keyboard Properties：右列系统入口
 
-2026-10-06。实现 `src/features/keyboard_properties.rs`，当前 515 普通 Customize 右列 `$l → mA/MA → pA/LA`。本批不覆盖 analog Game Controller 分支、其他产品或 displayMode。
+2026-10-06。实现 `crates/razer-pages/src/features/keyboard_properties.rs`，当前 515 普通 Customize 右列 `$l → mA/MA → pA/LA`。本批不覆盖 analog Game Controller 分支、其他产品或 displayMode。
 
 当前主包 SHA-256 为 `4a9db2072b3d64035e36d468fcc006b1930ebbf8c0bc620e4869a2e970c432e8`。`tools/prepare-keyboard-properties.cjs` 静态生成 `keyboard-properties-current-evidence.json`：12 项 AST（包含两个系统包装器）、66 条 CSS、2 个当前 manifest SVG。没有执行厂商脚本。独立审计的完整宿主链和参数见 [独立报告的 L 续记](ui-readonly-first-roadmap.md)。
 

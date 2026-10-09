@@ -1,6 +1,6 @@
 # 键盘校准当前契约
 
-740 与 746 使用各自当前校准 chunk。挂载、CSS、UTF-16 范围与原资源见 [弹层收据](keyboard-calibration-modal-current-evidence.json)及 [页面数据](../../src/features/keyboard_calibration_data.json)；维护工具为 `extract-keyboard-calibration.cjs --check`、`audit-keyboard-calibration-modal.cjs --check`。
+740 与 746 使用各自当前校准 chunk。挂载、CSS、UTF-16 范围与原资源见 [弹层收据](keyboard-calibration-modal-current-evidence.json)及 [页面数据](../../crates/razer-pages/src/features/keyboard_calibration_data.json)；维护工具为 `extract-keyboard-calibration.cjs --check`、`audit-keyboard-calibration-modal.cjs --check`。
 
 `keyboard_calibration.rs`保留介绍、键盘展示、校准卡与独立弹层。出厂配置按真实 Profile GUID 精确判断；该分支保留整个 body-widgets 并置为 disabled/opacity 0.3，另显示 465px、橙色边框警告，不通过配置名字猜测。介绍关闭状态保存在本地工作区。
 

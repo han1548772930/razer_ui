@@ -50,6 +50,6 @@ const shared_assets=[{source:helpSource,output:helpOutput,sha256:hash(helpBytes)
 function output(file,text){const target=path.join(root,file);if(check){if(!fs.readFileSync(target).equals(Buffer.from(text)))throw Error('Stale '+file);}else fs.writeFileSync(target,text);}
 for(const asset of assets)output(asset.output,fs.readFileSync(path.join(root,asset.source)));
 output('assets/synapse/kitsune-embedded.rs','&[\n'+assets.map(a=>`    ("synapse/kitsune-${a.name}.svg", include_bytes!("kitsune-${a.name}.svg") as &[u8]),`).join('\n')+'\n]\n');
-output('src/features/kitsune_data.json',JSON.stringify({labels,geometry,assets:Object.fromEntries(assets.map(a=>[a.name,a.output.replace(/^assets\//,'')]))},null,2)+'\n');
+output('crates/razer-pages/src/features/kitsune_data.json',JSON.stringify({labels,geometry,assets:Object.fromEntries(assets.map(a=>[a.name,a.output.replace(/^assets\//,'')]))},null,2)+'\n');
 output('docs/re/kitsune-current-evidence.json',JSON.stringify({product_id:4115,method:'Current source AST/CSS and inert SVG preparation only',manifest:{path:manifestFile,sha256:hash(fs.readFileSync(path.join(root,manifestFile)))},receipts,css,svgRequests,assets,shared_assets,status:'partial; source-derived root layout and local controls do not prove live device state or pixel fidelity'},null,2)+'\n');
 console.log(`Kitsune: ${receipts.length} AST receipts, ${css.length} CSS files, ${assets.length} SVGs.`);

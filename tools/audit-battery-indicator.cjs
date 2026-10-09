@@ -22,7 +22,7 @@ function tipKeys(state) {
 //!
 //! 从当前源码里**重新抽取**状态机、CSS、文案 key 与图标文件名，然后断言：
 //! 1. 每个图标都能在 `assets/synapse/` 找到对应的打包文件；
-//! 2. `src/ui/battery.rs` 里的类名/图标表与抽取结果一致；
+//! 2. `crates/razer-widgets/src/battery.rs` 里的类名/图标表与抽取结果一致；
 //! 3. 文案 key 在语言包 `locales/zh-CN.json` 里有译文。
 //!
 //! 只做静态解析，不执行任何下载的 JavaScript。
@@ -41,7 +41,7 @@ const STATE_BUNDLES = [
 ];
 const CSS_BUNDLE = '.ref/devices/100/static/css/main.dd229426.css';
 const ZH_CHUNK = '.ref/applications/synapse/dashboard/static/js/trans-zh-CN.9295e59f.chunk.js';
-const RUST = 'src/ui/battery.rs';
+const RUST = 'crates/razer-widgets/src/battery.rs';
 
 function findStateBundle() {
   for (const rel of STATE_BUNDLES) {
@@ -114,7 +114,7 @@ function packagedIcons() {
 
 // `hideBattValue` 是产品工作区里写死的 prop（例如 1330 的
 // `.ref/devices/1330/static/js/main.f0797abf.js`：`hideBattValue:!0`），不是设备数据。
-// 这里按当前包重算 `!0` 的产品集合，并与 `src/ui/battery.rs` 的 `HIDE_BATTERY_VALUE` 表
+// 这里按当前包重算 `!0` 的产品集合，并与 `crates/razer-widgets/src/battery.rs` 的 `HIDE_BATTERY_VALUE` 表
 // 逐项比对；同时核对隐藏分支的本地标记。
 function hideBatteryValue() {
   const devices = path.join(root, '.ref/devices');
@@ -195,7 +195,7 @@ const problems = [];
     if (batteryRow['font-size'] !== '14px') problems.push('.right .battery 字号应为 14px');
   }
   // 本地帮助按钮在设备页工具栏里：`asset_button("device-help", …help…).size(css(24.)).mr(css(10.))`
-  const workspaceSrc = read('src/features/workspace.rs');
+  const workspaceSrc = read('crates/razer-pages/src/features/workspace.rs');
   if (!/asset_button\(\s*"device-help"/.test(workspaceSrc) || !workspaceSrc.includes('help-active.svg'))
     problems.push('本地设备页应有帮助按钮（help-default/help-active）');
   if (!/\.size\(surface::css\(24\.\)\)\s*\n?\s*\.mr\(surface::css\(10\.\)\)/.test(workspaceSrc))

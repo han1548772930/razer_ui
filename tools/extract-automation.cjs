@@ -146,7 +146,7 @@ for(const f of fs.readdirSync(path.join(root,'.ref/devices/3946/static/css')).fi
  if(rules.length)css.push({path:p,sha256:hash(s),rules});
 }
 function emit(p,v){const s=JSON.stringify(v,null,2)+'\n';if(process.argv.includes('--check')){if(read(p)!==s)throw Error('Stale '+p);}else fs.writeFileSync(path.join(root,p),s);}
-emit('src/features/automation_data.json',{product_id:3946,page:page.key,metadata,effects,effect_defaults:effectDefaults,empty_messages,actions,quick_macro_types:quickMacroTypes,quick_color_palette:quickColorPalette,translations,assets});
+emit('crates/razer-pages/src/features/automation_data.json',{product_id:3946,page:page.key,metadata,effects,effect_defaults:effectDefaults,empty_messages,actions,quick_macro_types:quickMacroTypes,quick_color_palette:quickColorPalette,translations,assets});
 const profile_bar=[];
 for(const needle of ['setProfileDropdownState','enableSwitchProfile:','displayProfileBar:','isEnableProfileBar:'])for(const match of source.matchAll(new RegExp(needle,'g')))profile_bar.push({needle,offset:Math.max(0,match.index-120),source:source.slice(Math.max(0,match.index-120),match.index+350)});
 const profile_bar_labels=Object.fromEntries(['tPc','_$r','lgc'].map(k=>[k,labels[k]]));

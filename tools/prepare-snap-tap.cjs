@@ -75,7 +75,7 @@ async function main() {
   }
   output('assets/synapse/snap-tap-embedded.rs', '&[\n' + assets.map(a =>
     `    ("synapse/${path.basename(a.output)}", include_bytes!("${path.basename(a.output)}") as &[u8]),`).join('\n') + '\n]\n');
-  output('src/features/keyboard_snap_tap_data.json', JSON.stringify({defaults: literal(nodes.get('ha')), forbidden: literal(nodes.get('xl')),
+  output('crates/razer-pages/src/features/keyboard_snap_tap_data.json', JSON.stringify({defaults: literal(nodes.get('ha')), forbidden: literal(nodes.get('xl')),
     inputs: literal(keyNode), razer_keys: literal(nodes.get('wc')), layouts: source.literal(90857, layoutNode)}, null, 2) + '\n');
   output('docs/re/snap-tap-current-evidence.json', JSON.stringify({method: 'Static parsing only; offsets are UTF-16', product_id: 515,
     manifest: {path: manifestPath, sha256: hash(read(manifestPath))}, receipts, labels, css, assets}, null, 2) + '\n');

@@ -8,6 +8,8 @@
 *.log
 *.work
 /tools/*
+!/tools/validate-workspace.py
+!/tools/audit-portable-hid-current.py
 !/tools/audit-full-source-corpus.py
 !/tools/audit-host-architecture-current.cjs
 !/tools/audit-host-ffi-current.cjs

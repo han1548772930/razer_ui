@@ -81,8 +81,8 @@ for (const relative of [...new Set(Object.values(manifest.files))].filter(f => f
   const rules = parseCSS(text).filter(r => /swtm|^\.slider(?:[, .:]|$)|^\.slider-container|^\.check-item|^\.check-box|^\.check-text|^\.switch|^\.mt10$|^\.mb20$/.test(r.selector));
   if (rules.length) css.push({path: file, sha256: hash(text), rules});
 }
-const otherSpecs = JSON.parse(read('src/features/mouse_scroll_wheel_data.json')).filter(spec => spec.product_id !== wheelSpec.product_id);
-output('src/features/mouse_scroll_wheel_data.json', JSON.stringify([...otherSpecs, wheelSpec].sort((a,b) => a.product_id - b.product_id), null, 2) + '\n');
+const otherSpecs = JSON.parse(read('crates/razer-pages/src/features/mouse_scroll_wheel_data.json')).filter(spec => spec.product_id !== wheelSpec.product_id);
+output('crates/razer-pages/src/features/mouse_scroll_wheel_data.json', JSON.stringify([...otherSpecs, wheelSpec].sort((a,b) => a.product_id - b.product_id), null, 2) + '\n');
 output('docs/re/mouse-226-scroll-current-evidence.json', JSON.stringify({method: 'Static AST and CSS only; UTF-16 offsets', product_id: 226,
   manifest: {path: manifestPath, sha256: hash(read(manifestPath))}, receipts, labels, actions, css}, null, 2) + '\n');
 console.log(`226 scroll: ${receipts.length} AST receipts, ${css.reduce((n,c)=>n+c.rules.length,0)} CSS rules, ${modes.length} modes`);

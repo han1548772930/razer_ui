@@ -6,7 +6,7 @@ const flags=process.argv.slice(2);if(flags.some(f=>f!=='--check'))throw Error('U
 const parsed=spawnSync(process.execPath,[path.join(__dirname,'prepare-audio-oled-banner.cjs'),'--check'],{cwd:root,encoding:'utf8'});
 if(parsed.status!==0)throw Error(parsed.stderr||parsed.stdout);
 const evidence=JSON.parse(read('docs/re/audio-oled-banner-current-evidence.json'));
-const data=JSON.parse(read('src/features/audio_oled_banner_data.json'));
+const data=JSON.parse(read('crates/razer-pages/src/features/audio_oled_banner_data.json'));
 const assets=JSON.parse(read('assets/synapse/audio-oled-banner-assets.json'));
 const sources=new Map();
 function verify(receipt){
@@ -50,7 +50,7 @@ const output={product_id:1383,method:'Static AST/CSS/resource/locale validation 
   limits:data.limits,textarea:data.textarea,ua_receipt:evidence.textareaCascade.ua_receipt,
   motion:{...data.motion,horizontal_duration_dependencies:['text.value','text.scroll'],cache:'local_duration_ms; zero means not yet measured; Home and editor Hg have independent mount measurements'},
   directions,files:[...sources].map(([path,text])=>({path,sha256:hash(text)})),
-  native:['src/features/audio_oled_banner.rs','src/features/audio_oled_banner_theme.rs'].map(path=>({path,sha256:hash(read(path))}))};
+  native:['crates/razer-pages/src/features/audio_oled_banner.rs','crates/razer-pages/src/features/audio_oled_banner_theme.rs'].map(path=>({path,sha256:hash(read(path))}))};
 const destination='docs/re/audio-oled-banner-static-audit.json',serialized=JSON.stringify(output,null,2)+'\n';
 if(flags.includes('--check')){if(read(destination)!==serialized)throw Error('Stale Banner static audit');}else fs.writeFileSync(path.join(root,destination),serialized);
 console.log('1383 Banner: source branches, 64 fonts, 14 sizes, 19 resources, four keyframes and native provenance validated.');

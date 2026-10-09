@@ -55,8 +55,8 @@ for (const [selector, declaration] of [
 ]) if (!rules.some(rule => rule.selector === selector && rule.declarations === declaration))
   throw Error(`Crop stylesheet changed: ${selector}`);
 
-const nativePath = 'src/features/source_controls/oled_presets.rs';
-const geometryPath = 'src/features/source_controls/oled_crop.rs';
+const nativePath = 'crates/razer-pages/src/features/source_controls/oled_presets.rs';
+const geometryPath = 'crates/razer-pages/src/features/source_controls/oled_crop.rs';
 const native = read(nativePath), geometry = read(geometryPath);
 for (const token of ['canvas: Option<CropCanvas>', 'canvas.top() - CROP_TOP', 'crop::preview_source(image_id.clone(), source)',
   '.id(image_id)', '.id(("oled-crop-image", self.preview.id.0))', 'gpui_kit::hash(&source)',

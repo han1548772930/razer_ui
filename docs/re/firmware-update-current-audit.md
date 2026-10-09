@@ -123,6 +123,6 @@ CSS 的 `.product`、`.header`、`.progress_box`、`.version`、`.switch-connect
 
 - `node tools/extract-firmware-locales.cjs --check`：10 语言与来源 receipt 一致。
 - 当前 main JS 已通过 Acorn 静态解析，上表依据实际声明重新定位。
-- `rustfmt --edition 2024 src/shell/firmware_update.rs`：完成，涵盖 state 子模块。
+- `rustfmt --edition 2024 crates/razer-app-pages/src/firmware_update.rs`：完成，涵盖 state 子模块。
 - 资源维护脚本统一准备与验证：432 条来源/输出 SHA 及嵌入 key 通过，包含新告警 SVG。
 - 增补最终连接与结果顺序的纯状态回归断言；没有执行测试。`cargo check --locked --all-targets` 由主线程统一记录，本文不提前宣称通过。

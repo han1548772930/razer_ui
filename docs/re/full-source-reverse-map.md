@@ -1,5 +1,8 @@
 # 当前原代码全量逆向地图
 
+当前实现已整体分包，见 [workspace 架构](workspace-architecture-current.md) 和 [跨平台 HID 查询](cross-platform-hid-current.md)。原 Rust `src/` 保留为不参与编译的比较参考；厂商依据仍使用当前源。
+
+
 本文是整个原项目的总入口：把宿主、独立应用、产品页面、middleware、原生插件、DLL 与服务分层后再连接起来。用户要求所有实现以原代码为依据；因此“文件取得”“声明解析”“调用链追通”“内部实现恢复”“本项目接入”和“运行验收”分别记录。不能把任一层的清单或成功解析当作全部原代码恢复。
 
 设备直连的下一层证据已进入 [DLL 内部与设备通信逆向](dll-device-communication-current.md)：对全部已取得的 58 产品 DLL、4 CommonDLL 和 19 Windows 原生插件逐文件核对字节、导出和内部指令，保存 57960 个分析图入口。入口与潜在路径不是完整函数语义。产品 1342 的 [二级 DLL 分发与报文](audio-mixer-dll-protocol-current.md) 已追到 37 项属性表、GetProcAddress 指针存取及四个 report helper，其他未知继续保留；[OpenLogi 参考](openlogi-device-communication-review.md) 仅提供架构对照，不作为 Razer 协议依据。

@@ -51,8 +51,8 @@ function body(file, marker) {
 const problems=[];
 const expect=(ok, message)=>{if(!ok)problems.push(message);};
 const consumers = [
-  ['src/features/workspace.rs','fn toolbar(', 'device-navigation-right'],
-  ['src/features/source_workspace.rs','impl Render for SourceProductWorkspace', 'source-navigation-right'],
+  ['crates/razer-pages/src/features/workspace.rs','fn toolbar(', 'device-navigation-right'],
+  ['crates/razer-pages/src/features/source_workspace.rs','impl Render for SourceProductWorkspace', 'source-navigation-right'],
 ];
 for(const [file, marker, id] of consumers){
   const scoped=body(file,marker);
@@ -61,21 +61,21 @@ for(const [file, marker, id] of consumers){
   expect(scoped.includes('surface::split_navs'),`${file}: missing measured overflow`);
   expect(!/device-tab-back|device-tab-forward|nav_arrow_button/.test(scoped),`${file}: obsolete arrows remain`);
 }
-const surface='src/ui/surface.rs';
+const surface='crates/razer-widgets/src/surface.rs';
 expect(body(surface,'pub(crate) fn navigation_button(').includes('-> gpui_kit::base::Button'), 'Navigation hover must use Base Button');
 expect(body(surface,'pub(crate) fn nav_overflow(').includes('gpui_kit::base::Button::new'), 'Overflow hover must use Base Button');
-expect(body('src/features/profile.rs','fn profile_dialog_button(').includes('-> BaseButton'), 'Dialog hover must use Base Button');
+expect(body('crates/razer-pages/src/features/profile.rs','fn profile_dialog_button(').includes('-> BaseButton'), 'Dialog hover must use Base Button');
 expect(body(surface,'pub(crate) fn nav_left(').includes('relative(0.25)'), 'Missing left basis');
 expect(body(surface,'pub(crate) fn nav_right(').includes('relative(0.25)'), 'Missing right basis');
 expect(body(surface,'fn label_width(').replace(/\s+/g,'').includes('16./f32::from(window.rem_size())'), 'Mixed physical/CSS pixels');
-expect(body('src/shell.rs','fn move_history(').includes('device.step_page_history'), 'Shell must dispatch product history');
-expect(body('src/shell.rs','fn toolbar(').includes('self.history_target(false, cx).is_some()') &&
-  body('src/shell.rs','fn move_history(').includes('self.history_target(forward, cx)'), 'History presentation and activation must share target resolution');
-expect(body('src/shell.rs','fn history_target(').includes('index.map(HistoryTarget::Shell)'), 'History boundary must retain shell navigation');
-expect(body('src/shell.rs','fn history_target(').includes('page.read(cx).history_blocked()'), 'Modal lock must not fall through to shell navigation');
+expect(body('crates/razer-shell/src/shell.rs','fn move_history(').includes('device.step_page_history'), 'Shell must dispatch product history');
+expect(body('crates/razer-shell/src/shell.rs','fn toolbar(').includes('self.history_target(false, cx).is_some()') &&
+  body('crates/razer-shell/src/shell.rs','fn move_history(').includes('self.history_target(forward, cx)'), 'History presentation and activation must share target resolution');
+expect(body('crates/razer-shell/src/shell.rs','fn history_target(').includes('index.map(HistoryTarget::Shell)'), 'History boundary must retain shell navigation');
+expect(body('crates/razer-shell/src/shell.rs','fn history_target(').includes('page.read(cx).history_blocked()'), 'Modal lock must not fall through to shell navigation');
 expect(body(surface,'pub(crate) fn history_button(').includes('gpui_kit::base::Button::new'), 'History must use direct Base activation');
-expect(body('src/shell.rs','fn main_page(').includes('surface::nav_overflow'), 'Main navigation must handle overflow');
-const battery=body('src/ui/battery.rs','pub(crate) fn element(');
+expect(body('crates/razer-shell/src/shell.rs','fn main_page(').includes('surface::nav_overflow'), 'Main navigation must handle overflow');
+const battery=body('crates/razer-widgets/src/battery.rs','pub(crate) fn element(');
 expect(battery.includes('!device.has_battery'), 'Missing hasBattery guard');
 expect(battery.includes('SourceTooltipKind::Battery'), 'Wrong battery tooltip implementation');
 expect(!battery.includes('352.'), 'Unmatched attribute tooltip width must not be used');
@@ -90,15 +90,15 @@ expect(historyKeys.map(item => item.key).join(',') === 'BACK,FORWARD', 'Toolbar 
 const localHistory = body(surface, 'pub(crate) fn history_button(');
 for (const item of historyKeys) expect(localHistory.includes(`"${item.key}"`), `Wrong toolbar key: ${item.key}`);
 for (const kind of ['Device', 'Profiles', 'Alexa', 'Macro', 'Armory']) {
-  expect(body('src/shell.rs', 'fn history_target(').includes(`HistoryTarget::${kind}`), `Missing ${kind} history target`);
-  expect(body('src/shell.rs', 'fn move_history(').includes(`HistoryTarget::${kind}`), `Missing ${kind} history activation`);
+  expect(body('crates/razer-shell/src/shell.rs', 'fn history_target(').includes(`HistoryTarget::${kind}`), `Missing ${kind} history target`);
+  expect(body('crates/razer-shell/src/shell.rs', 'fn move_history(').includes(`HistoryTarget::${kind}`), `Missing ${kind} history activation`);
 }
 walk(dashboard.binding(35378,'x'), node=>{
   if(node.type==='ArrayExpression' && node.elements.length===4 && node.elements.every(e=>prop(e,'name') && prop(e,'id')))main.push(node);
 });
 if(main.length!==1)throw Error(`Dashboard navigation ambiguous: ${main.length}`);
 const mainKeys=main[0].elements.map(e=>dashboard.literal(35378,prop(e,'name')));
-for(const k of mainKeys)expect(read('src/nav.rs').includes(`"${k}"`),`Missing mounted Dashboard key ${k}`);
+for(const k of mainKeys)expect(read('crates/razer-pages/src/nav.rs').includes(`"${k}"`),`Missing mounted Dashboard key ${k}`);
 const locales=[];
 for(const file of dashboard.files.filter(f=>/\/trans-[^.]+\.[a-f0-9]+\.chunk\.js$/.test(f))){
   dashboard.parse(file);const modules=[...dashboard.modules.values()].filter(m=>m.file===file&&m.exports.has(mainKeys[0]));

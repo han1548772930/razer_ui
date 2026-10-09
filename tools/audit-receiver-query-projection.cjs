@@ -31,7 +31,7 @@ if (acquisition.sha256 !== hash(catalogRaw) || acquisition.http_status !== 200 |
     acquisition.final_url !== 'https://apps.razer.com/synapse/dashboard/AvailableDevices.json') {
   throw Error('Current available-device acquisition mismatch');
 }
-const nativeCatalog = JSON.parse(read('src/backend/discovery_catalog.json'));
+const nativeCatalog = JSON.parse(read('crates/razer-device/src/discovery_catalog.json'));
 const cases = [183, 227, 2593, 60000].map(raw_product_id => {
   const sourceCandidates = catalog.filter(row => row.dongleId === raw_product_id).map(row => row.productId);
   const nativeCandidates = nativeCatalog.filter(row => row.dongle_id === raw_product_id).map(row => row.product_id);
@@ -56,9 +56,9 @@ if (!selectedCapabilities.find(item => item.product_id === 625).peer_match_produ
   throw Error('Changed keyboard product/scalar-dongle identity rule');
 }
 
-const projectionPath = 'src/backend/discovery_receiver_projection.rs';
+const projectionPath = 'crates/razer-discovery/src/discovery_receiver_projection.rs';
 const projection = read(projectionPath);
-const discovery = read('src/backend/discovery.rs');
+const discovery = read('crates/razer-discovery/src/discovery.rs');
 for (const marker of ['project_receiver_query(pid, &container, &value)',
   'snapshot.errors.extend(peers.errors)', 'snapshot.insert(observed)']) {
   if (!discovery.includes(marker)) throw Error('Startup no longer uses shared projection: ' + marker);
@@ -72,10 +72,10 @@ for (const marker of ['device_identity::lookup_receiver_peer(', 'capability.peer
   'pairing.clone().map_err(anyhow::Error::msg)']) {
   if (!projection.includes(marker)) throw Error('Missing projection boundary: ' + marker);
 }
-const testPath = 'src/backend/discovery_receiver_projection_tests.rs';
+const testPath = 'crates/razer-discovery/src/discovery_receiver_projection_tests.rs';
 const tests = [...read(testPath).matchAll(/#\[test\]\s*fn (\w+)\(/g)].map(match => match[1]);
 if (tests.length !== 8) throw Error('Changed projection regression cases');
-const nativePaths = ['src/backend/discovery.rs', projectionPath, testPath];
+const nativePaths = ['crates/razer-discovery/src/discovery.rs', projectionPath, testPath];
 const output = {
   method: 'Current middleware AST, official catalog comparison and static native contract markers; no Rust test, vendor JavaScript, app or DLL execution.',
   generator_sha256: hash(fs.readFileSync(__filename)),

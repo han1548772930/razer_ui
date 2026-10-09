@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 digest = lambda path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
-spec = json.loads((ROOT / 'src/features/hue_data.json').read_text(encoding='utf-8'))
+spec = json.loads((ROOT / 'crates/razer-pages/src/features/hue_data.json').read_text(encoding='utf-8'))
 evidence = json.loads((ROOT / 'docs/re/hue-current-evidence.json').read_text(encoding='utf-8'))
 assert evidence['generator_sha256'] == digest('tools/extract-hue.cjs')
 for record in [evidence['source'], evidence['css'], evidence['manifest']]:
@@ -25,7 +25,7 @@ assert len(spec['archetypes']) == len({a['name'] for a in spec['archetypes']}) =
 
 common = json.loads((ROOT / 'locales/en.json').read_text(encoding='utf-8'))
 custom = spec['translations']['en']
-for path in [ROOT / 'src/features/hue.rs', *sorted((ROOT / 'src/features/hue').glob('*.rs'))]:
+for path in [ROOT / 'crates/razer-pages/src/features/hue.rs', *sorted((ROOT / 'crates/razer-pages/src/features/hue').glob('*.rs'))]:
     if path.name == 'tests.rs':
         continue
     content = path.read_text(encoding='utf-8')
@@ -46,7 +46,7 @@ for entry in manifest:
         svg = ET.parse(ROOT / entry['output']).getroot()
         assert svg.tag.endswith('svg')
         assert not any(node.tag.endswith('script') for node in svg.iter())
-for path in [ROOT / 'src/features/hue.rs', *sorted((ROOT / 'src/features/hue').glob('*.rs'))]:
+for path in [ROOT / 'crates/razer-pages/src/features/hue.rs', *sorted((ROOT / 'crates/razer-pages/src/features/hue').glob('*.rs'))]:
     for asset in re.findall(r'"(synapse/hue-[a-zA-Z0-9_-]+\.(?:svg|png))"',path.read_text(encoding='utf-8')):
         assert 'assets/'+asset in outputs, (path.name,asset)
 assert 'assets/synapse/hue-indicator_animated.svg' in outputs
@@ -72,7 +72,7 @@ for match in re.finditer(r'jsx\)\(OT,\{min:0,max:100,step:1', source):
     window = source[match.start():match.start() + 400]
     assert 'minTag:w.KFn' in window and 'maxTag:w.zrT' in window, window[:200]
 assert source.count('minTag:w.KFn') == 2 and source.count('maxTag:w.zrT') == 2
-brightness = (ROOT / 'src/features/hue/brightness.rs').read_text(encoding='utf-8')
+brightness = (ROOT / 'crates/razer-pages/src/features/hue/brightness.rs').read_text(encoding='utf-8')
 for marker in (
     'SourceSlider::new(slider, progress)',
     '.tip(Some(format!("{value:.0}")))',
@@ -91,7 +91,7 @@ assert 'u_="isShowTutorialHue"' in source
 assert '!1===k.A.get(u_)?o(!1):e||o(!0)' in source.replace(' ', '')
 assert 'k.A.set(u_,!1)' in source.replace(' ', '')
 assert 'this.get=(e,E)=>{const _=window.localStorage.getItem(e);' in source
-tutorial = (ROOT / 'src/features/hue/effects.rs').read_text(encoding='utf-8')
+tutorial = (ROOT / 'crates/razer-pages/src/features/hue/effects.rs').read_text(encoding='utf-8')
 for marker in (
     'const TUTORIAL_STORAGE_KEY: &str = "isShowTutorialHue";',
     'pub(super) fn load_tutorial_visibility() -> bool',
@@ -101,7 +101,7 @@ for marker in (
     'self.bridge.is_paired && !self.bridge.is_loading && load_tutorial_visibility()',
 ):
     assert marker in tutorial, marker
-for path in ('src/features/hue.rs', 'src/features/hue/bridge.rs', 'src/features/hue/preview.rs'):
+for path in ('crates/razer-pages/src/features/hue.rs', 'crates/razer-pages/src/features/hue/bridge.rs', 'crates/razer-pages/src/features/hue/preview.rs'):
     assert 'sync_tutorial_visibility()' in (ROOT / path).read_text(encoding='utf-8'), path
 # 配对中（`PAIRING`）的进度动画：源 `fi()` 渲染 `.Home_progressWrapper` +
 # `.Home_progress` + `.Home_child`（`animation:Home_move__oy9kP 2s linear infinite`，
@@ -128,7 +128,7 @@ pairing = pairing[:pairing.index('function vi(')]
 for fragment in ('className:Di', 'className:ci', 'className:ui', 'className:Li'):
     assert fragment in re.sub(r'\s+', '', pairing), fragment
 assert 'Mi(e,A_)' in re.sub(r'\s+', '', pairing)
-onboarding = (ROOT / 'src/features/hue/onboarding.rs').read_text(encoding='utf-8')
+onboarding = (ROOT / 'crates/razer-pages/src/features/hue/onboarding.rs').read_text(encoding='utf-8')
 for marker in (
     '"hue-pairing-progress"',
     'Animation::new(Duration::from_secs(2)).repeat()',
@@ -148,10 +148,10 @@ assert 'Mi=(e,E,_)=>{e({type:h_,payload:{status:E,ip:_}})}' in compact
 assert '(()=>()=>{mi&&(clearTimeout(mi),mi=null)},[])' in compact
 assert 'Mi(e,S_,a)' in compact and 'Mi(e,S_),mi=setTimeout' not in compact
 assert compact.count('()=>Ui(e)') == 2  # 两个「开始扫描」按钮的 setTimeout 回调
-hue_rs = (ROOT / 'src/features/hue.rs').read_text(encoding='utf-8')
+hue_rs = (ROOT / 'crates/razer-pages/src/features/hue.rs').read_text(encoding='utf-8')
 assert 'scan_task: Option<Task<()>>' in hue_rs
 assert 'if next != Integration::Scanning {' in hue_rs
-onboarding = (ROOT / 'src/features/hue/onboarding.rs').read_text(encoding='utf-8')
+onboarding = (ROOT / 'crates/razer-pages/src/features/hue/onboarding.rs').read_text(encoding='utf-8')
 for marker in (
     'fn arm_scan_timeout(&mut self, cx: &mut Context<Self>)',
     'Duration::from_secs(13)',

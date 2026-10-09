@@ -122,6 +122,6 @@ for (const pid of [3884, 3886]) {
   }
   evidence.push({product_id:pid,source_files:receipt.source_files,label_module:pid===3884?4693:8098,labels,translation_receipts,metadata,constants,css,profile_bar,persistence,manifest:{path:manifestPath,sha256:hash(read(manifestPath))},components:components.map(({path,offset,end,source})=>({path,offset,end,source})),reducerSlices});
 }
-emit('src/features/wireless_argb_data.json',specs);
+emit('crates/razer-pages/src/features/wireless_argb_data.json',specs);
 emit('docs/re/wireless-argb-current-evidence.json',{method:'Acorn literal and mounted source extraction; vendor code never executed',generator_sha256:hash(fs.readFileSync(__filename)),products:evidence});
 console.log('Extracted current wireless ARGB products, resources, states and constraints.');

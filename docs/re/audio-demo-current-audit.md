@@ -1,6 +1,6 @@
 # 音频演示页（2026-10-03）
 
-1392（CLIO）、1442（CLIO X）、3942（Marci）的 `TAB_DEMO` 此前均为空。本次沿实际导航重新解析挂载组件，加入 [audio_demo.rs](../../src/features/audio_demo.rs) 的原生初始画面。完整组件树和来源指纹见 [audio-demo-current-evidence.json](audio-demo-current-evidence.json)，使用的默认值和 CSS 见 [audio_demo_data.json](../../src/features/audio_demo_data.json)。
+1392（CLIO）、1442（CLIO X）、3942（Marci）的 `TAB_DEMO` 此前均为空。本次沿实际导航重新解析挂载组件，加入 [audio_demo.rs](../../crates/razer-pages/src/features/audio_demo.rs) 的原生初始画面。完整组件树和来源指纹见 [audio-demo-current-evidence.json](audio-demo-current-evidence.json)，使用的默认值和 CSS 见 [audio_demo_data.json](../../crates/razer-pages/src/features/audio_demo_data.json)。
 
 三者真实页面均为说明、800 × 450 的演示区，以及下方 800 宽的浮动播放复选框。封面引用 Webpack 模块 2222 的 `demo.ff6ba9d8.avif`；从三个当前产品地址获取并确认字节相同，转换为 PNG，保留 HTTP、源码及输出哈希。播放图形来自 3942 当前 JSX，白色由对应源 CSS 指定。来源收据为 [audio-demo-manifest.json](../../assets/synapse/audio-demo-manifest.json)。
 

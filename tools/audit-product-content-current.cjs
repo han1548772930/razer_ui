@@ -38,7 +38,7 @@ const selectors = ['body,html', '.body-wrapper', '.body-widgets', '.body-widgets
   '.widget .titleRow .title', '.widget .content', '.h1-body'];
 const common = [], inventories = [];
 for (const family of families) {
-  const dataFile = `src/features/${family}_products_data.json`;
+  const dataFile = `crates/razer-pages/src/features/${family}_products_data.json`;
   const products = JSON.parse(read(dataFile));
   inventories.push({family, data: dataFile, products: products.map(p => ({
     product_id: p.product_id,
@@ -116,7 +116,7 @@ for (const [pid, names] of [[1303, ['wm', 'zm', 'tP', '_P', 'Ym', 'Wm', 'Yl']],
   const renderedOff = off.slice(off.lastIndexOf('render(){'));
   assert(renderedOff.includes('id:"checkDisplay"') && !renderedOff.includes('idleMinutes')
     && !renderedOff.includes('isIdleEnabled'), `Unexpected mounted idle controls ${pid}`);
-  const data = JSON.parse(read('src/features/audio_products_data.json')).find(p => p.product_id === pid);
+  const data = JSON.parse(read('crates/razer-pages/src/features/audio_products_data.json')).find(p => p.product_id === pid);
   const offControls = data.pages.find(p => p.key === 'TAB_LIGHTING').sections
     .find(s => s.title === 'SWITCH_OFF_LIGHTING_HEADER').controls;
   assert(offControls.length === 1 && offControls[0].path.endsWith('/isDisplayOn')
@@ -150,18 +150,18 @@ for (const pid of [3592, 3594, 3595, 3596]) {
   cameras.push({product_id: pid, reviewed: 'root split and settings-column geometry; individual control parity remains incomplete',
     root_props: rootProps, css: rules});
 }
-const localFiles = ['src/features/product_surface.rs', ...families.map(f => `src/features/${f}_products.rs`),
-  'src/features/audio_nommo.rs', 'src/features/audio_products_data.json', 'src/features/source_controls.rs',
-  'src/features/source_workspace.rs', 'tools/prepare-audio-products.cjs'];
+const localFiles = ['crates/razer-pages/src/features/product_surface.rs', ...families.map(f => `crates/razer-pages/src/features/${f}_products.rs`),
+  'crates/razer-pages/src/features/audio_nommo.rs', 'crates/razer-pages/src/features/audio_products_data.json', 'crates/razer-pages/src/features/source_controls.rs',
+  'crates/razer-pages/src/features/source_workspace.rs', 'tools/prepare-audio-products.cjs'];
 const local = Object.fromEntries(localFiles.map(file => [file, sha(read(file))]));
-const body = read('src/features/product_surface.rs');
+const body = read('crates/razer-pages/src/features/product_surface.rs');
 for (const token of ['.pt(surface::css(10.))', '.px(surface::css(20.))', '.pb(surface::css(20.))',
   '.font_family("Roboto")', '.font_weight(FontWeight::NORMAL)', '.text_size(surface::css(16.))'])
   assert(body.includes(token), `Missing local body contract ${token}`);
-const nativeNommo = read('src/features/audio_nommo.rs');
+const nativeNommo = read('crates/razer-pages/src/features/audio_nommo.rs');
 assert(nativeNommo.includes('surface::panel_with_title_switch') && nativeNommo.includes('surface::check_item')
   && !nativeNommo.includes('IDLE_FOR_MIN') && nativeNommo.includes('"isEnabled": value != 0'), 'Nommo native behavior drift');
-const sourceControls = read('src/features/source_controls.rs');
+const sourceControls = read('crates/razer-pages/src/features/source_controls.rs');
 assert(!sourceControls.includes('.id("camera-preview-unavailable")')
   && sourceControls.includes('.id("source-camera-video")')
   && sourceControls.includes('.id("source-camera-settings-column")'), 'Camera region split drift');

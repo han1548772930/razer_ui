@@ -18,7 +18,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 digest = lambda data: hashlib.sha256(data).hexdigest()
-specs = json.loads((ROOT / 'src/features/wireless_argb_data.json').read_text(encoding='utf8'))
+specs = json.loads((ROOT / 'crates/razer-pages/src/features/wireless_argb_data.json').read_text(encoding='utf8'))
 records = []
 decoded = {}
 for spec in specs:

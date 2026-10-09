@@ -18,7 +18,7 @@ requireFact(declaration('.items .item .item-main-content .info-text', 'font-size
 requireFact(declaration('.items .item .item-main-content .item-tooltip .tip','right:-160px') && declaration('.items .item .item-main-content .item-tooltip .tip','top:32px'), 'Source offline tooltip anchor changed');
 const w = contracts.find(c => c.module === 44442 && c.symbol === 'w').source;
 requireFact(w.includes('case"canceled":r=s?') && w.includes(' disabled no-internet'), 'Offline/canceled source branch changed');
-const rows = read('src/shell/module_service_rows.rs'), removal = read('src/shell/module_service_remove.rs');
+const rows = read('crates/razer-app-pages/src/module_service_rows.rs'), removal = read('crates/razer-app-pages/src/module_service_remove.rs');
 requireFact(/if phase == "error"[\s\S]*?text_size\(surface::css\(14\.\)\)/.test(rows), 'Missing error 14px correction');
 requireFact(/let action = if removing[\s\S]*?text_size\(surface::css\(14\.\)\)/.test(removal), 'Missing removing 14px correction');
 for (const fragment of ['struct ServiceOfflineAction', '.right(surface::css(-160.))', '.top(surface::css(32.))', '.line_height(surface::css(16.))', '"downloading" | "installing" | "canceled"']) requireFact(rows.includes(fragment), `Missing native tooltip contract: ${fragment}`);
@@ -38,7 +38,7 @@ for(const font of fontManifest) {
   requireFact(hash(fs.readFileSync(path.join(root,font.source)))===font.source_sha256,'Changed source font '+filename);
   requireFact(hash(fs.readFileSync(path.join(root,font.output)))===font.sha256,'Changed converted font '+filename);
   requireFact(fontFaceSources.some(source=>source.font_faces.some(face=>face.includes(filename)&&face.includes(`font-family:${font.css_face.family};`)&&face.includes(`font-weight:${font.css_face.weight};`))), 'No current CSS face for '+filename);
-  requireFact(read('src/resources.rs').includes(path.basename(font.output)),'Missing native font registration '+filename);
+  requireFact(read('crates/razer-assets/src/lib.rs').includes(path.basename(font.output)),'Missing native font registration '+filename);
 }
 const report = {
   method:'Current manifest-owned AST, mounted CSS and font-table reads; no application/build/test/vendor JS/DLL execution.',

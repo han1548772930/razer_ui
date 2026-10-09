@@ -38,16 +38,16 @@ for (const filename of ['55.4e8559cb.chunk.css','7861.a49b4dc6.chunk.css','App.5
 // Local receipt anchors are deliberately refreshed on each invocation: other
 // authorized work may change these files while this independent review runs.
 const local = [
-  'src/shell.rs', 'src/shell/main_pages.rs', 'src/shell/main_pages/dashboard_cards.rs',
-  'src/shell/main_pages/dashboard_grid.rs', 'src/shell/main_pages/dashboard_group.rs',
-  'src/shell/main_pages/dashboard_tutorial.rs', 'src/shell/service_pages.rs',
-  'src/shell/gamer_room.rs', 'src/shell/gamer_room_devices.rs',
-  'src/shell/gamer_room_presentation.rs',
-  'src/shell/gamer_room_hotspot.rs',
-  'src/shell/module_preview.rs',
-  'src/features/shortcuts.rs',
-  'src/shell/chroma_page.rs',
-  'src/model.rs', 'src/main.rs', 'src/ui/theme.rs',
+  'crates/razer-shell/src/shell.rs', 'crates/razer-dashboard/src/lib.rs', 'crates/razer-shell/src/shell/main_pages/dashboard_cards.rs',
+  'crates/razer-dashboard/src/dashboard_grid.rs', 'crates/razer-dashboard/src/dashboard_group.rs',
+  'crates/razer-dashboard/src/dashboard_tutorial.rs', 'crates/razer-app-pages/src/service_pages.rs',
+  'crates/razer-app-pages/src/gamer_room.rs', 'crates/razer-app-pages/src/gamer_room_devices.rs',
+  'crates/razer-app-pages/src/gamer_room_presentation.rs',
+  'crates/razer-app-pages/src/gamer_room_hotspot.rs',
+  'crates/razer-app-pages/src/module_preview.rs',
+  'crates/razer-pages/src/features/shortcuts.rs',
+  'crates/razer-app-pages/src/chroma_page.rs',
+  'crates/razer-model/src/model.rs', 'crates/razer-app/src/lib.rs', 'crates/razer-widgets/src/theme.rs',
 ].map(file => ({path: file, sha256: hash(fs.readFileSync(path.join(root, file)))}));
 // Chroma's current manifest uses application-absolute paths. Normalize only
 // that exact manifest prefix, without widening Source's allow-list to disk.

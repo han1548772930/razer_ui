@@ -46,7 +46,7 @@ walk(hostAst, node => {
   if (node.type === 'Property' && names.includes(key(node.key))) host[key(node.key)].push(receipt(hostPath,hostText,node));
 });
 for (const name of names) if (!host[name].length) throw Error('Missing current host method '+name);
-const nativePaths = ['src/features/macro_library.rs','src/shell/macro_page.rs','src/shell/macro_page/body.rs','src/shell/macro_page/phased.rs','src/shell/macro_page/record_options.rs','src/shell/macro_page/record_shortcut.rs','src/shell/macro_page/recording.rs','src/shell/macro_page/recording_actor.rs','src/shell/macro_page/recording_decode.rs','src/shell/macro_page/row_view.rs'];
+const nativePaths = ['crates/razer-pages/src/features/macro_library.rs','crates/razer-app-pages/src/macro_page.rs','crates/razer-app-pages/src/macro_page/body.rs','crates/razer-app-pages/src/macro_page/phased.rs','crates/razer-app-pages/src/macro_page/record_options.rs','crates/razer-app-pages/src/macro_page/record_shortcut.rs','crates/razer-app-pages/src/macro_page/recording.rs','crates/razer-app-pages/src/macro_page/recording_actor.rs','crates/razer-app-pages/src/macro_page/recording_decode.rs','crates/razer-app-pages/src/macro_page/row_view.rs'];
 const native = Object.fromEntries(nativePaths.map(file => [file,hash(fs.readFileSync(path.join(root,file)))]));
 const result = {
   method:'Manifest-scoped current Macro Acorn parse and current host static ABI inspection; no vendor execution, DLL loading or runtime tests',

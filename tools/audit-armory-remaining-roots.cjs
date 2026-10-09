@@ -76,7 +76,7 @@ const result = {method:'Acorn scopes and CSS parser. Downloaded JavaScript is da
         'Native initial-state layout is not pixel validated. The speed-unit selector uses the source 270-degree rotation with native vertical hitboxes and prepared glyph outlines. Named installed Windows fallback fonts for missing Roboto glyphs are recorded, not asserted to be the browser fallback. Generic tooltip positioning/transitions still differ. Fixed-RPM/hyperboost/live-telemetry branches remain unavailable without their source hardware states.',
         'No application or screenshot validation.']}
   }};
-const nativePath='src/features/armory_product/cooling_pad.rs';
+const nativePath='crates/razer-pages/src/features/armory_product/cooling_pad.rs';
 const native=fs.readFileSync(nativePath,'utf8');
 for(const token of ['fn vertical_speed_units(', 'cooling_axis_data.json', 'window.on_mouse_event(',
   'phase.capture()', 'percentage_label(', 'state.curves[state.sensor][state.mode]',

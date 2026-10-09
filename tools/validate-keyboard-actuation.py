@@ -8,8 +8,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 load = lambda path: json.loads((ROOT / path).read_text(encoding='utf-8'))
-products = {p['product_id']: p for p in load('src/features/keyboard_products_data.json')}
-specs = load('src/features/keyboard_actuation_data.json')
+products = {p['product_id']: p for p in load('crates/razer-pages/src/features/keyboard_products_data.json')}
+specs = load('crates/razer-pages/src/features/keyboard_actuation_data.json')
 assert len({s['product_id'] for s in specs}) == len(specs)
 assert {s['product_id'] for s in specs} == {pid for pid, p in products.items() if 'ACTUATION' in p['pages']}
 for spec in specs:

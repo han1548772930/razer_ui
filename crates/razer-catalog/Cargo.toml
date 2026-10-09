@@ -1,0 +1,9 @@
+[package]
+name = "razer-catalog"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+razer-i18n.workspace = true

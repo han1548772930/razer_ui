@@ -4,7 +4,7 @@ const {subtree,componentAst,walk,hash}=require('./current-page-subtree.cjs');
 const root=path.resolve(__dirname,'..'),check=process.argv.includes('--check');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const pages=JSON.parse(read('docs/re/keyboard-product-pages.json'));
-const specs=JSON.parse(read('src/features/keyboard_products_data.json'));
+const specs=JSON.parse(read('crates/razer-pages/src/features/keyboard_products_data.json'));
 const rows=[],controls=[];
 for(const spec of specs.filter(s=>s.controls.gaming_mode)){
  const page=pages.products.find(p=>p.product_id===spec.product_id)?.pages.find(p=>p.key==='TAB_CUSTOMIZE');
@@ -47,7 +47,7 @@ const summary={products:rows.length,subtrees:rows.filter(r=>r.review==='source-s
  windows:controls.filter(c=>c.windows_prop).length,menu_eligible:rows.filter(r=>r.source_rows?.menu&&r.current_keys.menu).length,
  copilot_eligible:rows.filter(r=>r.source_rows?.copilot&&r.current_keys.copilot).length,completed_pages:0,completed_products:0};
 function output(file,value){const text=JSON.stringify(value,null,2)+'\n';if(check){if(read(file)!==text)throw Error('Stale '+file);}else fs.writeFileSync(path.join(root,file),text);}
-output('src/features/keyboard_gaming_review_data.json',controls);
+output('crates/razer-pages/src/features/keyboard_gaming_review_data.json',controls);
 output('docs/re/keyboard-gaming-review-2026-10-07.json',{date:'2026-10-07',scope:'Read-only Windows/Menu/Copilot rows per mounted current Gaming Mode; not full-page completion',
  inputs:[{path:'docs/re/keyboard-product-pages.json',sha256:hash(read('docs/re/keyboard-product-pages.json'))}],summary,rows});
 console.log(JSON.stringify(summary));

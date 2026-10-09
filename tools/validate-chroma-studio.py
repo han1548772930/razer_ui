@@ -66,7 +66,7 @@ evidence = {"path": canvas["path"], "sha256": canvas["sha256"], "symbol": "ke",
             "offset": len(source[:start].encode("utf-16-le")) // 2,
             "end": len(source[:end].encode("utf-16-le")) // 2, "source": snippet,
             "rectangles": len(rects), "method": "Static literal SVG rectangle extraction; no JavaScript evaluation"}
-for path, value in [("src/features/chroma_studio_grid.json", grid),
+for path, value in [("crates/razer-pages/src/features/chroma_studio_grid.json", grid),
                     ("docs/re/chroma-studio-grid-source.json", evidence)]:
     encoded = (json.dumps(value, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     target = ROOT / path

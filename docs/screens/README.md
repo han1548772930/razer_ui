@@ -18,11 +18,11 @@
 | Dashboard | [卡片状态](../re/dashboard-ui-current.md)、[设备身份契约](../re/device-identity-current-contract.md) |
 | Devices & Modules / 应用选择器 | [模块服务行](../re/module-service-ui-current.md)、[正式入口与预览隔离](../re/service-preview-current-audit.md)、[应用菜单当前下载收据](../../.ref/applications/rz-app-menu/source.json) |
 | Gamer Room / Wi-Fi 添加 | [Gamer Room](../re/gamer-room-ui-current.md)、[正式入口与预览隔离](../re/service-preview-current-audit.md)；真实扫描、配网和安装不能由预览页面冒充 |
-| 设备 Help / 注册 | [产品注册](../re/product-registration-audit.md)、[原有 Help 适配器范围](../re/legacy-adapter-page-reaudit.md)、[当前 Help 实现](../../src/features/help_page.rs) |
+| 设备 Help / 注册 | [产品注册](../re/product-registration-audit.md)、[原有 Help 适配器范围](../re/legacy-adapter-page-reaudit.md)、[当前 Help 实现](../../crates/razer-pages/src/features/help_page.rs) |
 | Settings | [当前设置审计](../re/settings-current-audit.md)；服务连接和本地预览是明确分开的项目功能 |
 | Profile Migration | [当前迁移入口/普通页边界](../re/profile-migration-header-audit.md)、[独立当前源核验](../re/profile-migration-current-source.json) |
-| 账户菜单 | [托盘/账户关闭边界](../re/tray-ui-current.md)、[当前菜单原始下载收据](../../.ref/rz-user-profile-menu/source.json)、[当前菜单实现](../../src/shell/account_menu.rs) |
-| Introduction Tour | [具名窗口路由](../re/display-window-contract.md)、[教程媒体源/输出收据](../../assets/synapse/tutorial-media-manifest.json)、[当前教程实现](../../src/shell/introduction_tour.rs) |
+| 账户菜单 | [托盘/账户关闭边界](../re/tray-ui-current.md)、[当前菜单原始下载收据](../../.ref/rz-user-profile-menu/source.json)、[当前菜单实现](../../crates/razer-shell/src/shell/account_menu.rs) |
+| Introduction Tour | [具名窗口路由](../re/display-window-contract.md)、[教程媒体源/输出收据](../../assets/synapse/tutorial-media-manifest.json)、[当前教程实现](../../crates/razer-app-pages/src/introduction_tour.rs) |
 | Alexa | [正式页和预览隔离](../re/service-preview-current-audit.md)、[独立下拉契约](../re/alexa-dropdown-audit.md)、[当前源语言收据](../re/alexa-source-locales.json) |
 | Chroma Studio 属性 | [Studio 当前属性契约](../re/studio-properties-current.md) |
 | 宏编辑器 | [宏 UI 当前契约](../re/macro-ui-current.md) |

@@ -1,0 +1,13 @@
+[package]
+name = "razer-widgets"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+razer-i18n.workspace = true
+gpui-kit.workspace = true
+razer-assets.workspace = true
+razer-model.workspace = true
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }

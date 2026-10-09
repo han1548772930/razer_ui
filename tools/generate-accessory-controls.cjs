@@ -177,7 +177,7 @@ for (const product of evidence.products) {
   if (pages.length) products.push(record);
   audit.push({product_id: pid, source_files: product.source_files, initial_sources: initialSources, pages: pages.map(p => ({key: p.key, controls: p.sections.flatMap(s => s.controls).length})), pending_pages: [...new Set(pending)]});
 }
-fs.writeFileSync(path.join(root, 'src/features/accessory_controls_data.json'), JSON.stringify(products, null, 2) + '\n');
+fs.writeFileSync(path.join(root, 'crates/razer-pages/src/features/accessory_controls_data.json'), JSON.stringify(products, null, 2) + '\n');
 fs.writeFileSync(path.join(root, 'docs/re/accessory-controls-audit.json'), JSON.stringify({schema_version: 1, generator_sha256: hash(fs.readFileSync(__filename)), products: audit,
   limitations: ['Native local controls only. Lighting color parameters, pairing, controller-port discovery, IoT/Hue device discovery, Chroma and hardware conditions remain unfinished. Complex fan/monitor/audio pages are handled by their independent adapters.']}, null, 2) + '\n');
 console.log(`Generated native accessory controls for ${products.length} products.`);

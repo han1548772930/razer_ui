@@ -20,10 +20,10 @@ assert 'number:i=1' in source[9286, 'Y'] and 't.type===r.type&&t.title===e' in s
 assert 'title:(0,r.oT)(t)' in source[9286, 'I']
 assert 'opened:!1' in source[9286, 'w']
 assert 'f.uR.filter(e=>e!==w.name&&!ce(e)&&!f.Vg.includes(e))' in source[4264, 'J']
-data = json.loads((root / 'src/features/chroma_studio_data.json').read_text(encoding='utf8'))
+data = json.loads((root / 'crates/razer-pages/src/features/chroma_studio_data.json').read_text(encoding='utf8'))
 assert all('CHANGE_EFFECT' in locale and 'TEXT_NEW_GROUP' in locale for locale in data['locales'].values())
-native = (root / 'src/features/chroma_studio.rs').read_text(encoding='utf8')
-helper = (root / 'src/features/chroma_studio_layers.rs').read_text(encoding='utf8')
+native = (root / 'crates/razer-pages/src/features/chroma_studio.rs').read_text(encoding='utf8')
+helper = (root / 'crates/razer-pages/src/features/chroma_studio_layers.rs').read_text(encoding='utf8')
 for marker in ['title: effect.label.clone()', 'self.can_remove_layer(id)', 'self.first_visible_layer()',
                'label(&layer.title)', 'label("CHANGE_EFFECT")', '.submenu(', '.disabled(!can_remove)']:
     assert marker in native, marker

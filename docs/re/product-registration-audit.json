@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "audit_date": "2026-10-03",
-  "generator_sha256": "f35bfc2b2db3f472b241e8524ca669d2a34d1b0e371fd6381989017c694c2c11",
+  "generator_sha256": "cdd52cc96fac51c08ca0c13784f3f3476b39652b9214cb7ab671a36653ba33ad",
   "source_catalog": {
     "path": "docs/re/product-catalog.json",
-    "sha256": "caef6c7c4349ce3300a102df38500c36c98e0e45664428b4d97af8496df15b84"
+    "sha256": "9bfc0b3b39af69ca4f741bcdf4cebbeda227657ef7e6c5997b2e4a382664dcac"
   },
   "inventory_scanner_sha256": "60076e11149d2c436027029a01794e8be746986973840c50a7ded3fc59b25c35",
   "scope": "Source-backed product routes, not completed native product UIs or connected services.",

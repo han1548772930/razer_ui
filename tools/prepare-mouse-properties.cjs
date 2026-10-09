@@ -95,7 +95,7 @@ for (const name of fs.readdirSync(path.join(root, 'docs/re')).sort()) {
 requireValue(specs.length && new Set(specs.map(spec => spec.product_id)).size === specs.length, 'Missing or duplicate capabilities');
 specs.sort((a, b) => a.product_id - b.product_id);
 for (const [file, value] of [
-    ['src/features/mouse_properties_data.json', specs],
+    ['crates/razer-pages/src/features/mouse_properties_data.json', specs],
     ['docs/re/mouse-properties-capabilities-current-evidence.json', {method: 'Complete audited capabilities only; current manifest/AST/CSS/SVG verified statically', products: evidence}],
 ]) {
     const output = JSON.stringify(value, null, 2) + '\n';

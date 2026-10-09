@@ -93,7 +93,7 @@ const receipt = {schema_version: 1, method: 'Manifest-selected module-local Acor
   products: evidence, local_identity: 'macro_id is a local MacroLibrary entry identity, never a native guid',
   source_limitations: ['Component update uses stale indices and can lose restricted playback sets; local adaptation preserves document identity and reapplies current input eligibility.',
     'The source AX$.SYNAPSE.SEQUENCE typo is not adopted; local MacroType chooses the independently verified final playback set.']};
-for (const [file, data] of [['src/features/mapping_macro_data.json', output], ['docs/re/product-macro-mapping-current-evidence.json', receipt]]) {
+for (const [file, data] of [['crates/razer-pages/src/features/mapping_macro_data.json', output], ['docs/re/product-macro-mapping-current-evidence.json', receipt]]) {
   const bytes = JSON.stringify(data, null, 2) + '\n';
   if (check) assert.equal(read(file).replace(/\r\n/g, '\n'), bytes, `Stale ${file}`);
   else fs.writeFileSync(path.join(root, file), bytes);

@@ -32,7 +32,7 @@ div.body-widgets.flex                    (Ls/Ds)
   div.widget                            Smart Tracking
 ```
 
-它是随页面流动的介绍卡片。当前 `DD` 没有 modal、遮罩、确定/下一步按钮、设备示意图、焦点锁定或 Escape 处理。右上角关闭是唯一操作。此前未编译的 `src/features/calibration.rs` 不属于这条实现链；实际原生实现是 `features/mod.rs → device_pages.rs::DeviceWorkspace::calibration_page`。
+它是随页面流动的介绍卡片。当前 `DD` 没有 modal、遮罩、确定/下一步按钮、设备示意图、焦点锁定或 Escape 处理。右上角关闭是唯一操作。此前未编译的 `crates/razer-pages/src/features/calibration.rs` 不属于这条实现链；实际原生实现是 `features/mod.rs → device_pages.rs::DeviceWorkspace::calibration_page`。
 
 ## 尺寸、位置及状态
 

@@ -12,7 +12,7 @@ SVG = "{http://www.w3.org/2000/svg}"
 XLINK = "{http://www.w3.org/1999/xlink}"
 SOURCE = ".ref/applications/synapse/dashboard/static/media/gamer_room_hotspot_animation.53dd5566.svg"
 RECOVERY = "docs/re/current-media-offline-recovery.json"
-OUTPUT = "src/shell/gamer_room_hotspot_data.json"
+OUTPUT = "crates/razer-app-pages/src/gamer_room_hotspot_data.json"
 EVIDENCE = "docs/re/gamer-room-hotspot-current-evidence.json"
 
 

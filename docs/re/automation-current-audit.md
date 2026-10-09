@@ -32,7 +32,7 @@ quick macros are restored into the local candidate list from their rule lanes.
 The explicit
 fixture is isolated from persistence.
 
-`src/features/automation/theme.rs` defines the exact CSS palette for panel,
+`crates/razer-pages/src/features/automation/theme.rs` defines the exact CSS palette for panel,
 row, hover, pressed, foreground, muted, primary, border, footer, danger and
 warning roles. Body uses Roboto 14px at the source 16px rem scale; widget title
 uses RazerF5 16px. Widget and row widths/padding, 60px item height, 355px lane

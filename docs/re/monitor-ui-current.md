@@ -18,7 +18,7 @@ Gaming 的 restriction 同时作用于整个正文的 30% 透明度和各个本�
 
 ## 参数、布局与本地操作
 
-共享提取依据为 [accessory-system-source.json](accessory-system-source.json)、[准备收据](accessory-system-native-audit.json)和 [widget 布局](monitor-widget-layout-current-evidence.json)；当前 Rust 为 [accessory_system_products.rs](../../src/features/accessory_system_products.rs)。这些收据保存实际源片段与 hash，不能用旧过程文档中“尚未接入”替代当前代码状态。
+共享提取依据为 [accessory-system-source.json](accessory-system-source.json)、[准备收据](accessory-system-native-audit.json)和 [widget 布局](monitor-widget-layout-current-evidence.json)；当前 Rust 为 [accessory_system_products.rs](../../crates/razer-pages/src/features/accessory_system_products.rs)。这些收据保存实际源片段与 hash，不能用旧过程文档中“尚未接入”替代当前代码状态。
 
 Gaming 显示所选预设，首次手工更改先复制到 customData 并选择 Custom。Overdrive 为 Off0/Weak1/Strong2；3858 Gamma 为 1.4/1.8/2.2，3880 额外 2.4 及 Native/Rec.709/DCI-P3。非 Native gamut 禁用 contrast/gamma；3880 Custom 非 Native 还限制 Color。PIP 启用限制 HDR/Adaptive Sync；THX Cinema 限制 Gaming/Color，sRGB 限制 THX。Windows HDR、重复显示和真实 uiRestraint 不能从这些本地请求反推。
 

@@ -488,6 +488,6 @@ for(const p of evidence){
  coverage.push({product_id:p.product_id,status:'partial_native',pages:pages.map(pg=>({key:pg.key,sections:pg.sections.length,controls:pg.sections.reduce((n,s)=>n+s.controls.length,0),equalizers:pg.sections.filter(s=>s.equalizer).length})),default_normalizations:normalizations,supplementary_source,gaps});
  files.clear();
 }
-fs.writeFileSync(path.join(root,'src/features/audio_products_data.json'),JSON.stringify(products,null,2)+'\n');
+fs.writeFileSync(path.join(root,'crates/razer-pages/src/features/audio_products_data.json'),JSON.stringify(products,null,2)+'\n');
 fs.writeFileSync(path.join(root,'docs/re/audio-product-native-coverage.json'),JSON.stringify({schema_version:1,generator_sha256:crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),products:coverage},null,2)+'\n');
 console.log(`Prepared ${products.length} source-specific audio workspaces; ${coverage.reduce((n,p)=>n+p.pages.reduce((n,p)=>n+p.controls,0),0)} controls.`);

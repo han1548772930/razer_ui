@@ -17,8 +17,8 @@ def check_source(path, expected):
 
 
 def main():
-    mice = load('src/features/mouse_products_data.json')
-    keyboards = load('src/features/keyboard_products_data.json')
+    mice = load('crates/razer-pages/src/features/mouse_products_data.json')
+    keyboards = load('crates/razer-pages/src/features/keyboard_products_data.json')
     for products in (mice, keyboards):
         assert len(products) == len({product['product_id'] for product in products})
         for product in products:
@@ -94,8 +94,8 @@ def main():
                          'Actuation, calibration, OLED editors and pairing', 'Lighting effect parameters and advanced Chroma controls']},
         'runtime_not_verified': ['Rendered pixels, font fallback, scrolling and focus', 'Hardware writes and readback', 'Chroma service integration'],
         'artifacts': {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in [
-            'src/features/mouse_products.rs', 'src/features/mouse_products_data.json',
-            'src/features/keyboard_products.rs', 'src/features/keyboard_products_data.json']},
+            'crates/razer-pages/src/features/mouse_products.rs', 'crates/razer-pages/src/features/mouse_products_data.json',
+            'crates/razer-pages/src/features/keyboard_products.rs', 'crates/razer-pages/src/features/keyboard_products_data.json']},
     }
     output = ROOT / 'docs/re/mouse-keyboard-native-coverage.json'
     output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf8')

@@ -38,12 +38,12 @@
 
 ## 本地实现
 
-[src/ui/game_tile.rs](../../src/ui/game_tile.rs)：`list_box()`、`linked_game_tile()`、`add_new_tile()`，以及磁贴尺寸常量 `TILE_WIDTH=240`、`TILE_HEIGHT=190`、`BODY_HEIGHT=120`、`FOOTER_HEIGHT=70`、`PLUS_ICON=40`；样式逐条对应上表（`group_box=#111`、`primary=#44d62c`、`border=#5d5d5d`、虚线边框、圆角 5px、`.list-box` 的 `-5px` 右外边距）。
+[crates/razer-widgets/src/game_tile.rs](../../crates/razer-widgets/src/game_tile.rs)：`list_box()`、`linked_game_tile()`、`add_new_tile()`，以及磁贴尺寸常量 `TILE_WIDTH=240`、`TILE_HEIGHT=190`、`BODY_HEIGHT=120`、`FOOTER_HEIGHT=70`、`PLUS_ICON=40`；样式逐条对应上表（`group_box=#111`、`primary=#44d62c`、`border=#5d5d5d`、虚线边框、圆角 5px、`.list-box` 的 `-5px` 右外边距）。
 
 接入位置：
 
-- [linked_games.rs](../../src/features/linked_games.rs) 的关联游戏对话框：从「列表 + 添加程序按钮」改为源码的**磁贴墙** —— `.list-box` 里每个已关联程序一张 `.linked-game-tile`（页脚渲染 `.game-footer .name`，保留本对话框原有的删除入口），末尾固定一张 `.add-new` 虚线磁贴，点它走原有的文件选择流程。
-- [profiles_page.rs](../../src/shell/profiles_page.rs) 的「已关联的游戏」视图：本地没有该窗口的数据源，因此只渲染源码里空列表也会出现的那张 `.add-new` 磁贴。
+- [linked_games.rs](../../crates/razer-pages/src/features/linked_games.rs) 的关联游戏对话框：从「列表 + 添加程序按钮」改为源码的**磁贴墙** —— `.list-box` 里每个已关联程序一张 `.linked-game-tile`（页脚渲染 `.game-footer .name`，保留本对话框原有的删除入口），末尾固定一张 `.add-new` 虚线磁贴，点它走原有的文件选择流程。
+- [profiles_page.rs](../../crates/razer-app-pages/src/profiles_page.rs) 的「已关联的游戏」视图：本地没有该窗口的数据源，因此只渲染源码里空列表也会出现的那张 `.add-new` 磁贴。
 
 「添加」磁贴的加号用源码资产：`.plus-icon{background-image:url(icon_add.c95a8d74.svg);background-size:40px;height:40px;width:40px}` —— 该文件与 182 设备包里的 `icon_add.c95a8d74.svg` 同名同哈希，本地打包名是 `synapse/dashboard-add.svg`（审计脚本会核对这条来源链）。
 

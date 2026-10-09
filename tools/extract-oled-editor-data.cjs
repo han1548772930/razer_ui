@@ -3,7 +3,7 @@ const fs = require('fs'), path = require('path'), crypto = require('crypto'), ac
 const root = path.resolve(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root,name),'utf8');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
-const product = JSON.parse(read('src/features/keyboard_products_data.json')).find(p=>p.product_id===691);
+const product = JSON.parse(read('crates/razer-pages/src/features/keyboard_products_data.json')).find(p=>p.product_id===691);
 const file = product.source_files.find(f=>/\/main\./.test(f.path));
 const source = read(file.path);
 if(hash(source)!==file.sha256) throw Error('Current OLED source changed');
@@ -110,5 +110,5 @@ const output={product_id:691,source:file,animation_fps:product.config.OLED_ANIMA
   evidence:[...modules].map(([module,n])=>({module,offset:n.start,end:n.end,sha256:hash(source.slice(n.start,n.end))})),
   limitations:['Native preset selection, local import/crop/custom reset and crop-placement draft metadata are mounted; GIF processing and device transport remain unavailable.',
     'Media and system sample values in the source must not be represented as live device readings.']};
-fs.writeFileSync(path.join(root,'src/features/keyboard_oled_editor_data.json'),JSON.stringify(output)+'\n');
+fs.writeFileSync(path.join(root,'crates/razer-pages/src/features/keyboard_oled_editor_data.json'),JSON.stringify(output)+'\n');
 console.log(`Extracted ${animations.length} animation presets, ${images.length} image presets, ${fonts.length} fonts and ${sizes.length} sizes from current modules.`);

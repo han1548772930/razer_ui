@@ -15,7 +15,7 @@ const definitions=[
  {name:'starlight',module:6548,root:'j',children:['C','N'],gradient:'default',duration:'f5',random:true,numeric:[['density','dV','JG',null]],playback:false},
 ];
 const rows=[],receipts=[parentReceipt];
-const derived=JSON.parse(read('src/features/chroma_studio_data.json'));
+const derived=JSON.parse(read('crates/razer-pages/src/features/chroma_studio_data.json'));
 const numeric=[];
 for(const def of definitions){
  // Separate Source instances prevent another lazy root from silently supplying

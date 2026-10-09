@@ -85,7 +85,7 @@ for (const pid of [1303, 1304]) {
     if(node.type==='SequenceExpression')node=node.expressions.at(-1);
     if(node.type!=='ArrayExpression')throw Error(`Missing palette array ${pid}`);
     palette.value=node.elements.map(n=>{if(n.type!=='Literal')throw Error('Nonliteral palette');return n.value});
-    const rust=fs.readFileSync(path.join(root,'src/features/lighting_color.rs'),'utf8');
+    const rust=fs.readFileSync(path.join(root,'crates/razer-pages/src/features/lighting_color.rs'),'utf8');
     const values=[...rust.match(/const PRESETS:[\s\S]*?= \[([\s\S]*?)\];/)[1].matchAll(/0x([0-9a-f]{6})/g)].map(m=>'#'+m[1]);
     if(JSON.stringify(palette.value)!==JSON.stringify([...values,'no-color']))throw Error(`Palette mismatch ${pid}`);
   }
@@ -96,7 +96,7 @@ if (declarations.length) console.log(JSON.stringify(products.map(p=>({product_id
 else {
   const artifacts = [
     ['docs/re/nommo-effects-source.json', {method:'Acorn AST and static CSS only; no reference JavaScript evaluation',offset_unit:'UTF-16 code units in the decoded JavaScript/CSS strings, not byte offsets',products}],
-    ['src/features/audio_nommo_effects_data.json',products.map(p=>({product_id:p.product_id, effects:p.configuration.QUICK_EFFECTS.value, wave_default_direction:p.wave_direction.value[p.configuration.DeviceInfo.value.WAVE_DIRECTION], defaults:Object.fromEntries(p.configuration.QUICK_EFFECTS.value.map(e=>[e.id,p.defaults.value[e.id]??{}]))}))]
+    ['crates/razer-pages/src/features/audio_nommo_effects_data.json',products.map(p=>({product_id:p.product_id, effects:p.configuration.QUICK_EFFECTS.value, wave_default_direction:p.wave_direction.value[p.configuration.DeviceInfo.value.WAVE_DIRECTION], defaults:Object.fromEntries(p.configuration.QUICK_EFFECTS.value.map(e=>[e.id,p.defaults.value[e.id]??{}]))}))]
   ];
   for(const [file,value] of artifacts) {
     const expected=JSON.stringify(value,null,2)+'\n', target=path.join(root,file);

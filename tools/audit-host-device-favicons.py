@@ -106,7 +106,7 @@ def main():
             receipt = original.with_suffix(original.suffix + ".http.json")
             entry["unavailable"] = json.loads(receipt.read_text(encoding="utf8")).get("status") if receipt.exists() else "not fetched"
             mapping[str(entry["product_id"])] = None
-    products = [("src/shell/host_device_favicons.json", mapping),
+    products = [("crates/razer-shell/src/shell/host_device_favicons.json", mapping),
                 ("docs/re/host-device-favicons-current-evidence.json", dict(generator_sha256=digest(Path(__file__).read_bytes()),
                  method="Current HTML shortcut icon to current host TabUI.changeTabIcon; static SVG only", products=entries))]
     for filename, value in products:

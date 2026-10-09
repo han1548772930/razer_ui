@@ -102,11 +102,11 @@ for (const name of ['main.c0e644c4.css', '458.d86e844b.chunk.css']) {
     css.push({path: file, sha256: hash(text), ...rule});
   }
 }
-const page = read('src/shell/armory_page.rs');
-const share = read('src/shell/armory_page/share_profile.rs');
+const page = read('crates/razer-app-pages/src/armory_page.rs');
+const share = read('crates/razer-app-pages/src/armory_page/share_profile.rs');
 const shareCompact = share.replace(/\s+/g, '');
-const shell = read('src/shell.rs');
-const profileMenu = read('src/features/profile.rs');
+const shell = read('crates/razer-shell/src/shell.rs');
+const profileMenu = read('crates/razer-pages/src/features/profile.rs');
 for (const fragment of ['pub(super) fn open_share_profile(', 'ShareProfileDialog::new(device, window, cx)', '.children(self.share_profile.clone())', 'phase1: false', 'guest: true']) {
   requireFact(page.includes(fragment), `Missing local share entry/default guard: ${fragment}`);
 }
@@ -128,7 +128,7 @@ const report = {
   source_modules: [66517, 24988, 13784, 45190, 13476, 90516, 57230, 16230, 27588].map(module => ({module, ...source.receipt(module, source.module(module).fn)})),
   form: {inputs, submit_predicate: source.receipt(24988, validator), profile_defaults: source.receipt(45190, source.binding(45190, 'd')), game_limit: 10, game_file_types: ['exe', 'url']},
   service, locales, css, device_menus: deviceMenus,
-  native: {page: 'src/shell/armory_page.rs', dialog: 'src/shell/armory_page/share_profile.rs',
+  native: {page: 'crates/razer-app-pages/src/armory_page.rs', dialog: 'crates/razer-app-pages/src/armory_page/share_profile.rs',
     entry: 'Explicit Share command on an existing local device/profile passes its snapshot to AppShell and ArmoryPage::open_share_profile.',
     source_gates: 'Current PID 182 and 653 require installed Armory, non-guest account, profile-sharing feature and supported category; shared and maintenance states disable Share. The explicit local draft entry does not claim these remote gates passed. Direct access to implemented local modules follows the user requirement.',
     retained_data: ['actual device', 'actual profile selection', 'title', 'description', 'up to ten user-selected game paths'],
