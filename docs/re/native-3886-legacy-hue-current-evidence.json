@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "date": "2026-10-09",
+  "generator_sha256": "04d81a9e3bebc2c570b1a5017a47add6db8fbf92747195a7a4711b2496919ab6",
   "scope": "Product 3886 current monolithic middleware Philips Hue manager; conditional caller/resource/ABI chain",
   "method": "Acorn AST and byte/hash receipts only; no vendor JavaScript, application or DLL execution",
   "source": {
