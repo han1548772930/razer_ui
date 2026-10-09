@@ -12,7 +12,7 @@ HTTP状态是原目录的抓取记录，当前收据仅保存本地HTML/manifest
 | /chroma-app/settings/ | [Chroma Settings](chroma-settings-current-audit.md) | 真实host查询、全部教程消费者、工具栏状态及视觉 |
 | /cortex/ | Cortex登记；目录为404 | 缺当前页面证据与独立主界面 |
 | /feedback/ | FeedbackPage；[访客表单](feedback-app-current-audit.md) | 非访客/真实账户与目录、日志归档、提交回执及结果页 |
-| /natalie/ | Virtual Ring Light登记入口 | 独立光效/屏幕/本地设置界面未接 |
+| /natalie/ | [Virtual Ring Light原链](ring-light-ui-current.md) | pod/ring/license/setting/version及legacy FFI已部分语义读取；独立界面未接，全部分支/原生正文未完成 |
 | /profile-migration/ | MigrationPage；正式/preview构造分开 | 选择、分组、取消、准备、结果逐项审查及真实scanner/转换 |
 | /rz-app-menu/ | AppPicker/app_picker_host | 实际安装状态、推荐、模块和错误条件；本地可用入口不可被安装门控冒充阻断 |
 | /rz-user-profile-menu/ | account_menu | 真实访客/登录/锁定/退出确认与观察发布者 |

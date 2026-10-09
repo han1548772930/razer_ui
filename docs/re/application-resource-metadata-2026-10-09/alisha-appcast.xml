@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>AccessDenied</Code><Message>User: arn:aws:iam::821649102857:user/CDN/Akamai-S3Read is not authorized to perform: s3:ListBucket on resource: "arn:aws:s3:::razer-appcasts" because no identity-based policy allows the s3:ListBucket action</Message><RequestId>G7M9XJMMM4KJQR7C</RequestId><HostId>yqywBOGU7SUOgTBj3sS+la5DyG7brelrGNnv9mcuNY7uRqgZa7Wx+oHlvvfsHXgfrSTRC5+AIh4Sww7NGCM+8pBGmyNPUFg7</HostId></Error>

@@ -48,6 +48,17 @@ static renderer alone does not complete those source features.
 
 ## Static receipts
 
+The complete current tray branch and action read-through is maintained in
+[tray-ui-current.md](tray-ui-current.md), with exact AST/CSS/host receipts in
+[tray-semantic-current-evidence.json](tray-semantic-current-evidence.json).
+It adds the source dedup/ready/serial rules, window-storage subscriptions,
+profile BroadcastChannel payloads, per-app widget visibility and original
+inconsistencies. In particular, `synapseWidgetsBatteryHidden` only annotates
+`showBatteryWidget`; the current row does not consume that field. The paused
+battery class contains a space before `-paused` and therefore does not match
+the CSS concatenated `battery-N-paused` selector. These are source boundaries,
+not claims of successful device writes or a local renderer fix.
+
 Evidence is in [tray-widgets-current-evidence.json](tray-widgets-current-evidence.json).
 It includes current manifest-declared 492 JS/CSS, 554 section-title CSS,
 main 5596 category export, and source/output hashes for each prepared SVG.

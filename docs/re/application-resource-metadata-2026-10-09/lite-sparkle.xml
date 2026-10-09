@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>RzSparkle</title>
+    <link>https://appcasts.razer.com/sophie-lite/appcast-rzsparkle.xml</link>
+    <description>Most recent changes with links to updates.</description>
+    <language>en</language>
+    <item>
+      <title>RzSparkle 1.0.13.0</title>
+      <sparkle:releaseNotesLink>https://apps.razer.com/release-notes/sophie-lite/v_1_8_0_0</sparkle:releaseNotesLink>
+      <description></description>
+      <pubDate>Mon, 17 Sep 2019 10:35:00 +0000</pubDate>
+      <enclosure
+        url="https://cdn.razersynapse.com/1568687610OE1bjC56SurroundSoundSetupUpgradeRzSparkle-0.0.0.89.exe"
+        sparkle:version="1.0.13.0"
+        sparkle:shortVersionString="1.0.13.0"
+        sparkle:dsaSignature="MEUCIQCO0/ZEmdLT1xbZ/g2Jq38jaQdL5y/xoAgzxiOVKDQfxQIgXM76DRJ2YXuOr0JboPkKuXMD47KyqVh1MmIW0BpPWmo="
+        sparkle:installerArguments="/S /LAUNCH"
+				sparkle:downloadbytes="6270976"
+				sparkle:releasedate="1568260021"
+        length="6270976"
+        type="application/octet-stream"
+      />
+    </item>
+  </channel>
+</rss>

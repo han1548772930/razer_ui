@@ -1,0 +1,234 @@
+{
+  "policy": "JSON/XML bodies only; referenced binary URLs are recorded, never fetched",
+  "receipts": [
+    {
+      "id": "background-installer",
+      "url": "https://apps.razer.com/background-manager/installer-manifest.json",
+      "queried_utc": "2026-10-09T03:33:55.846582+00:00",
+      "status": 200,
+      "final_url": "https://apps.razer.com/background-manager/installer-manifest.json",
+      "headers": {
+        "Content-Type": "application/json",
+        "Content-Length": "402",
+        "x-amz-id-2": "FCX6U0cr7wuB9w+PG/H/8vva0jLG+tX+S+G1uSSBGHfEI8hQgbnsgTVOWm06NI0V/Ms1bQ9eNgg=",
+        "x-amz-request-id": "G7ME6ZVBC6SAVKDF",
+        "Last-Modified": "Wed, 07 Oct 2026 02:39:49 GMT",
+        "ETag": "\"685a400fb9305fc6079365157b0b777b\"",
+        "Server": "AmazonS3",
+        "X-Amz-Cf-Pop": "ATL59-P13",
+        "X-Amz-Cf-Id": "z0rz5GZ7SqQz58hWr66h73QkT5OrzhivUDMvOJlit_pItVXtudwNcQ==",
+        "Date": "Fri, 09 Oct 2026 03:33:54 GMT",
+        "Connection": "close",
+        "X-Forward-Proto": "http",
+        "CDN-Origin-Protocol": "HTTP",
+        "Strict-Transport-Security": "max-age=15768000"
+      },
+      "size": 402,
+      "sha256": "347be6a819372010ebfd04c4ed6436f8f795b91e761dcee1e84c8e0764d7d422",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/background-installer.json",
+      "parse_status": "valid_data"
+    },
+    {
+      "id": "synapse-assets-index",
+      "url": "https://apps.razer.com/synapse/assets/index.json?filter=synapseAssets.json",
+      "queried_utc": "2026-10-09T03:33:55.848588+00:00",
+      "status": 200,
+      "final_url": "https://apps.razer.com/synapse/assets/index.json?filter=synapseAssets.json",
+      "headers": {
+        "Content-Type": "application/json",
+        "Content-Length": "11650",
+        "Last-Modified": "Wed, 07 Oct 2026 02:40:06 GMT",
+        "ETag": "\"983c2dc20fa20cafd0cef956a9e85835\"",
+        "Server": "AmazonS3",
+        "X-Amz-Cf-Pop": "ATL59-P13",
+        "X-Amz-Cf-Id": "3DGMN4RJWeUSnY4Jh4IHb4y5ufPMbjrqmd0PN3lEM1rClboqaK5HKg==",
+        "Date": "Fri, 09 Oct 2026 03:33:54 GMT",
+        "Connection": "close",
+        "X-Forward-Proto": "http",
+        "CDN-Origin-Protocol": "HTTP",
+        "Strict-Transport-Security": "max-age=15768000"
+      },
+      "size": 11650,
+      "sha256": "750e3d338dc9cb6296e93faebd904dd5b15a71c334cb1e05d3053ec6017123c5",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/synapse-assets-index.json",
+      "parse_status": "valid_data"
+    },
+    {
+      "id": "alisha-appcast",
+      "url": "https://appcasts.razer.com/alisha/appcast.xml",
+      "queried_utc": "2026-10-09T03:33:55.849596+00:00",
+      "status": 403,
+      "final_url": "https://appcasts.razer.com/alisha/appcast.xml",
+      "headers": {
+        "Content-Type": "application/xml",
+        "Server": "AmazonS3",
+        "Content-Length": "456",
+        "Date": "Fri, 09 Oct 2026 03:33:55 GMT",
+        "Connection": "close"
+      },
+      "size": 456,
+      "sha256": "6c3dc69fa8cebd6f528de0b249f020eacfcba2b0823c967400edc87a4f47d28d",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/alisha-appcast.xml",
+      "parse_status": "not_parsed"
+    },
+    {
+      "id": "lite-appcast",
+      "url": "https://appcasts.razer.com/sophie-lite/appcast.xml",
+      "queried_utc": "2026-10-09T03:33:55.850236+00:00",
+      "status": 200,
+      "final_url": "https://appcasts.razer.com/sophie-lite/appcast.xml",
+      "headers": {
+        "Last-Modified": "Thu, 28 Nov 2019 08:36:28 GMT",
+        "ETag": "\"6ee78a916cd11b80014a76746b81bc49\"",
+        "Accept-Ranges": "bytes",
+        "Content-Type": "text/xml",
+        "Content-Length": "1213",
+        "Server": "AmazonS3",
+        "Date": "Fri, 09 Oct 2026 03:33:54 GMT",
+        "Connection": "close"
+      },
+      "size": 1213,
+      "sha256": "5a19c22b6d42f7ccbcae20ad455b33e1126cd2df0f6096ff54994e2b3047d6f4",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/lite-appcast.xml",
+      "parse_status": "valid_data"
+    },
+    {
+      "id": "lite-thx",
+      "url": "https://appcasts.razer.com/sophie-lite/appcast-thx.xml",
+      "queried_utc": "2026-10-09T03:33:55.850772+00:00",
+      "status": 200,
+      "final_url": "https://appcasts.razer.com/sophie-lite/appcast-thx.xml",
+      "headers": {
+        "Last-Modified": "Mon, 27 Apr 2020 08:03:10 GMT",
+        "ETag": "\"cd6e0dac64575baa08626611db8f85a9\"",
+        "Accept-Ranges": "bytes",
+        "Content-Type": "text/xml",
+        "Content-Length": "1249",
+        "Server": "AmazonS3",
+        "Date": "Fri, 09 Oct 2026 03:33:54 GMT",
+        "Connection": "close"
+      },
+      "size": 1249,
+      "sha256": "de5dcdfcd4e82cc0315e710c3d54c9f37f95cce69d064663109a0d44c0ce94ac",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/lite-thx.xml",
+      "parse_status": "valid_data"
+    },
+    {
+      "id": "lite-sparkle",
+      "url": "https://appcasts.razer.com/sophie-lite/appcast-rzsparkle.xml",
+      "queried_utc": "2026-10-09T03:33:56.174594+00:00",
+      "status": 200,
+      "final_url": "https://appcasts.razer.com/sophie-lite/appcast-rzsparkle.xml",
+      "headers": {
+        "Server": "AmazonS3",
+        "Last-Modified": "Tue, 17 Sep 2019 07:14:04 GMT",
+        "ETag": "\"bfd173d91b6b8c7ce3545d7cdaa1cf27\"",
+        "Accept-Ranges": "bytes",
+        "Content-Type": "text/xml",
+        "Content-Length": "1240",
+        "Date": "Fri, 09 Oct 2026 03:33:55 GMT",
+        "Connection": "close"
+      },
+      "size": 1240,
+      "sha256": "949861606fa1625d781daaa3fe3667255d79fa97d28f61d201a4b1fac39369ba",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/lite-sparkle.xml",
+      "parse_status": "valid_data"
+    },
+    {
+      "id": "sophie-appcast",
+      "url": "https://appcasts.razer.com/sophie/appcast.xml",
+      "queried_utc": "2026-10-09T03:33:57.169413+00:00",
+      "status": 200,
+      "final_url": "https://appcasts.razer.com/sophie/appcast.xml",
+      "headers": {
+        "Last-Modified": "Tue, 12 May 2020 09:09:05 GMT",
+        "ETag": "\"891a519c1538781587048252925ee92e\"",
+        "Accept-Ranges": "bytes",
+        "Content-Type": "text/xml",
+        "Content-Length": "1219",
+        "Server": "AmazonS3",
+        "Date": "Fri, 09 Oct 2026 03:33:55 GMT",
+        "Connection": "close"
+      },
+      "size": 1219,
+      "sha256": "44205d2b5f0201e8248535ebafc3b1fb81b61db6400d8a65d42369621ce1780b",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/sophie-appcast.xml",
+      "parse_status": "valid_data"
+    },
+    {
+      "id": "sophie-thx",
+      "url": "https://appcasts.razer.com/sophie/appcast-thx.xml",
+      "queried_utc": "2026-10-09T03:33:57.252093+00:00",
+      "status": 200,
+      "final_url": "https://appcasts.razer.com/sophie/appcast-thx.xml",
+      "headers": {
+        "Last-Modified": "Thu, 06 Aug 2020 07:43:13 GMT",
+        "ETag": "\"b4292346655c7dbc2d8449f388a9dc3e\"",
+        "Accept-Ranges": "bytes",
+        "Content-Type": "text/xml",
+        "Content-Length": "1242",
+        "Server": "AmazonS3",
+        "Date": "Fri, 09 Oct 2026 03:33:55 GMT",
+        "Connection": "close"
+      },
+      "size": 1242,
+      "sha256": "d0c6992e39b494eb0165454609f865ccded9b8b2d943f596024d97c3e3fc5835",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/sophie-thx.xml",
+      "parse_status": "valid_data"
+    },
+    {
+      "id": "natalie-appcast",
+      "url": "https://appcasts.razer.com/natalie/appcast.xml",
+      "queried_utc": "2026-10-09T03:33:57.275784+00:00",
+      "status": 403,
+      "final_url": "https://appcasts.razer.com/natalie/appcast.xml",
+      "headers": {
+        "Content-Type": "application/xml",
+        "Server": "AmazonS3",
+        "Content-Length": "436",
+        "Date": "Fri, 09 Oct 2026 03:33:55 GMT",
+        "Connection": "close"
+      },
+      "size": 436,
+      "sha256": "ae2509371e369618f8b95df05c377bbc174b1731753084281f9ba8f140e77075",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/natalie-appcast.xml",
+      "parse_status": "not_parsed"
+    },
+    {
+      "id": "natalie-dll",
+      "url": "https://appcasts.razer.com/natalie/appcast-dll.xml",
+      "queried_utc": "2026-10-09T03:33:57.276322+00:00",
+      "status": 403,
+      "final_url": "https://appcasts.razer.com/natalie/appcast-dll.xml",
+      "headers": {
+        "Content-Type": "application/xml",
+        "Server": "AmazonS3",
+        "Content-Length": "436",
+        "Date": "Fri, 09 Oct 2026 03:33:55 GMT",
+        "Connection": "close"
+      },
+      "size": 436,
+      "sha256": "3998bbf9225cd672004cdfbc69480969c59897e8b65144d739d538a4b3bb5fa4",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/natalie-dll.xml",
+      "parse_status": "not_parsed"
+    },
+    {
+      "id": "natalie-sparkle",
+      "url": "https://appcasts.razer.com/natalie/appcast-rzsparkle.xml",
+      "queried_utc": "2026-10-09T03:33:57.501741+00:00",
+      "status": 403,
+      "final_url": "https://appcasts.razer.com/natalie/appcast-rzsparkle.xml",
+      "headers": {
+        "Content-Type": "application/xml",
+        "Server": "AmazonS3",
+        "Content-Length": "456",
+        "Date": "Fri, 09 Oct 2026 03:33:56 GMT",
+        "Connection": "close"
+      },
+      "size": 456,
+      "sha256": "006cb220f63609366129338fbefbb7afd456468154b3c01956c0edd0950de883",
+      "body_path": "docs/re/application-resource-metadata-2026-10-09/natalie-sparkle.xml",
+      "parse_status": "not_parsed"
+    }
+  ]
+}

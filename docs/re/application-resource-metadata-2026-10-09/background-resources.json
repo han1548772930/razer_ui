@@ -1,0 +1,447 @@
+{
+    "resources": [
+        {
+            "resourceName": "cpuidsdk64Common",
+            "resourceVersion": "1.3.2.6",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/RzDLLService/cpuidsdk64_v1.3.2.6.dll",
+            "path": "RzDLLService",
+            "overwriteApp": "",
+            "type": "application/x-msdownload",
+            "size": 3303200,
+            "sha256": "8CB5704FFBF13BE739F8A78C95B4769B0AF807447100A4B51B2DE6062E2712B4",
+            "integrity": "sha256-jLVwT/vxO+c5+KeMlbR2mwr4B0RxAKS1Gy3mBi4nErQ=",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            }
+        },
+        {
+            "resourceName": "ExtraInstaller_RazerGameManager",
+            "resourceVersion": "3.14.0.1109",
+            "url": "https://app-assets.razer.com/files/synapse/gms3/RazerGameManager_3.14.0.1109.exe",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "Drivers",
+                    "runForceElevated": true,
+                    "runOnInstall": "/S /VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 59263408,
+            "sha256": "418747688ECABBCEB438EC1C18109C0F3640044A2F83AF2C6C0F74906A63F6A4",
+            "integrity": "sha256-QYdHaI7Ku860OOwcGBCcDzZABEovg68sbA90kGpj9qQ="
+        },
+        {
+            "resourceName": "FirmwareUpdaterSDK",
+            "resourceVersion": "1.0.1.031300",
+            "url": "https://app-assets.razer.com/files/synapse/FirmwareUpdater/FirmwareUpdaterSDK_v1.0.1.031300.dll",
+            "path": "FWUpdate",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "",
+                    "runOnInstall": "/S /LAUNCH"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 632056,
+            "sha256": "E204E2E1099D5948050C3AAB23589B70BF8872928BA452BB2D9BE36B00FDD572",
+            "integrity": "sha256-4gTi4QmdWUgFDDqrI1ibcL+IcpKLpFK7LZvjawD91XI="
+        },
+        {
+            "resourceName": "IoTNative",
+            "resourceVersion": "1.0.20.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/IoT/IoTNative_v1.0.20.0.dll",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 617160,
+            "sha256": "F2E86E50E994DC6F04385CDC60E79E38941199E81B0560F61B9039ACD95DBEB8",
+            "integrity": "sha256-8uhuUOmU3G8EOFzcYOeeOJQRmegbBWD2G5A5rNldvrg="
+        },
+        {
+            "resourceName": "LightingDriverDLL",
+            "resourceVersion": "1.9.14.0",
+            "url": "https://app-assets.razer.com/files/synapse/lighting_driver_v1.9.14.0.dll",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 968392,
+            "sha256": "9B701A56C5ED0C1C30D26452FB5752EE328304A197F9A36CD3C51E0CD6A4DE6B",
+            "integrity": "sha256-m3AaVsXtDBww0mRS+1dS7jKDBKGX+aNs08UeDNak3ms="
+        },
+        {
+            "resourceName": "LightingEngineDLL",
+            "resourceVersion": "4.0.55.0",
+            "url": "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 2153672,
+            "sha256": "CD9FC2A61FF920B9B73E1F5E27632020E2F8586F443E426A875AD3B042B714FA",
+            "integrity": "sha256-zZ/Cph/5ILm3Ph9eJ2MgIOL4WG9EPkJqh1rTsEK3FPo="
+        },
+        {
+            "resourceName": "NormalDriver_RzComDriver",
+            "resourceVersion": "23.0.6.0",
+            "url": "https://app-assets.razer.com/files/synapse/RzComDriver_v23.0.6.0.exe",
+            "path": "",
+            "overwriteApp": "",
+            "type": "application/x-msdownload",
+            "size": 2789456,
+            "sha256": "D17BBC15E025BCEE12948655ED5956BFE855019E626E497DD10ED40CB9A5E0DC",
+            "integrity": "sha256-0Xu8FeAlvO4SlIZV7VlWv+hVAZ5ibkl90Q7UDLml4Nw=",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "Drivers",
+                    "runOnInstall": "/S /LAUNCH"
+                }
+            }
+        },
+        {
+            "resourceName": "Razer_IoT_SDK",
+            "resourceVersion": "2.0.10.071100",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/IoT/Razer_IoT_SDK_v2.0.10.071100.dll",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 4786376,
+            "sha256": "6469BF29D42A7DAE225BDB74797015D34120BDA6116ED30F00F160069AFD721B",
+            "integrity": "sha256-ZGm/KdQqfa4iW9t0eXAV00EgvaYRbtMPAPFgBpr9chs="
+        },
+        {
+            "resourceName": "Razer_Upgrade_SDK_V25",
+            "resourceVersion": "1.2.0.0",
+            "url": "https://app-assets.razer.com/files/synapse/FirmwareUpdater/Library/Razer_Upgrade_SDK_V25_v1.2.0.dll",
+            "path": "FWUpdate/Library",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "",
+                    "runOnInstall": "/S /LAUNCH"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 81096,
+            "sha256": "5899B2C58435460F98CBA697E3600F00BEF3F08CEA12B436DD65D24A7DDC170E",
+            "integrity": "sha256-WJmyxYQ1Rg+Yy6aX42APAL7z8IzqErQ23WXSSn3cFw4="
+        },
+        {
+            "resourceName": "RazerWDLExe",
+            "resourceVersion": "1.0.46.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/WDL/v1.0.46.0/razerwdl.exe",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "LampArray"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 4237512,
+            "sha256": "CE2F7204D755E96E82887909288E0A6E3EB9566467C31994D3D393D946204700",
+            "integrity": "sha256-zi9yBNdV6W6CiHkJKI4Kbj65VmRnwxmU09OT2UYgRwA="
+        },
+        {
+            "resourceName": "RazerWDLMsix",
+            "resourceVersion": "1.0.46.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/WDL/1.0.46.0/razerwdl.msix",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "LampArray"
+                }
+            },
+            "type": "application/octet-stream",
+            "size": 10529,
+            "sha256": "B2F2700C373E259BC10C81F7917F3853A71A28C38D2C9A9DAD6D01673C78F050",
+            "integrity": "sha256-svJwDDc+JZvBDIH3kX84U6caKMONLJqdrW0BZzx48FA="
+        },
+        {
+            "resourceName": "Ry_Online_Update_Dll_ouput",
+            "resourceVersion": "1.0.1.0",
+            "url": "https://app-assets.razer.com/files/synapse/FirmwareUpdater/Library/Ry_Online_Update_Dll_ouput_v1.0.1.dll",
+            "path": "FWUpdate/Library",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "",
+                    "runOnInstall": "/S /LAUNCH"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 2618056,
+            "sha256": "BC88E61F2809A217CAB6A0D1566A64FBE456EDDB5FCCB22A61A592DE80A577B2",
+            "integrity": "sha256-vIjmHygJohfKtqDRVmpk++RW7dtfzLIqYaWS3oCld7I="
+        },
+        {
+            "resourceName": "RzAudioCapture",
+            "resourceVersion": "1.0.38.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/AudioDLL/RzAudioCapture_v1.0.38.0.dll",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 943816,
+            "sha256": "9A87A6DB3EB1D2E7733AF008010A44C5B2427157A2040B73FE69004F92AE404D",
+            "integrity": "sha256-moem2z6x0udzOvAIAQpExbJCcVeiBAtz/mkAT5KuQE0="
+        },
+        {
+            "resourceName": "RzChromaAIColorGenDLL",
+            "resourceVersion": "1.0.1.0",
+            "url": "https://app-assets.razer.com/files/ChromaApp/rz_chroma_ai_color_gen_v1.0.1.0.dll",
+            "path": "",
+            "overwriteApp": "",
+            "type": "application/x-msdownload",
+            "size": 5638936,
+            "sha256": "20604FF3A2193710A76147931DA4528AE1092AD89149E517F7B95C8996D3E191",
+            "integrity": "sha256-IGBP86IZNxCnYUeTHaRSiuEJKtiRSeUX97lciZbT4ZE=",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            }
+        },
+        {
+            "resourceName": "RzDLLService",
+            "resourceVersion": "1.0.29.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/RzDLLService/RzDLLService_v1.0.29.0.exe",
+            "path": "RzDLLService",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 679112,
+            "sha256": "C7D47D88CDA40EC9CC84ABBBBF4B8EBAD13F5113A2DDDADEADF8A8AD6CE87436",
+            "integrity": "sha256-x9R9iM2kDsnMhKu7v0uOutE/UROi3drerfiorWzodDY="
+        },
+        {
+            "resourceName": "RzFWSDKWrapper",
+            "resourceVersion": "1.0.3.0",
+            "url": "https://app-assets.razer.com/files/synapse/FirmwareUpdater/Syn/RzFWSDKWrapper_v1.0.3.0.dll",
+            "path": "FWUpdate",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "",
+                    "runOnInstall": "/S /LAUNCH"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 408264,
+            "sha256": "0C6137AFEE7B08C1EBF18EAA37CD99DB350A0765F3F5ABC318AABB18C5AC6E76",
+            "integrity": "sha256-DGE3r+57CMHr8Y6qN82Z2zUKB2Xz9avDGKq7GMWsbnY="
+        },
+        {
+            "resourceName": "RzInterhaptics",
+            "resourceVersion": "1.0.0.5",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/AudioDLL/RzInterHaptics_V1.0.0.5.dll",
+            "path": "",
+            "overwriteApp": "",
+            "type": "application/x-msdownload",
+            "size": 1324056,
+            "sha256": "CC2A78F8C9AEAE01A5B2AFB1DDAC301B2FEE11CA2BE07824715060AADFE1F92E",
+            "integrity": "sha256-zCp4+MmurgGlsq+x3awwGy/uEcor4HgkcVBgqt/h+S4=",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            }
+        },
+        {
+            "resourceName": "RzInterhapticsHapticEncoder",
+            "resourceVersion": "2.0.1.11",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/AudioDLL/RzInterhapticsHapticEncoder_v2.0.1.11.dll",
+            "path": "",
+            "overwriteApp": "",
+            "type": "application/x-msdownload",
+            "size": 461992,
+            "sha256": "433B2EE530BABCB77D07E4EFCC99320BA2509893A732D8B0046AB0C302E62801",
+            "integrity": "sha256-Qzsu5TC6vLd9B+TvzJkyC6JQmJOnMtiwBGqwwwLmKAE=",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            }
+        },
+        {
+            "resourceName": "RzLampArrayDLL",
+            "resourceVersion": "1.0.46.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/WDL/v1.0.46.0/rz_lamp_array_v1.0.46.0.dll",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "LampArray"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 1853640,
+            "sha256": "9D7A188C3F836C6CF20D35AC8DF7E988BA418EF47608C2A297E00FD21C333692",
+            "integrity": "sha256-nXoYjD+DbGzyDTWsjffpiLpBjvR2CMKil+AP0hwzNpI="
+        },
+        {
+            "resourceName": "RzPowerTool",
+            "resourceVersion": "1.0.18.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/RzPowerTool/RzPowerTool_v1.0.18.0.exe",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 1052296,
+            "sha256": "FC826508A70F990DF16A1EB4F77AA2F63C35F7D380BCA5B256A40609D61CF175",
+            "integrity": "sha256-/IJlCKcPmQ3xah6093qi9jw199OAvKWyVqQGCdYc8XU="
+        },
+        {
+            "resourceName": "RzSystemCommon",
+            "resourceVersion": "1.0.29.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/RzDLLService/RzSystemCommon_v1.0.29.0.dll",
+            "path": "RzDLLService",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 863432,
+            "sha256": "CC8C6AEE3515F96F5BED7A11C4A4B3653B525EC2A09A87C2D062EC183AF4A76D",
+            "integrity": "sha256-zIxq7jUV+W9b7XoRxKSzZTtSXsKgmofC0GLsGDr0p20="
+        },
+        {
+            "resourceName": "RzSystemService",
+            "resourceVersion": "1.0.29.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/RzDLLService/RzSystemService_v1.0.29.0.dll",
+            "path": "RzDLLService",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 484552,
+            "sha256": "605EEA0C35225BAC06B8D9A6F93A7C57D8D4B7A3058A8E718FD032C39E77BBF3",
+            "integrity": "sha256-YF7qDDUiW6wGuNmm+Tp8V9jUt6MFio5xj9Ayw553u/M="
+        },
+        {
+            "resourceName": "Skip_RzDLLService_CPUZ",
+            "resourceVersion": "1.0.0.8",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/RzDLLService/RazerAppEngine-cpuz-Setup-v1.0.0.8.exe",
+            "path": "",
+            "overwriteApp": "",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": "",
+                    "runOnInstall": "/S"
+                }
+            },
+            "type": "application/x-msdownload",
+            "size": 999704,
+            "sha256": "D2CEA0664F76EFEBB61264DE08FB35FBD90A2891F989283C087313D4D9AB42C9",
+            "integrity": "sha256-0s6gZk927+u2EmTeCPs1+9kKKJH5iSg8CHMT1NmrQsk="
+        },
+        {
+            "resourceName": "Sy3DataMigrationDLL",
+            "resourceVersion": "1.0.13.0",
+            "url": "https://app-assets.razer.com/files/synapse/devices/common/ProfileMigration/Sy3DataMigration_v1.0.13.0.dll",
+            "path": "",
+            "overwriteApp": "",
+            "type": "application/x-msdownload",
+            "size": 672776,
+            "sha256": "79A960E86BDE7EA3082EF66A26B0F88701DAD3664E5E67E86C889B1FEF6193A6",
+            "integrity": "sha256-ealg6GvefqMILvZqJrD4hwHa02ZOXmfobIibH+9hk6Y=",
+            "noCache": true,
+            "restartRequired": false,
+            "action": {
+                "saveToDisk": {
+                    "filePath": ""
+                }
+            }
+        }
+    ],
+    "jws": {
+        "integrity": "sha256-IMShsQsf3fOl10ZsB+PA50RVM+JT5ryniuEyN8JOqzM="
+    }
+}

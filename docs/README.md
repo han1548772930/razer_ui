@@ -1,5 +1,6 @@
 # 当前文档索引
 
+- [全量源码逆向地图](re/full-source-reverse-map.md)：当前源文件、宿主、产品/页面、middleware、DLL/原生插件的跨层链路；逐项区分字节取得、声明解析、实现追踪与未知。
 - [实施路线](re/ui-readonly-first-roadmap.md)、[当前缺口](re/remaining-ui-work.md)、[完成口径](re/21-ui-completion-status.md)。
 - [修复登记](re/ui-fix-registry.json)：具体修复、证据、实现指纹与验证边界；继续工作先查登记，避免重复修复。
 - [Macro](re/macro-ui-current.md)、[Receiver](re/receiver-ui-current.md)、[Mouse](re/mouse-ui-current.md)、[Studio](re/studio-properties-current.md)：当前实现与仍待完成的条件。

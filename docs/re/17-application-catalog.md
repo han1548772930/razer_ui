@@ -34,3 +34,11 @@
 没有 asset-manifest 的入口仅能确认 HTML 声明的脚本；其动态 import、条件路由和原生服务仍须追踪。404 仅代表记录时该端点不可用。
 
 `/rz-app-menu/` 来自主前端 `App.72827d47.chunk.js` 的 `${window.location.origin}/rz-app-menu/` 模板。`/feedback/` 来自当前 Dashboard、App Menu 和 Settings 中查询参数插值之前的固定路径。发现脚本只提取静态路径，不执行模板或下载的代码。`--routes` 仅准备已在源码登记的应用，保留其他已取得的目录记录。弹层结构、安装条件和 Alexa 启动路径见[更多应用规格](../screens/README.md)。
+
+<!-- FULL-CURRENT-CHAIN-AUDIT -->
+
+## 本次全量静态链补充
+
+24个端点的HTML→入口manifest→JS模块/导出/依赖/lazy或ESM→状态/消息候选→CSS规则/字体/资源已经全部列入[全量应用链](all-application-chains-current.md)与[机器索引](all-application-chains-current.json)。本次从本地当前源解析755个唯一JS，全部解析成功，登记8233个带webpack标记的模块factory候选及88次CSS文件引用。两个无当前页源端点仍保留原404状态，不能从其他应用推算界面。
+
+模块、hook和命名调用候选来自语法定位，包含框架/第三方库。真正页面挂载条件、请求/订阅/响应字段、失败/清理以及动态样式尚需逐根审查；此补充没有把“源文件全量取得/解析”改成“全部细节已逆向”。本地功能接入与差异仍以[公共应用审查](application-review-current.md)及各current契约为准。

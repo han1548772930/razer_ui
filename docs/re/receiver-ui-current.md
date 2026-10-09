@@ -43,11 +43,11 @@ Indicator 编辑和保存属于本地草稿，不等于设备设置保存。打�
 
 正式 `DockPairingEvent`/observation 链保留本地 Scan/Pair/Unpair 意图、取消、确认、真实结果与错误。Bindings 更新父卡，读取错误和成功空数组分开；只有确实存在的 PID/edition/layout 才能选精确设备图片。查询类别/名称可按当前目录确定，不能补造 edition/layout/serial。单候选只产生 Bind 意图，不能据此显示成功。
 
-241 轮询率说明仍需完整源条件 `V = !W && (I ? Y : K)`：I 是连接观察，Y/K 是实际 polling 配置。当前 `!both_devices_capped` 不能代替它；双设备分行还受 `J = t.length > 1 && (W || I)` 约束。164/241 的临时名称/连接提示、结果计时、独立模式入口和实窗输入仍需分别完成。
+241 轮询率说明仍需完整源条件 `V = !W && (I ? Y : K)`：I 是源 hs 的绑定/目录/runtime连接谓词，Y/K 检查本地profile是否存在polling属性，W检查鼠标和键盘都已绑定并受警告旗标门控。它们不比较实际Hz上限，当前 `!both_devices_capped` 不能代替它；双设备分行还受 `J = t.length > 1 && (W || I)` 约束。具体原文与来源见下文241语义审查。164/241 的临时名称/连接提示、结果计时、独立模式入口和实窗输入仍需分别完成。
 
 164/241 Lighting 实际挂普通快捷效果根，不能以 bundle 中同时存在的端口组件作为主体证据。亮度/熄灯范围和禁用依赖已有当前收据；效果参数、同步及 Quick/Advanced 完整主体仍未完成。164/179/241 普通 HELP Reset 允许本地确认/取消与撤销待发请求，但不改变设备状态或本地配置；其他 OBM/OLED/固件 Reset 不能套用这条契约。
 
-164/241 的产品横幅、单/双设备信息与正式 DockDialog 使用各自 [配对源证据](dock-pairing-current-evidence.json)和资源。164 指定 zia_pairing 单设备图；单设备弹层为#111/#515151，双设备#222/#5d5d5d、左右 20px 卡片内边距及外侧 2px 选中描边。进度原 SVG 作 1 秒旋转，动作透明度保留源 300ms；这些静态声明不代表完整 viewport/滚动或实窗焦点验收。
+164/241 的产品横幅、单/双设备信息与正式 DockDialog 使用各自 [配对源证据](dock-pairing-current-evidence.json)和资源。164 指定 zia_pairing 单设备图；单设备弹层为#111/#515151，双设备#222/#5d5d5d、共享CSS左右20px卡片内边距及外侧2px选中描边；241实际挂载再用inline将左右内边距覆为10px，见下文父子树级联，不能把共享规则作为241最终值。进度原 SVG 作 1 秒旋转，动作透明度保留源 300ms；这些静态声明不代表完整 viewport/滚动或实窗焦点验收。
 
 241 配对 dongle713 的源握手为设置 duallink_warning → 设备页转 continue_pairing → 工具从当前候选中取 dongle713 以 mode1 产生 Bind 请求，随后清标记。本地保留此顺序，没有候选就保持无绑定；正式 request 发 DockPairingEvent 并等待对应观察，不能将预览进度或本地意图当已发送/成功。已有 Bindings observation 链不代表实际 Scan/Pair/Unpair 传输已接入。
 
@@ -106,3 +106,94 @@ native 模块的 ABI、隔离 worker、严格报文验证与调用范围统一�
 `receiver_page_state_tests.rs` 覆盖部分发现保留在线导航、缺席未知与完整缺席离线、精确 edition 确认、重复 owner 歧义、有限重试、过期结果，以及实际父卡挂载。`receiver_pairing_state_tests.rs` 覆盖结果代际、操作种类、未发送意图、失败恢复和成功关闭。`source_workspace/tests.rs` 覆盖自动读取身份守卫。
 
 允许的验证为静态工具、资源/XML/JSON 校验、格式化及 `cargo check --locked --all-targets`。维护命令为 `audit-receiver-pairing-current.cjs --check`、`audit-receiver-current.cjs --check`、`audit-receiver-connect-events.cjs --check`、`audit-receiver-publishing-review.cjs --check`、`audit-receiver-query-projection.cjs --check`。纯投影与 Shell 范围替换另有独立回归源码，仅编译；本项目约束禁止运行应用、测试、下载 JavaScript、安装器或 DLL。字体、焦点、命中、动画与 DPI 的运行视觉验收仍未完成，不能据静态通过声称实际读取运行成功或整个接收器完成。
+
+## 241 原产品的主根、Pairing 父树与真实传输
+
+本节是当前产品 241 源文件的逐分支语义审查，不能扩展为 164、179 或全部产品已完成。专用 [语义收据](receiver-241-semantics-current-evidence.json) 由 `node tools/audit-receiver-241-semantics-current.cjs --check` 复核，包含 83 项 UI/middleware AST、5 项当前 host 传输锚点、6 个父层条件和 9 个 effect。418 条 CSS 是保留选择器与顺序的上下文规则集合，其中包含共享组件规则，不表示全部都匹配本页或已经计算最终浏览器布局。
+
+范围均为 UTF-16 代码单元、end 不包含尾端；SHA-256 对实际 UTF-8 文件字节计算。当前 Pairing 模块 `3746` 位于 `.ref/devices/241/static/js/914.4c13bdac.chunk.js`，SHA-256 `1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2`。核心父层 `Ps` 为 `48748..54333`，对话框控制器 `ds` 为 `38810..44775`，展示父层 `ts` 为 `12229..14401`，单双列 `as` 为 `14543..32045`。共享正常根来自当前 `11.219fb515.chunk.js` 的 `9163`，具体范围保存在专用收据中；不得从旧相邻产品的压缩符号推导。
+
+### 正常根、安装门控与父层生命周期
+
+`9163/ln` 根据 Redux `deviceSetup.setupStatus` 选择：`ready → rn → nn`，其他状态挂 `Y`。`Y` 首次等 2 秒再显示安装容器；若状态已不是 ready/unknown，则提前显示并清除定时器。安装内容 `J` 分别消费 waiting/downloading/installing/completed/canceled/error；下载中 Cancel 发往 `installation_device_241` 的 `install-cancel`，错误或取消时 Retry 在 500ms 后发 `USER_COMMAND/retryInstall`，离线时附禁用样式。它不是直接调用配对 DLL 的页面。`ln.onceReady` 初始 false，其现有类定义没有把它置 true；不能据变量名宣称进入 ready 后必定冻结根组件。
+
+`nn` 真正注册 Pairing、Lighting、Help；`Oi=s(3746)` 明确将普通 Pairing 挂到本节审查的树。初始 active_view 来自 sessionStorage 导航历史，否则 Pairing；正常渲染依次为产品头、导航/ProfileBar、`3358/Body` 内的当前页面。ProfileBar 的源排除列表仅 `[Help]`。`Body` 默认附 `scrollable`，换 activeView 时 scrollTo(0,0)；只有 Customize 被传入 no-scroll，不能把 Pairing 主体做成固定裁切。
+
+`3746/bs → 1422/BodyWidgets → [Us, js= memo(Ps)]`，其中 `Us` 受 DeviceInfo.UseSVGForProductImage 决定，241 使用自己的 SVG banner。UI DeviceInfo 明确 `productId=dongleId=241`、ACCESSORY、claimInterface=3、canPairTwoDevices/isPairingDock/showBothDevicesConnectedWarning/showOriginalDongleConnectedWarning=true；这些旗标是本页分支依据。
+
+父 `Ps` 读取 pairedInfo、validDevices、语言与 `ps()` 的 connectedRuntime。挂载及 validDevices 改变时发 `DUALLINK_BIND_INFO` 并刷新 runtime。其 MW_RESPONSE_UI 命名回调在 BIND_INFO 时将非数组 payload 归为 []、更新 pairedInfo 并刷新 runtime；BIND/UNBIND/SLAVE_CONNECT_EVENT 时重新查询。这个父回调没有读取 error 字段，不能将其行为写成严格区分查询失败与成功空数组。父 effect 返回同一回调的 offBCEvent 清理；`ps` 同样为 connectedDevices 的 WindowStorageEvent 返回 offEvent。runtime 的字符串外层数组还会逐条 JSON.parse(value)，解析/读取失败归 []，这是源降级行为，不是证明当前在线。
+
+### I / W / K / Y / J / V 与名称导航
+
+以下是父 `Ps` 实际表达式及被调用函数的含义，不能用一个 `both_devices_capped` 布尔值代替。
+
+| 条件 | 当前源含义 | 显示用途 |
+| --- | --- | --- |
+| I | 任一 binding 满足 hs | 选 connected 说明文本，并参与 J/Y |
+| W | showBothDevicesConnectedWarning 且 we(pairedInfo) | 鼠标、键盘都存在绑定时的双设备警告；we 不检查在线 |
+| K | 任一 binding 的 Cs(pid,serial) 为真 | 未判 connected 时的 polling 说明依据 |
+| Y | 满足 hs 的 binding 中任一 Cs 为真 | 判 connected 时的 polling 说明依据 |
+| J | pairedInfo.length > 1 且 (W 或 I) | 类别标注的鼠标行、键盘行 |
+| V | !W 且 (I ? Y : K) | 是否显示 polling 说明；I 决定 Lps/VYK 文案 |
+
+`hs` 依次接受 binding.status===1、validDevices 中同 PID、独立 ready runtime 中同 PID、ready 的 241 runtime.subDevices 中同 PID。它只归一化 PID，不检验 edition。`Cs` 读取本地 `synapse_<pid>`：优先 serial 对应 deviceMetadatas.activeProfileGuid，再 activeProfiles[serial]，再 activeProfile/首 profile；活跃 profile 或任意 profile 含自身属性 pollingRate/pollingRateWireless/pollingRateBle 即为真。它没有比较属性值、实际 Hz 或上限。此前文档“实际 polling 配置”的简写应按本节理解为属性存在性，不能据此补造设备读取。
+
+无绑定显示图标与 Launch Pairing Utility。非空时显示可伸缩说明列和 Unpair：J 为真使用鼠标、键盘类别行；仅一个 binding 使用 paired-with 句子；多个 binding 且 J 为假使用两条 paired-with 句子。W、original-dongle warning 各自独立附加。original warning 合并 validDevices、本地 connectedDeviceInfo/devices 中同 PID 的 dock/原 dongle 记录；runtime 还比较同 PID 的不同 ready container，以及独立设备和 dock subDevice 的 container。这些是源缓存/运行态谓词，不证明一次完整硬件读取。
+
+`Ds` 使用 productName ?? name 的语言对象，然后语言原键、小写键、en、空串；如果 productName 存在但不含语言，不能再回退另一份 name。paired-with 名称先 lowercase 再单词首字母大写，类别行保留原名称大小写。可点击条件 `Es` 则要求非零 PID、validDevices 非空、同 PID，edition 缺省/0 为通配，非零必须相同。**连接显示 hs 与可导航 Es 是两条不同条件**。
+
+导航优先 validDevices container，其次独立 ready runtime，最后 dock 的 subDevice；键盘目标 Customize，鼠标 Performance。已存在 UI 时 activateWindowServiceClient + subtab 广播；存在 middleware URL 时替换 mw→ui 再开 policy=3、tab_visible=1；否则拼源默认 URL 后 400ms 广播，其他默认 200ms。当前源默认 base 已为 `https://apps.razer.com/synapse`，拼接处又写 `/synapse/products/...`；这是可见的双 synapse 字面表达式，不应把经手工修正的 URL 说成原代码。
+
+### Dialog 状态、动作与响应
+
+原 `Ge` 为 LOADING=0、LOADED=1、SCANNING=2、SCANDED=3、PAIRING=4、PAIRED=5、PAIR_FAILED=6、UNPAIRING=7、JUSTUNPAIR=8、UNPAIRED=9、UNPAIR_FAILED=10、JUST_PAIRED=11。列中 connected=0/1/2 是空闲/动画/展示绑定态，不能与 V2 的原始 status=1 混同。`ds` 以 Redux pairedInfo 初始化 bindInfo，首次查询令两槽 LOADING。渲染 gate 只直接判断第一槽 p===LOADING；不能从对称的 status2 名称推导对称加载根。
+
+| 源触发 | 请求 / 状态 | 源返回消费 |
+| --- | --- | --- |
+| Add/Rescan | 对应槽 SCANNING，SCAN(status=1, category=KEYBOARD/MOUSE) | 仅一个匹配类别候选时自动进 PAIRING 并发 BIND；零/多个进 SCANDED |
+| Select/Pair | 当前 selectedIndex 有候选时 PAIRING，BIND(mode=1,device) | 替换同类别 binding，当前槽 JUST_PAIRED，更新 Redux |
+| Unpair | 先 UNPAIRING 供确认；Cancel 回 PAIRED | Confirm 后 JUSTUNPAIR，发 UNBIND(productId,category) |
+| Cancel Pairing | CANCEL + BIND_INFO + closeDialog | 源 CANCEL middleware 无独立 UI 成功 ack |
+| BIND_INFO | 非空按 KEYBOARD/MOUSE 存在决定两槽 PAIRED/LOADED | 空或 error 时两槽 LOADED，并清空绑定/候选 |
+| BIND error | 对正在 PAIRING 槽置 PAIR_FAILED | 4 秒后两槽 LOADED，源清空绑定/候选 |
+| UNBIND error | 对正在 JUSTUNPAIR 槽置 UNPAIR_FAILED | 4 秒后对应槽 PAIRED |
+| UNBIND success | 对正在 JUSTUNPAIR 槽置 UNPAIRED | 以 binding.dongleId !== payload.productId 过滤 Redux；不是按 binding.productId 过滤 |
+
+dongle713 的警告链为单键盘扫描/候选选择触发 isDualLinkWarning，父 Ps 将警告转 continuePairing，ds 从候选中筛 dongleId===713 并以 mode1 发 BIND。continuePairing 分支没有 first candidate 缺席检查，这是源行为；本地不可据此制造成功。成功后的自动关闭由 BIND 响应分支检查回调所捕获的 p/I 是否已 PAIRED/JUST_PAIRED 决定，closeDialog 再延迟 1 秒移除 imperative modal，不等于每次 Bind 成功都立即关闭双列。
+
+`ds` 的 MW 响应 effect 范围 `40826..44206` 依赖 [p,I]，注册匿名 onBCEvent，但没有返回取消订阅；与父 Ps/ps 的清理不同。专用证据只证明此处 AST 没有 cleanup，不断言已运行发生了几次重复订阅。其他需保留的原表达式包括：Ze.SET_LANG 算出 fallback t 却返回原 payload.lang.toLowerCase()；SET_ERROR 只在 payload.status===UNPAIR_FAILED 时将 bindInfo.connected 改成 2，status2 分支不对称；os 引用未定义在 Ge 内的 PAIRED_FAILED 拼写；ss 的 SCANDED 多候选尾部分支被此前 includes(SCANDED) 条件覆盖。应记录差异并决定移植策略，不能把新保护逻辑说成反编译所得。
+
+### 本页动作实际经过 HID，不统一经过产品 DLL
+
+当前 middleware 主链为 `45601/_e 注册 USER_COMMAND → fe → 34340/qe → Ke[type]`。UI 的五类 DUALLINK 动作在 Ke 内有实际 handler，而普通命令继续进入状态机队列。`34340` 位于 `.ref/middleware/241/6120.0efaddd43f12eb2fb450.js`；其字节哈希、每个函数范围及 HTTP manifest 收据均在专用证据中，不能拿共用 bundle 里某个未挂载 DLL wrapper 代替该调用。
+
+`20236/f2(category,true)` 在 canPairMultipleDevices 或 UMA 条件下按类别构造 `48320` 键盘 / `14770` 鼠标类，二者继承 `7755/il=rzDevice25`；设备参数保留 master productId/container/claimInterface，延时采用基础常量的 5 倍。rzDevice25 的四个方法调用 `84816` helper，再执行 sendCommand。实际命令如下；表中的“读”是设备语义读，HID 仍需发送查询报文，不能据 transport send 字样把它归为配置写回。
+
+| 操作 | 原 header [packetSize,class,id] | 数据与解析 |
+| --- | --- | --- |
+| getMultipleDeviceWirelessConnectionStatusV2 | [80,0,191] | 回复第 0 字节是数量，随后每组三字节 status、PID 两字节；helper 没有在循环前显式验证 data 的完整长度 |
+| deviceScan | [1,0,70] | 输入扫描 status；回复 status 与扫描 enum |
+| setDevicePairingMode | [3,0,65] | mode、dongle PID 的低/高字节；回复 mode/enum/productId |
+| setDeviceUnpair | [2,0,66] | dongle PID 两字节；回复 productId |
+
+Electron 分支的 sendCommand 使用 `hid.sendFeatureReportMutex` 或 `hid.sendFeatureReport`，随后 `_getUSBTransferInResult` 通过 `hid.getFeatureReport` 读回复；protocol="25"、reportLength=91，锁名带 PID/container。`99494/NH → window.top.apiElectron.doRzDeviceAction → 当前 host preload invoke("rzDeviceAction") → main 的 An.handleAction → UsbRzDeviceAction`。host 的发送 case 调 node-rz-hid 的 hidDevice.sendFeatureReport，读取 case 调 getFeatureReport，保留 container、interface、PID、usage、USB instance 的设备匹配条件。没有 Electron 时还存在源 WebUSB controlTransferOut 分支。**因此 241 本节配对/V2 路径的原代码依据是 HID transport；产品 DLL、host native addon 和 HID 不可混为一条链。** 本节没有执行任何 transport。
+
+34340/_e 在方法不存在时返回 []；存在时查询 native/wrapper 的 V2，过滤 65535/self dongle，以 AvailableDevices 等目录映射名称、edition/layout，缺资料时有默认 0 的源元数据降级。SCAN 注册 record 5/9、event55 的 Scan Status Update，在 End 时筛 AvailableDevices/DualDongleCompatibleDevices 与 DevicePairingBuddies；Bind 注册 event54，在 timeout=3 返回错误，success=2 组装 device 并广播。Unbind 有 slave→master 路由和失败后重新查询判断；不能仅依据 JS handler 存在宣称写回已接入。
+
+结果广播之后 `ye` 仍会写 duallink-devices、注册 connectedDevices/runtime 监听；`Ne` 还负责重复查询与设备发布。当前范围只静态记录这些副作用，没有将整函数当只读回调执行。Scan/Bind/Unbind 的 UI 操作继续属于范围内；真正设备/服务配置写回保持后置。
+
+### 样式与间隙：必须按实际父子树叠加
+
+CSS 以当前 `main.1525b0e6.css` 和 `914.530f0373.chunk.css` 为据，规则收据保留 offset、选择器、属性顺序与 important。全局 body/html 为 Roboto,sans-serif、16px、#ccc、#222，min-height720、overflow hidden；主体 Body 为 padding10px 20px 20px、min-width600、flex1、height100%，滚动由带 id 的 scrollable 规则接管。BodyWidgets flex 行折行、居中、margin:auto、max-width1240；Widget 为 #111、radius5、min/max-width600、margin10px auto、padding30px 40px、14px，标题 RazerF5 16px/#44d62c、margin-bottom20。banner 使用独立 height250、min-width1024、max-width1220；不能只按 600px 内容卡推导整页最小宽。
+
+241 无绑定行 gap20、图标40×40；已绑定 pairInfo gap10。contentGroup flex1、min-width0、gap20，pairedDes 的 flex1/width:auto 覆盖共享 369px。名称与类别行 line-height17px；deviceList 只有列方向，没有额外 row gap。Unpair 按钮的 241 覆盖为 min-width90、height:auto、line-height14、margin-top9、padding7px 16px 6px、border #ccc、align-self:flex-start；不能沿用共享 height28/line-height28/padding0 5。polling 说明 #999/12px、margin-top10；两类父页 warning gap10、margin-top20、12px/#999，图标20×20，段落默认 margin 被本页规则归零。
+
+modal 基类为 width850、max-width100%、height100vh、left50%、top100、translateX(-50%)、radius5，Z 对外框和 backdrop 加 inline position:fixed；本页 extraClass 覆盖背景 #222、border none、overflow hidden。header 保留基类 height36、display:flex/center，却覆盖为 RazerF5 16px/19px、#999 和 1px #5d5d5d shadow；close 为36×36、图20×20。本页 body flex1/min-height0、overflow-y:auto、overflow-x:hidden、padding-bottom150；该 150px 属于滚动 body，不能任意加到父页卡间距。
+
+介绍区 margin20px auto 10px、width790、max-width100%。双列 master 图与名称在前，随后动画连接条，再 keyboard-left/mouse-right 的卡片；其顺序与父页 mouse-first 不同。duallink-device-content width600；连接条 height30、margin10px auto 13px，双列 master-mousemat 宽520。卡片 250×210、背景#111、radius5，两卡之间右列 margin-left20，选中用外侧 2px #44d62c box-shadow。共享卡 CSS padding0 20px，但本页 is 传 inline paddingLeft/Right="10px"，最终水平内边距须保留 10px，不能只按 CSS 截图改成20。设备图 height120；候选列表有 height104 的独立滚动区。确认框 width210、橙色边框、padding-top18/padding-bottom20、margin-top10，动作钮28px/12px。
+
+Dialog 双设备警告 margin50px auto 0、max-width520、gap10、14px/17px/#ccc，不能沿用父页 20px/12px/#999。Precautions 在 isPairingDock 下 width680（覆盖普通520）、min-height85、margin20px auto auto、padding0 12px；图60、规则 margin-left25、14px/#999。结果条 width520、height20、margin20px auto auto、14px/#44d62c，左右250且右侧 margin-left20。这些数值是静态规则和实际 inline 依据，尚不是 DPI、字体度量、滚动视口和实窗焦点验收。
+
+### 本轮明确未完成的边界
+
+本轮已说明 241 普通主根、Pairing 父卡/对话框分支、缓存与 runtime 连接谓词、五类动作的发送与返回消费、主要布局级联，以及实际 HID wrapper→当前 host 边界。尚未完成 241 Lighting/Help 参数主体的逐控件语义、全部产品所有 displayMode、78548 硬件通知注册全生命周期、目录/图片语言每个组合、每项初始化的完整服务错误恢复和实体设备读数验证；node-rz-hid 与产品 DLL 的 C/C++ 内部不能据 JS 包装宣称恢复原始工程。当前 Rust 对照也仍须按这些源条件逐项核查，本次仅补文档/静态证据，没有修改 Rust、vendor 或接入写回。

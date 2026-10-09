@@ -1,155 +1,115 @@
-# 原代码原生件总表（DLL / 原生插件 / 辅助程序）
+# 当前宿主与 middleware 原生组件、DLL 链路
 
-本文只按**当前逆向源码**登记原件，不按产品猜测，也不表示已执行。事实来源分三类：
+2026-10-09 重新核查。唯一宿主依据是 `.ref/host-4.0.827/`，产品依据是 `.ref/middleware/<productId>/` 的 HTTP 收据、manifest、AST 与指定 DLL 字节。旧计数、未重新审计的偏移和“全部 PE 导出均未检查”等结论已撤销。逐库、逐产品、逐函数详单见 [完整机器记录](native-chains-current-evidence.json)。
 
-- **宿主**：`.ref/host-4.0.827/electron/**`（当前 4.0.827 静态提取），可读中间层在 `.ref/host-4.0.827/source-evidence/background-current-source.js`。
-- **设备中间件**：`.ref/middleware/<productId>/**`（各产品 web 应用 / `project_uma_mw` 包）与其 `manifest.json`。
-- **包清单**：`.ref/host-4.0.827/source-evidence/inner-archive-list.txt`、`native-evidence/EXTRACTION-RECEIPT.json`。
+本次新增 DLL 函数正文逆向。FFI 声明、PE 导出和页面注册不能证明厂商完整 C++ 源码已经恢复；完整恢复整库的数量仍为 0。
 
-判定口径：`ffi-napi-rz` 的 `Library(dllPath, apiObj)` = 直接加载 DLL；`require("*.node")` = Node 原生插件；`spawn` 的 `.exe` = 独立辅助程序。函数名清单来自 JS 绑定表字面量（`名字:["类型",[参数]]`），**绑定表存在只证明 JS 侧声明，不证明导出真实存在、更不证明已被执行**。Electron/Chromium 自带的 DLL（`ffmpeg.dll`、`libEGL.dll`、`libGLESv2.dll`、`vk_swiftshader.dll`、`vulkan-1.dll`、`dxcompiler.dll`、`dxil.dll`、`d3dcompiler_47.dll`）不属于雷云功能，本文只列名不计入。
+**统计与应用资产边界**：middleware 补采已完成；本次静态扫描当前 middleware 全文件集与 5 个宿主 wrapper，解析 3238 份包含 FFI 声明的 JS，产出独立的 [全量文档清单](native-library-full-current-inventory.json)。该清单使用保守的动态 DLL 归属检查，不覆盖 Rust 正在消费的 `assets/data/native-library-inventory.json`；后者仍是 48 库 / 963 声明 / 369 来源的旧接入快照。本文件与链路证据采用新文档清单，不能据此声称应用已经新增 DLL 能力或运行验收成功。
 
-## 1. 主表
+## 范围与机器记录
 
-| 原生件 | 类别 | 路径 / 加载方式 | 作用 | 当前源码证据 |
-| --- | --- | --- | --- | --- |
-| `mapping_engine.dll` | 引擎服务 | `CommonDLL\`，`ffi-napi-rz.Library` + `ConfigureFFI` | 按键重映射、Hypershift、宏录制、全局快捷键、输入重定向、输入监控、设备模式 | `electron/modules/mapping_engine/win/index.js:166794`、`dll_registry` 登记 `:13204` |
-| `simple_service.dll`（另有 `simple_service_v1.2.2.9.dll`） | 引擎服务 | 同上 | 服务版本、用户应用管理、音频设备枚举、音量/静音、侧音、以管理员启动 | `electron/modules/simple_service/win/index.js:3553`、`:4405` |
-| `SysUtilsNative.dll` | 引擎服务 | 同上 | 机器 ID、序列号、驱动/模块信息、前台窗口与键盘布局监控、应用图标、系统设置对话框、动态灯光/暗色/全屏判断、RzEngineMon | `electron/modules/sysutil/win/index.js:3662` |
-| `lighting_driver.dll` | 灯光写出 | `ffi-napi-rz.Library`（宿主 `FFILightingDriver.initDll`） | 注册设备、下发灯光帧、写回调、暂停/恢复 | `electron/modules/lighting/ffiLightingDriver.js`（7 个绑定） |
-| `RzLightingEngineApi` | 灯光引擎 | 动作 ID 分发（非普通导出库） | 效果编排：建引擎/建设备/加效果/取帧 | `.ref/applications/synapse/dashboard/static/js/2973.acc7b128.chunk.js`，清单见 `src/backend/protocol.rs` |
-| `IoTNative.dll` | IoT | `ConfigureFFI`（宿主 `IoTSDKNative_Action`） | IoT 设备 Chroma 帧、白色 LED 亮度；设备侧另含 mDNS 扫描/WiFi 连接 | `electron/modules/IoT/IoTNativeAction.js:370`；设备侧 `.ref/middleware/179/7254.be9dba3fe6dc42d7f519.js:10186` |
-| `bladeNative.dll` / `blade2Native_v*.dll` / `BladeNative_v*.dll` | 笔记本 Blade | `ConfigureFFI`（通道 `bladeNativeAction_<hash>`） | 屏幕刷新率、颜色管理 ICC、GPU/HDR、BIOS/EC 版本、序列号、通知 | `source-evidence/background-current-source.js:327757`、`:328732`；清单见 `.ref/middleware/563/manifest.json:5958` 等 |
-| `RzNative_0517.dll` | 音频 | `ConfigureFFI` | 扬声器音量/静音（9 绑定） | `.ref/middleware/162/main.12e8af9bc3e4a37e6b0a.js:1489914` |
-| `RzNative_0542.dll` / `RzNative_0543.dll` | 音频（Camy 摄像头混音） | `ConfigureFFI` | 音量/静音、混音使能/电平、麦克风 HPF/限幅/增益、播放设备枚举、背景录制 | `.ref/middleware/162/…:1718117`、`.ref/middleware/3886/main.df6f64c941b9efded61e.js:1444927` |
-| `RzNative_0518` / `_0E03` / `_0E05` / `_0E06` / `_0E08` / `RzNative_GenericCamera.dll` | 摄像头 | `ConfigureFFI` | 摄像头参数（亮度/对比度/饱和度/白平衡/对焦/HDR/LDC…）、属性对话框、启停、序列号/固件 | `.ref/middleware/162/…:1485533`、`:1458029`、`:1468948`、`:1769614`；`.ref/middleware/179/rzCamKimberly.92d455a5af199b2ec1c0.js:30162`（99 绑定） |
-| `RzAudioUtil.dll` | 音频工具 | `ConfigureFFI` | 单一 `Dispatch` 分发入口 | `.ref/middleware/1306/3487.591e6c57187c1625f29c.js:569206` |
-| `RzAV.dll` | 音视频 | `ConfigureFFI` | AV 采集句柄获取/释放、启停、采样率与频谱、音频数据 | 同上 `:1663704` |
-| `audCapNative.dll`（`_v1.0.2.0`） | 音频采集 | `ConfigureFFI` | 音频采集（仅名与版本，绑定表待补） | 名称 `.ref/middleware/1306/3487.591e6c57187c1625f29c.js:1580433`；版本 `.ref/middleware/1383/manifest.json:3669` |
-| `CmMixerLib_v1.0.1.0.dll` | 音频混音 | `ConfigureFFI` | 混音库（仅版本名，绑定表待补） | `.ref/middleware/1342/manifest.json:6296` |
-| `ScarlettNative.dll` | 显示器 | `ConfigureFFI` | 58 个绑定：亮度/对比度/色彩预设、PiP、缩放、FreeSync/Overdrive、HDR、输入源、THX 模式、色域、刷新率、色彩配置 | `.ref/middleware/162/…:1805252` |
-| `ThxV4Native.dll` / `ThxV3Native.dll` / `thxv2api.dll` / `ThxVADCarolNative_v*.dll` / `thxvadvirtualroutenative_*` / `*_routing_client` | THX 音频 | `ConfigureFFI` | 设备增删、状态、属性读写、预设选择/保存；虚拟声道路由 | `ThxV4` 绑定表 `.ref/middleware/1306/3487.…:484087`；版本名 `.ref/middleware/709/manifest.json:11991`、`1392/manifest.json:5478`、`1442/manifest.json:3073` |
-| `PhilipsHueNative.dll` / `philipshuev2.dll` | 第三方灯光 | `ConfigureFFI` | 桥发现/配对、娱乐组与灯列表、自定义 Chroma 帧、亮度、占用控制、关灯 | `.ref/middleware/3886/…:2063570`、`.ref/middleware/179/5559.7ce9faacbc35b39648d2.js:2325` |
-| `NanoleafNative.dll` | 第三方灯光 | `ConfigureFFI` | Nanoleaf 灯光接入（绑定表待补） | `.ref/middleware/162/…:1790632`、`.ref/middleware/3886/…:1998262` |
-| `RzSystemMon.dll` | 系统监控 | `ConfigureFFI` | 硬件数据读取、事件注册、APP server 状态 | `.ref/middleware/162/…:1910321` |
-| `RzAMDOverClock` / `RzIntelOverClock` / `CTR.dll` / `cpuidsdk64_v1.3.1.2.dll` | 超频/CPU | `ConfigureFFI` | 曲线优化、功耗墙、电压偏移等异步读写；CPU 识别 | `RzAMDOverClock` 绑定 `.ref/middleware/2595/2592.f6ecdbca2cff19e73d8c.js:986063`；`CTR.dll` 同文件 `:1343152`；`cpuidsdk64` `.ref/middleware/694/manifest.json:6826` |
-| `RzASRock.dll` | 主板灯光 | `ConfigureFFI` | 亮度、静态/默认/自定义效果、Chroma 灯带 LED 数 | `.ref/middleware/179/rzASRock.9ea6f530e3e142c44259.js:9627`（20 绑定） |
-| `RzUMASDKWrapper*` / `Razer_Upgrade_SDK.dll` | 固件升级 | `ConfigureFFI` | 固件升级 SDK（仅名，绑定表待补） | `.ref/applications/synapse/update-fw/static/js/main.69cc5fbd.js:1875963` |
-| `HID.node` | Node 插件 | `app.asar.unpacked\node_modules\node-rz-hid\build\Release\` | HID 枚举与 Feature 收发（`hid_open_path`/`hid_send_feature_report`/`hid_get_feature_report`/`hid_close`/`hid_enumerate`/`hid_free_enumeration` 等，AMD64 23 个 PE 导出） | 包清单 `inner-archive-list.txt`；ABI 证据 `docs/re/receiver-native-hid-current-evidence.json` |
-| `detection.node`（`rz-usb-detect`） | Node 插件 | 同目录 `rz-usb-detect\build\Release\` | 物理 USB 枚举（`USB_DEVICE` GUID `a5dcbf10-…`） | 包清单；`docs/re/usb-native-current-evidence.json` |
-| `detection.node`（`node-rz-ble-endpoint-detection`） | Node 插件 | 同目录 | BLE 端点探测 | 包清单 |
-| `ffi_bindings.node`（`ffi-napi-rz`） | Node 插件 | 同目录 | 上面所有 `Library`/`Callback` 的底层 FFI | 包清单；`electron/modules/ffi/ffiMain.js:656` |
-| `noble.node` / `binding.node`（`node-ble-rz`） | Node 插件 | 同目录 | BLE 中央设备（配对/连接） | 包清单 |
-| `bluetooth_hci_socket.node` | Node 插件 | `@abandonware\bluetooth-hci-socket` | Windows BLE 的 HCI 套接字后端 | 包清单 |
-| `bindings.node`（`@serialport`） | Node 插件 | `@serialport\bindings-cpp` | 串口（`rzSerial`：串口设备/连接/读写） | 包清单；`.ref/middleware/179/rzUSB.b989822eaf686393015c.js` 中的 `serial.*` 动作 |
-| `mjpeg-hotpatch.node` | Node 插件 | `mjpeg-hotpatch` | MJPEG 流补丁（摄像头预览） | 包清单 |
-| `rzNotification.node` | Node 插件 | `node-rz-notification` | 原生通知 | 包清单 |
-| `node.napi.node`（`usb`） | Node 插件 | `usb\prebuilds\win32-x64` | 通用 USB 访问（非 Razer 专有） | 包清单 |
-| `ref-napi` `binding.node` | Node 插件 | `ref-napi` | FFI 指针辅助 | 包清单 |
-| `RzPowerTool.exe` | 辅助程序 | `CommonDLL\` | 服务状态/启动/停止：`--get-service-status`、`--start-service`、`--stop-service` | `electron/serviceFunction.js:314` |
-| `RzSecurityTool.exe` | 辅助程序 | `CommonDLL\` | 设备安全校验：`--verify-device-security` | `electron/modules/security/win/index.js` |
-| `RzHandle.exe` / `RzEngineMon.exe` | 辅助程序 | `CommonDLL\` | 句柄/进程工具；引擎监视（`SysUtilsNative.launchRzEngineMon`） | 包清单；`sysutil/win/index.js:2806` 起的绑定 |
-| `RazerAppEngine.exe` / `RzEngineMon` 监视链 | 宿主进程 | `app-<ver>\` | 引擎宿主与升级链 | `electron/main.js`（`runRzEngineMonitor`）、`ARCHIVE-CHAIN.json` |
-| `hid_hidraw.node` | Node 插件 | 见宿主 token 扫描 | Linux HID raw（非 Windows 主路径） | `.ref/host-4.0.827` 文本命中 |
-| `RazerAppEngineUpgrade(-Setup-Internal)-v*.exe` | 安装器 | 下载包 | 引擎升级安装包（解包处理，不执行） | `ARCHIVE-CHAIN.json:193`、`:596` |
+| 内容 | 当前文档清单数量 / 实际边界 |
+| --- | --- |
+| 逻辑库 ID | 48，不等于二进制数 |
+| 唯一静态归属候选的 FFI 声明 | 762；另有 4 个签名冲突；3238 份含 FFI 的 JS 静态解析，不能当作运行库实例证明 |
+| 产品 manifest DLL | 58 唯一二进制；核对 SHA、大小、架构、导出、导入 |
+| 当前 CommonDLL | 4；官方包字节/导出核对 |
+| 全产品目录并集 | 596；其中 101 明确声明独立 DLL |
+| 未归属条目 | 2332；按签名/原因归并 20 组，包含重复 shared chunk 及 1 条缺 manifest 记录 |
+| 正文逆向 | HID.node 7 函数；mapping/simple 新增 8 导出、100 代码范围 |
+| 全 ASAR `.node` | 58 个逐文件 hash；PE 核查导出/导入，非 PE 只登记魔数 |
 
-## 2. 引擎服务 DLL 的完整绑定表（宿主侧）
+机器记录 `libraries` 包含每个 ABI 声明、源 SHA/UTF-16 区间、调用方法/参数、解码形态、回调/生命周期、会话证据与内部实现状态；`binaries` 包含文件实际身份；`products` 包含全部产品 manifest、DeviceInfo/feature 与库归属；`unresolved_groups` 保留全部未知；`host_chains` 保留宿主/插件 wrapper 的动作与 Callback AST。函数名分类仅导航，不是无副作用证明或调用白名单。
 
-### 2.1 `mapping_engine.dll` — 131 个声明
+清单归属是可复核的静态声明候选，不是已证明的运行库实例：当前生成器按类内 DLL 字面量汇集声明；新增动态输入门禁只识别 `init*` 中 Identifier 形参直接赋给 `this.dllName`/`this.dllPath` 的形式。逻辑表达式、解构、转交 helper、其他字段或跨类传播尚未穷尽，PE 同名导出也不能消除这些未知。产品归属只来自 manifest；实际使用须继续证明 factory 的具体初始化实参与有效 DLL 路径。
 
-来源：`electron/modules/mapping_engine/win/index.js`（`apiObj` 由多个版本表合并：`:166794` 处 `{...i}`，失败时回退旧版本 DLL）。
+**独立应用的额外通道**：以上 48 库清单扫描当前 middleware 的 ConfigureFFI/ffi-napi-rz 类声明，以及 5 个宿主 wrapper；没有覆盖所有独立应用的其他 FFI 协议。当前 Ring Light/natalie 原件另用 `window.FFILibrary → getProc → call`。原 `init()` 的无参调用可证明该实例选择 `userDataDir + Apps/VirtualRingLight/VirtualRingLight.dll` 回退路径，但本体和其他通道仍须单独核查；不能把 48 库称为全部原生通道已覆盖。页面链、GetCameraList 的编码冲突及返回/成功边界见 [当前 Ring Light 语义](ring-light-ui-current.md) 与 [原件证据](ring-light-current-evidence.json)。
 
-`stopRunningTurbosAndMacros, mappingEngineInitialize, mappingEngineShutdown, addUsbDevice, removeUsbDevice, isInputNotificationRegistered, registerInputNotification, unregisterInputNotification, setInputNotificationCallback, registerHardwareEvent, unregisterHardwareEvent, isHardwareEventRegistered, setHardwareEventCallback, enableMapping, disableMapping, isUnsupportedMappingRegistered, setUnsupportedMappingCallback, registerUnsupportedMapping, unregisterUnsupportedMapping, isInputRedirectEnabled, enableInputRedirect, disableInputRedirect, setInputRedirectCallback, isMouseMoveRedirectEnabled, enableMouseMoveRedirect, disableMouseMoveRedirect, setMouseMoveRedirectCallback, queryRunningMacrosAndKeysPressed, localStorageSetItem, localStorageDeleteItem, localStorageDeleteAllItems, registerAudioServiceEvent, unregisterAudioServiceEvent, setSpeakerVolumeChangedCallback, setMicrophoneVolumeChangedCallback, setDefaultMicrophoneDeviceChangedCallback, setDefaultSpeakerDeviceChangedCallback, getDefaultSpeakerDevice, getDefaultMicrophoneDevice, microphoneVolumeStepDown, microphoneVolumeStepUp, setMicrophoneMute, setMicrophoneVolume, setSpeakerMute, setSpeakerVolume, speakerVolumeStepDown, speakerVolumeStepUp, hasMacroRecordingStarted, startMacroRecording, stopMacroRecording, registerMacroRecorderEvent, unregisterMacroRecorderEvent, setMacroRecorderEventCallback, getGlobalShortcuts, isGlobalShortcutRegistered, setGlobalShortcutEventCallback, registerGlobalShortcut, unregisterGlobalShortcut, unregisterGlobalShortcuts, enableGlobalShortcut, disableGlobalShortcut, isGlobalShortcutEnableEventRegistered, setGlobalShortcutEnableEventCallback, registerGlobalShortcutEnableEvent, unregisterGlobalShortcutEnableEvent, getMacroRecordingMode, isDeviceModeChangedEventRegistered, registerDeviceModeChangedEvent, unregisterDeviceModeChangedEvent, setDeviceModeChangedEventCallback, isHypershiftActive, isOtfsActive, getDeviceMode, getGlobalMode, addUsbDeviceWithoutFilterDriver, enableKeyboardInputRedirect, disableKeyboardInputRedirect, enableMouseInputRedirect, disableMouseInputRedirect, enableRazerKeyInputRedirect, disableRazerKeyInputRedirect, isKeyboardInputRedirectEnabled, isMouseInputRedirectEnabled, isRazerKeyInputRedirectEnabled, isAnalogKeyEventRegistered, registerAnalogKeyEvent, unregisterAnalogKeyEvent, unregisterAllAnalogKeysEvent, setAnalogKeyEventCallback, addDevice, removeDevice, notifyInputForExternalDevice, setGlobalShortcutUnsupportedMappingCallback, registerAllAnalogKeysEvent, isJoystickEventRegistered, registerJoystickEvent, unregisterJoystickEvent, setJoystickEventCallback, isXboxGamepadEventRegistered, registerXboxGamepadEvent, unregisterXboxGamepadEvent, setXboxGamepadEventCallback, isAllDevicesHooksEnabled, enableAllDevicesHooks, disableAllDevicesHooks, setInputMonitoringCallback, startKeyboardInputMonitoring, stopKeyboardInputMonitoring, hasKeyboardInputMonitoringStarted, startMouseInputMonitoring, stopMouseInputMonitoring, hasMouseInputMonitoringStarted, getMouseSensorRotationAngle, setMouseSensorRotationAngle, isSnaptapKeyEventRegistered, registerSnaptapKeyEvent, unregisterSnaptapKeyEvent, setSnaptapKeyEventCallback, registerIntervaledHardwareEvent, isAllAnalogKeysEventRegistered, registerIntervaledJoystickEvent, registerIntervaledXboxGamepadEvent, registerIntervaledAnalogKeysEvent, isBigDataEventRegistered, registerBigDataEvent, unregisterBigDataEvent, setBigDataEventCallback, hasKeepAliveStarted, startKeepAlive, stopKeepAlive, setKeepAliveCallback`
+## 原版设备与服务链
 
-划分：`mappingEngineInitialize/Shutdown` 生命周期；`*InputRedirect*`/`*InputMonitoring*`/`*Joystick*`/`*XboxGamepad*`/`*Snaptap*` 输入通道；`*Macro*` 录制；`*GlobalShortcut*` 全局快捷键；`localStorage*` 引擎侧存储；`getGlobalMode`/`getDeviceMode`、`enableMapping`/`disableMapping` 状态。
+```mermaid
+flowchart LR
+    U[产品 UI / 应用页面] --> M[middleware / feature 工厂]
+    U --> W[独立应用 window.FFILibrary / getProc / call]
+    W --> V[VirtualRingLight 等额外 DLL 通道]
+    M --> H[USB/HID/BLE/Serial 动作]
+    H --> N[Node 原生插件]
+    N --> D[设备 / 接收器 peer]
+    M --> F[ConfigureFFI / actionArgs]
+    F --> P[FFIPreloadMain / ffiGroup 子进程]
+    P --> L[ffi-napi-rz Library / Callback]
+    L --> B[产品 DLL / CommonDLL]
+    B --> S[内部线程 / SDK / Windows API]
+    S --> R[真实响应 / event]
+    R --> P
+    P --> M
+    M --> U
+```
 
-### 2.2 `simple_service.dll` — 39 个声明
+当前原代码确实有设备发现：UsbRzDeviceAction 分发 usb.getDevices/hid.getDevices，使用 rz-usb-detect/node-rz-hid；middleware 按 VID/PID/container/interface 选择控制接口。接收器无线 peer 查询与枚举独立；不能把接收器枚举成功当作鼠标参数读取成功。大量鼠标/键盘通过共享 HID 协议类工作，没有同名独立 DLL。
 
-来源：`electron/modules/simple_service/win/index.js:3553`（版本回退时合并不同表：`:3738`）。
+179 → rzDevice25LinkerUma → V2 无线状态 → 接收器接口 → raw peer PID/status → 逻辑产品投影。182 双联鼠标工厂使用 dongle PID/interface，经接收器查询。精确 [能力](receiver-capabilities-current-evidence.json)、[发现](receiver-discovery-current-evidence.json)、[投影](receiver-query-projection-current-evidence.json)、[字段读链](mouse-read-capabilities-current-evidence.json) 单独登记，不能扩称所有鼠标可读。
 
-`simpleServiceInitialize, simpleServiceShutdown, isAppsServiceEventRegistered, registerAppsServiceEvent, unregisterAppsServiceEvent, setAppsServiceEventCallback, simpleGetVersionInfo, simpleGetUserApps, simpleAddUserAppFile, simpleRemoveUserAppFile, simpleRemoveUserApp, simpleRemoveUserAppDirectory, simpleLaunchUserAppProcess, simpleLaunchUserAppProcessNoWait, simpleLaunchRazerApp, simpleLaunchRazerAppNoWait, simpleEnumerateAudioDevices, simpleGetMicrophoneVolume, simpleSetMicrophoneVolume, simpleGetSpeakerVolume, simpleSetSpeakerVolume, setAudioServiceEventCallback, simpleRegisterMicrophoneEvent, simpleRegisterSpeakerEvent, simpleUnregisterMicrophoneEvent, simpleUnregisterSpeakerEvent, simpleGetDefaultSpeaker, simpleGetDefaultMicrophone, simpleSetDefaultAudioDevice, simpleSetSidetoneConfig, simpleGetSidetoneVolume, simpleSetSidetoneVolume, simpleRegisterAudioDeviceStateChangedEvent, simpleUnregisterAudioDeviceStateChangedEvent, simpleLaunchUserAppElevated, simpleLaunchUserAppElevatedNoWait, simpleLaunchRazerAppElevated, simpleLaunchRazerAppElevatedNoWait, simpleLaunchUserAppInAsciiFolder`
+相机/音频/显示器/Blade/THX/IoT/Hue/系统还有专属 FFI/SDK，同一页面可同时用 HID 与 DLL。确定产品归属必须来自该产品 manifest；shared chunk 里出现库名不能证明该产品会加载它。
 
-### 2.3 `SysUtilsNative.dll` — 76 个声明
+## 注册、串行化、生命周期与所有权
 
-来源：`electron/modules/sysutil/win/index.js:3662`（`{...i}`）。
+这层的完整分支、原文范围及异常语义现单列 [当前宿主FFI契约](host-ffi-current.md) 与 [证据](host-ffi-current-evidence.json)。实际SysUtils还通过注入的legacy ffiMain运行，与renderer Main/Sub实例不同。subprocess-ready只证明消息通道就绪；10秒仅约束动作结果等待，ready等待没有该timer；native异步err及response error可能只日志后resolve，不能把所有异常统一描述成reject。
 
-`GetDLLVersion, FreeMalloc, SetNodeFFIEvent, Initialize, Terminate, applicationAutoStart, setApplicationAutoStart, getApplicationAutoStartApps, launchMicrosoftApp, launchTaskManager, launchFileExplorer, msSettings, getApplicationIcons, getFileVersionInfo, windowsSystemDirectory, systemSKU, computerName, keyboardLayout, hibernateWorkstation, lockWorkstation, restartWorkstation, shutdownWorkstation, sleepWorkstation, OpenAudioProperties, OpenKeyboardProperties, OpenMouseProperties, OpenSoundVolume, getInstalledApplicationList, displayPowerState, getMonitorInfo, getVirtualScreenRect, getCurrentMonitor, SetProcessAppId, SetWindowAppId, ShowColorPicker, CloseColorPicker, GetGMS3Info, getNetworkStatus, StartMonitorForegroundWindow, StopMonitorForegroundWindow, IsScreenLocked, GetDriverInfo, GetSystemLanguage, systemFamily, MigrateRzAppEngineRegistry, GetSystemSerialNumber, StartMonitorKeyboardLayout, StopMonitorKeyboardLayout, getTouchPadEnableStatus, toggleTouchPadEnableStatus, registerDiscord, getWheelScrollLines, setWheelScrollLines, GetURLFromInternetShortcut, OpenGameController, GetRazerMonitorList, GetModuleInfo, SetProcessPowerThrottling, GetInstalledRazerAppEngineProduct, GetMachineId, GetPathFromShortcutLnk, CreateExitEvent, SetExitEvent, isDarkMode, isWindowsDynamicLightingEnabled, isFullScreenMode, getASRockSystemEdition, getApplicationIconsAlt, BringProcessWindowToFront, IsAppLaunched, RegisterAppLaunched, UnRegisterAppLaunched, GetRegisteredApplaunchedList, launchRzEngineMon, isMediaFoundationInstalled, SimulateMemoryLeak`
+FFIPreloadMain 按 channel 保存 ffiLibMap/ffiCallbackMap/ffiMutexMap。ConfigureFFI 查文件后 Library(dllPath, apiObj)；已加载 channel 复用并增加 URL。action 索引导出；actionArgs 数组展开，非数组作为单参，缺省才无参。callDLL/callDLLAsync 由 channel mutex 串行化。
 
-### 2.4 `lighting_driver.dll` — 7 个声明
+结果指针仅在具备 readCString 时复制，finally 用同库 FreeMalloc；缺释放函数只记日志，不能推成正确释放。lighting 返回另用 FreeString。Callback void(string) 在 map 保活，解析 event/events，只转发到存活且 URL 属于库的 webContents。CanUseAnneCallback 的存在不证明全部 callback 线程/ABI。
 
-来源：`electron/modules/lighting/ffiLightingDriver.js`（`initDll`）。
+FFIPreloadMain 的 FreeFFI handler 为空，分支返回 true；不能解释成卸载库或取消回调。较小 ffiMain.js 则删除 Library map，两种当前包内实现必须区分。退出/设备退出/shutdown/suspend 有不同动作表；Terminate 不等于 FreeLibrary。产品成对会话证据在 source_session_chains，空列表仅表示生成器未证明配对。
 
-`Startup:["void",[]], Shutdown:["void",[]], Configure:["char*",["string"]], FreeString:["void",["pointer"]], HookLightingCallback:["bool",["string","string","pointer"]], SetWriteFFICallback:["void",["pointer"]], GetDllVersion:["char*",[]]`
+ffiGroup → ffi_subprocess/index.js → FFIProcess → utilityProcess/MessageChannel → _ffiprocess.js → FFIPreloadSubProcess；UUID taskId、subprocess-ready、10 秒结果等待、独立 ffi-event；异常拒绝 pending 并发布 Razer-FFI-Sub-Process-Crashed。这与 Rust 自己的 service-worker/Job Object 不是同一实现。
 
-动作：`InitDLL / AddDevice / RemoveDevice / Configure / Pause / Resume / HookLightingCallback`（`device.register`、`device.unregister`、`mode.set` 由 `Configure(JSON)` 承载）。
+底层链 Library → DynamicLibrary → bindings StaticFunctions.dlopen/dlsym → ForeignFunction → CIF → _foreign_function。Library 逐个查导出，空指针抛错，保存 dllObj。Callback 规范类型/CIF，用 native _Callback 建桥；普通路径按 pointer-size 读取 native 参数，Anne 路径直接用 V8 参数；捕获异常，callback Buffer 保留 _cif 防止提前 GC。host callback map 与底层 CIF 保活均需保留。native bridge 内部跨线程调度/ownership 尚未完全恢复。
 
-### 2.5 `IoTNative.dll`
+`_foreign_function` 同步调用为每个参数 ref.alloc、构造 pointer 数组，再 bindings.ffi_call；async 多一个 JS callback，使用 ffi_call_async，并在完成 closure 保留 cif/funcPtr/argsList；返回值按声明类型 deref。`lib/freelibrary.js` 确实提供关闭 dllObj 的方法、非零关闭状态会抛错，成功才把 dllObj 设 null。这证明“存在明确关闭函数”，不能证明上层空 FreeFFI 分支实际使用了它。`lib/bindings.js` 经 node-gyp-build 后调用 initializeBindings(ref.instance)，并非可直接当成普通 C 导出调用的初始化协议。
 
-宿主侧 `IoTSDKNative_Action`：`IOT_RunCmdFw25(host, cmd, json, len, flag)`，动作 `IoT.SetChromaFrameV2 / IoT.SetChromaFrame / IoT.UpdateWhiteLEDBrightness / IoT.IsLightingDriverSupport`（`electron/modules/IoT/IoTNativeAction.js:370`）。
-设备侧绑定（`.ref/middleware/179/7254.be9dba3fe6dc42d7f519.js:10186`）：`Init, UnInit, GetDLLVersion, FreeMalloc, SetNodeFFIEvent, IOT_StartMdnsDeviceScan, IOT_StopMdnsDeviceScan, IOT_IsNetDeviceConnected, IOT_ConnectNetDevice, IOT_DisconnectNetDevice, IOT_RunCmdFw25, IOT_RunCmdEsp32, IOT_GetSdkVersion, IOT_SetSdkLog, IOT_GetControllerFilePath, IOT_SetDeviceInfoToFile, WIFI_GetCurrentConnectionsAp, WIFI_GetConnectedProfileList, WIFI_ConnectWifiFromProfile`。
+## 全部库与产品登记
 
-### 2.6 通用原生库加载协议（`bladeNative` / IoT / 设备类共用）
+| 功能族 | 已纳入的逻辑库 |
+| --- | --- |
+| 引擎/灯光/IoT | mapping_engine、simple_service、SysUtilsNative、lighting_driver、IoTNative |
+| Blade | BladeNative、blade2Native |
+| 系统/超频/主板 | cpuidsdk64、RzAMDOverClock、RzAMDOverClockDLL、RzIntelOverClock、RzIntelOverClockDLL、RzASRock、RzASRockDLL |
+| 音频/采集 | audCapNative、CmMixerLib、RzAudioUtil、RzAV、RzNative_0517、RzNative_053E、RzNative_0542、RzNative_0543、RzNative_056a、RzNative_056f、RzNative_058e、RzNative_05a6、RzNative_0D06、RzNative_0D09 |
+| 相机 | RzNative_0518、RzNative_0E03、RzNative_0E05、RzNative_0E06、RzNative_0E08、RzNative_GenericCamera |
+| 显示器 | ScarlettNative |
+| THX/路由 | ThxV3Native、ThxV4Native、ThxVADCarolNative、thxvadvirtualroutenative_1442、thxvadvirtualroutenative_3942、thx_carol_routing_client、razer_clio_x_routing_client、razer_soma_pro_routing_client_1.2.1.59_2 |
+| 第三方灯光 | PhilipsHueNative、philipshuev2、NanoleafNative |
+| 固件 | RzUMASDKWrapper、Razer_Upgrade_SDK |
 
-`source-evidence/background-current-source.js:328732` 一带：`ConfigureFFI` → `DeviceInit` → `GetLibVersion` → `getSDKVersion` → `ConfigureFFI_APIToCallWhenExit(uninitSDK)`；失败则“try loading older version of lib”。`electron/modules/ffi/ffiMain.js:656` 的 `callDLLMain` 是所有 `Library(dllPath, apiObj)` 的实际入口，另有 `callDLLMainAsync`、`SetNodeFFIEvent` 回调注册与 `FreeMalloc` 释放约定。
+每库有全部版本文件名/完整 SHA/产品 ID/安装路径/ABI/调用者/生命周期/回调/内部实现状态。二进制身份按 SHA，不混淆版本别名；未取得本体的库不伪造 hash 或加载成功。
 
-## 3. 设备中间件原生库分组
+已知声明与 PE 差异：BladeNative_v1.0.10.1 缺 GetBladeBiosAndECVersionInfo/OpenNVControlPanelSetting；GenericCamera_v1.0.35.0 缺 GetShutterLimitControl/SetShutterLimitControl；SysUtilsNative 缺 SimulateMemoryLeak。RzNative_0E08 的 SetBrightness/SetContrast/SetSaturation/GetAutoExposureMetering 有签名冲突，须结合工厂/版本/调用者消歧。
 
-| 产品范围（示例） | 原生件 | 作用 |
-| --- | --- | --- |
-| 音频/摄像头（179、226、162、3886、1306–1318、2595/2596） | `RzNative_0542/0543`、`RzNative_0517`、`RzAudioUtil`、`RzAV`、`audCapNative`、`CmMixerLib`、`thxv2api`、`ThxV3/V4Native`、`ThxVAD*`、路由客户端 | 混音、音量、麦克风处理、AV 采集与频谱、THX 属性与虚拟声道 |
-| 摄像头（179 `rzCamKimberly`、162） | `RzNative_GenericCamera`、`RzNative_0518/0E03/0E05/0E06/0E08` | 图像参数、属性对话框、HDR/LDC、自动取景、镜头联动、Camo Studio 启动 |
-| 显示器（162） | `ScarlettNative` | 显示器全部设置与色彩管理 |
-| 第三方灯光 | `PhilipsHueNative`/`philipshuev2`、`NanoleafNative` | Hue/Nanoleaf 桥接与帧下发 |
-| 主板/超频 | `RzASRock`、`RzAMDOverClock`、`RzIntelOverClock`、`CTR.dll`、`cpuidsdk64` | 主板灯光；CPU 曲线/功耗/电压；CPU 识别 |
-| 系统/固件 | `RzSystemMon`、`RzUMASDKWrapper`、`Razer_Upgrade_SDK` | 硬件监控；固件升级 |
-| 笔记本 | `bladeNative`、`blade2Native_v*`、`BladeNative_v*` | 屏幕、ICC、GPU/HDR、BIOS/EC |
+audCapNative、ThxV3Native 的声明表及 PE 本体已取得，但此次复核发现初始化接受外部 DLL 参数，它们的具体实例归属仍需 factory 实参证明；不能继续沿用旧“明确绑定”结论。DLL 正文仍未恢复。mapping/simple 仅选定读链与生命周期完成本次机器码逆向，其余正文未知。101 个 manifest 独立 DLL 产品与其余 495 产品全部在 products；空库列表不等于没有 native 依赖。
 
-DLL 文件名与版本同时写在对应产品的 `.ref/middleware/<id>/manifest.json`（例如 `BladeNative_v1.0.10.1.dll` `.ref/middleware/563/manifest.json:5958`、`ThxV4Native_v1.1.1.0.dll` `709/manifest.json:11991`、`audCapNative_v1.0.2.0.dll` `1383/manifest.json:3669`、`cpuidsdk64_v1.3.1.2.dll` `694/manifest.json:6826`）。
+20 未归属组保留缺 webpackManifest、动态 DLL 参数/继承/shared chunk 的原始签名/hash/区间/bundle 产品 ID。必须追 factory → 构造器/init 参数 → manifest resource → ConfigureFFI.apiObj，不能按函数名强行归属。
 
-## 4. 与读取链路的关系（鼠标为什么“读不到”）
+本次发现 THX Carol 类 `initElectron` 先把调用方参数赋给 `this.dllName`，仅无参数时回退到字面量 `ThxV3Native.dll`。同一类有 40 个声明不存在于已核对的任何 ThxV3Native 资源版本导出表；它们虽存在于其他 Carol/virtual-route 库，仍不足以证明实际 factory 传参。文档生成器将所有已识别的同类动态输入作用域保留为 unknown，即使默认库 PE 的导出完全匹配也不例外；总共隔离 875 个作用域，其中该 71 声明 Carol 表有 62 处。候选默认名包括 RzASRock、两代 Hue、IoTNative、ThxV3Native 和 audCapNative。40 个 Carol 声明不再误计入 ThxV3Native；blade2Native 新增的 41 个声明保留为静态候选。这里的 `library_candidates` 不是实际加载结论，也不是调用授权。
 
-原代码里读设备只有一条链，全部经宿主转发：
+这个具体反例的原件为 `.ref/middleware/1306/AudioEffectsTHXCarol.98697d369b62fc7b7117.js`，SHA-256 `a3fc9cfe75e6aeb6e03fdfb404d88997fa7555fa70ee2921c5edbc4365aec1ba`，已记录类 UTF-16 区间 `1000..28152` 与全部签名；其他相同签名作用域仍各自保留源文件/字节收据，不能仅复用该产品的运行结论。
 
-1. `usb.getDevices` → `rz-usb-detect/detection.node`（物理 USB）；`hid.getDevices` → `node-rz-hid/HID.node`（HID 接口，条目含 `path / vendorId / productId / interface / deviceContainerId`）。见 `electron/UsbRzDeviceAction.js:4749`（hid.getDevices）与 `:4006`（usb.getDevices）。
-2. 中间层 `rzHidDevices.connectHidDevice({productId, vendorId, deviceContainerId, claimInterface, queryData})` 在 `hidDevices` 中按 **productId+vendorId+deviceContainerId** 过滤，再要求 `l.interface === claimInterface`，然后 `hid.openDevice{path,…}`（`source-evidence/background-current-source.js:20553` 一带）。
-3. 设备类（`rzDevice25` 基类，`reportLength=91`）用 `hid.sendFeatureReport` / `hid.getFeatureReport` 收发，`_createDataSend` 布局为 90 字节 + reportId，校验和 XOR `[2..87)`；179 的 `DeviceInfo` 声明 `claimInterface:0`（`.ref/middleware/179/main.6d1e356030ef563555d4.js` @137547 起），`dongleId:179`。
-4. 双联鼠标（182 等）由 `rzDevice25DualLinkMouse` 承担，构造时 `productId` 取 **dongleId**、`claimInterface` 取 `e.master.claimInterface`，即依旧走**接收器那个 HID 接口**（证据 `docs/re/mouse-read-capabilities-current-evidence.json` 中 182 工厂 `module 87887`）。
+## 动态 DLL 实参的进一步全量追踪
 
-对照本仓库实现的三处结构性差异（都以原代码为准）：
+已继续追上述 875 个 caller-DLL 作用域，覆盖 330 个产品环境、28924 份 manifest 声明 JS。新增 [工厂与实参读链](native-factory-current.md)、[计数摘要](native-factory-current-summary.json) 和 [逐作用域压缩证据](native-factory-current-evidence.json.gz)，不再只停在类内回退字面量。相关 2631 个模块上下文解析失败 0；所有 init 正文、导出、真实构造器、调用参数和 unresolved 原因都保留源 hash/range。
 
-- 本项目用 `windows-sys`/SetupAPI 自建 USB+HID 枚举（`src/backend/runtime_usb.rs`、`runtime_hid.rs`），原代码是 `detection.node` + `HID.node`。`HID.node` 只用于实际读写（`runtime_hid_transport.rs`），枚举口径因此可能与原实现不同。
-- 本项目在匹配接口时额外要求 `feature_report_bytes == report_bytes`（`runtime_device_reads.rs::current_target`、`receiver_requests`），原代码只匹配 `interface`，不比对 Feature 长度。
-- 身份目录里 179 未标 `dongleId`（`src/backend/discovery_catalog.json`），而原 179 `DeviceInfo` 明确 `dongleId:179`；因此本项目把 179 当有线配件（`ObservedTransport::Wired`）。
-- 读取能力表现在只有产品 182（`assets/data/device-read-capabilities.json`，来源 `docs/re/mouse-read-capabilities-current-evidence.json`）；配对的若是其它鼠标型号，本项目没有任何查询可用，即使设备已被发现也不会读到 DPI/电量/固件。
+329 个作用域追回直接实例/实参链：154 IoT 的 `new → 字段 → init(path)`，175 capture 的 `new → 立即调用函数参数 → initialize(path)`；它们的资源选择器及 `installedResources` getter/常量键均逐份解析。545 个作用域追回带条件链：154 ASRock 的计算 factory/异步 return，154 Hue 的嵌套字段赋值，再接通用 hasDll dispatcher；237 THX 的 lazy 或直接 import → 真实 class → new → runtimeData 字段 → 另一模块别名或直接字段 → init 实参。类身份检查和词法遮蔽门禁分别核对，feature 是否激活分支仍未知。只剩产品 3886 旧单文件 Hue 的 1 个 caller 上下文未闭，不把引用候选算作实际初始化。
 
-## 5. 生成资产与已接入的读取路径
+原版选择的是安装缓存中的 `name/usedBy/filePath`，不是根据同名 PE 导出决定 DLL。IoT 在 selector 无匹配时仍可能进入 init 默认回退；capture 的实际 caller 在返回路径为空时跳过 initialize。THX 按 `thxv3` 或产品 ID 筛选 THXNativeDLL/RzNative 资源，失败、顺序和子进程状态均影响链路。完整条件见专项文档。静态调用链仍不证明共享 manager 被页面激活、实际缓存记录或运行库身份；因此没有修改 762 候选签名归属或应用资产。
 
-| 资产 | 生成工具 | Rust 消费点 |
-| --- | --- | --- |
-| `assets/data/native-library-inventory.json` | `tools/generate-native-library-inventory.cjs`（宿主 wrapper + 各产品 `apiObj` 绑定表 + 单库文件的整表回退 + `userDataDir\Apps\...` 默认路径；48 个库、822 个声明函数、360 份源码收据） | [`native_library.rs`](../../src/backend/native_library.rs)：`all()` / `find()` / `with_function()` / `candidate_paths()`，以及 [`mod.rs`](../../src/backend/mod.rs) 的 `native_library_candidates()` |
-| `src/backend/discovery_catalog.json` | `tools/prepare-discovery-catalog.py`（现同时合并 `docs/re/middleware-device-bindings-current.json` 的逐产品 `DeviceInfo`） | [`device_identity.rs`](../../src/backend/device_identity.rs)：`is_dongle`/`is_ble`、`lookup_receiver_peer()`、`claim_interface()`、`middleware_category()` |
-| `assets/data/device-read-capabilities.json` | `tools/audit-mouse-read-capabilities.cjs` | [`device_reads.rs`](../../src/backend/device_reads.rs) 的 `capability()` |
-| `assets/data/receiver-query-capabilities.json` | `tools/audit-receiver-catalog.cjs` | [`receiver_capabilities.rs`](../../src/backend/receiver_capabilities.rs) |
+## 包插件与内部正文边界
 
-对齐原代码的两处修正（都不是给单个产品打补丁）：
+官方外层 native 条目 29 项。[完整 ASAR 提取](host-full-asar-current-evidence.json) 后，12 unpacked 插件加 4 CommonDLL 共 16 外层条目有核对字节；其余外层图形库/辅助 EXE 在此只有包清单。全部 58 `.node` 包含跨平台 Sentry stacktrace/usb prebuild，证据 packaged_native_addons 保留身份和 PE；非 PE 只登记魔数。
 
-1. **身份事实来自原代码逐产品数据**：`prepare-discovery-catalog.py` 合并 middleware `DeviceInfo` 后，330 行里 328 行带生成事实、99 行带 `dongle_id`、301 行带 `claim_interface`；其中 12 行（104/164/179/207/241/1420/1465/2676/3909/3940/3949/4126）的 `dongleId` 只由原代码的 middleware 声明，由生成器统一补齐并附 `receipt`。
-2. **HID 接口选择与源码一致**：`discovery::select_interface_paths()` 只按 `vendorId`+`productId`+`deviceContainerId`+`interface` 选择（原 `rzHidDevices.connectHidDevice` 的规则），Feature 长度只作为**偏好排序**与**实际观察值**记录；worker 侧 `runtime_receiver.rs` / `runtime_device_reads.rs` 的身份校验也改为"长度存在且真实"而非"必须等于能力常量"。
+12 unpacked 插件实际 signed 包字节与 ASAR 声明 size/hash 不同，保留双方值，不截断后伪称相同。来源由官方 internal package SHA 保障。BLE/Serial/FFI/ref/MJPEG/通知已有本体/wrapper，不代表所有内部函数已逆向。
 
-已接入 = 上述生成资产 + 只读路径解析 + 统一只读版本查询 + 现有只读查询（枚举、接收器无线状态、设备字段、simple/version/audio）。
+新 [服务函数正文](host-service-machine-code-current.md) 给出 bytes → 导出 RVA → singleton thunk → 构造器证明虚表 → 内部 query/生命周期 → closure → apps/audio/device-mode 线程。HID 七函数另见 [HID](receiver-native-hid-current-evidence.json)。Rust 当前请求/消费者/限制见 [只读接入契约](dll-readonly-inventory.md)。
 
-- `ServiceRequest::NativeLibraryVersion { library }` → worker 由 [`native_query.rs`](../../src/backend/native_query.rs) 处理：只接受绑定表声明的**无参、返回字符串**的版本导出（`GetDLLVersion`/`GetDllVersion`/`GetLibVersion`/`getSDKVersion`），加载路径来自生成清单，返回串用该库自己的 `FreeMalloc` 释放；已知加载会阻塞的库（`SysUtilsNative`）直接拒绝。
-- 命令行只读入口：`--dll-version <库ID>` 与 `--dll-get <库ID> <导出名> <设备ID> [productId]`，与 `--probe`/`--lighting` 一样在独立进程内执行，UI 之外。
-- 通用只读 getter（[`native_read.rs`](../../src/backend/native_read.rs)，请求 `NativeLibraryGetter`）：只接受清单里名字以 `Get`/`Is`/`Has` 开头、签名恰为单个 `string` 参数、返回 `pointer`/`bool`/`long`/`int` 的导出；其余（含全部 `Set*`、`Device*`、`Init/Terminate`、`Register*`）在加载任何库之前就被拒绝。当前清单中有 **12 个库**具备该形态，共 156 个可调用 getter：`RzNative_GenericCamera` 36、`RzNative_0E08` 31、`ScarlettNative` 27、`RzNative_0542` 11、`RzNative_0543` 8、`RzNative_0518/0E03/0E05/0E06` 各 7、`SysUtilsNative` 5（已知加载阻塞，实际被拒）、`PhilipsHueNative`/`philipshuev2` 各 1。
-- 归属规则：优先取该库 `ConfigureFFI` 载荷最近的 `apiObj` 表；文件只提到一个原生库时，回退到该文件自身的 FFI 形态条目（例如 `rzCamKimberly` 的 99 项）。跨类的整文件合并不做，避免把别的设备的表记到本库名下。
-- 调用点证据：生成器同时记录每个 getter 在原码里的调用形态，当前共 **216 条**，全部是 `Name(dispatched-by-action-name)` 形态——设备类并不直接以字面参数调用这些导出，而是把动作名交给共享 FFI 桥（`callDLLApi`/`_actionWithParams`），由桥按设备上下文（`instanceId`/`deviceContainerId`）组装那个 string 参数。因此 `native_read` 要求调用方显式给出 `device_id`，值取自已观察到的设备（`DeviceReadTarget.device_container_id`），不猜、不从动作名推断。
-- 已有 UI 消费者：[`diagnostics.rs`](../../src/shell/runtime_page/diagnostics.rs) 的 `native_libraries()` 把生成清单写进 `%APPDATA%\razer_ui\discovery-latest.json`（库数、声明函数数、各库候选路径规则与**哪些规则下文件真实存在**、是否已知加载阻塞）。只按文件存在性判定，明确标注未加载任何库，因此"文件在"不会被读成"功能可用"。
-- 同文件的每条设备观察另带 `declared_libraries`：由 `native_library::libraries_for_product()` 用生成清单的 `products` 字段，把观察到的产品关联到它自己 middleware 声明的库（供后续以 `device_container_id` 作 `device_id` 接线用）。**列出库名不等于读到了值**，诊断里二者分列。
+本次仅修改文档/静态工具/证据；没有修改 Rust/UI，没有加载 DLL、运行应用/厂商 JS/测试/安装器。设备/服务写回后置，UI 操作和本地草稿仍在范围，不删 UI、不伪造硬件成功。
 
-**未接入** = 各库的写入/生命周期动作（`enableMapping`、`SetProperty`、`SetBrightness`、`DeviceInit` 之外的 `set*`、固件升级等）仍只作为声明保留，不提供 UI 入口、不返回成功。
-
-## 6. 未证明 / 待补
-
-- 仅按名称登记、尚无绑定表：`audCapNative`、`CmMixerLib`、`NanoleafNative`、`RzUMASDKWrapper`、`Razer_Upgrade_SDK`、`cpuidsdk64`、`RzIntelOverClock`、`ThxV3Native`、`thxv2api`、`ThxVAD*`、`*_routing_client`、`blade2Native`。
-- `RzLightingEngineApi` 的完整动作表与调用契约；`lighting_driver` 的 `Configure` JSON schema。
-- 所有 `.dll`/`.node` 的真实导出集合、位数与加载结果均未验证；本文只证明 JS 侧声明与包内路径。
-- 本文不改变 `docs/re/dll-readonly-inventory.md` 的请求/返回契约，也不表示任何写回、设备持久化已被接入。
+检查：`node tools/generate-native-library-inventory.cjs --output=docs/re/native-library-full-current-inventory.json --check`；`node tools/audit-native-chains-current.cjs --check`；`node --max-old-space-size=4096 tools/audit-native-factories-current.cjs --check`；`python -X utf8 tools/audit-host-service-code-current.py --check`。最后一项只执行 dumpbin 读取 PE。没有重新生成应用使用的清单或运行其 DLL。
