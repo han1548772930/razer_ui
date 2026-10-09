@@ -19,6 +19,14 @@
 !/tools/audit-ring-light-current.cjs
 !/tools/audit-tray-semantic-current.cjs
 !/tools/audit-receiver-241-semantics-current.cjs
+!/tools/audit-receiver-lighting-help-current.cjs
+!/tools/audit-ui-style-sources-current.cjs
+!/tools/extract-product-ui-details-current.cjs
+!/tools/summarize-product-page-semantic-batches-current.cjs
+!/tools/audit-shared-ui-controls-current.cjs
+!/tools/audit-application-ui-details-current.cjs
+!/tools/audit-application-end-to-end-current.cjs
+!/tools/audit-native-3886-legacy-hue.cjs
 !/tools/extract-all-product-page-chains.cjs
 !/tools/extract-all-application-chains.cjs
 !/tools/extract-all-product-layout-chains.cjs

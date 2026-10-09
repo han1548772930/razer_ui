@@ -35,7 +35,7 @@ Indicator 编辑和保存属于本地草稿，不等于设备设置保存。打�
 
 两列各 600px；外层最大 1240px，窄窗口按源折行。左卡 padding 为上/下 30px、左 40px、右 30px。Indicator 选项为 20px 外圈、10px 选中点、200ms 过渡及源 50/64/50px 行高；10 个原 SVG 层按各自时间轴合成，切换/恢复模式会重启，不能替换为一般化闪烁。
 
-179 Widget 帮助采用其实际 portal：悬停立即创建/显示，离开立即隐藏，14px/18px 字体、内容最大宽 300px、层级 10001 及源窗口边界调整；帮助圆点背景保留 300ms 过渡。配对工具保持源 850px 宽、内容最小 850×685、顶部/宿主页签偏移、纵向滚动和标题上圆角。外部点击或 Escape 不主动关闭，关闭图标回到原焦点。加载旋转图保留源圆弧与 square cap。
+179 Widget 帮助采用其实际 portal：悬停立即创建/显示，离开立即隐藏，14px/18px 字体、内容最大宽 300px、层级 10001 及源窗口边界调整；帮助圆点背景保留 300ms 过渡。配对工具保持源 850px 宽、内容最小 850×685、顶部/宿主页签偏移、纵向滚动和标题上圆角。外部点击或 Escape 不主动关闭；本地关闭后恢复焦点属于框架适配，此处不将它泛化为241原modal的行为。加载旋转图保留源圆弧与 square cap。
 
 ## 164/241 配对与帮助边界
 
@@ -45,7 +45,7 @@ Indicator 编辑和保存属于本地草稿，不等于设备设置保存。打�
 
 241 轮询率说明仍需完整源条件 `V = !W && (I ? Y : K)`：I 是源 hs 的绑定/目录/runtime连接谓词，Y/K 检查本地profile是否存在polling属性，W检查鼠标和键盘都已绑定并受警告旗标门控。它们不比较实际Hz上限，当前 `!both_devices_capped` 不能代替它；双设备分行还受 `J = t.length > 1 && (W || I)` 约束。具体原文与来源见下文241语义审查。164/241 的临时名称/连接提示、结果计时、独立模式入口和实窗输入仍需分别完成。
 
-164/241 Lighting 实际挂普通快捷效果根，不能以 bundle 中同时存在的端口组件作为主体证据。亮度/熄灯范围和禁用依赖已有当前收据；效果参数、同步及 Quick/Advanced 完整主体仍未完成。164/179/241 普通 HELP Reset 允许本地确认/取消与撤销待发请求，但不改变设备状态或本地配置；其他 OBM/OLED/固件 Reset 不能套用这条契约。
+164/241 Lighting 实际挂普通快捷效果根，不能以 bundle 中同时存在的端口组件作为主体证据。亮度/熄灯范围和禁用依赖已有当前收据；241的真实八效果、同步及Quick/Advanced原码主体现已在下文细读，164各分支及Rust完整对照/接入仍未完成。164/179/241普通HELP Reset允许本地确认/取消与撤销待发请求，但不改变设备状态或本地配置；其他OBM/OLED/固件Reset不能套用这条契约。
 
 164/241 的产品横幅、单/双设备信息与正式 DockDialog 使用各自 [配对源证据](dock-pairing-current-evidence.json)和资源。164 指定 zia_pairing 单设备图；单设备弹层为#111/#515151，双设备#222/#5d5d5d、共享CSS左右20px卡片内边距及外侧2px选中描边；241实际挂载再用inline将左右内边距覆为10px，见下文父子树级联，不能把共享规则作为241最终值。进度原 SVG 作 1 秒旋转，动作透明度保留源 300ms；这些静态声明不代表完整 viewport/滚动或实窗焦点验收。
 
@@ -190,10 +190,63 @@ CSS 以当前 `main.1525b0e6.css` 和 `914.530f0373.chunk.css` 为据，规则�
 
 modal 基类为 width850、max-width100%、height100vh、left50%、top100、translateX(-50%)、radius5，Z 对外框和 backdrop 加 inline position:fixed；本页 extraClass 覆盖背景 #222、border none、overflow hidden。header 保留基类 height36、display:flex/center，却覆盖为 RazerF5 16px/19px、#999 和 1px #5d5d5d shadow；close 为36×36、图20×20。本页 body flex1/min-height0、overflow-y:auto、overflow-x:hidden、padding-bottom150；该 150px 属于滚动 body，不能任意加到父页卡间距。
 
+241的Widget帮助 `6299/p` 将.tip渲染在widget内；它没有179那条createPortal链，不能共用portal定位结论。配对imperative modal `3746/Z/X` 的当前原文只提供close图标/回调卸载root，没有Escape、backdrop click、focus trap或恢复焦点的实现；框架若需要适配必须单列，不得归为原码行为。完整控件合同见 [共享控件](shared-ui-controls-current.md)。
+
 介绍区 margin20px auto 10px、width790、max-width100%。双列 master 图与名称在前，随后动画连接条，再 keyboard-left/mouse-right 的卡片；其顺序与父页 mouse-first 不同。duallink-device-content width600；连接条 height30、margin10px auto 13px，双列 master-mousemat 宽520。卡片 250×210、背景#111、radius5，两卡之间右列 margin-left20，选中用外侧 2px #44d62c box-shadow。共享卡 CSS padding0 20px，但本页 is 传 inline paddingLeft/Right="10px"，最终水平内边距须保留 10px，不能只按 CSS 截图改成20。设备图 height120；候选列表有 height104 的独立滚动区。确认框 width210、橙色边框、padding-top18/padding-bottom20、margin-top10，动作钮28px/12px。
 
 Dialog 双设备警告 margin50px auto 0、max-width520、gap10、14px/17px/#ccc，不能沿用父页 20px/12px/#999。Precautions 在 isPairingDock 下 width680（覆盖普通520）、min-height85、margin20px auto auto、padding0 12px；图60、规则 margin-left25、14px/#999。结果条 width520、height20、margin20px auto auto、14px/#44d62c，左右250且右侧 margin-left20。这些数值是静态规则和实际 inline 依据，尚不是 DPI、字体度量、滚动视口和实窗焦点验收。
 
+### 241 Lighting：实际三张卡与八种效果
+
+此前只完成 Pairing，本轮继续读了当前 Lighting/Help 的实际正文。新增 [Lighting/Help证据](receiver-lighting-help-current-evidence.json) 保存75段原文收据、14个效果 switch case、25个Help方法和479条CSS上下文规则；工具 `node tools/audit-receiver-lighting-help-current.cjs --check` 仅静态解析。以下限定241，不按共享代码里存在的全部字段启用别的产品能力。
+
+Lighting 主体是 `9259/Mn [496322,496536)`，仍在当前 `main.899712fe.js`（SHA-256 `65fe2c4069ece8270903895ce32c6c610d5eb8fec94bd944f5791c2376509a02`）。顺序为 BodyWidgets → 左列 Brightness `M→L`、Switch Off Lighting `Ln→Rn` → 右列 Effects `fn→Cn`。没有 Pairing 的产品banner，也没有本页独立 Apply/Save 按钮。下述编辑回调进入源 Redux，不能作为设备已写回或保存成功的证据。
+
+| 控件 | 实际值、状态与回调 |
+| --- | --- |
+| Brightness | 默认 profile 为 enabled=true/value100；开关保留数值、翻转enabled，经setState回调调用setBrightness。滑块0–100，默认步长1，`changeValue`先写enabled=true；值0时还追加一次enabled=false的setState/回调，不能说只调用一次。slider active 为 nanoLeafEnabled&&brightness.isEnabled。adjustmentModeRunning 时开关直接返回，mousedown另显示提示并preventDefault。 |
+| Logo brightness | 共享实现需要 supportLogoBrightness 才显示；241调用 `M` 不传此旗标，不能因为共享代码出现LOGO就增加一行。 |
+| Switch Off Lighting | 第一项翻转isDisplayOn，第二项翻转isIdleEnabled；闲置滑块1–15、step1，仅idleEnabled&&brightnessOn时active。handler保留另外两个字段。默认profile为false/false/1；构造器闲置state15不是profile读数。brightnessOff会禁用两个checkbox。hideLightingIdle不成立才显示idle；241descriptor没有此开关。 |
+| Effects页签 | isAdvanced初始来自lightingEffectsReducer.isChromaEnabled；点击Quick/Advanced更新本地state，再调用setChromaEnabled。wrapper另受nanoLeafEnabled禁用，ChromaVisualizer运行会禁用一般两页签。BLE硬件效果、Sensa、power-saving、portComponent是共享条件，241当前直接挂 `fn {}`，不能把它们全画出来。 |
+| Quick dropdown | 真正数据为241的QUICK_EFFECTS，不是共享switch全部13种效果。选项按数组序号找effectId，再从当前缓存或默认setting复制；Wave没有缓存时按241 CWCCW得默认direction12，Tidal没有缓存时默认direction1。 |
+| Quick同步 | mount查询memory并订阅memorystorageevent，unmount解除该事件；普通效果要求memory devices多于一个且存在不同PID，Radiate则用另一个supportEffects谓词。点击只在canSyncQuickEffect成立时dispatch syncChromaEffect，并为图标加turn，1200ms去除。不得凭按钮可见伪造同步完成。 |
+| Advanced | `dn`检查Chroma资源完整且installedModules含chroma-app，检查结束前保留invisible占位。具备资源时显示说明、profile提示/下拉、Launch；无profile仍挂空dataset下拉。缺资源显示安装按钮与说明。onInstalled只更新本地resource flag，尚不是设备设置保存。 |
+
+241的QUICK_EFFECTS按原数组顺序为 **Audio Meter(12)、Battery Level(14)、Breathing(2)、Fire(8)、Spectrum(3)、Static(1)、Tidal(19)、Wave(4)**。默认selectedEffectId=3（Spectrum）。实际参数区如下，依据为 `8193:factory`、`3254:AoV/U2A`、`9259:vt`及各控制器的完整原文：
+
+| 效果 | 本241实际参数区与动作 |
+| --- | --- |
+| Audio Meter | 241没有isAudioMeterWithFlow/ble硬件色picker旗标，进入rt。Color Boost数值框0.25–4、step0.25、maxLength4、允许小数并向上归到0.25倍数；callback提交 `{colorBoost:parseFloat(value)}`，没有spread旧setting。不能增加共享Tt的耳机/麦克风Flow两个按钮。 |
+| Battery Level | 说明文字＋help＋电池渐变图＋0%/100%；没有数值编辑callback。图是CSS素材，不是实时电量条。 |
+| Breathing | 两个颜色下拉＋Random checkbox。Random时两个颜色禁用，callback spread当前setting后改color1/color2/isRandom。默认color1=#00ff00、color2=no-color、isRandom=false。 |
+| Fire | 仍是合法可选effectId8；当前renderEffect switch没有Fire参数case，返回null。其参数区为空，不能补一套根据别的效果推测的颜色/速度控件。 |
+| Spectrum | 241无useOptionButtonGroup，case直接返回null，保留dropdown/同步区。共享De的Duration分段按钮没有在本241分支挂载。 |
+| Static | 一个颜色下拉，hideNoColor=true；变更提交 `{color1:value}`，此handler没有spread旧setting。 |
+| Tidal | 两颜色＋Random、下面方向按钮。默认外/内值1/0；Random禁用两颜色，方向不随Random隐藏。父容器分别inline position:relative、zIndex2与1；不能将颜色popup层级和方向层级统一抹平。默认两色#00ff00/#0000FF。 |
+| Wave | 241没有speed旗标，进入He，仅方向；CW/CCW在11/12间翻转，选中状态比较direction===11。不能沿用通用左右方向1/2，也不能挂共享Ye/qe的速度控件。 |
+
+`vt.getDefaultProfileQuickEffectId()` 将默认effectId传给期待数组index的changeEffect，再返回默认ID；它在当前index=-1的render value分支中调用。源码确有ID与index语义混用，不能自行改正常后称“原逻辑”。`checkSyncQuickEffect`的嵌套JSON解析、部分componentDidUpdate查询没有catch；来源缺失/坏JSON不等于空设备集合。`Cn.setChromaEnableLocalStorage`内部shadow了t，后续t始终未赋值；不能据方法名宣称它已更新Chroma存储。
+
+Effects动作继续到 `5107`：setSelectedEffect从当前deviceReducer取isBle，补useHardwareEffect并dispatch；setChromaEnabled/setCustomColors/sync只dispatch，cache/getCached以selectedProfileGuid发动作。它们没有设备确认返回；241 descriptor默认profile也不等于一次DLL读出的配置。brightness、idle和effects的下游观察/回写仍须分开接。
+
+Lighting的左右列各600px，列height:fit-content；BodyWidgets折行居中/max1240；卡片各自margin10px auto、padding30px 40px、14px/#111/radius5。小于等于1279px时列另有左右30pxmargin，不是给所有卡片加60px内边距。Brightness标准slider高64，轨道底距25/高6；Switch Off卡有has-slider，才附左距30/宽490。页签外框36px/radius18/padding5，内部lighting-effect26px/radius13/padding5px 10px，再受no-inner-border和后续modes-tab规则覆盖；active为#44d62c/#111，hover/pressed独立。modes-area上padding20，Advanced invisible保持display:block但visibility:hidden。Quick dropdown右margin20/max-width150，sync说明宽340；这些是原选择器声明，实际尺寸还须按inline、父树和条件核对。
+
+### 241 Help：实际两列、数据来源及重置确认
+
+真正入口是当前 `11.219fb515.chunk.js`（SHA-256 `d39889eed8d9c2443c0a57b075018604c8e4283a70ef98dc554ac712f667dc61`）的 `9163/Oa [264028,265089)` → `Ia [245316,263984)`。正常根只传 `resetObm:this.resetDevice`，connect注入语言、序列号、masterGuide/supportPage、固件版本、isBle等Redux字段。Ia.defaultProps仅给resetTitle；不能把共享hasTutorial/hasTHXPartialAudio/hasCamoStudio/hasSystemInfo当本241启用能力。
+
+本241实际左列先Support，随后Factory Reset；右列先Serial Number，currentFWVersion成立才有Firmware，最后Product Registration。共享系统信息、教程、THX、Camo块各受未传的旗标控制，本入口没有这些块。Support内部按顺序显示有supportPage时的Device Support、`${masterGuide}${lang||"en"}.pdf`、`https://support.razer.com`；语言PDF没有此处fallback存在性检查。241 descriptor提供自己的MasterGuide URL与supportPage，实际显示字段来自Redux，不能把descriptor静态值当请求成功。
+
+链接包装 `Li→Ui` 生成的是 `a href:null`，点击有目标URL时preventDefault并通过 `ki→f.A.openExternalWindow(url)` 交宿主打开，随后调用传入onClick（默认空函数）发visit-support统计；不是普通href/target=_blank导航。Product Registration目标为 `https://www.razer.com/product-registration`。Support行上距10，文字下划线/#ccc，hover #44d62c；external-link用20×20伪元素、左距5，跟随hover着色，不能将伪元素漏掉或用托盘图标替代。
+
+Serial初始拷贝props.serialNumber到state；默认非Camo入口没有componentDidUpdate同步serial的路径。Copy仅在navigator包含clipboard时调用writeText，马上将isSerialCopied置true，2000ms改回false；原码没有await/失败捕获，Copied标签不证明clipboard成功。按钮用class disabled而非此处原生disabled。retry/loading/error流程属于hasCamoStudio条件，241不能无依据挂出NOSERIALNUMBER/Camo激活码/登录块。
+
+Firmware整个卡受currentFWVersion gate；非SystemInfo分支先显示Current Firmware，有newFWVersion时显示橙色#fd8611下划线可点击提示，点击只广播navigateDeviceAndModuleView到Dashboard。Show All/Show Less切本地viewMore；展开后仅非空uiVersion/mwVersion/synapseVersion各加margin-top10。版本来源分别为noscript#version的version.buildVersion、host windowStorage中的MW_VERSION（还按containerId/PID筛选）、localStorage apps的synapse条目（强制第一段为4）；三者不同，不能统一成DLL版本。读取/parse失败记录错误，不填猜测版本。Show All上下padding15/14px，箭头20×20/左距4。
+
+本241 descriptor没有isNonSupportFactoryReset/isSupportResetOLED，普通reset块满足条件。Reset按钮打开同卡内confirmation，inline width300/top:auto，title取源当前语言的productName，message依isOBMDevice选择；不使用OLED分支的top125/left140。Cancel只关popup并解除busy。Confirm先关popup、设busy，再走normal-root resetObm，向middleware广播ON_RESET_DEVICE `{timerTick:undefined,payload:{}}`，并发统计。2000ms定时解除busy不是设备成功ack；按钮busy时原生disabled并显示spinner。本阶段保留编辑/确认UI，实际设备写回继续后置，不能伪报Factory Reset完成。
+
+同样，hasSystemInfo固件30%/70%列、OLED重置payload、教程、Camo联网license等共享分支保留在证据中，没有挂到241。它们须由其他产品的真实caller/descriptor验证，不能直接通用启用。共享确认popup的outside-click/键盘细节见 [共享控件](shared-ui-controls-current.md)。
+
 ### 本轮明确未完成的边界
 
-本轮已说明 241 普通主根、Pairing 父卡/对话框分支、缓存与 runtime 连接谓词、五类动作的发送与返回消费、主要布局级联，以及实际 HID wrapper→当前 host 边界。尚未完成 241 Lighting/Help 参数主体的逐控件语义、全部产品所有 displayMode、78548 硬件通知注册全生命周期、目录/图片语言每个组合、每项初始化的完整服务错误恢复和实体设备读数验证；node-rz-hid 与产品 DLL 的 C/C++ 内部不能据 JS 包装宣称恢复原始工程。当前 Rust 对照也仍须按这些源条件逐项核查，本次仅补文档/静态证据，没有修改 Rust、vendor 或接入写回。
+本轮已说明241普通主根、Pairing父卡/对话框、Lighting三张卡及八个真实效果、Help本产品挂载的两列、状态来源/动作、主要布局声明和HID wrapper→当前host边界。仍未完成全部产品所有displayMode、78548硬件通知注册全生命周期、全部颜色picker/安装资源内部状态、目录/图片语言每个组合、lazy CSS最终级联、初始化服务错误恢复和实体设备读数验证；node-rz-hid与产品DLL的C/C++内部不能据JS包装宣称恢复原始工程。当前Rust对照仍须按源条件逐项核查，本次仅补文档/静态证据，没有修改Rust、vendor或接入写回。

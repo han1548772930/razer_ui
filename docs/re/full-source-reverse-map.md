@@ -32,15 +32,22 @@
 | middleware全语法与模块候选 | [语法摘要](middleware-code-current-summary.json)、[完整索引](middleware-code-current-evidence.json.gz) | 28,931声明JS路径、28,304独立内容全部Acorn解析；模块/require/lazy/action均为带源范围的结构候选 |
 | 产品身份、导航、根和独立模式 | [产品目录](16-product-catalog.md)、[注册审计](product-registration-audit.md) | PID、edition、原类别、源码 owner、displayMode、导航对象 offset |
 | 产品逐页组件、状态及命令候选 | [产品页面链](all-product-page-chains-current.md)、[机器索引](all-product-page-chains-current.json) | 独立页面身份与组件引用；静态调用和未解析分支分开 |
+| 产品页面内部控件、子项顺序与动作 | [页面细节](product-ui-details-current.md)、[机器索引](product-ui-details-current.json) | 逐组件 JSX/createElement、动态class/style/props、children/key、父条件、事件及局部声明；代表页另附人工语义，候选不等于运行DOM |
+| 全量逐页语义批次 | [逐页批次](product-page-semantic-batches-current.md)、[机器索引](product-page-semantic-batches-current.json) | 331产品/1452页逐页保留根、UI、事件、状态、条件、循环和graph unresolved；所有页面partial，不能把静态候选视为service/DLL闭合 |
+| 共享控件交互和调用方 | [控件细节](shared-ui-controls-current.md)、[原文证据](shared-ui-controls-current.json) | slider/number/dropdown/profile/tab/modal/tooltip的实际defaults、键鼠、校验与caller条件；跨产品复用与未审变体分开 |
 | 产品样式与资源 | [页面样式链](all-product-layout-chains-current.md) | 挂载class到当前CSS规则/资源；动态class与层叠未知保留 |
+| 全页面样式加载、字体和基础元素 | [样式来源](ui-style-sources-current.md)、[原文证据](ui-style-sources-current.json) | 353份HTML的style/link顺序、2110处manifest CSS引用、font-face/根与元素规则/at-rule；预加载、异步声明与最终级联分开 |
 | 独立应用 | [应用目录](17-application-catalog.md)、[应用入口链](all-application-chains-current.md)、[机器索引](all-application-chains-current.json) | route → HTML → manifest → webpack 入口；404 不作空应用 |
+| 公共与独立应用页面内部细节 | [应用细节](application-ui-details-current.md)、[原文证据](application-ui-details-current.json) | 控件参数/顺序/条件/事件、来源样式及人工分支审读；22 HTML与24端点的未知分别记录 |
+| 应用端到端链路 | [端到端说明](application-end-to-end-current.md)、[端到端证据](application-end-to-end-current.json) | 24端点从UI锚点到bridge/IPC、host action、FFI/service/native边界、返回与未闭合错误/清理；全部保持partial |
 | 全应用原生与外部进程调用者 | [逐应用语义](application-native-current.md)、[全量原文](application-native-current-evidence.json) | 755 JS中4789显式边界位置、10597源码收据、23人工锚点；THX/Updater/Ring/Studio/Alexa/FW，bundle共享类与实际初始化分开 |
 | 独立应用DLL官方资源来源 | [当前调用链与缺口](application-native-current.md)、[2026-10-09元数据证据](application-resource-metadata-current-evidence.json) | 12份官方JSON/XML响应；旧appcast/403与安装资源缓存分开，不据此称已取得最新稳定DLL |
 | Virtual Ring Light独立原生/页面链 | [语义解释](ring-light-ui-current.md)、[原文锚点](ring-light-current-evidence.json) | 五种hash页面、控制盘与原生ring、授权、设置、本地存储、FFILibrary声明；仅部分语义恢复 |
 | 托盘左右键、完整Widgets与通知分支 | [当前托盘契约](tray-ui-current.md)、[语义原文](tray-semantic-current-evidence.json) | 135条原文、11组语义合同；宿主菜单/点击、实际账户与安装条件、六种widget和storage动作，后端发布者尚未穷尽 |
-| 接收器页面深读（源产品241） | [接收器契约](receiver-ui-current.md)、[241语义原文](receiver-241-semantics-current-evidence.json) | 源样本的readiness、单双绑定/在线/轮询限制、状态机与effects、HID报文→host及父容器CSS；不表示所有接收器正文已审完 |
+| 接收器页面深读（源产品241） | [接收器契约](receiver-ui-current.md)、[Pairing原文](receiver-241-semantics-current-evidence.json)、[Lighting/Help原文](receiver-lighting-help-current-evidence.json) | 源样本的readiness、单双绑定/在线/轮询限制、配对状态机/HID；Lighting三卡/八效果及Help两列/复制/固件/确认，实际flags与共享分支分开 |
 | DLL、插件、辅助程序及加载链 | [原生件总表](dll-function-inventory.md)、[当前读取契约](dll-readonly-inventory.md) | library → manifest 产品归属 → loader/ABI → callsite/session → 实际 PE 文件 |
-| caller传入DLL的实际实例与工厂 | [逐类/参数语义](native-factory-current.md)、[875作用域完整证据](native-factory-current-evidence.json.gz)、[摘要](native-factory-current-summary.json) | 330产品/28924声明JS；329直接实例链、545条件工厂链，1旧Hue调用方未闭；运行资源值与feature激活仍分项未知 |
+| caller传入DLL的实际实例与工厂 | [逐类/参数语义](native-factory-current.md)、[875作用域完整证据](native-factory-current-evidence.json.gz)、[摘要](native-factory-current-summary.json) | 330产品/28924声明JS；329直接实例链、545条件工厂链；3886旧Hue另有独立链已闭合到manager/init/event，运行资源值与feature激活仍分项未知 |
+| 3886旧Hue实际调用链 | [3886 Hue契约](native-3886-legacy-hue-current.md)、[原文证据](native-3886-legacy-hue-current-evidence.json) | C6→P2→philipsHueMgr/CX→installedResources精确name+usedBy筛选→path/init→registerHueEvent；hasDll/filePath/DLL身份/返回值仍属运行时未知 |
 | 宿主服务 DLL 函数正文 | [读链伪码与解释](host-service-machine-code-current.md)、[机器码证据](host-service-machine-code-current-evidence.json) | 导出RVA → thunk/虚表 → 任务closure →服务线程；实际函数正文覆盖单列 |
 | 本项目实现与缺口 | [产品覆盖](native-product-coverage.md)、[缺口](remaining-ui-work.md)、[修复登记](ui-fix-registry.json) | 源链和 Rust 接入分别看；有路由不算 UI 完成 |
 
@@ -53,6 +60,10 @@
 331个产品现全部按同一当前解析器重新读取manifest声明JS并展开1452个导航入口，未解析入口为0，未触及250节点边界，共保留52,461条组件原文和98,727条解引用证据。配对页仍保留实际 `render → renderView → nav.find → name条件 → JSX`，HOME条件保留两个分支；新增CommonJS/webpack导出、真实runtime require/lazy、HTML声明UMD与React Fragment终点，同时检查块/参数遮蔽和同moduleId不同正文。子组件未解析引用共8160条：member5390、export1277、lexical/parameter727、冲突factory766、缺module0。冲突不选first/last补齐；入口覆盖和减少未解不表示页面分支或视觉全部读通。
 
 样式索引现依据重生的组件图包含2022处CSS文件引用、424种独立CSS内容、811,284条页面/规则候选；独立应用索引覆盖24个端点、22个HTML入口、755个已静态解析JS文件与8233个webpack工厂候选。以上是追踪入口和原文证据，本轮全量索引没有据此宣称任何页面已完成逐分支语义审查或视觉一致验收。
+
+本次继续补页面内部细节，并为全部331产品/22应用HTML保留实际样式声明顺序：347处stylesheet link、346个inline style、2110处manifest CSS引用，2064个CSS路径/460种独立内容，4950段font-face与9841段基础元素规则候选。preload没有当作应用样式，manifest顺序没有当作lazy插入顺序。241另逐分支读Lighting与Help，75条原文/14个效果case/25个Help方法/479条CSS上下文；Fire、Spectrum的空参数区，Wave11/12方向，未启用的共享功能与Help宿主链接/版本/复制/重置各自明确。上述新增证据不代表全部页面视觉闭环或Rust已对齐，具体未知继续保留在细节文档中。
+
+全量逐页批次又按每个产品/页面固定了真实根路径、range/hash、UI/event/state/condition/loop候选和graph unresolved：331产品、1452页、413492 UI、82465 event、110024 state、1074164 condition、38314 loop；1452页全部标记partial，854页仍有unresolved，semantic_complete_pages_claimed=0。应用端到端审计另固定24端点、26个UI stage refs、6个host bridge refs及源锚点，逐端点区分host storage、legacy/modern FFI、local service、device observation、service process与infrastructure-only；全部保留partial/unknown，不把bridge存在冒充设备/DLL成功。
 
 完整字节记录采用确定性gzip保存；轻量JSON含解压后大小/hash、各层统计和问题示例。可静态读取而不加载代码：
 
@@ -165,6 +176,12 @@ node tools/audit-all-middleware-code-current.cjs --check
 node tools/audit-ring-light-current.cjs --check
 node tools/audit-tray-semantic-current.cjs --check
 node tools/audit-receiver-241-semantics-current.cjs --check
+node tools/audit-receiver-lighting-help-current.cjs --check
+node tools/audit-ui-style-sources-current.cjs --check
+node tools/audit-shared-ui-controls-current.cjs --check
+node tools/audit-application-ui-details-current.cjs --check
+node tools/audit-application-end-to-end-current.cjs --check
+node tools/summarize-product-page-semantic-batches-current.cjs --check
 node tools/validate-full-ui-chains.cjs
 python -X utf8 tools/report-full-ui-chains.py --check
 ```

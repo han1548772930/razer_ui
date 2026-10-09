@@ -1,0 +1,813 @@
+{
+  "schema_version": 1,
+  "source_freeze_date": "2026-10-02",
+  "audit_date": "2026-10-09",
+  "generator_sha256": "9a4d3de1faefa5bf92f59a4a026f0486f3f0cc03876caa304d7ffdb29ef7a1da",
+  "method": "Static endpoint chain map built from current UI semantic anchors plus exact host preload/main source slices and existing host architecture/FFI boundaries. No runtime execution.",
+  "offset_unit": "UTF-16 JavaScript code units",
+  "summary": {
+    "endpoint_count": 24,
+    "status_counts": {
+      "partial": 10,
+      "infrastructure_only": 1,
+      "no_current_html": 2,
+      "partial_native": 1,
+      "partial_host_storage": 2,
+      "partial_legacy_ffi": 2,
+      "partial_modern_ffi": 1,
+      "partial_device_observation": 1,
+      "partial_local_service": 1,
+      "partial_local_storage": 1,
+      "partial_service_process": 1,
+      "partial_host_bridge": 1
+    },
+    "ui_stage_refs": 26,
+    "host_bridge_refs": 6,
+    "closed_end_to_end_claims": 0
+  },
+  "bridge_contracts": {
+    "preload": {
+      "electron": "e2e-0",
+      "ffi": "e2e-1",
+      "response": "e2e-2"
+    },
+    "main": {
+      "electron": "e2e-3",
+      "native": "e2e-4",
+      "ffi": "e2e-5"
+    }
+  },
+  "applications": [
+    {
+      "route": "/alisha/",
+      "owner": "Streamer Companion",
+      "status": "partial",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44924",
+            "anchor": "alisha-four-tab-gates-and-settings",
+            "label": "alisha-four-tab-gates-and-settings",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/alisha/static/js/main.83ea24ca.js",
+            "start": 1026838
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "User/session and connection state are reducer/app-service observations; tab availability is local render state.",
+        "write_persistence": "RzSparkle updater and streamer settings may write app data; no DLL-backed device write is proven in this UI chain.",
+        "error_cancel": "SDK warning/refresh and auth failures render branches; network/service result consumer remains unresolved.",
+        "cleanup": "Anonymous alisha-open-setting listener removal is source-inconsistent; authenticated lifecycle stops lighting worker on exit.",
+        "closure": "No closed path from tab callbacks to host native lighting service or returned device result."
+      }
+    },
+    {
+      "route": "/background-manager/",
+      "owner": "Background Manager",
+      "status": "infrastructure_only",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-4"
+        ],
+        "read_observation": "Manifest/resource observations are JSON/local storage and simple-service responses, not visible device state.",
+        "write_persistence": "Resource installer writes user-app files through simple service; DLL write-back is outside this endpoint.",
+        "error_cancel": "Manifest fetch failure and install checks retain failure/false branches.",
+        "cleanup": "Installer timers/lock and service calls are source-scoped; no visible root.",
+        "closure": "No visible UI or product-device chain claimed."
+      }
+    },
+    {
+      "route": "/chroma-app/dashboard/",
+      "owner": "Chroma Dashboard",
+      "status": "partial",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-4"
+        ],
+        "read_observation": "Chroma app/service reducers consume host broadcasts and app data; exact dashboard anchor is maintained in existing evidence.",
+        "write_persistence": "Enable/priority/profile actions may update local app state or service action; device DLL ownership is not closed here.",
+        "error_cancel": "Maintenance, install-error and empty states are rendered; service failure consumer incomplete.",
+        "cleanup": "Window message listeners and lazy app roots have source cleanup only where explicit.",
+        "closure": "Use chroma-app evidence plus host action map; no end-to-end device write claim."
+      }
+    },
+    {
+      "route": "/chroma-app/settings/",
+      "owner": "Chroma Settings",
+      "status": "partial",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Settings state combines reducer, app data and host queries.",
+        "write_persistence": "Tutorial/preferences may persist local/app data; no device write-back proof.",
+        "error_cancel": "Offline, update, conflict and feedback modals have UI branches; response ownership remains partial.",
+        "cleanup": "Host response subscriptions are only closed where returned remover is retained.",
+        "closure": "Shared settings UI cannot be treated as a single DLL session."
+      }
+    },
+    {
+      "route": "/cortex/",
+      "owner": "Cortex",
+      "status": "no_current_html",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "No current HTML source.",
+        "write_persistence": "Unknown.",
+        "error_cancel": "Unknown.",
+        "cleanup": "Unknown.",
+        "closure": "No chain inferred from other app."
+      }
+    },
+    {
+      "route": "/feedback/",
+      "owner": "Feedback",
+      "status": "partial",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44926",
+            "anchor": "feedback-form-and-results",
+            "label": "feedback-form-and-results",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/feedback/static/js/496.003ef6c6.chunk.js",
+            "start": 101277
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Form draft, validation and retained session state are local renderer state.",
+        "write_persistence": "Submission sends network form; no device/DLL persistence.",
+        "error_cancel": "Category/title/email/detail and log-confirmation validation branches are source-verified; server result handling remains partial.",
+        "cleanup": "Retained form state is cleared by local actions; no durable file persistence claimed.",
+        "closure": "No host/native dependency required for the form path."
+      }
+    },
+    {
+      "route": "/natalie/",
+      "owner": "Virtual Ring Light",
+      "status": "partial_native",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44712",
+            "anchor": "ring-light-pod-controller",
+            "label": "ring-light-pod-controller",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/natalie/static/js/main.35e04e8c.chunk.js",
+            "start": 390529
+          }
+        ],
+        "bridge": [
+          "e2e-1"
+        ],
+        "host": [
+          "e2e-5"
+        ],
+        "read_observation": "Monitor list, brightness and ring events are legacy FFILibrary observations; local position/config is separate.",
+        "write_persistence": "SetScreenBrightness/Show/Adjust/Close are native mutation calls deferred for project integration; local config uses virtual-ring-light storage.",
+        "error_cancel": "FFI parse/init errors set local failure branches; returned bool is not equivalent to hardware success.",
+        "cleanup": "beforeunload terminate and listener cleanup are partial; anonymous event removers remain unresolved.",
+        "closure": "DLL bytes/ABI/internal result semantics unresolved; original app chain is static only."
+      }
+    },
+    {
+      "route": "/profile-migration/",
+      "owner": "Profile Migration",
+      "status": "partial",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Selection/progress/result are reducer state; scanner/conversion responses are not all traced to host.",
+        "write_persistence": "Local selection and conversion output may use file/service actions; no device DLL write-back claim.",
+        "error_cancel": "Blocking/error/cancel views exist; scanner/service failure mapping incomplete.",
+        "cleanup": "Window/actor cleanup requires further source audit.",
+        "closure": "No complete scanner→service→result chain claimed."
+      }
+    },
+    {
+      "route": "/rz-app-menu/",
+      "owner": "Application Menu",
+      "status": "partial",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Parent postMessage supplies installed modules/apps and valid devices.",
+        "write_persistence": "Launching opens/focuses host tabs/windows; no DLL mutation.",
+        "error_cancel": "Empty, maintenance and not-installed filters render separately; parent response failure unresolved.",
+        "cleanup": "message listener cleanup is explicit in iframe root.",
+        "closure": "No independent device query chain."
+      }
+    },
+    {
+      "route": "/rz-user-profile-menu/",
+      "owner": "Account Menu",
+      "status": "partial",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44927",
+            "anchor": "account-popup-user-guest-actions",
+            "label": "account-popup-user-guest-actions",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/rz-user-profile-menu/static/js/Root.012dd389.chunk.js",
+            "start": 2609
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Parent messages provide guest/user/balance; menu does not read account directly.",
+        "write_persistence": "Profile/password/feedback/exit invoke parent or host actions; logout sends electron action.",
+        "error_cancel": "Guest/authenticated branches, balance loading and redirect busy states are source-verified; parent result unresolved.",
+        "cleanup": "iframe message/storage listener removal is explicit; redirect timeout is local.",
+        "closure": "Account state is not device/DLL state."
+      }
+    },
+    {
+      "route": "/settings/",
+      "owner": "Standalone Settings",
+      "status": "partial_host_storage",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44515",
+            "anchor": "standalone-settings-nav-root",
+            "label": "standalone-settings-nav-root",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/settings/static/js/97.d87e27ff.chunk.js",
+            "start": 190482
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Software/Systray/General reducer state combines RazerApp host queries and local renderer state.",
+        "write_persistence": "Auto-start/minimized setters call host electronAction; local UI mirrors returned/optimistic values.",
+        "error_cancel": "No-page/host query failures and settings window activation results are not fully consumed.",
+        "cleanup": "MutationObserver and tab host cleanup are source-verified in root; host responses remain partial.",
+        "closure": "Host storage/settings chain is partially closed; not a DLL device chain."
+      }
+    },
+    {
+      "route": "/sophie-lite/",
+      "owner": "7.1 Surround Sound",
+      "status": "partial_legacy_ffi",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44904",
+            "anchor": "lite-device-selector",
+            "label": "lite-device-selector",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie-lite/static/js/main.bb22144c.chunk.js",
+            "start": 461226
+          },
+          {
+            "id": "ui-44903",
+            "anchor": "lite-audio-main-control",
+            "label": "lite-audio-main-control",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie-lite/static/js/main.bb22144c.chunk.js",
+            "start": 464605
+          },
+          {
+            "id": "ui-44909",
+            "anchor": "lite-settings-general-about",
+            "label": "lite-settings-general-about",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie-lite/static/js/main.bb22144c.chunk.js",
+            "start": 475003
+          },
+          {
+            "id": "ui-44911",
+            "anchor": "lite-two-step-setup",
+            "label": "lite-two-step-setup",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie-lite/static/js/main.bb22144c.chunk.js",
+            "start": 507312
+          }
+        ],
+        "bridge": [
+          "e2e-1"
+        ],
+        "host": [
+          "e2e-5"
+        ],
+        "read_observation": "Device selector and surround state call legacy FFILibrary, then update user data/Redux only under license/device guards.",
+        "write_persistence": "SetOutputDevice/SetVirtualSurround and updater actions are mutations; deferred for project write-back.",
+        "error_cancel": "Invalid JSON/default devices, offline/license/setup warnings and ErrorBoundary are source-verified; native error result ownership partial.",
+        "cleanup": "beforeunload/toolbar listeners are not uniformly removable; terminate paths differ.",
+        "closure": "No PE or DLL package match; 0 return semantics differ across audio/updater wrappers."
+      }
+    },
+    {
+      "route": "/sophie/",
+      "owner": "THX Spatial Audio",
+      "status": "partial_legacy_ffi",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44916",
+            "anchor": "sophie-audio-output-setup",
+            "label": "sophie-audio-output-setup",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie/static/js/main.0dad7d2f.chunk.js",
+            "start": 834393
+          },
+          {
+            "id": "ui-44917",
+            "anchor": "sophie-equalizer-editor",
+            "label": "sophie-equalizer-editor",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie/static/js/main.0dad7d2f.chunk.js",
+            "start": 759653
+          },
+          {
+            "id": "ui-44918",
+            "anchor": "sophie-calibration-editor",
+            "label": "sophie-calibration-editor",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie/static/js/main.0dad7d2f.chunk.js",
+            "start": 812523
+          },
+          {
+            "id": "ui-44913",
+            "anchor": "sophie-render-license-gates",
+            "label": "sophie-render-license-gates",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/sophie/static/js/main.0dad7d2f.chunk.js",
+            "start": 925149
+          }
+        ],
+        "bridge": [
+          "e2e-1"
+        ],
+        "host": [
+          "e2e-5"
+        ],
+        "read_observation": "Legacy FFILibrary observations feed Redux/audio local state; license/subscription requests are network.",
+        "write_persistence": "Output, EQ and calibration operations invoke native calls; write-back deferred.",
+        "error_cancel": "Onboarding/license/error/update branches are source-verified; native callback/result and remote subscription failures remain partial.",
+        "cleanup": "beforeunload/toolbar/pubsub listeners include explicit and anonymous cleanup differences.",
+        "closure": "ThxNativeFull path is source-resolved but PE/internal ABI is unresolved."
+      }
+    },
+    {
+      "route": "/synapse/",
+      "owner": "Synapse shell",
+      "status": "no_current_html",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "No current top-level HTML.",
+        "write_persistence": "Unknown.",
+        "error_cancel": "Unknown.",
+        "cleanup": "Unknown.",
+        "closure": "Use actual dashboard/settings endpoints only."
+      }
+    },
+    {
+      "route": "/synapse/alexa/",
+      "owner": "Alexa",
+      "status": "partial",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44932",
+            "anchor": "alexa-login-activation-views",
+            "label": "alexa-login-activation-views",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+            "start": 765057
+          },
+          {
+            "id": "ui-44935",
+            "anchor": "alexa-install-root",
+            "label": "alexa-install-root",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+            "start": 803956
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Login/device/install reducer state and parent app service events.",
+        "write_persistence": "Installer launch uses simple service/host process chain; no device DLL write.",
+        "error_cancel": "Install/login/region/error branches exist; job exit/result consumer incomplete.",
+        "cleanup": "App service event handler cleanup is not uniformly restored.",
+        "closure": "Need complete app-service launch→job event→view result closure."
+      }
+    },
+    {
+      "route": "/synapse/armory/",
+      "owner": "Armory",
+      "status": "partial",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Browse/share/profile reducer and host tab state.",
+        "write_persistence": "File dialogs and app/window launch actions are host paths; device DLL write-back not shown.",
+        "error_cancel": "Maintenance/network/share errors have visible branches; server result chain partial.",
+        "cleanup": "Lazy windows and message listeners vary by mode.",
+        "closure": "No device native chain asserted."
+      }
+    },
+    {
+      "route": "/synapse/chroma-studio/",
+      "owner": "Chroma Studio",
+      "status": "partial_modern_ffi",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-1"
+        ],
+        "host": [
+          "e2e-5"
+        ],
+        "read_observation": "Editor local state, unsaved draft and modern host response state.",
+        "write_persistence": "ConfigureFFI, region/color actions and FreeFFI are native mutations deferred.",
+        "error_cancel": "Modern result true gate, legacy/modern callback differences and cancel branches source-verified; response errors partial.",
+        "cleanup": "terminate closes region then frees modern FFI; callback cancellation asymmetry remains.",
+        "closure": "chromaStudioNative basename source-resolved; PE/internal ABI unresolved."
+      }
+    },
+    {
+      "route": "/synapse/dashboard/",
+      "owner": "Synapse Dashboard",
+      "status": "partial_device_observation",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44490",
+            "anchor": "dashboard-device-card-state-tree",
+            "label": "dashboard-device-card-state-tree",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+            "start": 19894
+          },
+          {
+            "id": "ui-44495",
+            "anchor": "dashboard-main-sections",
+            "label": "dashboard-main-sections",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+            "start": 117297
+          },
+          {
+            "id": "ui-44895",
+            "anchor": "dashboard-introduction-banner",
+            "label": "dashboard-introduction-banner",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/dashboard/static/js/7861.1b0e99a4.chunk.js",
+            "start": 133175
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-4"
+        ],
+        "read_observation": "Device cards consume middleware/window-storage broadcasts and reducer state; host rzDeviceAction is only one branch, not universal product source.",
+        "write_persistence": "Retry/restart/WDL/firmware navigation and profile actions are requests; DLL write-back remains deferred.",
+        "error_cancel": "Offline/retry/standby/preset/mixer/firmware states are source-verified; response producers and failure acknowledgements incomplete.",
+        "cleanup": "Window storage/BroadcastChannel subscriptions require per-component cleanup audit.",
+        "closure": "No claim that USB or one DLL supplies every dashboard field."
+      }
+    },
+    {
+      "route": "/synapse/introduction-tour/",
+      "owner": "Introduction Tour",
+      "status": "partial",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44928",
+            "anchor": "tour-previous-next-skip",
+            "label": "tour-previous-next-skip",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/introduction-tour/static/js/main.bf769e69.js",
+            "start": 167376
+          },
+          {
+            "id": "ui-44929",
+            "anchor": "tour-synapse-steps",
+            "label": "tour-synapse-steps",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/introduction-tour/static/js/main.bf769e69.js",
+            "start": 168314
+          },
+          {
+            "id": "ui-44930",
+            "anchor": "tour-chroma-steps",
+            "label": "tour-chroma-steps",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/introduction-tour/static/js/main.bf769e69.js",
+            "start": 169461
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Tour index and local language state.",
+        "write_persistence": "CloseWindow/GetStarted invokes host tab/window close; no DLL write.",
+        "error_cancel": "Media load null, Previous/Next/Skip/GetStarted branches are source-verified; host close result not consumed.",
+        "cleanup": "storage listener cleanup explicit; media promises not all cancellable.",
+        "closure": "No device/native chain."
+      }
+    },
+    {
+      "route": "/synapse/macro/",
+      "owner": "Macro",
+      "status": "partial_local_service",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44900",
+            "anchor": "macro-command-root",
+            "label": "macro-command-root",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+            "start": 632159
+          },
+          {
+            "id": "ui-44901",
+            "anchor": "macro-unsaved-dialog",
+            "label": "macro-unsaved-dialog",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/macro/static/js/main.3f4b9604.js",
+            "start": 688165
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Macro/profile/editor drafts and reducer history are local renderer state; actor/service results feed state asynchronously.",
+        "write_persistence": "Add/duplicate/delete/rename dispatch local actions; XML import/export uses file dialog; playback/recording service path is not fully closed.",
+        "error_cancel": "Unsaved dialog Save/Discard, file parse and record lifecycle errors have branches; worker/service completion partial.",
+        "cleanup": "setForceFocus and suspended action are source-verified; actor shutdown/late-result cleanup remains partial.",
+        "closure": "Do not call local macro Save a DLL/device write."
+      }
+    },
+    {
+      "route": "/synapse/profiles/",
+      "owner": "Profiles",
+      "status": "partial_local_storage",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44560",
+            "anchor": "profiles-games-devices-root",
+            "label": "profiles-games-devices-root",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/profiles/static/js/9449.8f17b519.chunk.js",
+            "start": 197107
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Games/Devices selection, sessionStorage navigation and local profile state.",
+        "write_persistence": "Add/delete/rename/import/export and mapping actions are local/file/host-dialog paths; device profile write-back not closed.",
+        "error_cancel": "Scan/refresh/removed/missing/unsaved mapping guards are source-verified; scan service result incomplete.",
+        "cleanup": "Modal/backdrop/window listener cleanup varies.",
+        "closure": "No device DLL success claim."
+      }
+    },
+    {
+      "route": "/synapse/settings/",
+      "owner": "Synapse Settings",
+      "status": "partial_host_storage",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44896",
+            "anchor": "synapse-settings-startup",
+            "label": "synapse-settings-startup",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+            "start": 80201
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Startup and minimized settings initialize true/true then query host; UI state mirrors query/setter.",
+        "write_persistence": "setAppAutoStart/setMinimizedOnStartUp are host storage/settings writes, not DLL writes; WDL/notification settings have separate paths.",
+        "error_cancel": "Disabled child, update/error/offline and release-note branches partial; host setter results not consistently awaited.",
+        "cleanup": "Listeners and lazy sections have explicit/implicit cleanup differences.",
+        "closure": "Need close each section to host response/event producer."
+      }
+    },
+    {
+      "route": "/synapse/update-fw/",
+      "owner": "Firmware Update",
+      "status": "partial_service_process",
+      "chain": {
+        "ui": [
+          {
+            "id": "ui-44938",
+            "anchor": "firmware-status-render-dispatch",
+            "label": "firmware-status-render-dispatch",
+            "kind": "ui_anchor",
+            "file": ".ref/applications/synapse/update-fw/static/js/main.69cc5fbd.js",
+            "start": 1912154
+          }
+        ],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-4"
+        ],
+        "read_observation": "Firmware actor context/status/progress is renderer state sourced from service process events.",
+        "write_persistence": "simpleService launch/unzip/helper process path is host service; device write occurs in deferred native/service phase.",
+        "error_cancel": "Warning cancel/continue, partial/complete/retry and process exit code branches source-verified; hardware result not proven.",
+        "cleanup": "Actor cleanup and shutdown/revert path exists but full late-event suppression needs audit.",
+        "closure": "Do not treat helper exitCode 0 as firmware/device confirmation without service result."
+      }
+    },
+    {
+      "route": "/systray/systrayv2/",
+      "owner": "Tray",
+      "status": "partial_host_bridge",
+      "chain": {
+        "ui": [],
+        "bridge": [
+          "e2e-0"
+        ],
+        "host": [
+          "e2e-3"
+        ],
+        "read_observation": "Tray iframe receives parent messages for user/apps/notifications/widgets; host LeftSystray controls windows and menu.",
+        "write_persistence": "Widget toggles/profile switches broadcast or memory/app actions; launch/settings/exit use host electronAction.",
+        "error_cancel": "Loading/empty/error/Guest/Auth/notification branches source-verified; producer and action acknowledgements partial.",
+        "cleanup": "response() remover exists; host left/right click timers and iframe subscriptions have separate cleanup.",
+        "closure": "Tray is not a direct DLL reader; connected device publication remains upstream unresolved."
+      }
+    }
+  ],
+  "source_receipts": [
+    {
+      "id": "e2e-0",
+      "label": "preload doElectronAction/doRzDeviceAction",
+      "kind": "bridge",
+      "file": ".ref/host-4.0.827/electron/preload.js",
+      "start": 4469,
+      "end": 4562,
+      "source_sha256": "b5a7c038a9d31f2536c11a6f091e34648195ac5b716ff6435c297ca387e40a7b",
+      "fragment_sha256": "2bfb785f8d7091b836b14a0dcaaa86f4d2789bc9f3c0fabc1a5fbcf5e0dce65b",
+      "text": "doElectronAction:async t=>e.invoke(\"electronAction\",t),getPathForFile:t=>i.getPathForFile(t),"
+    },
+    {
+      "id": "e2e-1",
+      "label": "preload FFI/mapping/service/lighting bridge",
+      "kind": "bridge",
+      "file": ".ref/host-4.0.827/electron/preload.js",
+      "start": 5289,
+      "end": 5665,
+      "source_sha256": "b5a7c038a9d31f2536c11a6f091e34648195ac5b716ff6435c297ca387e40a7b",
+      "fragment_sha256": "e6239d6a432845bbea917d7ce5756456a0cf6c48fc7976515c3de2f0a6ebbd74",
+      "text": "doDLLMainAction:async(t,i)=>await e.invoke(\"ffiPreload\",t,i),doDLLMainActionAsync:async(t,i)=>await e.invoke(\"ffiPreloadAsync\",t,i),doDLLSubProcessActionAsync:async(t,i)=>await e.invoke(\"ffiSubPreloadAsync\",t,i),doMappingEngineAction:async t=>e.invoke(\"mappingEngineAction\",t),doSimpleServiceAction:async t=>e.invoke(\"simpleServiceAction\",t),doLightingDriverAction:async t=>e."
+    },
+    {
+      "id": "e2e-2",
+      "label": "preload response subscription/removal",
+      "kind": "bridge",
+      "file": ".ref/host-4.0.827/electron/preload.js",
+      "start": 4287,
+      "end": 4468,
+      "source_sha256": "b5a7c038a9d31f2536c11a6f091e34648195ac5b716ff6435c297ca387e40a7b",
+      "fragment_sha256": "31158a01985b92f5659944a3222286235ef33663ddb5acd94b44c6578c3030fb",
+      "text": "response:(t,i)=>{const n=(e,...n)=>{try{return i(...n)}catch(i){console.error(t,e,i,...n)}};return e.on(t,n),()=>{e.removeListener(t,n)}},doTabAction:async t=>e.invoke(\"tabEvent\",t)"
+    },
+    {
+      "id": "e2e-3",
+      "label": "main electronAction handler",
+      "kind": "host_ipc",
+      "file": ".ref/host-4.0.827/electron/main.js",
+      "start": 39336,
+      "end": 39880,
+      "source_sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e",
+      "fragment_sha256": "0c92465261ff05f6534ac66c7f579bfd1160eda31d7d03c39301b00af979c6d3",
+      "text": "electronAction\",async(n,i)=>{const t=\"electronAction()\";switch(i?.action){case\"loggedIn\":console.log(`${t} arg:`,i,`, event.sender.id:${n?.sender?.id}, url:${n?.sender?.getURL()}, arg:`,i,`, isLogin:${an}`),an||(an=!0,sn=i?.payload,zn(),(async()=>{try{if(!Bn){const e=await io.callDLLAsync(n,{action:\"GetMachineId\"});e&&(Bn=e,b.machineId=e,Se({machineId:e}),oo.setMachineId(e))}if(!await Gn())return;await k({event:\"login\",razer_uuid:i?.razer_uuid,machine_id:Bn})}catch(e){console.error(\"[identityPipe] loggedIn error:\",e)}})());break;case\"logg"
+    },
+    {
+      "id": "e2e-4",
+      "label": "main native action handlers",
+      "kind": "host_ipc",
+      "file": ".ref/host-4.0.827/electron/main.js",
+      "start": 58290,
+      "end": 58890,
+      "source_sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e",
+      "fragment_sha256": "5018dc1d15fb1a0009d38114a0bca6e2d553744e0bad69e7b8ee8c0b80f99848",
+      "text": "JSON.stringify(i)}`)}}),n.handle(\"mappingEngineAction\",async(e,o)=>Qe.callDLL(e,o)),n.handle(\"simpleServiceAction\",async(e,o)=>{const n=await Ze.callDLL(e,o);if(o?.action?.startsWith(\"simpleLaunch\")&&3010===n?.exitCode){const e=/PID([0-9a-fA-F]+)Drv\\b/i.exec(o?.payload?.filePath);e&&fe(Number.parseInt(e[1],16),3010)}return n}),n.handle(\"lightingDriver\",async(e,o)=>{const n=await to.callDLL(e,o);return\"InitDLL\"===o?.action&&o?.payload&&Be.registerMainDLL(\"lightingDriver\",o.payload),n}),n.handle(\"rzDeviceAction\",async(e,o)=>An.handleAction(e,o)),n.handle(\"rzSerialDeviceAction\",async(e,o)=>{const"
+    },
+    {
+      "id": "e2e-5",
+      "label": "main FFI IPC handlers",
+      "kind": "host_ipc",
+      "file": ".ref/host-4.0.827/electron/main.js",
+      "start": 59180,
+      "end": 59362,
+      "source_sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e",
+      "fragment_sha256": "fc4ca389cc9a6ba63b765c5f155cff58b0bf65d37cf06c6a9bb842c6bb1dd82c",
+      "text": "n.handle(\"ffiPreload\",(e,o,n)=>Ge.callDLL(e,o,n)),n.handle(\"ffiPreloadAsync\",async(e,o,n)=>Ge.callDLLAsync(e,o,n)),n.handle(\"ffiSubPreloadAsync\",async(e,o,n)=>Je.callDLLAsync(e,o,n))"
+    }
+  ],
+  "known_host_boundaries": [
+    {
+      "id": "startup-ready",
+      "evidence": "host-architecture-current-evidence.json"
+    },
+    {
+      "id": "host-tray-menu",
+      "evidence": "host-architecture-current-evidence.json"
+    },
+    {
+      "id": "preload:doDLLMainAction:5108",
+      "evidence": "host-ffi-current-evidence.json"
+    },
+    {
+      "id": "main:ipc:ffiPreload:59180",
+      "evidence": "host-ffi-current-evidence.json"
+    }
+  ],
+  "limitations": [
+    "UI anchor plus bridge handler does not prove the specific action was dispatched by that component at runtime.",
+    "Host service/native wrappers, remote APIs, device middleware and DLL internals remain separate source boundaries; no success is inferred from method names or default values.",
+    "Local draft, host storage, app service, simple service, legacy FFILibrary and modern ffiPreload writes are tagged separately but are not runtime-confirmed here.",
+    "Errors, cancellation and cleanup fields report source-observed branches and unresolved ownership, not tested behavior.",
+    "No endpoint is semantically complete; device/service DLL write-back remains deferred."
+  ]
+}
