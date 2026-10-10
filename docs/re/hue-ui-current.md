@@ -22,6 +22,6 @@
 
 ## 草稿与剩余工作
 
-snapshot/restore 只接纳 brightness、quickEffects、ports；网桥状态、IP、分组、灯具列表、安装状态、全局高级灯效开关和命令结果不进入 profile。预览操作不会保存样例观察。UI 编辑与本地 Apply/Save 仍需随正式状态链逐项完成；DLL 设备/服务写回保持后置。
+snapshot/restore 只接纳 brightness、quickEffects、ports；网桥状态、IP、分组、灯具列表、安装状态、全局高级灯效开关和命令结果不进入 profile。预览操作不会保存样例观察。UI 编辑与本地 Apply/Save 仍需随正式状态链逐项完成；DLL 设备/服务写回均须在当前范围实现，真实网桥目标、请求、响应和刷新链仍需接通。
 
 仍需 Hue 网络发现和服务往返、真实网桥/娱乐区/灯具状态 publisher、正式可编辑条件、完整 Chroma 状态及剩余步进器/提示/禁用视觉细节。动态语言、浮层、焦点、滚动和实际灯具输出未经运行验收。extract-hue.cjs --check 与 validate-hue.py 核对当前收据、文案、资源、SourceSlider、教程持久化、配对动画及 13 秒超时；本次均通过。没有运行应用、测试、下载 JavaScript 或 DLL。

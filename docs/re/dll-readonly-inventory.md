@@ -1,16 +1,16 @@
 # DLL 与设备只读接入当前契约
 
-查询接口与状态观察保留独立契约；`DeviceWrite`/`HidNodeWrite` 通过跨平台 HID 接入两项已核实的直接设备设置，当前覆盖和消费者缺口见 [直接写入契约](device-write-current.md)。开发仅静态核对 DLL 与 wrapper，不执行 DLL 或硬件命令。
+查询接口与状态观察保留独立契约；`DeviceWrite`/`HidNodeWrite` 的源核实能力覆盖 22 款产品、51 项 DPI/高速回报率/休眠计时设置，`HidNodeMixerRead`/`HidNodeMixerWrite` 接入 Audio Mixer 源核实的 47 个展开硬件控制项及 22 条驱动路由。当前覆盖、副作用与消费者缺口见 [直接写入契约](device-write-current.md) 及 [Mixer 专项](audio-mixer-dll-protocol-current.md)。开发仅静态核对 DLL 与 wrapper，不执行 DLL 或硬件命令。
 
 通用宿主加载/返回层新增 [当前FFI语义](host-ffi-current.md) 与 [原文证据](host-ffi-current-evidence.json)：通道复用、参数展开、pointer释放、async错误、子进程ready/超时/退出、SysUtils独立legacy实例均按实际源码区分；它不证明产品native函数已执行或设备读取成功。
 
-2026-10-09 全原代码链路补充：[当前宿主与 middleware DLL/原生组件链路](dll-function-inventory.md)、[逐库/逐产品机器记录](evidence/native-chains-current-evidence.json.zip)、[本次新逆向的宿主服务函数正文](host-service-machine-code-current.md)。本文件仍登记 Rust 接入契约，不以源码函数存在、静态 ABI 声明或机器码逆向代替设备运行结果。全量文档清单解析 3238 份 FFI JS，得到 48 个逻辑库、762 个唯一静态归属候选声明、4 个签名冲突、58 份产品 DLL 和 4 份官方 CommonDLL；2332 个未归属条目按签名/原因合并为 20 组，包含 1 条缺 manifest 记录。Rust 消费的应用资产仍是 963 声明/369 来源旧快照；差异包含新增扫描与旧归属被降为 unknown，此轮未覆盖资产，新增静态证据不表示新增运行时接入。
+2026-10-09 全原代码链路补充：[当前宿主与 middleware DLL/原生组件链路](dll-function-inventory.md)、[逐库/逐产品机器记录](evidence/native-chains-current-evidence.json.zip)、[宿主服务函数正文](host-service-machine-code-current.md)。本文件登记 Rust 接入契约，不以源码函数存在、静态 ABI 声明或机器码逆向代替设备运行结果。全量清单解析 3238 份 FFI JS，得到 48 个逻辑库、762 个唯一静态归属候选声明、4 个签名冲突、58 份产品 DLL 和 4 份官方 CommonDLL；2332 个未归属条目按签名/原因合并为 20 组，包含 1 条缺 manifest 记录。2026-10-10 已将同一动态归属门禁应用到程序资产并重新生成，程序与全量文档 JSON 字节一致；旧快照不再消费，未知归属没有被提升为可调用能力。
 
 本文对应当前 Rust 请求、消费者和静态源码证据。当前官方 host 为静态提取的 4.0.827，身份见 [host 版本审计](current-host-version-audit.md)；产品读取参数来自当前 middleware。文件存在、导出存在、能力登记、查询代码存在和硬件读取成功不能互相替代。
 
 开发验证仅静态读取源码、wrapper、PE 与资源，并允许格式化及 `cargo check --locked --all-targets`；不运行应用、worker、测试、安装器、下载的 JavaScript 或 DLL。以下实现状态不表示已执行 native 验收。UI 编辑、增删改、Apply/Save、本地草稿、设备/服务读写与持久化分别记录。当前 DLL 接口及直接写入的覆盖以具体请求和消费者为准；本地草稿不能作为设备确认。
 
-原生件全量清单见 [原生件功能总表](dll-function-inventory.md) 及 [全量文档清单](evidence/native-library-full-current-inventory.json.zip)。应用资产 `assets/data/native-library-inventory.json` 是旧接入快照，不能继续声称覆盖此次全量文件集；身份事实由 `tools/prepare-discovery-catalog.py` 合并逐产品 middleware `DeviceInfo` 生成。HID 接口选择按源码只比对 `vendorId`/`productId`/`deviceContainerId`/`interface`，Feature 长度只作偏好排序与实际观察值，不再作为拒绝条件。
+原生件全量清单见 [原生件功能总表](dll-function-inventory.md) 及 [全量文档清单](evidence/native-library-full-current-inventory.json.zip)，应用资产 `assets/data/native-library-inventory.json` 已同步相同结果；清单不证明全部实际加载路径或内部语义。身份事实由 `tools/prepare-discovery-catalog.py` 合并逐产品 middleware `DeviceInfo` 生成。HID 身份选择按源码比对 `vendorId`/`productId`/`deviceContainerId`/`interface`；真正发送时仍检查对应协议要求的 Report ID/长度，不允许用身份选择阶段的长度偏好替代协议校验。
 
 2026-10-09 进一步追回 [875 个动态 DLL init 作用域的实际工厂/参数链](native-factory-current.md)：329 直接实例/实参链、545 带条件 ASRock/Hue/THX 工厂或跨模块存储链、1 个单文件 Hue caller 已另有专项追踪，见 [3886 链路](native-3886-legacy-hue-current.md)。原版 selector 读取 `installedResources` 缓存后按 name、usedBy、filePath 传入 init，不能用产品 manifest 或默认 DLL 字面量代替实际响应。source caller 路径空值分支、共享代码是否激活和运行库身份分别登记；这批新证据没有改变当前 Rust 接入契约或伪造 DLL 成功。
 
@@ -22,10 +22,10 @@
 | --- | --- | --- |
 | `UsbDevices` | Windows SetupAPI 物理 USB 枚举 | 启动/热插拔发现；不加载 Node/NAN addon，也不把 HID collection 当物理 USB 列表 |
 | `HidDevices` | SetupAPI、`CreateFileW(access=0)`、`HidD_Get*`、`HidP_GetCaps` 元数据 | 启动/热插拔发现；不加载 Razer DLL，不发送 feature/output report |
-| `DeviceRead { target, kind }` | 源能力选择的 Firmware、Battery、Charging、Polling、Dpi 查询，返回 typed 值或错误 | 发现后的字段读取；必须有真实路径/容器/物理 PID，relay 还需真实 peer；产品默认值不是读数 |
+| `DeviceRead { target, kind }` | 源能力选择的 Firmware、Battery、Charging、Polling、Dpi、Idle 查询，返回 typed 值或错误 | 发现后的字段读取；必须有真实路径/容器/物理 PID，relay 还需真实 peer；Idle 返回原始计时字段，不填本地草稿 |
 | `ReceiverWirelessStatus { path, device_container_id }` | 源能力选择的 V2 无线连接查询，保留原始 PID/status | 发现链及接收器父卡/工具 Bindings 读取；空结果与失败分开，不执行 Scan/Pair/Unpair 写命令 |
 | `SimpleVersion` | `simpleGetVersionInfo(cb3)`；非空 versionInfo，接受 JSON 或字符串 | 运行状态页显式服务刷新；首次加载并 Initialize simple_service，不推断其他 DLL 版本 |
-| `AudioDevices` | `simpleEnumerateAudioDevices(cb3)`；必须为 JSON 数组，真实 `[]` 合法 | 运行状态页及 Control Pod 音频；空指针、空字符串、非法 JSON/非数组是错误 |
+| `AudioDevices` | IDA 核实原 `simpleEnumerateAudioDevices` 实例、Core Audio/SetupAPI 字段和初始化遍历顺序；Rust 直接返回原 schema 数组，真实 `[]` 合法 | 已接运行状态页及 Control Pod，不再加载原 DLL；持续缓存/事件和完整错误语义仍缺，见 [音频专项](simple-audio-current.md) |
 | `GlobalMode` | `getGlobalMode(cb3)`；非空值，接受 JSON 或字符串 | worker API 已登记，未发现普通 UI 查询调用；当前 DLL 的 hypershift/otfs、globalmode字段及timeTick qword→无符号十进制文本已静态追回；timeTick来源/单位与记录更新链仍未知 |
 | `GlobalShortcuts` | `getGlobalShortcuts(cb3)`；非空值，接受 JSON 或字符串 | 不能视为完整 `synapseGlobalShortcuts.appEngine` 或 UI 映射读取 |
 | `StartMacroRecording` | mapping Initialize、注册 recorder、安装 started/stopped/item callbacks、`startMacroRecording("kSoftware", cb2)` | Macro actor；请求接受不等于异步 started；改变录制会话状态，不提交设备宏 |

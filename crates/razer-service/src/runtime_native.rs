@@ -22,6 +22,8 @@ mod hid;
 mod hid_transport;
 #[path = "runtime_macro.rs"]
 mod macro_recorder;
+#[path = "runtime_mixer_driver.rs"]
+mod mixer_driver;
 #[path = "runtime_receiver.rs"]
 mod receiver;
 #[path = "runtime_usb.rs"]
@@ -221,9 +223,19 @@ impl NativeRuntime {
             bail!("设备服务回调状态已失效，请重新连接");
         }
         match request {
-            ServiceRequest::HidNodes
+            ServiceRequest::HostStorageView { .. }
+            | ServiceRequest::HostStorageClose { .. }
+            | ServiceRequest::HostStorageCall { .. }
+            | ServiceRequest::HostStorageEvents { .. }
+            | ServiceRequest::AudioEndpoints { .. }
+            | ServiceRequest::HidNodes
             | ServiceRequest::HidNodeRead { .. }
             | ServiceRequest::HidNodeWrite { .. }
+            | ServiceRequest::HidNodeMixerRead { .. }
+            | ServiceRequest::HidNodeMixerWrite { .. }
+            | ServiceRequest::HidNodeMixerRouteRead { .. }
+            | ServiceRequest::HidNodeMixerRouteWrite { .. }
+            | ServiceRequest::HidNodeMixerRestartStreams { .. }
             | ServiceRequest::HidNodeReceiverStatus { .. } => {
                 bail!("便携查询必须由设备会话入口分派")
             }
@@ -301,28 +313,20 @@ impl NativeRuntime {
                 path,
                 device_container_id,
             } => receiver::query(&path, &device_container_id),
-            ServiceRequest::SimpleVersion | ServiceRequest::AudioDevices => {
+            ServiceRequest::AudioDevices => {
+                Ok(serde_json::to_value(crate::simple_audio::enumerate()?)?)
+            }
+            ServiceRequest::SimpleVersion => {
                 self.simple()?;
-                let symbol = if matches!(request, ServiceRequest::SimpleVersion) {
-                    "simpleGetVersionInfo"
-                } else {
-                    "simpleEnumerateAudioDevices"
-                };
-                // Both methods declare void(callback(bool,string,string)).
+                let symbol = "simpleGetVersionInfo";
+                // Source declares void(callback(bool,string,string)).
                 let query: Query = unsafe { self.simple_symbol(symbol)? };
                 let value = self
                     .call(|| unsafe { query(callback3) })?
                     .value
                     .context("原生服务未返回结果")?;
                 anyhow::ensure!(!value.trim().is_empty(), "{symbol} 返回空结果");
-                if matches!(request, ServiceRequest::AudioDevices) {
-                    let devices: Value =
-                        serde_json::from_str(&value).context("音频设备列表不是有效 JSON")?;
-                    anyhow::ensure!(devices.is_array(), "音频设备列表不是数组");
-                    Ok(devices)
-                } else {
-                    Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
-                }
+                Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
             }
             ServiceRequest::GlobalMode | ServiceRequest::GlobalShortcuts => {
                 self.mapping()?;
@@ -431,6 +435,22 @@ impl NativeRuntime {
             }
         }
     }
+}
+
+pub(super) fn mixer_driver_route(
+    node: razer_device::backend::HidNode,
+    product_id: u32,
+    route: razer_device::audio_mixer::MixerRoute,
+    enabled: Option<bool>,
+) -> anyhow::Result<Value> {
+    mixer_driver::route(node, product_id, route, enabled)
+}
+
+pub(super) fn mixer_restart_streams(
+    node: razer_device::backend::HidNode,
+    product_id: u32,
+) -> anyhow::Result<Value> {
+    mixer_driver::restart(node, product_id)
 }
 
 /// Native container getters require a real, uniquely observed physical device.

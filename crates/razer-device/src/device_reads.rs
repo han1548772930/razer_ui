@@ -12,6 +12,7 @@ pub enum DeviceReadKind {
     Charging,
     Polling,
     Dpi,
+    Idle,
 }
 
 impl DeviceReadKind {
@@ -22,6 +23,7 @@ impl DeviceReadKind {
             Self::Charging => "charging",
             Self::Polling => "polling",
             Self::Dpi => "dpi",
+            Self::Idle => "idle",
         }
     }
 }
@@ -89,11 +91,26 @@ pub struct DeviceReadTarget {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DeviceReadValue {
-    Firmware { version: String },
-    Battery { percent: u8 },
-    Charging { status: String },
-    Polling { hz: u32 },
-    Dpi { x: u16, y: u16 },
+    Firmware {
+        version: String,
+    },
+    Battery {
+        percent: u8,
+    },
+    Charging {
+        status: String,
+    },
+    Polling {
+        hz: u32,
+    },
+    Dpi {
+        x: u16,
+        y: u16,
+    },
+    /// Native timeToSleep u16. UI minute/second conversion is product-owned.
+    Idle {
+        raw_time: u16,
+    },
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -103,6 +120,7 @@ pub struct DeviceReadValues {
     pub charging_status: Option<String>,
     pub polling_hz: Option<u32>,
     pub dpi: Option<(u16, u16)>,
+    pub idle_raw_time: Option<u16>,
     pub errors: BTreeMap<String, String>,
 }
 
@@ -126,6 +144,9 @@ impl DeviceReadValues {
                 self.polling_hz = Some(hz)
             }
             (DeviceReadKind::Dpi, DeviceReadValue::Dpi { x, y }) => self.dpi = Some((x, y)),
+            (DeviceReadKind::Idle, DeviceReadValue::Idle { raw_time }) => {
+                self.idle_raw_time = Some(raw_time)
+            }
             _ => anyhow::bail!("设备查询响应类型不匹配"),
         }
         Ok(())
@@ -227,6 +248,9 @@ pub fn decode_report(
             let y = u16::from_be_bytes([data[3], data[4]]);
             DeviceReadValue::Dpi { x, y }
         }
+        DeviceReadKind::Idle => DeviceReadValue::Idle {
+            raw_time: u16::from_be_bytes([data[0], data[1]]),
+        },
     };
     Ok(ReadReply::Complete(value))
 }

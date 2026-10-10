@@ -1,7 +1,9 @@
 //! Portable worker routes: native nodes and source-proved Razer queries.
-//! No Windows ContainerId, guessed peer routing, DLL or OS API in this layer.
+//! Platform-specific audio/driver calls delegate to isolated OS adapters.
+//! No guessed peer routing, downloaded DLL or direct OS API in this layer.
 use super::ServiceRequest;
 use anyhow::{Context as _, bail, ensure};
+use razer_device::audio_mixer::{MatrixRoute, MixerRoute, MixerSession, MixerTarget, MixerValue};
 use razer_device::backend::HidBackend;
 use razer_device::backend::HidNode;
 use razer_device::device_identity;
@@ -55,6 +57,52 @@ impl PortableRuntime {
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
+            ServiceRequest::AudioDevices => {
+                Ok(serde_json::to_value(crate::simple_audio::enumerate()?)?)
+            }
+            ServiceRequest::AudioEndpoints { flow } => {
+                let observed = crate::audio_util::enumerate(flow)?;
+                Ok(json!({
+                    "source_response": observed.source_response(),
+                    "observation": observed,
+                    "vendor_dll_loaded": false,
+                    "transport": "windows_core_audio",
+                    "evidence": "docs/re/audio-util-enumerator-current-evidence.json"
+                }))
+            }
+            ServiceRequest::HidNodeMixerRead {
+                node,
+                product_id,
+                target,
+            } => mixer_request(node, product_id, target, None),
+            ServiceRequest::HidNodeMixerWrite {
+                node,
+                product_id,
+                target,
+                value,
+            } => mixer_request(node, product_id, target, Some(value)),
+            ServiceRequest::HidNodeMixerRouteRead {
+                node,
+                product_id,
+                route,
+            } => mixer_route_request(node, product_id, route, None),
+            ServiceRequest::HidNodeMixerRouteWrite {
+                node,
+                product_id,
+                route,
+                enabled,
+            } => mixer_route_request(node, product_id, route, Some(enabled)),
+            ServiceRequest::HidNodeMixerRestartStreams { node, product_id } => {
+                #[cfg(windows)]
+                {
+                    super::native::mixer_restart_streams(node, product_id)
+                }
+                #[cfg(not(windows))]
+                {
+                    let _ = (node, product_id);
+                    bail!("当前 Mixer 流重置使用 Windows 专属驱动，此平台未实现该能力")
+                }
+            }
             ServiceRequest::HidNodes => {
                 let nodes = with_backend(|backend| backend.enumerate())?
                     .into_iter()
@@ -209,10 +257,77 @@ impl PortableRuntime {
     }
 }
 
+fn mixer_route_request(
+    node: HidNode,
+    product_id: u32,
+    route: MixerRoute,
+    enabled: Option<bool>,
+) -> anyhow::Result<Value> {
+    match razer_device::audio_mixer::matrix_route(&route)? {
+        MatrixRoute::Hid(target) => mixer_request(
+            node,
+            product_id,
+            target,
+            enabled.map(|enabled| MixerValue::Boolean { enabled }),
+        ),
+        MatrixRoute::Driver { .. } => {
+            #[cfg(windows)]
+            {
+                super::native::mixer_driver_route(node, product_id, route, enabled)
+            }
+            #[cfg(not(windows))]
+            {
+                let _ = (node, product_id, route, enabled);
+                bail!("此 Mixer 路由使用 Windows 专属驱动矩阵，此平台未实现该能力")
+            }
+        }
+    }
+}
+
 fn deadline(started: Instant) -> anyhow::Result<()> {
     ensure!(
         started.elapsed() < Duration::from_secs(10),
         "设备查询已超过观察期限"
     );
     Ok(())
+}
+
+fn mixer_request(
+    node: HidNode,
+    product_id: u32,
+    target: MixerTarget,
+    value: Option<MixerValue>,
+) -> anyhow::Result<Value> {
+    ensure!(
+        razer_device::audio_mixer::accepts(product_id, node.vendor_id, node.product_id),
+        "HID 节点不是当前源核实的 Audio Mixer DSP 设备"
+    );
+    PortableRuntime::revalidate(&node)?;
+    let started = Instant::now();
+    let device = with_backend(|backend| backend.open(&node))?;
+    // A retained path/collection lock covers all selector and query
+    // reports. No second device, endpoint ID, receiver or DLL is guessed.
+    let validate = || {
+        ensure!(
+            started.elapsed() < Duration::from_secs(20),
+            "DSP 操作超过确认期限"
+        );
+        PortableRuntime::revalidate(&node)
+    };
+    let session = MixerSession::new(device.as_ref(), &validate)?;
+    let result = if let Some(value) = value {
+        serde_json::to_value(session.apply(&target, &value)?)?
+    } else {
+        serde_json::to_value(session.read(&target)?)?
+    };
+    validate()?;
+    Ok(
+        json!({"node":node,"product_id":product_id,"target":target,"result":result,
+        "source_property":razer_device::audio_mixer::source_property(&target)?,
+        "source_limits":razer_device::audio_mixer::mic_monitor_limits(),
+        "endpoint_limits":razer_device::audio_mixer::endpoint_limits(),
+        "identity_scope":"hid_collection","transport_metadata":device.metadata(),
+        "elapsed_ms":started.elapsed().as_millis() as u64,
+        "evidence":"docs/re/audio-mixer-controls-current-evidence.json"}),
+    )
 }

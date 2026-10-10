@@ -16,6 +16,8 @@ pub enum DeviceWriteSetting {
     Dpi { x: u16, y: u16 },
     /// The source caller's high-speed USB profile; not BLE/wireless polling.
     Polling { hz: u32 },
+    /// Original setTimeToSleep units, before product-specific UI conversion.
+    Idle { raw_time: u16 },
 }
 
 impl DeviceWriteSetting {
@@ -23,6 +25,7 @@ impl DeviceWriteSetting {
         match self {
             Self::Dpi { .. } => DeviceReadKind::Dpi,
             Self::Polling { .. } => DeviceReadKind::Polling,
+            Self::Idle { .. } => DeviceReadKind::Idle,
         }
     }
 
@@ -36,6 +39,9 @@ impl DeviceWriteSetting {
                 },
             ) => x == actual_x && y == actual_y,
             (Self::Polling { hz }, DeviceReadValue::Polling { hz: actual }) => hz == actual,
+            (Self::Idle { raw_time }, DeviceReadValue::Idle { raw_time: actual }) => {
+                raw_time == actual
+            }
             _ => false,
         }
     }
@@ -114,6 +120,11 @@ pub fn prepare(
                 .context("回报率没有当前源码枚举编码")?;
             payload.push(*code);
         }
+        DeviceWriteSetting::Idle { raw_time } => {
+            // Unlike DPI/polling, the source has no selector byte. Its helper
+            // sends big-endian timeToSleep in the two payload bytes.
+            payload = raw_time.to_be_bytes().to_vec();
+        }
     }
     ensure!(
         payload.len() == usize::from(command.command[0]),
@@ -139,8 +150,10 @@ pub struct DeviceWriteResult {
 }
 
 /// Read -> optional setter/ack -> readback on one retained route/lock.
-/// DPI readback follows the original caller. Polling readback is application
-/// confirmation policy, explicitly distinguished in the source evidence.
+/// DPI and idle readback follow the original callers. The initial idle read
+/// and skipping an unchanged idle setter are application policy; the source
+/// idle task sends its setter before readback. Polling readback is also an
+/// application confirmation policy, distinguished in the source evidence.
 pub fn apply(
     device: &dyn FeatureTransport,
     read_cap: &DeviceReadCapability,

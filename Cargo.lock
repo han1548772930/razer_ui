@@ -5730,6 +5730,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "razer-device",
+ "razer-storage",
  "serde",
  "serde_json",
  "windows-sys 0.61.2",
@@ -5792,6 +5793,7 @@ dependencies = [
  "razer-hid",
  "razer-ipc",
  "razer-platform",
+ "razer-storage",
  "serde_json",
  "windows-sys 0.61.2",
 ]

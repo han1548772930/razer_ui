@@ -7,7 +7,7 @@ const readPath='docs/re/mouse-read-capabilities-current-evidence.json';
 const reads=JSON.parse(fs.readFileSync(path.join(root,readPath),'utf8'));
 const plans=JSON.parse(fs.readFileSync(path.join(root,'.ref/middleware/receiver-protocol-requests.json'),'utf8'));
 const products=[];
-for(const read of reads.products){
+for(const read of reads.products.filter(p=>p.product_id===182)){
  const source=new CurrentMiddlewareSource(read.product_id);
  const plan=plans.products.find(p=>p.product_id===read.product_id);
  const receipts=[];
@@ -79,9 +79,15 @@ for(const read of reads.products){
  products.push({product_id:read.product_id,source_class:read.source_class,min_dpi:read.min_dpi,max_dpi:read.max_dpi,
   polling_codes:read.polling_codes,writes,receipts,acquisition:source.acquisition});
 }
-const evidence={schema_version:1,method:'Manifest-verified current factory, exact setters, payloads, parsers and callers; no vendor execution',
- read_evidence:{path:readPath,sha256:hash(fs.readFileSync(path.join(root,readPath)))},products,
+const boots=JSON.parse(fs.readFileSync(path.join(root,'.ref/middleware/bootstrap-requests.json'),'utf8'));
+const expansion=require('./expand-device-write-capabilities.cjs').expand(reads,plans,boots);
+products.push(...expansion.products);
+require('./expand-idle-write-capabilities.cjs').expand(products,expansion.gaps,reads,plans,boots);
+products.sort((a,b)=>a.product_id-b.product_id);
+const evidence={schema_version:1,method:'Manifest-verified current factories, individual setter payload/parser/transport and real caller gates; no vendor execution',
+ read_evidence:{path:readPath,sha256:hash(fs.readFileSync(path.join(root,readPath)))},products,gaps:expansion.gaps,
  policy:{polling_readback:'Application confirmation policy; current setter caller does not itself prove a readback',
+  idle_units:'Raw u16 timeToSleep; current task multiplies UI value by 60 unless DeviceInfo.singleProfileDevice. UI conversion and persistent task cache remain separate consumer work.',
   scope:'Only these product bindings. No mapping, persistent DPI stage table, mode switch, pairing, BLE or firmware write inferred.'}};
 const runtime={schema_version:1,products:products.map(({receipts,acquisition,...p})=>p)};
 for(const [relative,data] of [['docs/re/device-write-capabilities-current-evidence.json',evidence],['assets/data/device-write-capabilities.json',runtime]]){

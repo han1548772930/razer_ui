@@ -13,6 +13,7 @@ libloading.workspace = true
 md5.workspace = true
 razer-device.workspace = true
 razer-hid.workspace = true
+razer-storage.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = [
@@ -23,5 +24,9 @@ windows-sys = { workspace = true, features = [
   "Win32_Storage_FileSystem",
   "Win32_System_Threading",
   "Win32_System_Registry",
+  "Win32_System_IO",
+  "Win32_System_Com",
+  "Win32_System_Com_StructuredStorage",
+  "Win32_System_Variant",
   "Win32_Security",
 ] }

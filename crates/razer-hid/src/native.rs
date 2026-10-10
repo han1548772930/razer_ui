@@ -1,9 +1,8 @@
-//! Feature-capable system backend. No libloading, vendor binary or Win32 FFI.
+//! Feature/Output/control-Input backend. No vendor binary or direct Win32 FFI.
 use anyhow::{Context as _, ensure};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
-use razer_device::backend::{FeatureTransport, HidBackend, HidNode};
+use razer_device::backend::{FeatureTransport, HidBackend, HidNode, ReportLengths};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
 use std::ffi::CString;
 use std::fs::{File, OpenOptions};
 
@@ -83,10 +82,10 @@ impl HidBackend for NativeBackend {
             count > 0 && count <= descriptor.len(),
             "HID Report Descriptor 长度无效"
         );
-        let feature_lengths = super::descriptor::feature_lengths(&descriptor[..count])?;
+        let lengths = super::descriptor::report_lengths(&descriptor[..count])?;
         Ok(Box::new(NativeTransport {
             device,
-            feature_lengths,
+            lengths,
             _lock: lock,
         }))
     }
@@ -94,15 +93,23 @@ impl HidBackend for NativeBackend {
 
 struct NativeTransport {
     device: HidDevice,
-    feature_lengths: BTreeMap<u8, usize>,
+    lengths: ReportLengths,
     _lock: File,
+}
+
+// HIDP_CAPS uses the collection maximum report length; Linux/macOS can also
+// return the selected ID's exact length. Both must come from the descriptor.
+fn valid_io_length(lengths: &std::collections::BTreeMap<u8, usize>, id: u8, size: usize) -> bool {
+    lengths
+        .get(&id)
+        .is_some_and(|observed| size == *observed || lengths.values().max().copied() == Some(size))
 }
 
 impl FeatureTransport for NativeTransport {
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
         ensure!(!report.is_empty(), "Feature 查询报文为空");
         ensure!(
-            self.feature_lengths.get(&report[0]) == Some(&report.len()),
+            self.lengths.feature.get(&report[0]) == Some(&report.len()),
             "Feature 报文与实际 descriptor 的 Report ID/长度不一致"
         );
         self.device
@@ -113,7 +120,7 @@ impl FeatureTransport for NativeTransport {
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
         ensure!(!report.is_empty(), "Feature 响应缓冲区为空");
         ensure!(
-            self.feature_lengths.get(&report[0]) == Some(&report.len()),
+            self.lengths.feature.get(&report[0]) == Some(&report.len()),
             "Feature 响应与实际 descriptor 的 Report ID/长度不一致"
         );
         let count = self
@@ -122,6 +129,38 @@ impl FeatureTransport for NativeTransport {
             .context("HID Feature 响应读取失败")?;
         ensure!(count <= report.len(), "HID 返回字节数超过缓冲区长度");
         Ok(count)
+    }
+
+    fn write_output(&self, report: &[u8]) -> anyhow::Result<()> {
+        ensure!(!report.is_empty(), "Output Report 为空");
+        ensure!(
+            valid_io_length(&self.lengths.output, report[0], report.len()),
+            "Output Report 与实际 descriptor 的 ID/长度不一致"
+        );
+        let sent = self
+            .device
+            .write(report)
+            .context("HID Output Report 发送失败")?;
+        ensure!(sent == report.len(), "HID Output Report 未完整发送");
+        Ok(())
+    }
+
+    fn get_input(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+        ensure!(!report.is_empty(), "Input Report 缓冲区为空");
+        ensure!(
+            valid_io_length(&self.lengths.input, report[0], report.len()),
+            "Input Report 与实际 descriptor 的 ID/长度不一致"
+        );
+        let count = self
+            .device
+            .get_input_report(report)
+            .context("HID 控制 Input Report 读取失败")?;
+        ensure!(count <= report.len(), "HID Input Report 超过缓冲区长度");
+        Ok(count)
+    }
+
+    fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
+        Ok(self.lengths.clone())
     }
 
     fn metadata(&self) -> Value {

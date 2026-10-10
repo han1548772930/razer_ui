@@ -14,6 +14,7 @@ pub fn run_worker() -> i32 {
     #[cfg(windows)]
     let mut runtime = native::NativeRuntime::new();
     let mut portable = portable::PortableRuntime::default();
+    let mut host_storage = razer_storage::host::HostStorage::default();
     let input = std::io::stdin();
     let mut input = input.lock();
     loop {
@@ -27,9 +28,30 @@ pub fn run_worker() -> i32 {
         };
         let shutdown = matches!(envelope.request, ServiceRequest::Shutdown);
         let result = match envelope.request {
-            request @ (ServiceRequest::HidNodes
+            ServiceRequest::HostStorageView { view } => {
+                host_storage.register_view(view);
+                Ok(serde_json::json!({"registered": true}))
+            }
+            ServiceRequest::HostStorageClose { view_id } => {
+                host_storage.close_view(view_id);
+                Ok(serde_json::json!({"closed": true}))
+            }
+            ServiceRequest::HostStorageCall { call } => host_storage
+                .call(call)
+                .and_then(|result| serde_json::to_value(result).map_err(Into::into)),
+            ServiceRequest::HostStorageEvents { view_id } => host_storage
+                .drain_events(view_id)
+                .and_then(|events| serde_json::to_value(events).map_err(Into::into)),
+            request @ (ServiceRequest::AudioDevices
+            | ServiceRequest::AudioEndpoints { .. }
+            | ServiceRequest::HidNodes
             | ServiceRequest::HidNodeRead { .. }
             | ServiceRequest::HidNodeWrite { .. }
+            | ServiceRequest::HidNodeMixerRead { .. }
+            | ServiceRequest::HidNodeMixerWrite { .. }
+            | ServiceRequest::HidNodeMixerRouteRead { .. }
+            | ServiceRequest::HidNodeMixerRouteWrite { .. }
+            | ServiceRequest::HidNodeMixerRestartStreams { .. }
             | ServiceRequest::HidNodeReceiverStatus { .. }) => portable.request(request),
             request => {
                 #[cfg(windows)]

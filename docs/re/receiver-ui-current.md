@@ -97,7 +97,7 @@ Shell 在发起和返回时核对真实 owner、非 PREVIEW/DEMO、容器、物�
 
 V2 查询 `status=1` 是在线结果，与硬件通知的 `eventValue.state=3` 不同。当前未接入真实硬件通知消费者，因此不能把绑定查询成功、在线状态变化或本地操作冒充 `SLAVE_CONNECT_EVENT`。源 `oe` 还会调用 `ye` 写 `duallink-devices` 并注册 runtime 监听，不能整段复用为只读 callback。
 
-固件版本、80 字节 IC 分类、固件流程和完整 runtime 元数据仍需各自真实读取。164/241 的连接/限速条件、参数主体及独立模式须继续按其源证据逐页完成。DLL 修改、设备/服务写回及 DLL 持久化保持后置。
+固件版本、80 字节 IC 分类、固件流程和完整 runtime 元数据仍需各自真实读取。164/241 的连接/限速条件、参数主体及独立模式须继续按其源证据逐页完成。DLL 修改、设备/服务写回及持久化均属当前范围，仍须恢复并接通原提交、响应和状态刷新链。
 
 native 模块的 ABI、隔离 worker、严格报文验证与调用范围统一维护在 [DLL 只读接入表](dll-readonly-inventory.md)。源码目录只说明能力与身份关系：例如 `183→182` 必须先有真实接收器查询返回 183，并保留同一真实 container。当前 `ye(...,false)` 不删除历史缓存，缓存存在不能替代本次在线；当前 he/Ne/host 原始发布器会写存储、注册 runtime 监听并触发初始化，不能整链执行作只读验证。
 
@@ -180,7 +180,7 @@ Electron 分支的 sendCommand 使用 `hid.sendFeatureReportMutex` 或 `hid.send
 
 34340/_e 在方法不存在时返回 []；存在时查询 native/wrapper 的 V2，过滤 65535/self dongle，以 AvailableDevices 等目录映射名称、edition/layout，缺资料时有默认 0 的源元数据降级。SCAN 注册 record 5/9、event55 的 Scan Status Update，在 End 时筛 AvailableDevices/DualDongleCompatibleDevices 与 DevicePairingBuddies；Bind 注册 event54，在 timeout=3 返回错误，success=2 组装 device 并广播。Unbind 有 slave→master 路由和失败后重新查询判断；不能仅依据 JS handler 存在宣称写回已接入。
 
-结果广播之后 `ye` 仍会写 duallink-devices、注册 connectedDevices/runtime 监听；`Ne` 还负责重复查询与设备发布。当前范围只静态记录这些副作用，没有将整函数当只读回调执行。Scan/Bind/Unbind 的 UI 操作继续属于范围内；真正设备/服务配置写回保持后置。
+结果广播之后 `ye` 仍会写 duallink-devices、注册 connectedDevices/runtime 监听；`Ne` 还负责重复查询与设备发布。当前范围只静态记录这些副作用，没有将整函数当只读回调执行。Scan/Bind/Unbind 的 UI 操作继续属于范围内；真正设备/服务配置写回也属于当前范围，须按原扫描、绑定、解绑及失败确认链实现。
 
 ### 样式与间隙：必须按实际父子树叠加
 
@@ -243,7 +243,7 @@ Serial初始拷贝props.serialNumber到state；默认非Camo入口没有componen
 
 Firmware整个卡受currentFWVersion gate；非SystemInfo分支先显示Current Firmware，有newFWVersion时显示橙色#fd8611下划线可点击提示，点击只广播navigateDeviceAndModuleView到Dashboard。Show All/Show Less切本地viewMore；展开后仅非空uiVersion/mwVersion/synapseVersion各加margin-top10。版本来源分别为noscript#version的version.buildVersion、host windowStorage中的MW_VERSION（还按containerId/PID筛选）、localStorage apps的synapse条目（强制第一段为4）；三者不同，不能统一成DLL版本。读取/parse失败记录错误，不填猜测版本。Show All上下padding15/14px，箭头20×20/左距4。
 
-本241 descriptor没有isNonSupportFactoryReset/isSupportResetOLED，普通reset块满足条件。Reset按钮打开同卡内confirmation，inline width300/top:auto，title取源当前语言的productName，message依isOBMDevice选择；不使用OLED分支的top125/left140。Cancel只关popup并解除busy。Confirm先关popup、设busy，再走normal-root resetObm，向middleware广播ON_RESET_DEVICE `{timerTick:undefined,payload:{}}`，并发统计。2000ms定时解除busy不是设备成功ack；按钮busy时原生disabled并显示spinner。本阶段保留编辑/确认UI，实际设备写回继续后置，不能伪报Factory Reset完成。
+本241 descriptor没有isNonSupportFactoryReset/isSupportResetOLED，普通reset块满足条件。Reset按钮打开同卡内confirmation，inline width300/top:auto，title取源当前语言的productName，message依isOBMDevice选择；不使用OLED分支的top125/left140。Cancel只关popup并解除busy。Confirm先关popup、设busy，再走normal-root resetObm，向middleware广播ON_RESET_DEVICE `{timerTick:undefined,payload:{}}`，并发统计。2000ms定时解除busy不是设备成功ack；按钮busy时原生disabled并显示spinner。编辑/确认UI与实际设备重置均属当前范围；实际命令、完成响应和重读链尚未接通，不能伪报Factory Reset完成。
 
 同样，hasSystemInfo固件30%/70%列、OLED重置payload、教程、Camo联网license等共享分支保留在证据中，没有挂到241。它们须由其他产品的真实caller/descriptor验证，不能直接通用启用。共享确认popup的outside-click/键盘细节见 [共享控件](shared-ui-controls-current.md)。
 

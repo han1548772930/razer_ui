@@ -1,6 +1,15 @@
 //! Host-neutral HID contracts; native implementations depend on this module.
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
+
+/// Descriptor-observed byte lengths, including the API's Report ID byte.
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct ReportLengths {
+    pub input: BTreeMap<u8, usize>,
+    pub output: BTreeMap<u8, usize>,
+    pub feature: BTreeMap<u8, usize>,
+}
 
 /// Identifies a logical HID collection, not a physical product or receiver peer.
 /// Preserve raw path bytes and usage pair so distinct collections stay distinct.
@@ -30,5 +39,16 @@ pub trait FeatureTransport {
     fn send_feature(&self, report: &[u8]) -> anyhow::Result<()>;
     /// Actual byte count, including the Report ID. No guessed/padded response.
     fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize>;
+    /// Output reports and control Input reports are distinct from Feature and
+    /// interrupt reads. Backends must implement the exact requested channel.
+    fn write_output(&self, _report: &[u8]) -> anyhow::Result<()> {
+        anyhow::bail!("此后端未实现 Output Report")
+    }
+    fn get_input(&self, _report: &mut [u8]) -> anyhow::Result<usize> {
+        anyhow::bail!("此后端未实现控制 Input Report")
+    }
+    fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
+        anyhow::bail!("此后端没有 descriptor 观察的报告长度")
+    }
     fn metadata(&self) -> Value;
 }

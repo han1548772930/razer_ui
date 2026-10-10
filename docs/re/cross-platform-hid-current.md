@@ -16,13 +16,15 @@
 
 Razer 报文仍依据 [设备读取证据](mouse-read-capabilities-current-evidence.json)、[接收器发现证据](receiver-discovery-current-evidence.json) 和 [原生 HID 证据](receiver-native-hid-current-evidence.json)。HID descriptor 是传输规格，不是产品功能证据。
 
-后端固定 `hidapi =2.6.7`，crate/checksum `818c0e1d27887aaf76fe737042e27a66b796a7b099e6d2e1a72d106c2dff3fa6` 与 Cargo.lock 相符。选用 Feature 能力后端而非直接复制 OpenLogi 的 output/input channel；保留相同的 backend 分层。
+后端固定 `hidapi =2.6.7`，crate/checksum `818c0e1d27887aaf76fe737042e27a66b796a7b099e6d2e1a72d106c2dff3fa6` 与 Cargo.lock 相符。Feature、Output 和控制 Input 各有独立接口；Output 使用 hidapi.write，控制 Input 使用 get_input_report，不混用 Feature 或中断 read。后端不能实现的通道明确返回错误。设备报文依据 Razer 原件，OpenLogi 只提供 backend 分层参考。
+
+Audio Mixer 当前两层 DLL 的 [证据](audio-mixer-dll-protocol-current.md) 已驱动 47 个展开硬件控制项的 Rust 读写及 IPC。descriptor 静态解析 Input/Output/Feature，包括 padding 与 global push/pop；Mixer 按原 HIDP_CAPS 的 collection 最大报告长度构造缓冲，验证实际 ID/报告长度，超出原 66 字节缓冲边界拒绝。接收实际返回长度，不补造响应。另已在共享协议实现 22 条驱动矩阵路由和 0..8 重置序列，Windows 句柄/IOCTL 隔离在 service 适配；其他平台显式报能力缺失。原 100ms WriteFile 等待、关闭 Sleep500ms 与 hidapi 生命周期没有等价实现声明；COM、产品页面消费及实际驱动身份关联验收仍缺。
 
 | 平台 | 后端 |
 | --- | --- |
 | Windows | 静态 hidapi 系统后端；协议和 HID 接口包没有直接 Win32 FFI |
-| Linux | `linux-native-basic-udev`、hidraw Feature ioctl，无 libudev 开发库要求 |
-| macOS | IOKit Feature，启用 `macos-shared-device`，不独占普通鼠标/键盘输入 |
+| Linux | `linux-native-basic-udev`、hidraw Feature/Output/control-Input，无 libudev 开发库要求；具体 OS 调用支持错误向上传递 |
+| macOS | IOKit HID 通道，启用 `macos-shared-device`，不独占普通鼠标/键盘输入；具体 OS 调用支持错误向上传递 |
 
 Windows 元数据、窗口和托盘仍需要各自平台 API，留在对应适配包。根可执行包不直接依赖 windows-sys；跨平台不等于没有操作系统接口。
 

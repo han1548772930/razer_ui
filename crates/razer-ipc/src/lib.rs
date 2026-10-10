@@ -19,8 +19,27 @@ pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 pub enum ServiceRequest {
+    /// Original host process-local Map stores; never device write-back or local
+    /// draft persistence. The owning host registers real view metadata first.
+    HostStorageView {
+        view: razer_storage::host::HostStorageView,
+    },
+    HostStorageClose {
+        view_id: u64,
+    },
+    HostStorageCall {
+        call: razer_storage::host::HostStorageCall,
+    },
+    HostStorageEvents {
+        view_id: u64,
+    },
     SimpleVersion,
     AudioDevices,
+    /// Source-recovered RzAudioUtil enumeration through the OS adapter;
+    /// distinct from simple_service's AudioDevices response schema.
+    AudioEndpoints {
+        flow: razer_device::audio_util::AudioFlow,
+    },
     HidDevices,
     /// Portable OS collections. Paths are opaque bytes; no Windows GUID or
     /// logical receiver peer is fabricated from these nodes.
@@ -39,6 +58,36 @@ pub enum ServiceRequest {
     },
     HidNodeReceiverStatus {
         node: razer_device::backend::HidNode,
+    },
+    /// Current Audio Mixer DSP reports; some queries use a hardware mailbox
+    /// selector, so this is not a side-effect-free register snapshot.
+    HidNodeMixerRead {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        target: razer_device::audio_mixer::MixerTarget,
+    },
+    HidNodeMixerWrite {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        target: razer_device::audio_mixer::MixerTarget,
+        value: razer_device::audio_mixer::MixerValue,
+    },
+    HidNodeMixerRouteRead {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        route: razer_device::audio_mixer::MixerRoute,
+    },
+    HidNodeMixerRouteWrite {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        route: razer_device::audio_mixer::MixerRoute,
+        enabled: bool,
+    },
+    /// Original restartAudioDriver sequence; reports IOCTL completion, not
+    /// a fabricated observation of audio playback or stream state.
+    HidNodeMixerRestartStreams {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
     },
     /// Physical USB devices, including products without a HID collection.
     UsbDevices,
@@ -260,13 +309,20 @@ impl ServiceClient {
         let starting_recorder = matches!(request, ServiceRequest::StartMacroRecording);
         let writing_device = matches!(
             request,
-            ServiceRequest::DeviceWrite { .. } | ServiceRequest::HidNodeWrite { .. }
+            ServiceRequest::DeviceWrite { .. }
+                | ServiceRequest::HidNodeWrite { .. }
+                | ServiceRequest::HidNodeMixerWrite { .. }
+                | ServiceRequest::HidNodeMixerRouteWrite { .. }
+                | ServiceRequest::HidNodeMixerRestartStreams { .. }
         );
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
                 | ServiceRequest::NativeLibrarySnapshot { .. }
+                | ServiceRequest::AudioEndpoints { .. }
                 | ServiceRequest::HidNodeRead { .. }
+                | ServiceRequest::HidNodeMixerRead { .. }
+                | ServiceRequest::HidNodeMixerRouteRead { .. }
         );
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1);

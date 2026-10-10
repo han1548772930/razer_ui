@@ -1,4 +1,6 @@
-//! Local file persistence only; no device writes or Synapse format claims.
+//! Local draft file persistence and original host process-local Map semantics.
+//! Neither storage scope writes devices or claims vendor profile file formats.
+pub mod host;
 use std::path::Path;
 pub fn read_document<T>(
     path: &Path,

@@ -5,6 +5,8 @@
 
 本文是整个原项目的总入口：把启动/退出、宿主、模块、后台服务、账户、网络、安全、存储、系统集成、安装更新、独立应用、产品页面、middleware 与原生件连接起来。所有实现必须有当前原代码依据；“文件取得”“声明解析”“调用链追通”“内部实现恢复”“本项目接入”和“运行验收”分别记录。不能把任一层的清单或成功解析当作全部原代码恢复。
 
+当前目标是全量逆向并完全实现上述全部范围，包括查询、修改、设备/服务写回及持久化；写回不再留到另一个集成阶段。每项必须追到原调用者、真实状态、参数与编码、底层执行、返回消费、界面刷新、失败/取消及资源释放，并接入对应 Rust 消费者。尚缺证据或实现的部分继续作为未完成事项，不以记录清单、保留原 DLL 或仅接通路由替代完成。平台专属机制分别实现，共用设备协议保持跨平台；禁止运行应用、测试、厂商代码和 DLL 的开发验证约束继续有效。
+
 设备直连的下一层证据已进入 [DLL 内部与设备通信逆向](dll-device-communication-current.md)：对全部已取得的 58 产品 DLL、4 CommonDLL 和 19 Windows 原生插件逐文件核对字节、导出和内部指令，保存 57960 个分析图入口。入口与潜在路径不是完整函数语义。产品 1342 的 [二级 DLL 分发与报文](audio-mixer-dll-protocol-current.md) 已追到 37 项属性表、GetProcAddress 指针存取及四个 report helper，其他未知继续保留；[OpenLogi 参考](openlogi-device-communication-review.md) 仅提供架构对照，不作为 Razer 协议依据。
 
 ## 来源与证据等级
@@ -44,7 +46,7 @@
 | 全部产品、配置与设备读写 | [产品目录](16-product-catalog.md)、[DLL 功能](dll-function-inventory.md)、[内部通信](dll-device-communication-current.md) | 331 产品有 UI 入口；源核实的部分查询及产品 182 两项直接写入已有 agent 路由，页面写事件尚未连接；全部能力/产品的协议与二进制语义未完成 |
 | 宏、映射、全局快捷键与输入服务 | [Macro](macro-ui-current.md)、[快捷键](shortcuts-ui-current.md)、[服务机器码](host-service-machine-code-current.md) | 本地编辑及部分录制/服务接口已有；完整映射协议、回调、播放、设备持久化和输入生命周期未闭合 |
 | 灯光、Studio、IoT、LampArray 与触觉 | [Studio](studio-ui-current.md)、[Aether](aether-ui-current.md)、宿主 `lighting/IoT/LampArray/wss` | 部分本地编辑/控件已有；帧引擎、区域、取色、网络发现、写入/确认及触觉服务未全接入 |
-| 系统音频、THX、Mixer、相机与媒体 | [应用原生链](application-native-current.md)、[Mixer 协议](audio-mixer-dll-protocol-current.md)、[相机](camera-presentation-current-audit.md)、[音频 Demo](audio-demo-current-audit.md) | 部分枚举接口、控件和报文 helper 已追踪；COM/驱动、DSP 字段、音视频 transport、编码与播放尚未闭合 |
+| 系统音频、THX、Mixer、相机与媒体 | [应用原生链](application-native-current.md)、[Mixer 协议](audio-mixer-dll-protocol-current.md)、[相机](camera-presentation-current-audit.md)、[音频 Demo](audio-demo-current-audit.md) | Audio Mixer 37 项属性已展开 47 个 Rust 硬件控制项（26 DSP/寄存器、15 端点、6 路由），接通 agent/IPC 及写入回读；声道和位保留按原分支。另实现 22 条驱动矩阵路由和 0..8 流重置的 Windows 适配/IPC，真实目标关联未运行验收；COM 端点分支、页面消费者、其他音视频 transport、编码/播放仍需接通 |
 | 托盘、Widgets、通知与深链 | [托盘](tray-ui-current.md)、[Widgets](tray-widgets-current.md)、宿主 §8/10 | 左/右键界面局部实现；真实账户、通知/小组件发布者仍缺；通知 HMAC key、safeStorage、URI 验证与消费链未完整接入 |
 | 操作系统、服务控制、兼容与安全 | 宿主 §9/10；`serviceFunction`、`exeCompatibility`、`security`、`RzMutx` | 平台适配已有独立边界；EXE 服务启动/停止、设备安全、兼容检测、互斥及系统事件需分别恢复，不能由 DLL 名称替代 |
 | 语言、字体、资源、布局与交互状态 | [样式/字体](ui-style-sources-current.md)、[共享控件](shared-ui-controls-current.md)、[资源](resources-current.md) | `razer-i18n`/`razer-assets`/`razer-widgets` 已分工；缺失素材、动态级联、全部条件、键盘/焦点、动画及缩放验收未完成 |

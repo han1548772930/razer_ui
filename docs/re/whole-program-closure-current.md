@@ -1,0 +1,61 @@
+# 当前整个程序的依赖、消费者和未闭合链
+
+2026-10-10，以 `.ref/host-4.0.827/`、当前产品/middleware/native 证据和当前 `crates/` 为依据。本记录横向核对整个程序，补充 [全量逆向地图](full-source-reverse-map.md)；不把导出、路由、源码获取或静态调用图记为完整实现。
+
+全量目标仍包括所有产品、页面、宿主、服务、原生库、插件、设备通信、DLL 替代、存储、安装、安全和生命周期。你的版本是本地版，因此不实现在线升级清单、远程下载、云端升级编排及其他网络专属升级流程；本地安装、离线安全校验、本地服务生命周期和设备固件/配置链路仍然属于范围。宿主存储与 helper 静态取证是当前已推进的子链，不能把它们当成总范围边界；设备通信、产品页面、固件传输和设备 DLL 写回仍必须继续逆向、实现并接入。
+
+[机器矩阵](whole-program-closure-current-evidence.json) 由 `tools/audit-whole-program-closure-current.py` 生成，登记当前源文件 SHA-256、原函数范围、Rust 定位、每库资源与声明、PE 依赖、插件平台、本体缺失和明确缺口。工具仅解析静态文件，不执行厂商 JavaScript、DLL、EXE、应用或硬件命令。
+
+## 全量核对结果
+
+| 层 | 当前可核实范围 | 完成边界 |
+| --- | --- | --- |
+| native library | 48 库逐项登记，762 个唯一静态候选声明 | 声明不等于原 DLL 内部语义，泛型 getter 不等于 Rust 协议替代；整库替代完成数仍为 0 |
+| 当前 PE 内部图 | 81 个字节校验过的文件，包含产品、CommonDLL 和 Windows 插件 | 导入表与潜在路径只能定位依赖，间接调用、动态加载、线程和全部返回语义仍需逐项消歧 |
+| 宿主原生依赖 | corpus 中 64 个 native_binary 条目，包含 4 DLL 和 60 `.node` 路径 | 不止此前内部图的 19 个 Windows 插件，还包含 macOS/Linux/Android 预编译插件、不同架构及 Node ABI；路径数量不代表唯一二进制数量 |
+| helper/system 程序引用 | 第一方宿主 JS 中 9 个 `.exe` 名称引用；当前官方包静态取得 4 个 CommonDLL helper PE（Power/Security/EngineMon/Handle） | 4 个本体和 CLI 字符串已留证，但分支语义、进程结果、注册表/服务副作用和 Rust 替代消费者仍未闭合 |
+| 宿主非产品链 | 本记录核对 16 个域 | 本地草稿、请求事件、生命周期片段分别记录；没有全程序等价验收结论 |
+
+`IoTNative`、`lighting_driver`、`NanoleafNative`、`PhilipsHueNative`、`RzNative_0518` 在当前库 inventory 中没有已获取并归属的资源。这里描述的是该清单的资源证据缺口，不据此推定其他位置不存在同名文件，也不推定库没有功能。动态归属和签名冲突保持未知，不能用其他产品补齐。
+
+## 原链与 Rust 的实际边界
+
+| 域 | 当前原代码链 | 已有 Rust 消费者与缺口 |
+| --- | --- | --- |
+| 启动、命令行与单实例 | `electron/main.js` 的 ready、启动集合、窗口和退出控制 | `razer-app::run` 是启动编排；原参数、恢复、单实例冲突和失败重试尚未逐支等价 |
+| KeyStorage | `electron/keyStorage.js`，`setItem/getKeys/getItem/removeItem/registerEvent/unregisterEvent` | `razer-storage::HostStorage` 已实现 URL 订阅、`hasValue`、接收方过滤、删除事件和 IPC 事件队列；真实宿主窗口注册及页面消费者尚未连接；本地草稿是另一作用域 |
+| MemoryStorage | `modules/memory_storage/index.js`，per-URL Map、targetUrlArray、旧/新值、reset | 已实现有序 Map、JS truthy getter、旧/新值事件、targetUrlArray 和 reset；真实页面与跨窗口生命周期尚未接入 |
+| WindowStorage | `modules/window_storage/index.js`，per-URL Map、事件、clear/remove | 已实现 clear/remove 的返回差别、订阅门控和 reset，并接 worker IPC；窗口注册/关闭与 UI 动作仍缺真实消费者 |
+| 模块安装/卸载/取消/清除设置 | 当前 Dashboard 交互 → 宿主 `preload.js` 通道 → 原后台服务 | 确认面板发 `ModuleCatalogEvent::ServiceCommand`；`shell.rs` 明确报告“未执行”，没有 installer、缓存校验、后台状态发布和清设置提交 |
+| 主程序升级与本地包生命周期 | `mainSubFunction.upgradeAppEngineVersion` → `simpleLaunchUserAppProcess` → `RzPowerTool.exe`；`lib/aio.js` 日期门控 | 已取得并静态核对 RzPowerTool PE 和 10 个 CLI 字符串；网络专属升级流程不实现，本地包安装、版本注册、旧版清理、relaunch 和相关 helper 分支结果仍未闭合 |
+| 固件更新 | 主宿主打开更新程序与当前 `update-fw` 页面链 | `firmware_update/state.rs` 是明确的本地 preview；不代表固件传输、硬件进度、成功、取消或恢复 |
+| Windows 服务 | `serviceFunction.js` → simple launch → `RzPowerTool --get-service-status/--start-service/--stop-service` | PE/命令入口已取证；`NativeRuntime::Shutdown` 只关闭已初始化的 mapping/simple，服务状态/启动/停止结果尚未接入 Rust |
+| 设备安全 | `modules/security/win/index.js` → `RzSecurityTool --verify-device-security` | PE 和命令入口已取证；设备安全验证分支、返回值和 Rust consumer 尚未闭合 |
+| 通知与深链 | `nativeNotificationHandler.js` → addon worker → HMAC URI → 全窗口事件 | 缺少 addon 替代、safeStorage、加密 key 文件、10 天 TTL、一次性 key 删除与 pending-protocol 队列 |
+| 账户与身份 | `lib/identityPipe.js`、`getIdentityFeature.js` → identity 服务事件 | Guest 展示不能替代身份管道、认证响应、凭据、安全存储和退出广播 |
+| IoT/LampArray | `IoTNativeAction`、`LampArrayAction` → 原 API/transport | `GamerRoomEvent::DeviceCommand` 到 shell 后明确未发送；缺少真实电源/帧写入、通知及响应刷新 |
+| 灯光 | `ffiLightingDriver.initDll/configure/hookLightingCallback/shutdown` | 当前 `lighting.rs` 仍调用原库；缺少完整 Rust 帧引擎、区域、设备与回调生命周期替代 |
+| FFI 与子进程 | Main/Sub loader、FFIProcess ready/crash、exit/suspend/shutdown 回调表 | worker 隔离、有限 getter 和模块保留存在；每库 ABI、各类关闭回调、崩溃重建和挂起恢复尚未全部闭合 |
+| 整体退出 | `main.js` 的 `quitApp/finalQuit`、cannot-exit 计数、poweroff、应用集合 | worker 录制与 mapping/simple shutdown 有实现；宿主完整顺序、阻止退出、pending callback 和全插件释放未等价 |
+| 兼容与互斥 | `lib/exeCompatibility.js`、`lib/RzMutx.js` | 原 Windows 兼容检查、注册表分支、令牌所有权、取消及互斥生命周期仍缺对应消费者 |
+
+以上列的是同一全量实现范围中的当前缺口。读取、观察、写入、Apply/Save/Cancel、持久化、失败和清理都需要现在按证据实现；没有独立的写回延期阶段。
+
+原生音频列表另见 [simple_service 的 IDA 链路与 Rust 消费者](simple-audio-current.md)：32 个函数证据已核实实例/虚表、四字段 schema、Core Audio/SetupAPI 和初始化遍历顺序，`AudioDevices` 已连接设置页与 Control Pod，并不再加载原 DLL。原服务的持续事件缓存、通知/音量/会话订阅、完整失败语义仍缺；此子链不改变整库替代完成数为 0 的结论。
+
+## 原库接入不能记作不依赖原库
+
+`native_query.rs::version` 使用原导出和原 allocator。`native_read.rs::getter` 要求源声明、ContainerId 调用、init/terminate、FreeMalloc 和匹配资源；随后通过 `EngineLibrary::load` 载入原 DLL，并用 `ManuallyDrop` 保留模块至隔离 worker 退出。这是源码门控的原库查询，不是这些函数内部的 Rust 实现。`SysUtilsNative` 还有明确的加载限制；无参版本候选也不能绕过资源、生命周期和返回所有权门控。
+
+机器矩阵的 `literal_rust_locators_not_consumer_proof` 仅供找文件。字符串出现在 diagnostics/catalog/路径列表中，不能计入函数实现；矩阵不会从这些定位自动生成“完成”状态。
+
+## 可继续闭合的链
+
+1. **宿主 Key/Memory/WindowStorage 消费者**：已按三个当前 JS 本体实现共享状态与 worker IPC，详见 [宿主存储](host-storage-current.md)；继续接真实窗口注册/关闭与逐页面动作，保留它们与本地草稿文件的区别，不能将后端实现计作完整 UI 链。
+2. **服务/安全/升级 helper**：4 个当前 PE 已静态取得并记录 SHA-256、架构、导入和命令字符串；下一步恢复参数解析、服务控制、注册表、进程/文件操作、结果和失败，再接本地 Rust 消费者。不能只复制 JS launch wrapper。
+3. **全插件传输**：逐项匹配当前包的 Node 插件源代码/PE、原 JS caller、发现身份、事件和退出顺序；共享 HID/BLE/serial/网络编码保留跨平台，真正的平台适配分别实现。第三方不同架构预编译件不能由 Windows 导出表替代取证。
+4. **本地安装/卸载真实状态发布**：继续当前 background-manager 与 installer 资源声明的实际 consumer，接本地包、签名/散列、取消、clear-settings、失败和完成刷新；当前确认框已发出的 command 必须接这条生产链。网络专属升级清单/下载/云编排按本地版本要求排除。
+
+这些是依赖可定位的下一条完整链，不是关闭其他范围。当前未执行应用、厂商代码、DLL 或硬件验证；静态检查结果仅支持文件/结构/编译一致性。
+
+复核命令：`python -X utf8 tools/audit-whole-program-closure-current.py --check`。若并行开发改变 Rust 行号或源清单，先重新审查对应事实，再重生成矩阵；不能用更新 hash 掩盖原行为或 consumer 缺失。

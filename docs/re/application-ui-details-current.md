@@ -87,7 +87,7 @@ Add发现当前宏未saved时挂suspendedAction并打开未保存层。`macro-un
 
 EQ `$i`保留10点绘图、chart与569×337 canvas叠层、mouse拖动、reset、prop变化同步以及window mouseup/mousemove的注册/卸载；本页没有因控件叫slider就抽象成同一个产品EQ。CALIBRATION `pc`把channel volume、角度/坐标、playIndex、distance与test状态分开：自动测试按1500ms步进，off/auto切换和channel更新有原回调，没有查询成功依据时不能播放或伪造校准结果。
 
-`$u`的兑换码仍是4段maxlength5，但它额外处理左右箭头、错误code/网络状态和23字符时的fn调用，不能照搬Lite input。`cl`保存七个Onboarding页面、pricing/activation/video/trial子view及overlay条件。General设置先语言dropdown（会translateCustomProfiles），40px后自动启动树；About独立。CSS同一文件先有body/html宽1000、高689px!important与Roboto16，后有body14px、line-height1.36、`#222`；要按声明顺序与!important计算，不能挑一段当整应用统一风格。原生音频/stream/EQ设置写回仍按 [native边界](application-native-current.md)后置，不因本页还原了可编辑UI而执行写操作。
+`$u`的兑换码仍是4段maxlength5，但它额外处理左右箭头、错误code/网络状态和23字符时的fn调用，不能照搬Lite input。`cl`保存七个Onboarding页面、pricing/activation/video/trial子view及overlay条件。General设置先语言dropdown（会translateCustomProfiles），40px后自动启动树；About独立。CSS同一文件先有body/html宽1000、高689px!important与Roboto16，后有body14px、line-height1.36、`#222`；要按声明顺序与!important计算，不能挑一段当整应用统一风格。原生音频/stream/EQ设置写回属于当前完整实现范围，须按 [native边界](application-native-current.md)恢复并接通提交、响应与状态刷新；可编辑UI的存在不代表写回已经完成。
 
 ## Alisha、Ring Light及辅助应用的实际条件
 

@@ -318,6 +318,7 @@
 !/tools/validate-current-docs.py
 !/tools/evidence-store.py
 !/tools/audit-assets-current.py
+!/tools/audit-cmmixer-controls-current.py
 !/tools/audit-device-write-capabilities.cjs
 !/tools/audit-tray-presentation.cjs
 !/tools/audit-power-range-current.cjs
@@ -328,3 +329,13 @@
 !/tools/audit-tray-widgets-current.py
 !/tools/audit-tray-footer-current.cjs
 !/tools/prepare-tray-widget-assets.py
+!/tools/device-query-source.cjs
+!/tools/expand-device-query-capabilities.cjs
+!/tools/expand-device-write-capabilities.cjs
+!/tools/audit-audio-util-enumerator-current.py
+!/tools/audit-host-helpers-current.py
+!/tools/audit-whole-program-closure-current.py
+!/tools/ida-static-functions.py
+!/tools/audit-simple-audio-current.py
+!/tools/audit-ida-native-corpus.py
+!/tools/expand-idle-write-capabilities.cjs

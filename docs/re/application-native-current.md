@@ -116,7 +116,7 @@ Update FW的 `firmware-unzip-helper-arguments-hash-result-and-cleanup` 从simple
 
 这两份PE表没有直接列出本节独立应用的RzSparkle.dll、ThxNativeLite.dll、ThxNativeFull.dll、VirtualRingLight.dll、chromaStudioNative.dll、NanoleafNative.dll同名资源。ThxV3/ThxV4Native、其他产品RzNative不能仅据“THX”名称代替它们；尚需对应当前应用资源包/版本与实际PE指纹。没有将未取得的binary标为验证成功，也没有声称从JS包装恢复C/C++原始工程。
 
-本轮完整完成的是755文件的显式边界覆盖、source/hash验证、调用/声明/包装源码收据及上面列明的人工语义锚点。仍未完成全部现代共享类在每个应用route的真实实例化/初始化顺序、所有外部HTML框架入口、动态FFI库/资源包解析、所有callback取消/重连代际、每个DLL/helper内部语义和本地Rust逐项差异。现代host的subprocess/dispatcher另见宿主文档；设备/服务DLL写回继续后置，本地UI操作不能省略，也不能用原源stub冒充真实保存。
+本轮完整完成的是755文件的显式边界覆盖、source/hash验证、调用/声明/包装源码收据及上面列明的人工语义锚点。仍未完成全部现代共享类在每个应用route的真实实例化/初始化顺序、所有外部HTML框架入口、动态FFI库/资源包解析、所有callback取消/重连代际、每个DLL/helper内部语义和本地Rust逐项差异。现代host的subprocess/dispatcher另见宿主文档；设备/服务DLL写回与持久化均须在当前范围实现，本地UI操作不能省略，也不能用原源stub冒充真实保存。
 
 ## 独立应用 DLL 的来源链：2026-10-09 元数据补查
 

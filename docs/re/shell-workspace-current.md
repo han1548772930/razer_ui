@@ -68,7 +68,7 @@ Source 活动状态还同步 receiver 读取活动，并在失活时取消 Gamep
 
 Source capture 把 device_fields 分出到 `source_device_settings`，其余归活动 profile。Shell 保存捕获的 WorkspaceFile；异步成功后只把捕获快照标记 saved，保存期间的新修改仍为 dirty。状态明确为“已保存到本机 · 尚未发送到设备”。本地草稿持久化与 DLL 写回不同，UI 编辑、Apply/Save 和本地保存仍在当前范围内。
 
-各家族的 snapshot/restore 只能证明被核对的方法：Snap Tap 保留显式本地配置并重建瞬态；1382 重建 editor/subscription；3334/3337 无显式 local_selection 时不把观察到的 playbackMixDevice 存入快照。2636 deadzone 回退缓存的跨 profile 语义及其他家族完整生命周期仍需专项核实；不得据几处方法抽查声称全部产品完成。真实只读查询与状态观察继续接入，DLL mutation/write-back 后置。
+各家族的 snapshot/restore 只能证明被核对的方法：Snap Tap 保留显式本地配置并重建瞬态；1382 重建 editor/subscription；3334/3337 无显式 local_selection 时不把观察到的 playbackMixDevice 存入快照。2636 deadzone 回退缓存的跨 profile 语义及其他家族完整生命周期仍需专项核实；不得据几处方法抽查声称全部产品完成。真实查询、状态观察、DLL 修改、设备/服务写回及持久化全部继续接入，当前未闭合的链仍登记为实现缺口。
 
 ## 公共字体与内容
 

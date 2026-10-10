@@ -8,7 +8,7 @@ The machine-readable record is [application-end-to-end-current.json](application
 
 The preload bridge has three independently evidenced contracts. `doElectronAction`/`doRzDeviceAction` invoke the `electronAction` IPC channel; the FFI, mapping-engine, simple-service, lighting-driver and RzDevice helpers use their own IPC channels; and `response(channel, fn)` returns a listener-removal function. The main process contains the matching `electronAction`, native-action and FFI IPC handlers. These slices prove the bridge shape, but they do not prove that a particular screen dispatched a particular action at runtime.
 
-The host service, middleware, remote API, native wrapper and DLL ABI are separate boundaries. A function named `get`, `set`, `true`, or `success` is not treated as hardware success. Local drafts, host settings storage, app/simple-service state, legacy `FFILibrary`, modern `ffiPreload`, and eventual device/DLL write-back are recorded as different layers. UI Apply, Save, Delete, Import, Export and Cancel branches remain in scope, while native/service write-back is intentionally deferred by the current roadmap.
+The host service, middleware, remote API, native wrapper and DLL ABI are separate boundaries. A function named `get`, `set`, `true`, or `success` is not treated as hardware success. Local drafts, host settings storage, app/simple-service state, legacy `FFILibrary`, modern `ffiPreload`, and device/DLL write-back are recorded as different layers. UI Apply, Save, Delete, Import, Export and Cancel branches, native/service write-back and persistence are all in the current full implementation scope. Missing submission and response chains remain implementation gaps, not a deferred phase.
 
 No endpoint is marked semantically complete. The summary is 24 endpoints, 26 UI anchor references, 6 exact host bridge slices, and zero closed end-to-end claims.
 
@@ -59,4 +59,4 @@ Run only the static audit command required by the repository instructions:
 node tools/audit-application-end-to-end-current.cjs --check
 ```
 
-The audit validates the 24 endpoint records, exact source ranges and hashes, generated JSON, and gzip output. It does not execute the application, vendor JavaScript, host, service, DLL, installer or downloaded code. Current source receipts and the exact fragments are retained in the JSON so later changes can be reviewed against the same files. No claim here closes the deferred device/service DLL write-back phase.
+The audit validates the 24 endpoint records, exact source ranges and hashes, generated JSON, and gzip output. It does not execute the application, vendor JavaScript, host, service, DLL, installer or downloaded code. Current source receipts and the exact fragments are retained in the JSON so later changes can be reviewed against the same files. This static audit does not establish that device/service write-back is implemented or accepted; those chains remain required in the current full scope.

@@ -74,7 +74,7 @@ Reset popup `Kt` 的局部 show 随 props 更新，外部 click 关闭；Reset k
 
 70/2508 Macro mapping 子视图有本地 selectedMacro/selectedPlayback/playbackTimes；changeX 调用 enableSave；mount 通过 setSaveMapRef 暴露 saveMapping。saveMapping 从 state 组成 mapping 数组，重复次数只在对应 playback 模式使用，否则 repeatCount=2。70/5107 的 saveChanges 再根据 TwoTap/globalShortcut/custom command dial 等分支处理，普通分支 setActiveKeyMapping、setMappingList、清 dirty/关闭；closeMapping 检查 dirty 决定显示保存提醒。提醒关闭按钮 dismissSave 只隐藏；dontSave 调用 saveMapRef(false)，确认按钮 submitDialog 调 nextAction，回调连接的原文另存 helpers。不能仅凭按钮名推出设备提交或持久化成功。
 
-241/2478 本地存储 wrapper 的 set/get/remove/updateProfiles 使用 window.localStorage；synapse 产品条目可同步 dongle 项，updateProfiles 保留原 appEngine、更新产品列表和单产品条目。`updateUserData=async()=>{}` 是空实现。这份 JS 的本地状态/存储证据与当前 Rust 项目的 local draft 不是同一份状态，亦不证明后端服务持久化。DLL 写回仍依任务约束延期。
+241/2478 本地存储 wrapper 的 set/get/remove/updateProfiles 使用 window.localStorage；synapse 产品条目可同步 dongle 项，updateProfiles 保留原 appEngine、更新产品列表和单产品条目。`updateUserData=async()=>{}` 是空实现。这份 JS 的本地状态/存储证据与当前 Rust 项目的 local draft 不是同一份状态，亦不证明后端服务持久化。DLL 写回与持久化均属当前范围，仍须逐项接通实际提交、响应及状态刷新。
 
 ## Modal 与三种 Tooltip 的实际差异
 

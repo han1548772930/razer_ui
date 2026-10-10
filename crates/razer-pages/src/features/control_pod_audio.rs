@@ -432,8 +432,8 @@ impl AudioEditor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Result<(), String> {
-        // runtime_native already parses callback parameter 3. The JS wrapper's
-        // {deviceList: JSON-string} envelope is not part of ServiceClient's result.
+        // The Rust Core Audio adapter returns the original array schema. The
+        // JS wrapper's {deviceList: JSON-string} is not part of this IPC result.
         let entries = value
             .as_array()
             .ok_or_else(|| "音频设备枚举返回格式不正确。".to_string())?;

@@ -28,7 +28,7 @@
 - Text props and literals include localization expressions without guessing localized output. Full locale/import binding and rendered values remain separate work.
 - Definitions/state/conditions/loops are original syntax; API names do not prove DLL read/write meaning, and handlers are not executed.
 - Only the prior bounded graph is expanded; unresolved graph targets, dynamic imports and unreferenced/unsupported modules are not silently covered.
-- No app, vendor JS, DLL, build or tests executed. UI operations remain in scope; DLL mutation/write-back remains deferred.
+- No app, vendor JS, DLL, build or tests executed. UI operations, DLL mutation/write-back and persistence are all required in the current full implementation scope; this source index alone does not establish their completion.
 
 模块外变量、传入 props、HOC、动态 selector 数据、computed 名称、CSS cascade 和 localization 输出都不能只凭本索引认定已闭环。所有 graph unresolved 保留；包括 React Fragment 条件赋值不能假设 Symbol 环境选分支。原 callbacks 不等于实际用户动作成功；UI Apply/Save 和本地 draft 操作仍在范围，DLL mutation/write-back 仍留待协调集成。
 

@@ -6,7 +6,6 @@ const root = path.resolve(__dirname, '..'), sources = [], libraries = new Map(),
 const outputArg=process.argv.find(arg=>arg.startsWith('--output='));
 const outputRelative=outputArg?outputArg.slice('--output='.length):'assets/data/native-library-inventory.json';
 assert(/^docs\/re\/[a-z0-9-]+\.json$/.test(outputRelative)||outputRelative==='assets/data/native-library-inventory.json','Invalid inventory output path');
-const auditOnly=outputRelative.startsWith('docs/');
 const normalize = filename => path.win32.basename(filename).replace(/\.dll$/i, '').replace(/_v\d+(?:\.\d+)*$/i, '');
 const get = id => {
   if (!libraries.has(id.toLowerCase())) libraries.set(id.toLowerCase(), {id, kind: 'device', channel: 'ConfigureFFI',
@@ -144,7 +143,7 @@ for (const {file, body, product, host} of files) {
           : 'Dynamic library name; requires resource/constructor tracing'});
       continue;
     }
-    if (auditOnly && !host) {
+    if (!host) {
       // A fallback DLL literal is not exact attribution when init accepts a
       // caller's DLL path. Matching PE names also cannot prove that the caller
       // supplies this fallback. Preserve the entire scope until traced.

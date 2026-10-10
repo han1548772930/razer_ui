@@ -1,6 +1,7 @@
-//! HID 1.11 short-item Feature sizes, used only to prevent backend padding.
+//! HID 1.11 short-item Input/Output/Feature sizes, including Report ID bytes.
 //! This describes the OS transport, not Razer protocol fields or capabilities.
-use anyhow::{bail, ensure};
+use anyhow::ensure;
+use razer_device::backend::ReportLengths;
 use std::collections::BTreeMap;
 
 #[derive(Clone, Copy, Default)]
@@ -10,10 +11,10 @@ struct Globals {
     id: u8,
 }
 
-pub(super) fn feature_lengths(bytes: &[u8]) -> anyhow::Result<BTreeMap<u8, usize>> {
+pub(super) fn report_lengths(bytes: &[u8]) -> anyhow::Result<ReportLengths> {
     let mut globals = Globals::default();
     let mut stack = Vec::new();
-    let mut bits = BTreeMap::<u8, u64>::new();
+    let mut bits = BTreeMap::<(u8, u8), u64>::new();
     let mut offset = 0;
     while offset < bytes.len() {
         let prefix = bytes[offset];
@@ -52,21 +53,28 @@ pub(super) fn feature_lengths(bytes: &[u8]) -> anyhow::Result<BTreeMap<u8, usize
                     .pop()
                     .ok_or_else(|| anyhow::anyhow!("HID global stack 下溢"))?
             }
-            (0, 11) => {
-                let total = bits.entry(globals.id).or_default();
+            (0, kind @ (8 | 9 | 11)) => {
+                let total = bits.entry((kind, globals.id)).or_default();
                 *total = total
                     .checked_add(u64::from(globals.size) * u64::from(globals.count))
-                    .ok_or_else(|| anyhow::anyhow!("HID Feature 位数溢出"))?;
-                ensure!(*total <= 65535 * 8, "HID Feature 报告过长");
+                    .ok_or_else(|| anyhow::anyhow!("HID 报告位数溢出"))?;
+                ensure!(*total <= 65535 * 8, "HID 报告过长");
             }
             _ => {}
         }
     }
-    if bits.is_empty() {
-        bail!("HID descriptor 未声明 Feature Report");
+    ensure!(stack.is_empty(), "HID descriptor 的 global stack 未闭合");
+    ensure!(!bits.is_empty(), "HID descriptor 未声明任何报告");
+    let mut lengths = ReportLengths::default();
+    for ((kind, id), bits) in bits {
+        ensure!(bits > 0, "HID descriptor 声明零长度报告");
+        let destination = match kind {
+            8 => &mut lengths.input,
+            9 => &mut lengths.output,
+            11 => &mut lengths.feature,
+            _ => unreachable!(),
+        };
+        destination.insert(id, bits.div_ceil(8) as usize + 1);
     }
-    Ok(bits
-        .into_iter()
-        .map(|(id, bits)| (id, bits.div_ceil(8) as usize + 1))
-        .collect())
+    Ok(lengths)
 }

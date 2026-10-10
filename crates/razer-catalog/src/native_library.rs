@@ -8,9 +8,10 @@
 //!
 //! Declaring a function proves only that the vendor JavaScript passes it to
 //! `ffi-napi-rz.Library`. It does not prove the export exists, that the ABI is
-//! correct, or that calling it is safe. The current scope therefore exposes the
-//! declaration plus read-only path resolution; mutation/lifecycle entries stay
-//! declared-but-deferred and must not be reported as applied.
+//! correct, or that calling it is safe. Reads, writes and lifecycle behavior are
+//! all in scope, but this inventory only exposes declarations and path facts.
+//! Actual implementations require source-proved ABI/protocol and caller chains;
+//! an inventory entry alone must never be reported as an applied operation.
 #![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};

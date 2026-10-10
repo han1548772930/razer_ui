@@ -3857,4 +3857,4 @@ test的逗号表达式先执行Fragment=60107；后半条件成立才执行Symbo
 
 `node tools/extract-all-product-page-chains.cjs`解析全部产品；`node tools/extract-all-product-layout-chains.cjs`连接CSS；`python -X utf8 tools/report-full-ui-chains.py --check`检查报告一致性；`node tools/validate-full-ui-chains.cjs`核对完整压缩记录、工具指纹和当前源原文。
 
-未运行厂商JS、应用、DLL、构建或测试。界面运行、视觉、真实服务读取均未验收；DLL写回仍后置。
+未运行厂商JS、应用、DLL、构建或测试。界面运行、视觉、真实服务读取均未验收；DLL写回与持久化属于当前完整实现范围，真实提交和确认链仍须逐项完成。

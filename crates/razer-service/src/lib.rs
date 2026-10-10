@@ -3,11 +3,14 @@
 //! 查询通过独立 worker 隔离 DLL 生命周期，UI 线程只接收观察结果。
 //! 声明目录归 razer-catalog，文件定位归 razer-platform；`probe_engine` 会加载 DLL，
 //! 不属于当前允许的开发验证方式。源码、ABI 与消费者状态见
-//! `docs/re/dll-readonly-inventory.md`。设备与服务写回单独集成。
+//! `docs/re/dll-readonly-inventory.md`。设备与服务写回属于当前实现范围；
+//! 已证明的直接协议读写与未闭合的 DLL/平台适配分别登记。
 #![allow(dead_code)]
+pub mod audio_util;
 pub mod native_query;
 pub mod native_read;
 pub mod runtime;
+pub mod simple_audio;
 
 pub mod dll;
 pub mod lighting;

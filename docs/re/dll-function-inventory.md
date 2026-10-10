@@ -4,7 +4,7 @@
 
 本次新增 DLL 函数正文逆向。FFI 声明、PE 导出和页面注册不能证明厂商完整 C++ 源码已经恢复；完整恢复整库的数量仍为 0。
 
-**统计与应用资产边界**：middleware 补采已完成；本次静态扫描当前 middleware 全文件集与 5 个宿主 wrapper，解析 3238 份包含 FFI 声明的 JS，产出独立的 [全量文档清单](evidence/native-library-full-current-inventory.json.zip)。该清单使用保守的动态 DLL 归属检查，不覆盖 Rust 正在消费的 `assets/data/native-library-inventory.json`；后者仍是 48 库 / 963 声明 / 369 来源的旧接入快照。本文件与链路证据采用新文档清单，不能据此声称应用已经新增 DLL 能力或运行验收成功。
+**统计与应用资产边界**：middleware 补采已完成；静态扫描当前 middleware 全文件集与 5 个宿主 wrapper，解析 3238 份包含 FFI 声明的 JS，产出 [全量文档清单](evidence/native-library-full-current-inventory.json.zip)。2026-10-10 已去掉生成器仅对文档应用动态归属门禁的区别，并重新生成 Rust 消费的 `assets/data/native-library-inventory.json`；两份 JSON 字节一致，均为 48 库 / 762 静态候选声明 / 3238 来源 / 2332 未归属条目 / 4 签名冲突。旧 963 声明 / 369 来源快照已替换，不能继续使用默认 DLL 名误认实际 init 路径；该清单同步不表示新增函数实现或运行验收。
 
 ## 范围与机器记录
 
@@ -110,6 +110,6 @@ audCapNative、ThxV3Native 的声明表及 PE 本体已取得，但此次复核�
 
 新 [服务函数正文](host-service-machine-code-current.md) 给出 bytes → 导出 RVA → singleton thunk → 构造器证明虚表 → 内部 query/生命周期 → closure → apps/audio/device-mode 线程。HID 七函数另见 [HID](receiver-native-hid-current-evidence.json)。Rust 当前请求/消费者/限制见 [只读接入契约](dll-readonly-inventory.md)。
 
-本次仅修改文档/静态工具/证据；没有修改 Rust/UI，没有加载 DLL、运行应用/厂商 JS/测试/安装器。完整功能包括 UI 操作、设备/服务读写与持久化；本地草稿和真实响应分别记录，不伪造硬件成功。
+Audio Mixer 1342 已把 47 个展开的硬件控制项接入 `razer-device`、IPC 和 portable service：26 个 DSP/寄存器控制、15 个音量/静音/峰值端点控制、6 条路由。已逐分支核对声道、位保留、峰值清零、report/caps 长度、身份、写入回读和量化。另已实现 22 条驱动矩阵路由和 ResetStream 0..8 序列的 Windows 适配/IPC；原件广播与 Rust 唯一设备限定存在明确差异，实际目标关联未运行验收。COM 激活/槽位已恢复但端点分支、初始化回调及页面消费者仍缺；整个 DLL 完成数仍为 0。其余 DLL 继续逐项实现，开发没有执行 DLL、应用、厂商 JS、测试或安装器；本地草稿与真实设备响应分别记录。
 
 检查：`node tools/generate-native-library-inventory.cjs --output=docs/re/native-library-full-current-inventory.json --check`；`node tools/audit-native-chains-current.cjs --check`；`node --max-old-space-size=4096 tools/audit-native-factories-current.cjs --check`；`python -X utf8 tools/audit-host-service-code-current.py --check`。最后一项只执行 dumpbin 读取 PE。没有重新生成应用使用的清单或运行其 DLL。

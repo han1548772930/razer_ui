@@ -39,7 +39,7 @@ assert 'razer-app-pages' in packages['razer-shell']
 assert 'razer-shell' not in packages['razer-app-pages']
 assert 'razer-app-pages' not in packages['razer-pages']
 assert packages['razer-agent']=={'razer-service'}
-assert packages['razer-ipc']=={'razer-device'}
+assert packages['razer-ipc']=={'razer-device','razer-storage'}
 for name in ['razer-shell','razer-pages','razer-app-pages','razer-settings','razer-dashboard','razer-tray']:
     assert not packages[name] & {'razer-service','razer-hid'},name
 

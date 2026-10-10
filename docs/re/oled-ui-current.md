@@ -95,4 +95,4 @@ Power 的 dim/sleep 两个 widget 已有标题开关、帮助和 48×27 原数�
 
 维护工具以 Acorn/CSS、源/资源哈希、静态原生契约和媒体解码核实，不执行供应商 JavaScript、WASM 或 DLL。允许格式化、资源准备和 `cargo check --locked --all-targets`，不运行应用、构建或测试。
 
-原 worker 编码、真实读取发布者、语言下载/上传服务、设备写回和完整视觉/焦点/滚动仍未完成。读取与状态观察、所有 UI 编辑和本地 Apply/Save 继续在范围内，DLL mutation/write-back 后置；不能因服务未接通删去已有 UI，也不能把本地 Apply 表述为设备成功。
+原 worker 编码、真实读取发布者、语言下载/上传服务、设备写回和完整视觉/焦点/滚动仍未完成。读取与状态观察、所有 UI 编辑和本地 Apply/Save、DLL 修改与设备写回全部在当前范围内；不能因服务未接通删去已有 UI，也不能把本地 Apply 表述为设备成功。

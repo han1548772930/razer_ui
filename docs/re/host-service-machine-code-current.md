@@ -79,7 +79,7 @@ simple shutdown completion (0xef90):
 | getGlobalMode | `0x13340 → 0x13530` | `0xc352a → 0xc3710 → 0xc0124` | 不同失败分支；读取 hypershift/otfs、模式记录并生成 JSON；timeTick qword转十进制字符串对象 | 模式记录的创建/删除、事件更新与 timeTick 来源/单位需继续 |
 | getGlobalShortcuts | `0x138d0 → 0x13ac0` | 查询 hotkey service；任务闭包内输出 JSON | 源名字 `GetHotkeys`，键为 `virtualKey`、`modifiers`、`argument`；缺线程是 `invalid hotkey service thread` | hotkey 具体容器类型、排序/去重、映射持久化全过程需继续 |
 | simpleGetVersionInfo | `0x2780 → 0x2970` | `0x21ad2 → 0x21cc0 → 0x1d4ba → 0x28200` | apps service 再提交到 IO thread；最终版本对象键/常量与动态 elevation 值已追到 | elevation getter 成功/失败规则、服务/IO thread 创建与销毁需继续 |
-| simpleEnumerateAudioDevices | `0x4cb0 → 0x4ea0` | `0x32082 → 0x32270` | audio service instance 的 vtable `+0x30` 返回成功位和两个字符串；缺实例另有明确错误分支 | 此动态 audio 实例的构造器/虚表与最终 Windows endpoint 查询/返回 schema 需继续；`0x6cb52` 是字符串赋值 helper，不能误称设备枚举函数 |
+| simpleEnumerateAudioDevices | `0x4cb0 → 0x4ea0` | `0x32082 → 0x32270 → 0x3a170` | IDA 已核实 `0x31db0 → 0x38f60` 构造 AudioServiceWin，虚表 `0x1f54d0 +0x30` 返回 `type/id/containerId/name` 数组；缺实例另有明确错误分支 | Rust 已接入当次枚举列表；持续事件缓存、通知/音量/会话回调与完整失败语义仍需实现，详见 [音频专项](simple-audio-current.md) |
 
 query 内部方法的第一部分都读取线程对象及其子对象；缺对象时构造 false + 错误字符串回调；正常路径构造任务，把原 callback ownership 移入任务，再提交给内部线程。线程提交与执行是两个步骤，因此同步进入导出成功不等于读数成功。
 
@@ -133,7 +133,7 @@ DeviceModeService_GetGlobalMode(instance, callback):
 
 它把 success=true、reason/result 字符串保存进新任务，提交回线程，再逐层完成回调；临时 JSON、字符串、引用计数在函数退出前清理。`0x25922` 实际是捕获实例/callback 的任务对象构造器，并非版本字段解析器。静态常量是该签名二进制中的逻辑证据，UI 仍必须使用实际响应或明确 unavailable，不能把文档常量冒充本机成功读取。
 
-audio 的 `0x32270` 只在 service instance 存在时，通过它的首虚表 `+0x30` 传入两个可写字符串对象，保存 AL 返回成功位；不存在实例时构造错误字符串。此前仅凭 call 位置可能把 `0x6cb52` 当枚举 helper；本次正文证明它是小字符串/heap 分支的字符串写入，服务读取真正仍在未消歧虚表目标。此处明确停在真实未知边界。
+audio 的 `0x32270` 只在 service instance 存在时，通过它的首虚表 `+0x30` 传入两个可写字符串对象，保存 AL 返回成功位；不存在实例时构造错误字符串。`0x6cb52` 是小字符串/heap 分支的字符串写入，并非枚举函数。后续 IDA/Hex-Rays 证据已将该虚表目标消歧为 `0x3a170`，详见 [原件、32 个函数及 Rust 消费者](simple-audio-current.md)；本页原 dumpbin 证据保留原取证范围，不把后续结论倒填为当时已证明。
 
 ## 同一当前 DLL 中的 Windows 音频设备实现
 
@@ -146,10 +146,10 @@ audio 的 `0x32270` 只在 service instance 存在时，通过它的首虚表 `+
 
 `0x3e864` 首先 `CoCreateInstance(CLSID, NULL, 1, IID, &ptr)`。若返回 `0x800401f0` 且允许重试标志为真，则调用 `CoInitializeEx(NULL, 4)`，并只递归重试一次。`0x397aa` 通过枚举器虚表 `+0x18` 以 `eAll=2`、active 状态掩码 `1` 请求端点；集合 `+0x18` 取得数量、`+0x20` 取得 Item、`+0x10` 释放，随后查询名称并交给音频设备集合代码。
 
-这证明原版同一 DLL 中确实调用 Windows Core Audio，不能把原版 DLL 描述成不依赖 Windows API。它仍未证明上述导出 audio 查询的动态实例就是这个具体对象：该实例构造器/虚表归属和最终返回 JSON schema 尚未消歧，禁止把两段链直接拼成已闭环，或据此伪造 UI 列表。
+这证明原版同一 DLL 中确实调用 Windows Core Audio，不能把原版 DLL 描述成不依赖 Windows API。后续 [IDA 证据](simple-audio-current-evidence.json) 独立核实构造器、实例写入和虚表归属，补齐导出到该具体对象及 JSON schema 的链路；Rust 已接入真实系统枚举。持续对象生命周期、通知及完整错误分支仍未等价，不据此宣称整个服务完成。
 
 ## 重现静态验证与下一层
 
 `python -X utf8 tools/audit-host-service-code-current.py --check` 重新核对实际 DLL SHA、导出 RVA、`.pdata`、构造器/虚表、源码字符串、原始机器码 SHA 与反汇编。工具只执行微软 dumpbin 读取 PE，没有执行被分析的 DLL。
 
-继续顺序：先恢复上述 final service instance helper 和序列化对象，再追线程创建/调度/停止、事件注册/反注册、异常释放与最终 Windows/服务调用；随后按 [全库清单](dll-function-inventory.md) 逐产品 DLL、其他 Node 插件与辅助程序展开。其余库不因有 FFI 表或导出表而标成已恢复内部实现。
+后续原生逆向按用户要求以 IDA/Hex-Rays 为主，保留原字节、函数范围、伪代码和交叉引用；本页既有 dumpbin 收据仍用于复核原取证范围。继续追线程创建/调度/停止、事件注册/反注册、异常释放与最终 Windows/服务调用，并按 [全库清单](dll-function-inventory.md) 逐产品 DLL、其他 Node 插件与辅助程序展开。其余库不因有 FFI 表或导出表而标成已恢复内部实现。

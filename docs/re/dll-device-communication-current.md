@@ -29,7 +29,7 @@ MSVC 将同一逻辑函数拆成多个相邻 `RUNTIME_FUNCTION` 区间，区间�
 | 产品 DLL 内的 HID report | Audio Mixer 两层 DLL 已取得明确分发表和报文 helper，见 [Mixer 专项](audio-mixer-dll-protocol-current.md) | 属性参数、selector、范围/比例、返回消费者和实际型号门控；查询也需要发出请求包 |
 | WinUSB/固件接口 | `Razer_Upgrade_SDK.dll` 的导入与潜在调用路径 | 端点、控制请求及固件状态机；不能把升级命令当普通配置 |
 | 驱动 IOCTL | 二进制图保留 `DeviceIoControl` 的实际调用位置；Mixer ResetStream 等有独立路径 | 精确控制码、对象/句柄来源、输入输出布局与错误处理 |
-| Windows COM/音频/媒体 | 原 DLL 包含 COM 激活和 Media Foundation 路径；所有间接接口槽继续保留未知 | GUID、接口槽、音频 endpoint 身份、DSP/服务转换；纯 HID 无法覆盖这些已经确认存在的调用 |
+| Windows COM/音频/媒体 | 原 DLL 包含 COM 激活和 Media Foundation 路径；Mixer 已核对四个 COM GUID、激活段和 Volume/Mute 槽位，其他间接槽继续保留未知 | 音频 endpoint 身份、回调/生命周期、DSP/服务转换与平台适配；纯 HID 无法覆盖这些调用 |
 | 外部服务、RPC、socket | 当前 THX、routing 和 Hue 等文件具有相关导入；实际潜在路径逐文件记录 | 服务地址、进程/连接生命周期、消息帧、订阅、缓存与失败语义；导入存在本身不证明产品已激活 |
 | 动态加载的二级库 | DLL 机器码中 LoadLibrary/GetProcAddress；Mixer 已追到具体存储槽和二级函数 | 库路径选择、实际资源版本、函数指针类型、初始化和卸载；导出相同不代表同一个 DLL |
 
@@ -41,18 +41,20 @@ MSVC 将同一逻辑函数拆成多个相邻 `RUNTIME_FUNCTION` 区间，区间�
 
 这条链说明只恢复外层 `MixerSDKLib_PropertyControl` 的 FFI 签名会遗漏 37 个内部属性处理函数。另发现当前 JS 出现 `RazerT2KeyShifterLevelEnable`，但该 child 分发表没有这项；不补造函数、不假定成功。
 
+Rust 已接通 47 个展开控制项的直接 HID 读写及 agent/IPC，其中包括五个硬件端点的原声道/位保留逻辑和六条混音路由。另已实现 28 个 float32 矩阵中的 22 条驱动路由、两个矩阵 IOCTL 及 ResetStream 0..8 序列的 Windows 适配/IPC；原件遍历全部接口与 Rust 唯一 ContainerId 限定的差异明确保留。COM 激活/槽位已恢复但端点分支仍缺，页面尚未接通，驱动目标关联未运行验收，不能把配方数或分发表数登记为全库完成。
+
 ## OpenLogi 的参考范围
 
 已按用户提供的仓库静态审阅 [OpenLogi](openlogi-device-communication-review.md)，固定 commit `1505c6525470bc0a38ae3ba79d70e950347d2532`，校验 157 份文件。可参考 transport、协议、逻辑设备、接收器子设备、能力发现、请求响应关联和错误状态的分层。
 
-OpenLogi 使用 Logitech HID++ 1.0/2.0，不能据此采用 Logitech feature ID、report `0x10/0x11` 或接收器槽位协议控制 Razer。其源码还直接调用 Windows HID API；“直接通信”并不意味着底层没有操作系统接口。本轮只增加证据，不改动本项目依赖决策。
+OpenLogi 使用 Logitech HID++ 1.0/2.0，不能据此采用 Logitech feature ID、report `0x10/0x11` 或接收器槽位协议控制 Razer。其源码还直接调用 Windows HID API；“直接通信”并不意味着底层没有操作系统接口。当前共享 Rust 协议与跨平台 HID 后端以 Razer 证据实现；真正依赖 COM/驱动的原路径仍需隔离平台适配。
 
-## 后续逐项恢复顺序
+## 逐项恢复与完整实现顺序
 
 1. 根据真实产品 factory、DeviceInfo 和已加载资源追到实际通道，不能用共享文件的存在认定产品启用全部功能。
 2. 对每个必要 API 追 export → 虚表/分发表/函数指针 → 二级库/驱动/服务/OS；记录初始化、工作线程、回调和卸载。
 3. 对每个设备请求记录接口选择、report/控制码、字节布局、校验、响应字段、状态、超时/重试与消费者。getter/setter 名称只用于导航，不能作为副作用判定。
-4. 证据闭合后接入 source-verified 读取和状态观察；保留未知和断连错误。UI 编辑/本地草稿照常保留，真实设备设置写回仍按 AGENTS.md 后置。
+4. 证据闭合后接入读取、状态观察、修改、设备/服务写回与持久化，并连到页面或后台消费者。全部属于当前实现范围，不再另设写回集成阶段；逐项核实提交、响应、刷新、错误、取消和释放。本地草稿与真实设备状态分别标明，未知或断连不能冒充成功。
 
 全量图只是所有已取得 PE 的内部正文起点。它不覆盖尚未取得的原生包，不将以上步骤登记为已经完成。
 
@@ -61,6 +63,7 @@ OpenLogi 使用 Logitech HID++ 1.0/2.0，不能据此采用 Logitech feature ID�
 ```text
 python tools/audit-dll-device-communication.py --check
 python tools/audit-cmmixer-protocol-current.py --check
+python tools/audit-cmmixer-controls-current.py --check
 node tools/audit-openlogi-reference.cjs --check
 ```
 

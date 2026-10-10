@@ -47,6 +47,7 @@ for(const productId of readProducts){
   ['charging','getChargingStatus',[0],2],
  ['polling','getUSBHighSpeedPollingRate',[1],2],
   ['dpi','getDpiLevel',[0],7],
+  ['idle','getTimeToSleep',[],2],
  ];
  for(const [name,methodName,payload,minBytes]of specs){
   const m=method(methodName);let helper;
@@ -117,10 +118,22 @@ for(const productId of readProducts){
  includes('polling result parser','switch(e.data[1])','profileId:e.data[0],pollingRate:t');
  exact('dpi result parser','e=>{e.jsonData={classId:e.data[0],dpiX:a.Jz(e.data[1],e.data[2]),dpiY:a.Jz(e.data[3],e.data[4]),dpiZ:a.Jz(e.data[5],e.data[6])}}');
  includes('DPI read-before-write caller (only query is in scope)','yield r.getDpiLevel(0)');
+ exact('idle result parser','e=>{e.jsonData={timeToSleep:a.Jz(e.data[0],e.data[1])}}');
+ const idleAudit=require('./device-query-source.cjs').inspect(plan,boot);
+ const idleCaller=idleAudit.definitionsContaining('.setTimeToSleep(').find(t=>{
+  const text=idleAudit.source.snippet(t.id,t.node);
+  return text.includes('.getTimeToSleep()')&&text.includes('new Error("data not match")')&&text.includes('60*')&&text.includes('singleProfileDevice');
+ });
+ if(!idleCaller)throw Error('Missing sleep setter/readback caller');
+ record(idleCaller.id,'idle write/readback caller and units',idleCaller.node);
  products.push({product_id:productId,source_class:plan.selected_class,device_info:plan.device_info,factory:plan.factory,bootstrap:boot.bootstrap,
   direct_pids:[info.productId,info.dongleId],vendor_id:info.vendorId,claim_interface:info.claimInterface,report_id:0,report_bytes:91,transaction_prefix:0,transaction_modulus:31,
   min_dpi:infoField('minDPI'),max_dpi:infoField('maxDPI'),queries,polling_codes:source.literal(polling.id,polling.node),charging_codes:source.literal(charging.id,charging.node),receipts,acquisition:source.acquisition});
 }
+const timings=JSON.parse(fs.readFileSync(path.join(root,'assets/data/receiver-query-capabilities.json'),'utf8'));
+const expansion=require('./expand-device-query-capabilities.cjs').expand(plans,bootstrap,products[0],timings);
+products.push(...expansion.products);
+products.sort((a,b)=>a.product_id-b.product_id);
 const hostPath='.ref/host-4.0.827/electron/UsbRzDeviceAction.js';
 const hostText=fs.readFileSync(path.join(root,hostPath),'utf8');
 const hostStart=hostText.indexOf('case"hid.getFeatureReport"');
@@ -129,7 +142,7 @@ if(hostStart<0||hostEnd<0)throw Error('Current host HID feature-read handler cha
 const hostReceipt=hostText.slice(hostStart,hostEnd);
 if(!hostReceipt.includes('catch(e)')||!hostReceipt.includes('return s'))throw Error('Host feature-read error behavior changed');
 const hostEvidence={path:hostPath,sha256:hash(hostText),offset:Buffer.byteLength(hostText.slice(0,hostStart)),end:Buffer.byteLength(hostText.slice(0,hostEnd)),source:hostReceipt};
-const report={schema_version:1,method:'Shared current rzDevice25 read methods and actual product binding/call parameters; static evidence only. No whole task runner, device-mode setter or vendor bootstrap is executable from this artifact.',native_read_retry:{host_get_feature_error:hostEvidence,middleware:'Host catches native getFeatureReport errors and returns undefined; middleware substitutes an empty 90-byte response, detects the missing transaction and requests a new OUT command. The app mirrors this by ending the current IN retry loop and continuing the OUT retry loop.'},products};
+const report={schema_version:1,method:'Shared current rzDevice25 read methods and actual product binding/call parameters; static evidence only. Every additional product resolves its own factory, inheritance, methods and callers and passes conservative semantic gates. Failed gates remain explicit gaps. No whole task runner, device-mode setter or vendor bootstrap is executable from this artifact.',native_read_retry:{host_get_feature_error:hostEvidence,middleware:'Host catches native getFeatureReport errors and returns undefined; middleware substitutes an empty 90-byte response, detects the missing transaction and requests a new OUT command. The app mirrors this by ending the current IN retry loop and continuing the OUT retry loop.'},products,gaps:expansion.gaps};
 const file=path.join(root,'docs/re/mouse-read-capabilities-current-evidence.json'),bytes=JSON.stringify(report,null,2)+'\n';
 if(check){if(fs.readFileSync(file,'utf8')!==bytes)throw Error('Stale mouse read evidence');}else fs.writeFileSync(file,bytes);
 const runtime=products.map(p=>{
