@@ -1,8 +1,11 @@
 //! Current 1352 XU volume intents and real simple_service endpoint observations.
 //! Default/restored local values never issue a setter.
 use super::AudioProductWorkspace;
+use gpui_kit::component::{ActiveTheme, WindowExt as _, h_flex};
 use gpui_kit::*;
 use razer_device::simple_audio_volume::{AudioVolumeReadResult, AudioVolumeWriteResult};
+use razer_i18n::t;
+use razer_widgets::{source_slider::SourceSlider, surface};
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -63,6 +66,104 @@ impl State {
 }
 impl EventEmitter<AudioVolumeRequest> for AudioProductWorkspace {}
 impl AudioProductWorkspace {
+    /// Current 1352 `XU` uses the widget's title switch, one range, and its
+    /// OpenSoundVolume command. The descriptor's extra checkbox and repeated
+    /// VOLUME_HEADER label are not mounted by that component.
+    pub(super) fn source_volume_panel(&self, cx: &mut Context<Self>) -> AnyElement {
+        let enabled = self
+            .volume_enabled()
+            .unwrap_or_else(|| self.draft["device"]["volume"]["isEnabled"] == true);
+        let value = self
+            .volume_preview()
+            .or_else(|| self.volume_value())
+            .map(f32::from)
+            .unwrap_or_else(|| {
+                self.draft["device"]["volume"]["value"]
+                    .as_f64()
+                    .unwrap_or(50.) as f32
+            });
+        let state = &self.sliders["/device/volume/value"];
+        surface::panel_with_title_switch(
+            t("VOLUME_HEADER"),
+            surface::SynapseSwitch::new("audio-volume-switch")
+                .checked(enabled)
+                .accessibility_label(t("VOLUME_HEADER"))
+                .on_change(cx.listener(|this, enabled, window, cx| {
+                    this.toggle_volume(*enabled, window, cx);
+                })),
+            div()
+                .absolute()
+                .right(surface::css(10.))
+                .top(surface::css(10.))
+                .child(surface::help_control(
+                    "audio-volume-help",
+                    t("VOLUME_NOMMO_TOOLTIP"),
+                )),
+            cx,
+        )
+        .relative()
+        .child(
+            div()
+                .relative()
+                .child(
+                    SourceSlider::new(state, value / 100.)
+                        .tip(Some(format!("{value:.0}")))
+                        .enabled(enabled),
+                )
+                .child(
+                    h_flex()
+                        .absolute()
+                        .bottom(surface::css(-2.))
+                        .w_full()
+                        .justify_between()
+                        .text_size(surface::css(14.))
+                        .opacity(if enabled { 1. } else { 0.3 })
+                        // XU passes explicit string labels to VU for this page.
+                        .child("0")
+                        .child("100"),
+                ),
+        )
+        .child(
+            gpui_kit::base::Button::new("audio-open-volume-mixer")
+                .group("audio-open-volume-mixer")
+                .accessibility_label(t("OPEN_WINDOW_VOLUME_MIXER"))
+                .h(surface::css(44.))
+                .line_height(surface::css(44.))
+                .flex()
+                .items_center()
+                .self_start()
+                .text_color(cx.theme().foreground)
+                .text_size(surface::css(14.))
+                .underline()
+                .hover(|style| style.text_color(cx.theme().primary))
+                .focus_visible(|style| style.text_color(cx.theme().primary))
+                .child(t("OPEN_WINDOW_VOLUME_MIXER"))
+                .child(
+                    div()
+                        .relative()
+                        .size(surface::css(20.))
+                        .ml(surface::css(4.))
+                        .mb(surface::css(2.))
+                        .child(img("synapse/audio-volume-external-sprite.svg#link").size_full())
+                        .child(
+                            img("synapse/audio-volume-external-sprite.svg#hover")
+                                .absolute()
+                                .inset_0()
+                                .size_full()
+                                .opacity(0.)
+                                .group_hover("audio-open-volume-mixer", |style| style.opacity(1.)),
+                        ),
+                )
+                .on_click(|_, window, cx| {
+                    if let Err(error) =
+                        razer_platform::system::open(razer_platform::system::Properties::Volume)
+                    {
+                        window.push_notification(format!("无法打开系统音量：{error}"), cx);
+                    }
+                }),
+        )
+        .into_any_element()
+    }
     pub fn set_volume_active(&mut self, active: bool, cx: &mut Context<Self>) {
         let active = active && self.spec.product_id == 1352;
         if self.volume.active != active {
@@ -311,32 +412,5 @@ impl AudioProductWorkspace {
             self.request_volume_read(cx);
         }
         cx.notify();
-    }
-    pub(super) fn volume_status(&self) -> String {
-        if let Some(request) = self.volume.pending {
-            return match request.operation {
-                AudioVolumeOperation::Read => "正在读取系统扬声器音量…",
-                AudioVolumeOperation::Write { .. } => "正在设置音量并回读…",
-            }
-            .into();
-        }
-        if let Some(error) = &self.volume.error {
-            return match &self.volume.warning {
-                Some(warning) => format!("{error}；{warning}"),
-                None => error.clone(),
-            };
-        }
-        if let Some(reading) = &self.volume.observed {
-            let observed = format!(
-                "已读取扬声器：{}% · {}",
-                reading.volume,
-                if reading.muted { "静音" } else { "未静音" }
-            );
-            return match &self.volume.warning {
-                Some(warning) => format!("{observed}；{warning}"),
-                None => observed,
-            };
-        }
-        "扬声器音量尚未读取；当前数值不能视为设备状态".into()
     }
 }

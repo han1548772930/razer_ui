@@ -5645,6 +5645,7 @@ dependencies = [
  "razer-settings",
  "razer-storage",
  "razer-widgets",
+ "regex",
  "roxmltree 0.21.1",
  "serde",
  "serde_json",

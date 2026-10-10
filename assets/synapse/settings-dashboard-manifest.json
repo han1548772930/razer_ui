@@ -1,0 +1,99 @@
+{
+  "short_name": "dashboard",
+  "name": "dashboard",
+  "version": "0.0.86",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/svg+xml"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "deviceName": "",
+  "gitMetadata": {
+    "branch": "master-06oct2026",
+    "currentBranch": "master",
+    "commit": "c592abcb21778aa57a1f4e3efead4603be71e1e7",
+    "buildTime": 1790824923528
+  },
+  "dependencies": [
+    {
+      "name": "commonrepository",
+      "version": "c83b6f47890c6e19ce25310c52af425ab73b7e08",
+      "branch": "master-21sep2026-dashboard"
+    },
+    {
+      "name": "jstestrzdevice",
+      "version": "33594209229db4dc1cf9f7f963341d2296c1ecba",
+      "branch": "master-silver"
+    },
+    {
+      "name": "loginrepository",
+      "version": "3483be5203a4649fe520c3714eeccdb7fa7960d5",
+      "branch": "staging"
+    },
+    {
+      "name": "razer-anne-utilities",
+      "version": "d1c292a14878609c36b4a4d62e7a735a3735d215",
+      "branch": "staging"
+    },
+    {
+      "name": "razer-app",
+      "version": "1d10fe5b3b15aa6817ac414e7a30d1f36f37c719",
+      "branch": "staging"
+    },
+    {
+      "name": "razer-cli-tools",
+      "version": "9de574e5fd3b124075c7662dc78b7f67f3d81ff8",
+      "branch": "staging"
+    },
+    {
+      "name": "razer-config",
+      "version": "1dd6c5ee907123e17db22066065827284e206c59",
+      "branch": "master"
+    },
+    {
+      "name": "razer-version",
+      "version": "5ad5c1f7b8326dc8b74762e9a3758d387272b084",
+      "branch": "DEFAULT_REPO_BRANCH"
+    },
+    {
+      "name": "rz-app-feature",
+      "version": "26f3ce7111e8e9acd342510921c0f4b3b72e8786",
+      "branch": "DEFAULT_REPO_BRANCH"
+    }
+  ],
+  "buildVersion": 2610010314,
+  "resourceManifest": {
+    "resources": [
+      {
+        "resourceName": "WinLauncher",
+        "resourceVersion": "1.0.5.0",
+        "url": "https://app-assets.razer.com/files/synapse/wLauncher_v1.0.5.0.exe",
+        "path": "",
+        "overwriteApp": "Common",
+        "type": "application/x-msdownload",
+        "size": 240904,
+        "sha256": "695340D1969189721772C5CEABD1921BF5A27F5BD916026D2C618DA5011671A5",
+        "integrity": "sha256-aVNA0ZaRiXIXcsXOq9GSG/Wif1vZFgJtLGGNpQEWcaU=",
+        "noCache": false,
+        "restartRequired": false,
+        "action": {
+          "saveToDisk": {
+            "filePath": ""
+          }
+        }
+      }
+    ],
+    "jws": {
+      "integrity": "sha256-sSjkuwGmdRndPZBNyYPFDYDkLWaMbwtZgIxU6NI8JiY="
+    },
+    "version": "1.0.2",
+    "url": "manifest-1.0.2.json",
+    "releaseDate": 1768443955043
+  }
+}

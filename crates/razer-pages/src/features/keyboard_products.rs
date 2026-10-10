@@ -17,16 +17,28 @@ use std::{collections::BTreeMap, sync::OnceLock};
 
 #[path = "keyboard_actuation.rs"]
 mod actuation;
+#[path = "keyboard_actuation_submission.rs"]
+mod actuation_submission;
+pub use actuation_submission::KeyboardActuationRequested;
 #[path = "keyboard_brightness.rs"]
 mod brightness;
 #[path = "keyboard_calibration.rs"]
 mod calibration;
 #[path = "keyboard_gaming_rows.rs"]
 mod gaming_rows;
+#[path = "keyboard_polling.rs"]
+mod polling;
+#[path = "keyboard_power.rs"]
+mod power;
+pub use polling::KeyboardPollingConnection;
+pub use power::{KeyboardIndicatorLedObservation, KeyboardIndicatorLedRequested};
+#[path = "keyboard_huntsman679.rs"]
+mod huntsman679;
 #[path = "keyboard_properties.rs"]
 mod properties;
 pub use brightness::KeyboardBrightnessReadRequested;
 pub use brightness::KeyboardBrightnessRequested;
+pub use huntsman679::KeyboardGamepadTesterObservation;
 #[path = "keyboard_snap_tap.rs"]
 mod snap_tap;
 pub(super) use calibration::is_factory_profile;
@@ -69,6 +81,13 @@ impl KeyboardProductSpec {
                 profile.entry(key.clone()).or_insert_with(|| value.clone());
             }
         }
+        if self.product_id == 691 {
+            if let Some(profile) = profile.as_object_mut() {
+                profile
+                    .entry("oledLowBatteryWarningDisplay")
+                    .or_insert_with(|| json!({"enabled":true,"value":20}));
+            }
+        }
         profile
     }
 }
@@ -109,6 +128,7 @@ pub struct KeyboardProductWorkspace {
     syncing: bool,
     scroll: ScrollHandle,
     actuation: Option<actuation::State>,
+    actuation_submission: actuation_submission::State,
     calibration_intro_visible: bool,
     /// Source `profileReducer.isFactoryDefaultProfile`; the calibration page
     /// renders a warning and disables its customize surface for this profile.
@@ -120,6 +140,11 @@ pub struct KeyboardProductWorkspace {
     /// Retained OS icon choice; failed queries fall back to the legacy icon.
     properties_icon: Option<&'static str>,
     brightness: brightness::State,
+    polling_connection: Option<KeyboardPollingConnection>,
+    power_indicator: power::IndicatorState,
+    /// Current 679's source drawer is independent of its key mapping popup.
+    button_drawer_open: bool,
+    huntsman679: huntsman679::State,
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
@@ -142,12 +167,18 @@ impl KeyboardProductWorkspace {
             syncing: false,
             scroll: ScrollHandle::new(),
             actuation: None,
+            actuation_submission: actuation_submission::State::default(),
             calibration_intro_visible: calibration::load_intro_visibility(),
             factory_default_profile,
             calibration_preview: false,
             calibration_modal: None,
             snap_tap: None,
-            properties_icon: matches!(pid, 515 | 614 | 642 | 678 | 679 | 688).then(|| {
+            power_indicator: power::IndicatorState::default(),
+            button_drawer_open: false,
+            huntsman679: huntsman679::State::default(),
+            // Keep this gated by the independently traced mounted caller,
+            // rather than the presence of an unused shared source component.
+            properties_icon: properties::supported(pid).then(|| {
                 if razer_platform::system::is_windows_11() {
                     "synapse/keyboard-properties-win11.svg"
                 } else {
@@ -155,6 +186,7 @@ impl KeyboardProductWorkspace {
                 }
             }),
             brightness: brightness::State::default(),
+            polling_connection: None,
         };
         if this.draft.pointer("/brightness/value").is_some() {
             this.add_slider("/brightness/value", 0., 100., 1., window, cx);
@@ -194,6 +226,9 @@ impl KeyboardProductWorkspace {
             self.dismiss_calibration(window, cx);
             self.clear_actuation_selection();
             self.page = key.into();
+            if key == "TAB_POWER" {
+                self.restart_indicator_animation();
+            }
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
         }
@@ -221,6 +256,7 @@ impl KeyboardProductWorkspace {
         snapshot
     }
     pub fn restore(&mut self, value: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_actuation_connection();
         self.invalidate_brightness();
         self.dismiss_calibration(window, cx);
         self.draft = self.spec.default_profile();
@@ -459,19 +495,32 @@ impl KeyboardProductWorkspace {
             .pointer("/brightness/isEnabled")
             .and_then(Value::as_bool)
             .unwrap_or(false);
-        let mut left = surface::panel(t("BRIGHTNESS"), cx)
-            .child(self.toggle("/brightness/isEnabled", t("BRIGHTNESS"), true, cx))
-            .child(self.range("/brightness/value", t("BRIGHTNESS"), on));
-        if razer_device::keyboard_settings::capability(self.spec.product_id).is_some() {
-            left = left.child(
-                div()
-                    .text_sm()
-                    .text_color(cx.theme().muted_foreground)
-                    .child(self.brightness_runtime_text()),
-            );
-        }
+        let brightness = surface::panel_with_title_switch(
+            t("BRIGHTNESS_HEADER"),
+            surface::SynapseSwitch::new("keyboard-brightness-enabled")
+                .accessibility_label(t("BRIGHTNESS_HEADER"))
+                .checked(on)
+                .on_change(cx.listener(|this, value: &bool, _, cx| {
+                    this.write("/brightness/isEnabled", json!(*value), cx);
+                    this.request_brightness(cx);
+                })),
+            surface::help_control("keyboard-brightness-help", t("BRIGHTNESS_TOOLTIP")),
+            cx,
+        )
+        .children(self.sliders.get("/brightness/value").map(|slider| {
+            v_flex()
+                .child(Slider::new(slider).disabled(!on))
+                .child(surface::slider_tags("0", None, "100", None))
+        }));
+        let mut left = v_flex().child(brightness);
         if self.draft.get("switchOffLighting").is_some() {
             left = left.child(self.switch_off_lighting(window, cx));
+        }
+        if self.spec.product_id == 679 {
+            return surface::page_columns()
+                .child(surface::page_column(left))
+                .child(surface::page_column(self.huntsman_effects(cx)))
+                .into_any_element();
         }
         let mut right = surface::panel(t("QUICK_EFFECTS"), cx);
         if let Some(effects) = self.spec.config["QUICK_EFFECTS"].as_array() {
@@ -622,215 +671,6 @@ impl KeyboardProductWorkspace {
         cx.emit(KeyboardProductChanged);
         cx.notify();
     }
-    fn choices(
-        &self,
-        path: &str,
-        options: &[Value],
-        enabled: bool,
-        cx: &Context<Self>,
-    ) -> AnyElement {
-        h_flex()
-            .gap_2()
-            .flex_wrap()
-            .children(options.iter().filter_map(|value| {
-                let value = value.as_u64()?;
-                let path = path.to_owned();
-                Some(
-                    Button::new(SharedString::from(format!(
-                        "keyboard-choice-{path}-{value}"
-                    )))
-                    .label(razer_i18n::t_value("MIN", value as i64))
-                    .outline()
-                    .selected(self.draft.pointer(&path).and_then(Value::as_u64) == Some(value))
-                    .disabled(!enabled)
-                    .on_click(
-                        cx.listener(move |this, _, _, cx| this.write(&path, json!(value), cx)),
-                    ),
-                )
-            }))
-            .into_any_element()
-    }
-    fn power(&self, cx: &Context<Self>) -> AnyElement {
-        if self.spec.product_id == 691 {
-            return self.power_691(cx);
-        }
-        let mut left = v_flex().gap_5();
-        let mut right = v_flex().gap_5();
-        if let Some(kind) = self.spec.controls["dim_kind"].as_str() {
-            let path = if kind == "choices" {
-                "/dimKeyboardLighting"
-            } else {
-                "/dimLighting"
-            };
-            let enabled = self
-                .draft
-                .pointer(&format!("{path}/isEnabled"))
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-            let panel = surface::panel(t("DIM_KEYBOARD_LIGHTING_TITLE"), cx)
-                .child(surface::note(t("DIM_KEYBOARD_LIGHTING_DESC"), cx))
-                .child(self.toggle(&format!("{path}/isEnabled"), t("IDLE_FOR_MIN"), true, cx));
-            left = left.child(if kind == "choices" {
-                panel.child(
-                    self.choices(
-                        &format!("{path}/value"),
-                        self.spec.config["DIM_KEYBOARD_LIGHTING_VALUES"]
-                            .as_array()
-                            .unwrap(),
-                        enabled,
-                        cx,
-                    ),
-                )
-            } else {
-                panel.child(self.range(&format!("{path}/value"), String::new(), enabled))
-            });
-        }
-        if let Some(kind) = self.spec.controls["power_kind"].as_str() {
-            let enabled = kind == "mouse_slider"
-                || self.draft["powerSaving"]["isEnabled"]
-                    .as_bool()
-                    .unwrap_or(false);
-            let mut panel = surface::panel(t("KEYBOARD_POWER_SAVING_TITLE"), cx)
-                .child(surface::note(t("KEYBOARD_POWER_SAVING_DESC"), cx));
-            if kind != "mouse_slider" {
-                panel =
-                    panel.child(self.toggle("/powerSaving/isEnabled", t("IDLE_FOR_MIN"), true, cx));
-            }
-            right = right.child(if kind == "choices" {
-                panel.child(
-                    self.choices(
-                        "/powerSaving/value",
-                        self.spec.config["KEYBOARD_WIRELESS_POWER_SAVING_VALUES"]
-                            .as_array()
-                            .unwrap(),
-                        enabled,
-                        cx,
-                    ),
-                )
-            } else {
-                panel.child(self.range(
-                    if kind == "mouse_slider" {
-                        "/powerSavingValue"
-                    } else {
-                        "/powerSaving/value"
-                    },
-                    String::new(),
-                    enabled,
-                ))
-            });
-        }
-        surface::page_columns()
-            .child(surface::page_column(left))
-            .child(surface::page_column(right))
-            .into_any_element()
-    }
-    /// Current 691 Power `y/u`: switches are part of the title and choices
-    /// contain raw numeric labels. The other three source widgets are pending.
-    fn power_691(&self, cx: &Context<Self>) -> AnyElement {
-        let widget = |path: &'static str,
-                      title: &'static str,
-                      description: &'static str,
-                      help: &'static str,
-                      values: &'static str| {
-            let enabled_path = format!("{path}/isEnabled");
-            let value_path = format!("{path}/value");
-            let enabled = self
-                .draft
-                .pointer(&enabled_path)
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-            let switch =
-                surface::SynapseSwitch::new(SharedString::from(format!("691-power-{path}")))
-                    .accessibility_label(t(title))
-                    .checked(enabled)
-                    .on_change(cx.listener(move |this, enabled: &bool, _, cx| {
-                        this.write(&enabled_path, json!(*enabled), cx)
-                    }));
-            let choices = h_flex()
-                .relative()
-                .flex_wrap()
-                .gap(surface::css(10.))
-                .children(
-                    self.spec.config[values]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .filter_map(|value| {
-                            let value = value.as_u64()?;
-                            let value_path = value_path.clone();
-                            let selected = self.draft.pointer(&value_path).and_then(Value::as_u64)
-                                == Some(value);
-                            Some(
-                                gpui_kit::base::Button::new(SharedString::from(format!(
-                                    "691-power-{path}-{value}"
-                                )))
-                                .accessibility_label(value.to_string())
-                                .disabled(!enabled)
-                                .w(surface::css(48.))
-                                .h(surface::css(27.))
-                                .rounded(surface::css(3.))
-                                .bg(rgb(0x222222))
-                                .text_size(surface::css(14.))
-                                .text_color(rgb(0xcccccc))
-                                .border_1()
-                                .border_color(if selected {
-                                    rgb(0x44d62c)
-                                } else {
-                                    rgb(0x5d5d5d)
-                                })
-                                .hover(|button| button.border_color(rgb(0x44d62c)))
-                                .child(value.to_string())
-                                .on_click(cx.listener(
-                                    move |this, _, _, cx| this.write(&value_path, json!(value), cx),
-                                )),
-                            )
-                        }),
-                )
-                .when(!enabled, |row| {
-                    row.child(
-                        div()
-                            .absolute()
-                            .left_0()
-                            .top_0()
-                            .w(surface::css(300.))
-                            .h(surface::css(30.))
-                            .bg(rgb(0x111111))
-                            .opacity(0.5)
-                            .occlude(),
-                    )
-                });
-            surface::panel_with_title_switch(t(title), switch, div(), cx)
-                .relative()
-                .child(
-                    div()
-                        .absolute()
-                        .top(surface::css(10.))
-                        .right(surface::css(10.))
-                        .child(surface::help_control(
-                            SharedString::from(format!("691-power-help-{path}")),
-                            t(help),
-                        )),
-                )
-                .child(div().child(t(description)))
-                .child(div().mt(surface::css(20.)).child(choices))
-        };
-        surface::page_columns()
-            .child(surface::page_column(widget(
-                "/dimKeyboardLighting",
-                "DIM_LIGHTING_HEADER",
-                "DIM_KEYBOARD_LIGHTING_DESC",
-                "DIM_KEYBOARD_LIGHTING_TIPS",
-                "DIM_KEYBOARD_LIGHTING_VALUES",
-            )))
-            .child(surface::page_column(widget(
-                "/powerSaving",
-                "KEYBOARD_POWER_SAVING_TITLE",
-                "KEYBOARD_POWER_SAVING_DESC",
-                "KEYBOARD_POWER_SAVING_TIPS",
-                "KEYBOARD_WIRELESS_POWER_SAVING_VALUES",
-            )))
-            .into_any_element()
-    }
     fn gaming_mode(&self, cx: &Context<Self>) -> AnyElement {
         let state = self.draft["gamingMode"]["state"].as_u64().unwrap_or(0);
         let enabled = state != 0;
@@ -849,91 +689,103 @@ impl KeyboardProductWorkspace {
             value["isWindowsKeyDisabled"] = json!(state != 0);
             this.write("/gamingMode", value, cx);
         };
-        surface::panel(t("GAMING_MODE_HEADER"), cx)
-            .child(
-                Checkbox::new("keyboard-game-mode")
-                    .label(t("GAME_MODE"))
-                    .checked(enabled)
-                    .on_click(cx.listener(move |this, value, _, cx| {
-                        set_mode(
-                            this,
-                            if *value {
-                                if in_game { 2 } else { 1 }
-                            } else {
-                                0
-                            },
-                            in_game,
-                            cx,
-                        )
-                    })),
-            )
-            .child(
-                Checkbox::new("keyboard-game-mode-in-game")
-                    .label(t("GAMING_MODE_IN_GAME"))
-                    .checked(in_game)
-                    .disabled(!enabled)
-                    .on_click(cx.listener(move |this, value, _, cx| {
-                        set_mode(this, if *value { 2 } else { 1 }, *value, cx)
-                    })),
-            )
-            .child(
-                Checkbox::new("keyboard-game-mode-windows")
-                    .label(t("DISABLE_WINDOWS_KEY"))
-                    .checked(windows_disabled)
-                    .disabled(true),
-            )
-            .children(
-                // Each allowlisted product's current parent chain and Menu
-                // branch were checked independently; isSystem isn't assumed.
-                (rows.is_some_and(|rows| rows.menu)
-                    && self
-                        .spec
-                        .keys
-                        .iter()
-                        .any(|key| key["inputID"] == "KEY_APPLICATION"))
-                .then(|| {
-                    Checkbox::new("keyboard-game-mode-menu")
-                        .label(t("DISABLE_MENU_KEY"))
-                        .checked(windows_disabled)
-                        .disabled(true)
-                }),
-            )
-            .children(
-                // The source keys and explicit read-only branch are checked
-                // per product, including the separate 717 and 724 parents.
-                (rows.is_some_and(|rows| rows.copilot)
-                    && self
-                        .spec
-                        .keys
-                        .iter()
-                        .any(|key| matches!(key["inputID"].as_str(), Some("DKM_D2" | "DKM_F6"))))
-                .then(|| {
-                    Checkbox::new("keyboard-game-mode-copilot")
-                        .label(t("DISABLE_COPILOT_KEY"))
-                        .checked(windows_disabled)
-                        .disabled(true)
-                }),
-            )
-            .child(self.toggle(
-                "/gamingMode/isAltTabDisabled",
-                t("DISABLE_ALT_TAB"),
-                enabled,
-                cx,
-            ))
-            .children(
-                (!self.spec.config["DeviceInfo"]["notSupportAltF4"]
-                    .as_bool()
-                    .unwrap_or(false))
-                .then(|| {
-                    self.toggle(
-                        "/gamingMode/isAltF4Disabled",
-                        t("DISABLE_ALT_F4"),
-                        enabled,
+        // Independently resolved in all 52 mounted current product components:
+        // `hasSwitch:!0` belongs to the title; the body's first control is
+        // `APPLY_IN_GAME_ONLY`, followed by a break and `GAMING_MODE_DESC`.
+        surface::panel_with_title_switch(
+            t("GAMING_MODE_HEADER"),
+            surface::SynapseSwitch::new("keyboard-game-mode")
+                .accessibility_label(t("GAMING_MODE_HEADER"))
+                .checked(enabled)
+                .on_change(cx.listener(move |this, value: &bool, _, cx| {
+                    set_mode(
+                        this,
+                        if *value {
+                            if in_game { 2 } else { 1 }
+                        } else {
+                            0
+                        },
+                        in_game,
                         cx,
                     )
-                }),
-            )
-            .into_any_element()
+                })),
+            surface::help_control("keyboard-gaming-mode-help", t("GAMING_MODE_TOOLTIP")),
+            cx,
+        )
+        .child(
+            Checkbox::new("keyboard-game-mode-in-game")
+                .label(t("APPLY_IN_GAME_ONLY"))
+                .checked(in_game)
+                .disabled(!enabled)
+                .on_click(cx.listener(move |this, value, _, cx| {
+                    set_mode(this, if *value { 2 } else { 1 }, *value, cx)
+                })),
+        )
+        .child(
+            div()
+                .mt(surface::css(17.))
+                .mb(surface::css(10.))
+                .when(!enabled, |description| description.opacity(0.3))
+                .child(t("GAMING_MODE_DESC")),
+        )
+        .child(
+            Checkbox::new("keyboard-game-mode-windows")
+                .label(t("DISABLE_WINDOWS_KEY"))
+                .checked(windows_disabled)
+                .disabled(true),
+        )
+        .children(
+            // Each allowlisted product's current parent chain and Menu
+            // branch were checked independently; isSystem isn't assumed.
+            (rows.is_some_and(|rows| rows.menu)
+                && self
+                    .spec
+                    .keys
+                    .iter()
+                    .any(|key| key["inputID"] == "KEY_APPLICATION"))
+            .then(|| {
+                Checkbox::new("keyboard-game-mode-menu")
+                    .label(t("DISABLE_MENU_KEY"))
+                    .checked(windows_disabled)
+                    .disabled(true)
+            }),
+        )
+        .children(
+            // The source keys and explicit read-only branch are checked
+            // per product, including the separate 717 and 724 parents.
+            (rows.is_some_and(|rows| rows.copilot)
+                && self
+                    .spec
+                    .keys
+                    .iter()
+                    .any(|key| matches!(key["inputID"].as_str(), Some("DKM_D2" | "DKM_F6"))))
+            .then(|| {
+                Checkbox::new("keyboard-game-mode-copilot")
+                    .label(t("DISABLE_COPILOT_KEY"))
+                    .checked(windows_disabled)
+                    .disabled(true)
+            }),
+        )
+        .child(self.toggle(
+            "/gamingMode/isAltTabDisabled",
+            t("DISABLE_ALT_TAB"),
+            enabled,
+            cx,
+        ))
+        .children(
+            (!self.spec.config["DeviceInfo"]["notSupportAltF4"]
+                .as_bool()
+                .unwrap_or(false))
+            .then(|| {
+                self.toggle(
+                    "/gamingMode/isAltF4Disabled",
+                    t("DISABLE_ALT_F4"),
+                    enabled,
+                    cx,
+                )
+            }),
+        )
+        .into_any_element()
     }
     fn keyboard_image(&self, interactive: bool, cx: &Context<Self>) -> AnyElement {
         let [width, height] = self.spec.viewbox;
@@ -989,12 +841,16 @@ impl KeyboardProductWorkspace {
                     .child(
                         crate::keyboard_geometry::KeyRegion::new(
                             key,
-                            if mapped {
+                            if mapped && self.spec.product_id != 679 {
                                 cx.theme().primary.opacity(0.4)
                             } else {
                                 cx.theme().transparent
                             },
-                            cx.theme().primary,
+                            if self.spec.product_id == 679 && self.hypershift {
+                                rgb(0xfd8611).into()
+                            } else {
+                                cx.theme().primary
+                            },
                             selected,
                             hovered,
                             cx.listener(move |this, _, window, cx| {
@@ -1023,8 +879,16 @@ impl KeyboardProductWorkspace {
             }));
         }
         surface::config_wrapper()
+            // 679's final CSS overrides the earlier shared 340px rule.
+            .when(
+                self.spec.product_id == 679 && self.page == "TAB_CUSTOMIZE",
+                |wrapper| wrapper.h(surface::css(385.)),
+            )
             .child(surface::dot_background(cx))
-            .child(keyboard)
+            .child(keyboard.when(
+                self.spec.product_id == 679 && self.page == "TAB_CUSTOMIZE",
+                |keyboard| keyboard.mt(surface::css(6.)),
+            ))
             .into_any_element()
     }
     /// The `displayMode=armory` root mounts this page without the product
@@ -1032,8 +896,118 @@ impl KeyboardProductWorkspace {
     pub fn customize_element(&self, cx: &mut Context<Self>) -> AnyElement {
         self.customize(cx)
     }
+    fn hypershift_row(&self, cx: &Context<Self>) -> AnyElement {
+        // All 71 current product renders place this two-state switch after
+        // `.config-wrapper`; labels resolve to STANDARD/HYPERSHIFT and the
+        // orange active state is source CSS #fd8611.
+        h_flex()
+            .justify_center()
+            .items_center()
+            .mt(surface::css(20.))
+            .mb(surface::css(10.))
+            .gap(surface::css(10.))
+            .when(self.spec.product_id == 679, |row| {
+                row.child(
+                    gpui_kit::base::Button::new("keyboard-button-drawer-toggle")
+                        .accessibility_label(t("TAB_CUSTOMIZE"))
+                        .w(surface::css(38.))
+                        .h(surface::css(27.))
+                        .border_1()
+                        .border_color(if self.button_drawer_open {
+                            rgb(0x44d62c)
+                        } else {
+                            rgb(0x5d5d5d)
+                        })
+                        .rounded(surface::css(14.))
+                        .bg(rgb(0x111111))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            img(if self.button_drawer_open {
+                                "synapse/keyboard-679-sidepanel-active.svg"
+                            } else {
+                                "synapse/keyboard-679-sidepanel.svg"
+                            })
+                            .size(surface::css(18.)),
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.button_drawer_open = !this.button_drawer_open;
+                            cx.notify();
+                        })),
+                )
+            })
+            .child(
+                gpui_kit::base::Button::new("keyboard-hypershift")
+                    .accessibility_label(t("HYPERSHIFT"))
+                    .flex()
+                    .items_center()
+                    .h(surface::css(36.))
+                    .p(surface::css(5.))
+                    .border_1()
+                    .border_color(rgb(0x5d5d5d))
+                    .rounded(surface::css(18.))
+                    .bg(rgb(0x111111))
+                    .hover(|button| button.border_color(rgb(0x44d62c)))
+                    .active(|button| button.bg(rgb(0x292929)))
+                    .child(
+                        div()
+                            .h(surface::css(24.))
+                            .px(surface::css(10.))
+                            .pt(surface::css(6.))
+                            .pb(surface::css(5.))
+                            .mr(surface::css(5.))
+                            .rounded(surface::css(12.))
+                            .text_size(surface::css(14.))
+                            .line_height(surface::css(14.))
+                            .bg(if self.hypershift {
+                                rgba(0x00000000)
+                            } else {
+                                rgba(0x44d62cff)
+                            })
+                            .text_color(if self.hypershift {
+                                rgb(0xcccccc)
+                            } else {
+                                rgb(0x212121)
+                            })
+                            .child(t("STANDARD")),
+                    )
+                    .child(
+                        div()
+                            .h(surface::css(24.))
+                            .px(surface::css(10.))
+                            .pt(surface::css(6.))
+                            .pb(surface::css(5.))
+                            .rounded(surface::css(12.))
+                            .text_size(surface::css(14.))
+                            .line_height(surface::css(14.))
+                            .bg(if self.hypershift {
+                                rgba(0xfd8611ff)
+                            } else {
+                                rgba(0x00000000)
+                            })
+                            .text_color(if self.hypershift {
+                                rgb(0x212121)
+                            } else {
+                                rgb(0xcccccc)
+                            })
+                            .child(t("HYPERSHIFT")),
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.hypershift = !this.hypershift;
+                        this.selected_key = None;
+                        this.hovered_key = None;
+                        cx.notify();
+                    })),
+            )
+            .child(surface::help_control(
+                "keyboard-hypershift-help",
+                t("HYPERSHIFT_TOOLTIP"),
+            ))
+            .into_any_element()
+    }
     fn customize(&self, cx: &Context<Self>) -> AnyElement {
-        let mut panel = surface::panel(t("TAB_CUSTOMIZE"), cx);
+        let mut panel = v_flex();
         if let Some(keymaps) = self.draft["keymaps"].as_array() {
             panel = panel.child(
                 h_flex()
@@ -1056,16 +1030,35 @@ impl KeyboardProductWorkspace {
                     })),
             );
         }
-        panel = panel.child(
-            Checkbox::new("keyboard-hypershift")
-                .label("Razer Hypershift")
-                .checked(self.hypershift)
-                .on_click(cx.listener(|this, value, _, cx| {
-                    this.hypershift = *value;
-                    cx.notify();
-                })),
-        );
         panel = panel.child(self.keyboard_image(true, cx));
+        panel = panel.child(self.hypershift_row(cx));
+        if self.spec.product_id == 679 && self.button_drawer_open {
+            panel = panel.child(
+                v_flex()
+                    .w(surface::css(250.))
+                    .max_h(surface::css(340.))
+                    .id("keyboard-679-button-drawer")
+                    .overflow_y_scroll()
+                    .children(self.spec.keys.iter().filter_map(|key| {
+                        let id = key["inputID"].as_str()?.to_owned();
+                        let name = key["counter"]
+                            .as_str()
+                            .or_else(|| key["defaultValue"].as_str())
+                            .unwrap_or(&id)
+                            .to_owned();
+                        Some(
+                            Button::new(SharedString::from(format!("keyboard-679-drawer-{id}")))
+                                .label(name)
+                                .outline()
+                                .disabled(!key["isEnabled"].as_bool().unwrap_or(true))
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.selected_key = Some(id.clone());
+                                    cx.notify();
+                                })),
+                        )
+                    })),
+            );
+        }
         panel = panel.child(
             h_flex().gap_2().flex_wrap().children(
                 self.spec
@@ -1099,87 +1092,90 @@ impl KeyboardProductWorkspace {
                     }),
             ),
         );
-        if let Some(input) = self.selected_key.clone() {
-            if let Some(key) = self
-                .spec
-                .keys
-                .iter()
-                .find(|k| k["inputID"].as_str() == Some(&input))
-            {
-                let supported = |name: &str| {
-                    key["functionList"]
-                        .as_array()
-                        .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(name)))
-                };
-                panel = panel.child(div().font_bold().child(input.clone()));
-                if supported("DEFAULT") {
-                    let input = input.clone();
-                    panel = panel.child(
-                        Button::new("keyboard-reset-mapping")
-                            .label(t("DEFAULT"))
-                            .outline()
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                if this.actuation.is_some() {
-                                    this.reset_analog_assignment(&input, cx);
-                                    return;
-                                }
-                                let path = this.mapping_path();
-                                let shift = this.hypershift;
-                                if let Some(mappings) =
-                                    this.draft.pointer_mut(&path).and_then(Value::as_array_mut)
-                                {
-                                    mappings.retain(|m| {
-                                        !(m["inputID"].as_str() == Some(&input)
-                                            && m["isHyperShift"].as_bool().unwrap_or(false)
-                                                == shift)
-                                    });
-                                    cx.emit(KeyboardProductChanged);
-                                    cx.notify();
-                                }
-                            })),
-                    );
-                }
-                if supported("KEYBOARD_FUNCTION") {
-                    panel=panel.child(div().child(t("KEYBOARD_FUNCTION"))).child(h_flex().gap_2().flex_wrap().children(self.spec.keys.iter().filter_map(|target| {
+        // Source 679 opens the mounted side mapping blade (Ph/Pi) from OM.
+        // The inline generic editor below belongs to older products and must
+        // never be reachable for Huntsman V3 Pro TKL.
+        if self.spec.product_id != 679 {
+            if let Some(input) = self.selected_key.clone() {
+                if let Some(key) = self
+                    .spec
+                    .keys
+                    .iter()
+                    .find(|k| k["inputID"].as_str() == Some(&input))
+                {
+                    let supported = |name: &str| {
+                        key["functionList"]
+                            .as_array()
+                            .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(name)))
+                    };
+                    panel = panel.child(div().font_bold().child(input.clone()));
+                    if supported("DEFAULT") {
+                        let input = input.clone();
+                        panel = panel.child(
+                            Button::new("keyboard-reset-mapping")
+                                .label(t("DEFAULT"))
+                                .outline()
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    if this.actuation.is_some() {
+                                        this.reset_analog_assignment(&input, cx);
+                                        return;
+                                    }
+                                    let path = this.mapping_path();
+                                    let shift = this.hypershift;
+                                    if let Some(mappings) =
+                                        this.draft.pointer_mut(&path).and_then(Value::as_array_mut)
+                                    {
+                                        mappings.retain(|m| {
+                                            !(m["inputID"].as_str() == Some(&input)
+                                                && m["isHyperShift"].as_bool().unwrap_or(false)
+                                                    == shift)
+                                        });
+                                        cx.emit(KeyboardProductChanged);
+                                        cx.notify();
+                                    }
+                                })),
+                        );
+                    }
+                    if supported("KEYBOARD_FUNCTION") {
+                        panel=panel.child(div().child(t("KEYBOARD_FUNCTION"))).child(h_flex().gap_2().flex_wrap().children(self.spec.keys.iter().filter_map(|target| {
                         let hid=target["HID"].as_str()?.to_owned();let page=target["pageID"].as_str()?.to_owned();
                         let name=target["counter"].as_str()?.to_owned();let input=input.clone();
                         Some(Button::new(SharedString::from(format!("keyboard-target-{}",target["inputID"].as_str()?))).label(name).outline().on_click(cx.listener(move |this,_,_,cx| {
                             this.assign_key(&input,json!({"outputType":"keyboardGroup","keyboardGroup":{"key":{"HID":hid,"pageID":page,"flag":0},"modifiers":[]}}),cx);
                         })))
                     })));
-                }
-                if supported("MOUSE_FUNCTION") {
-                    let keyboard_mapping = self
-                        .draft
-                        .pointer(&self.mapping_path())
-                        .and_then(Value::as_array)
-                        .and_then(|mappings| {
-                            mappings.iter().find(|mapping| {
-                                mapping["inputID"].as_str() == Some(&input)
-                                    && mapping["isHyperShift"].as_bool().unwrap_or(false)
-                                        == self.hypershift
-                                    && mapping["outputType"].as_str() == Some("keyboardGroup")
+                    }
+                    if supported("MOUSE_FUNCTION") {
+                        let keyboard_mapping = self
+                            .draft
+                            .pointer(&self.mapping_path())
+                            .and_then(Value::as_array)
+                            .and_then(|mappings| {
+                                mappings.iter().find(|mapping| {
+                                    mapping["inputID"].as_str() == Some(&input)
+                                        && mapping["isHyperShift"].as_bool().unwrap_or(false)
+                                            == self.hypershift
+                                        && mapping["outputType"].as_str() == Some("keyboardGroup")
+                                })
                             })
-                        })
-                        .cloned()
-                        .unwrap_or_default();
-                    let keyboard_group = keyboard_mapping["keyboardGroup"].clone();
-                    let mouse_assignment = keyboard_group
-                        .pointer("/mouseGroup/mouseAssignment")
-                        .and_then(Value::as_str)
-                        .map(str::to_owned);
-                    let has_keyboard = keyboard_group.is_object();
-                    let mouse_actions = [
-                        ("Click", "TEXT_MOUSE_BIND_LEFT_CLICK"),
-                        ("Menu", "TEXT_MOUSE_BIND_RIGHT_CLICK"),
-                        ("ScrollButton", "TEXT_MOUSE_BIND_SCROLL_CLICK"),
-                        ("Previous", "TEXT_MOUSE_BUTTON_4"),
-                        ("Next", "TEXT_MOUSE_BUTTON_5"),
-                        ("ScrollUp", "TEXT_MOUSE_BIND_SCROLL_UP"),
-                        ("ScrollDown", "TEXT_MOUSE_BIND_SCROLL_DOWN"),
-                    ];
-                    panel =
-                        panel
+                            .cloned()
+                            .unwrap_or_default();
+                        let keyboard_group = keyboard_mapping["keyboardGroup"].clone();
+                        let mouse_assignment = keyboard_group
+                            .pointer("/mouseGroup/mouseAssignment")
+                            .and_then(Value::as_str)
+                            .map(str::to_owned);
+                        let has_keyboard = keyboard_group.is_object();
+                        let mouse_actions = [
+                            ("Click", "TEXT_MOUSE_BIND_LEFT_CLICK"),
+                            ("Menu", "TEXT_MOUSE_BIND_RIGHT_CLICK"),
+                            ("ScrollButton", "TEXT_MOUSE_BIND_SCROLL_CLICK"),
+                            ("Previous", "TEXT_MOUSE_BUTTON_4"),
+                            ("Next", "TEXT_MOUSE_BUTTON_5"),
+                            ("ScrollUp", "TEXT_MOUSE_BIND_SCROLL_UP"),
+                            ("ScrollDown", "TEXT_MOUSE_BIND_SCROLL_DOWN"),
+                        ];
+                        panel = panel
                             .child(div().child(t("MOUSE_FUNCTION")))
                             .child(
                                 Checkbox::new("keyboard-combine-mouse")
@@ -1213,111 +1209,111 @@ impl KeyboardProductWorkspace {
                                     }))
                                 }),
                             ));
-                }
-                if supported("SWITCH_KEYMAP") {
-                    let keymaps = self.draft["keymaps"]
-                        .as_array()
-                        .cloned()
-                        .unwrap_or_default();
-                    let active_keymap = self.draft["activeKeymapId"].as_str().map(str::to_owned);
-                    let mut ordered_keymaps = keymaps.iter().collect::<Vec<_>>();
-                    ordered_keymaps.sort_by_key(|keymap| {
-                        keymap["slot"]
-                            .as_str()
-                            .and_then(|slot| slot.parse::<u32>().ok())
-                            .unwrap_or(u32::MAX)
-                    });
-                    let first_keymap = ordered_keymaps
-                        .first()
-                        .and_then(|keymap| keymap["guid"].as_str())
-                        .map(str::to_owned);
-                    let last_keymap = ordered_keymaps
-                        .last()
-                        .and_then(|keymap| keymap["guid"].as_str())
-                        .map(str::to_owned);
-                    let has_multiple = keymaps.iter().any(|keymap| {
-                        keymap["guid"].as_str().is_some()
-                            && keymap["guid"].as_str() != active_keymap.as_deref()
-                    });
-                    let current = self.keymap_assignment(&input).unwrap_or_default();
-                    let current_group = current["keymapGroup"].clone();
-                    let current_type = current_group["type"].as_str().unwrap_or_default();
-                    let mut actions = h_flex().gap_2().flex_wrap();
-                    for (kind, label) in [
-                        ("nextKeymap", "NEXT_KEYMAP"),
-                        ("previousKeymap", "PREVIOUS_KEYMAP"),
-                        ("cycleUpKeymap", "CYCLE_UP_KEYMAP"),
-                        ("cycleDownKeymap", "CYCLE_DOWN_KEYMAP"),
-                    ] {
-                        let input = input.clone();
-                        actions = actions.child(
-                            Button::new(SharedString::from(format!(
-                                "keyboard-keymap-action-{kind}"
-                            )))
-                            .label(t(label))
-                            .outline()
-                            .selected(current_type == kind)
-                            .disabled(match kind {
-                                "nextKeymap" => {
-                                    !has_multiple
-                                        || active_keymap.as_deref() == last_keymap.as_deref()
-                                }
-                                "previousKeymap" => {
-                                    !has_multiple
-                                        || active_keymap.as_deref() == first_keymap.as_deref()
-                                }
-                                _ => !has_multiple,
-                            })
-                            .on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.assign_keymap(&input, kind, None, false, cx);
-                                },
-                            )),
-                        );
                     }
-                    panel = panel.child(div().child(t("SWITCH_KEYMAP"))).child(actions);
-                    if has_multiple {
-                        let specific_selected = current_type == "specificKeymap";
-                        panel = panel.child(
-                            Button::new("keyboard-keymap-specific")
-                                .label(t("SPECIFIC_KEYMAP"))
-                                .outline()
-                                .selected(specific_selected)
-                                .on_click(cx.listener({
-                                    let input = input.clone();
-                                    let keymaps = keymaps.clone();
-                                    let active_keymap = active_keymap.clone();
-                                    move |this, _, _, cx| {
-                                        if let Some(keymap) = keymaps.iter().find(|keymap| {
-                                            keymap["guid"].as_str().is_some()
-                                                && keymap["guid"].as_str()
-                                                    != active_keymap.as_deref()
-                                        }) {
-                                            this.assign_keymap(
-                                                &input,
-                                                "specificKeymap",
-                                                Some(keymap),
-                                                false,
-                                                cx,
-                                            );
-                                        }
-                                    }
-                                })),
-                        );
-                        let mut specific = h_flex().gap_2().flex_wrap();
-                        for keymap in keymaps.iter().filter(|keymap| {
+                    if supported("SWITCH_KEYMAP") {
+                        let keymaps = self.draft["keymaps"]
+                            .as_array()
+                            .cloned()
+                            .unwrap_or_default();
+                        let active_keymap =
+                            self.draft["activeKeymapId"].as_str().map(str::to_owned);
+                        let mut ordered_keymaps = keymaps.iter().collect::<Vec<_>>();
+                        ordered_keymaps.sort_by_key(|keymap| {
+                            keymap["slot"]
+                                .as_str()
+                                .and_then(|slot| slot.parse::<u32>().ok())
+                                .unwrap_or(u32::MAX)
+                        });
+                        let first_keymap = ordered_keymaps
+                            .first()
+                            .and_then(|keymap| keymap["guid"].as_str())
+                            .map(str::to_owned);
+                        let last_keymap = ordered_keymaps
+                            .last()
+                            .and_then(|keymap| keymap["guid"].as_str())
+                            .map(str::to_owned);
+                        let has_multiple = keymaps.iter().any(|keymap| {
                             keymap["guid"].as_str().is_some()
                                 && keymap["guid"].as_str() != active_keymap.as_deref()
-                        }) {
-                            let Some(guid) = keymap["guid"].as_str() else {
-                                continue;
-                            };
-                            let name = keymap["name"].as_str().unwrap_or("Keymap").to_owned();
-                            let selected = current_group["guid"].as_str() == Some(guid);
-                            let keymap = keymap.clone();
+                        });
+                        let current = self.keymap_assignment(&input).unwrap_or_default();
+                        let current_group = current["keymapGroup"].clone();
+                        let current_type = current_group["type"].as_str().unwrap_or_default();
+                        let mut actions = h_flex().gap_2().flex_wrap();
+                        for (kind, label) in [
+                            ("nextKeymap", "NEXT_KEYMAP"),
+                            ("previousKeymap", "PREVIOUS_KEYMAP"),
+                            ("cycleUpKeymap", "CYCLE_UP_KEYMAP"),
+                            ("cycleDownKeymap", "CYCLE_DOWN_KEYMAP"),
+                        ] {
                             let input = input.clone();
-                            specific =
-                                specific.child(
+                            actions = actions.child(
+                                Button::new(SharedString::from(format!(
+                                    "keyboard-keymap-action-{kind}"
+                                )))
+                                .label(t(label))
+                                .outline()
+                                .selected(current_type == kind)
+                                .disabled(match kind {
+                                    "nextKeymap" => {
+                                        !has_multiple
+                                            || active_keymap.as_deref() == last_keymap.as_deref()
+                                    }
+                                    "previousKeymap" => {
+                                        !has_multiple
+                                            || active_keymap.as_deref() == first_keymap.as_deref()
+                                    }
+                                    _ => !has_multiple,
+                                })
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        this.assign_keymap(&input, kind, None, false, cx);
+                                    },
+                                )),
+                            );
+                        }
+                        panel = panel.child(div().child(t("SWITCH_KEYMAP"))).child(actions);
+                        if has_multiple {
+                            let specific_selected = current_type == "specificKeymap";
+                            panel = panel.child(
+                                Button::new("keyboard-keymap-specific")
+                                    .label(t("SPECIFIC_KEYMAP"))
+                                    .outline()
+                                    .selected(specific_selected)
+                                    .on_click(cx.listener({
+                                        let input = input.clone();
+                                        let keymaps = keymaps.clone();
+                                        let active_keymap = active_keymap.clone();
+                                        move |this, _, _, cx| {
+                                            if let Some(keymap) = keymaps.iter().find(|keymap| {
+                                                keymap["guid"].as_str().is_some()
+                                                    && keymap["guid"].as_str()
+                                                        != active_keymap.as_deref()
+                                            }) {
+                                                this.assign_keymap(
+                                                    &input,
+                                                    "specificKeymap",
+                                                    Some(keymap),
+                                                    false,
+                                                    cx,
+                                                );
+                                            }
+                                        }
+                                    })),
+                            );
+                            let mut specific = h_flex().gap_2().flex_wrap();
+                            for keymap in keymaps.iter().filter(|keymap| {
+                                keymap["guid"].as_str().is_some()
+                                    && keymap["guid"].as_str() != active_keymap.as_deref()
+                            }) {
+                                let Some(guid) = keymap["guid"].as_str() else {
+                                    continue;
+                                };
+                                let name = keymap["name"].as_str().unwrap_or("Keymap").to_owned();
+                                let selected = current_group["guid"].as_str() == Some(guid);
+                                let keymap = keymap.clone();
+                                let input = input.clone();
+                                specific = specific.child(
                                     Button::new(SharedString::from(format!(
                                         "keyboard-keymap-specific-{guid}"
                                     )))
@@ -1334,30 +1330,33 @@ impl KeyboardProductWorkspace {
                                         );
                                     })),
                                 );
-                        }
-                        panel = panel.child(specific);
-                        if specific_selected {
-                            if let Some(keymap) = keymaps.iter().find(|keymap| {
-                                keymap["guid"].as_str() == current_group["guid"].as_str()
-                            }) {
-                                let input = input.clone();
-                                let keymap = keymap.clone();
-                                panel = panel.child(
-                                    Checkbox::new("keyboard-keymap-clutch")
-                                        .label(t("SWITCH_BACK_TO_PREVIOUS_KEYMAP_DESCRIPTION"))
-                                        .checked(
-                                            current_group["isClutch"].as_bool().unwrap_or(false),
-                                        )
-                                        .on_click(cx.listener(move |this, value, _, cx| {
-                                            this.assign_keymap(
-                                                &input,
-                                                "specificKeymap",
-                                                Some(&keymap),
-                                                *value,
-                                                cx,
-                                            );
-                                        })),
-                                );
+                            }
+                            panel = panel.child(specific);
+                            if specific_selected {
+                                if let Some(keymap) = keymaps.iter().find(|keymap| {
+                                    keymap["guid"].as_str() == current_group["guid"].as_str()
+                                }) {
+                                    let input = input.clone();
+                                    let keymap = keymap.clone();
+                                    panel = panel.child(
+                                        Checkbox::new("keyboard-keymap-clutch")
+                                            .label(t("SWITCH_BACK_TO_PREVIOUS_KEYMAP_DESCRIPTION"))
+                                            .checked(
+                                                current_group["isClutch"]
+                                                    .as_bool()
+                                                    .unwrap_or(false),
+                                            )
+                                            .on_click(cx.listener(move |this, value, _, cx| {
+                                                this.assign_keymap(
+                                                    &input,
+                                                    "specificKeymap",
+                                                    Some(&keymap),
+                                                    *value,
+                                                    cx,
+                                                );
+                                            })),
+                                    );
+                                }
                             }
                         }
                     }
@@ -1365,27 +1364,81 @@ impl KeyboardProductWorkspace {
             }
         }
         let mut page = v_flex().gap_5().child(panel);
-        let gaming_mode = self.spec.controls["gaming_mode"].as_bool().unwrap_or(false);
-        if gaming_mode || self.properties_icon.is_some() {
+        // Modern products put their mounted widget in a route chunk, so the
+        // main-bundle-only `controls` extraction misses it. Use actual callers.
+        let gaming_mode = gaming_rows::for_product(self.spec.product_id).is_some();
+        let snap_visible = self.spec.product_id != 679
+            && snap_tap::snap_tap_visible(self.spec.product_id)
+            && self.snap_tap.is_some();
+        let snap_left = snap_visible && snap_tap::snap_tap_on_left(self.spec.product_id);
+        let snap_right = snap_visible && snap_tap::snap_tap_on_right(self.spec.product_id);
+        let snap_full = snap_visible && snap_tap::snap_tap_full_width(self.spec.product_id);
+        let polling = self.polling_panel(cx);
+        let polling_visible = polling.is_some();
+        if self.spec.product_id == 679 {
+            return page
+                .child(
+                    surface::page_columns()
+                        .child(surface::page_column(
+                            v_flex()
+                                .child(self.gaming_mode(cx))
+                                .children(self.keyboard_properties(cx)),
+                        ))
+                        .child(surface::page_column(
+                            v_flex()
+                                .child(self.huntsman_quick_remapping(cx))
+                                .child(self.huntsman_gamepad_tester(cx)),
+                        )),
+                )
+                .into_any_element();
+        }
+        if gaming_mode || snap_visible || self.properties_icon.is_some() || polling_visible {
             page = page.child(
                 surface::page_columns()
-                    .when(gaming_mode || self.analog_properties_on_left(), |columns| {
-                        columns.child(surface::page_column(
-                            v_flex()
-                                .when(gaming_mode, |column| {
-                                    column
-                                        .child(self.gaming_mode(cx))
-                                        .children(self.snap_panel(cx))
-                                })
-                                .when(self.analog_properties_on_left(), |column| {
-                                    column.children(self.keyboard_properties(cx))
-                                }),
-                        ))
-                    })
-                    .when(!self.analog_properties_on_left(), |columns| {
-                        columns.children(self.keyboard_properties(cx).map(surface::page_column))
-                    }),
+                    .when(
+                        gaming_mode
+                            || snap_left
+                            || self.properties_on_left()
+                            || (polling_visible && self.polling_on_left()),
+                        |columns| {
+                            columns.child(surface::page_column(
+                                v_flex()
+                                    .when(gaming_mode, |column| column.child(self.gaming_mode(cx)))
+                                    .when(snap_left, |column| column.children(self.snap_panel(cx)))
+                                    .when(self.properties_on_left(), |column| {
+                                        column.children(self.keyboard_properties(cx))
+                                    })
+                                    .when(self.polling_on_left(), |column| {
+                                        column.children(self.polling_panel(cx))
+                                    }),
+                            ))
+                        },
+                    )
+                    .when(
+                        snap_right
+                            || (!self.properties_on_left() && !self.properties_full_width())
+                            || (polling_visible && !self.polling_on_left()),
+                        |columns| {
+                            columns.child(surface::page_column(
+                                v_flex()
+                                    .when(!self.polling_on_left(), |column| {
+                                        column.children(self.polling_panel(cx))
+                                    })
+                                    .when(snap_right, |column| column.children(self.snap_panel(cx)))
+                                    .when(
+                                        !self.properties_on_left() && !self.properties_full_width(),
+                                        |column| column.children(self.keyboard_properties(cx)),
+                                    ),
+                            ))
+                        },
+                    ),
             );
+        }
+        if snap_full {
+            page = page.children(self.snap_panel(cx));
+        }
+        if self.properties_full_width() {
+            page = page.children(self.keyboard_properties(cx));
         }
         page.into_any_element()
     }
@@ -1393,11 +1446,18 @@ impl KeyboardProductWorkspace {
 impl Render for KeyboardProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let content = match self.page.as_str() {
-            "TAB_LIGHTING" => v_flex()
-                .gap_5()
-                .child(self.keyboard_image(false, cx))
-                .child(self.lighting(window, cx))
-                .into_any_element(),
+            "TAB_LIGHTING" => {
+                if self.spec.product_id == 679 {
+                    // $L -> em mounts only left KD/xD and right VL; no product image.
+                    self.lighting(window, cx)
+                } else {
+                    v_flex()
+                        .gap_5()
+                        .child(self.keyboard_image(false, cx))
+                        .child(self.lighting(window, cx))
+                        .into_any_element()
+                }
+            }
             "TAB_CUSTOMIZE" => self.customize(cx),
             "ACTUATION" => self.actuation_page(cx),
             "TAB_CALIBRATION" => self.calibration_page(window, cx),

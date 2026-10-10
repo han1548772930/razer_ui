@@ -7,6 +7,8 @@ use serde::Serialize;
 use std::{cell::Cell, rc::Rc, time::Duration};
 
 const LOCAL: &str = "_snapTapLocalV1";
+#[path = "keyboard_snap679.rs"]
+mod analog_679;
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Pair {
@@ -39,6 +41,9 @@ enum Message {
     Introduction,
     Duplicate,
     Success,
+    AnalogIntroduction,
+    AnalogWarning,
+    None,
 }
 impl Message {
     fn label(self) -> &'static str {
@@ -46,6 +51,9 @@ impl Message {
             Self::Introduction => "SNAP_TAP_INTRODUCE_TEXT",
             Self::Duplicate => "CREATE_SNAP_TAP_WARNING_MESSAGE",
             Self::Success => "CREATE_SNAP_TAP_SUCCESS_MESSAGE",
+            Self::AnalogIntroduction => "TEST_SNAP_TAP_INTRODUCTION",
+            Self::AnalogWarning => "CREATE_SNAP_TAP_INFO_MESSAGE",
+            Self::None => "",
         }
     }
 }
@@ -74,6 +82,9 @@ pub enum SnapTapObservation {
     AdjustmentMode(bool),
     Layout(u32),
     InputRedirect(Value),
+    /// Raw observed key state from snapTapReducer.pressedKeys. Never synthesized.
+    PressedKeys(Value),
+    ModTapEnabled(bool),
 }
 
 pub(super) struct State {
@@ -95,6 +106,10 @@ pub(super) struct State {
     pair_bounds: Rc<Cell<Bounds<Pixels>>>,
     add_bounds: Rc<Cell<Bounds<Pixels>>>,
     tooltip: Option<Point<Pixels>>,
+    analog: bool,
+    pressed: [u8; 2],
+    observed_pressed: Value,
+    mod_tap: bool,
 }
 impl State {
     pub(super) fn new(cx: &mut App) -> Self {
@@ -118,6 +133,10 @@ impl State {
             pair_bounds: Rc::new(Cell::new(Bounds::default())),
             add_bounds: Rc::new(Cell::new(Bounds::default())),
             tooltip: None,
+            analog: false,
+            pressed: [0; 2],
+            observed_pressed: json!([]),
+            mod_tap: false,
         }
     }
     fn finish(&mut self) {
@@ -142,7 +161,7 @@ impl State {
     // incomplete new pairs never escape into local persisted configuration.
     fn snapshot(&self) -> Value {
         let mut config = self.config.clone();
-        if self.phase == Phase::Key2 {
+        if !self.analog && self.phase == Phase::Key2 {
             if let Some(staged) = self.staged.iter().find(|p| Some(p.id) == self.editing) {
                 if let Some(pair) = config.pairs.iter_mut().find(|p| p.id == staged.id) {
                     pair.key1 = staged.key1.clone();
@@ -206,6 +225,9 @@ impl State {
         self.tooltip = None;
     }
     fn accept(&mut self, input: &str) -> bool {
+        if self.analog {
+            return self.accept_679(input);
+        }
         if !self.config.enabled || self.phase == Phase::Ready {
             return false;
         }
@@ -270,9 +292,35 @@ impl State {
     }
 }
 
+/// Products with audited ordinary-component definitions, row/editor functions
+/// and an actual Customize caller. Shared component markers alone never enable
+/// a product. Remaining ordinary candidates require the same caller audit;
+/// analog/v3/v4 widgets remain separate branches.
+pub(super) fn ordinary_product(pid: u32) -> bool {
+    matches!(pid, 515 | 565 | 567 | 585 | 659 | 716 | 752)
+}
+
+/// Whether the ordinary widget is mounted on the Customize page at all.
+pub(super) fn snap_tap_visible(pid: u32) -> bool {
+    ordinary_product(pid)
+}
+
+/// Current source column placement for the ordinary widget.
+pub(super) fn snap_tap_on_right(pid: u32) -> bool {
+    matches!(pid, 565 | 567 | 659)
+}
+
+pub(super) fn snap_tap_on_left(pid: u32) -> bool {
+    snap_tap_visible(pid) && !snap_tap_on_right(pid) && !snap_tap_full_width(pid)
+}
+
+pub(super) fn snap_tap_full_width(pid: u32) -> bool {
+    pid == 585
+}
+
 impl KeyboardProductWorkspace {
     pub fn captures_snap_keys(&self) -> bool {
-        self.page == "TAB_CUSTOMIZE"
+        (self.page == "TAB_CUSTOMIZE" || self.spec.product_id == 679 && self.page == "ACTUATION")
             && self
                 .snap_tap
                 .as_ref()
@@ -284,10 +332,20 @@ impl KeyboardProductWorkspace {
         }
     }
     pub(super) fn init_snap_tap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.spec.product_id != 515 {
+        if !ordinary_product(self.spec.product_id) && self.spec.product_id != 679 {
             return;
         }
         self.snap_tap = Some(State::new(cx));
+        if self.spec.product_id == 679 {
+            if let Some(state) = &mut self.snap_tap {
+                state.analog = true;
+                state.message = Message::AnalogIntroduction;
+                state.config.pairs[0]
+                    .extra
+                    .insert("mode".into(), json!("LAST_INPUT"));
+                state.staged = state.config.pairs.clone();
+            }
+        }
         self.subscriptions
             .push(cx.observe_window_activation(window, |this, window, cx| {
                 if !window.is_window_active() {
@@ -313,6 +371,14 @@ impl KeyboardProductWorkspace {
             }
         }
         let mut state = State::new(cx);
+        state.analog = self.spec.product_id == 679;
+        if state.analog {
+            state.message = Message::AnalogIntroduction;
+            state.config.pairs[0]
+                .extra
+                .insert("mode".into(), json!("LAST_INPUT"));
+            state.staged = state.config.pairs.clone();
+        }
         state.layout = layout;
         state.adjustment = adjustment;
         if let Some(config) = self
@@ -339,6 +405,15 @@ impl KeyboardProductWorkspace {
     pub(super) fn blur_snap_tap(&mut self, cx: &mut Context<Self>) {
         if let Some(state) = &mut self.snap_tap {
             state.tooltip = None;
+            if state.analog {
+                if state.phase != Phase::Ready {
+                    state.staged = state.config.pairs.clone();
+                    state.finish();
+                }
+                state.message = Message::AnalogIntroduction;
+                self.publish_snap_tap(cx);
+                return;
+            }
             if state.config.enabled {
                 if state.phase != Phase::Ready {
                     state.blur();
@@ -361,6 +436,10 @@ impl KeyboardProductWorkspace {
             state.finish();
             state.editing = None;
             state.message = Message::Introduction;
+            if state.analog {
+                state.message = Message::AnalogIntroduction;
+                state.pressed = [0; 2];
+            }
             state.success_timer = None;
             state.tooltip = None;
             if state.prompt {
@@ -441,18 +520,33 @@ impl KeyboardProductWorkspace {
         let Some(state) = &mut self.snap_tap else {
             return;
         };
+        let analog = state.analog;
         if state.accept(input) {
             state.success_timer = Some(cx.spawn(async move |this, cx| {
-                cx.background_executor().timer(Duration::from_secs(3)).await;
+                cx.background_executor()
+                    .timer(Duration::from_secs(if analog { 5 } else { 3 }))
+                    .await;
                 let _ = this.update(cx, |this, cx| {
                     if let Some(state) = &mut this.snap_tap {
-                        state.message = Message::Introduction;
+                        state.message = if state.analog {
+                            Message::AnalogIntroduction
+                        } else {
+                            Message::Introduction
+                        };
                     }
                     cx.notify();
                 });
             }));
         }
         self.publish_snap_tap(cx);
+        if analog
+            && self
+                .snap_tap
+                .as_ref()
+                .is_some_and(|state| state.message == Message::Success)
+        {
+            self.submit_679_snap(cx);
+        }
     }
     #[allow(dead_code)]
     pub fn observe_snap_tap(
@@ -487,13 +581,16 @@ impl KeyboardProductWorkspace {
                 }
             }
             SnapTapObservation::InputRedirect(input) => {
-                if self.page != "TAB_CUSTOMIZE"
+                if self.page != "TAB_CUSTOMIZE" && !(state.analog && self.page == "ACTUATION")
                     || !state.config.enabled
                     || state.phase == Phase::Ready
                 {
                     return;
                 }
                 let kind = input["type"].as_str().unwrap_or("");
+                if state.analog && !matches!(kind, "keyboard" | "analogKey") {
+                    return;
+                }
                 if !matches!(kind, "keyboard" | "analogKey" | "razerKey") {
                     return;
                 }
@@ -524,9 +621,46 @@ impl KeyboardProductWorkspace {
                     .and_then(|key| key["inputID"].as_str())
                     .map(str::to_owned);
                 if let Some(key) = key {
+                    if state.analog
+                        && state.mod_tap
+                        && self.spec.config["MOD_TAP_KEYS"]
+                            .as_array()
+                            .is_some_and(|keys| keys.iter().any(|id| id.as_str() == Some(&key)))
+                    {
+                        return;
+                    }
                     self.snap_input(&key, cx);
                 }
             }
+            SnapTapObservation::PressedKeys(value) => {
+                if state.analog {
+                    state.observed_pressed = value.clone();
+                    for (index, pair_key) in state
+                        .staged
+                        .first()
+                        .map(|pair| [&pair.key1, &pair.key2])
+                        .into_iter()
+                        .flatten()
+                        .enumerate()
+                    {
+                        state.pressed[index] = value
+                            .as_array()
+                            .and_then(|keys| {
+                                keys.iter()
+                                    .find(|key| key["inputID"].as_str() == Some(pair_key))
+                            })
+                            .map(|key| {
+                                if key["snaptap"].as_bool() == Some(true) {
+                                    2
+                                } else {
+                                    1
+                                }
+                            })
+                            .unwrap_or(0);
+                    }
+                }
+            }
+            SnapTapObservation::ModTapEnabled(enabled) => state.mod_tap = enabled,
         }
         cx.notify();
     }
@@ -864,19 +998,14 @@ impl KeyboardProductWorkspace {
                             .mt(surface::css(10.))
                             .text_size(surface::css(14.))
                             .text_color(match state.message {
-                                Message::Introduction => Colors::muted(),
-                                Message::Duplicate => Colors::warning(),
+                                Message::Introduction
+                                | Message::AnalogIntroduction
+                                | Message::None => Colors::muted(),
+                                Message::Duplicate | Message::AnalogWarning => Colors::warning(),
                                 Message::Success => Colors::success(),
                             })
                             .child(t(state.message.label())),
                     ),
-            )
-            .child(
-                div()
-                    .mt(surface::css(10.))
-                    .text_size(surface::css(12.))
-                    .text_color(Colors::muted())
-                    .child("本地草稿，尚未写入设备。部分按键的精确录入尚待接入。"),
             )
             .into_any_element(),
         )
@@ -888,7 +1017,7 @@ impl KeyboardProductWorkspace {
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
         let state = self.snap_tap.as_ref()?;
-        if self.page != "TAB_CUSTOMIZE" {
+        if self.page != "TAB_CUSTOMIZE" && !(state.analog && self.page == "ACTUATION") {
             return None;
         }
         if state.prompt {

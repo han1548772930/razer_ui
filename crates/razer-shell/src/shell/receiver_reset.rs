@@ -271,6 +271,23 @@ impl AppShell {
         let key = workspace.read(cx).identity(cx);
         self.retire_help_reset(&key);
         let device = workspace.read(cx).snapshot(cx);
+        if request.source_action() != Some("ON_RESET_DEVICE")
+            || !matches!(device.product_id, 164 | 241)
+        {
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_help_reset(
+                    request,
+                    None,
+                    Some(format!(
+                        "{} 的设备提交适配尚未实现；未重置设备",
+                        request.source_action().unwrap_or("Help reset")
+                    )),
+                    window,
+                    cx,
+                );
+            });
+            return;
+        }
         let owner_product = device.product_id;
         let owner_container = device.device_container_id.clone();
         let route = device_discovery::receiver_route_for_owner(

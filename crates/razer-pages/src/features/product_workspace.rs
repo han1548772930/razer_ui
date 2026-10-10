@@ -99,6 +99,79 @@ impl EventEmitter<super::ReceiverDeviceRequested> for ProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
+    pub fn restore_mouse_dynamic_tutorial_preference(
+        &mut self,
+        visible: Option<bool>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.restore_mouse_dynamic_tutorial_preference(visible, cx)
+            });
+        }
+    }
+    pub fn finish_keyboard_indicator_led(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_keyboard_indicator_led(generation, result, cx)
+            });
+        }
+    }
+
+    pub fn observe_keyboard_indicator_led(
+        &mut self,
+        observation: super::keyboard_products::KeyboardIndicatorLedObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_keyboard_indicator_led(observation, cx)
+            });
+        }
+    }
+    pub fn complete_mouse_dynamic(
+        &mut self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        completion: super::mouse_products::MouseDynamicCompletion,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_mouse_dynamic(request, completion, window, cx);
+            });
+        }
+    }
+    pub fn complete_leviathan(
+        &mut self,
+        generation: u64,
+        result: Result<super::audio_products::LeviathanObservation, String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_leviathan(generation, result, window, cx);
+            });
+        }
+    }
+    pub fn finish_keyboard_actuation(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_keyboard_actuation(generation, result, cx)
+            });
+        }
+    }
     pub fn audio_mixer_page(&self, cx: &App) -> Option<Entity<super::AudioProductWorkspace>> {
         match &self.body {
             Body::Source(body) => body.read(cx).audio_mixer_page(),
@@ -667,6 +740,12 @@ impl ProductWorkspace {
                         generation: *generation,
                         percent: *percent,
                     },
+                    WorkspaceEvent::KeyboardActuationRequested(request) => {
+                        WorkspaceEvent::KeyboardActuationRequested(request.clone())
+                    }
+                    WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
+                        WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
+                    }
                     WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
                         WorkspaceEvent::KeyboardBrightnessReadRequested {
                             generation: *generation,
@@ -679,6 +758,9 @@ impl ProductWorkspace {
                     }
                     WorkspaceEvent::AudioVolumeRequested { request } => {
                         WorkspaceEvent::AudioVolumeRequested { request: *request }
+                    }
+                    WorkspaceEvent::LeviathanRequested(request) => {
+                        WorkspaceEvent::LeviathanRequested(request.clone())
                     }
                     WorkspaceEvent::AudioMixerRequested { request } => {
                         WorkspaceEvent::AudioMixerRequested {
@@ -712,6 +794,12 @@ impl ProductWorkspace {
                             scope: *scope,
                             minutes: *minutes,
                         }
+                    }
+                    WorkspaceEvent::MouseDynamicRequested(request) => {
+                        WorkspaceEvent::MouseDynamicRequested(request.clone())
+                    }
+                    WorkspaceEvent::MouseDynamicTutorialChanged(visible) => {
+                        WorkspaceEvent::MouseDynamicTutorialChanged(*visible)
                     }
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
@@ -763,6 +851,12 @@ impl ProductWorkspace {
                         generation: *generation,
                         percent: *percent,
                     },
+                    WorkspaceEvent::KeyboardActuationRequested(request) => {
+                        WorkspaceEvent::KeyboardActuationRequested(request.clone())
+                    }
+                    WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
+                        WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
+                    }
                     WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
                         WorkspaceEvent::KeyboardBrightnessReadRequested {
                             generation: *generation,
@@ -775,6 +869,9 @@ impl ProductWorkspace {
                     }
                     WorkspaceEvent::AudioVolumeRequested { request } => {
                         WorkspaceEvent::AudioVolumeRequested { request: *request }
+                    }
+                    WorkspaceEvent::LeviathanRequested(request) => {
+                        WorkspaceEvent::LeviathanRequested(request.clone())
                     }
                     WorkspaceEvent::AudioMixerRequested { request } => {
                         WorkspaceEvent::AudioMixerRequested {
@@ -808,6 +905,12 @@ impl ProductWorkspace {
                             scope: *scope,
                             minutes: *minutes,
                         }
+                    }
+                    WorkspaceEvent::MouseDynamicRequested(request) => {
+                        WorkspaceEvent::MouseDynamicRequested(request.clone())
+                    }
+                    WorkspaceEvent::MouseDynamicTutorialChanged(visible) => {
+                        WorkspaceEvent::MouseDynamicTutorialChanged(*visible)
                     }
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,

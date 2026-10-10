@@ -6,7 +6,9 @@ impl SourceProductWorkspace {
     pub(super) fn profile_bar_visible(&self) -> bool {
         match self.device.product_id {
             179 | 769 => false,
-            164 | 241 | 691 | 778 | 784 | 3871 | 3884 | 3886 | 3946 => true,
+            // 190 Bm and 679 JU always mount the bar. Their
+            // displayProfileBar prop controls the sync icon, not visibility.
+            164 | 190 | 241 | 679 | 691 | 778 | 784 | 3871 | 3884 | 3886 | 3946 => true,
             _ => !self
                 .current_page()
                 .is_some_and(|p| p.role() == ProductPageRole::Help),
@@ -26,6 +28,8 @@ impl SourceProductWorkspace {
     fn profile_sync_enabled(&self) -> bool {
         let key = self.current_page().map(|p| p.kind().key()).unwrap_or("");
         match self.device.product_id {
+            // 190 vm = [TAB_POWER, TAB_CALIBRATION, HELP].
+            190 => !matches!(key, "TAB_POWER" | "TAB_CALIBRATION" | "HELP"),
             // 691 Ca -> Kt: only the sync glyph changes on these pages.
             691 => !matches!(key, "OLED" | "TAB_POWER" | "HELP"),
             778 | 3871 | 3884 | 3886 => key == "TAB_LIGHTING",

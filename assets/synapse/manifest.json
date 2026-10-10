@@ -2,100 +2,147 @@
   "version": 1,
   "entries": [
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/minimize.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_sprite.0b292d50.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_sprite.0b292d50.svg",
+      "output": "assets/synapse/audio-volume-external-sprite.svg",
+      "source_sha256": "cb5bd96f8c8671735c968584a0fa42692ac6bc4e68101e55c211646a243c549e",
+      "sha256": "cb5bd96f8c8671735c968584a0fa42692ac6bc4e68101e55c211646a243c549e",
+      "source_bytes": 1116,
+      "preparation": "Exact source bytes. GPUI display adapter adds only root width/height and the source link/hover viewBox in memory; no symbol/use/path/color edits. Adapted display bytes are not source bytes.",
+      "adapter": "assets/synapse/audio-volume-sprite-embedded.rs",
+      "evidence": "docs/re/audio-1352-volume-source-audit.md",
+      "display_paths": [
+        "synapse/audio-volume-external-sprite.svg#link",
+        "synapse/audio-volume-external-sprite.svg#hover"
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/minimize.svg",
       "output": "assets/synapse/host-minimize.svg",
       "source_sha256": "0c600a785336c52612b3f51de0a440fef93600b2aea0d5b41705b1ccced1cfd4",
-      "sha256": "0c600a785336c52612b3f51de0a440fef93600b2aea0d5b41705b1ccced1cfd4"
+      "sha256": "0c600a785336c52612b3f51de0a440fef93600b2aea0d5b41705b1ccced1cfd4",
+      "source_bytes": 352,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/maximize.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/maximize.svg",
       "output": "assets/synapse/host-maximize.svg",
       "source_sha256": "029400e233f1d0901a3560f9ace598131ecfd927c46f7f13c50018575ff8813e",
-      "sha256": "029400e233f1d0901a3560f9ace598131ecfd927c46f7f13c50018575ff8813e"
+      "sha256": "029400e233f1d0901a3560f9ace598131ecfd927c46f7f13c50018575ff8813e",
+      "source_bytes": 464,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/restore.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/restore.svg",
       "output": "assets/synapse/host-restore.svg",
       "source_sha256": "f7bdeb75715eb7d1068718c7743cc94c8f7599b3d75039dc9738f0c359b06d61",
-      "sha256": "f7bdeb75715eb7d1068718c7743cc94c8f7599b3d75039dc9738f0c359b06d61"
+      "sha256": "f7bdeb75715eb7d1068718c7743cc94c8f7599b3d75039dc9738f0c359b06d61",
+      "source_bytes": 273,
+      "preparation": "Exact bytes re-audited against installed 4.0.827; corrected line endings only, visual geometry unchanged."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/close.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close.svg",
       "output": "assets/synapse/host-close.svg",
       "source_sha256": "7e9b326f0c17e03f0fab1b7807fed1eb07c84eb8e43ef7814e507053e4712fa6",
-      "sha256": "7e9b326f0c17e03f0fab1b7807fed1eb07c84eb8e43ef7814e507053e4712fa6"
+      "sha256": "7e9b326f0c17e03f0fab1b7807fed1eb07c84eb8e43ef7814e507053e4712fa6",
+      "source_bytes": 257,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/close-original.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close-original.svg",
       "output": "assets/synapse/host-close-original.svg",
       "source_sha256": "b6c448c55cf1108a6c983e45e23a624e990ff7b1cbf5b231f14c1435bbde1ca5",
-      "sha256": "b6c448c55cf1108a6c983e45e23a624e990ff7b1cbf5b231f14c1435bbde1ca5"
+      "sha256": "b6c448c55cf1108a6c983e45e23a624e990ff7b1cbf5b231f14c1435bbde1ca5",
+      "source_bytes": 425,
+      "preparation": "Exact bytes re-audited against installed 4.0.827; corrected line endings only, visual geometry unchanged."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/close_active_tab.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close_active_tab.svg",
       "output": "assets/synapse/host-close_active_tab.svg",
       "source_sha256": "fe81757cbec99c2ae0fca9fdb634861df9fc049a6e8a4c947a8482a51d54c4aa",
-      "sha256": "fe81757cbec99c2ae0fca9fdb634861df9fc049a6e8a4c947a8482a51d54c4aa"
+      "sha256": "fe81757cbec99c2ae0fca9fdb634861df9fc049a6e8a4c947a8482a51d54c4aa",
+      "source_bytes": 400,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/close_active_tab_hover.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close_active_tab_hover.svg",
       "output": "assets/synapse/host-close_active_tab_hover.svg",
       "source_sha256": "532c4a73d5581bdc8ea03fef7298eb9a7c48111a295311ee827cf501b56baf11",
-      "sha256": "532c4a73d5581bdc8ea03fef7298eb9a7c48111a295311ee827cf501b56baf11"
+      "sha256": "532c4a73d5581bdc8ea03fef7298eb9a7c48111a295311ee827cf501b56baf11",
+      "source_bytes": 400,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/close_pressed.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close_pressed.svg",
       "output": "assets/synapse/host-close_pressed.svg",
       "source_sha256": "84aa47765f903ea80211896965988f4e0a1233ba65e52d24c74ec361e3982b32",
-      "sha256": "84aa47765f903ea80211896965988f4e0a1233ba65e52d24c74ec361e3982b32"
+      "sha256": "84aa47765f903ea80211896965988f4e0a1233ba65e52d24c74ec361e3982b32",
+      "source_bytes": 400,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/left-arrow.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow.svg",
       "output": "assets/synapse/host-left-arrow.svg",
       "source_sha256": "c67e22c86bbbf9644013fd78f21cccd1046b88d218fe3eea221f3b790ef42531",
-      "sha256": "c67e22c86bbbf9644013fd78f21cccd1046b88d218fe3eea221f3b790ef42531"
+      "sha256": "c67e22c86bbbf9644013fd78f21cccd1046b88d218fe3eea221f3b790ef42531",
+      "source_bytes": 299,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/left-arrow-hover.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow-hover.svg",
       "output": "assets/synapse/host-left-arrow-hover.svg",
       "source_sha256": "97766c9c7761a1bea8cff5096cd5454b711e99b63b0b046f35d818e7a55470e5",
-      "sha256": "97766c9c7761a1bea8cff5096cd5454b711e99b63b0b046f35d818e7a55470e5"
+      "sha256": "97766c9c7761a1bea8cff5096cd5454b711e99b63b0b046f35d818e7a55470e5",
+      "source_bytes": 326,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/left-arrow-active.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow-active.svg",
       "output": "assets/synapse/host-left-arrow-active.svg",
       "source_sha256": "6200a6c42b44e7a7d886fe19df8ff0a1aebdd2629686ad05f33df080eb349b1c",
-      "sha256": "6200a6c42b44e7a7d886fe19df8ff0a1aebdd2629686ad05f33df080eb349b1c"
+      "sha256": "6200a6c42b44e7a7d886fe19df8ff0a1aebdd2629686ad05f33df080eb349b1c",
+      "source_bytes": 326,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/left-arrow-disabled.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow-disabled.svg",
       "output": "assets/synapse/host-left-arrow-disabled.svg",
       "source_sha256": "4e7995fe9aafc7a65705d13938b3e06d0077c24a223ea3ac7c22443c0310c44d",
-      "sha256": "4e7995fe9aafc7a65705d13938b3e06d0077c24a223ea3ac7c22443c0310c44d"
+      "sha256": "4e7995fe9aafc7a65705d13938b3e06d0077c24a223ea3ac7c22443c0310c44d",
+      "source_bytes": 311,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/right-arrow.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow.svg",
       "output": "assets/synapse/host-right-arrow.svg",
       "source_sha256": "15d6cc42d1243c8dd8564ff55b8ad3435adaf188af0282a80b932e0ef4547653",
-      "sha256": "15d6cc42d1243c8dd8564ff55b8ad3435adaf188af0282a80b932e0ef4547653"
+      "sha256": "15d6cc42d1243c8dd8564ff55b8ad3435adaf188af0282a80b932e0ef4547653",
+      "source_bytes": 303,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/right-arrow-hover.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow-hover.svg",
       "output": "assets/synapse/host-right-arrow-hover.svg",
       "source_sha256": "d1036fee99ef0a92bf3c848ffaa9bdcefcb15f2cbbb007e637269b5213eedf24",
-      "sha256": "d1036fee99ef0a92bf3c848ffaa9bdcefcb15f2cbbb007e637269b5213eedf24"
+      "sha256": "d1036fee99ef0a92bf3c848ffaa9bdcefcb15f2cbbb007e637269b5213eedf24",
+      "source_bytes": 330,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/right-arrow-active.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow-active.svg",
       "output": "assets/synapse/host-right-arrow-active.svg",
       "source_sha256": "5f3a805447c11a7aaf24bddcf6942ccb8cba445901d3a2cbdc294533b6b19d49",
-      "sha256": "5f3a805447c11a7aaf24bddcf6942ccb8cba445901d3a2cbdc294533b6b19d49"
+      "sha256": "5f3a805447c11a7aaf24bddcf6942ccb8cba445901d3a2cbdc294533b6b19d49",
+      "source_bytes": 330,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/image/tab/right-arrow-disabled.svg",
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow-disabled.svg",
       "output": "assets/synapse/host-right-arrow-disabled.svg",
       "source_sha256": "309d3e2e8518b4c62f0b6595520ea58673267926ac0fa06d51486cb220ac50ac",
-      "sha256": "309d3e2e8518b4c62f0b6595520ea58673267926ac0fa06d51486cb220ac50ac"
+      "sha256": "309d3e2e8518b4c62f0b6595520ea58673267926ac0fa06d51486cb220ac50ac",
+      "source_bytes": 315,
+      "preparation": "Exact bytes re-audited against the acquired installed 4.0.827 host; no vendor code execution."
     },
     {
       "source": ".ref/devices/182/static/media/prd-3x.674b18f0.avif",
@@ -1085,7 +1132,7 @@
       "source_url": "https://apps.razer.com/synapse/settings/static/media/save-white.783e6aa4.svg"
     },
     {
-      "source": ".ref/release-patch-note/static/media/open_in_new_icon.c029c0d0.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/release-patch-note/static/media/open_in_new_icon.c029c0d0.svg",
       "output": "assets/synapse/release-notes-external.svg",
       "source_sha256": "b1e1494661576222c27f570af5de94be84d556fa5b25090d8770c6aae6287134",
       "sha256": "b1e1494661576222c27f570af5de94be84d556fa5b25090d8770c6aae6287134",
@@ -4139,7 +4186,7 @@
       "sha256": "2ecd47d2a896e646282dd2bf3b9cb71feffba23073e0499a198a0ca811ee16d3"
     },
     {
-      "source": ".ref/devices/182/static/media/icon_external_link.48227e72.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/media/icon_external_link.48227e72.svg",
       "output": "assets/synapse/external-link.svg",
       "source_sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8",
       "sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8"
@@ -4283,13 +4330,13 @@
       "sha256": "d9a92ca5978e1d640e76bec9d2b777112eac9238e2aefacb64218c7168f6a03e"
     },
     {
-      "source": ".ref/devices/182/static/media/windows_logo.8fb1e7e2.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/media/windows_logo.8fb1e7e2.svg",
       "output": "assets/synapse/windows.svg",
       "source_sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3",
       "sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3"
     },
     {
-      "source": ".ref/devices/182/static/media/common-windows-11.d477cadb.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/media/common-windows-11.d477cadb.svg",
       "output": "assets/synapse/windows-11.svg",
       "source_sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba",
       "sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba"
@@ -4669,42 +4716,59 @@
       "selector": ".action-wrapper.SWITCH_LIGHTING.open .head:before"
     },
     {
-      "source": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
       "output": "assets/synapse/help-less.svg",
-      "source_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source_sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
       "sha256": "80b44627c86c4a2447e6edc898bfe2473d4255084b7d645be8f793db25fcc621",
-      "inline_symbol": "Ed"
+      "inline_symbol": "Ed",
+      "source_utf8_path_offset": 5519853,
+      "preparation": "Original inline React SVG geometry and root dimensions/fill independently re-verified; output is adapted SVG, not original JS bytes.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
     },
     {
-      "source": ".ref/devices/182/static/js/main.db20a7c4.js",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
       "output": "assets/synapse/help-more.svg",
-      "source_sha256": "7626cc9c0a20cf491a481c701829429ac8f23c9c8c5b907736505f70d3b9bcc7",
+      "source_sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
       "sha256": "fb97f9dd362fecee5134ae3ce548c6f4c54deca56c55c0c2217febecc283abf8",
-      "inline_symbol": "qR"
+      "inline_symbol": "qR",
+      "source_utf8_path_offset": 5518481,
+      "preparation": "Original inline React SVG geometry and root dimensions/fill independently re-verified; output is adapted SVG, not original JS bytes.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
     },
     {
-      "source": ".ref/devices/182/static/media/icon_help.377359c3.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
       "output": "assets/synapse/help-default.svg",
       "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
       "sha256": "65fdecaf078e0f583fe8e8f48a146ff1bf44ec1f179a491016c2b2452301fa00",
-      "fragment": "default"
+      "fragment": "default",
+      "preparation": "Sprite view #default displayed with source viewBox 0 0 26 26; all original symbol, use, path and color attributes independently verified unchanged.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
     },
     {
-      "source": ".ref/devices/182/static/media/icon_help.377359c3.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
       "output": "assets/synapse/help-hover.svg",
       "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
       "sha256": "9bb34c3b65a8b209f66af052eb77b798b5ed9b10407c32b6f6e715ec53efbb3c",
-      "fragment": "hover"
+      "fragment": "hover",
+      "preparation": "Sprite view #hover displayed with source viewBox 0 27 26 26; all original symbol, use, path and color attributes independently verified unchanged.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
     },
     {
-      "source": ".ref/devices/182/static/media/icon_help.377359c3.svg",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
       "output": "assets/synapse/help-active.svg",
       "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
       "sha256": "ac37d4c59d4fa9d845915f9b92ae81a58c1a57902ee8b3d1cef9e53dc95446b5",
-      "fragment": "active"
+      "fragment": "active",
+      "preparation": "Sprite view #active displayed with source viewBox 0 53 26 26; all original symbol, use, path and color attributes independently verified unchanged.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Light.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Light.woff2",
       "output": "assets/synapse/Roboto-Light.ttf",
       "source_sha256": "eca8ffa764a66cd084800e2e71c4176ef089ebd805515664a6cb8d4fb3b598bf",
       "sha256": "104d76669a1810f22611938c265d4d3cb855fc533b403d0f38f543fcab965d3f",
@@ -4740,7 +4804,7 @@
       }
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Regular.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Regular.woff2",
       "output": "assets/synapse/Roboto-Regular.ttf",
       "source_sha256": "3e253b66056519aa065b00a453bac37ac5ed8f3e6fe7b542e93a9dcdcc11d0bc",
       "sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
@@ -4776,7 +4840,7 @@
       }
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Medium.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Medium.woff2",
       "output": "assets/synapse/Roboto-Medium.ttf",
       "source_sha256": "5a8c1e7681318caa29e9f44e8a6e271f6a4067a2703e9916dfd4fe9099241db7",
       "sha256": "b5356da237055228be2cdad6eaea1c454290745c08b35e1a99e65f931d21ac4f",
@@ -4812,7 +4876,7 @@
       }
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/Roboto-Bold.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Bold.woff2",
       "output": "assets/synapse/Roboto-Bold.ttf",
       "source_sha256": "1d5b7c64458f4af91dcfee0354be47adde1f739b5aded03a7ab6068a1bb6ca97",
       "sha256": "fc8488b1de752bbdc008caa2b731dd5a1721cdddf170ad78138e81694ca292a2",
@@ -4848,7 +4912,7 @@
       }
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/RazerF5-Thin.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-Thin.woff2",
       "output": "assets/synapse/RazerF5-Thin.ttf",
       "source_sha256": "77caa92a2a0ae136f70cc309b486b454ea99d5be6e63a7e7c15ad5bae3707bb8",
       "sha256": "0fa0aefa2bf1e00b99a9e331f4caf2650b309dad1a4e54a49c481461d8d48e66",
@@ -4881,7 +4945,7 @@
       }
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/RazerF5-Regular.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-Regular.woff2",
       "output": "assets/synapse/RazerF5-Regular.ttf",
       "source_sha256": "f74f5837dec1729e960a3a04bbde7ca706b4c938f71516630767089f5ca9bd0b",
       "sha256": "ba98bf5a0ea8d55161f061dcd2f8b2730088cc04eb05d702f163e1679c11d15f",
@@ -4914,7 +4978,7 @@
       }
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/RazerF5-SemiBold.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-SemiBold.woff2",
       "output": "assets/synapse/RazerF5-SemiBold.ttf",
       "source_sha256": "eec918966cc513f995d357866c3fb441459677838bd303123c812875bc7706bb",
       "sha256": "64293d40f66cda7e2afb873b1eff8b09bf7ecec1027764f613fb200577556621",
@@ -4947,7 +5011,7 @@
       }
     },
     {
-      "source": ".ref/host-4.0.827/electron/assets/fonts/RazerF5-Bold.woff2",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-Bold.woff2",
       "output": "assets/synapse/RazerF5-Bold.ttf",
       "source_sha256": "e1b009d49f5ca2feec11a3904f4f028693a8957ecbf7488ca235917564d434a3",
       "sha256": "fa85dc64f34086139c4030c1da8cb96fa902e7c6942b2bdf55123c509b8b112e",
@@ -18299,6 +18363,673 @@
       "source_sha256": "bb8b3d3db15ffba5dcfdfaed6311d46b07647e42d023ddfda147e5000e5fe591",
       "sha256": "bb8b3d3db15ffba5dcfdfaed6311d46b07647e42d023ddfda147e5000e5fe591",
       "source_url": "https://apps.razer.com/synapse/macro/static/media/icon_config_mouse_sensitivity_p.1c326a93.svg"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-LightItalic.woff2",
+      "output": "assets/synapse/Roboto-LightItalic.ttf",
+      "source_sha256": "f35f6616aa2148b09cbdefd3aec6d3d3e94b83327346ef0d5cdac2e3b6537526",
+      "sha256": "202d2e67f0ed60f131a20de8515a863a9d7d38e55bc842d9cfeed7c2baa63aeb",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 300
+      },
+      "original_metadata": {
+        "family": "Roboto Light",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 300
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "88b811f1d915df79ff071eadc22620c77f7b65b85b2e8853c78c5541245c8413",
+        "maxp": "390ab29b7cfe06b61094aab56f2ce0598b33c6c999c5a527bcfbab093af02f27",
+        "hmtx": "eefed0daf12ac31e627718d6377bc0253f843668fa3f95f18af7db8744eb78b5",
+        "hdmx": "6506e31265b26281c5580b23646132b80f45705a31f2f53ea29c48e9148bdee6",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "292d16d2cac92ef59adae039b7a40053b2826919c754a9bcbcb68dfd378c21b5",
+        "prep": "92712966f01d7696824dd05af9f4b69c325351905fd07cc1178cb7d0e2e43fd7",
+        "cvt ": "521cf5fcb5206ef2bdf7c11d0be2f5c4b99659564d390e341ded0d1296d711d8",
+        "loca": "47fd433f85bea59b7b06b345e5ff8e01db263f38d53d9de53e0e3ed0b0c392e1",
+        "glyf": "73face46ad4a577eb0aba059fb4ecd5eec5f8dfac82b28bd3a36bc3b64b0b049",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Italic.woff2",
+      "output": "assets/synapse/Roboto-Italic.ttf",
+      "source_sha256": "aa4650a411dfe1c9beb794ffaf08c7909cdfbb05672d79b3a9976672cbba75ec",
+      "sha256": "4bd8affd7aecd8486ba8cf5f437bbdc94c997514a7af2d71c9cc1efabcae4862",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "d6587a2196c26a2df57e9409097918e4c9e194a170a9dc36b60a27604faf027c",
+        "maxp": "ac1f6336a21f3cb1789b3cd99288b5cf1f98be439170badf0809fb45d6cfcbf0",
+        "hmtx": "81ca41dc2dd2378e19798ed815c9f03c74daf1af6eed60b4757b7df3871020e8",
+        "hdmx": "5421db1f3eaa1a93ffa3b02546408f732130c154ff58056198412e425fa63bc2",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "a4f305766db6eec879a7dbab95aaccf5f4b06908b239e3950ebd9dc6222c53df",
+        "prep": "6a9945fc27559613a0e708cba3c4882d2573e30477bddc8c167638b536fdd8cc",
+        "cvt ": "72a2dbb306774661f359612881bff1d565385922d787fe1704bf85f04c9e71fb",
+        "loca": "34145920d965b8730076b09c2be6f1d5d37599be2c1e48e43d9c2706e84b90dd",
+        "glyf": "10037aa960fa8acdf580fbb43a31d1250e8f879996ca6d53cd1f9cafcd3cf237",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-MediumItalic.woff2",
+      "output": "assets/synapse/Roboto-MediumItalic.ttf",
+      "source_sha256": "a44484ecc8b7aa5da1603d6a7256d3eea3c5c8e5c6f50bcdb220b303e4b2010a",
+      "sha256": "f9bfc6d616e97b517f0bbbbff485f8462264112cfbe0e62a2b826b4a78da3d01",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 500
+      },
+      "original_metadata": {
+        "family": "Roboto Medium",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 500
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "b34050c2a893386cc4320d306cfcb2eb586b2a8e0fdeae879599942eb8b53714",
+        "maxp": "f03bcf8b71e5fea0926712334327918e66e9d56fa10ef0263da33edfbb5fc1af",
+        "hmtx": "532e7d9b5748c3ef412433067294c57db61f803ef0054190e5c6d1ef6c553ab6",
+        "hdmx": "7500821ab522aca7ba049532d193a418d169e140b02de434cec5b113e8257ddd",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "a076c8a10d7b904d00ced83edafc77c83c3c9e9ca30af60ad5e1496cc5aa6199",
+        "prep": "3c59e6bbf1225c6b9f36c57c04f6903c4c5b07d2e2dc28ff0be757af98825a7d",
+        "cvt ": "6d89b997494a1490e77159ac8d9b5674f48b7b88bbdf3f814240dbe138bc6229",
+        "loca": "fbbce8f830d3a14296f6f35522f356767e43268e6f90bc02a9e975fba8728585",
+        "glyf": "2f61235f309f4f98c5efbac9bda527199b34c5ca199a413b5f7c5d8d643a0ee4",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-BoldItalic.woff2",
+      "output": "assets/synapse/Roboto-BoldItalic.ttf",
+      "source_sha256": "756f65bc72ad18ac281e8ef320de3347f26d402701aeb8f659f33ffb8f036ccb",
+      "sha256": "1c6453f110bf3eef7690cdfe214dfe758daedf3d3c8c474ae39d5aa061a91da8",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Bold Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 700
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "3945de8ba640818e9d93c24c6047cd69a992d1386bd427743764df99f9ded8f3",
+        "maxp": "739213962ee18e9529396bcf41baa027e1af9e24d2c81648de30bc8c9f51ad75",
+        "hmtx": "8c0358c765d83772b76ec8ed66351bbdcefc7024f49e74a08029ef7401be67b9",
+        "hdmx": "ca754a2d2b7868e1061f5e7f52e30a3ae74a1cb6388038dc9af1f2e7605cef4a",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "11f6befc81b711a0c8f304596fa14248efa1eeba7e4b0a451168400e856c9079",
+        "prep": "ea5e474a6527805e1a80ad648172ba5f33a4eeaf9ad50e0b6ad1b3bc18173411",
+        "cvt ": "d82389d78c34d71eb30916bb21749b0eda839e04ae5a8e676b6d3452e6875c94",
+        "loca": "a43b408cb6ac496a1dc1b61873564826866f44aafd40c22e891f6b6f265b91a1",
+        "glyf": "0ac22246c47884284895f0994209eccff72372d6dabcf78551105d05a35eedc1",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-RegItalic.woff2",
+      "output": "assets/synapse/RazerF5-RegItalic.ttf",
+      "source_sha256": "1d4a96ea5d4438ee0612d297e9446175fb354c08371ea3f14e526560e8cffabb",
+      "sha256": "c79c356dc2b997ea386a7cf28d0975ab7c717f78efd6803899628812d830d6cb",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "italic",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "RazerF5",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": "Regitalic",
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "f4a8088d775376ec1d8c18b87863011685a38e86f0afae616ddd228c44ba2577",
+        "maxp": "32e5b59ac263daee3c1926f9a5fbcd0765064fe4d2dc42a611399492059decf7",
+        "hmtx": "c8b92b10186ea90382acf9816f13a9deca6cfb5e9ab026f42fe3b2e3638bb9b4",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "18d5a464916782008c885c97ff834a8a6b4acceeab1937edfa9b08a91c2de18f",
+        "glyf": "9246b6bff4059b75670496231aa64d674496885543cdd1de0d7ad7412e99bcda",
+        "post": "9e86c4b97596e2f094481eeaf8ceecda1e3a9931772c9e6cf34e61baeae9c1ad",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "64a3f3a9dc2655c30be120826f96ab5bcdcc7816d80405e85e21648331914a4b",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "a0ff43fa21c5b9508473298b573d09058092a986028f4a6b2bd7ed996ebf90c4",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-BoldItalic.woff2",
+      "output": "assets/synapse/RazerF5-BoldItalic.ttf",
+      "source_sha256": "7f34b7eace7a7538149d97dcd31e88b4d047fcc8348de20a7c929ceba81e21c1",
+      "sha256": "85a911b83354564084e557f22bc9cae225b08e00caa8a9c431631a2b7e672f4b",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "italic",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "RazerF5 Bold",
+        "subfamily": "Italic",
+        "preferred_family": "RazerF5",
+        "preferred_subfamily": "Bolditalic",
+        "weight": 400
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "56acb5f33a38edb6ae2abb32703d0fc14aa1a32275233f239f2373352bbe4776",
+        "maxp": "b48cb4db57f0cc067b19fab3d3d677c743f60dca22a433967dcb6211a437c83c",
+        "hmtx": "4087cb999dc3ec387d5f7aaf68b0ca465b934a1eb2c9738cb3bc72f47fd0b30c",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "e47eb22094d7dd2193523c3469c11f206be6d2ab859438331fb43e2bcad262a8",
+        "glyf": "be272dd4a154d0a6d06dd63fc46f0231b2cffc79f4b9161568a288f5f38c4961",
+        "post": "9e86c4b97596e2f094481eeaf8ceecda1e3a9931772c9e6cf34e61baeae9c1ad",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "59cca9e4a067f5ae98ff14660f853b39beb49627c798a3edf37cbbd98c72b157",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "16a2b1eeaee6d12f75d6ce9b2e8a74183348b47e7da7478bf6fad92bec47fb19",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/dashboard/manifest.json",
+      "output": "assets/synapse/settings-dashboard-manifest.json",
+      "source_sha256": "f93afceff69532a6c10e7fbe2b9da7729fbb02a3a2d0d0525b27bcb86581b366",
+      "sha256": "f93afceff69532a6c10e7fbe2b9da7729fbb02a3a2d0d0525b27bcb86581b366",
+      "source_url": "https://apps.razer.com/synapse/dashboard/manifest.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_rotation_mouse.6099cba7.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_rotation_mouse.6099cba7.svg",
+      "output": "assets/synapse/mouse-rotation.svg",
+      "source_sha256": "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+      "sha256": "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+      "source_bytes": 3183,
+      "preparation": "Exact source bytes; embedded display wrapper preserves source geometry.",
+      "evidence": "crates/razer-pages/src/features/mouse_rotation_evidence.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/media/icon_link.1f628146.svg",
+      "source_url": "https://apps.razer.com/synapse/products/167/ui/static/media/icon_link.1f628146.svg",
+      "output": "assets/synapse/mouse-scroll-link.svg",
+      "source_sha256": "0da93125c94e76427fedc566680ffc72ac1a5355b477918ca92203553cc89ff4",
+      "sha256": "0da93125c94e76427fedc566680ffc72ac1a5355b477918ca92203553cc89ff4",
+      "source_bytes": 770,
+      "preparation": "Exact source bytes; embedded display wrapper preserves source geometry.",
+      "evidence": "local-ui-reverse/pages/synapse--products--167--ui--TAB_SCROLLING--5064641.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/media/icon_unlink.6fba71db.svg",
+      "source_url": "https://apps.razer.com/synapse/products/167/ui/static/media/icon_unlink.6fba71db.svg",
+      "output": "assets/synapse/mouse-scroll-unlink.svg",
+      "source_sha256": "fe7816207da78d790580376046a0bc716473c3fafab4ded6417d239791702940",
+      "sha256": "fe7816207da78d790580376046a0bc716473c3fafab4ded6417d239791702940",
+      "source_bytes": 923,
+      "preparation": "Exact source bytes; embedded display wrapper preserves source geometry.",
+      "evidence": "local-ui-reverse/pages/synapse--products--167--ui--TAB_SCROLLING--5064641.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/media/icon_close.55fe41f1.svg",
+      "source_url": "https://apps.razer.com/synapse/products/167/ui/static/media/icon_close.55fe41f1.svg",
+      "output": "assets/synapse/mouse-scroll-close.svg",
+      "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "source_bytes": 339,
+      "preparation": "Exact source bytes; embedded display wrapper preserves source geometry.",
+      "evidence": "local-ui-reverse/pages/synapse--products--167--ui--TAB_SCROLLING--5064641.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/media/background_glow.43f70cb2.svg",
+      "source_url": "https://apps.razer.com/synapse/products/167/ui/static/media/background_glow.43f70cb2.svg",
+      "output": "assets/synapse/mouse-scroll-glow.svg",
+      "source_sha256": "f823fb713910231a041b531361f50bf14fb327b0907cc552fab5508706c3e9bc",
+      "sha256": "f823fb713910231a041b531361f50bf14fb327b0907cc552fab5508706c3e9bc",
+      "source_bytes": 877,
+      "preparation": "Exact source bytes; embedded display wrapper preserves source geometry.",
+      "evidence": "local-ui-reverse/pages/synapse--products--167--ui--TAB_SCROLLING--5064641.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/Actuation.28db05a7.gif",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/Actuation.28db05a7.gif",
+      "output": "assets/synapse/keyboard-actuation.gif",
+      "source_sha256": "2561f4e32a88564dbf9e77cb1561a9d059ee01c9d87664eb824db8458b78d022",
+      "sha256": "2561f4e32a88564dbf9e77cb1561a9d059ee01c9d87664eb824db8458b78d022",
+      "source_bytes": 3844604,
+      "preparation": "Exact original GIF bytes; source product flags select the displayed variant.",
+      "adapter": "assets/synapse/keyboard-actuation-embedded.rs"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/rapid-trigger-tooltip-slider.dd8b9d2c.gif",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/rapid-trigger-tooltip-slider.dd8b9d2c.gif",
+      "output": "assets/synapse/rapid-trigger-tooltip-slider.gif",
+      "source_sha256": "29f5cff2e27a5117a6df2f1272ae1046e0b530bb7c3951d428dfbc2b0e88ef6a",
+      "sha256": "29f5cff2e27a5117a6df2f1272ae1046e0b530bb7c3951d428dfbc2b0e88ef6a",
+      "source_bytes": 348325,
+      "preparation": "Exact original GIF bytes; source product flags select the displayed variant.",
+      "adapter": "assets/synapse/keyboard-actuation-embedded.rs"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/media/MagneticActuation.56318359.gif",
+      "source_url": "https://apps.razer.com/synapse/products/740/ui/static/media/MagneticActuation.56318359.gif",
+      "output": "assets/synapse/keyboard-magnetic-actuation.gif",
+      "source_sha256": "9f091d9331828ee3cc532503d6878b0e6826ac5245652f2e4433d789e5edb316",
+      "sha256": "9f091d9331828ee3cc532503d6878b0e6826ac5245652f2e4433d789e5edb316",
+      "source_bytes": 4354694,
+      "preparation": "Exact original GIF bytes; source product flags select the displayed variant.",
+      "adapter": "assets/synapse/keyboard-actuation-embedded.rs"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/media/LowProfileActuation.e86e6ea4.gif",
+      "source_url": "https://apps.razer.com/synapse/products/742/ui/static/media/LowProfileActuation.e86e6ea4.gif",
+      "output": "assets/synapse/keyboard-low-profile-actuation.gif",
+      "source_sha256": "5b67dd777a33e844d7bc49d72376e10d94028331732ecc742037781ade23b461",
+      "sha256": "5b67dd777a33e844d7bc49d72376e10d94028331732ecc742037781ade23b461",
+      "source_bytes": 993410,
+      "preparation": "Exact original GIF bytes; source product flags select the displayed variant.",
+      "adapter": "assets/synapse/keyboard-actuation-embedded.rs"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/media/info-icon.769264c1.svg",
+      "source_url": "https://apps.razer.com/synapse/products/226/ui/static/media/info-icon.769264c1.svg",
+      "output": "assets/synapse/polling-info.svg",
+      "source_sha256": "0e8f5d9d322ac12af2ffa96160e700253ffbaae77aa3d4b8e037a67b7e7d423b",
+      "sha256": "0e8f5d9d322ac12af2ffa96160e700253ffbaae77aa3d4b8e037a67b7e7d423b",
+      "source_bytes": 705,
+      "preparation": "Exact original source SVG bytes.",
+      "evidence": "local-ui-reverse/pages/synapse--products--190--ui--TAB_PERFORMANCE--4794500.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_camera1.54db618a.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_camera1.54db618a.svg",
+      "source_bytes": 3433,
+      "source_sha256": "94be12dc0bb19deff1ac2b0ce0537fc45019a838e11a5b00b41b40732cce73ee",
+      "output": "assets/synapse/audio-1352-camera.svg",
+      "sha256": "94be12dc0bb19deff1ac2b0ce0537fc45019a838e11a5b00b41b40732cce73ee",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_warning.6c0cd78b.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_warning.6c0cd78b.svg",
+      "source_bytes": 488,
+      "source_sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "output": "assets/synapse/audio-1352-warning.svg",
+      "sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/audioModeTip.74a29bb7.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/audioModeTip.74a29bb7.svg",
+      "source_bytes": 39019,
+      "source_sha256": "ab9918c6d152de8fc943b831f1bd2420841fd3c4382542750cd689f8f6621ab0",
+      "output": "assets/synapse/audio-1352-mode-tip.svg",
+      "sha256": "ab9918c6d152de8fc943b831f1bd2420841fd3c4382542750cd689f8f6621ab0",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_play.8f2af2a9.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_play.8f2af2a9.svg",
+      "source_bytes": 173,
+      "source_sha256": "d5b00c35c640f2e0978dddbc727a4ec939a52fcc23ebe6ceb7663d177d45c48c",
+      "output": "assets/synapse/audio-1352-play.svg",
+      "sha256": "d5b00c35c640f2e0978dddbc727a4ec939a52fcc23ebe6ceb7663d177d45c48c",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link.48227e72.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link.48227e72.svg",
+      "source_bytes": 435,
+      "source_sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8",
+      "output": "assets/synapse/audio-1352-properties-external.svg",
+      "sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_active.b0d1c555.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_active.b0d1c555.svg",
+      "source_bytes": 432,
+      "source_sha256": "4c7dc10d233cf5e1f067eb62f31e26241796e7ca328f1a8dc93e841e9b9972e8",
+      "output": "assets/synapse/audio-1352-properties-external-active.svg",
+      "sha256": "4c7dc10d233cf5e1f067eb62f31e26241796e7ca328f1a8dc93e841e9b9972e8",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/common-windows-11.d477cadb.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/common-windows-11.d477cadb.svg",
+      "source_bytes": 350,
+      "source_sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba",
+      "output": "assets/synapse/audio-1352-windows-11.svg",
+      "sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/windows_logo.8fb1e7e2.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/windows_logo.8fb1e7e2.svg",
+      "source_bytes": 622,
+      "source_sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3",
+      "output": "assets/synapse/audio-1352-windows.svg",
+      "sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/tooltip_questionmark.96138d2f.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/tooltip_questionmark.96138d2f.svg",
+      "source_bytes": 760,
+      "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "output": "assets/synapse/audio-1352-help.svg",
+      "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/demo.dec98884.avif",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/demo.dec98884.avif",
+      "source_bytes": 78252,
+      "source_sha256": "b9ed5938fa959bec77d12631fac0eb89ada4fb07025a7450a07a3349c0fc17d2",
+      "output": "assets/synapse/audio-1352-demo.png",
+      "sha256": "f4d3dd8a7d95f486ab57847d0c4f1b37db19e2f57b47f8d3aa3db460042baa1d",
+      "preparation": "Static AVIF to RGBA PNG; no resize; decoded pixels verified equal.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md",
+      "width": 1920,
+      "height": 1080,
+      "pixel_sha256": "68ffc7c4663e5b0e860c97d1b75a9d9273c107383b8e2d1ee5e6eef3e1428220"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/prd-1x.fcf5b3d0.avif",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/prd-1x.fcf5b3d0.avif",
+      "source_bytes": 2619,
+      "source_sha256": "fc83a9394e5f3f8a4fe894a9f6b8da6a79be5847123566e499dd2f0d94c881ee",
+      "output": "assets/synapse/audio-1352-product-1x.png",
+      "sha256": "919d9d527e0177645643742780521f730f838d2eb2a3774cfa2d0425f30a7319",
+      "preparation": "Static AVIF to RGBA PNG; no resize; decoded pixels verified equal.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md",
+      "width": 325,
+      "height": 250,
+      "pixel_sha256": "8c06918e8a60fb376dd58b453000befddcf2d2ae3788a424d6aac89fd522a541"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/prd-3x.b1834c52.avif",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/prd-3x.b1834c52.avif",
+      "source_bytes": 21427,
+      "source_sha256": "8c265c2d3c767302313e30ac35e54933ae5c0f6446dfd9bfe34d3ad8439689e5",
+      "output": "assets/synapse/audio-1352-product-3x.png",
+      "sha256": "b876bc24b2a1e8260512e02292255d4eb50bd7727e7a6ef079771e920be82db2",
+      "preparation": "Static AVIF to RGBA PNG; no resize; decoded pixels verified equal.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md",
+      "width": 975,
+      "height": 750,
+      "pixel_sha256": "63ac2dd70d64e7869c4e85841a19d1117508422dbcd05b3b6e2a692b461fbec4"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/js/main.95a4f703.js",
+      "source_sha256": "8dee0170de93fd9900024510e8c6edd315c30010d759ca12609ad6d2c8c73c80",
+      "output": "assets/synapse/audio-1352-input-icon.svg",
+      "sha256": "08577a90ccbda6a52cc4cbcfe0063c2679663c0985abc9bafc314f006f50f797",
+      "preparation": "Static JSX aG SVG at character offset 4581852; original path/fill/width/height retained. Root viewBox equals source intrinsic viewport.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/708/ui/static/js/8231.8f6e8a7c.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/708/ui/static/js/8231.8f6e8a7c.chunk.js",
+      "output": "assets/synapse/keyboard-power-saving-button.svg",
+      "source_sha256": "48e701f1a00e3fef2bb3a17d79a961a8a151000808f0f4baf92cd0c55d4f1f49",
+      "sha256": "b757e9189cc6ccf465995c4aab93b701de63562e31177d1d97c207ae5a5f7f6e",
+      "source_bytes": 226259,
+      "source_utf8_path_offset": 185352,
+      "preparation": "Static SVG serialization of current inline React SVG: original root dimensions/viewBox, two rects and exact path/fill/stroke. Output bytes are adapted SVG bytes, not source JS bytes. Vendor JS was never executed.",
+      "evidence": "tools/audit_keyboard_power.cjs"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/plus-gray.52d8de92.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/plus-gray.52d8de92.svg",
+      "output": "assets/synapse/mouse-dynamic-plus.svg",
+      "source_sha256": "d095e668c2b54d1877ce1ba197ab1cce401dab97eb7e89061916e1c16b4ac45d",
+      "sha256": "d095e668c2b54d1877ce1ba197ab1cce401dab97eb7e89061916e1c16b4ac45d",
+      "source_bytes": 1627,
+      "preparation": "Exact original source SVG bytes; directly embedded."
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/minus-gray.6b8332b9.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/minus-gray.6b8332b9.svg",
+      "output": "assets/synapse/mouse-dynamic-minus.svg",
+      "source_sha256": "165cc2fa326aeeb65e0c01ba04cd0debb4bcfe1cfca81599149239840af9e5ca",
+      "sha256": "165cc2fa326aeeb65e0c01ba04cd0debb4bcfe1cfca81599149239840af9e5ca",
+      "source_bytes": 1653,
+      "preparation": "Exact original source SVG bytes; directly embedded."
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_utf8_offset": 104388,
+      "output": "assets/synapse/keyboard-indicator-connection.svg",
+      "sha256": "822e8c59615322c0f73b06379c4ebc67dd4d73ff94da3d0a145cc5b6eb45e47a",
+      "preparation": "Current literal JSX SVG statically serialized with original attributes; target JS not executed.",
+      "evidence": "assets/synapse/keyboard-indicator-current-source-audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_utf8_offset": 104388,
+      "output": "assets/synapse/keyboard-indicator-connection-body.png",
+      "sha256": "0b3bfdbf13136c2d8cd49e87d5edc4259ecb50b1baee9c940f6ec3ea016d6895",
+      "preparation": "243x187 original multi-color SVG body rendered by resvg; LED circles removed only for native animation overlay. Not original source bytes.",
+      "evidence": "assets/synapse/keyboard-indicator-current-source-audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_utf8_offset": 107772,
+      "output": "assets/synapse/keyboard-indicator-battery.svg",
+      "sha256": "6135a2b05ce162df5d57fda2f7bd43d77cc85279e6569372abf3e97ca728235c",
+      "preparation": "Current literal JSX SVG statically serialized with original attributes; target JS not executed.",
+      "evidence": "assets/synapse/keyboard-indicator-current-source-audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_utf8_offset": 107772,
+      "output": "assets/synapse/keyboard-indicator-battery-body.png",
+      "sha256": "0b3bfdbf13136c2d8cd49e87d5edc4259ecb50b1baee9c940f6ec3ea016d6895",
+      "preparation": "243x187 original multi-color SVG body rendered by resvg; LED circles removed only for native animation overlay. Not original source bytes.",
+      "evidence": "assets/synapse/keyboard-indicator-current-source-audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_utf8_offset": 112081,
+      "output": "assets/synapse/keyboard-indicator-warning.svg",
+      "sha256": "8461ba7809920eeb1559aa316538f5c94aaac6a2c0921c5236396bf78eff103a",
+      "preparation": "Current literal JSX SVG statically serialized with original attributes; target JS not executed.",
+      "evidence": "assets/synapse/keyboard-indicator-current-source-audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_utf8_offset": 112081,
+      "output": "assets/synapse/keyboard-indicator-warning-body.png",
+      "sha256": "0b3bfdbf13136c2d8cd49e87d5edc4259ecb50b1baee9c940f6ec3ea016d6895",
+      "preparation": "243x187 original multi-color SVG body rendered by resvg; LED circles removed only for native animation overlay. Not original source bytes.",
+      "evidence": "assets/synapse/keyboard-indicator-current-source-audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/videos/dynamic-sensitivity-tutorial.mp4",
+      "source_url": "https://apps.razer.com/synapse/assets/videos/dynamic-sensitivity-tutorial.mp4",
+      "source_sha256": "6483613e8d58a8a09b9670823245764e4f4f77db1cf602842c1e2142bc2f38cb",
+      "source_bytes": 2321494,
+      "output": "assets/synapse/mouse-dynamic-tutorial.webp",
+      "sha256": "c6d5c020e60f44f8831ccb9371bc477b320cda22817f24d5ce0689c490273334",
+      "bytes": 8061664,
+      "width": 640,
+      "height": 840,
+      "frames": 305,
+      "preparation": "All 305 decoded original frames preserved at 640x840 with lossless WebP encoding; decoded BGRA frame equality verified. Original target code not executed.",
+      "evidence": "crates/razer-pages/src/features/mouse_dynamic_tutorial_media.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/videos/dynamic-sensitivity-tutorial.mp4",
+      "source_url": "https://apps.razer.com/synapse/assets/videos/dynamic-sensitivity-tutorial.mp4",
+      "source_sha256": "6483613e8d58a8a09b9670823245764e4f4f77db1cf602842c1e2142bc2f38cb",
+      "source_bytes": 2321494,
+      "output": "assets/synapse/mouse-dynamic-tutorial.mp4",
+      "sha256": "6483613e8d58a8a09b9670823245764e4f4f77db1cf602842c1e2142bc2f38cb",
+      "preparation": "Exact downloaded original MP4, retained as source evidence; native presentation uses separately verified lossless animated WebP.",
+      "evidence": "crates/razer-pages/src/features/mouse_dynamic_tutorial_media.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_tutorial_book.8b20c805.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_tutorial_book.8b20c805.svg",
+      "source_sha256": "518c5e047f9016354567f46a5f5d66f5920284efb423998f22b33a0fe6c57683",
+      "output": "assets/synapse/mouse-dynamic-tutorial.svg",
+      "sha256": "518c5e047f9016354567f46a5f5d66f5920284efb423998f22b33a0fe6c57683",
+      "source_bytes": 759,
+      "preparation": "Exact current original source bytes.",
+      "evidence": "crates/razer-pages/src/features/mouse_dynamic_tutorial_evidence.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_close.55fe41f1.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_close.55fe41f1.svg",
+      "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "output": "assets/synapse/mouse-dynamic-close.svg",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "source_bytes": 339,
+      "preparation": "Exact current original source bytes.",
+      "evidence": "crates/razer-pages/src/features/mouse_dynamic_tutorial_evidence.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-chroma-sync.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-chroma-sync.svg",
+      "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+      "output": "assets/synapse/keyboard-679-chroma-sync.svg",
+      "sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+      "source_bytes": 310620,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-expand.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-expand.svg",
+      "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+      "output": "assets/synapse/keyboard-679-expand.svg",
+      "sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+      "source_bytes": 467,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-quick-qe.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-quick-qe.svg",
+      "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+      "output": "assets/synapse/keyboard-679-quick-qe.svg",
+      "sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+      "source_bytes": 2219,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-quick-wasd.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-quick-wasd.svg",
+      "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+      "output": "assets/synapse/keyboard-679-quick-wasd.svg",
+      "sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+      "source_bytes": 2054,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-sidepanel-active.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-sidepanel-active.svg",
+      "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+      "output": "assets/synapse/keyboard-679-sidepanel-active.svg",
+      "sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+      "source_bytes": 408,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-sidepanel.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-sidepanel.svg",
+      "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+      "output": "assets/synapse/keyboard-679-sidepanel.svg",
+      "sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+      "source_bytes": 402,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-trigger-left.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-trigger-left.svg",
+      "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+      "output": "assets/synapse/keyboard-679-trigger-left.svg",
+      "sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+      "source_bytes": 2236,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-trigger-right.svg",
+      "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/keyboard-679-trigger-right.svg",
+      "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+      "output": "assets/synapse/keyboard-679-trigger-right.svg",
+      "sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+      "source_bytes": 2762,
+      "preparation": "Exact current source asset; statically copied, vendor code not executed.",
+      "evidence": "docs/re/keyboard-679-actuation-current-source.md"
     }
   ]
 }

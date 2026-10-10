@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-10",
+  "target_code_executed": false,
+  "entries": [
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "source_sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+      "source_utf8_path_offset": 5518481,
+      "output": "assets/synapse/help-more.svg",
+      "sha256": "fb97f9dd362fecee5134ae3ce548c6f4c54deca56c55c0c2217febecc283abf8",
+      "preparation": "Original inline React SVG geometry and root dimensions/fill independently re-verified; output is adapted SVG, not original JS bytes.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "source_sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+      "source_utf8_path_offset": 5519853,
+      "output": "assets/synapse/help-less.svg",
+      "sha256": "80b44627c86c4a2447e6edc898bfe2473d4255084b7d645be8f793db25fcc621",
+      "preparation": "Original inline React SVG geometry and root dimensions/fill independently re-verified; output is adapted SVG, not original JS bytes.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
+      "output": "assets/synapse/help-default.svg",
+      "sha256": "65fdecaf078e0f583fe8e8f48a146ff1bf44ec1f179a491016c2b2452301fa00",
+      "preparation": "Sprite view #default displayed with source viewBox 0 0 26 26; all original symbol, use, path and color attributes independently verified unchanged.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
+      "output": "assets/synapse/help-hover.svg",
+      "sha256": "9bb34c3b65a8b209f66af052eb77b798b5ed9b10407c32b6f6e715ec53efbb3c",
+      "preparation": "Sprite view #hover displayed with source viewBox 0 27 26 26; all original symbol, use, path and color attributes independently verified unchanged.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "source_sha256": "b0d8fa752249ceb444211bc253e60a5897197782102e7583960558eb612d3c23",
+      "output": "assets/synapse/help-active.svg",
+      "sha256": "ac37d4c59d4fa9d845915f9b92ae81a58c1a57902ee8b3d1cef9e53dc95446b5",
+      "preparation": "Sprite view #active displayed with source viewBox 0 53 26 26; all original symbol, use, path and color attributes independently verified unchanged.",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/icon_help.377359c3.svg",
+      "evidence": "crates/razer-pages/src/features/source_help_current_audit.json"
+    }
+  ]
+}

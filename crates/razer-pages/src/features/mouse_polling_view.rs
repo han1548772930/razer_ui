@@ -13,6 +13,25 @@ pub(super) struct State {
 }
 
 impl MouseProductWorkspace {
+    pub(super) fn advanced_enabled(&self) -> bool {
+        static FLOORS: OnceLock<BTreeMap<String, String>> = OnceLock::new();
+        let floors = FLOORS.get_or_init(|| {
+            serde_json::from_str(include_str!("mouse_advanced_data.json"))
+                .expect("validated current advanced firmware floors")
+        });
+        floors
+            .get(&self.spec.product_id.to_string())
+            .is_none_or(|required| {
+                super::super::mouse_polling::source_advanced_supported(
+                    self.dynamic_state.firmware.as_deref().or(self
+                        .polling_state
+                        .runtime
+                        .firmware
+                        .as_deref()),
+                    required,
+                )
+            })
+    }
     pub(super) fn source_polling_visible(&self) -> bool {
         source_spec(self.spec.product_id)
             .is_some_and(|spec| self.polling_state.runtime.visible(spec))
@@ -70,6 +89,20 @@ impl MouseProductWorkspace {
             }
         }
         self.draft[field.key()].as_u64().unwrap_or(0) as u32
+    }
+
+    /// Low-power gating uses the displayed connection's rate, including local
+    /// edits. A missing wireless value falls back to wired as the source does.
+    pub(super) fn effective_power_polling_rate(&self) -> u32 {
+        let field = self.polling_state.runtime.field();
+        if field == PollingField::Wireless
+            && !self.polling_state.local_fields.contains(field.key())
+            && !self.polling_state.runtime.rates.contains_key(&field)
+            && self.draft.get(field.key()).is_none()
+        {
+            return self.polling_value(PollingField::Wired);
+        }
+        self.polling_value(field)
     }
 
     fn choose_polling(
@@ -210,16 +243,6 @@ impl MouseProductWorkspace {
                     .child(t("LEARN_MORE"))
                     .child(img("synapse/external-link.svg").size(surface::css(16.)).ml(surface::css(5.)))
                     .on_click(|_, _, cx| cx.open_url("https://www.razer.com/technology/razer-hyperpolling#best-practices-tips"))));
-        }
-        if self.polling_state.runtime.connection.is_none() {
-            panel = panel.child(surface::note(
-                "连接状态尚未读取；当前编辑本地有线配置。",
-                cx,
-            ));
-        } else if self.polling_state.local_fields.contains(field.key()) {
-            panel = panel.child(surface::note("当前显示本地草稿；尚未发送到设备。", cx));
-        } else if !self.polling_state.runtime.rates.contains_key(&field) {
-            panel = panel.child(surface::note("当前显示本地配置；设备回报率尚未读取。", cx));
         }
         panel.into_any_element()
     }

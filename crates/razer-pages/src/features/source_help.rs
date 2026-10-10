@@ -13,6 +13,10 @@ use std::{
     sync::OnceLock,
     time::Duration,
 };
+#[path = "source_help_inline.rs"]
+mod inline;
+#[path = "source_help_versions.rs"]
+mod versions;
 
 #[derive(Deserialize)]
 struct Help {
@@ -37,6 +41,10 @@ struct HelpPage {
     tutorial: bool,
     thx_instructions: bool,
     camo: bool,
+    #[serde(default)]
+    inline_confirmation: bool,
+    #[serde(default)]
+    obm_reset_during_ble: bool,
 }
 fn records() -> &'static [Help] {
     static RECORDS: OnceLock<Vec<Help>> = OnceLock::new();
@@ -58,6 +66,8 @@ pub(super) struct SourceHelp {
     reset_cooldown: bool,
     reset_cooldown_task: Option<Task<()>>,
     reset_error: Option<String>,
+    inline_reset: bool,
+    reset_source_action: &'static str,
     audio_restart: bool,
     audio_reset_generations: BTreeSet<u64>,
     audio_reset_tasks: BTreeMap<u64, Task<()>>,
@@ -66,6 +76,7 @@ pub(super) struct SourceHelp {
 pub struct HelpResetRequest {
     generation: u64,
     audio_streams: bool,
+    source_action: Option<&'static str>,
 }
 /// Actual query identity accompanies the raw source document separately.
 /// Transport fields must never be injected into the original storage document.
@@ -74,6 +85,21 @@ pub struct HelpResetOutcome {
     pub serial_number: String,
 }
 impl HelpResetRequest {
+    /// JSON-equivalent BroadcastChannel command; JS `timerTick: undefined`
+    /// has no serialized field. Native transport bytes remain separate.
+    pub fn source_message(self) -> Option<serde_json::Value> {
+        match self.source_action {
+            Some("ON_RESET_OBM") => Some(serde_json::json!({
+                "type": "ON_RESET_OBM",
+                "payload": {},
+            })),
+            Some("ON_RESET_DEVICE") => Some(serde_json::json!({"type":"ON_RESET_DEVICE"})),
+            _ => None,
+        }
+    }
+    pub fn source_action(self) -> Option<&'static str> {
+        self.source_action
+    }
     pub fn generation(self) -> u64 {
         self.generation
     }
@@ -87,6 +113,30 @@ pub(super) enum HelpResetEvent {
 }
 impl EventEmitter<HelpResetEvent> for SourceHelp {}
 impl SourceHelp {
+    /// The source unmounts Help when switching back to a product tab. Retained
+    /// GPUI state must cancel the corresponding callbacks and popover as well.
+    pub(super) fn leave_page(&mut self, cx: &mut Context<Self>) {
+        if self.pending_reset {
+            cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                generation: self.reset_generation,
+                audio_streams: false,
+                source_action: Some(self.reset_source_action),
+            }));
+        }
+        self.copy_task = None;
+        self.copied_serial = false;
+        self.view_more = false;
+        self.inline_reset = false;
+        self.pending_reset = false;
+        self.reset_cooldown = false;
+        self.reset_cooldown_task = None;
+        self.reset_error = None;
+        self.confirmation_generation = self.confirmation_generation.wrapping_add(1);
+        self.reset_generation = self.reset_generation.wrapping_add(1);
+        self.page_offset = None;
+        self.cancel_audio_resets(cx);
+        cx.notify();
+    }
     pub(super) fn new(device: Device, _: &mut Context<Self>) -> Self {
         Self {
             device,
@@ -100,6 +150,8 @@ impl SourceHelp {
             reset_cooldown: false,
             reset_cooldown_task: None,
             reset_error: None,
+            inline_reset: false,
+            reset_source_action: "ON_RESET_DEVICE",
             audio_restart: false,
             audio_reset_generations: BTreeSet::new(),
             audio_reset_tasks: BTreeMap::new(),
@@ -114,6 +166,7 @@ impl SourceHelp {
                 cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
                     generation: self.reset_generation,
                     audio_streams: false,
+                    source_action: Some(self.reset_source_action),
                 }));
             }
             self.copy_task = None;
@@ -125,6 +178,7 @@ impl SourceHelp {
             self.reset_cooldown = false;
             self.reset_cooldown_task = None;
             self.reset_error = None;
+            self.inline_reset = false;
             self.cancel_audio_resets(cx);
         }
         if self.device.product_id != device.product_id {
@@ -139,6 +193,7 @@ impl SourceHelp {
                 cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
                     generation: self.reset_generation,
                     audio_streams: false,
+                    source_action: Some(self.reset_source_action),
                 }));
             }
             self.page_offset = Some(offset);
@@ -149,6 +204,7 @@ impl SourceHelp {
             self.reset_cooldown = false;
             self.reset_cooldown_task = None;
             self.reset_error = None;
+            self.inline_reset = false;
             self.cancel_audio_resets(cx);
             cx.notify();
         }
@@ -187,6 +243,12 @@ impl SourceHelp {
             return;
         }
         if self.reset_cooldown {
+            return;
+        }
+        if page.inline_confirmation {
+            self.inline_reset = true;
+            self.confirmation_generation = self.confirmation_generation.wrapping_add(1);
+            cx.notify();
             return;
         }
         // These current Help classes' confirmDel emits ON_RESET_DEVICE.
@@ -268,6 +330,7 @@ impl SourceHelp {
                                                 let request = HelpResetRequest {
                                                     generation: view.reset_generation,
                                                     audio_streams: false,
+                                                    source_action: Some("ON_RESET_DEVICE"),
                                                 };
                                                 view.reset_cooldown = true;
                                                 // Original Help resetDevice re-enables after two
@@ -313,6 +376,7 @@ impl SourceHelp {
             cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
                 generation,
                 audio_streams: true,
+                source_action: None,
             }));
         }
         self.audio_reset_tasks.clear();
@@ -330,6 +394,7 @@ impl SourceHelp {
         let request = HelpResetRequest {
             generation: self.reset_generation,
             audio_streams: true,
+            source_action: None,
         };
         self.audio_reset_generations.insert(request.generation);
         let task = cx.spawn_in(window, async move |view, cx| {
@@ -428,10 +493,7 @@ fn unavailable_panel(
 ) -> Div {
     surface::panel(i18n::t(title), cx)
         .child(i18n::t(description))
-        .child(
-            help_button(id, i18n::t(action), true, cx)
-                .tooltip(|window, cx| tooltip::Tooltip::new("设备服务未连接").build(window, cx)),
-        )
+        .child(help_button(id, i18n::t(action), true, cx))
 }
 fn audio_setup_action(id: &'static str, key: &str, uri: &'static str, cx: &App) -> BaseButton {
     let label = format!("1. {}", i18n::t(key));
@@ -449,16 +511,22 @@ fn audio_setup_action(id: &'static str, key: &str, uri: &'static str, cx: &App) 
 impl Render for SourceHelp {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let Some((help, page)) = self.metadata() else {
-            return surface::note("此产品的帮助页证据尚未解析。", cx).into_any_element();
+            // Missing source metadata remains an implementation gap; the
+            // original interface has no reverse-engineering status paragraph.
+            return div().into_any_element();
         };
-        let mut support = surface::panel(i18n::t("SUPPORT"), cx).gap(surface::css(10.));
+        // Current 190 Hm and 679 Help render plain children of Ha. Links
+        // carry their own margin-top; the card and column have no CSS gap.
+        let exact_help = matches!(self.device.product_id, 190 | 679);
+        let mut support = surface::panel(i18n::t("SUPPORT"), cx)
+            .gap(surface::css(if exact_help { 0. } else { 10. }));
         if let Some(url) = &help.support {
             support = support.child(help_link(
                 "source-help-device",
                 "VISIT_DEVICE_SUPPORT",
                 url.clone(),
                 cx,
-            ));
+            ).when(exact_help, |link| link.mt(surface::css(10.))));
         }
         if let Some(prefix) = &help.guide {
             // App locale tags use zh-CN; current vendor language assets and
@@ -470,15 +538,15 @@ impl Render for SourceHelp {
                 "VISIT_MASTER_PAGE",
                 format!("{prefix}{locale}.pdf"),
                 cx,
-            ));
+            ).when(exact_help, |link| link.mt(surface::css(10.))));
         }
         support = support.child(help_link(
             "source-help-synapse",
             "VISIT_SYNAPSE_SUPPORT",
             "https://support.razer.com",
             cx,
-        ));
-        let mut left = v_flex().gap(surface::css(20.));
+        ).when(exact_help, |link| link.mt(surface::css(10.))));
+        let mut left = v_flex().gap(surface::css(if exact_help { 0. } else { 20. }));
         if page.system_info {
             left = left.child(
                 surface::panel(i18n::t("CUSTOMIZE_SYSTEM_INFO_TITLE"), cx)
@@ -604,22 +672,35 @@ impl Render for SourceHelp {
                 surface::panel(i18n::t("FACTORY_RESET"), cx)
                     .child(i18n::t(&page.reset_title))
                     .child(
-                        help_button(
-                            "source-help-reset",
-                            i18n::t("RESET"),
-                            self.reset_cooldown,
-                            cx,
-                        )
-                        .self_start()
-                        .on_click(cx.listener(|this, _, window, cx| this.show_reset(window, cx))),
+                        v_flex()
+                            .relative()
+                            .items_start()
+                            .child(
+                                help_button(
+                                    "source-help-reset",
+                                    i18n::t("RESET"),
+                                    self.reset_cooldown,
+                                    cx,
+                                )
+                                .self_start()
+                                .when(exact_help, |button| {
+                                    button.mt(surface::css(20.)).line_height(surface::css(14.))
+                                })
+                                .on_click(
+                                    cx.listener(|this, _, window, cx| this.show_reset(window, cx)),
+                                ),
+                            )
+                            .when(self.inline_reset, |holder| {
+                                holder.child(self.reset_popup(cx))
+                            }),
                     )
-                    .when_some(self.reset_error.clone(), |panel, error| {
-                        panel.child(surface::note(error, cx))
+                    .when(page.inline_confirmation && self.reset_cooldown, |panel| {
+                        panel.child(Spinner::new().small())
                     }),
             );
         }
         let serial = self.device.serial_number.clone();
-        let mut right = v_flex().gap(surface::css(20.));
+        let mut right = v_flex().gap(surface::css(if exact_help { 0. } else { 20. }));
         if audio_support {
             let mut panel = surface::panel(i18n::t("SUPPORT"), cx).gap(surface::css(10.));
             if let Some(url) = &help.support {
@@ -677,6 +758,9 @@ impl Render for SourceHelp {
                             cx,
                         )
                         .self_start()
+                        .when(exact_help, |button| {
+                            button.mt(surface::css(20.)).line_height(surface::css(14.))
+                        })
                         .on_click(cx.listener(|this, _, window, cx| this.copy_serial(window, cx))),
                     ),
             );
@@ -686,13 +770,22 @@ impl Render for SourceHelp {
             let mut panel = surface::panel(i18n::t("DEVICE_HEADER"), cx)
                 .child(format!("{}: {firmware}", i18n::t("FIRMWARE_VERSION")));
             if page.view_more {
+                if self.view_more {
+                    if let Some(version) = versions::ui_version(self.device.product_id) {
+                        panel = panel.child(
+                            div()
+                                .mt(surface::css(10.))
+                                .child(format!("{}: {version}", i18n::t("UI_VERSION"))),
+                        );
+                    }
+                }
                 let label = i18n::t(if self.view_more {
                     "VIEW_LESS"
                 } else {
                     "VIEW_MORE"
                 });
-                // UI/MW/Synapse runtime versions are absent from Device. Source
-                // suppresses empty fields even in the expanded state.
+                // MW/Synapse runtime versions require the original observed
+                // window/local storage; never substitute local Cargo versions.
                 panel = panel.child(
                     BaseButton::new("source-help-versions")
                         .accessibility_label(label.clone())
@@ -728,7 +821,7 @@ impl Render for SourceHelp {
                     "REGISTER_ONLINE",
                     "https://www.razer.com/product-registration",
                     cx,
-                ),
+                ).when(exact_help, |link| link.mt(surface::css(10.))),
             ));
         }
         surface::page_columns()

@@ -28,6 +28,61 @@ fn open(
 }
 
 #[gpui_kit::test]
+fn startup_observation_is_not_a_save_and_each_control_requests_its_host_operation(
+    cx: &mut TestAppContext,
+) {
+    use super::{SettingsEvent, StartupSetting};
+    use std::{cell::RefCell, rc::Rc};
+
+    let (page, window) = open(cx, AppPreferences::default());
+    let requests = Rc::new(RefCell::new(Vec::new()));
+    let observed_requests = requests.clone();
+    let subscription = page.update(cx, |_, cx| {
+        cx.subscribe(&page, move |_, _, event, _| {
+            if let SettingsEvent::StartupRequested(setting) = event {
+                observed_requests.borrow_mut().push(*setting);
+            }
+        })
+    });
+    page.update(cx, |page, cx| {
+        page.observe_startup(
+            razer_state::LocalStartupDraft {
+                auto_start: false,
+                start_minimized: false,
+            },
+            cx,
+        );
+        assert!(!page.dirty());
+        assert!(page.snapshot().startup_draft.is_none());
+    });
+    cx.update_window(window.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert!(window.try_find("settings-startup-local-note").is_none());
+        window.click("settings-start-minimized", cx);
+        window.click("settings-auto-start", cx);
+        window.click("settings-start-minimized", cx);
+    })
+    .unwrap();
+    cx.run_until_parked();
+    assert_eq!(
+        *requests.borrow(),
+        [
+            StartupSetting::AutoStart(true),
+            StartupSetting::MinimizedOnStartup(true)
+        ]
+    );
+    assert_eq!(
+        page.read(cx).startup_observed,
+        Some(razer_state::LocalStartupDraft {
+            auto_start: false,
+            start_minimized: false,
+        }),
+        "a requested change must not fabricate a host observation"
+    );
+    drop(subscription);
+}
+
+#[gpui_kit::test]
 fn source_settings_commands_keep_minimum_width_and_height_after_reset(cx: &mut TestAppContext) {
     let (page, handle) = open(cx, AppPreferences::default());
     let reset_count = std::rc::Rc::new(std::cell::Cell::new(0));
@@ -289,75 +344,10 @@ fn settings_changes_emit_immediately_and_preserve_edits_during_persistence(
         );
         page.update(cx, |page, cx| page.mark_saved(latest, cx));
         assert!(!page.read(cx).dirty());
-        window.click("settings-tab-connection", cx);
+        // The vendor route has only Synapse and General views.  Saving is
+        // owned by the shell and is not rendered as a settings tab.
         assert!(window.try_find("settings-save").is_none());
     })
     .unwrap();
-    drop(subscription);
-}
-
-#[gpui_kit::test]
-fn registered_product_preview_requests_selected_variant_without_installation_or_dialogs(
-    cx: &mut TestAppContext,
-) {
-    use std::{cell::RefCell, rc::Rc};
-
-    let (page, handle) = open(cx, AppPreferences::default());
-    let requests = Rc::new(RefCell::new(Vec::new()));
-    let observed = requests.clone();
-    let subscription = page.update(cx, |_, cx| {
-        cx.subscribe(&page, move |_, _, event, _| {
-            if let super::SettingsEvent::PreviewVariant(pid, edition, layout) = event {
-                observed.borrow_mut().push((*pid, *edition, *layout));
-            }
-        })
-    });
-    cx.update_window(handle.into(), |_, window, cx| {
-        window.render_frame(cx);
-        window.click("settings-tab-connection", cx);
-    })
-    .unwrap();
-
-    let expected = cx.update(|cx| {
-        let page = page.read(cx);
-        let selected = |state: &Entity<
-            gpui_kit::component::select::SelectState<Vec<razer_pages::features::Choice>>,
-        >| {
-            state
-                .read(cx)
-                .selected_value()
-                .unwrap()
-                .parse::<u32>()
-                .unwrap()
-        };
-        (
-            selected(&page.preview_product),
-            selected(&page.preview_edition),
-            selected(&page.preview_layout),
-        )
-    });
-    assert!(razer_catalog::registered(expected.0).is_some());
-    cx.update_window(handle.into(), |_, window, cx| {
-        assert!(window.try_find("preview-product-select").is_some());
-        window.click("preview-registered-product", cx);
-        assert!(window.try_find("dialog").is_none());
-        assert!(!page.read(cx).dirty(), "navigation must not save settings");
-    })
-    .unwrap();
-    cx.run_until_parked();
-    assert_eq!(*requests.borrow(), [expected]);
-
-    // The registry-driven command retains the native button keyboard contract.
-    cx.update_window(handle.into(), |_, window, cx| {
-        assert_eq!(
-            window.find("preview-registered-product").focused(),
-            Some(true)
-        );
-        window.press("enter", cx);
-        assert!(window.try_find("dialog").is_none());
-    })
-    .unwrap();
-    cx.run_until_parked();
-    assert_eq!(*requests.borrow(), [expected, expected]);
     drop(subscription);
 }

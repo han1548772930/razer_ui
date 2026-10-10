@@ -334,3 +334,47 @@ fn source_firmware_supported(observed: Option<&str>, required: Option<&str>) -> 
     // following fourth-segment <= branch is unreachable for these string inputs.
     observed.cmp_precedence(&required).is_gt()
 }
+
+/// Current advanced-page U5 comparison (not the polling comparison, whose
+/// caller negates U5). Four-component versions retain the source's coerce and
+/// fresh-object equality semantics; an absent observation grants no capability.
+pub(super) fn source_advanced_supported(observed: Option<&str>, required: &str) -> bool {
+    let Some(observed) = observed.filter(|value| !value.is_empty()) else {
+        return false;
+    };
+    if observed == required {
+        return false;
+    }
+    if let (Ok(observed), Ok(required)) = (
+        semver::Version::parse(observed),
+        semver::Version::parse(required),
+    ) {
+        return observed.cmp_precedence(&required).is_gt();
+    }
+    fn coerce(value: &str) -> Option<semver::Version> {
+        static COERCE: OnceLock<regex::Regex> = OnceLock::new();
+        let captures = COERCE
+            .get_or_init(|| {
+                regex::Regex::new(
+                    r"(^|[^0-9])([0-9]{1,16})(?:\.([0-9]{1,16}))?(?:\.([0-9]{1,16}))?(?:$|[^0-9])",
+                )
+                .expect("source advanced coerce expression")
+            })
+            .captures(value)?;
+        let version = semver::Version::parse(&format!(
+            "{}.{}.{}",
+            &captures[2],
+            captures.get(3).map_or("0", |value| value.as_str()),
+            captures.get(4).map_or("0", |value| value.as_str())
+        ))
+        .ok()?;
+        [version.major, version.minor, version.patch]
+            .iter()
+            .all(|part| *part <= 9_007_199_254_740_991)
+            .then_some(version)
+    }
+    let (Some(observed), Some(required)) = (coerce(observed), coerce(required)) else {
+        return false;
+    };
+    !required.cmp_precedence(&observed).is_gt()
+}

@@ -59,6 +59,10 @@ pub struct SocialLink {
     insider: bool,
 }
 impl SocialLink {
+    pub(crate) fn id(mut self, id: impl Into<SharedString>) -> Self {
+        self.id = id.into();
+        self
+    }
     pub fn new(
         name: impl Into<SharedString>,
         label: impl Into<SharedString>,

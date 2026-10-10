@@ -1,0 +1,15 @@
+&[
+    ("synapse/audio-1352-camera.svg", include_bytes!("audio-1352-camera.svg")),
+    ("synapse/audio-1352-warning.svg", include_bytes!("audio-1352-warning.svg")),
+    ("synapse/audio-1352-mode-tip.svg", include_bytes!("audio-1352-mode-tip.svg")),
+    ("synapse/audio-1352-play.svg", include_bytes!("audio-1352-play.svg")),
+    ("synapse/audio-1352-properties-external.svg", include_bytes!("audio-1352-properties-external.svg")),
+    ("synapse/audio-1352-properties-external-active.svg", include_bytes!("audio-1352-properties-external-active.svg")),
+    ("synapse/audio-1352-windows-11.svg", include_bytes!("audio-1352-windows-11.svg")),
+    ("synapse/audio-1352-windows.svg", include_bytes!("audio-1352-windows.svg")),
+    ("synapse/audio-1352-input-icon.svg", include_bytes!("audio-1352-input-icon.svg")),
+    ("synapse/audio-1352-demo.png", include_bytes!("audio-1352-demo.png")),
+    ("synapse/audio-1352-help.svg", include_bytes!("audio-1352-help.svg")),
+    ("synapse/audio-1352-product-1x.png", include_bytes!("audio-1352-product-1x.png")),
+    ("synapse/audio-1352-product-3x.png", include_bytes!("audio-1352-product-3x.png")),
+]

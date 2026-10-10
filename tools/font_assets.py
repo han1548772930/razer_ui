@@ -2,25 +2,29 @@
 from hashlib import sha256
 from fontTools.ttLib import TTFont
 
-# Only faces used by currently mounted native pages. Both current Dashboard and
-# host CSS declare these aliases; Alexa uses Thin (100), and the 1383 OLED
-# headset status uses SemiBold (600).
+# Current settings CSS @font-face declarations, shared by product pages.
 FACES = (
     ("Roboto-Light", "Roboto", "Light", 300),
+    ("Roboto-LightItalic", "Roboto", "Light Italic", 300),
     ("Roboto-Regular", "Roboto", "Regular", 400),
+    ("Roboto-Italic", "Roboto", "Italic", 400),
     ("Roboto-Medium", "Roboto", "Medium", 500),
+    ("Roboto-MediumItalic", "Roboto", "Medium Italic", 500),
     ("Roboto-Bold", "Roboto", "Bold", 700),
+    ("Roboto-BoldItalic", "Roboto", "Bold Italic", 700),
     ("RazerF5-Thin", "RazerF5", "Thin", 100),
     ("RazerF5-Regular", "RazerF5", "Regular", 400),
+    ("RazerF5-RegItalic", "RazerF5", "Italic", 400),
     ("RazerF5-SemiBold", "RazerF5", "SemiBold", 600),
     ("RazerF5-Bold", "RazerF5", "Bold", 700),
+    ("RazerF5-BoldItalic", "RazerF5", "Bold Italic", 700),
 )
 
 
 def prepare(root, out):
     records = []
     for filename, family, style, weight in FACES:
-        source = root / ".ref/host-4.0.827/electron/assets/fonts" / (filename + ".woff2")
+        source = root / "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts" / (filename + ".woff2")
         target = out / (filename + ".ttf")
         font = TTFont(source, recalcTimestamp=False, recalcBBoxes=False)
         original = {"family": font["name"].getDebugName(1),
@@ -30,7 +34,9 @@ def prepare(root, out):
                     "weight": font["OS/2"].usWeightClass}
         preserved = {tag: font.getTableData(tag) for tag in font.keys()
                      if tag not in {"GlyphOrder", "name", "OS/2", "head"}}
-        normalize = original["family"] != family or original["weight"] != weight
+        italic = "Italic" in style
+        normalize = (original["family"] != family or original["weight"] != weight
+                     or original["subfamily"] != style)
         if normalize:
             names = {1: family, 2: style, 16: family, 17: style}
             for record in list(font["name"].names):
@@ -40,10 +46,15 @@ def prepare(root, out):
             for name_id, value in names.items():
                 font["name"].setName(value, name_id, 3, 1, 0x409)
             font["OS/2"].usWeightClass = weight
-            # CSS normal/bold is separate from the outline file's legacy label.
-            font["OS/2"].fsSelection &= ~((1 << 5) | (1 << 6))
-            font["OS/2"].fsSelection |= (1 << 5) if weight >= 700 else (1 << 6)
-            font["head"].macStyle = (font["head"].macStyle & ~1) | (weight >= 700)
+            # CSS style/weight are separate from the outline's legacy label.
+            font["OS/2"].fsSelection &= ~((1 << 0) | (1 << 5) | (1 << 6))
+            if italic:
+                font["OS/2"].fsSelection |= 1 << 0
+            if weight >= 700:
+                font["OS/2"].fsSelection |= 1 << 5
+            elif not italic:
+                font["OS/2"].fsSelection |= 1 << 6
+            font["head"].macStyle = (font["head"].macStyle & ~3) | (weight >= 700) | (int(italic) << 1)
         font.flavor = None
         font.save(target)
         converted = TTFont(target, recalcTimestamp=False, recalcBBoxes=False)
@@ -55,7 +66,7 @@ def prepare(root, out):
             "output": target.relative_to(root).as_posix(),
             "source_sha256": sha256(source.read_bytes()).hexdigest(),
             "sha256": sha256(target.read_bytes()).hexdigest(),
-            "css_face": {"family": family, "style": "normal", "weight": weight},
+            "css_face": {"family": family, "style": "italic" if italic else "normal", "weight": weight},
             "original_metadata": original,
             "metadata_normalized": normalize,
             "unchanged_tables": {tag: sha256(data).hexdigest() for tag, data in preserved.items()},

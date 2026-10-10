@@ -39,12 +39,18 @@ const STREAM_MIXER_ASSETS: &[(&str, &[u8])] =
 const SNAP_TAP_ASSETS: &[(&str, &[u8])] = include!("../../../assets/synapse/snap-tap-embedded.rs");
 const KEYBOARD_PROPERTIES_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/keyboard-properties-embedded.rs");
+const KEYBOARD_679_ASSETS: &[(&str, &[u8])] =
+    include!("../../../assets/synapse/keyboard-679-embedded.rs");
 const KEYBOARD_GAME_CONTROLLER_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/keyboard-game-controller.svg",
     include_bytes!("../../../assets/synapse/keyboard-game-controller.svg"),
 )];
 const KEYBOARD_ACTUATION_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/keyboard-actuation-embedded.rs");
+const KEYBOARD_INDICATOR_ASSETS: &[(&str, &[u8])] = &[(
+    "synapse/keyboard-indicator-connection-body.png",
+    include_bytes!("../../../assets/synapse/keyboard-indicator-connection-body.png"),
+)];
 const CHROMA_STUDIO_HOST_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/host-chroma-studio-favicon.svg",
     include_bytes!("../../../assets/synapse/host-chroma-studio-favicon.svg"),
@@ -56,10 +62,37 @@ const AUDIO_OLED_RUNTIME_ASSETS: &[(&str, &[u8])] = &[(
 mod audio_demo_controls {
     include!("../../../assets/synapse/audio-demo-controls-embedded.rs");
 }
-const MOUSE_POLLING_ASSETS: &[(&str, &[u8])] = &[(
-    "synapse/polling-info.svg",
-    include_bytes!("../../../assets/synapse/polling-info.svg"),
-)];
+mod audio_volume_sprite {
+    include!("../../../assets/synapse/audio-volume-sprite-embedded.rs");
+}
+const AUDIO_LEVIATHAN_ASSETS: &[(&str, &[u8])] =
+    include!("../../../assets/synapse/audio-leviathan-embedded.rs");
+const MOUSE_POLLING_ASSETS: &[(&str, &[u8])] = &[
+    (
+        "synapse/polling-info.svg",
+        include_bytes!("../../../assets/synapse/polling-info.svg"),
+    ),
+    (
+        "synapse/mouse-rotation.svg",
+        include_bytes!("../../../assets/synapse/mouse-rotation.svg"),
+    ),
+    (
+        "synapse/mouse-scroll-link.svg",
+        include_bytes!("../../../assets/synapse/mouse-scroll-link.svg"),
+    ),
+    (
+        "synapse/mouse-scroll-unlink.svg",
+        include_bytes!("../../../assets/synapse/mouse-scroll-unlink.svg"),
+    ),
+    (
+        "synapse/mouse-scroll-close.svg",
+        include_bytes!("../../../assets/synapse/mouse-scroll-close.svg"),
+    ),
+    (
+        "synapse/mouse-scroll-glow.svg",
+        include_bytes!("../../../assets/synapse/mouse-scroll-glow.svg"),
+    ),
+];
 const RECEIVER_PARENT_ASSETS: &[(&str, &[u8])] = &[
     (
         "synapse/receiver/connection-skeleton-base.svg",
@@ -72,6 +105,9 @@ const RECEIVER_PARENT_ASSETS: &[(&str, &[u8])] = &[
 ];
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
+        if let Some(bytes) = audio_volume_sprite::audio_volume_sprite_load(path) {
+            return Ok(Some(bytes));
+        }
         if let Some(bytes) = audio_demo_controls::audio_demo_controls_load(path) {
             return Ok(Some(Cow::Borrowed(bytes)));
         }
@@ -96,10 +132,13 @@ impl AssetSource for SynapseAssets {
             .chain(STREAM_MIXER_ASSETS)
             .chain(SNAP_TAP_ASSETS)
             .chain(KEYBOARD_PROPERTIES_ASSETS)
+            .chain(KEYBOARD_679_ASSETS)
             .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
             .chain(KEYBOARD_ACTUATION_ASSETS)
+            .chain(KEYBOARD_INDICATOR_ASSETS)
             .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
+            .chain(AUDIO_LEVIATHAN_ASSETS)
             .chain(MOUSE_POLLING_ASSETS)
             .chain(RECEIVER_PARENT_ASSETS)
             .find(|(key, _)| *key == path)
@@ -111,6 +150,7 @@ impl AssetSource for SynapseAssets {
     fn list(&self, path: &str) -> anyhow::Result<Vec<SharedString>> {
         let mut items = gpui_kit::assets::AllAssets.list(path)?;
         items.extend(audio_demo_controls::audio_demo_controls_list(path));
+        items.extend(audio_volume_sprite::audio_volume_sprite_list(path));
         items.extend(
             ASSETS
                 .iter()
@@ -133,10 +173,13 @@ impl AssetSource for SynapseAssets {
                 .chain(STREAM_MIXER_ASSETS)
                 .chain(SNAP_TAP_ASSETS)
                 .chain(KEYBOARD_PROPERTIES_ASSETS)
-                .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
+                .chain(KEYBOARD_679_ASSETS)
+            .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
                 .chain(KEYBOARD_ACTUATION_ASSETS)
+                .chain(KEYBOARD_INDICATOR_ASSETS)
                 .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)
+                .chain(AUDIO_LEVIATHAN_ASSETS)
                 .chain(MOUSE_POLLING_ASSETS)
                 .chain(RECEIVER_PARENT_ASSETS)
                 .filter(|(key, _)| key.starts_with(path))
@@ -148,9 +191,19 @@ impl AssetSource for SynapseAssets {
 pub fn register_fonts(cx: &gpui_kit::App) -> anyhow::Result<()> {
     cx.text_system().add_fonts(vec![
         Cow::Borrowed(include_bytes!("../../../assets/synapse/Roboto-Light.ttf")),
+        Cow::Borrowed(include_bytes!(
+            "../../../assets/synapse/Roboto-LightItalic.ttf"
+        )),
         Cow::Borrowed(include_bytes!("../../../assets/synapse/Roboto-Regular.ttf")),
+        Cow::Borrowed(include_bytes!("../../../assets/synapse/Roboto-Italic.ttf")),
         Cow::Borrowed(include_bytes!("../../../assets/synapse/Roboto-Medium.ttf")),
+        Cow::Borrowed(include_bytes!(
+            "../../../assets/synapse/Roboto-MediumItalic.ttf"
+        )),
         Cow::Borrowed(include_bytes!("../../../assets/synapse/Roboto-Bold.ttf")),
+        Cow::Borrowed(include_bytes!(
+            "../../../assets/synapse/Roboto-BoldItalic.ttf"
+        )),
         Cow::Borrowed(include_bytes!("../../../assets/synapse/RazerF5-Thin.ttf")),
         Cow::Borrowed(include_bytes!(
             "../../../assets/synapse/RazerF5-Regular.ttf"
@@ -159,6 +212,12 @@ pub fn register_fonts(cx: &gpui_kit::App) -> anyhow::Result<()> {
             "../../../assets/synapse/RazerF5-SemiBold.ttf"
         )),
         Cow::Borrowed(include_bytes!("../../../assets/synapse/RazerF5-Bold.ttf")),
+        Cow::Borrowed(include_bytes!(
+            "../../../assets/synapse/RazerF5-RegItalic.ttf"
+        )),
+        Cow::Borrowed(include_bytes!(
+            "../../../assets/synapse/RazerF5-BoldItalic.ttf"
+        )),
     ])
 }
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -4,14 +4,39 @@ use gpui_kit::{base::Button as BaseButton, component::WindowExt as _};
 use razer_platform::system;
 use razer_widgets::theme::SnapTapColors as Colors;
 
+#[derive(Deserialize)]
+struct Spec {
+    product_id: u32,
+    column: String,
+    analog: bool,
+}
+fn specification(pid: u32) -> Option<&'static Spec> {
+    static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
+    SPECS
+        .get_or_init(|| {
+            serde_json::from_str(include_str!("keyboard_properties_data.json"))
+                .expect("independently traced current keyboard Properties callers")
+        })
+        .iter()
+        .find(|spec| spec.product_id == pid)
+}
+
+pub(super) fn supported(pid: u32) -> bool {
+    specification(pid).is_some()
+}
+
 impl KeyboardProductWorkspace {
-    pub(super) fn analog_properties_on_left(&self) -> bool {
-        matches!(self.spec.product_id, 678 | 679 | 688)
+    pub(super) fn properties_on_left(&self) -> bool {
+        specification(self.spec.product_id).is_some_and(|spec| spec.column == "left")
+    }
+
+    pub(super) fn properties_full_width(&self) -> bool {
+        specification(self.spec.product_id).is_some_and(|spec| spec.column == "full")
     }
 
     pub(super) fn keyboard_properties(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let icon = self.properties_icon?;
-        let analog = matches!(self.spec.product_id, 614 | 642 | 678 | 679 | 688);
+        let analog = specification(self.spec.product_id)?.analog;
         Some(
             surface::panel_with_control(
                 t(if analog {

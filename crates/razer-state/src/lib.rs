@@ -109,6 +109,12 @@ pub struct AppPreferences {
     /// None means no local startup choice has been saved, not disabled in Windows.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub startup_draft: Option<LocalStartupDraft>,
+    /// Local intent for source `isDynamicLighting`, not a native ownership receipt.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dynamic_lighting_draft: Option<bool>,
+    /// Source global localStorage `isShowSensitivityTutorial`; missing shows it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mouse_dynamic_tutorial_visible: Option<bool>,
     pub language: String,
     pub notifications: bool,
     pub recommendations: bool,
@@ -127,6 +133,8 @@ impl Default for AppPreferences {
         Self {
             systray_double_click: None,
             startup_draft: None,
+            dynamic_lighting_draft: None,
+            mouse_dynamic_tutorial_visible: None,
             language: "zh-CN".into(),
             notifications: true,
             recommendations: true,

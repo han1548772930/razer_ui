@@ -150,6 +150,7 @@ pub struct AppShell {
     audio_preset_shortcut_cleanup: Vec<std::thread::JoinHandle<()>>,
     audio_notification_cleanup: Vec<std::thread::JoinHandle<()>>,
     host_tabs: host_tabs::HostTabs,
+    host_storage: razer_storage::host::HostStorage,
     location: Location,
     history: Vec<Location>,
     history_index: usize,
@@ -328,6 +329,7 @@ impl AppShell {
             audio_preset_shortcut_cleanup: Vec::new(),
             audio_notification_cleanup: Vec::new(),
             host_tabs: host_tabs::HostTabs::new(cx),
+            host_storage: razer_storage::host::HostStorage::default(),
             location: Location::Main(Tab::Home),
             history: vec![],
             history_index: 0,
@@ -444,6 +446,19 @@ impl AppShell {
                         }
                         cx.refresh_windows();
                     }
+                    settings_page::SettingsEvent::StartupRequested(setting) => {
+                        // Ks -> SDK 714 -> setApplicationAutoStart is a native
+                        // host operation. No audited direct adapter is present;
+                        // preserving local intent must not acknowledge OS save.
+                        this.status = format!("启动设置未应用到宿主：{setting:?}；setApplicationAutoStart 适配尚未完成");
+                        cx.notify();
+                    }
+                    settings_page::SettingsEvent::DynamicLightingRequested(_) => {
+                        // ia writes isDynamicLighting; native lighting ownership is
+                        // a separate storage/service consumer and remains unimplemented.
+                        this.status = "灯光模式已保留为本地选择；设备控制权的服务写入适配尚未完成".into();
+                        cx.notify();
+                    }
                     settings_page::SettingsEvent::Preview(pid) => {
                         this.add_preview(*pid, window, cx)
                     }
@@ -472,7 +487,12 @@ impl AppShell {
                         this.navigate(Location::ProfileMigration, window, cx);
                     }
                     settings_page::SettingsEvent::ReleaseNotes => {
-                        this.release_notes = Some(release_notes::open(window, cx));
+                        this.release_notes = Some(release_notes::open_from_storage(
+                            release_notes::NotesApp::Synapse,
+                            &mut this.host_storage,
+                            window,
+                            cx,
+                        ));
                         cx.notify();
                     }
                     settings_page::SettingsEvent::ResetTutorials => {
@@ -858,6 +878,14 @@ impl AppShell {
         }
         let entity =
             cx.new(|cx| ProductWorkspace::new(device, self.tracking_intro_seen, window, cx));
+        let tutorial_visible = self
+            .settings
+            .read(cx)
+            .snapshot()
+            .mouse_dynamic_tutorial_visible;
+        entity.update(cx, |workspace, cx| {
+            workspace.restore_mouse_dynamic_tutorial_preference(tutorial_visible, cx);
+        });
         let macros = self.macro_library.read(cx).snapshot();
         entity.update(cx, |workspace, cx| {
             workspace.set_mapping_macro_library(&macros, window, cx)
@@ -866,11 +894,50 @@ impl AppShell {
             &entity,
             window,
             |this, entity, event, window, cx| match event {
+                WorkspaceEvent::MouseDynamicTutorialChanged(visible) => {
+                    this.settings.update(cx, |settings, cx| {
+                        settings.mouse_dynamic_tutorial_visible(*visible, cx);
+                    });
+                    this.save_auxiliary_preferences(cx);
+                }
                 WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
                     this.write_mouse_idle(entity.clone(), *scope, *minutes, window, cx);
                 }
+                WorkspaceEvent::MouseDynamicRequested(request) => {
+                    entity.update(cx, |workspace, cx| {
+                        workspace.complete_mouse_dynamic(
+                            request,
+                            razer_pages::features::mouse_products::MouseDynamicCompletion::Unsupported(
+                                "Mouse dynamic-sensitivity device adapter is not implemented".into(),
+                            ),
+                            window,
+                            cx,
+                        );
+                    });
+                }
                 WorkspaceEvent::KeyboardBrightnessRequested { generation, percent } => {
                     this.write_keyboard_brightness(entity.clone(), *generation, *percent, window, cx);
+                }
+                WorkspaceEvent::KeyboardActuationRequested(request) => {
+                    // Exact middleware intent is retained by the feature. The
+                    // analog command adapter has not been recovered; never ack
+                    // this local draft as a successful device submission.
+                    entity.update(cx, |workspace, cx| {
+                        workspace.finish_keyboard_actuation(
+                            request.generation(),
+                            Err("Keyboard actuation device adapter is not implemented".into()),
+                            cx,
+                        );
+                    });
+                }
+                WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
+                    entity.update(cx, |workspace, cx| {
+                        workspace.finish_keyboard_indicator_led(
+                            request.generation(),
+                            Err("Keyboard indicator LED device adapter is not implemented".into()),
+                            cx,
+                        );
+                    });
                 }
                 WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
                     this.read_keyboard_brightness(entity.clone(), *generation, window, cx);
@@ -886,6 +953,16 @@ impl AppShell {
                 }
                 WorkspaceEvent::AudioVolumeRequested { request } => {
                     this.request_audio_volume(entity.clone(), *request, window, cx);
+                }
+                WorkspaceEvent::LeviathanRequested(request) => {
+                    entity.update(cx, |workspace, cx| {
+                        workspace.complete_leviathan(
+                            request.generation,
+                            Err("Leviathan device submission adapter is not implemented".into()),
+                            window,
+                            cx,
+                        );
+                    });
                 }
                 WorkspaceEvent::AudioMixerRequested { request } => {
                     this.request_audio_mixer(entity.clone(), request.clone(), window, cx);

@@ -37,6 +37,8 @@ pub enum WorkspaceEvent {
         field: super::mouse_polling::PollingField,
         hz: u32,
     },
+    MouseDynamicRequested(super::mouse_products::MouseDynamicRequested),
+    MouseDynamicTutorialChanged(bool),
     MouseDpiStagesRequested {
         scope: super::mouse_polling::MousePollingScope,
         revision: u64,
@@ -50,12 +52,15 @@ pub enum WorkspaceEvent {
         generation: u64,
         percent: u8,
     },
+    KeyboardActuationRequested(super::keyboard_products::KeyboardActuationRequested),
+    KeyboardIndicatorLedRequested(super::keyboard_products::KeyboardIndicatorLedRequested),
     KeyboardBrightnessReadRequested {
         generation: u64,
     },
     AudioVolumeRequested {
         request: super::audio_products::AudioVolumeRequest,
     },
+    LeviathanRequested(super::audio_products::LeviathanRequest),
     AudioMixerRequested {
         request: super::audio_products::AudioMixerRequest,
     },

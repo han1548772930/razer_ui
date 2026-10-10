@@ -3,13 +3,14 @@
 //! Drafts preserve the source profile schema and never represent hardware writes.
 use gpui_kit::component::{
     ActiveTheme, Disableable, Selectable, StyledExt,
-    button::Button,
+    button::{Button, ButtonVariants},
     checkbox::Checkbox,
     h_flex,
     input::{Input, InputEvent, InputState, MaskPattern},
     slider::{Slider, SliderEvent, SliderState},
     v_flex,
 };
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -31,8 +32,24 @@ mod polling;
 use super::mouse_polling::{
     MousePollingObservation, MousePollingScope, PollingConnection, PollingField,
 };
+#[path = "mouse_calibration_190.rs"]
+mod calibration_190;
+#[path = "mouse_customize_190.rs"]
+mod customize_190;
+#[path = "mouse_dynamic.rs"]
+mod dynamic;
+#[path = "mouse_haptic.rs"]
+mod haptic;
 #[path = "mouse_properties.rs"]
 mod properties;
+#[path = "mouse_rotation.rs"]
+mod rotation;
+pub use dynamic::{
+    MouseDynamicCompletion, MouseDynamicObservation, MouseDynamicRequested, MouseDynamicScope,
+    MouseDynamicTutorialChanged,
+};
+#[path = "mouse_scroll_options.rs"]
+mod scroll_options;
 
 #[derive(Deserialize)]
 pub struct MouseProductSpec {
@@ -197,9 +214,18 @@ pub struct MouseProductWorkspace {
     syncing: bool,
     scroll: ScrollHandle,
     mapping_input: Option<String>,
+    mapping_assignment: Option<String>,
     hypershift: bool,
     group_ix: usize,
+    customize_hover: Option<usize>,
     scroll_editor: Option<Entity<scroll_wheel::ScrollWheelEditor>>,
+    scroll_custom_saved: Option<Value>,
+    scroll_custom_direction: &'static str,
+    scroll_curve_drag: Option<usize>,
+    scroll_custom_dirty: bool,
+    scroll_popup_focus: FocusHandle,
+    scroll_application_picker: bool,
+    dynamic_state: dynamic::State,
 }
 
 impl EventEmitter<MouseProductChanged> for MouseProductWorkspace {}
@@ -227,11 +253,21 @@ impl MouseProductWorkspace {
             syncing: false,
             scroll: ScrollHandle::new(),
             mapping_input: None,
+            mapping_assignment: None,
             hypershift: false,
             group_ix: 0,
+            customize_hover: None,
             scroll_editor: None,
+            scroll_custom_saved: None,
+            scroll_custom_direction: "upDirection",
+            scroll_curve_drag: None,
+            scroll_custom_dirty: false,
+            scroll_popup_focus: cx.focus_handle(),
+            scroll_application_picker: false,
+            dynamic_state: dynamic::State::new(window, cx),
         };
         this.prepare_controls(window, cx);
+        this.prepare_dynamic(window, cx);
         if let Some(wheel_spec) = scroll_wheel::source_spec(product_id) {
             let editor = cx.new(|cx| scroll_wheel::ScrollWheelEditor::new(wheel_spec, window, cx));
             this.subscriptions.push(cx.subscribe(
@@ -258,25 +294,41 @@ impl MouseProductWorkspace {
         if self.page != key {
             self.dismiss_editors(window, cx);
             self.page = key.into();
+            if key == "ADVANCED" {
+                self.dynamic_ui_command(cx);
+            }
             self.mapping_input = None;
+            self.mapping_assignment = None;
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
         }
     }
 
     pub fn snapshot(&self) -> Value {
-        self.draft.clone()
+        let mut snapshot = self.draft.clone();
+        if let Some(saved) = &self.scroll_custom_saved {
+            set_pointer(
+                &mut snapshot,
+                "/scrollWheelStages/scrollWheelStages/5",
+                saved.clone(),
+            );
+        }
+        snapshot
     }
     pub fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         if self.active != active {
             self.active = active;
             if !active {
                 self.dismiss_editors(window, cx);
+            } else if self.page == "ADVANCED" {
+                self.dynamic_ui_command(cx);
             }
             cx.notify();
         }
     }
     pub fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.dismiss_dynamic(window, cx);
+        self.cancel_scroll_custom(window, cx);
         if let Some(editor) = &self.scroll_editor {
             editor.update(cx, |editor, cx| editor.deactivate(window, cx));
         }
@@ -309,6 +361,7 @@ impl MouseProductWorkspace {
     }
 
     pub fn restore(&mut self, value: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.scroll_custom_saved = None;
         self.draft_generation = self.draft_generation.wrapping_add(1);
         self.draft = self.spec.profile.clone();
         self.dpi_dragged_row = None;
@@ -322,7 +375,9 @@ impl MouseProductWorkspace {
             );
         }
         self.mapping_input = None;
+        self.mapping_assignment = None;
         self.restore_polling(value);
+        self.restore_dynamic(value, window, cx);
         if let Some(editor) = &self.scroll_editor {
             let wheel_spec = scroll_wheel::source_spec(self.spec.product_id)
                 .expect("scroll editor retains its source capability");
@@ -494,6 +549,31 @@ impl MouseProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         set_pointer(&mut self.draft, path, json!(value as i64));
+        if path.starts_with("/scrollWheelStages/scrollWheelStages/5/") {
+            self.scroll_custom_dirty = true;
+            let root = "/scrollWheelStages/scrollWheelStages/5";
+            if self.boolean(&format!("{root}/isLinkedCurves")) {
+                if let Some((direction, field)) = path
+                    .strip_prefix(&format!("{root}/"))
+                    .and_then(|path| path.split_once('/'))
+                {
+                    let other = if direction == "upDirection" {
+                        "downDirection"
+                    } else {
+                        "upDirection"
+                    };
+                    set_pointer(
+                        &mut self.draft,
+                        &format!("{root}/{other}/{field}"),
+                        json!(value as i64),
+                    );
+                }
+            }
+            // Custom scroll values remain popup edits until Save. Parent
+            // snapshots must never persist a preview through another edit.
+            cx.notify();
+            return;
+        }
         if path == "/smartTracking/liftOffDistance"
             && self.number("/smartTracking/landingDistance") >= value
         {
@@ -526,6 +606,20 @@ impl MouseProductWorkspace {
         // Current 70 cI / 226 Ms activate a visible row when its X/Y value changes;
         // editing an excluded row preserves the selected stage.
         if dpi_rows::source_spec(self.spec.product_id).is_some() {
+            // Current 190 uS mounts MA (sensitivity) and gA (properties)
+            // together in the left FO, not beneath polling in the right FO.
+            if self.spec.product_id == 190 {
+                return surface::page_columns()
+                    .child(surface::page_column(
+                        v_flex()
+                            .child(self.dpi_rows(cx))
+                            .child(self.mouse_properties(cx)),
+                    ))
+                    .child(surface::page_column(v_flex().children(
+                        self.source_polling_visible().then(|| self.polling(cx)),
+                    )))
+                    .into_any_element();
+            }
             if let Some(rest) = path.strip_prefix(&format!("{}/", self.spec.stages_path())) {
                 if let Some((slot, axis)) = rest.split_once('/') {
                     if axis == self.spec.dpi_axis(0) || axis == self.spec.dpi_axis(1) {
@@ -587,6 +681,44 @@ impl MouseProductWorkspace {
             .unwrap_or(false)
     }
 
+    fn low_power_enabled(&self) -> bool {
+        // Current product dl.isEnabled(): >1000 Hz disables the threshold;
+        // source evidence is recorded per product, never inferred by category.
+        static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
+        let limited = PRODUCTS.get_or_init(|| {
+            serde_json::from_str(include_str!("mouse_low_power_data.json"))
+                .expect("validated current low-power polling capabilities")
+        });
+        !limited.contains(&self.spec.product_id)
+            || if super::mouse_polling::source_spec(self.spec.product_id).is_some() {
+                self.effective_power_polling_rate() <= 1000
+            } else {
+                self.number(self.spec.polling_path()) <= 1000.
+            }
+    }
+
+    fn range_enabled(&self, path: &str) -> bool {
+        match path {
+            "/lowPowerMode" => self.low_power_enabled(),
+            "/rotation/value" => self.boolean("/rotation/isEnabled") && self.advanced_enabled(),
+            "/brightness/value" => self.boolean("/brightness/isEnabled"),
+            "/switchOffLighting/idleMinutes" => {
+                self.boolean("/brightness/isEnabled")
+                    && self.boolean("/switchOffLighting/isIdleEnabled")
+            }
+            "/smartTracking/liftOffDistance" | "/smartTracking/landingDistance" => {
+                self.boolean("/smartTracking/isAsymmetric")
+            }
+            "/smartTracking/trackingDistance" => !self.boolean("/smartTracking/isAsymmetric"),
+            path if path.starts_with("/scrollWheelStages/scrollWheelStages/5/") => {
+                self.scroll_custom_saved.is_some()
+                    && (!path.contains("/downDirection/")
+                        || !self.boolean("/scrollWheelStages/scrollWheelStages/5/isLinkedCurves"))
+            }
+            _ => true,
+        }
+    }
+
     fn add_range(
         &mut self,
         path: String,
@@ -615,6 +747,13 @@ impl MouseProductWorkspace {
                 let SliderEvent::Change(value) = event else {
                     return;
                 };
+                if !this.range_enabled(&changed_path) {
+                    let current = this.number(&changed_path);
+                    this.syncing = true;
+                    slider.update(cx, |slider, cx| slider.set_value(current, window, cx));
+                    this.syncing = false;
+                    return;
+                }
                 if this.spec.has_dpi_number(&changed_path)
                     && (!this.dpi_number_editable(&changed_path)
                         || !changed_path.rsplit_once('/').is_some_and(|(stage, _)| {
@@ -675,6 +814,9 @@ impl MouseProductWorkspace {
                     return;
                 }
                 if !matches!(event, InputEvent::Blur | InputEvent::PressEnter { .. }) {
+                    return;
+                }
+                if !this.range_enabled(&changed_path) {
                     return;
                 }
                 let value = match input.read(cx).value().parse::<f32>() {
@@ -860,6 +1002,35 @@ impl MouseProductWorkspace {
         let Some(slider) = self.sliders.get(path) else {
             return div().into_any_element();
         };
+        // Source DA.A sliders outside DPI have tooltips and endpoint tags;
+        // they do not mount the editable number field used by DPI rows.
+        if !path.starts_with(self.spec.stages_path()) && !path.starts_with("/scrollWheelStages/") {
+            let (min_tag, mid_tag, max_tag) = if path.starts_with("/smartTracking/") {
+                (
+                    t("LOW"),
+                    (path == "/smartTracking/trackingDistance").then(|| t("MEDIUM")),
+                    t("HIGH"),
+                )
+            } else {
+                (
+                    format!("{}{suffix}", slider.read(cx).min_value()),
+                    None,
+                    format!("{}{suffix}", slider.read(cx).max_value()),
+                )
+            };
+            return v_flex()
+                .gap_2()
+                .mb(surface::css(15.))
+                .children((!label.is_empty()).then(|| div().child(label.to_owned())))
+                .child(Slider::new(slider).disabled(!enabled))
+                .child(surface::slider_tags(
+                    &min_tag,
+                    mid_tag.as_deref(),
+                    &max_tag,
+                    None,
+                ))
+                .into_any_element();
+        }
         let group = SharedString::from(format!("mouse-range-{path}"));
         let input = if self.spec.dpi_grid_spec().is_some() && self.spec.has_dpi_number(path) {
             dpi_number::DpiNumber {
@@ -1053,27 +1224,72 @@ impl MouseProductWorkspace {
     }
 
     fn power(&self, cx: &Context<Self>) -> AnyElement {
+        if self.spec.product_id == 190 {
+            return self.power_190(cx);
+        }
         let mut panels = v_flex().gap_5();
+        let mut left = v_flex().gap_5();
+        let mut right = v_flex().gap_5();
         if self.spec.power_slider || self.spec.performance_power {
+            let card = surface::panel_with_control(
+                t("POWER_SAVING_HEADER"),
+                surface::help_control("mouse-power-saving-help", t("POWER_SAVING_TOOLTIP")),
+                cx,
+            )
+            .child(surface::note(t("POWER_SAVING_DESC"), cx))
+            .child(self.range(self.spec.power_path(), "", "", true, cx));
+            left = left.child(card);
             panels = panels.child(
-                surface::panel(t("POWER_SAVING_HEADER"), cx)
-                    .child(surface::note(t("POWER_SAVING_DESC"), cx))
-                    .child(self.range(self.spec.power_path(), "", "", true, cx)),
+                surface::panel_with_control(
+                    t("POWER_SAVING_HEADER"),
+                    surface::help_control("mouse-power-saving-help", t("POWER_SAVING_TOOLTIP")),
+                    cx,
+                )
+                .child(surface::note(t("POWER_SAVING_DESC"), cx))
+                .child(self.range(self.spec.power_path(), "", "", true, cx)),
             );
         }
         if self.spec.low_power_slider {
+            let enabled = self.low_power_enabled();
+            let card = surface::panel_with_control(
+                t("LOW_POWER_MODE_HEADER"),
+                surface::help_control("mouse-low-power-help", t("LOW_POWER_MODE_TOOLTIP")),
+                cx,
+            )
+            .child(surface::note(t("LOW_POWER_MODE_DESC"), cx))
+            .child(self.range("/lowPowerMode", "", "%", enabled, cx))
+            .children((!enabled).then(|| surface::note(t("LOW_POWER_MODE_WARN"), cx)));
+            right = right.child(card);
             panels = panels.child(
-                surface::panel(t("LOW_POWER_MODE_HEADER"), cx)
-                    .child(surface::note(t("LOW_POWER_MODE_DESC"), cx))
-                    .child(self.range("/lowPowerMode", "", "%", true, cx)),
+                surface::panel_with_control(
+                    t("LOW_POWER_MODE_HEADER"),
+                    surface::help_control("mouse-low-power-help", t("LOW_POWER_MODE_TOOLTIP")),
+                    cx,
+                )
+                .child(surface::note(t("LOW_POWER_MODE_DESC"), cx))
+                .child(self.range("/lowPowerMode", "", "%", enabled, cx))
+                .children((!enabled).then(|| surface::note(t("LOW_POWER_MODE_WARN"), cx))),
             );
         }
         if self.spec.low_battery_slider {
+            let card = surface::panel(t("LOW_BATTERY_EFFECTS_HEADER"), cx)
+                .child(surface::note(t("LOW_BATTERY_EFFECTS_DESC"), cx))
+                .child(self.range("/lowBatteryEffects", "", "%", true, cx));
+            right = right.child(card);
             panels = panels.child(
                 surface::panel(t("LOW_BATTERY_EFFECTS_HEADER"), cx)
                     .child(surface::note(t("LOW_BATTERY_EFFECTS_DESC"), cx))
                     .child(self.range("/lowBatteryEffects", "", "%", true, cx)),
             );
+        }
+        if self.page == "TAB_POWER" {
+            // Current source `ul` mounts two `.widget-col` siblings (left power
+            // saving, right low-power mode); keeping each card in its own
+            // 600px column preserves the 20px inter-column spine.
+            return surface::page_columns()
+                .child(surface::page_column(left))
+                .child(surface::page_column(right))
+                .into_any_element();
         }
         panels.into_any_element()
     }
@@ -1198,14 +1414,19 @@ impl MouseProductWorkspace {
         widget.into_any_element()
     }
 
-    fn calibration(&self, cx: &Context<Self>) -> AnyElement {
+    fn calibration(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        if self.spec.product_id == 190 {
+            return self.calibration_190(window, cx);
+        }
         if self.spec.calibration.starts_with("smart") {
             let asymmetric = self.boolean("/smartTracking/isAsymmetric");
-            let mut panel = surface::panel(t("SMARTTRACKING"), cx).child(self.toggle(
-                "/smartTracking/isAsymmetric",
-                t("ENABLEASYMMETRICCUTOFF"),
-                cx,
-            ));
+            let mut panel = surface::panel(t("SMARTTRACKING"), cx)
+                .child(surface::note(t("SMART_TRACKING_DISC"), cx))
+                .child(self.toggle(
+                    "/smartTracking/isAsymmetric",
+                    t("ENABLEASYMMETRICCUTOFF"),
+                    cx,
+                ));
             if asymmetric && self.spec.calibration == "smart_only" {
                 panel = panel
                     .child(self.range(
@@ -1221,7 +1442,8 @@ impl MouseProductWorkspace {
                         "",
                         true,
                         cx,
-                    ));
+                    ))
+                    .child(surface::note(t("WARNING_SETTING_LANDING_DISTANCE"), cx));
             } else if asymmetric {
                 panel = panel
                     .child(
@@ -1248,6 +1470,9 @@ impl MouseProductWorkspace {
                     cx,
                 ));
             }
+            panel = panel
+                .child(div().mt_4().child(t("RESET")))
+                .child(surface::note(t("RESET_DESC1"), cx));
             return surface::page_columns()
                 .child(surface::page_column(panel))
                 .into_any_element();
@@ -1255,7 +1480,6 @@ impl MouseProductWorkspace {
         surface::page_columns()
             .child(surface::page_column(
                 surface::panel(t("MOUSE_MAT_CALIBRATION_HEADER"), cx)
-                    .child(surface::note("尚未读取设备的表面校准配置。", cx))
                     // DEVICE_SUPPORTED_MATS is a catalog, not calibration.profiles.
                     // Source selection requires a runtime profile GUID.
                     .child(
@@ -1287,60 +1511,180 @@ impl MouseProductWorkspace {
     }
 
     fn advanced(&self, cx: &Context<Self>) -> AnyElement {
+        let mut body = v_flex();
         let mut panels = surface::page_columns();
         if self.spec.dynamic {
-            panels = panels.child(surface::page_column(
-                surface::panel(t("DYNAMIC_SENSITIVITY"), cx)
-                    .child(
-                        Checkbox::new("mouse-dynamic-enabled")
-                            .label(t("DYNAMIC_SENSITIVITY"))
-                            .checked(self.number("/dynamicSensitivity/state") == 1.)
-                            .on_click(cx.listener(|this, value, _, cx| {
-                                this.write(
-                                    "/dynamicSensitivity/state",
-                                    json!(if *value { 1 } else { 0 }),
-                                    cx,
-                                )
-                            })),
-                    )
-                    .child(
-                        h_flex().gap_2().children(
-                            ["CLASSIC", "NATURAL", "JUMP", "CUSTOM"]
-                                .into_iter()
-                                .enumerate()
-                                .map(|(mode, key)| {
-                                    Button::new(SharedString::from(format!("mouse-dynamic-{mode}")))
-                                        .label(t(key))
-                                        .outline()
-                                        .selected(
-                                            self.number("/dynamicSensitivity/mode") as usize
-                                                == mode,
-                                        )
-                                        .on_click(cx.listener(move |this, _, _, cx| {
-                                            this.write("/dynamicSensitivity/mode", json!(mode), cx)
-                                        }))
-                                }),
-                        ),
-                    ),
-            ));
+            body = body.child(self.dynamic_panel(cx));
         }
         if self.spec.rotation {
             panels = panels.child(surface::page_column(
-                surface::panel(t("ROTATION"), cx)
-                    .child(self.toggle("/rotation/isEnabled", t("ROTATION"), cx))
-                    .child(self.range(
-                        "/rotation/value",
-                        &t("ROTATION"),
-                        "°",
-                        self.boolean("/rotation/isEnabled"),
-                        cx,
-                    )),
+                surface::panel_with_title_switch(
+                    t("ROTATION"),
+                    surface::SynapseSwitch::new("mouse-rotation-enabled")
+                        .accessibility_label(t("ROTATION"))
+                        .checked(self.boolean("/rotation/isEnabled"))
+                        .disabled(!self.advanced_enabled())
+                        .on_change(cx.listener(|this, enabled: &bool, _, cx| {
+                            if this.advanced_enabled() {
+                                this.write("/rotation/isEnabled", json!(*enabled), cx);
+                            }
+                        })),
+                    surface::help_control("mouse-rotation-help", t("ROTATION_TOOLTIP")),
+                    cx,
+                )
+                .relative()
+                .h(surface::css(380.))
+                .child(surface::note(
+                    t("ROTATION_DESC").replace("{{url}}", &t("THIS_TOOL")),
+                    cx,
+                ))
+                .child(
+                    Button::new("mouse-rotation-learn-more")
+                        .label(t("THIS_TOOL"))
+                        .ghost()
+                        .on_click(|_, _, cx| {
+                            cx.open_url("https://www.razer.com/technology/mouse-rotation-tool")
+                        }),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left(surface::css(217.5))
+                        .top(surface::css(119.5))
+                        .size(surface::css(165.))
+                        .opacity(
+                            if self.boolean("/rotation/isEnabled") && self.advanced_enabled() {
+                                1.
+                            } else {
+                                0.3
+                            },
+                        )
+                        .child(rotation::cross().size_full()),
+                )
+                .child(
+                    img(rotation::image(self.number("/rotation/value") as i32))
+                        .absolute()
+                        .left(surface::css(209.5))
+                        .top(surface::css(112.))
+                        .size(surface::css(180.))
+                        .opacity(
+                            if self.boolean("/rotation/isEnabled") && self.advanced_enabled() {
+                                1.
+                            } else {
+                                0.3
+                            },
+                        ),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left(surface::css(40.))
+                        .right(surface::css(40.))
+                        .top(surface::css(287.))
+                        .child(rotation::RotationRange {
+                            state: self.sliders["/rotation/value"].clone(),
+                            enabled: self.boolean("/rotation/isEnabled") && self.advanced_enabled(),
+                        }),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left(surface::css(297.))
+                        .top(surface::css(341.))
+                        .child(format!("{}°", self.number("/rotation/value"))),
+                )
+                .children(
+                    (!self.advanced_enabled()).then(|| surface::note(t("FW_UPDATE_REQUIRED"), cx)),
+                ),
             ));
         }
-        panels.into_any_element()
+        body.child(panels).into_any_element()
     }
 
-    fn scrolling(&self, cx: &Context<Self>) -> AnyElement {
+    fn cancel_scroll_custom(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.scroll_curve_drag = None;
+        self.scroll_custom_dirty = false;
+        let Some(saved) = self.scroll_custom_saved.take() else {
+            return;
+        };
+        set_pointer(
+            &mut self.draft,
+            "/scrollWheelStages/scrollWheelStages/5",
+            saved,
+        );
+        self.sync_scroll_custom(window, cx);
+    }
+
+    fn sync_scroll_custom(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.syncing = true;
+        for (path, slider) in &self.sliders {
+            if !path.starts_with("/scrollWheelStages/") {
+                continue;
+            }
+            let value = self.number(path);
+            slider.update(cx, |slider, cx| slider.set_value(value, window, cx));
+            if let Some(input) = self.inputs.get(path) {
+                input.update(cx, |input, cx| {
+                    input.set_value((value as i64).to_string(), window, cx)
+                });
+            }
+        }
+        self.syncing = false;
+        cx.notify();
+    }
+
+    fn toggle_scroll_stage(
+        &mut self,
+        stage: &str,
+        checked: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.cancel_scroll_custom(window, cx);
+        let path = "/scrollWheelStages/scrollWheelStages";
+        let Some(stages) = self.draft.pointer(path).and_then(Value::as_array) else {
+            return;
+        };
+        let Some(ix) = stages.iter().position(|entry| entry["id"] == stage) else {
+            return;
+        };
+        if !checked
+            && stages
+                .iter()
+                .filter(|entry| entry["isActive"] == true)
+                .count()
+                <= 1
+        {
+            return;
+        }
+        let mut stages = stages.clone();
+        stages[ix]["isActive"] = json!(checked);
+        if !checked
+            && self
+                .draft
+                .pointer("/scrollWheelStages/activeStage")
+                .and_then(Value::as_str)
+                == Some(stage)
+        {
+            let next = stages
+                .iter()
+                .enumerate()
+                .find(|(other, entry)| *other > ix && entry["isActive"] == true)
+                .or_else(|| {
+                    stages
+                        .iter()
+                        .enumerate()
+                        .find(|(_, entry)| entry["isActive"] == true)
+                })
+                .map(|(_, entry)| entry["id"].clone());
+            if let Some(next) = next {
+                set_pointer(&mut self.draft, "/scrollWheelStages/activeStage", next);
+            }
+        }
+        self.write(path, Value::Array(stages), cx);
+    }
+
+    fn scrolling(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let stages = [
             "SW_STANDARD",
             "SW_DISTINCT",
@@ -1354,52 +1698,86 @@ impl MouseProductWorkspace {
             .pointer("/scrollWheelStages/activeStage")
             .and_then(Value::as_str)
             .unwrap_or("SW_STANDARD");
-        let mut panel = surface::panel(t("SCROLL_WHEEL_STAGES"), cx)
-            .child(surface::note(t("SCROLL_WHEEL_STAGES_DESCRIPTION"), cx))
+        let enabled_count = self
+            .draft
+            .pointer("/scrollWheelStages/scrollWheelStages")
+            .and_then(Value::as_array)
+            .map_or(0, |stages| {
+                stages
+                    .iter()
+                    .filter(|stage| stage["isActive"] == true)
+                    .count()
+            });
+        let panel =
+            surface::panel(t("SCROLL_WHEEL_STAGES"), cx)
+                .child(surface::note(t("SCROLL_WHEEL_STAGES_DESCRIPTION"), cx))
+                .child(
+                    h_flex()
+                        .flex_wrap()
+                        .gap_2()
+                        .children(stages.into_iter().map(|stage| {
+                            let enabled = self
+                                .draft
+                                .pointer("/scrollWheelStages/scrollWheelStages")
+                                .and_then(Value::as_array)
+                                .and_then(|stages| stages.iter().find(|entry| entry["id"] == stage))
+                                .is_some_and(|entry| entry["isActive"] == true);
+                            v_flex()
+                                .gap_2()
+                                .child(
+                                    Button::new(SharedString::from(format!("mouse-wheel-{stage}")))
+                                        .label(t(stage))
+                                        .outline()
+                                        .disabled(!enabled)
+                                        .selected(active == stage)
+                                        .on_click(cx.listener(move |this, _, window, cx| {
+                                            let enabled = this
+                                                .draft
+                                                .pointer("/scrollWheelStages/scrollWheelStages")
+                                                .and_then(Value::as_array)
+                                                .and_then(|stages| {
+                                                    stages.iter().find(|entry| entry["id"] == stage)
+                                                })
+                                                .is_some_and(|entry| entry["isActive"] == true);
+                                            if !enabled {
+                                                return;
+                                            }
+                                            this.cancel_scroll_custom(window, cx);
+                                            this.write(
+                                                "/scrollWheelStages/activeStage",
+                                                json!(stage),
+                                                cx,
+                                            )
+                                        })),
+                                )
+                                .child(
+                                    Checkbox::new(SharedString::from(format!(
+                                        "mouse-wheel-enabled-{stage}"
+                                    )))
+                                    .label(t("ENABLE"))
+                                    .checked(enabled)
+                                    .disabled(enabled && enabled_count == 1)
+                                    .on_click(cx.listener(move |this, checked, window, cx| {
+                                        this.toggle_scroll_stage(stage, *checked, window, cx);
+                                    })),
+                                )
+                        })),
+                );
+        div()
             .child(
-                h_flex()
-                    .flex_wrap()
-                    .gap_2()
-                    .children(stages.into_iter().map(|stage| {
-                        Button::new(SharedString::from(format!("mouse-wheel-{stage}")))
-                            .label(t(stage))
-                            .outline()
-                            .selected(active == stage)
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.write("/scrollWheelStages/activeStage", json!(stage), cx)
-                            }))
-                    })),
-            );
-        if active == "SW_CUSTOM" {
-            for (direction, key) in [
-                ("upDirection", "SCROLL_UP"),
-                ("downDirection", "SCROLL_DOWN"),
-            ] {
-                panel = panel
-                    .child(div().child(t(key)))
-                    .child(self.range(
-                        &format!(
-                            "/scrollWheelStages/scrollWheelStages/5/{direction}/scrollTension"
-                        ),
-                        &t("SCROLL_TENSION"),
-                        "",
-                        true,
-                        cx,
+                surface::page_columns()
+                    .child(surface::page_column(
+                        v_flex()
+                            .child(panel)
+                            .child(self.scroll_options_panel(active, cx)),
                     ))
-                    .child(self.range(
-                        &format!("/scrollWheelStages/scrollWheelStages/5/{direction}/scrollSteps"),
-                        &t("SCROLL_STEPS"),
-                        "",
-                        true,
-                        cx,
-                    ));
-            }
-        }
-        surface::page_columns()
-            .child(surface::page_column(panel))
+                    .child(surface::page_column(self.haptic_panel(active, cx))),
+            )
+            .when(self.scroll_custom_saved.is_some(), |view| {
+                view.child(self.scroll_custom_popup(window, cx))
+            })
             .into_any_element()
     }
-
     /// The `displayMode=armory` root mounts this page without the product
     /// chrome; the renderer itself is shared, so no separate layout is faked.
     pub fn customize_element(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -1407,6 +1785,12 @@ impl MouseProductWorkspace {
     }
 
     fn customize(&self, cx: &Context<Self>) -> AnyElement {
+        if self.spec.product_id == 190 {
+            // 190 mounts CO/gO (top-view config block) followed by the
+            // shared mapping popup; the generic button-list card below is
+            // intentionally unreachable for this product.
+            return self.customize_190(cx);
+        }
         let mut buttons: Vec<&Value> = self
             .spec
             .groups
@@ -1444,6 +1828,7 @@ impl MouseProductWorkspace {
                                         .on_click(cx.listener(move |this, _, _, cx| {
                                             this.group_ix = ix;
                                             this.mapping_input = None;
+                                            this.mapping_assignment = None;
                                             cx.notify();
                                         })),
                                 )
@@ -1469,6 +1854,8 @@ impl MouseProductWorkspace {
                     .checked(self.hypershift)
                     .on_click(cx.listener(|this, value, _, cx| {
                         this.hypershift = *value;
+                        this.mapping_input = None;
+                        this.mapping_assignment = None;
                         cx.notify();
                     })),
             )
@@ -1483,6 +1870,7 @@ impl MouseProductWorkspace {
                         .selected(self.mapping_input.as_ref() == Some(&input))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.mapping_input = Some(input.clone());
+                            this.mapping_assignment = None;
                             cx.notify();
                         })),
                 )
@@ -1493,11 +1881,16 @@ impl MouseProductWorkspace {
                 .find(|button| button["inputID"].as_str() == Some(&input));
             let supported = source_button.is_some_and(|button| {
                 button["isEnabled"].as_bool().unwrap_or(true)
-                    && button["functionList"].as_array().is_none_or(|functions| {
-                        functions
+                    && match &button["functionList"] {
+                        Value::Array(functions) => functions
                             .iter()
-                            .any(|function| function == "MOUSE_FUNCTION")
-                    })
+                            .any(|function| function == "MOUSE_FUNCTION"),
+                        Value::String(functions) => functions
+                            .split_whitespace()
+                            .any(|function| function == "MOUSE_FUNCTION"),
+                        Value::Null => true,
+                        _ => false,
+                    }
             });
             if supported {
                 panel = panel.child(
@@ -1506,31 +1899,49 @@ impl MouseProductWorkspace {
                         .child(localized_name(input_label(&input), &input)),
                 )
                 .child(Button::new("mouse-reset-mapping").label(t("DEFAULT")).outline().on_click(cx.listener({
-                    let input=input.clone();
                     move |this,_,_,cx| {
-                        if let Some(mappings)=this.draft["mappings"].as_array_mut() {
-                            mappings.retain(|mapping| !(mapping["inputID"] == input && mapping["isHyperShift"].as_bool().unwrap_or(false)==this.hypershift));
-                            cx.emit(MouseProductChanged);cx.notify();
-                        }
+                        this.mapping_assignment = Some("Default".into());
+                        cx.notify();
                     }
                 })))
                 .child(h_flex().gap_2().flex_wrap().children([
                     ("Click", "LEFT_CLICK"), ("Menu", "RIGHT_CLICK"), ("ScrollButton", "SCROLL_CLICK"),
                     ("Previous", "STEP_BACK"), ("Next", "STEP_FORWARD"), ("ScrollUp", "SCROLL_UP"), ("ScrollDown", "SCROLL_DOWN"),
                 ].into_iter().map(|(assignment, key)| {
-                    let input = input.clone();
-                    let input_type = source_button.and_then(|button| button["inputType"].as_str()).unwrap_or("MouseInput").to_owned();
                     Button::new(SharedString::from(format!("mouse-assignment-{assignment}"))).label(t(key)).outline()
+                        .selected(self.mapping_assignment.as_deref() == Some(assignment))
                         .on_click(cx.listener(move |this, _, _, cx| {
-                            let entry = json!({"inputID":input,"isHyperShift":this.hypershift,"inputType":input_type,"outputType":"mouseGroup","mouseGroup":{"mouseAssignment":assignment}});
-                            let mappings = this.draft.get_mut("mappings").and_then(Value::as_array_mut);
-                            if let Some(mappings) = mappings {
-                                mappings.retain(|m| !(m["inputID"] == input && m["isHyperShift"].as_bool().unwrap_or(false) == this.hypershift));
-                                mappings.push(entry);
-                                cx.emit(MouseProductChanged); cx.notify();
-                            }
+                            this.mapping_assignment = Some(assignment.into());
+                            cx.notify();
                         }))
-                })));
+                })))
+                .child(h_flex().gap_2()
+                    .child(Button::new("mouse-mapping-cancel").label(t("CANCEL")).outline()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.mapping_input = None;
+                            this.mapping_assignment = None;
+                            cx.notify();
+                        })))
+                    .child(Button::new("mouse-mapping-save").label(t("SAVE")).primary()
+                        .disabled(self.mapping_assignment.is_none())
+                        .on_click(cx.listener({
+                            let input = input.clone();
+                            let input_type = source_button.and_then(|button| button["inputType"].as_str()).unwrap_or("MouseInput").to_owned();
+                            move |this, _, _, cx| {
+                                if this.mapping_input.as_ref() != Some(&input) { return; }
+                                let Some(assignment) = this.mapping_assignment.take() else { return; };
+                                let hypershift = this.hypershift;
+                                if let Some(mappings) = this.draft.get_mut("mappings").and_then(Value::as_array_mut) {
+                                    mappings.retain(|m| !(m["inputID"] == input && m["isHyperShift"].as_bool().unwrap_or(false) == hypershift));
+                                    if assignment != "Default" {
+                                        mappings.push(json!({"inputID":input,"isHyperShift":hypershift,"inputType":input_type,"outputType":"mouseGroup","mouseGroup":{"mouseAssignment":assignment}}));
+                                    }
+                                    cx.emit(MouseProductChanged);
+                                }
+                                this.mapping_input = None;
+                                cx.notify();
+                            }
+                        }))));
             }
         }
         v_flex()
@@ -1550,16 +1961,11 @@ impl Render for MouseProductWorkspace {
             "TAB_PERFORMANCE" => self.performance(cx),
             "TAB_POWER" => self.power(cx),
             "TAB_LIGHTING" => self.lighting(window, cx),
-            "TAB_CALIBRATION" => self.calibration(cx),
-            "TAB_SCROLLING" => self.scrolling(cx),
+            "TAB_CALIBRATION" => self.calibration(window, cx),
+            "TAB_SCROLLING" => self.scrolling(window, cx),
             "ADVANCED" => self.advanced(cx),
-            "TAB_PAIRING" => surface::panel(t("PAIR"), cx)
-                .child(surface::note("配对界面尚未接入。", cx))
-                .into_any_element(),
             "TAB_CUSTOMIZE" => self.customize(cx),
-            _ => surface::panel(razer_i18n::t(&self.page), cx)
-                .child(surface::note("此页面的原生控件仍在接入。", cx))
-                .into_any_element(),
+            _ => div().into_any_element(),
         };
         div()
             .id("mouse-product-body")

@@ -186,7 +186,7 @@ class ProductSource {
 }
 
 function inspect(pid) {
-  const directory = `.ref/devices/${pid}`;
+  const directory = `local-ui-reverse/source/official/apps.razer.com/synapse/products/${pid}/ui`;
   const manifest = JSON.parse(read(`${directory}/asset-manifest.json`));
   const declared = [...new Set(Object.values(manifest.files))].map(value => `${directory}/${value.replace(/^\.\//, '')}`);
   const main = `${directory}/${manifest.files['main.js'].replace(/^\.\//, '')}`;
@@ -346,7 +346,7 @@ function inspect(pid) {
 }
 
 if (require.main === module) {
-  const ids = process.argv.includes('--all') ? fs.readdirSync(path.join(root, '.ref/devices')).filter(name => /^\d+$/.test(name)).map(Number).sort((a,b) => a-b) : FIRST;
+  const ids = process.argv.includes('--all') ? fs.readdirSync(path.join(root, 'local-ui-reverse/source/official/apps.razer.com/synapse/products')).filter(name => /^\d+$/.test(name)).map(Number).sort((a,b) => a-b) : FIRST;
   const results = [], products = [], uncovered = [];
   for (const pid of ids) {
     try {

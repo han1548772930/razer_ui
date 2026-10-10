@@ -1,0 +1,116 @@
+[
+  {
+    "pid": 619,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 620,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 647,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 677,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 691,
+    "left": true,
+    "hide_ble": true,
+    "keyboard_category": true
+  },
+  {
+    "pid": 716,
+    "left": true,
+    "hide_ble": true,
+    "keyboard_category": true
+  },
+  {
+    "pid": 719,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 720,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 721,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 724,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": false
+  },
+  {
+    "pid": 727,
+    "left": false,
+    "hide_ble": true,
+    "keyboard_category": true
+  },
+  {
+    "pid": 728,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 739,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 740,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 741,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 742,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 746,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  },
+  {
+    "pid": 747,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": false
+  },
+  {
+    "pid": 752,
+    "left": false,
+    "hide_ble": false,
+    "keyboard_category": true
+  }
+]

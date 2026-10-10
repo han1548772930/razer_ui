@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-10",
+  "validation": "Static byte comparison only",
+  "entries": [
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/minimize.svg",
+      "output": "assets/synapse/host-minimize.svg",
+      "sha256": "0c600a785336c52612b3f51de0a440fef93600b2aea0d5b41705b1ccced1cfd4",
+      "bytes": 352
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/maximize.svg",
+      "output": "assets/synapse/host-maximize.svg",
+      "sha256": "029400e233f1d0901a3560f9ace598131ecfd927c46f7f13c50018575ff8813e",
+      "bytes": 464
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close.svg",
+      "output": "assets/synapse/host-close.svg",
+      "sha256": "7e9b326f0c17e03f0fab1b7807fed1eb07c84eb8e43ef7814e507053e4712fa6",
+      "bytes": 257
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close_active_tab.svg",
+      "output": "assets/synapse/host-close_active_tab.svg",
+      "sha256": "fe81757cbec99c2ae0fca9fdb634861df9fc049a6e8a4c947a8482a51d54c4aa",
+      "bytes": 400
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close_active_tab_hover.svg",
+      "output": "assets/synapse/host-close_active_tab_hover.svg",
+      "sha256": "532c4a73d5581bdc8ea03fef7298eb9a7c48111a295311ee827cf501b56baf11",
+      "bytes": 400
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close_pressed.svg",
+      "output": "assets/synapse/host-close_pressed.svg",
+      "sha256": "84aa47765f903ea80211896965988f4e0a1233ba65e52d24c74ec361e3982b32",
+      "bytes": 400
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow.svg",
+      "output": "assets/synapse/host-left-arrow.svg",
+      "sha256": "c67e22c86bbbf9644013fd78f21cccd1046b88d218fe3eea221f3b790ef42531",
+      "bytes": 299
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow-hover.svg",
+      "output": "assets/synapse/host-left-arrow-hover.svg",
+      "sha256": "97766c9c7761a1bea8cff5096cd5454b711e99b63b0b046f35d818e7a55470e5",
+      "bytes": 326
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow-active.svg",
+      "output": "assets/synapse/host-left-arrow-active.svg",
+      "sha256": "6200a6c42b44e7a7d886fe19df8ff0a1aebdd2629686ad05f33df080eb349b1c",
+      "bytes": 326
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/left-arrow-disabled.svg",
+      "output": "assets/synapse/host-left-arrow-disabled.svg",
+      "sha256": "4e7995fe9aafc7a65705d13938b3e06d0077c24a223ea3ac7c22443c0310c44d",
+      "bytes": 311
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow.svg",
+      "output": "assets/synapse/host-right-arrow.svg",
+      "sha256": "15d6cc42d1243c8dd8564ff55b8ad3435adaf188af0282a80b932e0ef4547653",
+      "bytes": 303
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow-hover.svg",
+      "output": "assets/synapse/host-right-arrow-hover.svg",
+      "sha256": "d1036fee99ef0a92bf3c848ffaa9bdcefcb15f2cbbb007e637269b5213eedf24",
+      "bytes": 330
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow-active.svg",
+      "output": "assets/synapse/host-right-arrow-active.svg",
+      "sha256": "5f3a805447c11a7aaf24bddcf6942ccb8cba445901d3a2cbdc294533b6b19d49",
+      "bytes": 330
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/right-arrow-disabled.svg",
+      "output": "assets/synapse/host-right-arrow-disabled.svg",
+      "sha256": "309d3e2e8518b4c62f0b6595520ea58673267926ac0fa06d51486cb220ac50ac",
+      "bytes": 315
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/restore.svg",
+      "output": "assets/synapse/host-restore.svg",
+      "sha256": "f7bdeb75715eb7d1068718c7743cc94c8f7599b3d75039dc9738f0c359b06d61",
+      "bytes": 273,
+      "change": "Line endings only; identical SVG geometry and color."
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/assets/image/tab/close-original.svg",
+      "output": "assets/synapse/host-close-original.svg",
+      "sha256": "b6c448c55cf1108a6c983e45e23a624e990ff7b1cbf5b231f14c1435bbde1ca5",
+      "bytes": 425,
+      "change": "Line endings only; identical SVG geometry and color."
+    }
+  ]
+}

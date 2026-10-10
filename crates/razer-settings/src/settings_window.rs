@@ -13,7 +13,7 @@ use razer_widgets::surface;
 use serde::Deserialize;
 use std::{collections::BTreeMap, sync::OnceLock};
 #[path = "settings_window_presentation.rs"]
-mod presentation;
+pub(crate) mod presentation;
 
 #[derive(Deserialize)]
 struct Language {

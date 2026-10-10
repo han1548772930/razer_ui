@@ -1,0 +1,544 @@
+{
+  "date": "2026-10-10",
+  "verification": "Static inspection of current original files; target JavaScript not executed",
+  "products": [
+    {
+      "product_id": 167,
+      "page_offset": 5064782,
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/js/main.508445ac.js",
+      "sha256": "9ac580ac967a454f7e87b03c97ca0175d112100e3939489db1c0416e621e27f7",
+      "class_utf8_offset": 5798472,
+      "popup_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/js/main.508445ac.js",
+      "popup_sha256": "9ac580ac967a454f7e87b03c97ca0175d112100e3939489db1c0416e621e27f7",
+      "popup_class_utf8_offset": 5294818,
+      "copy_utf8_offset": 5798598,
+      "reset_utf8_offset": 5801864,
+      "reset_source": "this.resetDevice=()=>{var e,t;this.props.resetObm&&!this.props.isBle?this.props.resetObm():null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:\"ON_RESET_DEVICE\"});this.props.oledfactoryReset&&(null===(t=window.mwBroadcastChannel)||void 0===t||t.postMessage({type:\"ON_OLED_FACTORY_RESET_DEVICE\"}));setTimeout(()=>{this.setState({isDisableDelBtn:!1})},2e3)},",
+      "caller_utf8_offset": 5865296,
+      "caller": "resetObm:this.props.obmResetDevice",
+      "root_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/js/main.508445ac.js",
+      "root_sha256": "9ac580ac967a454f7e87b03c97ca0175d112100e3939489db1c0416e621e27f7",
+      "css": [
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/css/main.2f4b6763.css",
+          "sha256": "47e4b0027edd07d7b38c3dc3a8614586c7a5938b16fd6c4b6a9426bdad810b90",
+          "rules": [
+            ".nav-tabs .profile-wrapper .profile-del{left:auto}",
+            ".profile-del{border:1px solid #fd4949;border-radius:3px;min-width:300px;top:42px}",
+            ".profile-del,.profile-tips .profile-dynamic-tips,.profile-tips .profile-selected-tips{align-items:center;background-color:#111;box-shadow:0 6px 10px 0 #0003;display:flex!important;flex-direction:column;opacity:0;padding:20px;position:absolute;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity;z-index:3}",
+            ".profile-del{font-family:Roboto,sans-serif}",
+            ".profile-del .del-title,.profile-del .del-title-normal{color:#fd4949;margin-bottom:10px;text-align:center;text-transform:uppercase}",
+            ".profile-del .del-title{font-weight:700}",
+            ".profile-del .del-title-normal{font-weight:400}",
+            ".profile-del .body-text,.warn-pop .body-text{margin-bottom:10px;text-transform:none}",
+            ".profile-del.show,.warn-pop.show,.warn-tip.show{opacity:1;visibility:visible}",
+            ".flex.profile-bar>div.profile-del{position:absolute;z-index:104}",
+            ".profile-del div.thx-btn{background-color:#fd4949;border:1px solid #0000004d;color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:4px 5px;text-align:center;white-space:nowrap;width:auto}",
+            ".profile-del div.thx-btn.cancel{background-color:#707070;color:#fff;margin-right:10px}",
+            ".shortcut_item .profile-del{left:274px;top:53px}",
+            ".main-setting .device-setting .setting-block .profile-del{top:-14px}",
+            ".main-setting .device-setting .setting-block .profile-del .del-title{text-transform:uppercase}",
+            ".profile-del{z-index:11}",
+            ".profile-del.keymap-delete-alert{max-width:330px}"
+          ]
+        }
+      ],
+      "obm_reset_during_ble": false,
+      "html_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/index.html",
+      "html_sha256": "f43971db1ae2516298d41c24231fd3a4a14203ff82ec24f43a1e2b8b09975420",
+      "version_json_utf8_offset": 3886,
+      "version_json": {
+        "version": "1.0.0",
+        "buildVersion": 2607020656,
+        "gitMetadata": {
+          "branch": "master-m15-beta",
+          "currentBranch": "master",
+          "commit": "2b22e34230d4e0c9ac8d6f314520766275de3850",
+          "buildTime": 1782975925259
+        },
+        "dependencies": [
+          {
+            "name": "commonrepository",
+            "version": "d098745ca084968d7e2a9a19239cd2d7c0aeb72d",
+            "branch": "master-m15-beta"
+          },
+          {
+            "name": "jstestrzdevice",
+            "version": "80a20eb65bec77560652f19222805d4c03897651",
+            "branch": "dev"
+          },
+          {
+            "name": "razer-cli-tools",
+            "version": "fb8011a45cca90d88fda166179ccda0fccbb3220",
+            "branch": "staging"
+          },
+          {
+            "name": "razer-config",
+            "version": "1dd6c5ee907123e17db22066065827284e206c59",
+            "branch": "master"
+          },
+          {
+            "name": "rz-app-feature",
+            "version": "c7418744caa9f33f1a456dae3d1d799a97171d93",
+            "branch": "DEFAULT_REPO_BRANCH"
+          }
+        ]
+      },
+      "ui_version_utf8_offset": 5807527,
+      "mw_version_utf8_offset": 5808055,
+      "app_version_utf8_offset": 5808466
+    },
+    {
+      "product_id": 190,
+      "page_offset": 4794688,
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+      "class_utf8_offset": 5569957,
+      "popup_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "popup_sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+      "popup_class_utf8_offset": 5170091,
+      "copy_utf8_offset": 5570083,
+      "reset_utf8_offset": 5573254,
+      "reset_source": "this.resetDevice=()=>{var e,E;this.props.resetObm&&!this.props.isBle?this.props.resetObm():null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:\"ON_RESET_DEVICE\"});this.props.oledfactoryReset&&(null===(E=window.mwBroadcastChannel)||void 0===E||E.postMessage({type:\"ON_OLED_FACTORY_RESET_DEVICE\"}));setTimeout(()=>{this.setState({isDisableDelBtn:!1})},2e3)},",
+      "caller_utf8_offset": 5595823,
+      "caller": "resetObm:this.resetDevice",
+      "root_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "root_sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+      "css": [
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+          "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+          "rules": [
+            ".nav-tabs .profile-wrapper .profile-del{left:auto}",
+            ".profile-del{border:1px solid #fd4949;border-radius:3px;min-width:300px;top:42px}",
+            ".profile-del,.profile-tips .profile-dynamic-tips,.profile-tips .profile-selected-tips{align-items:center;background-color:#111;box-shadow:0 6px 10px 0 #0003;display:flex!important;flex-direction:column;opacity:0;padding:20px;position:absolute;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity;z-index:3}",
+            ".profile-del{font-family:Roboto,sans-serif}",
+            ".profile-del .del-title,.profile-del .del-title-normal{color:#fd4949;margin-bottom:10px;text-align:center;text-transform:uppercase}",
+            ".profile-del .del-title{font-weight:700}",
+            ".profile-del .del-title-normal{font-weight:400}",
+            ".profile-del .body-text,.warn-pop .body-text{margin-bottom:10px;text-transform:none}",
+            ".profile-del.show,.warn-pop.show,.warn-tip.show{opacity:1;visibility:visible}",
+            ".flex.profile-bar>div.profile-del{position:absolute;z-index:104}",
+            ".profile-del div.thx-btn{background-color:#fd4949;border:1px solid #0000004d;color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:4px 5px;text-align:center;white-space:nowrap;width:auto}",
+            ".profile-del div.thx-btn.cancel{background-color:#707070;color:#fff;margin-right:10px}",
+            ".shortcut_item .profile-del{left:274px;top:53px}",
+            ".main-setting .device-setting .setting-block .profile-del{top:-14px}",
+            ".main-setting .device-setting .setting-block .profile-del .del-title{text-transform:uppercase}",
+            ".profile-del{z-index:11}",
+            ".profile-del.keymap-delete-alert{max-width:330px}"
+          ]
+        }
+      ],
+      "obm_reset_during_ble": false,
+      "html_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/index.html",
+      "html_sha256": "c6a0c9af8af0c9d222292d3d6f012d4ea9b14d306c46aa65760267fecc5aedfa",
+      "version_json_utf8_offset": 4091,
+      "version_json": {
+        "version": "1.0.0",
+        "buildVersion": 2609250730,
+        "gitMetadata": {
+          "branch": "master-30sepcombine",
+          "currentBranch": "master",
+          "commit": "f3429e40d800c35be2c9944b2e0b22bc747008e4",
+          "buildTime": 1790321966280
+        },
+        "dependencies": [
+          {
+            "name": "commonrepository",
+            "version": "59815fb8fd53a4b93020ac2fe4d37246993cdcd1",
+            "branch": "master-m15-beta-ANN-39471-LitaT1Refresh"
+          },
+          {
+            "name": "jstestrzdevice",
+            "version": "80a20eb65bec77560652f19222805d4c03897651",
+            "branch": "dev"
+          },
+          {
+            "name": "razer-cli-tools",
+            "version": "9de574e5fd3b124075c7662dc78b7f67f3d81ff8",
+            "branch": "staging"
+          },
+          {
+            "name": "razer-config",
+            "version": "1dd6c5ee907123e17db22066065827284e206c59",
+            "branch": "master"
+          },
+          {
+            "name": "rz-app-feature",
+            "version": "b4f480d23913abcdcec0f584a1ed1628ccea610e",
+            "branch": "DEFAULT_REPO_BRANCH"
+          }
+        ]
+      },
+      "ui_version_utf8_offset": 5578807,
+      "mw_version_utf8_offset": 5579320,
+      "app_version_utf8_offset": 5579731
+    },
+    {
+      "product_id": 226,
+      "page_offset": 275700,
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/js/8355.3d5e573e.chunk.js",
+      "sha256": "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+      "class_utf8_offset": 211952,
+      "popup_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/js/3485.794fe922.chunk.js",
+      "popup_sha256": "42871b0390959f81d70f761f0429137a8311097d4551c5f7b5d3124bd45e6ebd",
+      "popup_class_utf8_offset": 297428,
+      "copy_utf8_offset": 212078,
+      "reset_utf8_offset": 215243,
+      "reset_source": "this.resetDevice=()=>{var e;const t=\"MOUSE\"===(null===(e=z.DeviceInfo)||void 0===e?void 0:e.category);var s,i;!this.props.resetObm||this.props.isBle&&!t?null===(s=window.mwBroadcastChannel)||void 0===s||s.postMessage({type:\"ON_RESET_DEVICE\"}):this.props.resetObm();this.props.oledfactoryReset&&(null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_OLED_FACTORY_RESET_DEVICE\"}));setTimeout(()=>{this.setState({isDisableDelBtn:!1})},2e3)},",
+      "caller_utf8_offset": 277408,
+      "caller": "resetObm:this.props.obmResetDevice",
+      "root_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/js/main.08f95762.js",
+      "root_sha256": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
+      "css": [
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/css/3485.3a185bc1.chunk.css",
+          "sha256": "7e17ff497704138c45fe9bb9a8ac781d095825742f9cdf6cb4402d89169c1293",
+          "rules": [
+            ".profile-del{z-index:11}"
+          ]
+        },
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/css/main.c2099849.css",
+          "sha256": "68bc9ccdc21fe548330106b3a27beb5049be06f55939e5950677b220f52703df",
+          "rules": [
+            ".nav-tabs .profile-wrapper .profile-del{left:auto}",
+            ".profile-del{border:1px solid #fd4949;border-radius:3px;min-width:300px;top:42px}",
+            ".profile-del,.profile-tips .profile-dynamic-tips,.profile-tips .profile-selected-tips{align-items:center;background-color:#111;box-shadow:0 6px 10px 0 #0003;display:flex!important;flex-direction:column;opacity:0;padding:20px;position:absolute;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity;z-index:3}",
+            ".profile-del{font-family:Roboto,sans-serif}",
+            ".profile-del .del-title,.profile-del .del-title-normal{color:#fd4949;margin-bottom:10px;text-align:center;text-transform:uppercase}",
+            ".profile-del .del-title{font-weight:700}",
+            ".profile-del .del-title-normal{font-weight:400}",
+            ".profile-del .body-text,.warn-pop .body-text{margin-bottom:10px;text-transform:none}",
+            ".profile-del.show,.warn-pop.show,.warn-tip.show{opacity:1;visibility:visible}",
+            ".flex.profile-bar>div.profile-del{position:absolute;z-index:104}",
+            ".profile-del div.thx-btn{background-color:#fd4949;border:1px solid #0000004d;color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:4px 5px;text-align:center;white-space:nowrap;width:auto}",
+            ".profile-del div.thx-btn.cancel{background-color:#707070;color:#fff;margin-right:10px}",
+            ".shortcut_item .profile-del{left:274px;top:53px}",
+            ".main-setting .device-setting .setting-block .profile-del{top:-14px}",
+            ".main-setting .device-setting .setting-block .profile-del .del-title{text-transform:uppercase}"
+          ]
+        }
+      ],
+      "obm_reset_during_ble": true,
+      "html_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/index.html",
+      "html_sha256": "1c83e18efe81c718e375d316d960fb46820d0905c7b2e89c887d046aa52c7ccf",
+      "version_json_utf8_offset": 3886,
+      "version_json": {
+        "version": "0.0.14",
+        "buildVersion": 2608120952,
+        "gitMetadata": {
+          "branch": "master-18august2026",
+          "currentBranch": "master",
+          "commit": "a09118ec1951e104b15db5a7d21655a7717554f9",
+          "buildTime": 1786528736565
+        },
+        "dependencies": [
+          {
+            "name": "commonrepository",
+            "version": "282801907d7f2500f040b9940d7fc48db18fc57f",
+            "branch": "master-20july2026-dolores"
+          },
+          {
+            "name": "jstestrzdevice",
+            "version": "80a20eb65bec77560652f19222805d4c03897651",
+            "branch": "dev"
+          },
+          {
+            "name": "razer-anne-utilities",
+            "version": "b88eeb35a6991d0efe9da97a6fbea729d781c83b",
+            "branch": "staging"
+          },
+          {
+            "name": "razer-cli-tools",
+            "version": "2b4bf2d3d3b32d58bb015c3d181e9508edf83811",
+            "branch": "staging"
+          },
+          {
+            "name": "razer-config",
+            "version": "d0766864e758448026262d0bb35e2770c471aead",
+            "branch": "master"
+          },
+          {
+            "name": "rz-app-feature",
+            "version": "9816db20e8475670be48cad35c51c54f54e802b1",
+            "branch": "DEFAULT_REPO_BRANCH"
+          }
+        ]
+      },
+      "ui_version_utf8_offset": 220631,
+      "mw_version_utf8_offset": 221144,
+      "app_version_utf8_offset": 221551
+    },
+    {
+      "product_id": 679,
+      "page_offset": 7314642,
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+      "sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+      "class_utf8_offset": 7728572,
+      "popup_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+      "popup_sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+      "popup_class_utf8_offset": 7522932,
+      "copy_utf8_offset": 7728698,
+      "reset_utf8_offset": 7731964,
+      "reset_source": "this.resetDevice=()=>{var e,t;this.props.resetObm&&!this.props.isBle?this.props.resetObm():null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:\"ON_RESET_DEVICE\"});this.props.oledfactoryReset&&(null===(t=window.mwBroadcastChannel)||void 0===t||t.postMessage({type:\"ON_OLED_FACTORY_RESET_DEVICE\"}));setTimeout(()=>{this.setState({isDisableDelBtn:!1})},2e3)},",
+      "caller_utf8_offset": 8115310,
+      "caller": "resetObm:this.props.obmResetDevice",
+      "root_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+      "root_sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+      "css": [
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+          "sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+          "rules": [
+            ".nav-tabs .profile-wrapper .profile-del{left:auto}",
+            ".profile-del{border:1px solid #fd4949;border-radius:3px;min-width:300px;top:42px}",
+            ".profile-del,.profile-tips .profile-dynamic-tips,.profile-tips .profile-selected-tips{align-items:center;background-color:#111;box-shadow:0 6px 10px 0 #0003;display:flex!important;flex-direction:column;opacity:0;padding:20px;position:absolute;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity;z-index:3}",
+            ".profile-del{font-family:Roboto,sans-serif}",
+            ".profile-del .del-title,.profile-del .del-title-normal{color:#fd4949;margin-bottom:10px;text-align:center;text-transform:uppercase}",
+            ".profile-del .del-title{font-weight:700}",
+            ".profile-del .del-title-normal{font-weight:400}",
+            ".profile-del .body-text,.warn-pop .body-text{margin-bottom:10px;text-transform:none}",
+            ".profile-del.show,.warn-pop.show,.warn-tip.show{opacity:1;visibility:visible}",
+            ".flex.profile-bar>div.profile-del{position:absolute;z-index:104}",
+            ".profile-del div.thx-btn{background-color:#fd4949;border:1px solid #0000004d;color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:4px 5px;text-align:center;white-space:nowrap;width:auto}",
+            ".profile-del div.thx-btn.cancel{background-color:#707070;color:#fff;margin-right:10px}",
+            ".shortcut_item .profile-del{left:274px;top:53px}",
+            ".main-setting .device-setting .setting-block .profile-del{top:-14px}",
+            ".main-setting .device-setting .setting-block .profile-del .del-title{text-transform:uppercase}",
+            ".profile-del{z-index:11}",
+            ".profile-del.keymap-delete-alert{max-width:330px}"
+          ]
+        }
+      ],
+      "obm_reset_during_ble": false,
+      "html_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/index.html",
+      "html_sha256": "7aa5b7b79eba514549cbce51291b0c26a6445b4812046fb533e10f372d3db778",
+      "version_json_utf8_offset": 3889,
+      "version_json": {
+        "version": "1.0.0",
+        "buildVersion": 2607281016,
+        "gitMetadata": {
+          "branch": "master-m15-beta",
+          "currentBranch": "master",
+          "commit": "5c0d17b633528aadbd87632f2f1c9bdf465be926",
+          "buildTime": 1785234503410
+        },
+        "dependencies": [
+          {
+            "name": "commonrepository",
+            "version": "422f3a2f2e7d5203defb202659fd2d488dc8f6a1",
+            "branch": "master-m15-beta-ANN-39617-taliat1-legacy-taliasignature"
+          },
+          {
+            "name": "jstestrzdevice",
+            "version": "80a20eb65bec77560652f19222805d4c03897651",
+            "branch": "dev"
+          },
+          {
+            "name": "razer-cli-tools",
+            "version": "d15b1411baf17a37e68604c81eb58803f1f66912",
+            "branch": "staging"
+          },
+          {
+            "name": "razer-config",
+            "version": "1dd6c5ee907123e17db22066065827284e206c59",
+            "branch": "master"
+          },
+          {
+            "name": "rz-app-feature",
+            "version": "b4f480d23913abcdcec0f584a1ed1628ccea610e",
+            "branch": "master"
+          }
+        ]
+      },
+      "ui_version_utf8_offset": 7737645,
+      "mw_version_utf8_offset": 7738173,
+      "app_version_utf8_offset": 7738584
+    },
+    {
+      "product_id": 740,
+      "page_offset": 300122,
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/js/9908.1f02bab3.chunk.js",
+      "sha256": "90d8e757ed43ccecb5a19a1cd7dd89db75087f6af54e00e10515db192f71beda",
+      "class_utf8_offset": 128467,
+      "popup_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/js/1891.e3e3a19a.chunk.js",
+      "popup_sha256": "0aedafa23877a1d296256b258da103dc14d87042973bea1fe677250dbe5cc29c",
+      "popup_class_utf8_offset": 345224,
+      "copy_utf8_offset": 128593,
+      "reset_utf8_offset": 131761,
+      "reset_source": "this.resetDevice=()=>{var e;const t=\"MOUSE\"===(null===(e=I.DeviceInfo)||void 0===e?void 0:e.category);var s,i;!this.props.resetObm||this.props.isBle&&!t?null===(s=window.mwBroadcastChannel)||void 0===s||s.postMessage({type:\"ON_RESET_DEVICE\"}):this.props.resetObm();this.props.oledfactoryReset&&(null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_OLED_FACTORY_RESET_DEVICE\"}));setTimeout(()=>{this.setState({isDisableDelBtn:!1})},2e3)},",
+      "caller_utf8_offset": 301832,
+      "caller": "resetObm:this.props.obmResetDevice",
+      "root_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/js/main.e1791e16.js",
+      "root_sha256": "22424f5f208c5a77a0e54ca1287ee1ccb4816af3420ba82fc95e452ef72a7452",
+      "css": [
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/css/1891.49330b8b.chunk.css",
+          "sha256": "839c8b4f1f9cee26a6a83102f14f1b85b98419a9c8ed36a5804e14ba48e3f338",
+          "rules": [
+            ".profile-del{z-index:11}",
+            ".profile-del.keymap-delete-alert{max-width:330px}"
+          ]
+        },
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/css/main.50621167.css",
+          "sha256": "552a462b7df26c3e82c1c0f3c2657a3c45069b4058dc98ff873893087ae925ec",
+          "rules": [
+            ".nav-tabs .profile-wrapper .profile-del{left:auto}",
+            ".profile-del{border:1px solid #fd4949;border-radius:3px;min-width:300px;top:42px}",
+            ".profile-del,.profile-tips .profile-dynamic-tips,.profile-tips .profile-selected-tips{align-items:center;background-color:#111;box-shadow:0 6px 10px 0 #0003;display:flex!important;flex-direction:column;opacity:0;padding:20px;position:absolute;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity;z-index:3}",
+            ".profile-del{font-family:Roboto,sans-serif}",
+            ".profile-del .del-title,.profile-del .del-title-normal{color:#fd4949;margin-bottom:10px;text-align:center;text-transform:uppercase}",
+            ".profile-del .del-title{font-weight:700}",
+            ".profile-del .del-title-normal{font-weight:400}",
+            ".profile-del .body-text,.warn-pop .body-text{margin-bottom:10px;text-transform:none}",
+            ".profile-del.show,.warn-pop.show,.warn-tip.show{opacity:1;visibility:visible}",
+            ".flex.profile-bar>div.profile-del{position:absolute;z-index:104}",
+            ".profile-del div.thx-btn{background-color:#fd4949;border:1px solid #0000004d;color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:4px 5px;text-align:center;white-space:nowrap;width:auto}",
+            ".profile-del div.thx-btn.cancel{background-color:#707070;color:#fff;margin-right:10px}",
+            ".shortcut_item .profile-del{left:274px;top:53px}",
+            ".main-setting .device-setting .setting-block .profile-del{top:-14px}",
+            ".main-setting .device-setting .setting-block .profile-del .del-title{text-transform:uppercase}"
+          ]
+        }
+      ],
+      "obm_reset_during_ble": false,
+      "html_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/index.html",
+      "html_sha256": "cad03c4673158f6ea841581a51208448008f3a102f26497d932c60c84334f863",
+      "version_json_utf8_offset": 3889,
+      "version_json": {
+        "version": "1.0.0",
+        "buildVersion": 2609170227,
+        "gitMetadata": {
+          "branch": "master-21sep2026",
+          "currentBranch": "master",
+          "commit": "69772cfd97c982b4077368b9f841da9a01914f60",
+          "buildTime": 1789612384538
+        },
+        "dependencies": [
+          {
+            "name": "commonrepository",
+            "version": "edbf6e43c1538dc0fb2103c7c72f6b4127d462b4",
+            "branch": "master-tanyat2-postmp2"
+          },
+          {
+            "name": "jstestrzdevice",
+            "version": "029d51bd550dac92eb0c2d5d76cf850c2dcd8ed0",
+            "branch": "dev"
+          },
+          {
+            "name": "razer-cli-tools",
+            "version": "0faaf71ecbde9c51b1bda35324d9011eaf7252ca",
+            "branch": "staging"
+          },
+          {
+            "name": "razer-config",
+            "version": "355277f9e427f6b1b341852705be3f1d3eb38637",
+            "branch": "master"
+          },
+          {
+            "name": "rz-app-feature",
+            "version": "d838bdd46287a99d07bcc1ff73815c834aab1ada",
+            "branch": "DEFAULT_REPO_BRANCH"
+          }
+        ]
+      },
+      "ui_version_utf8_offset": 137166,
+      "mw_version_utf8_offset": 137679,
+      "app_version_utf8_offset": 138087
+    },
+    {
+      "product_id": 742,
+      "page_offset": 277802,
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/js/3666.9e3f3856.chunk.js",
+      "sha256": "ea76345bb0a0492aa9abb645ad99ed774f6afe665db22727dc8bc4c6d5d0b896",
+      "class_utf8_offset": 123241,
+      "popup_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/js/8995.54ec5817.chunk.js",
+      "popup_sha256": "b0062e5f941a9db199bea32d3b3d46ca47b8d9cf54c982273f048531115410ae",
+      "popup_class_utf8_offset": 390471,
+      "copy_utf8_offset": 123367,
+      "reset_utf8_offset": 126535,
+      "reset_source": "this.resetDevice=()=>{var e;const t=\"MOUSE\"===(null===(e=I.DeviceInfo)||void 0===e?void 0:e.category);var s,i;!this.props.resetObm||this.props.isBle&&!t?null===(s=window.mwBroadcastChannel)||void 0===s||s.postMessage({type:\"ON_RESET_DEVICE\"}):this.props.resetObm();this.props.oledfactoryReset&&(null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_OLED_FACTORY_RESET_DEVICE\"}));setTimeout(()=>{this.setState({isDisableDelBtn:!1})},2e3)},",
+      "caller_utf8_offset": 279512,
+      "caller": "resetObm:this.props.obmResetDevice",
+      "root_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/js/main.8d6fde51.js",
+      "root_sha256": "549a7b0a4656ae9869b8af834f555bacb552362e179d583a63279c4f40e05f51",
+      "css": [
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/css/8995.5aace32b.chunk.css",
+          "sha256": "cff598023f33e7643cbc811b99626210cee55f5d6c637611e3c408d3217b9cac",
+          "rules": [
+            ".profile-del{z-index:11}",
+            ".profile-del.keymap-delete-alert{max-width:330px}"
+          ]
+        },
+        {
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/css/main.68eaa13b.css",
+          "sha256": "8196f4e83214fb1105c7633c1e9c27f8c26c7ddb97e31178b77162d00c7e8b61",
+          "rules": [
+            ".nav-tabs .profile-wrapper .profile-del{left:auto}",
+            ".profile-del{border:1px solid #fd4949;border-radius:3px;min-width:300px;top:42px}",
+            ".profile-del,.profile-tips .profile-dynamic-tips,.profile-tips .profile-selected-tips{align-items:center;background-color:#111;box-shadow:0 6px 10px 0 #0003;display:flex!important;flex-direction:column;opacity:0;padding:20px;position:absolute;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity;z-index:3}",
+            ".profile-del{font-family:Roboto,sans-serif}",
+            ".profile-del .del-title,.profile-del .del-title-normal{color:#fd4949;margin-bottom:10px;text-align:center;text-transform:uppercase}",
+            ".profile-del .del-title{font-weight:700}",
+            ".profile-del .del-title-normal{font-weight:400}",
+            ".profile-del .body-text,.warn-pop .body-text{margin-bottom:10px;text-transform:none}",
+            ".profile-del.show,.warn-pop.show,.warn-tip.show{opacity:1;visibility:visible}",
+            ".flex.profile-bar>div.profile-del{position:absolute;z-index:104}",
+            ".profile-del div.thx-btn{background-color:#fd4949;border:1px solid #0000004d;color:#111;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:4px 5px;text-align:center;white-space:nowrap;width:auto}",
+            ".profile-del div.thx-btn.cancel{background-color:#707070;color:#fff;margin-right:10px}",
+            ".shortcut_item .profile-del{left:274px;top:53px}",
+            ".main-setting .device-setting .setting-block .profile-del{top:-14px}",
+            ".main-setting .device-setting .setting-block .profile-del .del-title{text-transform:uppercase}"
+          ]
+        }
+      ],
+      "obm_reset_during_ble": false,
+      "html_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/index.html",
+      "html_sha256": "753fbec65d7d40997efc24042a47049bfd580b350f3dfbb13859e4ccebd18704",
+      "version_json_utf8_offset": 3889,
+      "version_json": {
+        "version": "1.0.0",
+        "buildVersion": 2609041045,
+        "gitMetadata": {
+          "branch": "master-m15-beta",
+          "currentBranch": "master",
+          "commit": "2405111125293949748c77415d0153564ce0c1d9",
+          "buildTime": 1788519886179
+        },
+        "dependencies": [
+          {
+            "name": "commonrepository",
+            "version": "d87abbde7f3f6a2996450ba2bd402cb8532763ae",
+            "branch": "master-m15-beta-ANN-40273-tamarat1tkl"
+          },
+          {
+            "name": "jstestrzdevice",
+            "version": "92b6bc0e22730303cd18154e8be53891a062ed19",
+            "branch": "dev"
+          },
+          {
+            "name": "razer-cli-tools",
+            "version": "0faaf71ecbde9c51b1bda35324d9011eaf7252ca",
+            "branch": "staging"
+          },
+          {
+            "name": "razer-config",
+            "version": "d0766864e758448026262d0bb35e2770c471aead",
+            "branch": "master"
+          },
+          {
+            "name": "rz-app-feature",
+            "version": "26f3ce7111e8e9acd342510921c0f4b3b72e8786",
+            "branch": "DEFAULT_REPO_BRANCH"
+          }
+        ]
+      },
+      "ui_version_utf8_offset": 131940,
+      "mw_version_utf8_offset": 132453,
+      "app_version_utf8_offset": 132861
+    }
+  ]
+}

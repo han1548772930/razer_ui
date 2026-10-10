@@ -46,12 +46,15 @@ mod stream_mixer;
 mod stream_mixer_number;
 pub use oled_home::{OledRuntimeObservation, OledRuntimeRequested};
 pub use stream_mixer::StreamMixerObservation;
+#[path = "audio_leviathan.rs"]
+mod audio_leviathan;
 #[path = "audio_volume.rs"]
 mod audio_volume;
 pub use super::audio_mixer::{
     AudioMixerCompletion, AudioMixerOperation, AudioMixerReply, AudioMixerRequest, AudioMixerState,
     path as mixer_path,
 };
+pub use audio_leviathan::{LeviathanObservation, LeviathanOperation, LeviathanRequest};
 pub use audio_volume::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
 };
@@ -221,6 +224,7 @@ pub struct AudioProductWorkspace {
     pod_audio_subscription: Option<Subscription>,
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
+    leviathan: audio_leviathan::State,
     pub(super) mixer_io: AudioMixerState,
     mixer_observed: BTreeMap<String, MixerValue>,
     mixer_read_queue: VecDeque<String>,
@@ -260,6 +264,7 @@ impl AudioProductWorkspace {
             pod_audio_subscription: None,
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
+            leviathan: audio_leviathan::State::new(pid, window, cx),
             mixer_io: AudioMixerState::default(),
             mixer_observed: BTreeMap::new(),
             mixer_read_queue: VecDeque::new(),
@@ -276,6 +281,7 @@ impl AudioProductWorkspace {
         this.initialize_oled_home(window);
         this.subscribe_nommo_effects(window, cx);
         this.subscribe_mixer(window, cx);
+        this.subscribe_leviathan(window, cx);
         for control in spec
             .pages
             .iter()
@@ -373,6 +379,7 @@ impl AudioProductWorkspace {
         snapshot
     }
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_leviathan(cx);
         self.invalidate_volume();
         self.invalidate_mixer();
         self.restore_mixer(saved, window, cx);
@@ -466,6 +473,9 @@ impl AudioProductWorkspace {
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
+            if self.page == "TAB_SOUND" && self.spec.product_id == 1352 {
+                self.dismiss_leviathan_page();
+            }
             self.dismiss_mixer_warning(window, cx);
             self.pod_audio_editor = None;
             self.pod_audio_subscription = None;
@@ -1589,6 +1599,9 @@ impl AudioProductWorkspace {
         if self.spec.product_id == 1342 && key == "EFFECTS" {
             return self.mixer_effects_page(window, cx);
         }
+        if self.spec.product_id == 1352 && key == "TAB_SOUND" {
+            return self.leviathan_sound_page(window, cx);
+        }
         let page = self.spec.pages.iter().find(|p| p.key == key);
         let mut sections = Vec::new();
         if let Some(page) = page {
@@ -1655,14 +1668,6 @@ impl AudioProductWorkspace {
                             })),
                     );
                 }
-                if self.spec.product_id == 1352 && section.title == "VOLUME_HEADER" {
-                    panel = panel.child(
-                        div()
-                            .text_sm()
-                            .text_color(cx.theme().muted_foreground)
-                            .child(self.volume_status()),
-                    );
-                }
                 if self.mixer.is_some()
                     && key == "STREAM_MIXER_HEADER"
                     && section.title == "PLAYBACK_MIX"
@@ -1674,9 +1679,6 @@ impl AudioProductWorkspace {
                 }
                 sections.push(panel.into_any_element());
             }
-        }
-        if sections.is_empty() {
-            sections.push(surface::note("此页面尚未完成。", cx).into_any_element());
         }
         // Current Nommo wm / kM: the left Il / bl column holds brightness
         // followed by switch-off-lighting; the right column holds effects.

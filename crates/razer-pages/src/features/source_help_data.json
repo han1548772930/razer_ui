@@ -1493,13 +1493,13 @@
     "product_id": 167,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/6292/",
     "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/NAGAV2PRO-00000167-",
-    "source": ".ref/devices/167/static/js/main.508445ac.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/js/main.508445ac.js",
     "evidence": "9ac580ac967a454f7e87b03c97ca0175d112100e3939489db1c0416e621e27f7",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 5064782,
-        "source": ".ref/devices/167/static/js/main.508445ac.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/js/main.508445ac.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -1514,8 +1514,10 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/167/static/js/main.508445ac.js",
-        "class_offset": 4998005
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/167/ui/static/js/main.508445ac.js",
+        "class_offset": 4998005,
+        "inline_confirmation": true,
+        "obm_reset_during_ble": false
       }
     ]
   },
@@ -1733,13 +1735,13 @@
     "product_id": 190,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/14916 ",
     "guide": "https://dl.razer.com/master-guides/RazerSynapse4/DEATHADDERV4PRO-00000190-",
-    "source": ".ref/devices/190/static/js/main.81b09779.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
     "evidence": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 4794688,
-        "source": ".ref/devices/190/static/js/main.81b09779.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -1754,8 +1756,10 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/190/static/js/main.81b09779.js",
-        "class_offset": 4768867
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+        "class_offset": 4768867,
+        "inline_confirmation": true,
+        "obm_reset_during_ble": false
       }
     ]
   },
@@ -2183,13 +2187,13 @@
     "product_id": 226,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/21064",
     "guide": "https://dl.razer.com/master-guides/RazerSynapse4/BASILISKV4PRO-00000226-",
-    "source": ".ref/devices/226/static/js/main.08f95762.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/js/main.08f95762.js",
     "evidence": "ccbd5af37e23d1c64faf62551d15b0ef91d6e89fc06cafab3fb9464c598f884e",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 275700,
-        "source": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/js/8355.3d5e573e.chunk.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -2204,8 +2208,10 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/226/static/js/8355.3d5e573e.chunk.js",
-        "class_offset": 210289
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/226/ui/static/js/8355.3d5e573e.chunk.js",
+        "class_offset": 210289,
+        "inline_confirmation": true,
+        "obm_reset_during_ble": true
       }
     ]
   },
@@ -4793,13 +4799,13 @@
     "product_id": 679,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/13672",
     "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV3PROTENKEYLESS-00000679-",
-    "source": ".ref/devices/679/static/js/main.194d8a7b.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
     "evidence": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 7314642,
-        "source": ".ref/devices/679/static/js/main.194d8a7b.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -4814,8 +4820,10 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/679/static/js/main.194d8a7b.js",
-        "class_offset": 6927961
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+        "class_offset": 6927961,
+        "inline_confirmation": true,
+        "obm_reset_during_ble": false
       }
     ]
   },
@@ -5483,13 +5491,13 @@
     "product_id": 740,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/20607",
     "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3HEMAGNETICMINI658KHZ-00000740-",
-    "source": ".ref/devices/740/static/js/main.e1791e16.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/js/main.e1791e16.js",
     "evidence": "22424f5f208c5a77a0e54ca1287ee1ccb4816af3420ba82fc95e452ef72a7452",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 300122,
-        "source": ".ref/devices/740/static/js/9908.1f02bab3.chunk.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/js/9908.1f02bab3.chunk.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -5504,8 +5512,10 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/740/static/js/9908.1f02bab3.chunk.js",
-        "class_offset": 126812
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/740/ui/static/js/9908.1f02bab3.chunk.js",
+        "class_offset": 126812,
+        "inline_confirmation": true,
+        "obm_reset_during_ble": false
       }
     ]
   },
@@ -5543,13 +5553,13 @@
     "product_id": 742,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/20539 ",
     "guide": "https://dl.razer.com/master-guides/RazerSynapse4/HUNTSMANV3PROLOW-PROFILETENKEYLESS8KHZ-00000742-",
-    "source": ".ref/devices/742/static/js/main.8d6fde51.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/js/main.8d6fde51.js",
     "evidence": "549a7b0a4656ae9869b8af834f555bacb552362e179d583a63279c4f40e05f51",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 277802,
-        "source": ".ref/devices/742/static/js/3666.9e3f3856.chunk.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/js/3666.9e3f3856.chunk.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -5564,8 +5574,10 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/742/static/js/3666.9e3f3856.chunk.js",
-        "class_offset": 121586
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/742/ui/static/js/3666.9e3f3856.chunk.js",
+        "class_offset": 121586,
+        "inline_confirmation": true,
+        "obm_reset_during_ble": false
       }
     ]
   },

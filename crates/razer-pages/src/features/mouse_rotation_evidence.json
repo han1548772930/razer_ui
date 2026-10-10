@@ -1,0 +1,234 @@
+[
+    {
+        "product_id":  190,
+        "pages":  [
+                      "TAB_CUSTOMIZE",
+                      "TAB_PERFORMANCE",
+                      "TAB_POWER",
+                      "TAB_CALIBRATION",
+                      "ADVANCED",
+                      "HELP"
+                  ],
+        "main":  "main.81b09779.js",
+        "main_sha256":  "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+        "css":  "main.7ce428ff.css",
+        "css_sha256":  "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+        "rotation_dom":  true,
+        "rotation_css":  [
+                             ".rotation-container{height:380px!important}",
+                             ".rotation-container .tip{right:-284px}",
+                             ".rotation-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                             ".cross-dotted{margin-top:90px}",
+                             ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}",
+                             ".rotate-mouse{background-image:url(../../static/media/icon_rotation_mouse.6099cba7.svg);height:108px;left:264.5px;position:absolute;top:148px;width:70px}",
+                             ".rotation-slider{top:85px}",
+                             ".placeholder-value{height:12px;left:257px;position:relative;top:54px;width:6px}"
+                         ],
+        "asset_sha256":  "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+        "dynamic_panel_css":  [
+                                  ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+                              ]
+    },
+    {
+        "product_id":  192,
+        "pages":  [
+                      "TAB_CUSTOMIZE",
+                      "TAB_PERFORMANCE",
+                      "TAB_POWER",
+                      "TAB_CALIBRATION",
+                      "ADVANCED",
+                      "HELP"
+                  ],
+        "main":  "main.a839b83d.js",
+        "main_sha256":  "90ea3798dbf0726ebb4d97590299db76cc390468ee6315de252e52bfffeb28ca",
+        "css":  "main.d50c3926.css",
+        "css_sha256":  "ff9954ab2c51a848a9e123833c11436bad591f03108334968d272348666ea1f7",
+        "rotation_dom":  true,
+        "rotation_css":  [
+                             ".rotation-container{height:380px!important}",
+                             ".rotation-container .tip{right:-284px}",
+                             ".rotation-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                             ".cross-dotted{margin-top:90px}",
+                             ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}",
+                             ".rotate-mouse{background-image:url(../../static/media/icon_rotation_mouse.6099cba7.svg);height:108px;left:264.5px;position:absolute;top:148px;width:70px}",
+                             ".rotation-slider{top:85px}",
+                             ".placeholder-value{height:12px;left:257px;position:relative;top:54px;width:6px}"
+                         ],
+        "asset_sha256":  "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+        "dynamic_panel_css":  [
+                                  ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+                              ]
+    },
+    {
+        "product_id":  196,
+        "pages":  [
+                      "TAB_CUSTOMIZE",
+                      "TAB_PERFORMANCE",
+                      "TAB_POWER",
+                      "TAB_CALIBRATION",
+                      "ADVANCED",
+                      "HELP"
+                  ],
+        "main":  "main.bbc961f9.js",
+        "main_sha256":  "f99b1f88ca9496a77cab258d05814a312b876873cb5c586841c28a732db78c42",
+        "css":  "main.116d273e.css",
+        "css_sha256":  "cb6c673798b7e9bc844829d41cea64b5a0ab2d389f8863604df3bdcccc68138c",
+        "rotation_dom":  true,
+        "rotation_css":  [
+                             ".rotation-container{height:380px!important}",
+                             ".rotation-container .tip{right:-284px}",
+                             ".rotation-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                             ".cross-dotted{margin-top:90px}",
+                             ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}",
+                             ".rotate-mouse{background-image:url(../../static/media/icon_rotation_mouse.6099cba7.svg);height:108px;left:264.5px;position:absolute;top:148px;width:70px}",
+                             ".rotation-slider{top:85px}",
+                             ".placeholder-value{height:12px;left:257px;position:relative;top:54px;width:6px}"
+                         ],
+        "asset_sha256":  "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+        "dynamic_panel_css":  [
+                                  ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+                              ]
+    },
+    {
+        "product_id":  222,
+        "pages":  [
+                      "TAB_CUSTOMIZE",
+                      "TAB_PERFORMANCE",
+                      "TAB_POWER",
+                      "TAB_CALIBRATION",
+                      "ADVANCED",
+                      "HELP"
+                  ],
+        "main":  "main.9d7cfffb.js",
+        "main_sha256":  "da328c5d3a6a47f1da44d412596e59200579bf9f6c3a4fcf22aba339d48ac934",
+        "css":  "main.5adae6f8.css",
+        "css_sha256":  "e1e290bfc842a9eb64460112b1633e464652380892f553dd4f759680f4b1606b",
+        "rotation_dom":  true,
+        "rotation_css":  [
+                             ".rotation-container{height:380px!important}",
+                             ".rotation-container .tip{right:-284px}",
+                             ".rotation-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                             ".cross-dotted{margin-top:90px}",
+                             ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}",
+                             ".rotate-mouse{background-image:url(../../static/media/icon_rotation_mouse.6099cba7.svg);height:108px;left:264.5px;position:absolute;top:148px;width:70px}",
+                             ".rotation-slider{top:85px}",
+                             ".placeholder-value{height:12px;left:257px;position:relative;top:54px;width:6px}"
+                         ],
+        "asset_sha256":  "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+        "dynamic_panel_css":  [
+                                  ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+                              ]
+    },
+    {
+        "product_id":  226,
+        "pages":  [
+                      "TAB_CUSTOMIZE",
+                      "TAB_PERFORMANCE",
+                      "TAB_LIGHTING",
+                      "TAB_POWER",
+                      "TAB_CALIBRATION",
+                      "ADVANCED",
+                      "HELP"
+                  ],
+        "main":  "8355.3d5e573e.chunk.js",
+        "main_sha256":  "b5d160fe0c231186d7f8271d13ece17a3824b0c35c4962cf2ecec72c46352eb8",
+        "css":  "8355.f94d4299.chunk.css",
+        "css_sha256":  "ec3c1904f52ffa472fbcaca33ec514681ce2ea2d329279205c0c36ade329c53a",
+        "rotation_dom":  true,
+        "rotation_css":  [
+                             ".rotation-container{height:380px!important}",
+                             ".rotation-container .tip{right:-284px}",
+                             ".rotation-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                             ".cross-dotted{margin-top:90px}",
+                             ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}",
+                             ".rotate-mouse{background-image:url(../../static/media/icon_rotation_mouse.6099cba7.svg);height:108px;left:264.5px;position:absolute;top:148px;width:70px}",
+                             ".rotation-slider{top:85px}",
+                             ".placeholder-value{height:12px;left:257px;position:relative;top:54px;width:6px}"
+                         ],
+        "asset_sha256":  "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+        "dynamic_panel_css":  [
+                                  ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+                              ]
+    },
+    {
+        "product_id":  229,
+        "pages":  [
+                      "TAB_CUSTOMIZE",
+                      "TAB_PERFORMANCE",
+                      "TAB_POWER",
+                      "TAB_CALIBRATION",
+                      "ADVANCED",
+                      "HELP"
+                  ],
+        "main":  "main.3e19820b.js",
+        "main_sha256":  "983d89099ea6b7c89ea6b49201625723458d81f6425dd67b1cfdb57e9b4a9f91",
+        "css":  "main.516dff06.css",
+        "css_sha256":  "1e149fc43c7b3d6c38eaf32ba4d29df9ef1b333a27cab1af767a3239a94f1323",
+        "rotation_dom":  true,
+        "rotation_css":  [
+                             ".rotation-container{height:380px!important}",
+                             ".rotation-container .tip{right:-284px}",
+                             ".rotation-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                             ".cross-dotted{margin-top:90px}",
+                             ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}",
+                             ".rotate-mouse{background-image:url(../../static/media/icon_rotation_mouse.6099cba7.svg);height:108px;left:264.5px;position:absolute;top:148px;width:70px}",
+                             ".rotation-slider{top:85px}",
+                             ".placeholder-value{height:12px;left:257px;position:relative;top:54px;width:6px}"
+                         ],
+        "asset_sha256":  "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+        "dynamic_panel_css":  [
+                                  ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+                              ]
+    },
+    {
+        "product_id":  239,
+        "pages":  [
+                      "TAB_CUSTOMIZE",
+                      "TAB_PERFORMANCE",
+                      "TAB_POWER",
+                      "TAB_CALIBRATION",
+                      "ADVANCED",
+                      "HELP"
+                  ],
+        "main":  "main.6bc74a2d.js",
+        "main_sha256":  "44eecf4fa0e37be779640e7186f7c30a6b12c922a55b5a553b0dd4557bd99159",
+        "css":  "main.074ca0dc.css",
+        "css_sha256":  "e9f3fd45773d4e458eee22c551a386c3c7b30874d0226d605eb2fa9269d82263",
+        "rotation_dom":  true,
+        "rotation_css":  [
+                             ".rotation-container{height:380px!important}",
+                             ".rotation-container .tip{right:-284px}",
+                             ".rotation-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                             ".cross-dotted{margin-top:90px}",
+                             ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}",
+                             ".rotate-mouse{background-image:url(../../static/media/icon_rotation_mouse.6099cba7.svg);height:108px;left:264.5px;position:absolute;top:148px;width:70px}",
+                             ".rotation-slider{top:85px}",
+                             ".placeholder-value{height:12px;left:257px;position:relative;top:54px;width:6px}"
+                         ],
+        "asset_sha256":  "b1ee704bd4c09e21fb5ec58283bd8fd3a6ca0256cf116890512c36297dd93d52",
+        "dynamic_panel_css":  [
+                                  ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}",
+                                  ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+                              ]
+    }
+]

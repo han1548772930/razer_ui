@@ -1,0 +1,158 @@
+{
+  "target_code_executed": false,
+  "manifest_updated": false,
+  "entries": [
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_camera1.54db618a.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_camera1.54db618a.svg",
+      "source_bytes": 3433,
+      "source_sha256": "94be12dc0bb19deff1ac2b0ce0537fc45019a838e11a5b00b41b40732cce73ee",
+      "output": "assets/synapse/audio-1352-camera.svg",
+      "sha256": "94be12dc0bb19deff1ac2b0ce0537fc45019a838e11a5b00b41b40732cce73ee",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_warning.6c0cd78b.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_warning.6c0cd78b.svg",
+      "source_bytes": 488,
+      "source_sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "output": "assets/synapse/audio-1352-warning.svg",
+      "sha256": "81311a2b7e05b588ccfded1e1e15f4d05fac18974f1ee59747ab6b51ea87a3d4",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/audioModeTip.74a29bb7.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/audioModeTip.74a29bb7.svg",
+      "source_bytes": 39019,
+      "source_sha256": "ab9918c6d152de8fc943b831f1bd2420841fd3c4382542750cd689f8f6621ab0",
+      "output": "assets/synapse/audio-1352-mode-tip.svg",
+      "sha256": "ab9918c6d152de8fc943b831f1bd2420841fd3c4382542750cd689f8f6621ab0",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_play.8f2af2a9.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_play.8f2af2a9.svg",
+      "source_bytes": 173,
+      "source_sha256": "d5b00c35c640f2e0978dddbc727a4ec939a52fcc23ebe6ceb7663d177d45c48c",
+      "output": "assets/synapse/audio-1352-play.svg",
+      "sha256": "d5b00c35c640f2e0978dddbc727a4ec939a52fcc23ebe6ceb7663d177d45c48c",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link.48227e72.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link.48227e72.svg",
+      "source_bytes": 435,
+      "source_sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8",
+      "output": "assets/synapse/audio-1352-properties-external.svg",
+      "sha256": "45747eab9a99c99b8f0deba9358f6145093775c9b7ed201bf9e254d724f251a8",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_active.b0d1c555.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_active.b0d1c555.svg",
+      "source_bytes": 432,
+      "source_sha256": "4c7dc10d233cf5e1f067eb62f31e26241796e7ca328f1a8dc93e841e9b9972e8",
+      "output": "assets/synapse/audio-1352-properties-external-active.svg",
+      "sha256": "4c7dc10d233cf5e1f067eb62f31e26241796e7ca328f1a8dc93e841e9b9972e8",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/common-windows-11.d477cadb.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/common-windows-11.d477cadb.svg",
+      "source_bytes": 350,
+      "source_sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba",
+      "output": "assets/synapse/audio-1352-windows-11.svg",
+      "sha256": "aa3676b09d4555dbcfdcb81e8d2413fb0b958aebf49207fae94e1108d8596bba",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/windows_logo.8fb1e7e2.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/windows_logo.8fb1e7e2.svg",
+      "source_bytes": 622,
+      "source_sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3",
+      "output": "assets/synapse/audio-1352-windows.svg",
+      "sha256": "d3a5cbb29c8224935f19a9bf726d04e898f2901ec693d27bc8c72785da05a0c3",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/tooltip_questionmark.96138d2f.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/tooltip_questionmark.96138d2f.svg",
+      "source_bytes": 760,
+      "source_sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "output": "assets/synapse/audio-1352-help.svg",
+      "sha256": "efe866785ea43c2766e4af7e4136a3f0f140f92414f66c5de7edc19b0ae6c92e",
+      "preparation": "Exact source bytes; no path/color/geometry changes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_sprite.0b292d50.svg",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/icon_external_link_sprite.0b292d50.svg",
+      "source_bytes": 1116,
+      "source_sha256": "cb5bd96f8c8671735c968584a0fa42692ac6bc4e68101e55c211646a243c549e",
+      "output": "assets/synapse/audio-volume-external-sprite.svg",
+      "sha256": "cb5bd96f8c8671735c968584a0fa42692ac6bc4e68101e55c211646a243c549e",
+      "preparation": "Exact source bytes; no path/color/geometry changes. GPUI #link/#hover adapter adds only source view viewport to root SVG in memory; adapted display bytes are not source bytes.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md",
+      "adapter": "assets/synapse/audio-volume-sprite-embedded.rs",
+      "display_paths": [
+        "synapse/audio-volume-external-sprite.svg#link",
+        "synapse/audio-volume-external-sprite.svg#hover"
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/demo.dec98884.avif",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/demo.dec98884.avif",
+      "source_bytes": 78252,
+      "source_sha256": "b9ed5938fa959bec77d12631fac0eb89ada4fb07025a7450a07a3349c0fc17d2",
+      "output": "assets/synapse/audio-1352-demo.png",
+      "sha256": "f4d3dd8a7d95f486ab57847d0c4f1b37db19e2f57b47f8d3aa3db460042baa1d",
+      "preparation": "Static AVIF to RGBA PNG; no resize; decoded pixels verified equal.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md",
+      "width": 1920,
+      "height": 1080,
+      "pixel_sha256": "68ffc7c4663e5b0e860c97d1b75a9d9273c107383b8e2d1ee5e6eef3e1428220"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/prd-1x.fcf5b3d0.avif",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/prd-1x.fcf5b3d0.avif",
+      "source_bytes": 2619,
+      "source_sha256": "fc83a9394e5f3f8a4fe894a9f6b8da6a79be5847123566e499dd2f0d94c881ee",
+      "output": "assets/synapse/audio-1352-product-1x.png",
+      "sha256": "919d9d527e0177645643742780521f730f838d2eb2a3774cfa2d0425f30a7319",
+      "preparation": "Static AVIF to RGBA PNG; no resize; decoded pixels verified equal.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md",
+      "width": 325,
+      "height": 250,
+      "pixel_sha256": "8c06918e8a60fb376dd58b453000befddcf2d2ae3788a424d6aac89fd522a541"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/media/prd-3x.b1834c52.avif",
+      "source_url": "https://apps.razer.com/synapse/products/1352/ui/static/media/prd-3x.b1834c52.avif",
+      "source_bytes": 21427,
+      "source_sha256": "8c265c2d3c767302313e30ac35e54933ae5c0f6446dfd9bfe34d3ad8439689e5",
+      "output": "assets/synapse/audio-1352-product-3x.png",
+      "sha256": "b876bc24b2a1e8260512e02292255d4eb50bd7727e7a6ef079771e920be82db2",
+      "preparation": "Static AVIF to RGBA PNG; no resize; decoded pixels verified equal.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md",
+      "width": 975,
+      "height": 750,
+      "pixel_sha256": "63ac2dd70d64e7869c4e85841a19d1117508422dbcd05b3b6e2a692b461fbec4"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/1352/ui/static/js/main.95a4f703.js",
+      "source_sha256": "8dee0170de93fd9900024510e8c6edd315c30010d759ca12609ad6d2c8c73c80",
+      "output": "assets/synapse/audio-1352-input-icon.svg",
+      "sha256": "08577a90ccbda6a52cc4cbcfe0063c2679663c0985abc9bafc314f006f50f797",
+      "preparation": "Static JSX aG SVG at character offset 4581852; original path/fill/width/height retained. Root viewBox equals source intrinsic viewport.",
+      "evidence": "docs/re/audio-1352-sound-source-audit.md"
+    }
+  ]
+}

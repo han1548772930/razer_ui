@@ -62,7 +62,11 @@ pub fn content(
                                                 cx.theme().foreground
                                             }),
                                     )
-                                    .on_click(move |_, window, cx| change(wdl, window, cx))
+                                    // qs uses one outer toggle callback for either half;
+                                    // clicking the selected label also toggles the mode.
+                                    .on_click(move |_, window, cx| {
+                                        change(dynamic != Some(true), window, cx)
+                                    })
                             }),
                         ),
                 )
@@ -120,54 +124,4 @@ pub fn content(
                 ),
         )
         .into_any_element()
-}
-
-struct LightingPreview {
-    dynamic: bool,
-    switching: bool,
-}
-pub fn open_preview(window: &mut Window, cx: &mut App) {
-    let view = cx.new(|_| LightingPreview {
-        dynamic: false,
-        switching: false,
-    });
-    window.open_dialog(cx, move |dialog, window, _| {
-        dialog
-            .title("设备灯光 · 界面预览")
-            .w(window.rem_size() * (680. / 16.))
-            .child(view.clone())
-    });
-}
-impl Render for LightingPreview {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let owner = cx.entity().downgrade();
-        v_flex()
-            .gap_4()
-            .child(surface::note(
-                "以下为原版界面状态示例，不读取或更改设备灯光控制权。",
-                cx,
-            ))
-            .child(
-                checkbox::Checkbox::new("preview-lighting-switching")
-                    .label("预览切换中的状态")
-                    .checked(self.switching)
-                    .on_click(cx.listener(|this, checked, _, cx| {
-                        this.switching = *checked;
-                        cx.notify();
-                    })),
-            )
-            .child(
-                surface::panel(i18n::t("DEVICE_LIGHTING"), cx).child(content(
-                    Some(self.dynamic),
-                    self.switching,
-                    move |wdl, _, cx| {
-                        let _ = owner.update(cx, |this, cx| {
-                            this.dynamic = wdl;
-                            cx.notify();
-                        });
-                    },
-                    cx,
-                )),
-            )
-    }
 }

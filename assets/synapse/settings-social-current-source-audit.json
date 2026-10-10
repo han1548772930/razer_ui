@@ -1,0 +1,249 @@
+{
+  "source_kind": "original current SVG and CSS inline shape attributes; no docs evidence",
+  "runtime_acceptance": "not_run",
+  "entries": [
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-facebook.7dd7369a.svg",
+      "source_sha256": "5afb3b4e0b3fb7120b10e369955eccd911621423c24aee6ace9884621cfcae66",
+      "output": "assets/synapse/settings-social-facebook.svg",
+      "sha256": "627eb08c95057cb788e5d6f56e07b597f058c0796562208e09dc3b00ec1bb6db",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-facebook.7dd7369a.svg",
+      "source_sha256": "5afb3b4e0b3fb7120b10e369955eccd911621423c24aee6ace9884621cfcae66",
+      "output": "assets/synapse/settings-social-facebook-hover.svg",
+      "sha256": "bc24f2acdbe8e122b26c1a2fd5f4df8089e89711c15c06214bf1d05b9824325c",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-ig.17d089dd.svg",
+      "source_sha256": "b0d5e571c2542077631b22df560f6f4deefe15a5e481dd6828d7be4183d4e726",
+      "output": "assets/synapse/settings-social-instagram.svg",
+      "sha256": "37d8554a4ae6751ad709730f66e76cf6c42eda43942a3db1ac681a5b19867833",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-ig.17d089dd.svg",
+      "source_sha256": "b0d5e571c2542077631b22df560f6f4deefe15a5e481dd6828d7be4183d4e726",
+      "output": "assets/synapse/settings-social-instagram-hover.svg",
+      "sha256": "45c273e33aa4a1b12c944a94828afe96841417839e8e888ec162788d55fdfd5d",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-twitter.5001d716.svg",
+      "source_sha256": "5d16e6ecf24176fae49da52a8a39a07afb2d86617bd36cb85a262a12706794b4",
+      "output": "assets/synapse/settings-social-twitter.svg",
+      "sha256": "290de2a59c7d8c4f5c819ad2e61e01aff6015e271384c5d7edb4e82ccbbf15b5",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-twitter.5001d716.svg",
+      "source_sha256": "5d16e6ecf24176fae49da52a8a39a07afb2d86617bd36cb85a262a12706794b4",
+      "output": "assets/synapse/settings-social-twitter-hover.svg",
+      "sha256": "09774778ea8c7fcc63244f77eb5a14c55f4246f2a59d06bb0c88a9adce57225f",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-youtube.56a79dbc.svg",
+      "source_sha256": "f1403787ab7cc26c69c690b38ffb6e9d425d0dc706ad627d34a3c363f2f979c9",
+      "output": "assets/synapse/settings-social-youtube.svg",
+      "sha256": "e92a47edce88e651c04f56a1c07eecdcb7bfb4aba274890e6c91f03610ec524c",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-youtube.56a79dbc.svg",
+      "source_sha256": "f1403787ab7cc26c69c690b38ffb6e9d425d0dc706ad627d34a3c363f2f979c9",
+      "output": "assets/synapse/settings-social-youtube-hover.svg",
+      "sha256": "b543873b8f32de4c2b987127d132fadda3cedc20450157e75fdc50488a1e30dc",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-tiktok.0eafef5a.svg",
+      "source_sha256": "5f7c55d1611ee7299611855b9f51357c51539c06259399647d5184811a976521",
+      "output": "assets/synapse/settings-social-tiktok.svg",
+      "sha256": "c7dd83f5a755577a94567f9b2d72f7feb870f52733ef852616dd16e9eb65360a",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-tiktok.0eafef5a.svg",
+      "source_sha256": "5f7c55d1611ee7299611855b9f51357c51539c06259399647d5184811a976521",
+      "output": "assets/synapse/settings-social-tiktok-hover.svg",
+      "sha256": "4397695464c47e7ebc7e546b7086eddc5fe85796f3f53030f7b9e74f5b320704",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-twitch.93c59942.svg",
+      "source_sha256": "5b47d8b3e0f772aebabdb4000aa1462846cea476c54bb2fd78a6fec81b11ac2f",
+      "output": "assets/synapse/settings-social-twitch.svg",
+      "sha256": "431f339177d96a8165fd3c0391bfd8e8f6e34ac88ce3129dce734a06193a1264",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-twitch.93c59942.svg",
+      "source_sha256": "5b47d8b3e0f772aebabdb4000aa1462846cea476c54bb2fd78a6fec81b11ac2f",
+      "output": "assets/synapse/settings-social-twitch-hover.svg",
+      "sha256": "7f0feda58c18247db2b593894eb49e88e8dd85eb050da34e15c67315e4a56338",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-discord.3fcde3ef.svg",
+      "source_sha256": "f0896030e8780f6d86c7860aa0adfb5d6cf89956703ae429982f26a6b0efecf2",
+      "output": "assets/synapse/settings-social-discord.svg",
+      "sha256": "10a40f1eea1ec3e79b69f14b27f5c307190f5eaa0ad371094d77778a3ce78221",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-discord.3fcde3ef.svg",
+      "source_sha256": "f0896030e8780f6d86c7860aa0adfb5d6cf89956703ae429982f26a6b0efecf2",
+      "output": "assets/synapse/settings-social-discord-hover.svg",
+      "sha256": "de846c679e086dbfc5233e4c4793ef58fd017b67489621b0459173c01b04dfd1",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 28 28",
+      "output_viewbox": "0 0 28 28"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-insider.fb3d75d8.svg",
+      "source_sha256": "e187561a748b49f35fcf88174ab6c9c9b4606e1535ad0311c7164f02cad3894d",
+      "output": "assets/synapse/settings-social-insider.svg",
+      "sha256": "7298a1ce359128685db04fd5e63dd4ab33a526114eec4de4218aeb641fa81a18",
+      "state": "normal",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 270 50",
+      "output_viewbox": "0 0 270 50"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-insider.fb3d75d8.svg",
+      "source_sha256": "e187561a748b49f35fcf88174ab6c9c9b4606e1535ad0311c7164f02cad3894d",
+      "output": "assets/synapse/settings-social-insider-hover.svg",
+      "sha256": "f3efc0b33a85331b3252a0ceaf835ae23f88c6a44a7beabd910278d566e13c42",
+      "state": "hover",
+      "geometry_matches": true,
+      "source_viewbox": "0 0 270 50",
+      "output_viewbox": "0 0 270 50"
+    }
+  ],
+  "native_masks": [
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-facebook.7dd7369a.svg",
+      "source_sha256": "5afb3b4e0b3fb7120b10e369955eccd911621423c24aee6ace9884621cfcae66",
+      "output": "assets/synapse/settings-window-social-facebook-social-mask.svg",
+      "sha256": "c5cc4735098451bb707e685cb8edde9b7c4af8cc0a50ee658f420ccd990f7737",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "social",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-ig.17d089dd.svg",
+      "source_sha256": "b0d5e571c2542077631b22df560f6f4deefe15a5e481dd6828d7be4183d4e726",
+      "output": "assets/synapse/settings-window-social-instagram-social-mask.svg",
+      "sha256": "572cde091bbbcac9c5a37f5d8d1932cbc488d2e034be0485952fe0ef0a072d0a",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "social",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-twitter.5001d716.svg",
+      "source_sha256": "5d16e6ecf24176fae49da52a8a39a07afb2d86617bd36cb85a262a12706794b4",
+      "output": "assets/synapse/settings-window-social-twitter-social-mask.svg",
+      "sha256": "2ff8aba21a945526a5680cfbd86aa8876be2fd8527308a313c101f0cd303673b",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "social",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-youtube.56a79dbc.svg",
+      "source_sha256": "f1403787ab7cc26c69c690b38ffb6e9d425d0dc706ad627d34a3c363f2f979c9",
+      "output": "assets/synapse/settings-window-social-youtube-social-mask.svg",
+      "sha256": "9163e342eeb7aa7518d7e5f501974c9121130c95c2ed720afb1ee59d4d04861d",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "social",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-tiktok.0eafef5a.svg",
+      "source_sha256": "5f7c55d1611ee7299611855b9f51357c51539c06259399647d5184811a976521",
+      "output": "assets/synapse/settings-window-social-tiktok-social-mask.svg",
+      "sha256": "8adcca32a0cedbefcec84792ceb487650cfd172d078ce508cfda5e98baba27e6",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "social",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-twitch.93c59942.svg",
+      "source_sha256": "5b47d8b3e0f772aebabdb4000aa1462846cea476c54bb2fd78a6fec81b11ac2f",
+      "output": "assets/synapse/settings-window-social-twitch-social-mask.svg",
+      "sha256": "8b7fb11035917197a43b1a0818d508c45c5d95de6bddebee0fac2970361519e7",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "social",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-discord.3fcde3ef.svg",
+      "source_sha256": "f0896030e8780f6d86c7860aa0adfb5d6cf89956703ae429982f26a6b0efecf2",
+      "output": "assets/synapse/settings-window-social-discord-social-mask.svg",
+      "sha256": "a8c00b7110dbede22b6a3358979c65bfabc0217aad6bd7eb2fcdc14dc8116e1f",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "social",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-insider.fb3d75d8.svg",
+      "source_sha256": "e187561a748b49f35fcf88174ab6c9c9b4606e1535ad0311c7164f02cad3894d",
+      "output": "assets/synapse/settings-window-social-insider-razergreen-mask.svg",
+      "sha256": "1e946aa8e22e17f6eb2b9779b6b91a6ebb6b18e37ddb904f62665a7c0ed65c22",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "razergreen",
+      "geometry_matches": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/media/social-insider.fb3d75d8.svg",
+      "source_sha256": "e187561a748b49f35fcf88174ab6c9c9b4606e1535ad0311c7164f02cad3894d",
+      "output": "assets/synapse/settings-window-social-insider-grey-mask.svg",
+      "sha256": "c5cb0aa01686680d643e113998ecfdbf69545c0545b32d3a3192c7d9cca57249",
+      "transform": "Class-selected original shape paths as alpha mask; source fill and stroke animated natively for 200ms",
+      "source_class": "grey",
+      "geometry_matches": true
+    }
+  ]
+}

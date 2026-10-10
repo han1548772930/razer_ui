@@ -36,6 +36,12 @@
     "copilot": true
   },
   {
+    "product_id": 550,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
     "product_id": 551,
     "windows_prop": true,
     "menu": true,
@@ -270,7 +276,19 @@
     "copilot": true
   },
   {
+    "product_id": 691,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
     "product_id": 697,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 708,
     "windows_prop": true,
     "menu": true,
     "copilot": true
@@ -288,6 +306,24 @@
     "copilot": true
   },
   {
+    "product_id": 719,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 720,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 721,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
     "product_id": 724,
     "windows_prop": true,
     "menu": true,
@@ -295,6 +331,48 @@
   },
   {
     "product_id": 727,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 728,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 739,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 740,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 741,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 742,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 746,
+    "windows_prop": true,
+    "menu": true,
+    "copilot": true
+  },
+  {
+    "product_id": 752,
     "windows_prop": true,
     "menu": true,
     "copilot": true

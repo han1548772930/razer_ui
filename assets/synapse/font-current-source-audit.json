@@ -1,0 +1,492 @@
+{
+  "source_css": "local-ui-reverse/source/official/apps.razer.com/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+  "source_css_sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+  "entries": [
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Light.woff2",
+      "output": "assets/synapse/Roboto-Light.ttf",
+      "source_sha256": "eca8ffa764a66cd084800e2e71c4176ef089ebd805515664a6cb8d4fb3b598bf",
+      "sha256": "104d76669a1810f22611938c265d4d3cb855fc533b403d0f38f543fcab965d3f",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 300
+      },
+      "original_metadata": {
+        "family": "Roboto Light",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 300
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "8ec508dd6c40a3af42a8a03870d390f3805a2883cc5c481f5eafe7368ace3e55",
+        "maxp": "e6ea77419c567706c363cc07b9b0aa12604919c0faa7dd2510f5ec2a7348ddcc",
+        "hmtx": "89a503c26571b75cc81be9de2c19930c171de0240991668f7711400fdbacf698",
+        "hdmx": "122889f425ec10e24ca204c4963730b7be950020e7e8053707e6017354deaf12",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "292d16d2cac92ef59adae039b7a40053b2826919c754a9bcbcb68dfd378c21b5",
+        "prep": "8d5f4ccd7179642ab86741aa9761f029c857f9c353337eb4da7da12ee028cc98",
+        "cvt ": "d750f3dda6b1653a8bd30f0ebe5c6323cb4e119fc6fdc10c153b83d762e7e891",
+        "loca": "36c25895ca5a7f0681d3553972a5f29926790816e61a4892f16f657154e42b04",
+        "glyf": "fd6e581f13824739d5549e8bb36f3bb55fa7a277e4351a015bdb8a3a27b73962",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-LightItalic.woff2",
+      "output": "assets/synapse/Roboto-LightItalic.ttf",
+      "source_sha256": "f35f6616aa2148b09cbdefd3aec6d3d3e94b83327346ef0d5cdac2e3b6537526",
+      "sha256": "202d2e67f0ed60f131a20de8515a863a9d7d38e55bc842d9cfeed7c2baa63aeb",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 300
+      },
+      "original_metadata": {
+        "family": "Roboto Light",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 300
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "88b811f1d915df79ff071eadc22620c77f7b65b85b2e8853c78c5541245c8413",
+        "maxp": "390ab29b7cfe06b61094aab56f2ce0598b33c6c999c5a527bcfbab093af02f27",
+        "hmtx": "eefed0daf12ac31e627718d6377bc0253f843668fa3f95f18af7db8744eb78b5",
+        "hdmx": "6506e31265b26281c5580b23646132b80f45705a31f2f53ea29c48e9148bdee6",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "292d16d2cac92ef59adae039b7a40053b2826919c754a9bcbcb68dfd378c21b5",
+        "prep": "92712966f01d7696824dd05af9f4b69c325351905fd07cc1178cb7d0e2e43fd7",
+        "cvt ": "521cf5fcb5206ef2bdf7c11d0be2f5c4b99659564d390e341ded0d1296d711d8",
+        "loca": "47fd433f85bea59b7b06b345e5ff8e01db263f38d53d9de53e0e3ed0b0c392e1",
+        "glyf": "73face46ad4a577eb0aba059fb4ecd5eec5f8dfac82b28bd3a36bc3b64b0b049",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Regular.woff2",
+      "output": "assets/synapse/Roboto-Regular.ttf",
+      "source_sha256": "3e253b66056519aa065b00a453bac37ac5ed8f3e6fe7b542e93a9dcdcc11d0bc",
+      "sha256": "179ca811a216df590127489f99aec4c3afcb07019a5a16ab9ae8bd439884de6a",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "0dafd74090e20f82204400f05512a33847411b9e3c597807d9284fe436238d9e",
+        "maxp": "6e7a4fc2b3667f6961643e59af7539ada21d42441c96e76156d786591137e814",
+        "hmtx": "8a15feefd534043ecce76db4fa3921b7545b3e3b08e1ff187358922deac1f846",
+        "hdmx": "b854756b38f20f1c24e1a9dcd06edc7672a54e777dbaa3729d5d8b38c090467f",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "dcc4c09fde7cd3c40c25c96ad362a3fa9cb5bfa6f09f416c404540a898230a13",
+        "prep": "5a22fb8ae3ead3afb2ba74c9010edd041cd108fabcd7086ad5d355b62f1fb99e",
+        "cvt ": "cf36c4618b85d263c0db1b04efac2d335b8cd37d98433ac8a4e8c8e591695e06",
+        "loca": "dbbcdda797221a56c098428bd63a3b5926a418d0564e89adb4690babd6e36847",
+        "glyf": "5ecd5177ede6a52bf3d57ce85d8166bfa20c8c4800a80b595fb2fc03abeb4ee6",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Italic.woff2",
+      "output": "assets/synapse/Roboto-Italic.ttf",
+      "source_sha256": "aa4650a411dfe1c9beb794ffaf08c7909cdfbb05672d79b3a9976672cbba75ec",
+      "sha256": "4bd8affd7aecd8486ba8cf5f437bbdc94c997514a7af2d71c9cc1efabcae4862",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "d6587a2196c26a2df57e9409097918e4c9e194a170a9dc36b60a27604faf027c",
+        "maxp": "ac1f6336a21f3cb1789b3cd99288b5cf1f98be439170badf0809fb45d6cfcbf0",
+        "hmtx": "81ca41dc2dd2378e19798ed815c9f03c74daf1af6eed60b4757b7df3871020e8",
+        "hdmx": "5421db1f3eaa1a93ffa3b02546408f732130c154ff58056198412e425fa63bc2",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "a4f305766db6eec879a7dbab95aaccf5f4b06908b239e3950ebd9dc6222c53df",
+        "prep": "6a9945fc27559613a0e708cba3c4882d2573e30477bddc8c167638b536fdd8cc",
+        "cvt ": "72a2dbb306774661f359612881bff1d565385922d787fe1704bf85f04c9e71fb",
+        "loca": "34145920d965b8730076b09c2be6f1d5d37599be2c1e48e43d9c2706e84b90dd",
+        "glyf": "10037aa960fa8acdf580fbb43a31d1250e8f879996ca6d53cd1f9cafcd3cf237",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "e46406f8c96e522e36c876658316703fa66131235642ee167bf3ada6e5491cd5",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Medium.woff2",
+      "output": "assets/synapse/Roboto-Medium.ttf",
+      "source_sha256": "5a8c1e7681318caa29e9f44e8a6e271f6a4067a2703e9916dfd4fe9099241db7",
+      "sha256": "b5356da237055228be2cdad6eaea1c454290745c08b35e1a99e65f931d21ac4f",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 500
+      },
+      "original_metadata": {
+        "family": "Roboto Medium",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 500
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "2aa0669d4b728aab7588a0a2d4200b54489b7571c38363b8b568230ec0c4ef6a",
+        "maxp": "80883b98fe9e939f8dd6ab1c8e36ea03fae5d7927aae798af1d31dacce1cdfc0",
+        "hmtx": "fa545143fd32e5bea9618f80be26c0ae1ef5dd1b9aa6c5c58a2525047b8c55c8",
+        "hdmx": "9dd7d2c1cf5fb7da8e1d0feb05d93966f5a278f32bc715a9f2a6db3c1e3ab76f",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "a076c8a10d7b904d00ced83edafc77c83c3c9e9ca30af60ad5e1496cc5aa6199",
+        "prep": "4439cae10ff7665a68725bcb02c83a8176c0e7079834efcb542f91eeef97bb0f",
+        "cvt ": "856be9904c253073fafdfae18d874865c09f9a2e987809e28d068f1e724e14c7",
+        "loca": "a25d82df2fba228886ee30b952853d64780ca28b7d53f12c68121bd0c425f695",
+        "glyf": "0081cc4f36e4f0d7c2a453bb6a09893fa2706acae8c97bf102fd37fef2677412",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-MediumItalic.woff2",
+      "output": "assets/synapse/Roboto-MediumItalic.ttf",
+      "source_sha256": "a44484ecc8b7aa5da1603d6a7256d3eea3c5c8e5c6f50bcdb220b303e4b2010a",
+      "sha256": "f9bfc6d616e97b517f0bbbbff485f8462264112cfbe0e62a2b826b4a78da3d01",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 500
+      },
+      "original_metadata": {
+        "family": "Roboto Medium",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 500
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "b34050c2a893386cc4320d306cfcb2eb586b2a8e0fdeae879599942eb8b53714",
+        "maxp": "f03bcf8b71e5fea0926712334327918e66e9d56fa10ef0263da33edfbb5fc1af",
+        "hmtx": "532e7d9b5748c3ef412433067294c57db61f803ef0054190e5c6d1ef6c553ab6",
+        "hdmx": "7500821ab522aca7ba049532d193a418d169e140b02de434cec5b113e8257ddd",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "a076c8a10d7b904d00ced83edafc77c83c3c9e9ca30af60ad5e1496cc5aa6199",
+        "prep": "3c59e6bbf1225c6b9f36c57c04f6903c4c5b07d2e2dc28ff0be757af98825a7d",
+        "cvt ": "6d89b997494a1490e77159ac8d9b5674f48b7b88bbdf3f814240dbe138bc6229",
+        "loca": "fbbce8f830d3a14296f6f35522f356767e43268e6f90bc02a9e975fba8728585",
+        "glyf": "2f61235f309f4f98c5efbac9bda527199b34c5ca199a413b5f7c5d8d643a0ee4",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-Bold.woff2",
+      "output": "assets/synapse/Roboto-Bold.ttf",
+      "source_sha256": "1d5b7c64458f4af91dcfee0354be47adde1f739b5aded03a7ab6068a1bb6ca97",
+      "sha256": "fc8488b1de752bbdc008caa2b731dd5a1721cdddf170ad78138e81694ca292a2",
+      "css_face": {
+        "family": "Roboto",
+        "style": "normal",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Bold",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 700
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "0c376a06d2dc046a9cde9600833201f42f1666329d818aad7fee058ecfe0bb26",
+        "maxp": "32cb0fc69faf2c18b8c52e42d15a3de3e83a3ecd0fde274e9a0cbabe7fbae980",
+        "hmtx": "0bd2d86f63753590979073b426f8e4fb1ac8e4d575a16a8868cf00147f4cb7b6",
+        "hdmx": "0340026a198b752abf8001e6cd74b6cd211a2eecf1395591f5e1040b238cd5b7",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "6c96a4fd4637922588fd3d50a2cee98aa8de1027a6cd9835824c39f6eed5e681",
+        "prep": "227d9116536ec33841e71620fa6336b347a01a1540e9ffe6cc93b1048dc6fd39",
+        "cvt ": "50681f3b04112f341c40669d3d7ae0123e5139e0cc6299d904180b1a1053b8f1",
+        "loca": "41c5fd7eb251ee103ef8bee0ab16772bf9036e95dae1a64cb1a2a9fb3b7186f6",
+        "glyf": "be936f9471ff21c0324f89eef9ee2d51db84c2c9a1199dac0fe7c8853645e7e9",
+        "post": "0215ee02e6b7c4de5c8d18804643d9fb8b63810ed4a843d6551dfa4a4ca927de",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/Roboto-BoldItalic.woff2",
+      "output": "assets/synapse/Roboto-BoldItalic.ttf",
+      "source_sha256": "756f65bc72ad18ac281e8ef320de3347f26d402701aeb8f659f33ffb8f036ccb",
+      "sha256": "1c6453f110bf3eef7690cdfe214dfe758daedf3d3c8c474ae39d5aa061a91da8",
+      "css_face": {
+        "family": "Roboto",
+        "style": "italic",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "Roboto",
+        "subfamily": "Bold Italic",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 700
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "3945de8ba640818e9d93c24c6047cd69a992d1386bd427743764df99f9ded8f3",
+        "maxp": "739213962ee18e9529396bcf41baa027e1af9e24d2c81648de30bc8c9f51ad75",
+        "hmtx": "8c0358c765d83772b76ec8ed66351bbdcefc7024f49e74a08029ef7401be67b9",
+        "hdmx": "ca754a2d2b7868e1061f5e7f52e30a3ae74a1cb6388038dc9af1f2e7605cef4a",
+        "cmap": "29fcd68665968ddb630f6a83d75c885484c95a3c1f4446975c118ac4f8893501",
+        "fpgm": "11f6befc81b711a0c8f304596fa14248efa1eeba7e4b0a451168400e856c9079",
+        "prep": "ea5e474a6527805e1a80ad648172ba5f33a4eeaf9ad50e0b6ad1b3bc18173411",
+        "cvt ": "d82389d78c34d71eb30916bb21749b0eda839e04ae5a8e676b6d3452e6875c94",
+        "loca": "a43b408cb6ac496a1dc1b61873564826866f44aafd40c22e891f6b6f265b91a1",
+        "glyf": "0ac22246c47884284895f0994209eccff72372d6dabcf78551105d05a35eedc1",
+        "post": "38ac5ddb1c0928d2a1d7bc5c0134ee3b3fcbbd070046afa8f7e91295a1fbeddb",
+        "gasp": "13dd2c70c90f4503fca1f41b6a192f6b0c39e0b26fd507ab5c6d97f7dea9c277",
+        "GDEF": "4556c2e9e2224d08401ff254ca146d9db301e6a5e10f86b3fd068c250e4f544b",
+        "GPOS": "eb22b586acf1073ee86a381f1de136c259d32ca5d54850d08143b069a8687036",
+        "GSUB": "402134d383fa80f2316b27144f2f0b1f980e085b63d679822e64bb6a1f9c53d7"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-Thin.woff2",
+      "output": "assets/synapse/RazerF5-Thin.ttf",
+      "source_sha256": "77caa92a2a0ae136f70cc309b486b454ea99d5be6e63a7e7c15ad5bae3707bb8",
+      "sha256": "0fa0aefa2bf1e00b99a9e331f4caf2650b309dad1a4e54a49c481461d8d48e66",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "normal",
+        "weight": 100
+      },
+      "original_metadata": {
+        "family": "RazerF5 Thin",
+        "subfamily": "Regular",
+        "preferred_family": "RazerF5",
+        "preferred_subfamily": "Thin",
+        "weight": 400
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "3bf0ad9682daa9908e2c300fe8d6c85cf7f44bae342c945ed3b670f746ceb998",
+        "maxp": "b7d3d70c02989f19b1d9f79f3718ef4f063d568e76cc52158a466dfadf764eda",
+        "hmtx": "7ca8556b3522b9e15a3eeefbfcc5e39744d3ef5e5ee612e9ed2cd7492bd013e2",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "9a4c254fc6ea297ae01a3b56b569f0576cb82963417bdfb883a6b8434e506d89",
+        "glyf": "ac0ab663de36ac6ba1bc6cbc24b157ae0b57e541c74b034d110047322948126d",
+        "post": "ba1e68e0b2505dcb02e3dc90d59bd941405d45bbdc4b0401e4c022edadd334a2",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "ba4355bc286025b3a3af9824857dc448bc77663320a7bd48660f030111c6b6c7",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "fa25ba79991017911ccede57d513eafa2c585b707acb14b92a5438fd2dd17859",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-Regular.woff2",
+      "output": "assets/synapse/RazerF5-Regular.ttf",
+      "source_sha256": "f74f5837dec1729e960a3a04bbde7ca706b4c938f71516630767089f5ca9bd0b",
+      "sha256": "ba98bf5a0ea8d55161f061dcd2f8b2730088cc04eb05d702f163e1679c11d15f",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "normal",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "RazerF5",
+        "subfamily": "Regular",
+        "preferred_family": null,
+        "preferred_subfamily": null,
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "d46d03ddebc044a0f831a257a411416a5df502988390fb181cc108accbcd3c7a",
+        "maxp": "7a6fc7666fff5820fbe08f14c328330e06c539c8900a383343b26fc90c5261b5",
+        "hmtx": "834acfa38f2a165478edea1f3db593c68932d82b61f22ea63e73f21a6cd2f6d8",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "27f3617d2593997faea27b7ea6668c19ce3cde248fd79b04adca47bd06046236",
+        "glyf": "ebc67c393a538a61aefc3d7f06eaf650c2eb3b51fa2b60c6764236fa41de7154",
+        "post": "ba1e68e0b2505dcb02e3dc90d59bd941405d45bbdc4b0401e4c022edadd334a2",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "ba4355bc286025b3a3af9824857dc448bc77663320a7bd48660f030111c6b6c7",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "0cf05bb54d04d0a8f245d710d9ac4e801ab2583e18b3442e5d22e8a29b81dd11",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-RegItalic.woff2",
+      "output": "assets/synapse/RazerF5-RegItalic.ttf",
+      "source_sha256": "1d4a96ea5d4438ee0612d297e9446175fb354c08371ea3f14e526560e8cffabb",
+      "sha256": "c79c356dc2b997ea386a7cf28d0975ab7c717f78efd6803899628812d830d6cb",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "italic",
+        "weight": 400
+      },
+      "original_metadata": {
+        "family": "RazerF5",
+        "subfamily": "Italic",
+        "preferred_family": null,
+        "preferred_subfamily": "Regitalic",
+        "weight": 400
+      },
+      "metadata_normalized": false,
+      "unchanged_tables": {
+        "hhea": "f4a8088d775376ec1d8c18b87863011685a38e86f0afae616ddd228c44ba2577",
+        "maxp": "32e5b59ac263daee3c1926f9a5fbcd0765064fe4d2dc42a611399492059decf7",
+        "hmtx": "c8b92b10186ea90382acf9816f13a9deca6cfb5e9ab026f42fe3b2e3638bb9b4",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "18d5a464916782008c885c97ff834a8a6b4acceeab1937edfa9b08a91c2de18f",
+        "glyf": "9246b6bff4059b75670496231aa64d674496885543cdd1de0d7ad7412e99bcda",
+        "post": "9e86c4b97596e2f094481eeaf8ceecda1e3a9931772c9e6cf34e61baeae9c1ad",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "64a3f3a9dc2655c30be120826f96ab5bcdcc7816d80405e85e21648331914a4b",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "a0ff43fa21c5b9508473298b573d09058092a986028f4a6b2bd7ed996ebf90c4",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-SemiBold.woff2",
+      "output": "assets/synapse/RazerF5-SemiBold.ttf",
+      "source_sha256": "eec918966cc513f995d357866c3fb441459677838bd303123c812875bc7706bb",
+      "sha256": "64293d40f66cda7e2afb873b1eff8b09bf7ecec1027764f613fb200577556621",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "normal",
+        "weight": 600
+      },
+      "original_metadata": {
+        "family": "RazerF5 Semibold",
+        "subfamily": "Regular",
+        "preferred_family": "RazerF5",
+        "preferred_subfamily": "Semibold",
+        "weight": 400
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "ec324ab5a0c793875bd06e732c8f3db276002b36235c37a310fea4ead2e89cfc",
+        "maxp": "32e5b59ac263daee3c1926f9a5fbcd0765064fe4d2dc42a611399492059decf7",
+        "hmtx": "f06bd54d78ec2ed90f4bcde31ef2128b7b4ec69ad5c62befa34cb8aa05d7d756",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "96e8b20038fb4d2347c229baa290fa3c37db81a89b2408d737ab36131f43b185",
+        "glyf": "9decb6a7620fb9e57fae6be1d7f4f1eb2bd709b111513954a8c55bcd0d29f968",
+        "post": "ba1e68e0b2505dcb02e3dc90d59bd941405d45bbdc4b0401e4c022edadd334a2",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "59cca9e4a067f5ae98ff14660f853b39beb49627c798a3edf37cbbd98c72b157",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "05a2a52b46e4e5517044fccf646547da3304da613ec800ad3567bbbab20ee700",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-Bold.woff2",
+      "output": "assets/synapse/RazerF5-Bold.ttf",
+      "source_sha256": "e1b009d49f5ca2feec11a3904f4f028693a8957ecbf7488ca235917564d434a3",
+      "sha256": "fa85dc64f34086139c4030c1da8cb96fa902e7c6942b2bdf55123c509b8b112e",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "normal",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "RazerF5 Bold",
+        "subfamily": "Regular",
+        "preferred_family": "RazerF5",
+        "preferred_subfamily": "Bold",
+        "weight": 400
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "bdbb1e58814c510f720b546fdcd84d58681e35b6539f9929272be48bd48694c8",
+        "maxp": "ec527c1b2ae128c27c33560e10d8d474b166954d622c7f20b6cab4f71c4fe71c",
+        "hmtx": "221f305401959d0995c32477b50cd3a7c4cfe56a1a66592be8cf4033a87d633b",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "da19ebb5e44e5cec9f23c9b87904e7662ee792378a36ca50deeeab9e49536d74",
+        "glyf": "244340e275258de0dce2e58c1e696d12a993e3246d958b8a18f2976ec0a96b81",
+        "post": "ba1e68e0b2505dcb02e3dc90d59bd941405d45bbdc4b0401e4c022edadd334a2",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "59cca9e4a067f5ae98ff14660f853b39beb49627c798a3edf37cbbd98c72b157",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "fb79bc1d76f44893bd3323a1a97b50f78e71c0d3e5e910f8eefca3508719053c",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/assets/fonts/RazerF5-BoldItalic.woff2",
+      "output": "assets/synapse/RazerF5-BoldItalic.ttf",
+      "source_sha256": "7f34b7eace7a7538149d97dcd31e88b4d047fcc8348de20a7c929ceba81e21c1",
+      "sha256": "85a911b83354564084e557f22bc9cae225b08e00caa8a9c431631a2b7e672f4b",
+      "css_face": {
+        "family": "RazerF5",
+        "style": "italic",
+        "weight": 700
+      },
+      "original_metadata": {
+        "family": "RazerF5 Bold",
+        "subfamily": "Italic",
+        "preferred_family": "RazerF5",
+        "preferred_subfamily": "Bolditalic",
+        "weight": 400
+      },
+      "metadata_normalized": true,
+      "unchanged_tables": {
+        "hhea": "56acb5f33a38edb6ae2abb32703d0fc14aa1a32275233f239f2373352bbe4776",
+        "maxp": "b48cb4db57f0cc067b19fab3d3d677c743f60dca22a433967dcb6211a437c83c",
+        "hmtx": "4087cb999dc3ec387d5f7aaf68b0ca465b934a1eb2c9738cb3bc72f47fd0b30c",
+        "cmap": "b9095dcea6b8aacd43cae3f98015a2734aa8d3d870fc8d64c51ddde4ae989db2",
+        "loca": "e47eb22094d7dd2193523c3469c11f206be6d2ab859438331fb43e2bcad262a8",
+        "glyf": "be272dd4a154d0a6d06dd63fc46f0231b2cffc79f4b9161568a288f5f38c4961",
+        "post": "9e86c4b97596e2f094481eeaf8ceecda1e3a9931772c9e6cf34e61baeae9c1ad",
+        "gasp": "a3f7aaf1f242e236375cc386f877aa6222ae0d21dd34152fde72a61faed5ddea",
+        "FFTM": "59cca9e4a067f5ae98ff14660f853b39beb49627c798a3edf37cbbd98c72b157",
+        "GDEF": "6d0f185a5b83e831b8867f61faa84f84e74a37ac4df8e4c0863db1bc30d60b9b",
+        "GPOS": "16a2b1eeaee6d12f75d6ce9b2e8a74183348b47e7da7478bf6fad92bec47fb19",
+        "GSUB": "9c0ed2420aa3cee1513a071c8497b54246165c6cf343de417b93a5aefac5d9c5"
+      }
+    }
+  ]
+}

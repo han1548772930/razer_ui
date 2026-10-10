@@ -7,7 +7,6 @@ use razer_widgets::settings_button::settings_button;
 #[path = "settings_tests.rs"]
 mod tests;
 use gpui_kit::component::{
-    button::Button,
     select::{SelectEvent, SelectState},
     tooltip::Tooltip,
     *,
@@ -25,7 +24,6 @@ use razer_widgets::theme;
 enum Page {
     Synapse,
     General,
-    Connection,
 }
 
 /// Source-catalog editions, or the existing local default when no edition is
@@ -77,21 +75,11 @@ fn keyboard_preview_layouts() -> &'static [PreviewLayout] {
     })
 }
 
-fn preview_product_choices() -> Vec<Choice> {
-    razer_catalog::registry()
-        .iter()
-        .map(|product| {
-            Choice::new(
-                product.id().to_string(),
-                razer_model::demo::preview_product_label(product.id()),
-            )
-        })
-        .collect()
-}
-
 pub enum SettingsEvent {
     Changed,
     Language,
+    StartupRequested(StartupSetting),
+    DynamicLightingRequested(bool),
     ResetTutorials,
     Preview(u32),
     PreviewVariant(u32, u32, u32),
@@ -104,18 +92,25 @@ pub enum SettingsEvent {
     ReleaseNotes,
     Pairing,
 }
+/// The two commands in source `Ks` have separate host calls. A local draft is
+/// never a receipt that either native command has succeeded.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StartupSetting {
+    AutoStart(bool),
+    MinimizedOnStartup(bool),
+}
 pub struct SettingsPage {
     values: AppPreferences,
     saved: AppPreferences,
     page: Page,
     language: Entity<SelectState<Vec<Choice>>>,
-    preview_product: Entity<SelectState<Vec<Choice>>>,
-    preview_edition: Entity<SelectState<Vec<Choice>>>,
-    preview_layout: Entity<SelectState<Vec<Choice>>>,
-    runtime: Entity<super::runtime_page::RuntimePanel>,
+    startup_observed: Option<razer_state::LocalStartupDraft>,
+    startup_editor: razer_state::LocalStartupDraft,
     tutorial_reset: bool,
     storage_error: Option<String>,
     dynamic_lighting_supported: bool,
+    dynamic_lighting_mode: bool,
+    dynamic_lighting_switching: bool,
     subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<SettingsEvent> for SettingsPage {}
@@ -149,16 +144,17 @@ impl SettingsPage {
             state.set_selected_value(&self.values.language, window, cx)
         });
         i18n::set_locale(code);
-        self.refresh_preview_labels(window, cx);
         cx.emit(SettingsEvent::Language);
         self.changed(cx);
     }
     pub fn new(
         mut values: AppPreferences,
-        runtime: Entity<super::runtime_page::RuntimePanel>,
+        _runtime: Entity<super::runtime_page::RuntimePanel>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
+        // Prepare immutable source metadata before rendering the About page.
+        let _ = dashboard_source_version();
         let saved = values.clone();
         let locale = i18n::locale();
         if let Some((code, _)) = LANGUAGES
@@ -181,146 +177,59 @@ impl SettingsPage {
         language.update(cx, |state, cx| {
             state.set_selected_value(&values.language, window, cx)
         });
-        let preview_product = cx.new(|cx| {
-            SelectState::new(
-                preview_product_choices(),
-                Some(IndexPath::new(0)),
-                window,
-                cx,
-            )
-            .searchable(true)
-        });
-        let preview_edition = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
-        let preview_layout = cx.new(|cx| SelectState::new(Vec::<Choice>::new(), None, window, cx));
+        let dynamic_lighting_mode = saved.dynamic_lighting_draft.unwrap_or(false);
         let mut this = Self {
             saved,
+            startup_editor: values.startup_draft.unwrap_or_default(),
             values,
             page: Page::Synapse,
             language,
-            preview_product,
-            preview_edition,
-            preview_layout,
-            runtime,
+            startup_observed: None,
             tutorial_reset: false,
             storage_error: None,
             dynamic_lighting_supported: razer_platform::system::supports_dynamic_lighting(),
+            dynamic_lighting_mode,
+            dynamic_lighting_switching: false,
             subscriptions: vec![],
         };
         this.subscriptions.push(cx.subscribe_in(
             &this.language,
             window,
-            |this, _, event, window, cx| {
+            |this, _, event, _, cx| {
                 if let SelectEvent::Confirm(Some(language)) = event {
                     this.values.language = language.clone();
                     i18n::set_locale(language);
-                    this.refresh_preview_labels(window, cx);
                     cx.emit(SettingsEvent::Language);
                     this.changed(cx);
                 }
             },
         ));
-        this.subscriptions.push(cx.subscribe_in(
-            &this.preview_product,
-            window,
-            |this, _, event: &SelectEvent<Vec<Choice>>, window, cx| {
-                if matches!(event, SelectEvent::Confirm(_)) {
-                    this.sync_preview_variant(window, cx);
-                }
-            },
-        ));
-        this.subscriptions
-            .push(cx.observe(&this.preview_edition, |_, _, cx| cx.notify()));
-        this.subscriptions
-            .push(cx.observe(&this.preview_layout, |_, _, cx| cx.notify()));
-        this.sync_preview_variant(window, cx);
         this
-    }
-    fn refresh_preview_labels(&self, window: &mut Window, cx: &mut Context<Self>) {
-        let selected =
-            |state: &Entity<SelectState<Vec<Choice>>>| state.read(cx).selected_value().cloned();
-        let product = selected(&self.preview_product);
-        let edition = selected(&self.preview_edition);
-        let layout = selected(&self.preview_layout);
-        self.preview_product.update(cx, |state, cx| {
-            state.set_items(preview_product_choices(), window, cx);
-            if let Some(product) = product {
-                state.set_selected_value(&product, window, cx);
-            }
-        });
-        self.sync_preview_variant(window, cx);
-        for (state, selected) in [
-            (&self.preview_edition, edition),
-            (&self.preview_layout, layout),
-        ] {
-            if let Some(selected) = selected {
-                state.update(cx, |state, cx| {
-                    state.set_selected_value(&selected, window, cx);
-                });
-            }
-        }
-    }
-    fn sync_preview_variant(&self, window: &mut Window, cx: &mut Context<Self>) {
-        let pid = self
-            .preview_product
-            .read(cx)
-            .selected_value()
-            .and_then(|value| value.parse().ok());
-        let choices = |values: Vec<u32>| {
-            values
-                .into_iter()
-                .map(|value| {
-                    Choice::new(
-                        value.to_string(),
-                        if value == 0 {
-                            "默认 (0)".into()
-                        } else {
-                            value.to_string()
-                        },
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-        let layouts = if pid == Some(653) {
-            keyboard_preview_layouts()
-                .iter()
-                .map(|layout| {
-                    Choice::new(
-                        layout.layout_id.to_string(),
-                        format!("{} · {}", layout.layout_id, layout.layout_name),
-                    )
-                })
-                .collect()
-        } else {
-            choices(pid.map(preview_layouts).unwrap_or_default())
-        };
-        for (state, items) in [
-            (
-                &self.preview_edition,
-                pid.map(|pid| {
-                    preview_editions(pid)
-                        .into_iter()
-                        .map(|edition| {
-                            Choice::new(
-                                edition.to_string(),
-                                razer_model::demo::preview_edition_label(pid, edition),
-                            )
-                        })
-                        .collect()
-                })
-                .unwrap_or_default(),
-            ),
-            (&self.preview_layout, layouts),
-        ] {
-            state.update(cx, |state, cx| {
-                let first = (!items.is_empty()).then_some(IndexPath::new(0));
-                state.set_items(items, window, cx);
-                state.set_selected_index(first, window, cx);
-            });
-        }
-        cx.notify();
     }
     fn changed(&mut self, cx: &mut Context<Self>) {
         cx.emit(SettingsEvent::Changed);
+        cx.notify();
+    }
+    /// Called only with an actual host query/readback. It updates the source
+    /// editor without emitting a user command or turning a query into a save.
+    pub fn observe_startup(
+        &mut self,
+        value: razer_state::LocalStartupDraft,
+        cx: &mut Context<Self>,
+    ) {
+        self.startup_observed = Some(value);
+        self.startup_editor = value;
+        cx.notify();
+    }
+    /// Update only from actual storage/service observations, independently of local intent.
+    pub fn observe_dynamic_lighting(
+        &mut self,
+        dynamic: bool,
+        switching: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.dynamic_lighting_mode = dynamic;
+        self.dynamic_lighting_switching = switching;
         cx.notify();
     }
     pub fn dirty(&self) -> bool {
@@ -359,6 +268,10 @@ impl SettingsPage {
         self.storage_error = error;
         cx.notify();
     }
+    pub fn mouse_dynamic_tutorial_visible(&mut self, visible: bool, cx: &mut Context<Self>) {
+        self.values.mouse_dynamic_tutorial_visible = Some(visible);
+        self.changed(cx);
+    }
     fn panel(&self, title: &str, cx: &App) -> Div {
         self.panel_with_control(title, div(), cx)
     }
@@ -390,7 +303,7 @@ impl SettingsPage {
             )
     }
     fn synapse(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let startup = self.values.startup_draft.unwrap_or_default();
+        let startup = self.startup_editor;
         let column_margin = settings_column_margin(window);
         h_flex()
             .items_start()
@@ -411,15 +324,27 @@ impl SettingsPage {
                         self.panel("AUTO_LAUNCH", cx).child(
                             v_flex()
                                 .child(
-                                    settings_check("settings-auto-start", i18n::t("START_SYNAPSE"), startup.auto_start, false, window, cx)
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            let draft = this
-                                                .values
-                                                .startup_draft
-                                                .get_or_insert_with(Default::default);
-                                            draft.auto_start = !draft.auto_start;
+                                    settings_check(
+                                        "settings-auto-start",
+                                        i18n::t("START_SYNAPSE"),
+                                        startup.auto_start,
+                                        false,
+                                        window,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
+                                            this.startup_editor.auto_start =
+                                                !this.startup_editor.auto_start;
+                                            this.values.startup_draft = Some(this.startup_editor);
+                                            cx.emit(SettingsEvent::StartupRequested(
+                                                StartupSetting::AutoStart(
+                                                    this.startup_editor.auto_start,
+                                                ),
+                                            ));
                                             this.changed(cx);
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
                                     v_flex()
@@ -451,29 +376,32 @@ impl SettingsPage {
                                                 .child(i18n::t("NOTE_DISABLE_SYNAPSE")),
                                         )
                                         .child(
-                                            settings_check("settings-start-minimized", i18n::t("MINIMIZE_SYSTRAY"), startup.start_minimized, !startup.auto_start, window, cx)
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    if !this.values.startup_draft.unwrap_or_default().auto_start {
+                                            settings_check(
+                                                "settings-start-minimized",
+                                                i18n::t("MINIMIZE_SYSTRAY"),
+                                                startup.start_minimized,
+                                                !startup.auto_start,
+                                                window,
+                                                cx,
+                                            )
+                                            .on_click(
+                                                cx.listener(|this, _, _, cx| {
+                                                    if !this.startup_editor.auto_start {
                                                         return;
                                                     }
-                                                    let draft = this
-                                                        .values
-                                                        .startup_draft
-                                                        .get_or_insert_with(Default::default);
-                                                    draft.start_minimized = !draft.start_minimized;
+                                                    this.startup_editor.start_minimized =
+                                                        !this.startup_editor.start_minimized;
+                                                    this.values.startup_draft =
+                                                        Some(this.startup_editor);
+                                                    cx.emit(SettingsEvent::StartupRequested(
+                                                        StartupSetting::MinimizedOnStartup(
+                                                            this.startup_editor.start_minimized,
+                                                        ),
+                                                    ));
                                                     this.changed(cx);
-                                                })),
+                                                }),
+                                            ),
                                         ),
-                                )
-                                .child(
-                                    div()
-                                        .id("settings-startup-local-note")
-                                        .test_support()
-                                        .mt(surface::css(10.))
-                                        .text_size(surface::css(12.))
-                                        .text_color(theme::SettingsColors::tree_note())
-                                        .aria_label("自动启动为本地设置草稿；系统状态未读取，尚未应用到宿主")
-                                        .child("自动启动为本地设置草稿；系统状态未读取，尚未应用到宿主"),
                                 ),
                         ),
                     )
@@ -482,11 +410,20 @@ impl SettingsPage {
                             div()
                                 .relative()
                                 .child(
-                                    settings_check("settings-notifications", i18n::t("DISPLAY_NOTIFICATIONS"), self.values.notifications, false, window, cx)
-                                        .on_click(cx.listener(|this, _, _, cx| {
+                                    settings_check(
+                                        "settings-notifications",
+                                        i18n::t("DISPLAY_NOTIFICATIONS"),
+                                        self.values.notifications,
+                                        false,
+                                        window,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
                                             this.values.notifications = !this.values.notifications;
                                             this.changed(cx);
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
                                     settings_help(
@@ -576,7 +513,29 @@ impl SettingsPage {
                                     .top(surface::css(10.))
                                     .right(surface::css(10.)),
                                 )
-                                .child(lighting::content(None, false, |_, _, _| {}, cx)),
+                                .child({
+                                    let owner = cx.entity().downgrade();
+                                    lighting::content(
+                                        Some(self.dynamic_lighting_mode),
+                                        self.dynamic_lighting_switching,
+                                        move |dynamic, _, cx| {
+                                            let _ = owner.update(cx, |this, cx| {
+                                                if this.dynamic_lighting_switching
+                                                    || this.dynamic_lighting_mode == dynamic
+                                                {
+                                                    return;
+                                                }
+                                                this.dynamic_lighting_mode = dynamic;
+                                                this.values.dynamic_lighting_draft = Some(dynamic);
+                                                cx.emit(SettingsEvent::DynamicLightingRequested(
+                                                    dynamic,
+                                                ));
+                                                this.changed(cx);
+                                            });
+                                        },
+                                        cx,
+                                    )
+                                }),
                         )
                     }),
             )
@@ -813,9 +772,8 @@ impl SettingsPage {
                             .w(surface::css(294.366)).h(surface::css(70.))
                             .object_fit(ObjectFit::Contain)))
                     .child(div().text_center().mb(surface::css(20.))
-                        // Fs uses the Dashboard manifest, not the host or this crate's version.
-                        // ["4", ..."0.0.86".split(".").slice(1), 2609221012].join(".")
-                        .child(i18n::t("VERSION").replace("{{number}}", "4.0.86.2609221012")))
+                        // Fs uses Dashboard version/buildVersion, not the host version.
+                        .child(i18n::t("VERSION").replace("{{number}}", dashboard_source_version())))
                     .child(v_flex().text_center().mb(surface::css(20.))
                         .child(i18n::t("COPYRIGHT").replace("{{year}}", &razer_platform::system::copyright_year()))
                         .child(i18n::t("TRADEMARK")))
@@ -849,196 +807,26 @@ impl SettingsPage {
             )
             .into_any_element()
     }
-    fn connection(&self, cx: &mut Context<Self>) -> AnyElement {
-        v_flex()
-            .gap_4()
-            .child(self.runtime.clone())
-            .child(
-                surface::panel("本地产品预览", cx)
-                    .child(surface::note(format!("全部 {} 个已登记产品均可搜索打开。本地预览保留产品标签页、页面主体和弹层入口；已登记不代表界面已完整复刻。", razer_catalog::registry().len()), cx))
-                    .child(h_flex().flex_wrap().items_end().gap_3()
-                        .child(v_flex().gap_2().child("产品名称或 ID").child(
-                            select::Select::new(&self.preview_product)
-                                .id("preview-product-select")
-                                .placeholder("搜索产品名称或 ID")
-                                .w(surface::css(400.))
-                        ))
-                        .child(v_flex().gap_2().child("产品版本 (edition)").child(
-                            select::Select::new(&self.preview_edition).w_56()
-                        ))
-                        .child(v_flex().gap_2().child("键盘布局 (layout)").child(
-                            select::Select::new(&self.preview_layout).w_56()
-                        ))
-                        .child(Button::new("preview-registered-product").label("打开产品预览").outline()
-                            .disabled(self.preview_product.read(cx).selected_value().is_none()
-                                || self.preview_edition.read(cx).selected_value().is_none()
-                                || self.preview_layout.read(cx).selected_value().is_none())
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                let value = |state: &Entity<SelectState<Vec<Choice>>>| {
-                                    state.read(cx).selected_value().and_then(|value| value.parse::<u32>().ok())
-                                };
-                                if let (Some(pid), Some(edition), Some(layout)) = (
-                                    value(&this.preview_product), value(&this.preview_edition), value(&this.preview_layout)
-                                ) {
-                                    cx.emit(SettingsEvent::PreviewVariant(pid, edition, layout));
-                                }
-                            }))))
-                    .child(surface::note("产品名称和版本名称来自当前官方产品清单，可按中文名、英文名或产品 ID 搜索。未声明版本的产品沿用本地默认值。653 可选择其原始键盘布局，其他产品使用各自默认布局。预览不表示已连接设备，编辑仅保留本地草稿。", cx)),
-            )
-            .child(
-                surface::panel("本地工作区", cx)
-                    .children(self.preview_product.read(cx).selected_value().and_then(|v| v.parse::<u32>().ok()).and_then(razer_catalog::registered).map(|product| {
-                        v_flex().gap_2().child(surface::note(format!("产品 ID {} · 分类 {} · editions {:?}", product.id(), product.categories().join(", "), product.edition_ids()), cx))
-                            .children(product.navigations().iter().map(|navigation| {
-                                v_flex().gap_1().child(surface::note(format!("{} · {} · {}{}", navigation.key(), navigation.owner(), navigation.display_mode(), if navigation.is_primary() { " · 默认入口" } else { "" }), cx))
-                                    .child(surface::note(format!("{} @ {}\nSHA-256 {}", navigation.source(), navigation.offset(), navigation.source_sha256()), cx))
-                                    .children(navigation.pages().iter().map(|page| surface::note(format!("{} · {} · ID {:?} · {} @ {} · {:?}\n{}{}", page.id().product_id(), page.kind().key(), page.source_id(), page.component_kind(), page.offset(), page.adapter_status(), page.component_expression().unwrap_or(""), page.extra_class().map(|c| format!(" · class {c}")).unwrap_or_default()), cx)))
-                                    .child(Button::new(SharedString::from(format!("copy-source-navigation-{}",navigation.key()))).label("复制根组件依据").outline().on_click(move |_,_,cx| cx.write_to_clipboard(ClipboardItem::new_string(navigation.reachability().to_string()))))
-                            }))
-                    }))
-                    .child(surface::note(
-                        format!("razer_ui {} 本地自动启动草稿尚未应用到系统；灯光控制权尚未读取。", env!("CARGO_PKG_VERSION")),
-                        cx,
-                    ))
-                    .child(surface::note(
-                        format!("本地配置位置：{}", razer_storage::store_path().display()),
-                        cx,
-                    ))
-                    .child(
-                        h_flex()
-                            .flex_wrap()
-                            .gap_3()
-                            .children(
-                                [
-                                    (653, "preview-keyboard", "预览 653 键盘"),
-                                    (777, "preview-headset", "预览 777 耳机"),
-                                ]
-                                .map(|(pid, id, label)| {
-                                    Button::new(id).label(label).outline().on_click(cx.listener(
-                                        move |_, _, _, cx| cx.emit(SettingsEvent::Preview(pid)),
-                                    ))
-                                }),
-                            )
-                            .child(
-                                Button::new("preview-profile-migration")
-                                    .label("打开配置迁移")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| { cx.emit(SettingsEvent::ProfileMigration); })),
-                            )
-                            .child(
-                                Button::new("preview-module-pages")
-                                    .label("打开设备和模块")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::Modules)
-                                    })),
-                            )
-                            .children(razer_catalog::AUDITED_MOUSE_MAT_IDS.into_iter().map(
-                                |pid| {
-                                    let product = razer_catalog::audited_mouse_mat(pid)
-                                        .expect("audited mouse mat");
-                                    Button::new(SharedString::from(format!(
-                                        "preview-product-{pid}"
-                                    )))
-                                    .label(format!("预览 {}", product.name()))
-                                    .outline()
-                                    .on_click(cx.listener(move |_, _, _, cx| {
-                                        cx.emit(SettingsEvent::Preview(pid))
-                                    }))
-                                },
-                            ))
-                            .child(
-                                Button::new("preview-app-picker")
-                                    .label("打开更多应用")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::AppPicker)
-                                    })),
-                            )
-                            .child(
-                                Button::new("preview-alexa")
-                                    .label("打开 Alexa")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::Alexa)
-                                    })),
-                            )
-                            .child(
-                                Button::new("preview-chroma-tour")
-                                    .label("打开 Chroma 入门教程")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::ChromaTour)
-                                    })),
-                            )
-                            .child(
-                                Button::new("preview-header-states")
-                                    .label("打开控制板")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::Dashboard)
-                                    })),
-                            )
-                            .child(
-                                Button::new("preview-lighting-settings")
-                                    .label("打开设备灯光设置")
-                                    .outline()
-                                    .on_click(cx.listener(|this, _, _, cx| { this.page = Page::Synapse; cx.notify(); })),
-                            )
-                            .child(
-                                Button::new("preview-keyboard-calibration")
-                                    .label("打开磁轴键盘预览")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(740)))),
-                            )
-                            .child(
-                                Button::new("preview-hue")
-                                    .label("打开 Philips Hue 预览")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(769)))),
-                            )
-                            .child(
-                                Button::new("preview-aether-strip")
-                                    .label("打开 Aether 灯带预览")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(784)))),
-                            )
-                            .child(
-                                Button::new("preview-wireless-argb")
-                                    .label("打开无线 ARGB 预览")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3884)))),
-                            )
-                            .child(
-                                Button::new("preview-wired-argb")
-                                    .label("打开主板与 ARGB 端口预览")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3871)))),
-                            )
-                            .child(
-                                Button::new("preview-automation")
-                                    .label("打开 Base Station V3 预览")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3946)))),
-                            )
-                            .child(
-                                Button::new("open-pairing-page")
-                                    .label("打开鼠标底座预览")
-                                    .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(241)))),
-                            )
-                            .child(
-                                Button::new("open-multi-pairing-page")
-                                    .label("多设备配对")
-                                    .outline()
-                                    .on_click(
-                                        cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Pairing)),
-                                    ),
-                            ),
-                    ),
-            )
-            .into_any_element()
-    }
+}
+fn dashboard_source_version() -> &'static str {
+    static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    VERSION
+        .get_or_init(|| {
+            let manifest: serde_json::Value = serde_json::from_str(include_str!(
+                "../../../assets/synapse/settings-dashboard-manifest.json"
+            ))
+            .expect("current acquired Dashboard manifest");
+            let version = manifest["version"].as_str().expect("Dashboard version");
+            let build = manifest["buildVersion"]
+                .as_u64()
+                .expect("Dashboard buildVersion");
+            std::iter::once("4".to_owned())
+                .chain(version.split('.').skip(1).map(str::to_owned))
+                .chain(std::iter::once(build.to_string()))
+                .collect::<Vec<_>>()
+                .join(".")
+        })
+        .as_str()
 }
 // Settings 720: .main-setting .widget .check-item margin:0; original
 // 20px indicator, 14px/17px label, 2.4px radius and source tick origins.
@@ -1122,44 +910,19 @@ fn social_link(
     id: &'static str,
     label: SharedString,
     asset: &'static str,
-    hover_asset: &'static str,
+    _hover_asset: &'static str,
     url: &'static str,
-    insider: bool,
-    cx: &App,
+    _insider: bool,
+    _cx: &App,
 ) -> impl IntoElement {
-    gpui_kit::base::Link::new(id)
-        .href(url)
-        .open_with(|url, _, _, cx| cx.open_url(url))
-        .group(id)
-        .relative()
-        .flex_shrink_0()
-        .w(surface::css(if insider { 270. } else { 28. }))
-        .h(surface::css(if insider { 50. } else { 28. }))
-        .accessibility_label(label.clone())
-        .when(!insider, |link| {
-            link.tooltip(move |window, cx| {
-                Tooltip::new(label.clone())
-                    .bg(theme::SettingsColors::tooltip_surface())
-                    .border_color(theme::stepper_border())
-                    .rounded_none()
-                    .shadow_none()
-                    .px(surface::css(10.))
-                    .py(surface::css(8.))
-                    .build(window, cx)
-            })
-        })
-        .cursor_pointer()
-        .child(img(asset).size_full().object_fit(ObjectFit::Contain))
-        .child(
-            img(hover_asset)
-                .absolute()
-                .inset_0()
-                .size_full()
-                .object_fit(ObjectFit::Contain)
-                .opacity(0.)
-                .group_hover(id, |image| image.opacity(1.)),
-        )
-        .focus_visible(|link| link.bg(cx.theme().secondary_hover))
+    // Current settings 720 uses these same inline shape paths and 200ms CSS
+    // fill/stroke transitions. Reuse the audited path renderer rather than
+    // abruptly swapping two rasterized SVG states on the whole button bounds.
+    let name = asset
+        .strip_prefix("synapse/settings-social-")
+        .and_then(|name| name.strip_suffix(".svg"))
+        .expect("current settings social asset");
+    crate::settings_window::presentation::SocialLink::new(name, label, url).id(id)
 }
 fn settings_column_margin(window: &Window) -> Rems {
     // Current 720 CSS: the last .body-widgets div.widget-col media rule wins
@@ -1212,7 +975,6 @@ impl Render for SettingsPage {
                         [
                             (Page::Synapse, "settings-tab-synapse", "SYNAPSE"),
                             (Page::General, "settings-tab-general", "GENERAL"),
-                            (Page::Connection, "settings-tab-connection", "服务连接"),
                         ]
                         .map(|(page, id, label)| {
                             surface::navigation_button(id, i18n::t(label), self.page == page, cx)
@@ -1240,7 +1002,6 @@ impl Render for SettingsPage {
                             .child(match self.page {
                                 Page::Synapse => self.synapse(window, cx),
                                 Page::General => self.general(window, cx),
-                                Page::Connection => self.connection(cx),
                             }),
                     ),
             )

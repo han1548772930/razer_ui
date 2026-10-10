@@ -1,0 +1,96 @@
+{
+  "method": "Current source text + Acorn JSX literal extraction; vendor JavaScript was not executed.",
+  "assets": [
+    {
+      "png_output": "assets/synapse/keyboard-indicator-connection-body.png",
+      "png_sha256": "0b3bfdbf13136c2d8cd49e87d5edc4259ecb50b1baee9c940f6ec3ea016d6895",
+      "name": "k",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "output": "assets/synapse/keyboard-indicator-connection.svg",
+      "sha256": "822e8c59615322c0f73b06379c4ebc67dd4d73ff94da3d0a145cc5b6eb45e47a",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_byte_offset": 104388
+    },
+    {
+      "png_output": "assets/synapse/keyboard-indicator-battery-body.png",
+      "png_sha256": "0b3bfdbf13136c2d8cd49e87d5edc4259ecb50b1baee9c940f6ec3ea016d6895",
+      "name": "z",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "output": "assets/synapse/keyboard-indicator-battery.svg",
+      "sha256": "6135a2b05ce162df5d57fda2f7bd43d77cc85279e6569372abf3e97ca728235c",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_byte_offset": 107772
+    },
+    {
+      "png_output": "assets/synapse/keyboard-indicator-warning-body.png",
+      "png_sha256": "0b3bfdbf13136c2d8cd49e87d5edc4259ecb50b1baee9c940f6ec3ea016d6895",
+      "name": "Z",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "output": "assets/synapse/keyboard-indicator-warning.svg",
+      "sha256": "8461ba7809920eeb1559aa316538f5c94aaac6a2c0921c5236396bf78eff103a",
+      "source_sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "source_byte_offset": 112081
+    }
+  ],
+  "semantics": [
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "byte_offset": 115958,
+      "marker": "class F extends",
+      "source": "class F extends i.Component{constructor(C){super(C),this.toggleConnectionStatus=()=>{this.props.setIndicatorLedStatus(c.Phh.Connection_Status)},this.toggleBatteryStatus=()=>{this.props.setIndicatorLedStatus(c.Phh.Battery_Status)},this.toggleBatteryWarning=()=>{this.props.setIndicatorLedStatus(c.Phh.Battery_Warning)}}render(){var C;const e=this.props.customIndicatorSVGImages?(C=>{switch(C){case 1:default:return(0,x.jsx)(H,{});case 2:return(0,x.jsx)(O,{});case 3:return(0,x.jsx)(S,{})}})(this.props.indicatorLedStatus):this.props.indicatorSvg?(C=>{switch(C){case 1:default:return(0,x.jsx)(P,{});case 2:return(0,x.jsx)(I,{});case 3:return(0,x.jsx)(T,{})}})(this.props.indicatorLedStatus):(C=>{switch(C){case 1:default:return(0,x.jsx)(k,{});case 2:return(0,x.jsx)(z,{});case 3:return(0,x.jsx)(Z,{})}})(this.props.indicatorLedStatus),t=(0,Y.getTextItem)(f.d8J,{_lang:this.props.lang}),i=!1===this.props.uppercase?\"\":\"uppercase\";return(0,x.jsx)(r.A,{title:this.props.customTitle?this.props.customTitle:f.bDV,extraClass:this.props.extraClass,tips:null!==(C=this.props.tips)&&void 0!==C?C:this.props.tips,children:(0,x.jsxs)(\"div\",{className:\"indicator-led-container\",children:[(0,x.jsx)(\"div\",{className:\"indicator-description\",children:(0,x.jsx)(o.A,{text:f.ags,style:{fontSize:14}})}),(0,x.jsx)(\"div\",{className:\"indicator-status\",children:(0,x.jsxs)(\"div\",(0,D.A)((0,D.A)({className:\"mt5 mb5 flex\"},!1===this.props.isDongle&&{\"indicator-tooltip\":t}),{},{children:[(0,x.jsxs)(\"div\",{className:\"\".concat(!1===this.props.isDongle?\"disabled\":\"\",\" indicator-options\"),children:[(0,x.jsxs)(\"div\",{className:\"connectionstatus\",children:[(0,x.jsx)(V.A,{name:f.orY,id:\"connectionstatus\",active:this.props.indicatorLedStatus===c.Phh.Connection_Status,onCheck:this.toggleConnectionStatus,extraClass:i}),(0,x.jsx)(\"br\",{}),(0,x.jsx)(\"div\",{className:\"msg\",children:(0,x.jsx)(o.A,{text:this.props.customConnectionStatus?this.props.customConnectionStatus:f.q2H})})]}),(0,x.jsxs)(\"div\",{className:\"batterystatus\",children:[(0,x.jsx)(V.A,{name:f.DJE,id:\"batterystatus\",active:this.props.indicatorLedStatus===c.Phh.Battery_Status,onCheck:this.toggleBatteryStatus,extraClass:i}),(0,x.jsx)(\"br\",{}),(0,x.jsx)(\"div\",{className:\"msg\",children:(0,x.jsx)(o.A,{text:this.props.customDesBatteryStatus?this.props.customDesBatteryStatus:f.JhZ})})]}),(0,x.jsxs)(\"div\",{className:\"batterywarning\",children:[(0,x.jsx)(V.A,{name:f.cbq,id:\"batterywarning\",active:this.props.indicatorLedStatus===c.Phh.Battery_Warning,onCheck:this.toggleBatteryWarning,extraClass:i}),(0,x.jsx)(\"br\",{}),(0,x.jsx)(\"div\",{className:\"msg\",children:(0,x.jsx)(o.A,{text:this.props.customDesBatteryWarning?this.props.customDesBatteryWarning:f.q0f})})]})]}),(0,x.jsx)(\"div\",{className:\"indicator-image\",children:e})]}))})]})})}}const K=(0,a.connect)(C=>({indicatorLedStatus:C.indicatorLedReducer.indicatorLedStatus,lang:C.languageReducer.lang}),C=>(0,N.zH)((0,D.A)({},B),C))(F);class W extends i.Component{render(){return(0,x.jsxs)(s.A,{children:[(0,x.jsxs)(l.A,{direction:\"left\",children:[(0,x.jsx)(y,{}),(0,x.jsx)(w,{}),(0,x.jsx)(K,{customConnectionStatus"
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/Power.907a4c58.chunk.js",
+      "sha256": "0a3b16ba47364aded83c58d25c5369bdc18e2669beec5bb5c7c57fd883396cb9",
+      "byte_offset": 118879,
+      "marker": "class W extends",
+      "source": "class W extends i.Component{render(){return(0,x.jsxs)(s.A,{children:[(0,x.jsxs)(l.A,{direction:\"left\",children:[(0,x.jsx)(y,{}),(0,x.jsx)(w,{}),(0,x.jsx)(K,{customConnectionStatus:f.q2H,customDesBatteryStatus:f.pmT,customDesBatteryWarning:f.q0f,isDongle:this.props.isDongle})]}),(0,x.jsxs)(l.A,{direction:\"right\",children:[(0,x.jsx)(u,{}),(0,x.jsx)(b,{})]})]})}}const X=W},48368:(C,e,t)=>{t.d(e,{Be:()=>a,KL:()=>_,Lq:()=>f,Vg:()=>d,Y7:()=>h,Yj:()=>o,rE:()=>r,tG:()=>n,z6:()=>c});var i=t(33994),s=t(31848),l=t(76719);function a(C){let e=C.key,t=C.isDefault,a=C.outputType,c=C.outputOptions;(0,s.PV)({category:l.XJ.KEYBOARD_CATEGORY,eventCategory:l.qR.KEYBOARD_DEVICE,action:i.C.KEYBOARD_CHANGE_KEY_MAPPING,data:{key:e,isDefault:t,outputType:a,outputOp"
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/7668.a3c13eca.chunk.js",
+      "sha256": "e7e37ace69accd6ca9022c71c19d1274cf26371a7737ea649a02ef7f6842e863",
+      "byte_offset": 3322,
+      "marker": "38671:",
+      "source": "38671:(e,t,a)=>{a.r(t),a.d(t,{setIndicatorLedStatus:()=>n});var s=a(13254);const n=e=>async t=>{t({type:s.wOT,payload:e})}},38740:(e,t,a)=>{a.d(t,{A:()=>s});const s=new class{constructor(){t"
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/main.e51ce83a.js",
+      "sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
+      "byte_offset": 800449,
+      "marker": "const xt={indicatorLedStatus:1",
+      "source": "const xt={indicatorLedStatus:1,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]},jt=function(e,t){if(\"undefined\"===typeof e)return xt;switch(t.type){case N.wOT:{var n;let o=(0,T.A)((0,T.A)({},e),{},{indicatorLedStatus:t.payload});const i=new f(\"ON_SET_INDICATOR_LED\",void 0,{indicatorLedStatus:t.payload});null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_INDICATOR_LED\",timerTick:void 0,payload:{indicatorLedStatus:t.payload}});const a={timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload};return o=g.Rs(o,a),o}case N.tI2:return(0,T.A)((0,T.A)({},e),{},{indicatorLedStatus:t.payload});case N._xq:return g.Rs(e,t.payload);case N.zgW:return g.Cr(e,t);case N.uiD:return g.yg(e,t);case N.cso:return g.G6(e,t);case N.UrK:return g.zE(e,t);case N.GFF:return g.Uy(e,t);case N.uOC:return g.c4(e,t);default:return e}};var zt=n(96373);const Xt={isResetting:!1,shouldResetOBM:!1};var Zt=n(15032);const Jt={isEnabled:!1,keyList:[{key1:\"KEY_A\",key2:\"KEY_D\",id:1,mode:\"LAST_INPUT\"}],pressedKeys:[]};const Qt=(0,o.HY)({commonReducer:yt,profileReducer:v,batteryReducer:z,deviceReducer:R,brightnessReducer:function(e,t){var n,o;if(\"undefined\"===typeof e)return se;const i=null!==(n=(null===d.DeviceInfo||void 0===d.DeviceInfo?void 0:d.DeviceInfo.subCategory)||(null===d.DeviceInfo||void 0===d.DeviceInfo?void 0:d.DeviceInfo.category))&&void 0!==n?n:null;switch(null===(o=Ee[i])||void 0===o||o.call(Ee,t,e),\"SYSTEM\"===("
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/6375.a5fed9ed.chunk.js",
+      "sha256": "a44c6bb18a16d2ff652f19a024f88f9f65a54b4da165e2deaff62a652044aa10",
+      "byte_offset": 1098243,
+      "marker": "COMMAND_GET_INDICATOR_LED_CONFIGURATION_HEADER[0]",
+      "source": "COMMAND_GET_INDICATOR_LED_CONFIGURATION_HEADER[0]),n=await t.sendCommand(o.COMMAND_GET_INDICATOR_LED_CONFIGURATION_HEADER,o.COMMAND_GET_INDICATOR_LED_CONFIGURATION_DESC,e);return w(n),n},F=async(t,e)=>{const n=new Uint8Array(o.COMMAND_SET_INDICATOR_LED_CONFIGURATION_HEADER[0]);n[0]=e;const a=await t.sendCommand(o.COMMAND_SET_INDICATOR_LED_CONFIGURATION_HEADER,o.COMMAND_SET_INDICATOR_LED_CONFIGURATION_DESC,n);return w(a),a},G=t=>{t.status===a.STATUS_SUCCESS&&t.packetSizeReturned>0&&(t.jsonData={profileId:t.data[0],status:t.data[1],mode:t.data[2],modeEnum:i.getEnumName(r.am,t.data[2])})},H=async(t,e)=>{console.log(\"getSmartIlluminationControl profileId: \".concat(e));const n=new Uint8Array(o.COMMAND_GET_SMART_ILLUMINATION_CONTROL_HEADER[0]);n[0]=e;const a=await t.sendCommand(o.COMMAND_GET_SMART_ILLUMINATION_CONTROL_HEADER,o.COMMAND_GET_SMART_ILLUMINATION_CONTROL_DESC,n);return G(a),a},K=asy"
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/css/Power.c232738f.chunk.css",
+      "sha256": "9d76b47181972002f288c2b11959c3743dae73c005cfa25696c37df7806cb556",
+      "byte_offset": 1952,
+      "marker": ".indicator-led-container{",
+      "source": ".indicator-led-container{display:flex;flex-direction:column;gap:20px;height:227px;width:520px}.indicator-led-container .indicator-description{font-size:14px}.indicator-led-container .indicator-status{display:flex;flex-direction:column;gap:10px}.indicator-led-container .indicator-status .indicator-options{display:flex;flex-direction:column;gap:10px;width:310px}.indicator-led-container .indicator-status .indicator-options .batterystatus,.indicator-led-container .indicator-status .indicator-options .batterywarning,.indicator-led-container .indicator-status .indicator-options .connectionstatus{gap:2px;width:310px}.indicator-led-container .indicator-status .indicator-options .batterystatus .radio-item,.indicator-led-container .indicator-status .indicator-options .batterywarning .radio-item,.indicator-led-container .indicator-status .indicator-options .connectionstatus .radio-item{margin:0}.indicator-led-container .indicator-status .indicator-options .batterywarning,.indicator-led-container .indicator-status .indicator-options .connectionstatus{height:50px}.indicator-led-container .indicator-status .indicator-options .batterystatus{height:64px}.indicator-led-container .indicator-status .indicator-options .msg{color:#999;font-size:12px;margin-left:30px;opacity:.7;width:280px}.indicator-led-container .indicator-status .indicator-image{height:192px;width:200px}\n/*# sourceMappingURL=Power.c232738f.chunk.css.7509dd4fe9ef0a9372bd7cde1800ee80.map*/"
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/css/5171.1330bdc6.chunk.css",
+      "sha256": "8256acd0e3f365a647fa5bc705bf06f23615b27f12aaa37190d6111694ae8fb1",
+      "byte_offset": 32831,
+      "marker": "[indicator-tooltip]:before",
+      "source": "[indicator-tooltip]:before{background-color:#000;border:1px solid #5d5d5d;color:#ccc;content:attr(indicator-tooltip);font-size:14px;left:100px;line-height:16px;opacity:0;padding:8px 10px;position:absolute;text-align:left;top:100px;transition:visibility 0s,opacity .3s linear;visibility:hidden;width:290px;will-change:visibility,opacity;z-index:106}[indicator-tooltip]:hover:before{opacity:1;visibility:visible}.tooltip-razer{height:100%;left:0;position:absolute;top:0;width:100%;z-index:1060}.tooltip"
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/css/5171.1330bdc6.chunk.css",
+      "sha256": "8256acd0e3f365a647fa5bc705bf06f23615b27f12aaa37190d6111694ae8fb1",
+      "byte_offset": 91845,
+      "marker": "[type=radio]:checked+label",
+      "source": "[type=radio]:checked+label,[type=radio]:not(:checked)+label{color:#ccc;display:inline-block;font-size:14px;line-height:20px;padding-left:30px;position:relative}[type=radio]:checked+label:before,[type=radio]:not(:checked)+label:before{background:#0000;border:1px solid #737373;border-radius:100%;box-sizing:border-box;content:\"\";height:20px;left:0;position:absolute;top:0;width:20px}[type=radio]:checked+label:after,[type=radio]:not(:checked)+label:after{background:#44d62c;border-radius:100%;content:\"\";height:10px;left:5px;position:absolute;top:5px;transition:all .2s ease;width:10px}[type=radio]:not(:checked)+label:after{opacity:0;transform:scale(0)}[type=radio]:checked+label:after{opacity:1;transform:scale(1)}.radio-item{display:inline-block;margin:0 20px}.display_content{display:contents}.vertical-list .radio-item{display:block;margin:0 0 10px}.header-offline>.box{align-items:center;cursor:default;display:flex;height:48px;justify-content:center;transition:background-color .1s ease-in-out;"
+    }
+  ]
+}

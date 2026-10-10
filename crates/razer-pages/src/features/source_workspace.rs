@@ -93,6 +93,65 @@ impl EventEmitter<super::ReceiverDeviceRequested> for SourceProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub fn restore_mouse_dynamic_tutorial_preference(
+        &mut self,
+        visible: Option<bool>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.restore_dynamic_tutorial_preference(visible, cx)
+            });
+        }
+    }
+    pub fn finish_keyboard_indicator_led(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_indicator_led(generation, result, cx)
+            });
+        }
+    }
+
+    pub fn observe_keyboard_indicator_led(
+        &mut self,
+        observation: super::keyboard_products::KeyboardIndicatorLedObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.observe_indicator_led(observation, cx));
+        }
+    }
+    pub fn complete_mouse_dynamic(
+        &mut self,
+        request: &super::mouse_products::MouseDynamicRequested,
+        completion: super::mouse_products::MouseDynamicCompletion,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_mouse_dynamic(request, completion, window, cx);
+            });
+        }
+    }
+    pub fn complete_leviathan(
+        &mut self,
+        generation: u64,
+        result: Result<super::audio_products::LeviathanObservation, String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_leviathan(generation, result, window, cx);
+            });
+        }
+    }
     pub fn audio_volume_request_matches(
         &self,
         request: super::audio_products::AudioVolumeRequest,
@@ -174,6 +233,16 @@ impl SourceProductWorkspace {
     pub fn keyboard_brightness_read_matches(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_read_matches(generation))
     }
+    pub fn finish_keyboard_actuation(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_actuation(generation, result, cx));
+        }
+    }
     pub fn keyboard_brightness_read_current(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_read_current(generation))
     }
@@ -223,7 +292,11 @@ impl SourceProductWorkspace {
     }
     pub fn cancel_keyboard_brightness_connection(&mut self, cx: &mut Context<Self>) {
         if let FamilyBody::Keyboard(body) = &self.body {
-            body.update(cx, |body, _| body.cancel_brightness_connection());
+            body.update(cx, |body, cx| {
+                body.cancel_brightness_connection();
+                body.cancel_actuation_connection();
+                body.cancel_indicator_led_connection(cx);
+            });
         }
     }
     pub fn observe_read_values(
@@ -233,6 +306,9 @@ impl SourceProductWorkspace {
     ) {
         self.device.observe_read_values(values.clone());
         self.saved.observe_read_values(values);
+        let device = self.device.clone();
+        self.help
+            .update(cx, |help, cx| help.set_device(&device, cx));
         cx.notify();
     }
     pub fn observe_connection(
@@ -242,18 +318,25 @@ impl SourceProductWorkspace {
     ) {
         if self.device.dashboard.connection_observation != observation {
             self.cancel_keyboard_brightness_connection(cx);
+            if let FamilyBody::Mouse(body) = &self.body {
+                body.update(cx, |body, cx| body.invalidate_dynamic_connection(cx));
+            }
             if let FamilyBody::Controls(body) = &self.body {
                 body.update(cx, |body, _| body.cancel_brightness_connection());
             }
             if let FamilyBody::Audio(body) = &self.body {
-                body.update(cx, |body, _| {
+                body.update(cx, |body, cx| {
                     body.invalidate_volume();
                     body.invalidate_mixer();
+                    body.cancel_leviathan(cx);
                 });
             }
         }
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
+        let device = self.device.clone();
+        self.help
+            .update(cx, |help, cx| help.set_device(&device, cx));
         self.sync_keyboard_read_activity(cx);
         self.sync_audio_volume_activity(cx);
         self.sync_audio_mixer_activity(cx);
@@ -309,7 +392,20 @@ impl SourceProductWorkspace {
         self.sync_keyboard_read_activity(cx);
         self.sync_audio_volume_activity(cx);
         self.sync_audio_mixer_activity(cx);
+        if active
+            && let Some(page) = self.current_page()
+            && page.role() == ProductPageRole::Help
+        {
+            self.help.update(cx, |help, cx| {
+                help.set_device(&self.device, cx);
+                help.set_page(page.offset(), cx);
+            });
+        }
         if !active {
+            self.help.update(cx, |help, cx| help.leave_page(cx));
+            if let FamilyBody::Audio(body) = &self.body {
+                body.update(cx, |body, cx| body.cancel_leviathan(cx));
+            }
             if let FamilyBody::Gamepad(body) = &self.body {
                 body.update(cx, |body, cx| {
                     body.cancel_range_edits(cx);
@@ -887,6 +983,21 @@ impl SourceProductWorkspace {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, request: &super::mouse_products::MouseDynamicRequested, cx| {
+                    cx.emit(WorkspaceEvent::MouseDynamicRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 event: &super::mouse_products::MouseDynamicTutorialChanged,
+                 cx| {
+                    cx.emit(WorkspaceEvent::MouseDynamicTutorialChanged(event.visible()));
+                },
+            ));
             FamilyBody::Mouse(body)
         } else if super::keyboard_products::source_product(device.product_id).is_some() {
             let factory_default_profile = device
@@ -911,6 +1022,26 @@ impl SourceProductWorkspace {
                  _: &super::keyboard_products::KeyboardProductChanged,
                  cx| {
                     this.capture(body.read(cx).snapshot(), cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 event: &super::keyboard_products::KeyboardActuationRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::KeyboardActuationRequested(event.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 request: &super::keyboard_products::KeyboardIndicatorLedRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::KeyboardIndicatorLedRequested(
+                        request.clone(),
+                    ));
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -973,6 +1104,12 @@ impl SourceProductWorkspace {
                 &body,
                 |_: &mut Self, _, request: &super::audio_products::AudioVolumeRequest, cx| {
                     cx.emit(WorkspaceEvent::AudioVolumeRequested { request: *request })
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, request: &super::audio_products::LeviathanRequest, cx| {
+                    cx.emit(WorkspaceEvent::LeviathanRequested(request.clone()));
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -1434,6 +1571,9 @@ impl SourceProductWorkspace {
                 cx.emit(WorkspaceEvent::Changed);
             }
         }
+        if let Some(error) = &error {
+            window.push_notification(error.clone(), cx);
+        }
         self.help
             .update(cx, |help, cx| help.finish_reset(request, error, cx));
         cx.notify();
@@ -1850,6 +1990,7 @@ impl SourceProductWorkspace {
             });
             return;
         }
+        self.help.update(cx, |help, cx| help.leave_page(cx));
         if let Some(controls) = &self.supplement {
             controls.update(cx, |v, cx| v.set_page(page.kind().key(), window, cx));
         }
@@ -1924,12 +2065,15 @@ impl Render for SourceProductWorkspace {
             .into_iter()
             .flat_map(|n| n.pages())
             .any(|page| page.role() == ProductPageRole::Help);
+        let has_dynamic_tutorial = self.active
+            && matches!(&self.body, FamilyBody::Mouse(mouse) if mouse.read(cx).has_dynamic_tutorial());
         let available = f32::from(window.viewport_size().width) * 16.
             / f32::from(window.rem_size())
             - self.profile_bar_width()
             - surface::device_right_width(&self.device, has_help, window)
             - surface::NAV_MORE_WIDTH
             - surface::NAV_MORE_MARGIN
+            - if has_dynamic_tutorial { 34. } else { 0. }
             - 10.;
         let (visible, hidden) = surface::split_navs(&pages, |page| page.label(), available, window);
         let overflow = if hidden.is_empty() {
@@ -1954,6 +2098,19 @@ impl Render for SourceProductWorkspace {
         let is_help = self
             .current_page()
             .is_some_and(|page| page.role() == ProductPageRole::Help);
+        let (dynamic_tutorial_icon, dynamic_tutorial_popup) = match &self.body {
+            FamilyBody::Mouse(mouse) if self.active => {
+                let icon = mouse
+                    .read(cx)
+                    .has_dynamic_tutorial()
+                    .then(|| mouse.update(cx, |mouse, cx| mouse.dynamic_tutorial_icon(cx)));
+                let popup = mouse.read(cx).dynamic_tutorial_visible().then(|| {
+                    mouse.update(cx, |mouse, cx| mouse.dynamic_tutorial_popup(window, cx))
+                });
+                (icon, popup)
+            }
+            _ => (None, None),
+        };
         let body = if is_help {
             self.help.clone().into_any_element()
         } else if let Some(view) = self.dock_pairing.as_ref().filter(|_| {
@@ -2027,6 +2184,7 @@ impl Render for SourceProductWorkspace {
                         surface::nav_right()
                             .id("source-navigation-right")
                             .min_w_0()
+                            .children(dynamic_tutorial_icon)
                             .children(razer_widgets::battery::element(&self.device, cx))
                             .children(
                                 navigation
@@ -2073,5 +2231,6 @@ impl Render for SourceProductWorkspace {
             )
             .children(self.profile_transfer.clone())
             .children(self.profile_linked_games.clone())
+            .children(dynamic_tutorial_popup)
     }
 }

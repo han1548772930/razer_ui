@@ -1,11 +1,13 @@
 //! Original `/release-patch-note/`: Ie renders firstPost as hr/h2 sections.
-//! The installed version and its host-provided content are not read locally.
+//! Content is read from the owning host's process-local MemoryStorage.
 use gpui_kit::base::{Button as BaseButton, Dialog as BaseDialog, Link, TextView, TextViewStyle};
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
+use razer_storage::host::{HostStorage, HostStorageCall, HostStorageView, HostStoreKind};
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
+use serde_json::{Value, json};
 
 #[cfg(test)]
 #[path = "release_notes_tests.rs"]
@@ -22,23 +24,109 @@ pub enum NotesApp {
 }
 
 pub fn open_for(app: NotesApp, window: &mut Window, cx: &mut App) -> Entity<ReleaseNotes> {
+    create(app, None, window, cx)
+}
+
+/// Use the same host store as the content producer, never a new worker or a
+/// persisted draft. Without firstPost the original route renders nothing.
+pub fn open_from_storage(
+    app: NotesApp,
+    storage: &mut HostStorage,
+    window: &mut Window,
+    cx: &mut App,
+) -> Entity<ReleaseNotes> {
+    let id = match app {
+        NotesApp::Synapse => 0xffff_0001,
+        NotesApp::Chroma => 0xffff_0002,
+    };
+    storage.register_view(HostStorageView {
+        id,
+        url: match app {
+            NotesApp::Synapse => "synapse-release-patch-notes",
+            NotesApp::Chroma => "chroma-app-release-patch-notes",
+        }
+        .into(),
+        remote: false,
+        destroyed: false,
+        crashed: false,
+        disposed: false,
+        tracked_url: true,
+    });
+    let data = storage
+        .call(HostStorageCall {
+            store: HostStoreKind::Memory,
+            sender_id: id,
+            action: "getMemoryStorageItem".into(),
+            payload: json!({"key": "releaseNotePatchContent"}),
+            target_url_array: Vec::new(),
+        })
+        .ok()
+        .and_then(|reply| parse_storage(app, &reply.value).ok().flatten());
+    storage.close_view(id);
+    create(app, data, window, cx)
+}
+
+struct NotesContent {
+    title: SharedString,
+    sections: Vec<NotesSection>,
+}
+
+fn parse_storage(app: NotesApp, value: &Value) -> Result<Option<NotesContent>, String> {
+    let Some(raw) = value.as_str().filter(|raw| !raw.is_empty()) else {
+        return Ok(None);
+    };
+    let rows: Value = serde_json::from_str(raw).map_err(|error| error.to_string())?;
+    if rows.is_null() {
+        return Ok(None);
+    }
+    let encoded = rows
+        .get(0)
+        .and_then(|row| row.get("value"))
+        .and_then(Value::as_str)
+        .ok_or("releaseNotePatchContent has no string value")?;
+    let all: Value = serde_json::from_str(encoded).map_err(|error| error.to_string())?;
+    let selected = &all[match app {
+        NotesApp::Synapse => "synapse",
+        NotesApp::Chroma => "chroma",
+    }];
+    let Some(first_post) = selected["firstPost"]
+        .as_str()
+        .filter(|text| !text.is_empty())
+    else {
+        return Ok(None);
+    };
+    Ok(Some(NotesContent {
+        title: selected["title"].as_str().unwrap_or("").to_owned().into(),
+        sections: sections(first_post),
+    }))
+}
+
+fn create(
+    app: NotesApp,
+    content: Option<NotesContent>,
+    window: &mut Window,
+    cx: &mut App,
+) -> Entity<ReleaseNotes> {
+    let visible = content.is_some();
     let view = cx.new(|cx| ReleaseNotes {
         app,
-        open: true,
-        preview: None,
+        open: visible,
+        content,
         focus: cx.focus_handle(),
         return_focus: window.focused(cx),
         scroll: ScrollHandle::new(),
     });
-    let focus = view.read(cx).focus.clone();
-    focus.focus(window, cx);
+    if visible {
+        let focus = view.read(cx).focus.clone();
+        focus.focus(window, cx);
+    }
     view
 }
 
 pub struct ReleaseNotes {
     app: NotesApp,
     open: bool,
-    preview: Option<Vec<NotesSection>>,
+    content: Option<NotesContent>,
     focus: FocusHandle,
     return_focus: Option<FocusHandle>,
     scroll: ScrollHandle,
@@ -47,6 +135,15 @@ pub struct ReleaseNotes {
 struct NotesSection {
     offset: usize,
     subsections: Vec<(usize, SharedString)>,
+}
+
+fn js_trim(text: &str) -> &str {
+    text.trim_matches(|character| {
+        matches!(character,
+            '\u{0009}'..='\u{000d}' | ' ' | '\u{00a0}' | '\u{1680}' |
+            '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' |
+            '\u{202f}' | '\u{205f}' | '\u{3000}' | '\u{feff}')
+    })
 }
 
 /// Keep top-level blocks intact so a list can use its source line height
@@ -112,7 +209,7 @@ fn subsection(offset: usize, html: &str, style: &TextViewStyle) -> AnyElement {
                 let inner_start = block.find('>').unwrap() + 1;
                 let inner_end = block.rfind("</").unwrap();
                 let items = html_blocks(&block[inner_start..inner_end]);
-                // The available local example uses flat lists. Preserve arbitrary
+                // Preserve arbitrary
                 // markup in the rich renderer if a future readback contains nesting.
                 if items.iter().all(|(_, tag, html)| {
                     *tag == "li" && !html.contains("<ul") && !html.contains("<ol")
@@ -162,72 +259,50 @@ fn subsection(offset: usize, html: &str, style: &TextViewStyle) -> AnyElement {
         .into_any_element()
 }
 
-/// Match the source's case-insensitive `<hr\s*/?>`, then keep complete h2
-/// sections. IDs use source byte offsets rather than translated heading text.
+/// Ie's hr splitting, empty paragraph removal and h2 matches. Nonempty
+/// sections without h2 still retain their source separator.
 fn sections(first_post: &str) -> Vec<NotesSection> {
-    let lower = first_post.to_ascii_lowercase();
-    let mut ranges = Vec::new();
-    let mut section_start = 0;
-    let mut search = 0;
-    while let Some(relative) = lower[search..].find("<hr") {
-        let start = search + relative;
-        let Some(end) = lower[start..].find('>').map(|end| start + end + 1) else {
-            break;
-        };
-        let tail = lower[start + 3..end - 1].trim();
-        if tail.is_empty() || tail == "/" {
-            ranges.push(section_start..start);
-            section_start = end;
-        }
-        search = end;
-    }
-    ranges.push(section_start..first_post.len());
-    ranges
-        .into_iter()
-        .filter_map(|range| {
-            let mut starts = Vec::new();
-            let mut search = range.start;
-            while let Some(relative) = lower[search..range.end].find("<h2") {
-                let start = search + relative;
-                let after = start + 3;
-                let boundary = lower.as_bytes().get(after).copied();
-                search = after;
-                if !boundary.is_some_and(|byte| byte == b'>' || byte.is_ascii_whitespace()) {
-                    continue;
-                }
-                if lower[after..range.end].contains("</h2>") {
-                    starts.push(start);
-                }
+    use regex::Regex;
+    use std::sync::OnceLock;
+    static PATTERNS: OnceLock<(Regex, Regex, Regex, Regex)> = OnceLock::new();
+    let (rule, empty, heading, opening) = PATTERNS.get_or_init(|| {
+        // ECMAScript \s differs from Rust's Unicode whitespace; its dot
+        // also excludes CR and both Unicode line separators.
+        let whitespace = r"[\t\n\x0B\x0C\r \u{00A0}\u{1680}\u{2000}-\u{200A}\u{2028}\u{2029}\u{202F}\u{205F}\u{3000}\u{FEFF}]";
+        (
+            Regex::new(&format!(r"(?i)<hr{whitespace}*/?>")).unwrap(),
+            Regex::new(&format!(r"(?i)<p>(&nbsp;|{whitespace})*</p>")).unwrap(),
+            Regex::new(r"(?i)<h2[^>]*>[^\r\n\u{2028}\u{2029}]*?</h2>").unwrap(),
+            Regex::new(r"(?i)<h2[^>]*>").unwrap(),
+        )
+    });
+    let mut result = Vec::new();
+    let mut offset = 0;
+    for segment in rule.split(first_post) {
+        let cleaned = empty.replace_all(segment, "");
+        let html = js_trim(&cleaned);
+        if !html.is_empty() {
+            let mut subsections = Vec::new();
+            let mut search = 0;
+            while let Some(header) = heading.find_at(html, search) {
+                let end = opening
+                    .find_at(html, header.end())
+                    .map_or(html.len(), |next| next.start());
+                subsections.push((
+                    offset + header.start(),
+                    js_trim(&html[header.start()..end]).to_owned().into(),
+                ));
+                search = end;
             }
-            if starts.is_empty() {
-                return None;
-            }
-            let subsections = starts
-                .iter()
-                .enumerate()
-                .map(|(index, start)| {
-                    let end = starts.get(index + 1).copied().unwrap_or(range.end);
-                    (
-                        *start,
-                        SharedString::from(first_post[*start..end].trim().to_owned()),
-                    )
-                })
-                .collect();
-            Some(NotesSection {
-                offset: range.start,
+            result.push(NotesSection {
+                offset,
                 subsections,
-            })
-        })
-        .collect()
-}
-
-fn example_first_post() -> String {
-    (1..=4).map(|section| {
-        let items = (1..=5).map(|item| format!(
-            "<li>示例条目 {section}.{item}：此内容用于查看长文本、列表与滚动效果，不代表真实的软件更新。</li>"
-        )).collect::<String>();
-        format!("<h2>示例章节 {section}</h2><p>以下均为界面预览内容，未读取已安装版本的发行记录。</p><ul>{items}</ul>")
-    }).collect::<Vec<_>>().join("<hr />")
+            });
+        }
+        // Offsets only provide retained identity within this content snapshot.
+        offset += segment.len() + 1;
+    }
+    result
 }
 
 fn official_url(app: NotesApp) -> &'static str {
@@ -249,20 +324,10 @@ impl ReleaseNotes {
     }
     fn close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.open = false;
-        self.preview = None;
+        self.content = None;
         if let Some(focus) = self.return_focus.take() {
             focus.focus(window, cx);
         }
-        cx.notify();
-    }
-
-    fn toggle_preview(&mut self, _: &mut Window, cx: &mut Context<Self>) {
-        self.preview = if self.preview.is_some() {
-            None
-        } else {
-            Some(sections(&example_first_post()))
-        };
-        self.scroll.set_offset(point(px(0.), px(0.)));
         cx.notify();
     }
 
@@ -276,38 +341,22 @@ impl ReleaseNotes {
             .py(surface::css(if compact { 0. } else { 20. }))
             .pl(surface::css(if compact { 12. } else { 30. }))
             .pr(surface::css(if compact { 12. } else { 16. }))
-            .child(div()
-                .h(surface::css(24.))
-                .flex_shrink_0()
-                .mb(surface::css(20.))
-                .font_family("RazerF5")
-                .text_size(surface::css(20.))
-                .line_height(surface::css(20.))
-                .text_color(cx.theme().primary)
-                .child(if self.preview.is_some() { "界面预览 · 示例发布说明" } else { "发布说明尚未读取" }))
-            .child(v_flex()
-                .flex_shrink_0()
-                .gap(surface::css(10.))
-                .mb(surface::css(20.))
-                .child(if self.preview.is_some() {
-                    "示例内容不代表已安装版本或真实发行记录。"
-                } else {
-                    match self.app {
-                        NotesApp::Synapse => "尚未读取已安装的 Synapse 版本和对应发布说明。可通过下方官方链接查看发布记录。",
-                        NotesApp::Chroma => "尚未读取已安装的 Chroma 版本和对应发布说明。可通过下方官方链接查看发布记录。",
-                    }
-                })
-                .child(BaseButton::new("release-notes-preview")
-                    .self_start()
-                    .px(surface::css(10.))
-                    .h(surface::css(27.))
-                    .border_1()
-                    .border_color(cx.theme().border)
-                    .rounded(surface::css(3.))
-                    .text_size(surface::css(12.))
-                    .hover(|button| button.border_color(cx.theme().primary))
-                    .child(if self.preview.is_some() { "结束预览" } else { "预览章节布局" })
-                    .on_click(cx.listener(|this, _, window, cx| this.toggle_preview(window, cx)))));
+            .child(
+                div()
+                    .h(surface::css(24.))
+                    .flex_shrink_0()
+                    .mb(surface::css(20.))
+                    .font_family("RazerF5")
+                    .text_size(surface::css(20.))
+                    .line_height(surface::css(20.))
+                    .text_color(cx.theme().primary)
+                    .child(
+                        self.content
+                            .as_ref()
+                            .map(|content| content.title.to_uppercase())
+                            .unwrap_or_default(),
+                    ),
+            );
         let text_style = TextViewStyle::default()
             .with_foreground(cx.theme().foreground)
             .with_muted_foreground(cx.theme().muted_foreground)
@@ -325,7 +374,8 @@ impl ReleaseNotes {
                     .mt_0()
                     .mb(surface::css(5.))
             });
-        if let Some(sections) = &self.preview {
+        if let Some(content) = &self.content {
+            let sections = &content.sections;
             for section in sections {
                 body = body.child(
                     v_flex()
