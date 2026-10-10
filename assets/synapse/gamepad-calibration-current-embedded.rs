@@ -1,0 +1,18 @@
+&[
+    ("synapse/gamepad-2629-calibration-edition-0.png", include_bytes!("gamepad-2629-calibration-edition-0.png") as &[u8]),
+    ("synapse/gamepad-2629-calibration-edition-128.png", include_bytes!("gamepad-2629-calibration-edition-128.png") as &[u8]),
+    ("synapse/gamepad-2636-calibration-edition-0.png", include_bytes!("gamepad-2636-calibration-edition-0.png") as &[u8]),
+    ("synapse/gamepad-2636-calibration-edition-128.png", include_bytes!("gamepad-2636-calibration-edition-128.png") as &[u8]),
+    ("synapse/gamepad-2636-calibration-edition-129.png", include_bytes!("gamepad-2636-calibration-edition-129.png") as &[u8]),
+    ("synapse/gamepad-2647-calibration-edition-0.png", include_bytes!("gamepad-2647-calibration-edition-0.png") as &[u8]),
+    ("synapse/gamepad-2647-calibration-edition-128.png", include_bytes!("gamepad-2647-calibration-edition-128.png") as &[u8]),
+    ("synapse/gamepad-2650-calibration-edition-0.png", include_bytes!("gamepad-2650-calibration-edition-0.png") as &[u8]),
+    ("synapse/gamepad-2676-calibration-source.svg", include_bytes!("gamepad-2676-calibration-source.svg") as &[u8]),
+    ("synapse/gamepad-2676-calibration-close.svg", include_bytes!("gamepad-2676-calibration-close.svg") as &[u8]),
+    ("synapse/gamepad-2684-calibration-source.svg", include_bytes!("gamepad-2684-calibration-source.svg") as &[u8]),
+    ("synapse/gamepad-2684-calibration-close.svg", include_bytes!("gamepad-2684-calibration-close.svg") as &[u8]),
+    ("synapse/gamepad-4133-calibration-edition-0.png", include_bytes!("gamepad-4133-calibration-edition-0.png") as &[u8]),
+    ("synapse/gamepad-4133-calibration-edition-128.png", include_bytes!("gamepad-4133-calibration-edition-128.png") as &[u8]),
+    ("synapse/gamepad-4133-calibration-edition-129.png", include_bytes!("gamepad-4133-calibration-edition-129.png") as &[u8]),
+    ("synapse/gamepad-4144-calibration-source.svg", include_bytes!("gamepad-4144-calibration-source.svg") as &[u8]),
+]

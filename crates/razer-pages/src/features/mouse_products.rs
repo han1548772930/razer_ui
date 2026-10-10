@@ -34,12 +34,18 @@ use super::mouse_polling::{
 };
 #[path = "mouse_calibration_190.rs"]
 mod calibration_190;
+#[path = "mouse_calibration_70.rs"]
+mod calibration_70;
 #[path = "mouse_customize_190.rs"]
 mod customize_190;
+#[path = "mouse_customize_70.rs"]
+mod customize_70;
 #[path = "mouse_dynamic.rs"]
 mod dynamic;
 #[path = "mouse_haptic.rs"]
 mod haptic;
+#[path = "mouse_lighting_70.rs"]
+mod lighting_70;
 #[path = "mouse_properties.rs"]
 mod properties;
 #[path = "mouse_rotation.rs"]
@@ -583,6 +589,11 @@ impl MouseProductWorkspace {
                 json!((value - 1.).max(1.) as i64),
             );
         }
+        // Current PID 70 qI.changeValue sets isEnabled from the changed
+        // brightness: zero disables it, every nonzero value enables it.
+        if self.spec.product_id == 70 && path == "/brightness/value" {
+            set_pointer(&mut self.draft, "/brightness/isEnabled", json!(value != 0.));
+        }
         if path == "/smartTracking/landingDistance"
             && self.number("/smartTracking/liftOffDistance") <= value
         {
@@ -606,20 +617,6 @@ impl MouseProductWorkspace {
         // Current 70 cI / 226 Ms activate a visible row when its X/Y value changes;
         // editing an excluded row preserves the selected stage.
         if dpi_rows::source_spec(self.spec.product_id).is_some() {
-            // Current 190 uS mounts MA (sensitivity) and gA (properties)
-            // together in the left FO, not beneath polling in the right FO.
-            if self.spec.product_id == 190 {
-                return surface::page_columns()
-                    .child(surface::page_column(
-                        v_flex()
-                            .child(self.dpi_rows(cx))
-                            .child(self.mouse_properties(cx)),
-                    ))
-                    .child(surface::page_column(v_flex().children(
-                        self.source_polling_visible().then(|| self.polling(cx)),
-                    )))
-                    .into_any_element();
-            }
             if let Some(rest) = path.strip_prefix(&format!("{}/", self.spec.stages_path())) {
                 if let Some((slot, axis)) = rest.split_once('/') {
                     if axis == self.spec.dpi_axis(0) || axis == self.spec.dpi_axis(1) {
@@ -705,6 +702,19 @@ impl MouseProductWorkspace {
             "/switchOffLighting/idleMinutes" => {
                 self.boolean("/brightness/isEnabled")
                     && self.boolean("/switchOffLighting/isIdleEnabled")
+            }
+            "/calibration/liftOffRangeValue" if self.spec.product_id == 70 => {
+                let selected = self.draft.pointer("/calibration/selectedProfile/guid");
+                self.draft
+                    .pointer("/calibration/profiles")
+                    .and_then(Value::as_array)
+                    .is_some_and(|profiles| {
+                        profiles.len() > 1
+                            && profiles
+                                .iter()
+                                .find(|profile| profile.get("guid") == selected)
+                                .is_some_and(|profile| profile["type"] != "default")
+                    })
             }
             "/smartTracking/liftOffDistance" | "/smartTracking/landingDistance" => {
                 self.boolean("/smartTracking/isAsymmetric")
@@ -897,6 +907,16 @@ impl MouseProductWorkspace {
         }
         if self.spec.low_battery_slider {
             self.add_range("/lowBatteryEffects".into(), 5., 100., 5., window, cx);
+        }
+        if self.spec.product_id == 70 {
+            self.add_range(
+                "/calibration/liftOffRangeValue".into(),
+                1.,
+                10.,
+                1.,
+                window,
+                cx,
+            );
         }
         if self.spec.has_page("TAB_LIGHTING") && self.draft.pointer("/brightness/value").is_some() {
             self.add_range("/brightness/value".into(), 0., 100., 1., window, cx);
@@ -1105,6 +1125,20 @@ impl MouseProductWorkspace {
 
     fn performance(&self, cx: &Context<Self>) -> AnyElement {
         if dpi_rows::source_spec(self.spec.product_id).is_some() {
+            // Current 190 uS mounts MA (sensitivity) and gA (properties)
+            // together in the left FO, not beneath polling in the right FO.
+            if self.spec.product_id == 190 {
+                return surface::page_columns()
+                    .child(surface::page_column(
+                        v_flex()
+                            .child(self.dpi_rows(cx))
+                            .child(self.mouse_properties(cx)),
+                    ))
+                    .child(surface::page_column(v_flex().children(
+                        self.source_polling_visible().then(|| self.polling(cx)),
+                    )))
+                    .into_any_element();
+            }
             let mut right = v_flex().gap_5();
             if super::mouse_polling::source_spec(self.spec.product_id).is_none()
                 || self.source_polling_visible()
@@ -1323,14 +1357,21 @@ impl MouseProductWorkspace {
                             surface::help_control("mouse-brightness-help", t("BRIGHTNESS_TOOLTIP")),
                             cx,
                         )
-                        .child(surface::slider_tags("0", None, "100", None))
-                        .child(self.range(
-                            "/brightness/value",
-                            razer_i18n::t("BRIGHTNESS_HEADER").as_str(),
-                            "%",
-                            enabled,
-                            cx,
-                        )),
+                        .children(
+                            (self.spec.product_id != 70)
+                                .then(|| surface::slider_tags("0", None, "100", None)),
+                        )
+                        .child(if self.spec.product_id == 70 {
+                            self.lighting_slider_70("/brightness/value", "0", "100", enabled, cx)
+                        } else {
+                            self.range(
+                                "/brightness/value",
+                                razer_i18n::t("BRIGHTNESS_HEADER").as_str(),
+                                "%",
+                                enabled,
+                                cx,
+                            )
+                        }),
                     )
                     .child(self.switch_off_lighting(window, cx)),
             ))
@@ -1404,11 +1445,25 @@ impl MouseProductWorkspace {
                 )
                 .child({
                     let mut column = v_flex().ml(surface::css(30.)).w(surface::css(490.));
-                    if let Some(slider) = self.sliders.get("/switchOffLighting/idleMinutes") {
-                        column =
-                            column.child(Slider::new(slider).disabled(!(brightness_on && idle_on)));
+                    if self.spec.product_id == 70 {
+                        column
+                            .child(self.lighting_slider_70(
+                                "/switchOffLighting/idleMinutes",
+                                "1",
+                                "15",
+                                brightness_on && idle_on,
+                                cx,
+                            ))
+                            .into_any_element()
+                    } else {
+                        if let Some(slider) = self.sliders.get("/switchOffLighting/idleMinutes") {
+                            column = column
+                                .child(Slider::new(slider).disabled(!(brightness_on && idle_on)));
+                        }
+                        column
+                            .child(surface::slider_tags("1", None, "15", None))
+                            .into_any_element()
                     }
-                    column.child(surface::slider_tags("1", None, "15", None))
                 });
         }
         widget.into_any_element()
@@ -1417,6 +1472,9 @@ impl MouseProductWorkspace {
     fn calibration(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         if self.spec.product_id == 190 {
             return self.calibration_190(window, cx);
+        }
+        if self.spec.product_id == 70 {
+            return self.calibration_70(window, cx);
         }
         if self.spec.calibration.starts_with("smart") {
             let asymmetric = self.boolean("/smartTracking/isAsymmetric");
@@ -1790,6 +1848,9 @@ impl MouseProductWorkspace {
             // shared mapping popup; the generic button-list card below is
             // intentionally unreachable for this product.
             return self.customize_190(cx);
+        }
+        if self.spec.product_id == 70 {
+            return self.customize_70(cx);
         }
         let mut buttons: Vec<&Value> = self
             .spec

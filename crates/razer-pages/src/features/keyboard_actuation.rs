@@ -916,8 +916,8 @@ impl KeyboardProductWorkspace {
     /// 679 Wh.resetActuationToDefault -> 62905.l -> Ja. This resets the
     /// actuation thresholds while retaining assignments/rapid trigger exactly
     /// as the source reducer does; it is not magnetic sensor calibration.
-    fn reset_679_actuation(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.spec.product_id != 679 || self.factory_default_profile {
+    fn reset_analog_actuation(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.spec.analog_gamepad_layout() || self.factory_default_profile {
             return;
         }
         let default = self.default_actuation().0 as u32;
@@ -1109,6 +1109,7 @@ impl KeyboardProductWorkspace {
                 )
             };
         let mut panel = surface::panel(t("ACTUATION_POINT"), cx)
+            .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
             .relative()
             .child(
                 div()
@@ -1161,7 +1162,7 @@ impl KeyboardProductWorkspace {
                     .child(display((info.min / info.unit).round()))
                     .child(display((info.max / info.unit).round())),
             );
-        if self.spec.product_id == 679 {
+        if self.spec.analog_gamepad_layout() {
             panel = panel.child(
                 div()
                     .absolute()
@@ -1214,7 +1215,7 @@ impl KeyboardProductWorkspace {
                                         .text_color(rgb(0))
                                         .child(t("RESET"))
                                         .on_click(cx.listener(|this, _, window, cx| {
-                                            this.reset_679_actuation(window, cx)
+                                            this.reset_analog_actuation(window, cx)
                                         })),
                                 )
                                 .on_mouse_down_out(cx.listener(
@@ -1368,6 +1369,7 @@ impl KeyboardProductWorkspace {
                 )),
             cx,
         )
+        .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
         .relative()
         .child(div().child(t("RAPID_TRIGGER_TITLE_DESC_V2")))
         .child(
@@ -1471,6 +1473,7 @@ impl KeyboardProductWorkspace {
                                 )),
                             cx,
                         )
+                        .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
                         .relative()
                         .child(div().child(t("RAPID_TRIGGER_TOOLTIP"))),
                     )
@@ -1487,10 +1490,20 @@ impl KeyboardProductWorkspace {
             .child(keys)
             .child(
                 surface::page_columns()
+                    .when(self.spec.analog_gamepad_layout(), |columns| columns.gap_0())
                     .child(surface::page_column(
-                        v_flex().children(self.analog_snap_panel(cx)).child(panel),
+                        v_flex()
+                            .when(self.spec.analog_gamepad_layout(), |column| {
+                                column.pb(surface::css(10.))
+                            })
+                            .children(self.analog_snap_panel(cx))
+                            .child(panel),
                     ))
-                    .child(surface::page_column(right)),
+                    .child(surface::page_column(
+                        right.when(self.spec.analog_gamepad_layout(), |column| {
+                            column.pb(surface::css(10.))
+                        }),
+                    )),
             )
             .into_any_element()
     }

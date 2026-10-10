@@ -1,0 +1,79 @@
+{
+  "product_id": 2676,
+  "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+  "sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+  "callers": [
+    {
+      "symbol": "Qm",
+      "offset": 6801454,
+      "end": 6801456,
+      "source": "qm"
+    },
+    {
+      "symbol": "qm",
+      "offset": 6799771,
+      "end": 6801375,
+      "source": "(a.p,e=>{let{onOpenCalibration:t,onOpenTriggerCalibration:a,description:n,ConnectorOverlay:i=Zm}=e;const o=\"function\"===typeof a;return(0,yn.jsx)(\"div\",{className:\"thumbstick-calibration-widget \"+(o?\"thumbstick-calibration-widget--trigger-calibration\":\"\"),children:(0,yn.jsxs)(n_.A,{title:He.tPc,extraClass:\"thumbstick-calibration-panel\",children:[(0,yn.jsx)(\"div\",{className:\"thumbstick-calibration-widget__description\",children:(0,yn.jsx)(vn.A,{text:n})}),(0,yn.jsx)(\"div\",{className:\"thumbstick-calibration-widget__product\",children:(0,yn.jsx)(Km,{height:253})}),(0,yn.jsx)(GC.A,{name:He.ZD7,extraClass:\"thumbstick-calibration-widget__button thumbstick-calibration-widget__button--left-trigger \"+(o?\"\":\"thumbstick-calibration-widget__button--disabled\"),onClick:o?()=>a(Dt.CONTROLLER_TRIGGERS_ENUM.TRIGGER_LEFT):void 0}),(0,yn.jsx)(GC.A,{name:He.owT,extraClass:\"thumbstick-calibration-widget__button thumbstick-calibration-widget__button--right-trigger \"+(o?\"\":\"thumbstick-calibration-widget__button--disabled\"),onClick:o?()=>a(Dt.CONTROLLER_TRIGGERS_ENUM.TRIGGER_RIGHT):void 0}),(0,yn.jsx)(GC.A,{name:He.$JN,extraClass:\"thumbstick-calibration-widget__button thumbstick-calibration-widget__button--left-thumbstick\",onClick:()=>t(Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_LEFT)}),(0,yn.jsx)(GC.A,{name:He.MKQ,extraClass:\"thumbstick-calibration-widget__button thumbstick-calibration-widget__button--right-thumbstick\",onClick:()=>t(Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_RIGHT)}),(0,yn.jsx)(i,{className:\"thumbstick-calibration-widget__connector-overlay\",\"aria-hidden\":\"true\",focusable:\"false\"})]})})})"
+    },
+    {
+      "symbol": "Km",
+      "offset": 6798104,
+      "end": 6798660,
+      "source": "function(e){let{height:t,widthExtend:a}=e;const n=(0,G.useSelector)(e=>e.deviceReducer.productId),i=(0,G.useSelector)(e=>e.deviceReducer.editionId),o=(0,G.useSelector)(e=>e.batteryReducer&&e.batteryReducer.earbudBatteries);return g().useMemo(()=>new URL(window.location.href).searchParams.get(\"displayMode\"),[])?null:(0,yn.jsxs)(\"div\",{className:\"widget-prod dot-bg earbuds-svg\",children:[(0,yn.jsx)(Wm,{pid:n,editionId:i,height:t||250,className:\"box-img img-nodrag \"+(a?\"width-extend\":\"\"),earbudBatteries:o}),(0,yn.jsx)(\"div\",{className:\"dim-corner\"})]})}"
+    },
+    {
+      "symbol": "Zm",
+      "offset": 6799747,
+      "end": 6799767,
+      "source": "(0,M.forwardRef)(Xm)"
+    },
+    {
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "source": "(e,t)=>{let{title:a,titleId:n,...i}=e;return M.createElement(\"svg\",jm({width:292,height:304,viewBox:\"0 0 292 304\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",ref:t,\"aria-labelledby\":n},i),a?M.createElement(\"title\",{id:n},a):null,km||(km=M.createElement(\"path\",{className:\"connector connector--right-trigger\",d:\"M246.871 36.0957L275.857 0.499997L291.056 0.499997\",stroke:\"#5D5D5D\"})),zm||(zm=M.createElement(\"path\",{className:\"connector connector--right-thumbstick\",d:\"M203.002 172L249.297 301L265.002 301\",stroke:\"#5D5D5D\"})),xm||(xm=M.createElement(\"path\",{className:\"connector connector--left-trigger\",d:\"M52.1306 36.0957L23.1446 0.499997L-4.19617e-05 0.500061\",stroke:\"#5D5D5D\"})),$m||($m=M.createElement(\"path\",{className:\"connector connector--left-thumbstick\",d:\"M46.0017 114L46.0017 303.124L26.0653 303.124\",stroke:\"#5D5D5D\"})))}"
+    },
+    {
+      "symbol": "Im",
+      "offset": 6770232,
+      "end": 6771117,
+      "source": "class Im extends M.Component{constructor(){super(...arguments),this.clickedGoBack=()=>{void 0!==this.props.onClose&&this.props.goBack()},this.clickedClose=()=>{this.props.onClose()}}render(){return(0,yn.jsx)(\"div\",{className:\"popup-widget\",children:(0,yn.jsx)(\"div\",{className:`backdrop ${this.props.extraClass?this.props.extraClass:\"\"} ${this.props.show?\"show\":\"\"}`,children:(0,yn.jsxs)(\"div\",{className:\"choose-a-mat linked-games-popup\",style:this.props.extraStyleForMat,children:[(0,yn.jsxs)(\"div\",{className:\"head\",children:[void 0!==this.props.goBack?(0,yn.jsx)(\"div\",{className:\"back\",onClick:this.clickedGoBack}):\"\",this.props.name,(0,yn.jsx)(\"div\",{className:\"close\",onClick:this.clickedClose})]}),(0,yn.jsx)(\"div\",{id:\"transparent-scrollbar\",className:\"body \"+(this.props.notScrollable?\"\":\"scrollable\"),style:this.props.extraStyle||null,children:this.props.children})]})})})}}"
+    },
+    {
+      "symbol": "lm",
+      "offset": 6768103,
+      "end": 6770231,
+      "source": "e=>{let{onOpenCalibration:t}=e;const a=(0,G.useDispatch)(),n=(0,G.useSelector)(e=>e.languageReducer.lang),i=(0,G.useSelector)(e=>e.controllerSensitivityLeftTSReducer),o=(0,G.useSelector)(e=>e.controllerSensitivityRightTSReducer),[r,s]=(0,M.useState)(!1),[E,_]=(0,M.useState)(Em),[T,l]=(0,M.useState)(!0),[I,A]=(0,M.useState)(i.deadzoneValue),[d,c]=(0,M.useState)(o.deadzoneValue);(0,M.useEffect)(()=>{i.deadzoneValue>=7&&A(i.deadzoneValue)},[i.deadzoneValue]),(0,M.useEffect)(()=>{o.deadzoneValue>=7&&c(o.deadzoneValue)},[o.deadzoneValue]);const O=(e,t)=>{const n=\"left\"===t,r=n?Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_LEFT:Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_RIGHT,E=n?i.preventDoubleDeadzone:o.preventDoubleDeadzone;e<7?((e,t)=>{l(\"left\"===t),_(0===e?sm:Em),s(!0)})(e,t):n?A(e):c(e),a((0,eL.$S)(r,e,E))};return(0,yn.jsxs)(\"div\",{className:\"controller-deadzone-widget\",children:[r?(0,yn.jsx)(am.A,{title:E.warningHeader,description:E.warningDecs1,secondDesc:E.warningDecs2,confirmText:He.AGU,onConfirm:()=>{s(!1),t(T?Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_LEFT:Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_RIGHT)},cancelText:He.INJ,onCancel:()=>{s(!1)},onClose:()=>{const e=T?Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_LEFT:Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_RIGHT,t=T?I:d,n=T?i.preventDoubleDeadzone:o.preventDoubleDeadzone;a((0,eL.$S)(e,t,n)),s(!1)},customContent:(0,yn.jsx)(om,{}),fixedBackdrop:!0}):null,(0,yn.jsxs)(n_.A,{title:He.X9T,tips:He.fDp,extraClass:\"controller-thumbsticks-deadzone\",children:[(0,yn.jsxs)(\"div\",{className:\"controller-deadzone-widget__description\",children:[(0,yn.jsx)(vn.A,{text:He.SOK}),(0,yn.jsx)(\"br\",{}),(0,yn.jsx)(\"br\",{}),(0,yn.jsx)(vn.A,{text:He.xW7})]}),(0,yn.jsxs)(\"div\",{className:\"controller-deadzone-widget__rows\",children:[(0,yn.jsx)(Tm,{label:He.$JN,currentLang:n,currentValue:i.deadzoneValue,onChangeValue:e=>O(e,\"left\"),onCalibrate:()=>t(Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_LEFT)}),(0,yn.jsx)(Tm,{label:He.MKQ,currentLang:n,currentValue:o.deadzoneValue,onChangeValue:e=>O(e,\"right\"),onCalibrate:()=>t(Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_RIGHT)})]})]})]})}"
+    },
+    {
+      "symbol": "Hm",
+      "offset": 6794757,
+      "end": 6795317,
+      "source": "()=>{const[e,t]=(0,M.useState)(!1),[a,n]=(0,M.useState)(null),i=(0,M.useCallback)(e=>{n(e),t(!0)},[]),o=(0,M.useCallback)(()=>{t(!1),n(null)},[]);return(0,yn.jsxs)(yn.Fragment,{children:[(0,yn.jsxs)(\"div\",{className:\"controller-thumbsticks\",children:[(0,yn.jsx)(tm,{isSvg:!0}),(0,yn.jsxs)(a_,{children:[(0,yn.jsxs)(o_,{direction:\"left\",children:[(0,yn.jsx)(lm,{onOpenCalibration:i}),(0,yn.jsx)(gm,{})]}),(0,yn.jsxs)(o_,{direction:\"right\",children:[(0,yn.jsx)(vm,{}),(0,yn.jsx)(ym,{})]})]})]}),(0,yn.jsx)(Mm,{open:e,selectedThumbstick:a,onClose:o,isSvg:!0})]})}"
+    },
+    {
+      "symbol": "np",
+      "offset": 6807213,
+      "end": 6807764,
+      "source": "()=>{const[e,t]=(0,M.useState)(!1),[a,n]=(0,M.useState)(!1),[i,o]=(0,M.useState)(null),[r,s]=(0,M.useState)(null),E=(0,M.useCallback)(e=>{o(e),t(!0)},[]),_=(0,M.useCallback)(()=>{t(!1),o(null)},[]),T=(0,M.useCallback)(e=>{s(e),n(!0)},[]),l=(0,M.useCallback)(()=>{n(!1),s(null)},[]);return(0,yn.jsxs)(yn.Fragment,{children:[(0,yn.jsx)(a_,{children:(0,yn.jsx)(Qm,{onOpenCalibration:E,onOpenTriggerCalibration:T,description:He.Fvo})}),(0,yn.jsx)(Mm,{open:e,selectedThumbstick:i,onClose:_,isSvg:!0}),(0,yn.jsx)(ap,{open:a,selectedTrigger:r,onClose:l})]})}"
+    },
+    {
+      "symbol": "Mm",
+      "offset": 6790510,
+      "end": 6790985,
+      "source": "e=>{let{open:t,selectedThumbstick:a,onClose:n,isSvg:i=!1}=e;const o=(0,G.useDispatch)(),r=a===Dt.CONTROLLER_THUMBSTICKS_ENUM.THUMBSTICK_RIGHT?He.znI:He.uR4,s=(0,M.useCallback)(()=>{a&&o(Pm(\"stop\",a)),n()},[o,n,a]);return(0,yn.jsx)(Am,{show:t,name:(0,yn.jsx)(vn.A,{text:r}),onClose:s,extraClass:\"thumbstick-calibration-popup-widget\",extraStyle:{overflow:\"visible\",padding:\"20px 25px 30px\"},children:t&&a?(0,yn.jsx)(hm,{selectedThumbstick:a,open:t,onClose:s,isSvg:i},a):null})}"
+    },
+    {
+      "symbol": "Am",
+      "offset": 6771126,
+      "end": 6771128,
+      "source": "Im"
+    },
+    {
+      "symbol": "Pm",
+      "offset": 6783086,
+      "end": 6783174,
+      "source": "(e,t)=>async a=>{a({type:Dt.ON_SET_CONTROLLER_CALIBRATION,payload:{action:e,partId:t}})}"
+    }
+  ]
+}

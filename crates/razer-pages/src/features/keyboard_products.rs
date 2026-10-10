@@ -32,13 +32,13 @@ mod polling;
 mod power;
 pub use polling::KeyboardPollingConnection;
 pub use power::{KeyboardIndicatorLedObservation, KeyboardIndicatorLedRequested};
-#[path = "keyboard_huntsman679.rs"]
-mod huntsman679;
+#[path = "keyboard_analog_gamepad.rs"]
+mod analog_gamepad;
 #[path = "keyboard_properties.rs"]
 mod properties;
+pub use analog_gamepad::KeyboardGamepadTesterObservation;
 pub use brightness::KeyboardBrightnessReadRequested;
 pub use brightness::KeyboardBrightnessRequested;
-pub use huntsman679::KeyboardGamepadTesterObservation;
 #[path = "keyboard_snap_tap.rs"]
 mod snap_tap;
 pub(super) use calibration::is_factory_profile;
@@ -48,6 +48,12 @@ pub use snap_tap::SnapTapObservation;
 #[derive(Deserialize)]
 pub struct KeyboardProductSpec {
     product_id: u32,
+    #[serde(default)]
+    source_layout: Option<String>,
+    #[serde(default)]
+    source_mod_tap: bool,
+    #[serde(default)]
+    source_keyboard_top_padding_percent: f32,
     name: String,
     config: Value,
     pages: Vec<String>,
@@ -59,6 +65,9 @@ pub struct KeyboardProductSpec {
     controls: Value,
 }
 impl KeyboardProductSpec {
+    fn analog_gamepad_layout(&self) -> bool {
+        self.source_layout.as_deref() == Some("analog_gamepad")
+    }
     pub fn macro_keys(&self) -> &[Value] {
         &self.keys
     }
@@ -142,9 +151,9 @@ pub struct KeyboardProductWorkspace {
     brightness: brightness::State,
     polling_connection: Option<KeyboardPollingConnection>,
     power_indicator: power::IndicatorState,
-    /// Current 679's source drawer is independent of its key mapping popup.
+    /// Audited Analog Gamepad callers keep the drawer independent of the mapping popup.
     button_drawer_open: bool,
-    huntsman679: huntsman679::State,
+    analog_gamepad: analog_gamepad::State,
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
@@ -175,7 +184,7 @@ impl KeyboardProductWorkspace {
             snap_tap: None,
             power_indicator: power::IndicatorState::default(),
             button_drawer_open: false,
-            huntsman679: huntsman679::State::default(),
+            analog_gamepad: analog_gamepad::State::default(),
             // Keep this gated by the independently traced mounted caller,
             // rather than the presence of an unused shared source component.
             properties_icon: properties::supported(pid).then(|| {
@@ -423,6 +432,7 @@ impl KeyboardProductWorkspace {
             ),
             cx,
         )
+        .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
         .child(
             surface::check_item(
                 "keyboard-switch-off-display",
@@ -507,6 +517,7 @@ impl KeyboardProductWorkspace {
             surface::help_control("keyboard-brightness-help", t("BRIGHTNESS_TOOLTIP")),
             cx,
         )
+        .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
         .children(self.sliders.get("/brightness/value").map(|slider| {
             v_flex()
                 .child(Slider::new(slider).disabled(!on))
@@ -516,10 +527,15 @@ impl KeyboardProductWorkspace {
         if self.draft.get("switchOffLighting").is_some() {
             left = left.child(self.switch_off_lighting(window, cx));
         }
-        if self.spec.product_id == 679 {
+        if self.spec.analog_gamepad_layout() {
             return surface::page_columns()
-                .child(surface::page_column(left))
-                .child(surface::page_column(self.huntsman_effects(cx)))
+                .gap_0()
+                .child(surface::page_column(left.pb(surface::css(10.))))
+                .child(surface::page_column(
+                    v_flex()
+                        .pb(surface::css(10.))
+                        .child(self.huntsman_effects(cx)),
+                ))
                 .into_any_element();
         }
         let mut right = surface::panel(t("QUICK_EFFECTS"), cx);
@@ -712,6 +728,7 @@ impl KeyboardProductWorkspace {
             surface::help_control("keyboard-gaming-mode-help", t("GAMING_MODE_TOOLTIP")),
             cx,
         )
+        .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
         .child(
             Checkbox::new("keyboard-game-mode-in-game")
                 .label(t("APPLY_IN_GAME_ONLY"))
@@ -841,12 +858,24 @@ impl KeyboardProductWorkspace {
                     .child(
                         crate::keyboard_geometry::KeyRegion::new(
                             key,
-                            if mapped && self.spec.product_id != 679 {
-                                cx.theme().primary.opacity(0.4)
+                            if mapped {
+                                if self.spec.analog_gamepad_layout() {
+                                    // Customize callers do not pass keyHoverAndRemappedColor;
+                                    // the special black-remap class is therefore absent.
+                                    if self.hypershift {
+                                        rgba(0xfd8611b3)
+                                    } else if selected || hovered {
+                                        cx.theme().transparent
+                                    } else {
+                                        rgba(0x44d62c66)
+                                    }
+                                } else {
+                                    cx.theme().primary.opacity(0.4)
+                                }
                             } else {
                                 cx.theme().transparent
                             },
-                            if self.spec.product_id == 679 && self.hypershift {
+                            if self.spec.analog_gamepad_layout() && self.hypershift {
                                 rgb(0xfd8611).into()
                             } else {
                                 cx.theme().primary
@@ -879,16 +908,30 @@ impl KeyboardProductWorkspace {
             }));
         }
         surface::config_wrapper()
-            // 679's final CSS overrides the earlier shared 340px rule.
+            // Independently mounted analog_gamepad callers share this final CSS.
             .when(
-                self.spec.product_id == 679 && self.page == "TAB_CUSTOMIZE",
+                self.spec.analog_gamepad_layout() && self.page == "TAB_CUSTOMIZE",
                 |wrapper| wrapper.h(surface::css(385.)),
             )
             .child(surface::dot_background(cx))
-            .child(keyboard.when(
-                self.spec.product_id == 679 && self.page == "TAB_CUSTOMIZE",
-                |keyboard| keyboard.mt(surface::css(6.)),
-            ))
+            .child(
+                if self.spec.analog_gamepad_layout() && self.page == "TAB_CUSTOMIZE" {
+                    // CSS percentage padding is relative to the config-block width.
+                    h_flex()
+                        .w_full()
+                        .h(surface::css(387.))
+                        .max_h(relative(1.))
+                        .mt(surface::css(6.))
+                        .justify_center()
+                        .pt(relative(
+                            self.spec.source_keyboard_top_padding_percent / 100.,
+                        ))
+                        .child(keyboard)
+                        .into_any_element()
+                } else {
+                    keyboard.into_any_element()
+                },
+            )
             .into_any_element()
     }
     /// The `displayMode=armory` root mounts this page without the product
@@ -906,8 +949,28 @@ impl KeyboardProductWorkspace {
             .mt(surface::css(20.))
             .mb(surface::css(10.))
             .gap(surface::css(10.))
-            .when(self.spec.product_id == 679, |row| {
+            .when(self.spec.analog_gamepad_layout(), |row| {
                 row.child(
+                    gpui_kit::base::Button::new("keyboard-controller-toggle")
+                        .accessibility_label(t("KEYBOARD_ANALOG_OPTIONS"))
+                        .w(surface::css(38.))
+                        .h(surface::css(27.))
+                        .border_1()
+                        .border_color(rgb(0x5d5d5d))
+                        .rounded(surface::css(14.))
+                        .bg(rgb(0x111111))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(
+                            img("synapse/keyboard-679-controller-grey.svg").size(surface::css(18.)),
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.selected_key = None;
+                            cx.notify();
+                        })),
+                )
+                .child(
                     gpui_kit::base::Button::new("keyboard-button-drawer-toggle")
                         .accessibility_label(t("TAB_CUSTOMIZE"))
                         .w(surface::css(38.))
@@ -1032,7 +1095,7 @@ impl KeyboardProductWorkspace {
         }
         panel = panel.child(self.keyboard_image(true, cx));
         panel = panel.child(self.hypershift_row(cx));
-        if self.spec.product_id == 679 && self.button_drawer_open {
+        if self.spec.analog_gamepad_layout() && self.button_drawer_open {
             panel = panel.child(
                 v_flex()
                     .w(surface::css(250.))
@@ -1092,10 +1155,10 @@ impl KeyboardProductWorkspace {
                     }),
             ),
         );
-        // Source 679 opens the mounted side mapping blade (Ph/Pi) from OM.
+        // These source callers open the mounted side mapping blade from OM.
         // The inline generic editor below belongs to older products and must
-        // never be reachable for Huntsman V3 Pro TKL.
-        if self.spec.product_id != 679 {
+        // never be reachable for the audited analog_gamepad renderer.
+        if !self.spec.analog_gamepad_layout() {
             if let Some(input) = self.selected_key.clone() {
                 if let Some(key) = self
                     .spec
@@ -1367,7 +1430,7 @@ impl KeyboardProductWorkspace {
         // Modern products put their mounted widget in a route chunk, so the
         // main-bundle-only `controls` extraction misses it. Use actual callers.
         let gaming_mode = gaming_rows::for_product(self.spec.product_id).is_some();
-        let snap_visible = self.spec.product_id != 679
+        let snap_visible = !self.spec.analog_gamepad_layout()
             && snap_tap::snap_tap_visible(self.spec.product_id)
             && self.snap_tap.is_some();
         let snap_left = snap_visible && snap_tap::snap_tap_on_left(self.spec.product_id);
@@ -1375,17 +1438,23 @@ impl KeyboardProductWorkspace {
         let snap_full = snap_visible && snap_tap::snap_tap_full_width(self.spec.product_id);
         let polling = self.polling_panel(cx);
         let polling_visible = polling.is_some();
-        if self.spec.product_id == 679 {
+        if self.spec.analog_gamepad_layout() {
             return page
                 .child(
                     surface::page_columns()
+                        .gap_0()
                         .child(surface::page_column(
                             v_flex()
+                                .pb(surface::css(10.))
                                 .child(self.gaming_mode(cx))
                                 .children(self.keyboard_properties(cx)),
                         ))
                         .child(surface::page_column(
                             v_flex()
+                                .pb(surface::css(10.))
+                                .when(self.spec.source_mod_tap, |column| {
+                                    column.child(self.huntsman_mod_tap(cx))
+                                })
                                 .child(self.huntsman_quick_remapping(cx))
                                 .child(self.huntsman_gamepad_tester(cx)),
                         )),
@@ -1447,7 +1516,7 @@ impl Render for KeyboardProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let content = match self.page.as_str() {
             "TAB_LIGHTING" => {
-                if self.spec.product_id == 679 {
+                if self.spec.analog_gamepad_layout() {
                     // $L -> em mounts only left KD/xD and right VL; no product image.
                     self.lighting(window, cx)
                 } else {
@@ -1474,6 +1543,21 @@ impl Render for KeyboardProductWorkspace {
             .overflow_y_scroll()
             .track_scroll(&self.scroll)
             .text_color(cx.theme().foreground)
+            .when(
+                self.spec.source_mod_tap && self.page == "TAB_CUSTOMIZE",
+                |body| {
+                    body.capture_key_down(cx.listener(|this, _: &KeyDownEvent, _, cx| {
+                        this.analog_gamepad.key_pressed = true;
+                        cx.notify();
+                    }))
+                    .capture_key_up(cx.listener(
+                        |this, _: &KeyUpEvent, _, cx| {
+                            this.analog_gamepad.key_pressed = false;
+                            cx.notify();
+                        },
+                    ))
+                },
+            )
             .child(super::product_surface::body().child(content))
             .children(self.calibration_modal.clone())
             .children(self.snap_overlay(window, cx))

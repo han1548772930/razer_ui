@@ -14,5 +14,37 @@
     "foreground": 13421772,
     "hover_foreground": 4511276,
     "active_opacity": 0.7
+  },
+  {
+    "product_id": 70,
+    "title": "MOUSE_PROPERTIES_HEADER",
+    "tooltip": "MOUSE_PROPERTIES_TOOLTIP",
+    "action": "MOUSE_PROPERTIES_DESC",
+    "legacy_icon": "synapse/windows.svg",
+    "windows_11_icon": "synapse/windows-11.svg",
+    "icon_width": 44,
+    "icon_height": 44,
+    "icon_margin": 20,
+    "font_size": 14,
+    "line_height": 44,
+    "foreground": 13421772,
+    "hover_foreground": 4511276,
+    "active_opacity": 0.7
+  },
+  {
+    "product_id": 190,
+    "title": "MOUSE_PROPERTIES_HEADER",
+    "tooltip": "MOUSE_PROPERTIES_TOOLTIP",
+    "action": "MOUSE_PROPERTIES_DESC",
+    "legacy_icon": "synapse/windows.svg",
+    "windows_11_icon": "synapse/windows-11.svg",
+    "icon_width": 44,
+    "icon_height": 44,
+    "icon_margin": 20,
+    "font_size": 14,
+    "line_height": 44,
+    "foreground": 13421772,
+    "hover_foreground": 4511276,
+    "active_opacity": 0.7
   }
 ]

@@ -217,6 +217,225 @@
       }
     },
     {
+      "product_id": 190,
+      "category": "MOUSE",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": true,
+        "share_profile": true
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "MOUSE",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+        "sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+        "offset": 4466542
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      },
+      "profile_shell": {
+        "always_mounted": true,
+        "sync_excluded_pages": [
+          "TAB_POWER",
+          "TAB_CALIBRATION",
+          "HELP"
+        ],
+        "evidence": "docs/re/product-shell-current-evidence.json"
+      }
+    },
+    {
       "product_id": 241,
       "category": "ACCESSORY",
       "menu": [
@@ -428,6 +647,662 @@
       "coverage": {
         "menu": true,
         "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      }
+    },
+    {
+      "product_id": 678,
+      "category": "KEYBOARD",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": true,
+        "share_profile": true
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "KEYBOARD",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
+        "sha256": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180",
+        "offset": 6926808
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      },
+      "profile_shell": {
+        "always_mounted": true,
+        "sync_excluded_pages": [
+          "HELP"
+        ],
+        "evidence": "docs/re/product-shell-current-evidence.json"
+      }
+    },
+    {
+      "product_id": 679,
+      "category": "KEYBOARD",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "max-content",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 42,
+          "delay_ms": 100,
+          "border": "1px solid #fd4949",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": true,
+        "share_profile": true
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "KEYBOARD",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+        "sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+        "offset": 6822234
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      },
+      "profile_shell": {
+        "always_mounted": true,
+        "sync_excluded_pages": [
+          "HELP"
+        ],
+        "evidence": "docs/re/product-shell-current-evidence.json"
+      }
+    },
+    {
+      "product_id": 688,
+      "category": "KEYBOARD",
+      "menu": [
+        {
+          "kind": "action",
+          "command": "add",
+          "label_key": "ADD",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "import",
+          "label_key": "IMPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "linked_games",
+          "label_key": "LINKED_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_empty"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "link_games",
+          "label_key": "LINK_GAMES",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile"
+          ],
+          "hidden_when": [
+            "linked_games_present"
+          ]
+        },
+        {
+          "kind": "action",
+          "command": "share",
+          "label_key": "SHARE_TO_WORKSHOP",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "profile_already_shared",
+            "armory_maintenance"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "rename",
+          "label_key": "RENAME",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "duplicate",
+          "label_key": "DUPLICATE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "export",
+          "label_key": "EXPORT",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "separator"
+        },
+        {
+          "kind": "action",
+          "command": "reset",
+          "label_key": "RESET_PROFILE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        },
+        {
+          "kind": "action",
+          "command": "delete",
+          "label_key": "DELETE",
+          "disabled_when": [
+            "profile_switch_disabled",
+            "no_selected_profile",
+            "single_profile",
+            "onboard_profile",
+            "analog_preset_profile",
+            "dynamic_profile_locked"
+          ],
+          "hidden_when": []
+        }
+      ],
+      "rename": {
+        "max_length": 32
+      },
+      "menu_width": 155,
+      "menu_max_width": 280,
+      "menu_width_mode": "150px",
+      "confirmations": [
+        {
+          "name": "reset",
+          "label_key": "RESET_PROFILE_TITLE",
+          "description_key": "RESET_PROFILE_DESC",
+          "width": 300,
+          "top": 52,
+          "delay_ms": 100,
+          "border": "1px solid #c8323c",
+          "border_radius": 3,
+          "button_keys": [
+            "RESET_PROFILE_KEYBINDS_BUTTON",
+            "RESET_PROFILE_BUTTON"
+          ],
+          "outside_click_closes": true
+        },
+        {
+          "name": "delete",
+          "label_key": "DELETE_PROFILE_TITLE",
+          "description_key": "DELETE_PROFILE_MSG",
+          "width": 300,
+          "top": 52,
+          "delay_ms": 100,
+          "border": "1px solid #c8323c",
+          "border_radius": 3,
+          "button_keys": [
+            "REMOVE"
+          ],
+          "outside_click_closes": true
+        }
+      ],
+      "capabilities": {
+        "reset_profile": true,
+        "share_profile": true
+      },
+      "import_export": {
+        "width": 602,
+        "height": 481,
+        "top": 104,
+        "left": "calc(50% - 300px)",
+        "locale_keys": [
+          "TEXT_EXPORT_PROFILES",
+          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
+          "TEXT_IMPORT_PROFILES",
+          "TEXT_LOCAL",
+          "TEXT_CLOUD",
+          "IMPORT_EXPORT_MODAL_TIP",
+          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
+          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
+          "DISABLED_FEATURE_DESC",
+          "TEXT_SELECT_ALL_PROFILES",
+          "TEXT_DESELECT_ALL_PROFILES",
+          "CANCEL",
+          "IMPORT",
+          "EXPORT",
+          "KEYBOARD",
+          "COMPATIBLE_CLOUD_PROFILES",
+          "MOUSE",
+          "BROWSE_FOR_PROFILES"
+        ],
+        "source_only": true
+      },
+      "source": {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
+        "sha256": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929",
+        "offset": 6722639
+      },
+      "coverage": {
+        "menu": true,
+        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
+      },
+      "profile_shell": {
+        "always_mounted": true,
+        "sync_excluded_pages": [
+          "TAB_POWER",
+          "TAB_CALIBRATION",
+          "HELP"
+        ],
+        "evidence": "docs/re/product-shell-current-evidence.json"
       }
     },
     {
@@ -1686,427 +2561,6 @@
         "path": ".ref/devices/3946/static/js/main.46ad416c.js",
         "sha256": "c336a6672d561d3a4e2e9a12f1861c89307a22bfa5ca6b3debd919059f21b02b",
         "offset": 6382996
-      },
-      "coverage": {
-        "menu": true,
-        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
-      }
-    },
-    {
-      "product_id": 190,
-      "category": "MOUSE",
-      "menu": [
-        {
-          "kind": "action",
-          "command": "add",
-          "label_key": "ADD",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "import",
-          "label_key": "IMPORT",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "separator"
-        },
-        {
-          "kind": "action",
-          "command": "linked_games",
-          "label_key": "LINKED_GAMES",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile"
-          ],
-          "hidden_when": [
-            "linked_games_empty"
-          ]
-        },
-        {
-          "kind": "action",
-          "command": "link_games",
-          "label_key": "LINK_GAMES",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile"
-          ],
-          "hidden_when": [
-            "linked_games_present"
-          ]
-        },
-        {
-          "kind": "action",
-          "command": "share",
-          "label_key": "SHARE_TO_WORKSHOP",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "profile_already_shared",
-            "armory_maintenance"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "separator"
-        },
-        {
-          "kind": "action",
-          "command": "rename",
-          "label_key": "RENAME",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "duplicate",
-          "label_key": "DUPLICATE",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "export",
-          "label_key": "EXPORT",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "separator"
-        },
-        {
-          "kind": "action",
-          "command": "reset",
-          "label_key": "RESET_PROFILE",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "delete",
-          "label_key": "DELETE",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "single_profile",
-            "onboard_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        }
-      ],
-      "rename": {
-        "max_length": 32
-      },
-      "menu_width": 155,
-      "menu_max_width": 280,
-      "menu_width_mode": "max-content",
-      "confirmations": [
-        {
-          "name": "reset",
-          "label_key": "RESET_PROFILE_TITLE",
-          "description_key": "RESET_PROFILE_DESC",
-          "width": 300,
-          "top": 42,
-          "delay_ms": 100,
-          "border": "1px solid #fd4949",
-          "border_radius": 3,
-          "button_keys": [
-            "RESET_PROFILE_KEYBINDS_BUTTON",
-            "RESET_PROFILE_BUTTON"
-          ],
-          "outside_click_closes": true
-        },
-        {
-          "name": "delete",
-          "label_key": "DELETE_PROFILE_TITLE",
-          "description_key": "DELETE_PROFILE_MSG",
-          "width": 300,
-          "top": 42,
-          "delay_ms": 100,
-          "border": "1px solid #fd4949",
-          "border_radius": 3,
-          "button_keys": [
-            "REMOVE"
-          ],
-          "outside_click_closes": true
-        }
-      ],
-      "capabilities": {
-        "reset_profile": true,
-        "share_profile": true
-      },
-      "import_export": {
-        "width": 602,
-        "height": 481,
-        "top": 104,
-        "left": "calc(50% - 300px)",
-        "locale_keys": [
-          "TEXT_EXPORT_PROFILES",
-          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
-          "TEXT_IMPORT_PROFILES",
-          "TEXT_LOCAL",
-          "TEXT_CLOUD",
-          "IMPORT_EXPORT_MODAL_TIP",
-          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
-          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
-          "DISABLED_FEATURE_DESC",
-          "TEXT_SELECT_ALL_PROFILES",
-          "TEXT_DESELECT_ALL_PROFILES",
-          "CANCEL",
-          "IMPORT",
-          "EXPORT",
-          "MOUSE",
-          "COMPATIBLE_CLOUD_PROFILES",
-          "BROWSE_FOR_PROFILES"
-        ],
-        "source_only": true
-      },
-      "source": {
-        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
-        "sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
-        "offset": 4466542
-      },
-      "coverage": {
-        "menu": true,
-        "dynamic_conditions": "See evidence; only positively known model states activate conditional rules"
-      }
-    },
-    {
-      "product_id": 679,
-      "category": "KEYBOARD",
-      "menu": [
-        {
-          "kind": "action",
-          "command": "add",
-          "label_key": "ADD",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "import",
-          "label_key": "IMPORT",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "separator"
-        },
-        {
-          "kind": "action",
-          "command": "linked_games",
-          "label_key": "LINKED_GAMES",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile"
-          ],
-          "hidden_when": [
-            "linked_games_empty"
-          ]
-        },
-        {
-          "kind": "action",
-          "command": "link_games",
-          "label_key": "LINK_GAMES",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile"
-          ],
-          "hidden_when": [
-            "linked_games_present"
-          ]
-        },
-        {
-          "kind": "action",
-          "command": "share",
-          "label_key": "SHARE_TO_WORKSHOP",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "profile_already_shared",
-            "armory_maintenance"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "separator"
-        },
-        {
-          "kind": "action",
-          "command": "rename",
-          "label_key": "RENAME",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "duplicate",
-          "label_key": "DUPLICATE",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "export",
-          "label_key": "EXPORT",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "separator"
-        },
-        {
-          "kind": "action",
-          "command": "reset",
-          "label_key": "RESET_PROFILE",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        },
-        {
-          "kind": "action",
-          "command": "delete",
-          "label_key": "DELETE",
-          "disabled_when": [
-            "profile_switch_disabled",
-            "no_selected_profile",
-            "single_profile",
-            "onboard_profile",
-            "analog_preset_profile",
-            "dynamic_profile_locked"
-          ],
-          "hidden_when": []
-        }
-      ],
-      "rename": {
-        "max_length": 32
-      },
-      "menu_width": 155,
-      "menu_max_width": 280,
-      "menu_width_mode": "max-content",
-      "confirmations": [
-        {
-          "name": "reset",
-          "label_key": "RESET_PROFILE_TITLE",
-          "description_key": "RESET_PROFILE_DESC",
-          "width": 300,
-          "top": 42,
-          "delay_ms": 100,
-          "border": "1px solid #fd4949",
-          "border_radius": 3,
-          "button_keys": [
-            "RESET_PROFILE_KEYBINDS_BUTTON",
-            "RESET_PROFILE_BUTTON"
-          ],
-          "outside_click_closes": true
-        },
-        {
-          "name": "delete",
-          "label_key": "DELETE_PROFILE_TITLE",
-          "description_key": "DELETE_PROFILE_MSG",
-          "width": 300,
-          "top": 42,
-          "delay_ms": 100,
-          "border": "1px solid #fd4949",
-          "border_radius": 3,
-          "button_keys": [
-            "REMOVE"
-          ],
-          "outside_click_closes": true
-        }
-      ],
-      "capabilities": {
-        "reset_profile": true,
-        "share_profile": true
-      },
-      "import_export": {
-        "width": 602,
-        "height": 481,
-        "top": 104,
-        "left": "calc(50% - 300px)",
-        "locale_keys": [
-          "TEXT_EXPORT_PROFILES",
-          "IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT",
-          "TEXT_IMPORT_PROFILES",
-          "TEXT_LOCAL",
-          "TEXT_CLOUD",
-          "IMPORT_EXPORT_MODAL_TIP",
-          "IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE",
-          "IMPORT_EXPORT_MODAL_EMPTY_PROFILE",
-          "DISABLED_FEATURE_DESC",
-          "TEXT_SELECT_ALL_PROFILES",
-          "TEXT_DESELECT_ALL_PROFILES",
-          "CANCEL",
-          "IMPORT",
-          "EXPORT",
-          "KEYBOARD",
-          "COMPATIBLE_CLOUD_PROFILES",
-          "MOUSE",
-          "BROWSE_FOR_PROFILES"
-        ],
-        "source_only": true
-      },
-      "source": {
-        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
-        "sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
-        "offset": 6822234
       },
       "coverage": {
         "menu": true,

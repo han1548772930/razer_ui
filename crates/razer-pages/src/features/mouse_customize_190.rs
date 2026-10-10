@@ -107,10 +107,12 @@ impl MouseProductWorkspace {
             .child(
                 img("synapse/mouse-products/190.svg")
                     .absolute()
-                    .left(surface::css(385. - 176. / 296. * 125.))
-                    .top(surface::css(45.))
-                    .h(surface::css(250.))
-                    .w(surface::css(176. / 296. * 250.)),
+                    // Source `.config-img.svg-image`: left `50%-87px`,
+                    // top 26px, natural 176x296 SVG dimensions.
+                    .left(surface::css(298.))
+                    .top(surface::css(26.))
+                    .h(surface::css(296.))
+                    .w(surface::css(176.)),
             )
             .child(lines)
             .child(self.customize_190_labels(true, [0, 2, 5, 6], buttons, cx))

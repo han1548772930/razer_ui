@@ -1757,9 +1757,13 @@
         "thx_instructions": false,
         "camo": false,
         "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
-        "class_offset": 4768867,
+        "class_offset": 4768895,
         "inline_confirmation": true,
-        "obm_reset_during_ble": false
+        "obm_reset_during_ble": false,
+        "class_offset_unit": "UTF-16 code units in the original JS string",
+        "mounted_component_offset": 4794716,
+        "plain_columns": true,
+        "spacing_evidence": "docs/re/product-shell-current-evidence.json"
       }
     ]
   },
@@ -4769,13 +4773,13 @@
     "product_id": 678,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/13671",
     "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV3PRO-00000678-",
-    "source": ".ref/devices/678/static/js/main.f78f0dcf.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
     "evidence": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 7432528,
-        "source": ".ref/devices/678/static/js/main.f78f0dcf.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -4790,8 +4794,14 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/678/static/js/main.f78f0dcf.js",
-        "class_offset": 7032535
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
+        "class_offset": 7032563,
+        "class_offset_unit": "UTF-16 code units in the original JS string",
+        "mounted_component_offset": 7432566,
+        "plain_columns": true,
+        "spacing_evidence": "docs/re/product-shell-current-evidence.json",
+        "inline_confirmation": true,
+        "obm_reset_during_ble": false
       }
     ]
   },
@@ -4821,9 +4831,13 @@
         "thx_instructions": false,
         "camo": false,
         "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
-        "class_offset": 6927961,
+        "class_offset": 6927989,
         "inline_confirmation": true,
-        "obm_reset_during_ble": false
+        "obm_reset_during_ble": false,
+        "class_offset_unit": "UTF-16 code units in the original JS string",
+        "mounted_component_offset": 7314680,
+        "plain_columns": true,
+        "spacing_evidence": "docs/re/product-shell-current-evidence.json"
       }
     ]
   },
@@ -4831,13 +4845,13 @@
     "product_id": 688,
     "support": "https://mysupport.razer.com/app/answers/detail/a_id/13592/kw/huntsman%20v3",
     "guide": "https://dl.razerzone.com/master-guides/RazerSynapse3/HUNTSMANV3PROMINI-00000688-",
-    "source": ".ref/devices/688/static/js/main.e09fd702.js",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
     "evidence": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929",
     "guide_overrides": null,
     "pages": [
       {
         "offset": 7207729,
-        "source": ".ref/devices/688/static/js/main.e09fd702.js",
+        "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
         "firmware": true,
         "view_more": true,
         "serial": true,
@@ -4852,8 +4866,14 @@
         "tutorial": false,
         "thx_instructions": false,
         "camo": false,
-        "class_source": ".ref/devices/688/static/js/main.e09fd702.js",
-        "class_offset": 7074301
+        "class_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
+        "class_offset": 7074329,
+        "class_offset_unit": "UTF-16 code units in the original JS string",
+        "mounted_component_offset": 7207767,
+        "plain_columns": true,
+        "spacing_evidence": "docs/re/product-shell-current-evidence.json",
+        "inline_confirmation": true,
+        "obm_reset_during_ble": false
       }
     ]
   },

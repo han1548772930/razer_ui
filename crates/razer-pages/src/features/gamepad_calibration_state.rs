@@ -6,6 +6,7 @@ use std::f64::consts::{PI, TAU};
 pub enum CalibrationAction {
     Start,
     Stop,
+    RotateComplete,
 }
 
 #[derive(Clone, Debug)]
@@ -78,6 +79,20 @@ impl CalibrationObservation {
             value: ObservationValue::Position { x, y },
         })
     }
+    /// 2676/2684 CALIBRATION_USER_MOVEMENT storage payload: percentages,
+    /// clamped by the source popup and projected as x*10, -y*10.
+    pub fn user_movement(generation: u64, sequence: u64, part: u8, x: f64, y: f64) -> Option<Self> {
+        if !x.is_finite() || !y.is_finite() {
+            return None;
+        }
+        Self::position(
+            generation,
+            sequence,
+            part,
+            x.clamp(-100., 100.) * 10.,
+            -y.clamp(-100., 100.) * 10.,
+        )
+    }
     pub fn unavailable(generation: u64, sequence: u64) -> Self {
         Self {
             generation,
@@ -101,6 +116,7 @@ pub struct CalibrationState {
     last_angle: Option<f64>,
     accumulated_angle: f64,
     pub(super) observed: bool,
+    rotate_complete_requested: bool,
 }
 
 impl CalibrationState {
@@ -117,6 +133,24 @@ impl CalibrationState {
     ) -> Option<CalibrationIntent> {
         if !(1..=2).contains(&part) {
             return None;
+        }
+        if action == CalibrationAction::RotateComplete {
+            if self.part != part
+                || self.step != 5
+                || !self.valid
+                || self.rotations != 3
+                || self.rotate_complete_requested
+            {
+                return None;
+            }
+            self.rotate_complete_requested = true;
+            let intent = CalibrationIntent {
+                generation: self.generation,
+                part,
+                action,
+            };
+            self.intent = Some(intent.clone());
+            return Some(intent);
         }
         if action == CalibrationAction::Start && !matches!(self.step, 0 | -1)
             || action == CalibrationAction::Stop && self.step == 0
@@ -147,6 +181,7 @@ impl CalibrationState {
         self.rotations = 0;
         self.last_angle = None;
         self.accumulated_angle = 0.;
+        self.rotate_complete_requested = false;
     }
     pub(super) fn observe(&mut self, observation: CalibrationObservation) -> bool {
         if observation.generation != self.generation

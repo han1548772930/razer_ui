@@ -68,6 +68,14 @@ pub(super) struct MenuSpec {
     rename: RenameSpec,
     #[serde(default)]
     confirmations: Vec<Value>,
+    #[serde(default)]
+    profile_shell: Option<ProfileShell>,
+}
+
+#[derive(Deserialize)]
+struct ProfileShell {
+    always_mounted: bool,
+    sync_excluded_pages: Vec<String>,
 }
 
 pub(super) fn spec(pid: u32) -> Option<&'static MenuSpec> {
@@ -86,6 +94,19 @@ pub(super) fn spec(pid: u32) -> Option<&'static MenuSpec> {
 }
 
 impl MenuSpec {
+    pub(super) fn always_mounted(&self) -> Option<bool> {
+        self.profile_shell
+            .as_ref()
+            .map(|shell| shell.always_mounted)
+    }
+    pub(super) fn sync_enabled(&self, page: &str) -> Option<bool> {
+        self.profile_shell.as_ref().map(|shell| {
+            !shell
+                .sync_excluded_pages
+                .iter()
+                .any(|excluded| excluded == page)
+        })
+    }
     pub(super) fn width(&self) -> f32 {
         self.menu_width
     }

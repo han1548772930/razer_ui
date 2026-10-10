@@ -45,6 +45,8 @@ struct HelpPage {
     inline_confirmation: bool,
     #[serde(default)]
     obm_reset_during_ble: bool,
+    #[serde(default)]
+    plain_columns: bool,
 }
 fn records() -> &'static [Help] {
     static RECORDS: OnceLock<Vec<Help>> = OnceLock::new();
@@ -484,6 +486,12 @@ fn help_button(id: &'static str, label: String, disabled: bool, cx: &App) -> Bas
         .when(!disabled, |button| button.hover(|style| style.opacity(0.8)))
         .focus_visible(|style| style.border_color(cx.theme().primary))
 }
+fn help_panel(title: &str, block_column: bool, cx: &App) -> Div {
+    // Source widget-col is a block container. Adjacent 10px card margins
+    // collapse to 10px. GPUI flex layout needs one explicit margin per card;
+    // the column supplies the final 10px bottom margin.
+    surface::panel(i18n::t(title), cx).when(block_column, |panel| panel.mb_0())
+}
 fn unavailable_panel(
     title: &str,
     description: &str,
@@ -515,38 +523,52 @@ impl Render for SourceHelp {
             // original interface has no reverse-engineering status paragraph.
             return div().into_any_element();
         };
-        // Current 190 Hm and 679 Help render plain children of Ha. Links
-        // carry their own margin-top; the card and column have no CSS gap.
-        let exact_help = matches!(self.device.product_id, 190 | 679);
-        let mut support = surface::panel(i18n::t("SUPPORT"), cx)
-            .gap(surface::css(if exact_help { 0. } else { 10. }));
+        // Enabled only by independently audited mounted Help callers and CSS.
+        // Links carry margin-top; these cards and columns have no CSS gap.
+        let exact_help = page.plain_columns;
+        let mut support = help_panel("SUPPORT", exact_help, cx).gap(surface::css(if exact_help {
+            0.
+        } else {
+            10.
+        }));
         if let Some(url) = &help.support {
-            support = support.child(help_link(
-                "source-help-device",
-                "VISIT_DEVICE_SUPPORT",
-                url.clone(),
-                cx,
-            ).when(exact_help, |link| link.mt(surface::css(10.))));
+            support = support.child(
+                help_link(
+                    "source-help-device",
+                    "VISIT_DEVICE_SUPPORT",
+                    url.clone(),
+                    cx,
+                )
+                .when(exact_help, |link| link.mt(surface::css(10.))),
+            );
         }
         if let Some(prefix) = &help.guide {
             // App locale tags use zh-CN; current vendor language assets and
             // guide filenames use lower-case tags. Empty locale defaults to en.
             let locale = i18n::locale().to_ascii_lowercase();
             let locale = if locale.is_empty() { "en" } else { &locale };
-            support = support.child(help_link(
-                "source-help-guide",
-                "VISIT_MASTER_PAGE",
-                format!("{prefix}{locale}.pdf"),
-                cx,
-            ).when(exact_help, |link| link.mt(surface::css(10.))));
+            support = support.child(
+                help_link(
+                    "source-help-guide",
+                    "VISIT_MASTER_PAGE",
+                    format!("{prefix}{locale}.pdf"),
+                    cx,
+                )
+                .when(exact_help, |link| link.mt(surface::css(10.))),
+            );
         }
-        support = support.child(help_link(
-            "source-help-synapse",
-            "VISIT_SYNAPSE_SUPPORT",
-            "https://support.razer.com",
-            cx,
-        ).when(exact_help, |link| link.mt(surface::css(10.))));
-        let mut left = v_flex().gap(surface::css(if exact_help { 0. } else { 20. }));
+        support = support.child(
+            help_link(
+                "source-help-synapse",
+                "VISIT_SYNAPSE_SUPPORT",
+                "https://support.razer.com",
+                cx,
+            )
+            .when(exact_help, |link| link.mt(surface::css(10.))),
+        );
+        let mut left = v_flex()
+            .gap(surface::css(if exact_help { 0. } else { 20. }))
+            .when(exact_help, |column| column.pb(surface::css(10.)));
         if page.system_info {
             left = left.child(
                 surface::panel(i18n::t("CUSTOMIZE_SYSTEM_INFO_TITLE"), cx)
@@ -669,7 +691,7 @@ impl Render for SourceHelp {
         }
         if !audio_support && (page.reset || page.oled_reset && !self.device.use_ble) {
             left = left.child(
-                surface::panel(i18n::t("FACTORY_RESET"), cx)
+                help_panel("FACTORY_RESET", exact_help, cx)
                     .child(i18n::t(&page.reset_title))
                     .child(
                         v_flex()
@@ -700,7 +722,9 @@ impl Render for SourceHelp {
             );
         }
         let serial = self.device.serial_number.clone();
-        let mut right = v_flex().gap(surface::css(if exact_help { 0. } else { 20. }));
+        let mut right = v_flex()
+            .gap(surface::css(if exact_help { 0. } else { 20. }))
+            .when(exact_help, |column| column.pb(surface::css(10.)));
         if audio_support {
             let mut panel = surface::panel(i18n::t("SUPPORT"), cx).gap(surface::css(10.));
             if let Some(url) = &help.support {
@@ -744,7 +768,7 @@ impl Render for SourceHelp {
         }
         if page.serial {
             right = right.child(
-                surface::panel(i18n::t("SERIAL_NUM"), cx)
+                help_panel("SERIAL_NUM", exact_help, cx)
                     .child(format!("{} {serial}", i18n::t("SERIAL")))
                     .child(
                         help_button(
@@ -767,7 +791,7 @@ impl Render for SourceHelp {
         }
         let firmware = self.device.current_firmware_version();
         if page.firmware && !firmware.is_empty() {
-            let mut panel = surface::panel(i18n::t("DEVICE_HEADER"), cx)
+            let mut panel = help_panel("DEVICE_HEADER", exact_help, cx)
                 .child(format!("{}: {firmware}", i18n::t("FIRMWARE_VERSION")));
             if page.view_more {
                 if self.view_more {
@@ -815,16 +839,20 @@ impl Render for SourceHelp {
             right = right.child(panel);
         }
         if page.registration {
-            right = right.child(surface::panel(i18n::t("PRODUCT_REGISTRATION"), cx).child(
-                help_link(
-                    "source-help-register",
-                    "REGISTER_ONLINE",
-                    "https://www.razer.com/product-registration",
-                    cx,
-                ).when(exact_help, |link| link.mt(surface::css(10.))),
-            ));
+            right = right.child(
+                help_panel("PRODUCT_REGISTRATION", exact_help, cx).child(
+                    help_link(
+                        "source-help-register",
+                        "REGISTER_ONLINE",
+                        "https://www.razer.com/product-registration",
+                        cx,
+                    )
+                    .when(exact_help, |link| link.mt(surface::css(10.))),
+                ),
+            );
         }
         surface::page_columns()
+            .when(exact_help, |columns| columns.gap_0())
             .child(surface::page_column(left))
             .child(surface::page_column(right))
             .into_any_element()

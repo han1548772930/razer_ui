@@ -30,6 +30,8 @@ const GAMEPAD_DIALOG_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/gamepad-2636-embedded.rs");
 const GAMEPAD_CALIBRATION_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/gamepad-2636-calibration-embedded.rs");
+const GAMEPAD_CALIBRATION_CURRENT_ASSETS: &[(&str, &[u8])] =
+    include!("../../../assets/synapse/gamepad-calibration-current-embedded.rs");
 const PROFILES_TRANSFER_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/profiles-transfer-embedded.rs");
 const MONITOR_INPUT_ASSETS: &[(&str, &[u8])] =
@@ -41,6 +43,10 @@ const KEYBOARD_PROPERTIES_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/keyboard-properties-embedded.rs");
 const KEYBOARD_679_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/keyboard-679-embedded.rs");
+const KEYBOARD_MOD_TAP_ASSETS: &[(&str, &[u8])] = &[(
+    "synapse/keyboard-688-mod-tap.svg",
+    include_bytes!("../../../assets/synapse/keyboard-688-mod-tap.svg"),
+)];
 const KEYBOARD_GAME_CONTROLLER_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/keyboard-game-controller.svg",
     include_bytes!("../../../assets/synapse/keyboard-game-controller.svg"),
@@ -127,12 +133,14 @@ impl AssetSource for SynapseAssets {
             .chain(KITSUNE_ASSETS)
             .chain(GAMEPAD_DIALOG_ASSETS)
             .chain(GAMEPAD_CALIBRATION_ASSETS)
+            .chain(GAMEPAD_CALIBRATION_CURRENT_ASSETS)
             .chain(PROFILES_TRANSFER_ASSETS)
             .chain(MONITOR_INPUT_ASSETS)
             .chain(STREAM_MIXER_ASSETS)
             .chain(SNAP_TAP_ASSETS)
             .chain(KEYBOARD_PROPERTIES_ASSETS)
             .chain(KEYBOARD_679_ASSETS)
+            .chain(KEYBOARD_MOD_TAP_ASSETS)
             .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
             .chain(KEYBOARD_ACTUATION_ASSETS)
             .chain(KEYBOARD_INDICATOR_ASSETS)
@@ -168,13 +176,15 @@ impl AssetSource for SynapseAssets {
                 .chain(KITSUNE_ASSETS)
                 .chain(GAMEPAD_DIALOG_ASSETS)
                 .chain(GAMEPAD_CALIBRATION_ASSETS)
+                .chain(GAMEPAD_CALIBRATION_CURRENT_ASSETS)
                 .chain(PROFILES_TRANSFER_ASSETS)
                 .chain(MONITOR_INPUT_ASSETS)
                 .chain(STREAM_MIXER_ASSETS)
                 .chain(SNAP_TAP_ASSETS)
                 .chain(KEYBOARD_PROPERTIES_ASSETS)
                 .chain(KEYBOARD_679_ASSETS)
-            .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
+                .chain(KEYBOARD_MOD_TAP_ASSETS)
+                .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
                 .chain(KEYBOARD_ACTUATION_ASSETS)
                 .chain(KEYBOARD_INDICATOR_ASSETS)
                 .chain(CHROMA_STUDIO_HOST_ASSETS)

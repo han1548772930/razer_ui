@@ -1,10 +1,12 @@
-//! Current 2636 calibration presentation. Artwork, CSS and canvas geometry
-//! are recorded in gamepad-2636-calibration-current-evidence.json.
+//! Mounted current-source calibration variants. Per-product component and CSS
+//! receipts are recorded in gamepad-*-calibration-live-source.json.
 use super::*;
 use gpui_kit::base::Dialog;
 use razer_widgets::theme::GamepadDialogColors as Colors;
 use state::{CalibrationAction, CalibrationState};
 
+#[path = "gamepad_calibration_popup.rs"]
+mod popup;
 #[path = "gamepad_calibration_state.rs"]
 pub mod state;
 #[cfg(test)]
@@ -16,13 +18,61 @@ pub(super) struct CalibrationDialog {
     return_focus: Option<FocusHandle>,
 }
 
+/// The official SVG carries three native overlay layers. Source CSS hides
+/// them and reveals the applicable layer; there are no raster replacements.
+fn calibration_svg(pid: u32, step: i8, part: u8, valid: bool) -> std::sync::Arc<Image> {
+    let source = match pid {
+        2676 => include_str!("../../../../assets/synapse/gamepad-2676-calibration-source.svg"),
+        2684 => include_str!("../../../../assets/synapse/gamepad-2684-calibration-source.svg"),
+        4144 => include_str!("../../../../assets/synapse/gamepad-4144-calibration-source.svg"),
+        _ => unreachable!("source SVG calibration product"),
+    };
+    let modal = matches!(pid, 2676 | 2684);
+    let mut svg = source.to_owned();
+    for (class, visible) in [
+        ("leftBumper", (1..=4).contains(&step) && valid),
+        (
+            "leftJoystick",
+            if modal {
+                step == 6 && part == 1
+            } else {
+                step == 0
+            },
+        ),
+        (
+            "rightJoystick",
+            if modal {
+                step == 6 && part == 2
+            } else {
+                step == 0
+            },
+        ),
+    ] {
+        svg = svg.replace(
+            &format!("class=\"{class}\""),
+            &format!(
+                "class=\"{class}\" style=\"display:{}\"",
+                if visible { "inline" } else { "none" }
+            ),
+        );
+    }
+    std::sync::Arc::new(Image::from_bytes(ImageFormat::Svg, svg.into_bytes()))
+}
+
 impl GamepadProductWorkspace {
+    pub(super) fn has_page_calibration(&self) -> bool {
+        matches!(
+            self.spec.product_id,
+            2629 | 2636 | 2647 | 2650 | 4133 | 4144
+        )
+    }
     pub fn set_edition_id(&mut self, edition_id: u32, cx: &mut Context<Self>) {
         self.edition_id = edition_id;
         cx.notify();
     }
     pub fn calibration_generation(&self) -> Option<u64> {
-        (self.spec.product_id == 2636).then(|| self.calibration_state.generation())
+        (self.has_page_calibration() || self.has_popup_calibration())
+            .then(|| self.calibration_state.generation())
     }
     pub fn calibration_intent(&self) -> Option<&CalibrationIntent> {
         self.calibration_state.intent()
@@ -33,13 +83,22 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if self.spec.product_id != 2636
-            || self.page != "TAB_CALIBRATION"
+        if !(self.has_page_calibration() && self.page == "TAB_CALIBRATION"
+            || self.has_popup_calibration() && self.calibration_popup.is_some())
             || !self.calibration_state.observe(observation)
         {
             return false;
         }
-        if self.calibration_state.step == -1 && self.calibration_dialog.is_none() {
+        if self.has_popup_calibration() {
+            if self.calibration_state.step == 0 {
+                self.close_calibration_popup(window, cx);
+            } else if let Some(intent) = self.calibration_state.request(
+                CalibrationAction::RotateComplete,
+                self.calibration_state.part,
+            ) {
+                cx.emit(intent);
+            }
+        } else if self.calibration_state.step == -1 && self.calibration_dialog.is_none() {
             let return_focus = window.focused(cx);
             let focus = cx.focus_handle();
             focus.focus(window, cx);
@@ -67,7 +126,9 @@ impl GamepadProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.spec.product_id != 2636 || self.page != "TAB_CALIBRATION" {
+        if !(self.has_page_calibration() && self.page == "TAB_CALIBRATION"
+            || self.has_popup_calibration() && self.calibration_popup.is_some())
+        {
             return;
         }
         if let Some(intent) = self.calibration_state.request(action, part) {
@@ -77,7 +138,7 @@ impl GamepadProductWorkspace {
         }
     }
     pub fn leave_calibration(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.spec.product_id == 2636 {
+        if self.has_page_calibration() || self.has_popup_calibration() {
             if self.calibration_state.step != 0 {
                 if let Some(intent) = self
                     .calibration_state
@@ -92,6 +153,11 @@ impl GamepadProductWorkspace {
                     .observe(CalibrationObservation::unavailable(generation, u64::MAX));
             }
             self.dismiss_calibration_error(window, cx);
+            if let Some(popup) = self.calibration_popup.take() {
+                if let Some(focus) = popup.return_focus {
+                    focus.focus(window, cx);
+                }
+            }
         }
     }
     pub(super) fn render_calibration(
@@ -121,26 +187,54 @@ impl GamepadProductWorkspace {
         } else {
             String::new()
         };
-        let edition = match self.edition_id {
-            128 => 128,
-            129 => 129,
+        let pid = self.spec.product_id;
+        let edition = match (pid, self.edition_id) {
+            (2629 | 2636 | 2647 | 4133, 128) => 128,
+            (2636 | 4133, 129) => 129,
             _ => 0,
         };
+        let is_svg = pid == 4144;
+        let product_height = if is_svg {
+            250.
+        } else if pid == 4133 {
+            372. * 752. / 1116.
+        } else {
+            251.
+        };
+        let ps_controller = self
+            .spec
+            .info
+            .get("isPlaystationController")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         let mut product = div()
             .relative()
-            .w(area_length(372.))
-            // Original 1116 × 753 artwork at CSS max-width 372.
-            .h(area_length(251.))
-            .child(
+            .w(area_length(if is_svg { 371. } else { 372. }))
+            .h(area_length(product_height));
+        if is_svg {
+            product = product.child(
+                img(calibration_svg(pid, state.step, state.part, state.valid))
+                    .w_full()
+                    .h_full()
+                    .object_fit(ObjectFit::Contain),
+            );
+        } else {
+            product = product.child(
                 img(SharedString::from(format!(
-                    "synapse/gamepad-2636-calibration-edition-{edition}.png"
+                    "synapse/gamepad-{pid}-calibration-edition-{edition}.png"
                 )))
                 .w_full()
                 .h_full()
                 .object_fit(ObjectFit::Contain),
             );
-        if state.step == 0 {
-            for (part, left, top) in [(1_u32, 62.75, 69.), (2_u32, 221., 126.)] {
+        }
+        if state.step == 0 && !is_svg {
+            let targets = if ps_controller {
+                [(1_u32, 110.75, 108.), (2_u32, 221., 108.)]
+            } else {
+                [(1_u32, 62.75, 69.), (2_u32, 221., 126.)]
+            };
+            for (part, left, top) in targets {
                 product = product.child(
                     div()
                         .absolute()
@@ -155,23 +249,30 @@ impl GamepadProductWorkspace {
                 );
             }
         } else if (1..=5).contains(&state.step) {
-            if state.valid && state.step != 5 {
+            if state.valid && state.step != 5 && !is_svg {
                 product = product.child(
                     div()
                         .absolute()
-                        .left(area_length(56.))
-                        .top(area_length(5.))
+                        .left(area_length(if ps_controller { 49. } else { 56. }))
+                        .top(area_length(if ps_controller { 2. } else { 5. }))
                         .child(
                             img("synapse/gamepad-2636-calibration-bumper.svg")
                                 .w(area_length(64.))
                                 .h(area_length(29.)),
                         ),
                 );
-            } else {
+            } else if !state.valid || state.step == 5 {
                 let (left, top) = if state.part == 1 {
-                    (8.75, 11.)
+                    if ps_controller {
+                        (if is_svg { 55.5 } else { 56. }, 50.)
+                    } else {
+                        (if is_svg { 8.25 } else { 8.75 }, 11.)
+                    }
                 } else {
-                    (166., 68.)
+                    (
+                        if is_svg { 165.5 } else { 166. },
+                        if ps_controller { 50. } else { 68. },
+                    )
                 };
                 product = product.child(
                     div()
@@ -240,7 +341,7 @@ impl GamepadProductWorkspace {
             h_flex()
         };
         v_flex()
-            .id("gamepad-calibration-2636")
+            .id(("gamepad-calibration", pid))
             .test_support()
             .relative()
             .w_full()
@@ -318,22 +419,6 @@ impl GamepadProductWorkspace {
                     }),
             )
             .child(div().mt(surface::css(10.)).child(footer))
-            .child(
-                div()
-                    .id("gamepad-calibration-observation-status")
-                    .test_support()
-                    .role(Role::Status)
-                    .mt_3()
-                    .text_size(surface::css(12.))
-                    .text_color(Colors::secondary())
-                    .child(if state.intent().is_some() {
-                        "校准操作仅保留在本地，尚未发送至设备。"
-                    } else if state.positions.iter().all(Option::is_none) {
-                        "尚未收到手柄位置。"
-                    } else {
-                        ""
-                    }),
-            )
             .into_any_element()
     }
     pub(super) fn render_calibration_error(

@@ -7,8 +7,8 @@ use serde::Serialize;
 use std::{cell::Cell, rc::Rc, time::Duration};
 
 const LOCAL: &str = "_snapTapLocalV1";
-#[path = "keyboard_snap679.rs"]
-mod analog_679;
+#[path = "keyboard_snap_analog.rs"]
+mod analog;
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Pair {
@@ -112,6 +112,10 @@ pub(super) struct State {
     mod_tap: bool,
 }
 impl State {
+    pub(super) fn set_mod_tap(&mut self, enabled: bool) {
+        self.mod_tap = enabled;
+    }
+
     pub(super) fn new(cx: &mut App) -> Self {
         let config = data().defaults.clone();
         Self {
@@ -226,7 +230,7 @@ impl State {
     }
     fn accept(&mut self, input: &str) -> bool {
         if self.analog {
-            return self.accept_679(input);
+            return self.accept_analog(input);
         }
         if !self.config.enabled || self.phase == Phase::Ready {
             return false;
@@ -320,7 +324,8 @@ pub(super) fn snap_tap_full_width(pid: u32) -> bool {
 
 impl KeyboardProductWorkspace {
     pub fn captures_snap_keys(&self) -> bool {
-        (self.page == "TAB_CUSTOMIZE" || self.spec.product_id == 679 && self.page == "ACTUATION")
+        (self.page == "TAB_CUSTOMIZE"
+            || self.spec.analog_gamepad_layout() && self.page == "ACTUATION")
             && self
                 .snap_tap
                 .as_ref()
@@ -332,12 +337,14 @@ impl KeyboardProductWorkspace {
         }
     }
     pub(super) fn init_snap_tap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if !ordinary_product(self.spec.product_id) && self.spec.product_id != 679 {
+        if !ordinary_product(self.spec.product_id) && !self.spec.analog_gamepad_layout() {
             return;
         }
         self.snap_tap = Some(State::new(cx));
-        if self.spec.product_id == 679 {
+        if self.spec.analog_gamepad_layout() {
             if let Some(state) = &mut self.snap_tap {
+                state.mod_tap =
+                    self.spec.source_mod_tap && self.draft["modTap"].as_bool().unwrap_or(false);
                 state.analog = true;
                 state.message = Message::AnalogIntroduction;
                 state.config.pairs[0]
@@ -349,6 +356,7 @@ impl KeyboardProductWorkspace {
         self.subscriptions
             .push(cx.observe_window_activation(window, |this, window, cx| {
                 if !window.is_window_active() {
+                    this.analog_gamepad.key_pressed = false;
                     this.blur_snap_tap(cx);
                 }
             }));
@@ -371,7 +379,8 @@ impl KeyboardProductWorkspace {
             }
         }
         let mut state = State::new(cx);
-        state.analog = self.spec.product_id == 679;
+        state.mod_tap = self.spec.source_mod_tap && self.draft["modTap"].as_bool().unwrap_or(false);
+        state.analog = self.spec.analog_gamepad_layout();
         if state.analog {
             state.message = Message::AnalogIntroduction;
             state.config.pairs[0]
@@ -545,7 +554,7 @@ impl KeyboardProductWorkspace {
                 .as_ref()
                 .is_some_and(|state| state.message == Message::Success)
         {
-            self.submit_679_snap(cx);
+            self.submit_analog_snap(cx);
         }
     }
     #[allow(dead_code)]
@@ -555,7 +564,19 @@ impl KeyboardProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        match &observation {
+            SnapTapObservation::Layout(id) if self.spec.analog_gamepad_layout() => {
+                self.analog_gamepad.layout = Some(*id);
+            }
+            SnapTapObservation::ModTapEnabled(enabled) if self.spec.source_mod_tap => {
+                if let Some(profile) = self.draft.as_object_mut() {
+                    profile.insert("modTap".into(), json!(*enabled));
+                }
+            }
+            _ => {}
+        }
         let Some(state) = &mut self.snap_tap else {
+            cx.notify();
             return;
         };
         match observation {
@@ -625,7 +646,9 @@ impl KeyboardProductWorkspace {
                         && state.mod_tap
                         && self.spec.config["MOD_TAP_KEYS"]
                             .as_array()
-                            .is_some_and(|keys| keys.iter().any(|id| id.as_str() == Some(&key)))
+                            .is_some_and(|keys| {
+                                keys.iter().any(|id| id.as_str() == Some(key.as_str()))
+                            })
                     {
                         return;
                     }

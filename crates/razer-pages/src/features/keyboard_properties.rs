@@ -54,6 +54,7 @@ impl KeyboardProductWorkspace {
                 ),
                 cx,
             )
+            .when(self.spec.analog_gamepad_layout(), |widget| widget.mb_0())
             .child(
                 h_flex()
                     .items_center()

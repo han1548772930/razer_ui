@@ -1,10 +1,11 @@
-//! PID 679 CU -> DU -> jm, current main.194d8a7b.js. One pair with an
+//! Independently mounted 678/679/688 Analog Gamepad callers; 679 CU -> DU -> jm.
+//! Current source caller receipts: tools/audit_keyboard_analog_callers.cjs. One pair with an
 //! explicit Create command and observed READY/ACTIVE/SNAPPED key states.
 //! This is separate from the ordinary Customize multi-pair widget.
 use super::*;
 
 impl State {
-    pub(super) fn accept_679(&mut self, input: &str) -> bool {
+    pub(super) fn accept_analog(&mut self, input: &str) -> bool {
         if !self.config.enabled || self.phase == Phase::Ready {
             return false;
         }
@@ -37,7 +38,7 @@ impl State {
 }
 
 impl KeyboardProductWorkspace {
-    pub(super) fn submit_679_snap(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn submit_analog_snap(&mut self, cx: &mut Context<Self>) {
         let Some(state) = &self.snap_tap else {
             return;
         };
@@ -49,7 +50,7 @@ impl KeyboardProductWorkspace {
         self.request_actuation_message(payload, cx);
     }
 
-    fn create_679_snap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn create_analog_snap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.factory_default_profile {
             return;
         }
@@ -69,7 +70,7 @@ impl KeyboardProductWorkspace {
         cx.notify();
     }
 
-    fn toggle_679_snap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn toggle_analog_snap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(state) = &mut self.snap_tap else {
             return;
         };
@@ -78,12 +79,12 @@ impl KeyboardProductWorkspace {
                 .timer(Duration::from_millis(500))
                 .await;
             let _ = this.update_in(cx, |this, window, cx| {
-                this.apply_toggle_679_snap(window, cx)
+                this.apply_toggle_analog_snap(window, cx)
             });
         }));
     }
 
-    fn apply_toggle_679_snap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    fn apply_toggle_analog_snap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.factory_default_profile {
             return;
         }
@@ -115,10 +116,10 @@ impl KeyboardProductWorkspace {
         }
         state.local = true;
         self.publish_snap_tap(cx);
-        self.submit_679_snap(cx);
+        self.submit_analog_snap(cx);
     }
 
-    fn outside_679_snap(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
+    fn outside_analog_snap(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
         let Some(state) = &mut self.snap_tap else {
             return;
         };
@@ -131,11 +132,11 @@ impl KeyboardProductWorkspace {
         state.commit(state.staged.clone());
         state.finish();
         self.publish_snap_tap(cx);
-        self.submit_679_snap(cx);
+        self.submit_analog_snap(cx);
     }
 
     pub(crate) fn analog_snap_panel(&self, cx: &Context<Self>) -> Option<AnyElement> {
-        if self.spec.product_id != 679 || self.page != "ACTUATION" {
+        if !self.spec.analog_gamepad_layout() || self.page != "ACTUATION" {
             return None;
         }
         let state = self.snap_tap.as_ref()?;
@@ -231,7 +232,9 @@ impl KeyboardProductWorkspace {
                 surface::SynapseSwitch::new("679-snap-enable")
                     .checked(enabled)
                     .disabled(locked)
-                    .on_change(cx.listener(|this, _, window, cx| this.toggle_679_snap(window, cx))),
+                    .on_change(
+                        cx.listener(|this, _, window, cx| this.toggle_analog_snap(window, cx)),
+                    ),
                 BaseButton::new("679-snap-shortcut-tooltip")
                     .tooltip(|window, cx| {
                         gpui_kit::component::tooltip::Tooltip::new(t("SNAP_TAP_SHORTCUT_TOOLTIP"))
@@ -262,10 +265,11 @@ impl KeyboardProductWorkspace {
                     ),
                 cx,
             )
+            .mb_0()
             .track_focus(&state.focus)
             .capture_key_up(cx.listener(|this, event, _, cx| this.snap_key_up(event, cx)))
             .on_mouse_down_out(cx.listener(|this, event: &MouseDownEvent, _, cx| {
-                this.outside_679_snap(event.position, cx)
+                this.outside_analog_snap(event.position, cx)
             }))
             .child(div().child(t("SNAP_TAP_DESC")))
             .child(
@@ -291,7 +295,7 @@ impl KeyboardProductWorkspace {
                                     .text_size(surface::css(12.))
                                     .child(t("CREATE_SNAP_TAP_TEXT").to_uppercase())
                                     .on_click(cx.listener(|this, _, window, cx| {
-                                        this.create_679_snap(window, cx)
+                                        this.create_analog_snap(window, cx)
                                     })),
                             )
                             .child(surface::help_control(

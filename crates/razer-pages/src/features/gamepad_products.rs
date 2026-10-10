@@ -146,6 +146,7 @@ pub struct GamepadProductWorkspace {
     deadzone_dialog: Option<deadzone_dialog::DialogState>,
     calibration_state: calibration::state::CalibrationState,
     calibration_dialog: Option<calibration::CalibrationDialog>,
+    calibration_popup: Option<calibration::CalibrationDialog>,
     calibration_bounds: Rc<Cell<Bounds<Pixels>>>,
     thumbstick_bounds: Rc<Cell<Bounds<Pixels>>>,
     sliders: BTreeMap<String, Entity<SliderState>>,
@@ -174,6 +175,7 @@ impl GamepadProductWorkspace {
             deadzone_dialog: None,
             calibration_state: Default::default(),
             calibration_dialog: None,
+            calibration_popup: None,
             calibration_bounds: Rc::new(Cell::new(Bounds::default())),
             thumbstick_bounds: Rc::new(Cell::new(Bounds::default())),
             sliders: BTreeMap::new(),
@@ -219,7 +221,7 @@ impl GamepadProductWorkspace {
     pub fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
             self.cancel_range_edits(cx);
-            if self.page == "TAB_CALIBRATION" {
+            if self.page == "TAB_CALIBRATION" || self.calibration_popup.is_some() {
                 self.leave_calibration(window, cx);
             }
             // 2636's mounted thumbstick component initializes prevLeft/Right
@@ -1217,6 +1219,24 @@ impl GamepadProductWorkspace {
                 .when(!enabled, |p| {
                     p.child(surface::note(t("SENSITIVITY_ASSIGN_INFO"), cx))
                 })
+                .when(
+                    !self.sensitivity && matches!(self.spec.product_id, 2676 | 2684),
+                    |p| {
+                        let part = if side == "leftStick" { 1 } else { 2 };
+                        p.child(
+                            Button::new(SharedString::from(format!(
+                                "gamepad-stick-calibrate-{part}"
+                            )))
+                            .label(t("CALIBRATE"))
+                            .outline()
+                            .on_click(cx.listener(
+                                move |this, _, window, cx| {
+                                    this.open_calibration_popup(part, window, cx)
+                                },
+                            )),
+                        )
+                    },
+                )
         });
         page = page
             .child(surface::page_columns().children(panels.into_iter().map(surface::page_column)));
@@ -1460,7 +1480,7 @@ impl GamepadProductWorkspace {
     }
 
     fn calibration(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        if self.spec.product_id == 2636 {
+        if self.has_page_calibration() {
             return self.render_calibration(window, cx);
         }
         surface::panel(t("TAB_CALIBRATION"), cx)
@@ -1507,6 +1527,9 @@ impl Render for GamepadProductWorkspace {
             })
             .when(self.calibration_dialog.is_some(), |body| {
                 body.child(self.render_calibration_error(window, cx))
+            })
+            .when(self.calibration_popup.is_some(), |body| {
+                body.child(self.render_calibration_popup(window, cx))
             })
     }
 }

@@ -297,7 +297,7 @@ def supplement_pages() -> dict:
         "keyboard_oled_data.json",
         "accessory_controls_data.json",
     ):
-        data = json.loads((ROOT / "src/features" / name).read_text(encoding="utf-8"))
+        data = json.loads((ROOT / "crates/razer-pages/src/features" / name).read_text(encoding="utf-8"))
         for product in data:
             for page in product.get("pages", []):
                 if page.get("sections"):

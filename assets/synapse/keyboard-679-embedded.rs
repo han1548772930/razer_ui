@@ -1,5 +1,7 @@
-[
+&[
     ("synapse/keyboard-679-chroma-sync.svg", include_bytes!("keyboard-679-chroma-sync.svg") as &[u8]),
+    ("synapse/keyboard-679-controller-green.svg", include_bytes!("keyboard-679-controller-green.svg") as &[u8]),
+    ("synapse/keyboard-679-controller-grey.svg", include_bytes!("keyboard-679-controller-grey.svg") as &[u8]),
     ("synapse/keyboard-679-expand.svg", include_bytes!("keyboard-679-expand.svg") as &[u8]),
     ("synapse/keyboard-679-quick-qe.svg", include_bytes!("keyboard-679-quick-qe.svg") as &[u8]),
     ("synapse/keyboard-679-quick-wasd.svg", include_bytes!("keyboard-679-quick-wasd.svg") as &[u8]),

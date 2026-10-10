@@ -1,5 +1,5 @@
-//! 679 mounted Sh/uh/Ph/Gh and $L/em callers, directly checked against
-//! main.194d8a7b.js and the final main.1c5a651a.css cascade.
+//! Independently audited 678/679/688 Analog Gamepad Customize and Lighting callers.
+//! Product differences remain in statically extracted source metadata.
 use super::*;
 use gpui_kit::base::Button as BaseButton;
 
@@ -9,6 +9,8 @@ pub(super) struct State {
     pub(super) advanced: bool,
     pub(super) gamepad: Option<KeyboardGamepadTesterObservation>,
     pub(super) quick_conflict: bool,
+    pub(super) layout: Option<u32>,
+    pub(super) key_pressed: bool,
 }
 
 /// Publish only host callback values; None means no observed controller data.
@@ -23,6 +25,86 @@ pub struct KeyboardGamepadTesterObservation {
 }
 
 impl KeyboardProductWorkspace {
+    pub(super) fn huntsman_mod_tap(&self, cx: &Context<Self>) -> AnyElement {
+        let enabled = self.boolean("/modTap");
+        let japanese = self.analog_gamepad.layout == Some(12);
+        let help = BaseButton::new("keyboard-mod-tap-help")
+            .size(surface::css(14.))
+            .p_0()
+            .rounded_full()
+            .bg(rgb(0x4a4a4a))
+            .accessibility_label(t("MOD_TAP"))
+            .child(img("synapse/automation-tooltip_questionmark.svg").size_full())
+            .tooltip(move |window, cx| {
+                gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
+                    h_flex()
+                        .p(surface::css(10.))
+                        .border_1()
+                        .border_color(rgb(0x5d5d5d))
+                        .rounded(surface::css(3.))
+                        .bg(rgb(0x000000))
+                        .text_color(rgb(0xffffff))
+                        .gap(surface::css(20.))
+                        .children(
+                            [
+                                (
+                                    "PRIMARY",
+                                    [
+                                        "RIGHT_SHIFT",
+                                        "RIGHT_ALT",
+                                        if japanese { "Fn" } else { "MENU" },
+                                        "RIGHT_CTRL",
+                                    ],
+                                ),
+                                ("SECONDARY", ["UP", "LEFT", "DOWN", "RIGHT"]),
+                            ]
+                            .map(|(title, keys)| {
+                                v_flex()
+                                    .child(div().mb(surface::css(10.)).underline().child(t(title)))
+                                    .children(keys.map(|key| {
+                                        div().mb(surface::css(5.)).child(if key == "Fn" {
+                                            SharedString::from("Fn")
+                                        } else {
+                                            t(key).into()
+                                        })
+                                    }))
+                            }),
+                        )
+                        .into_any_element()
+                })
+                .build(window, cx)
+            });
+        surface::panel_with_title_switch(
+            t("MOD_TAP"),
+            surface::SynapseSwitch::new("keyboard-mod-tap-enabled")
+                .checked(enabled)
+                .disabled(self.analog_gamepad.key_pressed)
+                .on_change(cx.listener(move |this, _, _, cx| {
+                    if this.analog_gamepad.key_pressed {
+                        return;
+                    }
+                    let Some(mapping_list) = this.draft.pointer(&this.mapping_path()).cloned() else {
+                        return;
+                    };
+                    // Hl changes the UI reducer immediately; this is a local draft,
+                    // while the separately emitted middleware request can fail.
+                    this.write("/modTap", json!(!enabled), cx);
+                    if let Some(state) = &mut this.snap_tap {
+                        state.set_mod_tap(!enabled);
+                    }
+                    this.request_actuation_message(json!({"type":"ON_SET_MOD_TAP", "payload":{"mappingList":mapping_list,"isEnabled":!enabled}}), cx);
+                })),
+            help,
+            cx,
+        )
+        .mb_0()
+        .child(h_flex()
+            .gap(surface::css(20.))
+            .child(img("synapse/keyboard-688-mod-tap.svg").w(surface::css(141.)).h(surface::css(74.)).flex_shrink_0())
+            .child(div().flex_1().child(t("MOD_TAP_DESC"))))
+        .into_any_element()
+    }
+
     pub(super) fn huntsman_quick_remapping(&self, cx: &Context<Self>) -> AnyElement {
         let mappings = self
             .draft
@@ -53,6 +135,7 @@ impl KeyboardProductWorkspace {
             ),
             cx,
         )
+        .mb_0()
         .child(div().child(t("QUICK_MAPPING_TITLE")))
         .children(groups.map(|(name, label, keys)| {
             let active = mappings.is_some_and(|mappings| {
@@ -90,7 +173,7 @@ impl KeyboardProductWorkspace {
                         })),
                 )
         }))
-        .when(self.huntsman679.quick_conflict, |panel| {
+        .when(self.analog_gamepad.quick_conflict, |panel| {
             panel.child(
                 div()
                     .mt(surface::css(10.))
@@ -130,11 +213,11 @@ impl KeyboardProductWorkspace {
             })
         {
             // WM refuses to overwrite existing assignments; Ch displays the conflict.
-            self.huntsman679.quick_conflict = true;
+            self.analog_gamepad.quick_conflict = true;
             cx.notify();
             return;
         }
-        self.huntsman679.quick_conflict = false;
+        self.analog_gamepad.quick_conflict = false;
         let (make, release) = self.default_actuation();
         for (id, assignment) in keys {
             let index = mappings.iter().position(|mapping| {
@@ -158,7 +241,7 @@ impl KeyboardProductWorkspace {
                 .and_then(|mapping| mapping.pointer("/mapping/0/actuationPoint"))
                 .cloned()
                 .unwrap_or_else(|| json!({"0":make as u32,"1":release as u32}));
-            // 60481.r is analogV1; 679 is analogV2 and VM selects this wM curve.
+            // 60481.r is analogV1; audited callers are analogV2 and select this curve.
             let mut first = json!({"outputType":"controllerGroup","actuationPoint":points,
                 "controllerGroup":{"controllerMode":{"isAnalog":true},"analogSensitivityType":"STANDARD",
                     "analogSensitivityList":{"analogSensitivityAssignment":[{"x":0.1,"y":0},{"x":1.4,"y":86},{"x":2.8,"y":176},{"x":4,"y":255}]},
@@ -189,14 +272,14 @@ impl KeyboardProductWorkspace {
         observation: Option<KeyboardGamepadTesterObservation>,
         cx: &mut Context<Self>,
     ) {
-        if self.spec.product_id == 679 {
-            self.huntsman679.gamepad = observation;
+        if self.spec.analog_gamepad_layout() {
+            self.analog_gamepad.gamepad = observation;
             cx.notify();
         }
     }
 
     pub(super) fn huntsman_effects(&self, cx: &Context<Self>) -> AnyElement {
-        let advanced = self.huntsman679.advanced;
+        let advanced = self.analog_gamepad.advanced;
         let selected = self.draft["quickEffects"]["selectedEffectId"]
             .as_u64()
             .unwrap_or(3);
@@ -235,8 +318,8 @@ impl KeyboardProductWorkspace {
                     })
                     .child(t(label))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        this.huntsman679.advanced = mode;
-                        this.huntsman679.effect_menu = false;
+                        this.analog_gamepad.advanced = mode;
+                        this.analog_gamepad.effect_menu = false;
                         cx.notify();
                     }))
                 },
@@ -264,7 +347,7 @@ impl KeyboardProductWorkspace {
                                         .px(surface::css(5.))
                                         .py(surface::css(4.))
                                         .border_1()
-                                        .border_color(if self.huntsman679.effect_menu {
+                                        .border_color(if self.analog_gamepad.effect_menu {
                                             rgb(0x44d62c)
                                         } else {
                                             rgb(0x515151)
@@ -281,12 +364,12 @@ impl KeyboardProductWorkspace {
                                                 .h(surface::css(10.)),
                                         )
                                         .on_click(cx.listener(|this, _, _, cx| {
-                                            this.huntsman679.effect_menu =
-                                                !this.huntsman679.effect_menu;
+                                            this.analog_gamepad.effect_menu =
+                                                !this.analog_gamepad.effect_menu;
                                             cx.notify();
                                         })),
                                 )
-                                .when(self.huntsman679.effect_menu, |dropdown| {
+                                .when(self.analog_gamepad.effect_menu, |dropdown| {
                                     dropdown.child(
                                         div()
                                             .id("keyboard-679-effect-options")
@@ -324,7 +407,7 @@ impl KeyboardProductWorkspace {
                                                         .child(t(label))
                                                         .on_click(cx.listener(
                                                             move |this, _, _, cx| {
-                                                                this.huntsman679.effect_menu =
+                                                                this.analog_gamepad.effect_menu =
                                                                     false;
                                                                 this.select_huntsman_effect(id, cx);
                                                             },
@@ -354,6 +437,7 @@ impl KeyboardProductWorkspace {
             surface::help_control("keyboard-679-effects-help", t("EFFECTS_TOOLTIP")),
             cx,
         )
+        .mb_0()
         .child(tabs)
         .child(body)
         .into_any_element()
@@ -424,12 +508,13 @@ impl KeyboardProductWorkspace {
     }
 
     pub(super) fn huntsman_gamepad_tester(&self, cx: &Context<Self>) -> AnyElement {
-        let observed = self.huntsman679.gamepad;
+        let observed = self.analog_gamepad.gamepad;
         surface::panel_with_control(
             t("KEYBOARD_ANALOG_OPTIONS"),
             surface::help_control("keyboard-679-gamepad-help", t("GAMEPAD_TESTER_TOOLTIPS")),
             cx,
         )
+        .mb_0()
         .child(div().mb(surface::css(6.)).child(t("GAMEPAD_TESTER")))
         .child(
             div()
