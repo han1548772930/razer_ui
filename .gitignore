@@ -2,7 +2,7 @@
 
 # 逆向资料（本地参考，不入库）
 /.ref/
-
+/local-ui-reverse
 **/*.gz
 # 构建日志
 *.log
