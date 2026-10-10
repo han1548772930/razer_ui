@@ -118,4 +118,4 @@ python tools/audit-audio-mixer-help-current.py --check
 
 校验核对原 PE hash、manifest 归属、GetProcAddress 导入槽、37 项 dispatch、原 JS 收据、report 构造和错误分支原文；不会执行 DLL 或设备命令。
 
-1342 Help 当前真实挂载与 Audio Troubleshooting 提交链见[Help 专项证据](audio-mixer-help-current-evidence.json)：原 `ug.resetAudio` 无确认框，置 spinner 后等待 1 秒调用实际 `resetAudio` prop，并立即移除 spinner，不等待设备结果。每次点击保留独立 timer；页面离开或设备更换取消本地未提交请求。原后台 NORMAL_SKIPPABLE 调度与 Rust 本地串行队列未完整等价，factory reset 和 Help 最终 CSS 渲染仍为缺口。Mic Monitor 页面走 AudioCamy `SetMicMonitorEnable/Level`，不能接到同名 CmMixerLib 硬件属性。
+1342 Help 当前真实挂载与 Audio Troubleshooting 提交链见[Help 专项证据](audio-mixer-help-current-evidence.json)：原 `ug.resetAudio` 无确认框，置 spinner 后等待 1 秒调用实际 `resetAudio` prop，并立即移除 spinner，不等待设备结果。每次点击保留独立 timer；页面离开或设备更换取消本地未提交请求。原后台 NORMAL_SKIPPABLE 调度与 Rust 本地串行队列未完整等价，factory reset 和 Help 最终 CSS 渲染仍为缺口。1342 Mic Monitor 的实际实例是 AudioMixer：AM 滑杆通过 ON_SET_MIC_MONITOR、GWe/Mi 把百分比按 Math.floor 映射到 -45..0，再调用 setVolumeMicSlider。开关来自 playbackMix.mic 路由，不能用 micMonitor.isEnabled 代替。共享包中的 AudioCamy ABI 不能证明该产品挂载了 AudioCamy。

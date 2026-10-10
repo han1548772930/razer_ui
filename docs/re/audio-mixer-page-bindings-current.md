@@ -68,8 +68,9 @@ is gated to AudioAWKittyBLE and is not added to AudioMixer.
 Noise Gate/Compressor maintain original Basic/Advanced visible control gates;
 Show More/Less retains local mode without an invented mode hardware command.
 Their source page codecs and remaining UI details require further individual
-closure. The five virtual AudioCamy reducer namespaces are separate from
-CmMixerLib DSP endpoint properties and must not be equated without evidence.
+closure. 1342 mixer reducer namespaces require their actual AudioMixer instance
+and distinct endpoint recipes; bundled AudioCamy names do not establish their
+transport or native implementation.
 
 Effects presets use the current initializer's random GUID and `Preset` name,
 separate from provisional frontend `Default`. Add/Duplicate/Rename/Reset/Delete
@@ -122,4 +123,4 @@ and diff checks. Existing static test definitions reflect source report order;
 14 pure Rust mock tests passed; no application, DLL, device command or vendor JS were executed. Runtime
 acceptance remains unperformed. See [the structured chain receipt](audio-mixer-page-bindings-current.json).
 
-Actual 1342 Help now routes Audio Troubleshooting through its original one-second spinner timer, `resetAudio` intent and the direct local ResetStream IPC sequence. Native return codes remain response data and later indices run; transport or identity exceptions stop. No confirmation, profile replacement, getter or persisted audio state is added. [Current Help/IDA evidence](audio-mixer-help-current-evidence.json) preserves the mounted caller and code boundaries. The exact NORMAL_SKIPPABLE scheduling, factory reset, final inherited CSS and rendered acceptance remain gaps. Mic Monitor still requires its separate AudioCamy consumer.
+Actual 1342 Help now routes Audio Troubleshooting through its original one-second spinner timer, `resetAudio` intent and the direct local ResetStream IPC sequence. Native return codes remain response data and later indices run; transport or identity exceptions stop. No confirmation, profile replacement, getter or persisted audio state is added. [Current Help/IDA evidence](audio-mixer-help-current-evidence.json) preserves the mounted caller and code boundaries. The exact NORMAL_SKIPPABLE scheduling, factory reset, final inherited CSS and rendered acceptance remain gaps. Actual Mic Monitor uses AudioMixer.setVolumeMicSlider; its switch uses playbackMix.mic routing. Bundled AudioCamy SetMicMonitorEnable/Level is not evidence for the mounted 1342 consumer.

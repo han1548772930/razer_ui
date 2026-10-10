@@ -34,17 +34,24 @@ def main():
             'w=async()=>{_.A.msSettings("sound")},b=async()=>{_.A.msSettings("apps-volume")}',
             'Ve="SETTING_IT_UP"', 'Sn="AUDIO_TROUBLESHOOTING"',
             'un="AUDIO_TROUBLESHOOTING_DES"', 'Rn="AUDIO_TROUBLESHOOTING_BUTTON"',
-            'this.setMicMonitorEnable=e=>this.camyDllDevice.setMicMonitorEnable(e)',
-            'this.setMicMonitorLevel=e=>this.camyDllDevice.setMicMonitorLevel(e)',
+            'AM=e=>{let t=e.title;const a=(0,v.useSelector)(e=>e.playbackMixReducer).mic',
+            'changeValue:e=>{var t;o((t={isEnabled:a.isEnabled,value:e}',
         ],
         '.ref/middleware/1342/5736.fdd55044a41484df28aa.js': [
             '[l.pF.ON_RESET_AUDIO_MIXER]:D(l.n3.resetAudioMixer,!1,!1,!0)',
             'case _.n3.resetAudioMixer:', 'yield e.restartAudioDriver()',
             'p.T_.enqueueTask(p.SS.NORMAL_SKIPPABLE,Dt.resetAudioMixer',
+            'GWe:()=>Mi',
+            'Mi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i}=e,n=Di(Number(i),0,100,-45,0)',
+            'n>=-45&&n<=0&&(yield t.setVolumeMicSlider(n))',
+            'AudioMixer:()=>i.e(8242).then(i.bind(i,12027))',
+            'a=new t(e,r.DeviceInfo.claimInterface)',
+            'if(p.jf.rzDevice=a,p.jf.thxDevice=c',
         ],
         '.ref/middleware/1342/AudioMixer.cde922aae2f0fea23404.js': [
             'const t="RazerT2ResetStream",n=Gt(8,0,u.Number_Int);let o=null;for(let r=0;r<=8;++r)',
             'o=JSON.parse(a),o.jsonData={propterTypeName:t}}return o',
+            'i[0][7]=n.data[0],i[0][8]=n.data[1],i[0][6]=o',
         ],
     }
     sources = []
@@ -95,7 +102,7 @@ def main():
                       'native_codes': '0 / 0x10001 / 0x10003 remain response data; each later index is still submitted',
                       'exceptions': 'Thrown transport/JSON parsing/identity error stops the sequence; never converted to successful native code',
                       'publication': 'No observed audio state, profile replacement, added getter or local persistence',
-                      'monitoring_namespace': 'Actual 1342 Mic Monitor uses AudioCamy SetMicMonitorEnable/Level; not CmMixerLib MicMonitorVolumeControl'},
+                      'monitoring_namespace': 'Actual 1342 AM slider -> Wc/ON_SET_MIC_MONITOR -> GWe/Mi -> mounted AudioMixer.setVolumeMicSlider; switch uses playbackMix.mic routing, not MicMonitor isEnabled. Bundled AudioCamy ABI is not evidence of actual product instantiation.'},
         'rust_implementation': implementations,
         'ui_backend_connection': 'Actual Help reset action reaches direct local driver IPC; Windows owner correlation retains observed ContainerId/path/instance without DSP report gates; OS settings URI actions are Windows-only',
         'verification': {'pure_rust_mock_tests': '14 audio_mixer tests passed, including native-code continuation and exception stop',
@@ -105,7 +112,7 @@ def main():
                            '1342 factory reset / full Help overlay and final inherited CSS rendering remain incomplete',
                            'OS settings use GPUI platform URI opening rather than the original host helper chain',
                            'Original broadcasts driver interfaces; local adapter selects a unique observed container',
-                           'AudioCamy Mic Monitor and virtual mixer consumers remain incomplete',
+                           '1342 Mic Monitor routing/preview and other endpoint chains remain incomplete; actual AudioCamy products require separate mounted-caller/native analysis',
                            'No application, native DLL, helper, OS settings action or device operation was executed']
     }
     encoded = json.dumps(result, ensure_ascii=False, indent=2) + '\n'

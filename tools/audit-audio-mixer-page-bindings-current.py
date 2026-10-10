@@ -44,6 +44,9 @@ TOKENS = {
         'Pt=(e,t,n,o,r,i)=>',
         'J=(new Uint8Array([4,95,252,0,52]),[new Uint8Array([19,95,252,0,52,64,0,0,145])])',
         'G=[new Uint8Array([19,95,252,0,52,64,0,0,144])]',
+        'B=[new Uint8Array([19,95,252,0,44,0,0,25,25])]',
+        'i[0][7]=n.data[0],i[0][8]=n.data[1],i[0][6]=o',
+        'let o=Math.trunc(t);o<0&&(o*=-1)',
 
     ],
     SOURCES[1]: [
@@ -87,6 +90,13 @@ TOKENS = {
         'v=e=>{var t;return{keyCode:Number',
         'yield o.A.registerGlobalShortcut(t,e)', 'yield o.A.enableGlobalShortcut()',
         'u.set(d(r,a),t)',
+        'GWe:()=>Mi', 'yield(0,s.GWe)(f)',
+        'n=Di(Number(i),0,100,-45,0)',
+        'n>=-45&&n<=0&&(yield t.setVolumeMicSlider(n))',
+        'Di=(e,t,i,n,o)=>{const r=(e-t)*(o-n)/(i-t)+n;return Math.floor(r)}',
+        'AudioMixer:()=>i.e(8242).then(i.bind(i,12027))',
+        'a=new t(e,r.DeviceInfo.claimInterface)',
+        'if(p.jf.rzDevice=a,p.jf.thxDevice=c',
     ],
     SOURCES[2]: ["DeviceId_PlaybackMix:131074", "DeviceId_StreamMix:131073",
                  "SetDeviceVolume", "SetDeviceMute", "SetMixLevel", "SetMixEnable"],
@@ -123,7 +133,8 @@ TOKENS = {
         ".sliderChart__preset-list div{background-color:#111",
     ],
     SOURCES[5]: ['DEFAULTPRESET:()=>m', 'm={guid:"6633f08d-8467-4fad-b854-635acf9c2315"',
-                 'presets:[t],activePreset:t.guid'],
+                 'presets:[t],activePreset:t.guid',
+                 'micMonitor:{isEnabled:!0,value:80}'],
 }
 
 def eq_recipe():
@@ -295,6 +306,14 @@ if __name__ == "__main__":
             "label":label,"kind":"slider","min":lo,"max":hi,"step":step,"unit":unit,
             "enabled_by":"/device/echoReverb/isEnabled"})
     echo_spec = {"title":"ECHO_REVERB","controls":echo_controls}
+    # AM uses playbackMix.mic for its switch; monitor state contributes value
+    # only. The original switch enters Wi then driver matrix routing; adding a
+    # descriptor does not mark that distinct submission chain implemented.
+    monitor_spec = {"title":"MIC_MONITOR","tips":"MIC_MONITOR_TOOLTIP","controls":[
+        {"path":"/device/playbackMixReducer/mic/isEnabled","label":"MIC_MONITOR","kind":"toggle"},
+        {"path":"/device/micMonitor/value","label":"MIC_MONITOR","kind":"slider",
+         "min":0,"max":100,"step":1,"enabled_by":"/device/playbackMixReducer/mic/isEnabled"}]}
+    microphone = next(item for item in current["pages"] if item["key"]=="TAB_MIC")
     effects = next(item for item in current["pages"] if item["key"]=="EFFECTS")
     voice_control = next(control for section in effects["sections"] for control in section["controls"]
                          if control["path"]=="/device/voiceChanger/value")
@@ -315,6 +334,10 @@ if __name__ == "__main__":
             raise SystemExit("1342 Echo UI spec is stale")
         if voice_control["kind"] != "presets":
             raise SystemExit("1342 Voice Changer must use the current source buttons")
+        if next((item for item in microphone["sections"] if item["title"]=="MIC_MONITOR"),None) != monitor_spec:
+            raise SystemExit("1342 actual Mic Monitor binding is stale")
+        if current["draft"]["device"].get("micMonitor",{}).get("value") != 80:
+            raise SystemExit("1342 Mic Monitor source initial value is stale")
     else:
         OUTPUT.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         EQ_OUTPUT.write_text(json.dumps(eq, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -324,6 +347,8 @@ if __name__ == "__main__":
         voice_control["kind"] = "presets"
         current["equalizers"] = [item for item in current["equalizers"] if item["key"]!="mic_basic"]+[basic_spec]
         effects["sections"] = [item for item in effects["sections"] if item["title"]!="ECHO_REVERB"]+[echo_spec]
+        microphone["sections"] = [monitor_spec]+[item for item in microphone["sections"] if item["title"]!="MIC_MONITOR"]
+        current["draft"]["device"]["micMonitor"] = {"isEnabled":True,"value":80}
         current["draft"]["device"]["echoReverb"] = {"isEnabled":False,"activeMode":"library",
             "modeValues":echo["presets"]["library"],"customValues":echo["presets"]["library"]}
         descriptor_path.write_text(json.dumps(descriptors, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

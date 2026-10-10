@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "e61cdb85f074f300c068f0f204331c34d4906534544b5595d910c15e40b9fe88",
+  "generator_sha256": "48e77661d4ce56d7c5bbc85b77c40e4363a5ff14be7a102c9d0f5fd436aafd99",
   "offset_unit": "UTF-16 code units; end exclusive",
   "products": [
     {
@@ -23,7 +23,9 @@
           "source": "i.default.useFeature(\"isMouseDockDevice\",\"dockData\",{isDock:!0,isCompatibleWith:[170]})"
         }
       ],
-      "mapping_engine_registered": false,
+      "mapping_engine_registered": true,
+      "mapping_engine_registration": "derived runtime default via 88443.G before 95414 injector construction; no explicit main override",
+      "mapping_engine_local_storage": true,
       "default_mappings": [],
       "acquisition": [
         {
@@ -706,7 +708,9 @@
           "source": "a.default.useFeature(\"canPairMultipleDevices\",\"yes\",!0)"
         }
       ],
-      "mapping_engine_registered": false,
+      "mapping_engine_registered": true,
+      "mapping_engine_registration": "derived runtime default via 88443.G before 95414 injector construction; no explicit main override",
+      "mapping_engine_local_storage": true,
       "default_mappings": [],
       "acquisition": [
         {
@@ -1352,6 +1356,46 @@
   "receipts": [
     {
       "product_id": 164,
+      "module": 88443,
+      "name": "feature-default-merge-G",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 134709,
+      "end": 135575,
+      "source": "e=>{const t={};return e.obm&&(t.isObm={yes:{macros:!0,brightness:!0,dpi:!0}}),e.runtimeData.hasBattery&&(t.isBattery={yes:{shouldQueryBatteryStatus:!0,alwaysReadPowerSavingFromDevice:!1}}),e.runtimeData.isExternalBatt&&(t.isExternalBattery={yes:{}}),e.runtimeData.isRegisterAudioServiceEvent&&console.warn('If device use \"deviceInfo.runtimeData.isRegisterAudioServiceEvent\" pls check func injectorDefaults in file runtimeCache.ts and file src/index.ts repo nora_mw'),e.runtimeData.isCamera&&(t.isCamera={config:{}}),e.thumbModule&&(t.isSidePanel={yes:{}}),e.isComboDevice&&(t.isComboDevice={svgData:{SVG_PRODUCT_MAT:\"\",SVG_PRODUCT_MOUSE_MAT:\"\"}}),e.runtimeData.isScrollingFeature&&(t.genericFeature={config:{features:[{featureKey:\"ScrollModeV2Feature\",featureConfig:{}}]}}),t.useMappingEngine={config:{setMappingEngineLocalStorage:e.runtimeData.category!==r.io1}},t}"
+    },
+    {
+      "product_id": 164,
+      "module": 95414,
+      "name": "feature-default-merge-default",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 134579,
+      "end": 134601,
+      "source": "new i.pj(s,{debug:!1})"
+    },
+    {
+      "product_id": 164,
+      "module": 11579,
+      "name": "feature-default-merge-Z",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 147822,
+      "end": 148072,
+      "source": "{runtimeData:{serialNumber:\"\",editionId:0,layoutId:0,activeProfile:\"\",productId:164,profiles:[],setupStatus:\"waiting\",isChromaDevice:!0,isMultiPairingDevice:!0},installData:null,updateData:null,lightingEffects:{canSyncQuickEffect:!1},validDevices:[]}"
+    },
+    {
+      "product_id": 164,
+      "module": 8683,
+      "name": "feature-default-merge-pj",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 36138,
+      "end": 38390,
+      "source": "class i{constructor(e,t){this.injector={featuresList:e||{}},this.injectorDefaults=structuredClone(e||{}),this.injectorConfig=t??{debug:!1}}getConfig=()=>this.injectorConfig;getDefaultFeatures=()=>this.injectorDefaults;callInjected=(e,...t)=>{if(console.warn(`[RzMiddlewareInjector] calling injected '${e}'`),this.injector[e]&&\"function\"==typeof this.injector[e])return this.injector[e](...t);console.warn(`[RzMiddlewareInjector] function '${e}' doesn't exist`)};injectData=(e,t)=>{this.injector[e]=t};injectDataFromObject=e=>{for(const[t,o]of Object.entries(e))this.injector[t]=o};injectToDependencyList=(e,t)=>{if(!this.injector[e])throw new r(`${e} not in dependency list`);Object.freeze(t),console.warn(`Injecting ${e}`,t),Object.assign(this.injector[e],t)};addToDependencyList=(e,t,o=!1)=>{if(this.injector[e])throw new r(`${e} already in dependency list`);return o||this.injectorConfig.debug,this.injector[e]=t,this.injector[e]};getFeatures=e=>{if(this.injector.featuresList[e]){if(0===Object.keys(this.injector.featuresList[e]).length)throw new r(`${e.toString()} has no supported features`);return this.injector.featuresList[e]}console.warn(n(e.toString()))};getFeatureParam=(e,t)=>{if(!this.injector.featuresList[e])return void console.warn(n(e.toString()));const o=this.injector.featuresList[e][t];if(void 0!==o)return o;console.warn(`${e.toString()}::${t} not in feature flag list! Supported flags:`,Object.keys(this.injector.featuresList[e]))};removeFeatureFlags=e=>{const t=Object.keys(this.getFeatures(e));if(t)for(const o of t)delete this.injector.featuresList[e][o]};removeFeature=e=>{this.injector.featuresList[e]&&delete this.injector.featuresList[e]};useFeature=(e,t,o)=>{if(this.injector.featuresList[e]||(this.injector.featuresList[e]={}),void 0!==this.injector.featuresList[e][t]&&!this.injectorDefaults?.[e]?.[t])throw new r(`${e.toString()} already assigned to ${t}`);for(const t of Object.keys(this.injector.featuresList[e]))if(Object.keys(this.injectorDefaults[e]).find((e=>e===t))){console.warn(`Deleting default key: ${e.toString()}::${t}`),delete this.injector.featuresList[e][t],delete this.injectorDefaults[e][t];break}const n=this.injector.featuresList[e];n[t]=void 0===o?{}:o,\"object\"==typeof n[t]&&Object.freeze(n[t])}}"
+    },
+    {
+      "product_id": 164,
       "module": 21503,
       "name": "DeviceInfo",
       "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
@@ -1429,6 +1473,46 @@
       "offset": 1523958,
       "end": 1527573,
       "source": "function Ut(e,t,n,r,a,s,l=0){var c,u,v,f,m;return Be(this,void 0,void 0,(function*(){let _,E,I,S=l;t===g.Pt.MW_ACTION_FROM_UI?(E=p.cCj,I=p.dHd):(E=p.zrO,I=p.Cki);const T=(0,h.WJ)(s),D=!(0,ee.S)()||T.isShownOnUI;try{const{selectedEffectId:s,selectedEffectSetting:l,isGlobalQuickEffect:A,regionId:O}=n,C=yield(0,y.Tb)(T);let N=null!=A&&A;const R=(0,y.OI)(C);if(r){if(void 0===R.quickEffects&&(R.quickEffects={}),_=Object.assign({},R.quickEffects),\"boolean\"==typeof A&&R.quickEffects.isGlobalQuickEffect!==A?R.quickEffects.isGlobalQuickEffect=A:d.DeviceInfo.isMultiRegionQuickEffectDevice&&(R.quickEffects.isGlobalQuickEffect||((null==_?void 0:_.selectedEffectId)!==s||JSON.stringify(null==_?void 0:_.selectedEffectSetting)!==JSON.stringify(l))&&(R.quickEffects.isGlobalQuickEffect=!0)),N=null!==(c=R.quickEffects.isGlobalQuickEffect)&&void 0!==c&&c,R.quickEffects.selectedEffectId=s,l){R.quickEffects.selectedEffectSetting=Object.assign({},l);const e=k.default.runtimeData.effectSettings;if(e){e.has(R.guid)||e.set(R.guid,[]);const t=e.get(R.guid).filter((({effectId:e})=>e!==s));t.push(Object.assign({effectId:s},l)),e.set(R.guid,t)}}else R.quickEffects.selectedEffectSetting=void 0;void 0!==O&&(R.quickEffects.regionId=O);const e=yield o.RzLockableStorage.getItem(g.Pt.SYNAPSE_CURRENT_USER),t=yield o.RzLockableStorage.getItem(g.Pt.SYNAPSE_CHROMA_USERS);if(t&&(null===(u=k.default.runtimeData)||void 0===u?void 0:u.isChromaDevice)){const n=JSON.parse(t),i=null==n?void 0:n.find((t=>t.userId===e));i&&(i.enabled=!1,yield o.RzLockableStorage.setItem(g.Pt.SYNAPSE_CHROMA_USERS,t,JSON.stringify(n)),D&&(0,b.X)({type:p.i_h,payload:{selectedChromaProfileGuid:i.currentProfile,profiles:i.profiles}}),D&&(0,b.X)({type:p.Cnn,payload:i.enabled}))}C.version=void 0===(null==C?void 0:C.version)?1:o.RzVersion53bits.nextVersion(C.version),S=C.version,yield(0,y.mZ)(C,T),yield(0,h.lY)(C,T),(0,h.I4)({selectedEffectId:s},T)}if((null===(v=d.DeviceInfo.ble)||void 0===v?void 0:v.useHardwareEffect)&&k.default.runtimeData.useBle&&(null===(f=R.quickEffects)||void 0===f?void 0:f.isGlobalQuickEffect)&&(null===(m=null==R?void 0:R.ports)||void 0===m?void 0:m.length)){const e=structuredClone(n);delete e.isGlobalQuickEffect,null==R||R.ports.forEach((t=>{if(t.name&&\"quickEffects\"in t){const n=ue.b.TypedRzStateMachineEvent({type:\"ON_SET_HARDWARE_EFFECT\",payload:{effectSetting:Object.assign(Object.assign({},e),{regionId:t.id}),version:C.version}},g.Pt.MW_ACTION_FROM_LOCALSTORAGE,void 0);pe.Q.enqueueEvent(n)}}))}if(D&&(0,b.X)({type:p.hoG,payload:{selectedEffectId:s,isGlobalQuickEffect:N,effectSettings:[Object.assign({effectId:s},l)]}}),D&&(0,b.X)({type:E,payload:{timertick:e,actionType:\"taskMakerSetQuickEffect\",status:\"completed\",value:{oldQuickEffect:_,newQuickEffect:{selectedEffectId:s,selectedEffectSetting:Object.assign({},l)},version:S}}}),a&&D&&(0,b.X)({type:I,payload:{timertick:e}}),d.DeviceInfo.singleProfileDevice&&(0,h.I4)({quickEffects:C.quickEffects},T),t===g.Pt.MW_ACTION_FROM_RUNTIME){let e;l&&(e=[Object.assign(Object.assign({},l),{effectId:s})]);const t={selectedEffectId:null!=s?s:3,effectSettings:null!=e?e:[]};D&&(0,b.X)({type:p.hoG,payload:t})}M.Z.setMemoryStorageItem&&(i.us.setEffect.timerTick=e,yield M.Z.setMemoryStorageItem(g.Pt.TASK_MEMORY_STORAGE_KEY,JSON.stringify(g.razerWindow.memoryStorageCache)))}catch(t){const{selectedEffectId:o,selectedEffectSetting:i}=n;D&&(0,b.X)({type:E,payload:{timertick:e,actionType:\"taskMakerSetQuickEffect\",status:\"error\",message:t.message,value:{oldQuickEffect:_,newQuickEffect:Object.assign({selectedEffectId:o},i)}}}),D&&(0,b.X)({type:I,payload:{timertick:e}})}}))}"
+    },
+    {
+      "product_id": 241,
+      "module": 88443,
+      "name": "feature-default-merge-G",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 133565,
+      "end": 134304,
+      "source": "e=>{const t={};return e.obm&&(t.isObm={yes:{macros:!0,brightness:!0,dpi:!0}}),e.runtimeData.hasBattery&&(t.isBattery={yes:{shouldQueryBatteryStatus:!0,alwaysReadPowerSavingFromDevice:!1}}),e.runtimeData.isExternalBatt&&(t.isExternalBattery={yes:{}}),e.runtimeData.isRegisterAudioServiceEvent&&console.warn('If device use \"deviceInfo.runtimeData.isRegisterAudioServiceEvent\" pls check func injectorDefaults in file runtimeCache.ts and file src/index.ts repo nora_mw'),e.runtimeData.isCamera&&(t.isCamera={config:{}}),e.thumbModule&&(t.isSidePanel={yes:{}}),e.isComboDevice&&(t.isComboDevice={svgData:{SVG_PRODUCT_MAT:\"\",SVG_PRODUCT_MOUSE_MAT:\"\"}}),t.useMappingEngine={config:{setMappingEngineLocalStorage:e.runtimeData.category!==r.io1}},t}"
+    },
+    {
+      "product_id": 241,
+      "module": 95414,
+      "name": "feature-default-merge-default",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 133435,
+      "end": 133457,
+      "source": "new i.pj(s,{debug:!1})"
+    },
+    {
+      "product_id": 241,
+      "module": 11579,
+      "name": "feature-default-merge-Z",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 146640,
+      "end": 146866,
+      "source": "{runtimeData:{serialNumber:\"\",editionId:0,layoutId:0,activeProfile:\"\",productId:241,profiles:[],setupStatus:\"waiting\",isChromaDevice:!0},installData:null,updateData:null,lightingEffects:{canSyncQuickEffect:!1},validDevices:[]}"
+    },
+    {
+      "product_id": 241,
+      "module": 8683,
+      "name": "feature-default-merge-pj",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 35737,
+      "end": 37989,
+      "source": "class i{constructor(e,t){this.injector={featuresList:e||{}},this.injectorDefaults=structuredClone(e||{}),this.injectorConfig=t??{debug:!1}}getConfig=()=>this.injectorConfig;getDefaultFeatures=()=>this.injectorDefaults;callInjected=(e,...t)=>{if(console.warn(`[RzMiddlewareInjector] calling injected '${e}'`),this.injector[e]&&\"function\"==typeof this.injector[e])return this.injector[e](...t);console.warn(`[RzMiddlewareInjector] function '${e}' doesn't exist`)};injectData=(e,t)=>{this.injector[e]=t};injectDataFromObject=e=>{for(const[t,o]of Object.entries(e))this.injector[t]=o};injectToDependencyList=(e,t)=>{if(!this.injector[e])throw new r(`${e} not in dependency list`);Object.freeze(t),console.warn(`Injecting ${e}`,t),Object.assign(this.injector[e],t)};addToDependencyList=(e,t,o=!1)=>{if(this.injector[e])throw new r(`${e} already in dependency list`);return o||this.injectorConfig.debug,this.injector[e]=t,this.injector[e]};getFeatures=e=>{if(this.injector.featuresList[e]){if(0===Object.keys(this.injector.featuresList[e]).length)throw new r(`${e.toString()} has no supported features`);return this.injector.featuresList[e]}console.warn(n(e.toString()))};getFeatureParam=(e,t)=>{if(!this.injector.featuresList[e])return void console.warn(n(e.toString()));const o=this.injector.featuresList[e][t];if(void 0!==o)return o;console.warn(`${e.toString()}::${t} not in feature flag list! Supported flags:`,Object.keys(this.injector.featuresList[e]))};removeFeatureFlags=e=>{const t=Object.keys(this.getFeatures(e));if(t)for(const o of t)delete this.injector.featuresList[e][o]};removeFeature=e=>{this.injector.featuresList[e]&&delete this.injector.featuresList[e]};useFeature=(e,t,o)=>{if(this.injector.featuresList[e]||(this.injector.featuresList[e]={}),void 0!==this.injector.featuresList[e][t]&&!this.injectorDefaults?.[e]?.[t])throw new r(`${e.toString()} already assigned to ${t}`);for(const t of Object.keys(this.injector.featuresList[e]))if(Object.keys(this.injectorDefaults[e]).find((e=>e===t))){console.warn(`Deleting default key: ${e.toString()}::${t}`),delete this.injector.featuresList[e][t],delete this.injectorDefaults[e][t];break}const n=this.injector.featuresList[e];n[t]=void 0===o?{}:o,\"object\"==typeof n[t]&&Object.freeze(n[t])}}"
     },
     {
       "product_id": 241,
@@ -1512,7 +1596,8 @@
     }
   ],
   "semantics": [
-    "Current receiver DEFAULTMAPPINGS is empty and useMappingEngine is not registered. M6 PostSetLocalStorage cannot call native mapping-engine localStorageSetItem without its current feature gate. Empty receiver mapping refresh must not be implemented as an invented USB mapping command or native clear-all operation.",
+    "Current receiver DEFAULTMAPPINGS is empty, but 88443.G derives useMappingEngine regardless of absence of explicit main registration. 95414 merges baseline, derived runtime defaults and optional injectorDefaults in that order before constructing 8683.pj. Current 11579.Z has no overriding injectorDefaults and its runtime category is not the excluded BROADCASTER value, so setMappingEngineLocalStorage is true.",
+    "M6 PostSetLocalStorage compares defaultMapping appEngine hash, activeProfile, profile count, analogData hash and profile guid/hash/gamemode snapshots before native localStorageSetItem(synapse_PID_CONTAINER,JSON.stringify(document)); this is not an invented receiver USB mapping opcode or global clear-all operation.",
     "ON_SET_EFFECTS actual caller invokes taskMakerSetQuickEffect; its source document/runtime publication is distinct from lighting-engine backend frame rendering. A local profile update must never be labeled successful device effect write."
   ],
   "gaps": [
