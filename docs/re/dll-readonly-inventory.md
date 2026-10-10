@@ -1,6 +1,6 @@
 # DLL 与设备只读接入当前契约
 
-查询接口与状态观察保留独立契约；`DeviceWrite`/`HidNodeWrite` 的源核实能力覆盖 22 款产品、51 项 DPI/高速回报率/休眠计时设置，`HidNodeMixerRead`/`HidNodeMixerWrite` 接入 Audio Mixer 源核实的 47 个展开硬件控制项及 22 条驱动路由。当前覆盖、副作用与消费者缺口见 [直接写入契约](device-write-current.md) 及 [Mixer 专项](audio-mixer-dll-protocol-current.md)。开发仅静态核对 DLL 与 wrapper，不执行 DLL 或硬件命令。
+查询接口与状态观察保留独立契约；`DeviceWrite`/`HidNodeWrite` 的源核实能力覆盖 22 款鼠标、64 项 DPI/普通或 profile 或高速回报率/休眠计时设置；独立 KeyboardBrightness Read/Write 接入 9 款键盘活动矩阵亮度。182 鼠标休眠和这 9 款键盘亮度已连接页面事件。`HidNodeMixerRead`/`HidNodeMixerWrite` 接入 Audio Mixer 源核实的 47 个展开硬件控制项及 22 条驱动路由。当前覆盖、副作用与消费者缺口见 [直接写入契约](device-write-current.md) 及 [Mixer 专项](audio-mixer-dll-protocol-current.md)。开发仅静态核对 DLL 与 wrapper，不执行 DLL 或硬件命令。
 
 通用宿主加载/返回层新增 [当前FFI语义](host-ffi-current.md) 与 [原文证据](host-ffi-current-evidence.json)：通道复用、参数展开、pointer释放、async错误、子进程ready/超时/退出、SysUtils独立legacy实例均按实际源码区分；它不证明产品native函数已执行或设备读取成功。
 
@@ -16,7 +16,7 @@
 
 ## 请求、返回与消费者
 
-请求及客户端定义在 [razer-ipc](../../crates/razer-ipc/src/lib.rs)，worker 分发在 [runtime.rs](../../crates/razer-service/src/runtime.rs) 和 [runtime_native.rs](../../crates/razer-service/src/runtime_native.rs)。表中保留现有写操作，避免把整个 `ServiceRequest` 误称为只读接口；该枚举本身没有强制只读门禁。
+请求及客户端定义在 [razer-ipc](../../crates/razer-ipc/src/lib.rs)，worker 分发在 [runtime.rs](../../crates/razer-service/src/runtime/mod.rs) 和 [runtime_native.rs](../../crates/razer-service/src/runtime/windows/native.rs)。表中保留现有写操作，避免把整个 `ServiceRequest` 误称为只读接口；该枚举本身没有强制只读门禁。
 
 | 请求 | 实际边界及返回 | 当前消费者与限制 |
 | --- | --- | --- |
@@ -26,6 +26,7 @@
 | `ReceiverWirelessStatus { path, device_container_id }` | 源能力选择的 V2 无线连接查询，保留原始 PID/status | 发现链及接收器父卡/工具 Bindings 读取；空结果与失败分开，不执行 Scan/Pair/Unpair 写命令 |
 | `SimpleVersion` | `simpleGetVersionInfo(cb3)`；非空 versionInfo，接受 JSON 或字符串 | 运行状态页显式服务刷新；首次加载并 Initialize simple_service，不推断其他 DLL 版本 |
 | `AudioDevices` | IDA 核实原 `simpleEnumerateAudioDevices` 实例、Core Audio/SetupAPI 字段和初始化遍历顺序；Rust 直接返回原 schema 数组，真实 `[]` 合法 | 已接运行状态页及 Control Pod，不再加载原 DLL；持续缓存/事件和完整错误语义仍缺，见 [音频专项](simple-audio-current.md) |
+| `AudioVolumeRead/Write` | IDA 核实 speaker/microphone 同一真实端点ID方法、原量化、先音量后静音、相同值跳过和失败不回滚 | 共享结构与 Windows Core Audio 已接 worker，单次回读与原通知缓存分开；跨平台明确不支持，产品页面与端点解析逐项接入，见 [音量证据](simple-audio-volume-current-evidence.json) |
 | `GlobalMode` | `getGlobalMode(cb3)`；非空值，接受 JSON 或字符串 | worker API 已登记，未发现普通 UI 查询调用；当前 DLL 的 hypershift/otfs、globalmode字段及timeTick qword→无符号十进制文本已静态追回；timeTick来源/单位与记录更新链仍未知 |
 | `GlobalShortcuts` | `getGlobalShortcuts(cb3)`；非空值，接受 JSON 或字符串 | 不能视为完整 `synapseGlobalShortcuts.appEngine` 或 UI 映射读取 |
 | `StartMacroRecording` | mapping Initialize、注册 recorder、安装 started/stopped/item callbacks、`startMacroRecording("kSoftware", cb2)` | Macro actor；请求接受不等于异步 started；改变录制会话状态，不提交设备宏 |
@@ -44,7 +45,7 @@
 
 [runtime_page.rs](../../crates/razer-settings/src/runtime_page.rs) 独立请求 USB 与 HID，再执行发现。一个枚举失败不丢弃另一个真实结果。接口身份先发布到 UI；UI 确认该轮连接/配置作用域后才读取设备字段，确认等待上限 30 秒。显式服务刷新随后独立读取 version/audio。启动发现及 `DeviceChangeMonitor` 热插拔刷新已接线，繁忙期间保留后续刷新请求。
 
-字段实现位于 [device_reads.rs](../../crates/razer-device/src/device_reads.rs) 和 [runtime_device_reads.rs](../../crates/razer-service/src/runtime_device_reads.rs)。[生成能力](../../assets/data/device-read-capabilities.json)来自 [当前读取证据](mouse-read-capabilities-current-evidence.json)，仅覆盖实际追踪到的产品/命令。Firmware 返回版本字符串，Battery 返回百分比，Charging 保留实际状态，Polling 返回 Hz，Dpi 返回 X/Y。各字段独立保存观察及错误；充电状态不能推算 100% 电量，能力目录或本地配置不能变成读数。
+字段实现位于 [device_reads.rs](../../crates/razer-device/src/device_reads.rs) 和 [runtime_device_reads.rs](../../crates/razer-service/src/runtime/windows/device_reads.rs)。[生成能力](../../assets/data/device-read-capabilities.json)来自 [当前读取证据](mouse-read-capabilities-current-evidence.json)，仅覆盖实际追踪到的产品/命令。Firmware 返回版本字符串，Battery 返回百分比，Charging 保留实际状态，Polling 返回 Hz，Dpi 返回 X/Y。各字段独立保存观察及错误；充电状态不能推算 100% 电量，能力目录或本地配置不能变成读数。
 
 `DeviceReadTarget` 包含逻辑 product_id、physical_product_id、可选 peer_product_id、真实 container/path。发送前、打开后及返回后校验 VID/PID/interface/report length/container；relay 查询前后重新确认真实在线 peer。无源能力、路径不唯一、身份改变或响应不匹配时失败，不执行原 middleware 整段初始化、模式 setter 或映射任务。
 
@@ -110,7 +111,7 @@ ServiceClient 优先启动 GUI 同目录的 `razer_agent`；未提供 agent 的�
 
 get-feature 返回实际完成字节数并包含 ReportID，buffer 长度不是已读取长度。Rust 不访问 native handle 内部字段。node.exe 为 delay import，这些 plain C 路径不调用 N-API 注册；加载仍执行 DLL 入口，不能据此在开发时执行它。
 
-[runtime_hid_transport.rs](../../crates/razer-service/src/runtime_hid_transport.rs)现在只将 Windows 已观察身份适配至跨平台后端，并核对实际 Feature 长度；没有资产落地或 DLL 加载。打开、descriptor 和 Feature 生命周期由 `razer-hid` 管理，报文及重试由 `razer-device` 管理。其他官方服务/DLL 查询仍保留独立适配，未被这一迁移替代。
+[runtime_hid_transport.rs](../../crates/razer-service/src/runtime/windows/hid_transport.rs)现在只将 Windows 已观察身份适配至跨平台后端，并核对实际 Feature 长度；没有资产落地或 DLL 加载。打开、descriptor 和 Feature 生命周期由 `razer-hid` 管理，报文及重试由 `razer-device` 管理。其他官方服务/DLL 查询仍保留独立适配，未被这一迁移替代。
 
 USB 枚举另见 [usb-native 证据](usb-native-current-evidence.json)：runtime_usb.rs 使用 USB_DEVICE GUID `a5dcbf10-6530-11d2-901f-00c04fb951ed`，对应当前 detection.node 的静态枚举范围，不加载该 Node/NAN 模块。
 
@@ -118,7 +119,7 @@ USB 枚举另见 [usb-native 证据](usb-native-current-evidence.json)：runtime
 
 [receiver_capabilities.rs](../../crates/razer-device/src/receiver_capabilities.rs)读取 [生成能力](../../assets/data/receiver-query-capabilities.json)。能力需追踪实际 DeviceInfo、主 feature 配置、工厂分支、继承、传输参数和查询方法；兼容目录成员或共享类存在不足以证明支持。覆盖范围见 [capabilities 证据](receiver-capabilities-current-evidence.json)，未审计/不适用产品保持明确边界。
 
-[receiver_protocol.rs](../../crates/razer-device/src/receiver_protocol.rs)管理 rzDevice25 V2 envelope；[runtime_receiver.rs](../../crates/razer-service/src/runtime_receiver.rs)按真实接口选择能力。179 链为 `34340/he → getMultipleDeviceWirelessConnectionStatusV2 → 7755/dc → 84816/VO(J) → 30580/IZ(ue)`；工厂 96204/j 的 LINKER 分支选择继承 Linker 的 rzDevice25LinkerUma。源码 hash/UTF-16 位置保存在 [discovery 证据](receiver-discovery-current-evidence.json)。
+[receiver_protocol.rs](../../crates/razer-device/src/receiver_protocol.rs)管理 rzDevice25 V2 envelope；[runtime_receiver.rs](../../crates/razer-service/src/runtime/windows/receiver.rs)按真实接口选择能力。179 链为 `34340/he → getMultipleDeviceWirelessConnectionStatusV2 → 7755/dc → 84816/VO(J) → 30580/IZ(ue)`；工厂 96204/j 的 LINKER 分支选择继承 Linker 的 rzDevice25LinkerUma。源码 hash/UTF-16 位置保存在 [discovery 证据](receiver-discovery-current-evidence.json)。
 
 只发送 `[80,0,191]` 读取命令，90 字节主体加 1 字节 ReportID；第 88 字节为第 2–87 字节 XOR。179 Linker 事务值为 `224 | transactionId++`，达到 31 前回零；其他绑定使用各自 namespace。0x46/0x41 的 source 特殊事务规则不是本 V2 0xBF 规则。
 

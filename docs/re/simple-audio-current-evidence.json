@@ -17115,8 +17115,8 @@
   "implementation": [
     "crates/razer-device/src/simple_audio.rs",
     "crates/razer-service/src/simple_audio.rs",
-    "crates/razer-service/src/runtime.rs",
-    "crates/razer-service/src/runtime_portable.rs"
+    "crates/razer-service/src/runtime/mod.rs",
+    "crates/razer-service/src/runtime/portable.rs"
   ],
   "consumers": [
     "crates/razer-settings/src/runtime_page.rs",

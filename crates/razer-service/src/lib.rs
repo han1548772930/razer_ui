@@ -11,6 +11,7 @@ pub mod native_query;
 pub mod native_read;
 pub mod runtime;
 pub mod simple_audio;
+pub mod simple_audio_volume;
 
 pub mod dll;
 pub mod lighting;

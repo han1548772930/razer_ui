@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "method": "Current JS static parsing and original-PE byte verification against IDA/Hex-Rays; no target execution",
+  "binary": {
+    "path": ".ref/host-4.0.827/native-evidence/CommonDLL/SysUtilsNative.dll",
+    "sha256": "01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318",
+    "bytes": 1548488,
+    "machine": 34404,
+    "entry_rva": 574436,
+    "clr_directory_present": false,
+    "clr_flags": null,
+    "clr_il_only": false,
+    "clr_native_entry_point": false,
+    "status": "static_analysis_acquired",
+    "ida_version": "8.3",
+    "hexrays_available": true,
+    "function_index_count": 3908,
+    "selected_function_bodies": 219,
+    "decompiled_bodies": 219,
+    "decompiler_failures": 0,
+    "unresolved_entry_count": 0,
+    "selection": "exports/PE entry, one direct-reference expansion, and all recovered keyword string xref functions; indirect calls and other function bodies remain gaps",
+    "evidence": {
+      "path": "docs/re/evidence/ida-native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318.json.gz",
+      "sha256": "b7d866bb2cd3568acd0f6168fbcfbf2c44aea90a76ad80aa91d2d292a545e995"
+    },
+    "managed_index_evidence": null,
+    "managed_semantics_gap": null,
+    "semantic_completion": false,
+    "rust_replacement_completion": false,
+    "runtime_acceptance": "not_run"
+  },
+  "functions": [
+    {
+      "rva": 491280,
+      "end_rva": 491350,
+      "name": "getWheelScrollLines",
+      "code_sha256": "e4a0a71be7e2fe37cd1d6c6d538b81b171d7c06452aff25acb7c5048157c7685",
+      "pseudocode": "__int64 getWheelScrollLines()\n{\n  unsigned int pvParam; // [rsp+20h] [rbp-18h] BYREF\n\n  pvParam = 0;\n  SystemParametersInfoW(0x68u, 0, &pvParam, 0);\n  return pvParam;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 1029816,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1096496,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 491280,
+          "text": "sub     rsp, 38h"
+        },
+        {
+          "rva": 491284,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 491291,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 491294,
+          "text": "mov     [rsp+38h+var_10], rax"
+        },
+        {
+          "rva": 491299,
+          "text": "xor     r9d, r9d; fWinIni"
+        },
+        {
+          "rva": 491302,
+          "text": "mov     [rsp+38h+pvParam], 0"
+        },
+        {
+          "rva": 491310,
+          "text": "lea     r8, [rsp+38h+pvParam]; pvParam"
+        },
+        {
+          "rva": 491315,
+          "text": "xor     edx, edx; uiParam"
+        },
+        {
+          "rva": 491317,
+          "text": "mov     ecx, 68h ; 'h'; uiAction"
+        },
+        {
+          "rva": 491322,
+          "text": "call    cs:SystemParametersInfoW"
+        },
+        {
+          "rva": 491328,
+          "text": "mov     eax, [rsp+38h+pvParam]"
+        },
+        {
+          "rva": 491332,
+          "text": "mov     rcx, [rsp+38h+var_10]"
+        },
+        {
+          "rva": 491337,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 491340,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 491345,
+          "text": "add     rsp, 38h"
+        },
+        {
+          "rva": 491349,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 491360,
+      "end_rva": 491393,
+      "name": "setWheelScrollLines",
+      "code_sha256": "00bb1f8e31a3af733fd7b4b506a691a39d3efb98573aa2ec16d8c9998fc2c556",
+      "pseudocode": "bool __fastcall setWheelScrollLines(UINT uiParam)\n{\n  return SystemParametersInfoW(0x69u, uiParam, 0i64, 0);\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 1029816,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1096508,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 491360,
+          "text": "sub     rsp, 28h"
+        },
+        {
+          "rva": 491364,
+          "text": "mov     edx, ecx; uiParam"
+        },
+        {
+          "rva": 491366,
+          "text": "xor     r9d, r9d; fWinIni"
+        },
+        {
+          "rva": 491369,
+          "text": "mov     ecx, 69h ; 'i'; uiAction"
+        },
+        {
+          "rva": 491374,
+          "text": "xor     r8d, r8d; pvParam"
+        },
+        {
+          "rva": 491377,
+          "text": "call    cs:SystemParametersInfoW"
+        },
+        {
+          "rva": 491383,
+          "text": "test    eax, eax"
+        },
+        {
+          "rva": 491385,
+          "text": "setnz   al"
+        },
+        {
+          "rva": 491388,
+          "text": "add     rsp, 28h"
+        },
+        {
+          "rva": 491392,
+          "text": "retn"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": ".ref/middleware/182/main.7d7bac778fbfcdb02c10.js",
+      "sha256": "6350402b2a4743363838628b6e74a42131517e0859908ea8ce04fbb666428cab",
+      "bytes": 173619,
+      "locators": [
+        {
+          "anchor": "this.getWheelScrollLines=",
+          "start_utf16": 48862,
+          "end_utf16": 49117,
+          "text": "this.getWheelScrollLines=()=>c(this,void 0,void 0,(function*(){let e;if(this.isElectron){const t={action:\"getWheelScrollLines\"};e=yield this.callElectronAction(t),console.log(`${this.name}.getWheelScrollLines() r:${e}`)}return e})),this.setWheelScrollLine"
+        },
+        {
+          "anchor": "this.setWheelScrollLines=",
+          "start_utf16": 49094,
+          "end_utf16": 49396,
+          "text": "this.setWheelScrollLines=e=>c(this,void 0,void 0,(function*(){let t;if(this.isElectron){const o={action:\"setWheelScrollLines\",payload:{actionArgs:[e]}};t=yield this.callElectronAction(o),console.log(`${this.name}.setWheelScrollLines() r:${t}`)}return t})),this.getURLFromInternetShortcut=e=>c(this,void"
+        }
+      ]
+    },
+    {
+      "path": ".ref/middleware/182/6259.98d162c59be4fff20fa2.js",
+      "sha256": "58569c0ec63da4acafb2bc561ee63bcb865ada345ce0cbb95e1143661672698e",
+      "bytes": 2341772,
+      "locators": [
+        {
+          "anchor": "function jo(e,t,n,o,i)",
+          "start_utf16": 1683200,
+          "end_utf16": 1685000,
+          "text": "function jo(e,t,n,o,i){var r,a,s,l;return Oe(this,void 0,void 0,(function*(){if(i.value={params:{},status:\"completed\",error:\"\"},null==o?void 0:o.signal.aborted)throw i.error=new Error(\"canceled\"),i.value.status=\"error\",i.error;const t=c.jf.rzDevice;try{const n=yield(0,A.d8)(),o=null==n?void 0:n.profiles.find((e=>e.guid===n.activeProfile)),c=null!==(a=null===(r=null==o?void 0:o.scrollWheelStages)||void 0===r?void 0:r.browsingModeApplicationList)&&void 0!==a?a:[],d=null!==(l=null===(s=null==o?void 0:o.scrollWheelStages)||void 0===s?void 0:s.isHighResolutionScrolling)&&void 0!==l&&l,u=c.map((e=>{const t=e.path.replace(/ /g,\"\").toLowerCase().split(\"\\\\\");return t[t.length-1]})),p=yield y.A.getWheelScrollLines();let v=!1;if(u.includes(e)){if(d&&1!==p&&!(yield y.A.setWheelScrollLines(1)))return void(i.value.status=\"error\");v=!0}else if(d&&1===p&&!(yield y.A.setWheelScrollLines(3)))return void(i.value.status=\"error\");const{jsonData:f}=yield t.getHapticScrollBrowserModeEnable();if(0!==f.enable!==v){const{status:e}=yield t.setHapticScrollBrowserModeEnable(Number(v));if(\"SUCCESS\"!==e)return void(i.value.status=\"error\");console.log(`%c taskRunner - Scrolling - SET - browsingMode - ${v} - SUCCESS`,\"background: green; color: white\")}}catch(e){i.value.status=\"error\",i.error=e,console.error(e)}}))}function zo(e,t,n){var o;\"completed\"!==(null===(o=n.value)||void 0===o?void 0:o.status)&&\"skipped\"!==n.error&&console.error(\"error: onTaskRunnerSetEnableScrollSmoothByApplication exist error\",n)}function Wo(e,t,n,o,i,r,a,s){var l,u;return Oe(this,void 0,void 0,(function*(){const e=c.jf.rzDevice;s.value={params:Object.assign({},o)};let t=!1;if(void 0!==(null===(l=o.subWoofer)||void 0===l?void 0:l.level)&&(t=yield e.setBassLevel(1,o.subWoofer.level)),void 0!==o.audioOutputSource){const n=\"SOUND"
+        }
+      ]
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/main.js",
+      "sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e",
+      "bytes": 60830,
+      "locators": [
+        {
+          "anchor": "case\"getWheelScrollLines\"",
+          "start_utf16": 52790,
+          "end_utf16": 52848,
+          "text": "case\"getWheelScrollLines\":case\"setWheelScrollLines\":case\"r"
+        }
+      ]
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+      "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+      "bytes": 7394,
+      "locators": [
+        {
+          "anchor": "getWheelScrollLines:[",
+          "start_utf16": 2480,
+          "end_utf16": 2557,
+          "text": "getWheelScrollLines:[\"int\",[]],setWheelScrollLines:[\"bool\",[\"int\"]]},{GetURLF"
+        },
+        {
+          "anchor": "callDLL=async",
+          "start_utf16": 4441,
+          "end_utf16": 6171,
+          "text": "callDLL=async(e,t)=>{switch(t?.action){case\"StartMonitorForegroundWindow\":{const t=e?.sender.getURL();t&&(this.foregroundEventList.includes(t)||this.foregroundEventList.push(t)),console.log(`${this.name}.foregroundEventList(), foregroundEventList:`,this.foregroundEventList)}break;case\"StopMonitorForegroundWindow\":{const o=e?.sender.getURL();if(o&&(this.foregroundEventList=this.foregroundEventList.filter(e=>e!==o)),console.log(`${this.name}.StopMonitorForegroundWindow(), foregroundEventList:`,this.foregroundEventList),this.foregroundEventList.length>0)return!0;{console.log(`${this.name}.StopMonitorForegroundWindow(), callDLLMainAsync:`);const o=await(this.ffi?.callDLLMainAsync(s,t,e));return console.log(`${this.name}.StopMonitorForegroundWindow(), callDLLMainAsync, r1:`,o),o}}case\"StartMonitorKeyboardLayout\":{const t=e?.sender.getURL();t&&(this.keyboardLayoutChangeEventList.includes(t)||this.keyboardLayoutChangeEventList.push(t)),console.log(`${this.name}.StartMonitorKeyboardLayout(), keyboardLayoutChangeEventList:`,this.keyboardLayoutChangeEventList)}break;case\"StopMonitorKeyboardLayout\":{const t=e?.sender.getURL();if(t&&(this.keyboardLayoutChangeEventList=this.foregroundEventList.filter(e=>e!==t)),console.log(`${this.name}.StopMonitorKeyboardLayout(), keyboardLayoutChangeEventList:`,this.keyboardLayoutChangeEventList),this.foregroundEventList.length>0)return!0}}return this.ffi?.callDLLMain(s,t,e)};callDLLSync=(e,t)=>this.ffi?.callDLLMain(s,t,e);callDLLAsync=async(e,t)=>await(this.ffi?.callDLLMainAsync(s,t,e));handleFFIEvent=async e=>{const t=\"handleFFIEvent()\";if(e)try{const s=JSON.parse(e);if(void 0===s?.event)return;\"networkStatus\"===s?.event&&(console.log(`${t} event:`,e),n.events.emit(\"networkSta"
+        }
+      ]
+    }
+  ],
+  "semantics": {
+    "getter": "UINT initialized to zero; SPI_GETWHEELSCROLLLINES(0x68,0,&value,0); BOOL ignored; FFI int reinterprets UINT bit pattern",
+    "setter": "SPI_SETWHEELSCROLLLINES(0x69,i32 argument bit pattern,NULL,0); returned BOOL; no extra persistence/broadcast flags",
+    "allocation_cleanup": "Getter stack UINT only; setter no allocations or handles; no native service initialization or callback needed",
+    "caller": "Product 182 jo task gates writes on active profile high-resolution flag and normalized foreground application basename; sets 1 on enter and 3 on leave; false aborts subsequent haptic operation"
+  },
+  "rust_implementation": {
+    "path": "crates/razer-platform/src/platform/windows/wheel_scroll.rs",
+    "sha256": "7a2aa7d36421e1ba8e234a3d0215fa969d1d443a48b175dfcdfc883055fbbaff",
+    "facade": {
+      "path": "crates/razer-platform/src/wheel_scroll.rs",
+      "sha256": "93b44c70b8d6a91d5f08cbef40d29e53cfa1285eae73e585a3009be109127511"
+    },
+    "interface": [
+      "get() -> anyhow::Result<i32>",
+      "set(i32) -> anyhow::Result<bool>"
+    ],
+    "unsupported_platform": "Explicit error; Windows settings are not mapped to another OS setting"
+  },
+  "ui_backend_connection": {
+    "worker": "razer-service::runtime",
+    "read": "ServiceRequest::WheelScrollLinesRead -> wheel_scroll::get -> {lines:i32}",
+    "write": "ServiceRequest::WheelScrollLinesWrite {lines:i32} -> wheel_scroll::set -> {requested_lines:i32,accepted:bool}",
+    "gap": "Original foreground-event/profile/haptic task and page consumer are not yet reproduced"
+  },
+  "semantic_completion": "Two native exports recovered; product task and complete SysUtilsNative library remain incomplete",
+  "runtime_acceptance": "not_run"
+}

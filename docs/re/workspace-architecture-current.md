@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 入口 | `razer-app` | CLI、GPUI 初始化、主题、打开主窗口；一个 Rust 文件 |
 | 后台入口 | `razer-agent` | `razer_agent` 二进制；调用 worker；无 GPUI 依赖 |
-| 宿主协调 | `razer-shell` | 窗口、导航、标签页、事件订阅、工作区聚合；26 个 Rust 文件 |
+| 宿主协调 | `razer-shell` | 窗口、导航、标签页、事件订阅、工作区聚合与页面请求协调 |
 | 应用页面 | `razer-app-pages` | Macro、Profiles、Alexa、Armory、配对、引导、迁移、反馈、更新说明、应用选择、模块、Gamer Room、Chroma、固件页面 |
 | 产品页面 | `razer-pages` | 产品工作区、设备页面、编辑控制器、产品导航、键盘几何交互 |
 | Dashboard | `razer-dashboard` | 卡片、布局、分组、拖动状态、教程；宿主提供动作闭包 |
@@ -20,15 +20,17 @@
 | 声明目录 | `razer-catalog` | 当前源生成的产品/页面注册、原生库声明、已核实的 getter 筛选与加载限制；不加载 DLL |
 | 设备逻辑 | `razer-device` | Razer 报文、响应、能力、逻辑身份、查询重试、通用 HID 契约；无系统后端 |
 | HID 实现 | `razer-hid` | 实现设备层契约；hidapi、collection、Feature 传输与 descriptor |
-| 观察投影 | `razer-discovery` | IPC 观察到产品/接收器身份的映射；无 UI、DLL 加载或硬件后端 |
+| 观察投影 | `razer-discovery` | IPC 观察到产品/接收器身份的映射、实际路由验证与共享读写请求；无 UI、DLL 加载或硬件后端 |
 | 客户端/IPC | `razer-ipc` | 请求/响应、JSON 帧、客户端、超时、所属子进程退出清理；不依赖设备服务实现 |
-| 后台执行 | `razer-service` | worker 分发、HID/USB 平台身份补充、现有 DLL/服务查询适配；无 GPUI |
-| 平台适配 | `razer-platform` | 系统面板、只读系统属性、拓扑变化通知、已安装库文件定位；不加载 DLL |
+| 后台执行 | `razer-service` | worker 分发、已核实设备读写、HID/USB 平台身份补充、现有 DLL/服务适配；无 GPUI |
+| 平台适配 | `razer-platform` | 系统面板、系统属性、拓扑通知、源核实的 Windows 服务及滚轮设置、已安装库文件定位；不加载 DLL |
 | 本地保存 | `razer-storage` | 文件路径、冲突检查、备份、临时文件保存；不执行设备写回 |
 | 语言 | `razer-i18n` | 官方语言资源与 locale 查询 |
 | 资源 | `razer-assets` | 官方资源、字体、布局元数据与 AssetSource；不依赖模型或设备层 |
 
 ## 依赖与运行边界
+
+HID 共用实现放 `razer-hid/src/transport/`；服务分派放 `razer-service/src/runtime/mod.rs`，portable 请求与 `runtime/windows/` 分开；设备路由的 Windows 容器适配放 `razer-discovery/src/direct/platform/windows.rs`；系统专属实现放 `razer-platform/src/platform/windows/`。Linux/macOS 复用共享 HID transport，其他平台专属能力未实现时明确返回不支持。详见 [跨平台契约](cross-platform-hid-current.md)。
 
 箭头表示 Cargo 依赖；虚线表示进程通讯。图省略共同依赖，完整清单见 [架构记录](workspace-openlogi-architecture-current.json)。
 
@@ -75,11 +77,11 @@ GUI 页面、壳层、设置、Dashboard、托盘均不依赖 `razer-service` �
 
 `razer_agent` 放在 GUI 同目录时，IPC 客户端启动该独立进程。旧的仅根包开发入口仍兼容 `razer_ui --service-worker`，在 GPUI 初始化前分发；根 `razer-app` 因该兼容入口及原有诊断 CLI 仍链接服务包。当前 wire 格式、请求编号、大小限制、超时、Windows Job 清理和错误处理保持原实现，没有改为 OpenLogi 的 tarpc/local socket，也没有新增常驻后台生命周期。
 
-`razer-shell` 原有 132 个 Rust 文件，目前为 26 个、约 8400 行，其中 5 个为独立测试文件，其余文件也包含部分内联测试。留下的是主窗口、标签页、窗口策略、宿主动作路由和本地工作区聚合。`main_pages/dashboard_cards.rs` 为卡片提供导航/提示闭包；`tray.rs` 订阅托盘事件并路由；`settings_window.rs` 只负责打开/聚焦策略；`firmware_update.rs` 只负责宿主标签生命周期。产品与应用页面主体、托盘弹层、Dashboard 和设置内容已在所属页面包；标题栏、账户菜单、未保存提示以及 Chroma 独立窗口的宿主布局仍由 shell 渲染，不能描述为完全没有 UI 的入口包。
+`razer-shell` 留下主窗口、标签页、窗口策略、宿主动作路由和工作区聚合。`main_pages/dashboard_cards.rs` 为卡片提供导航/提示闭包；`tray.rs` 订阅托盘事件并路由；`settings_window.rs` 只负责打开/聚焦策略；`firmware_update.rs` 只负责宿主标签生命周期。设备读取、DPI、回报率、键盘亮度与音量协调文件将页面意图交给共享 IPC/路由，不实现协议编码或系统 HID。产品与应用页面主体、托盘弹层、Dashboard 和设置内容已在所属页面包；标题栏、账户菜单、未保存提示以及 Chroma 独立窗口的宿主布局仍由 shell 渲染。各包文件数以 [当前架构记录](workspace-openlogi-architecture-current.json) 为准。
 
 应用页面通过实体方法或事件与宿主交互，不反向依赖 `AppShell`。Macro/Profiles 依赖产品页面提供的本地工作区绑定接口，MacroLibrary 仍是产品页面包中的共享 GPUI 本地状态。纯文档/控制器的进一步拆分尚未完成，不能把它描述为无 UI 的数据核心。
 
-跨包调用直接引用所属包，已删除重复 `ui`/`backend` 门面和依赖包别名转发。合成键盘的图片映射由 UI 显式调用 `razer-model::demo::artwork_product_id`，不进入发现、协议能力或传输身份。本地保存格式、UI 草稿和已有编辑行为保留；这次架构整理不扩大设备写回范围。
+跨包调用直接引用所属包，已删除重复 `ui`/`backend` 门面和依赖包别名转发。合成键盘的图片映射由 UI 显式调用 `razer-model::demo::artwork_product_id`，不进入发现、协议能力或传输身份。本地保存格式与 UI 草稿独立于设备观察和真实写回；全量设备读写仍在实现范围，各条链的实际完成边界见 [写入契约](device-write-current.md)。
 
 ## OpenLogi 源码对照
 
@@ -87,10 +89,10 @@ GUI 页面、壳层、设置、Dashboard、托盘均不依赖 `razer-service` �
 
 | OpenLogi 边界 | 本项目落实 |
 | --- | --- |
-| `openlogi-device/backend.rs` 定义契约，`openlogi-hid` 实现它 | [backend.rs](../../crates/razer-device/src/backend.rs) 与 [native.rs](../../crates/razer-hid/src/native.rs)；`razer-hid → razer-device` |
+| `openlogi-device/backend.rs` 定义契约，`openlogi-hid` 实现它 | [backend.rs](../../crates/razer-device/src/backend.rs) 与 [hidapi.rs](../../crates/razer-hid/src/transport/hidapi.rs)；`razer-hid → razer-device` |
 | desktop 组装，UI 共享展示 | 启动、宿主、应用/产品页面、Dashboard、设置、托盘和共享控件分开 |
 | core、registry、assets 分开 | 模型、源声明目录、嵌入资源分别归属；都不依赖硬件实现 |
-| agent/core 与 IPC 分开 | [agent 入口](../../crates/razer-agent/src/main.rs)、[worker 分发](../../crates/razer-service/src/runtime.rs)、[IPC 客户端](../../crates/razer-ipc/src/lib.rs)；IPC 不依赖服务 |
+| agent/core 与 IPC 分开 | [agent 入口](../../crates/razer-agent/src/main.rs)、[worker 分发](../../crates/razer-service/src/runtime/mod.rs)、[IPC 客户端](../../crates/razer-ipc/src/lib.rs)；IPC 不依赖服务 |
 
 未照搬 Logitech HID++ 命令、async-hid、写回状态机、常驻 agent、IPC 协议、macOS 托盘进程归属等细节。这些不是 Razer 功能依据。三平台运行、窗口视觉及硬件结果仍未验收。
 
@@ -112,4 +114,4 @@ python tools/validate-current-docs.py
 python tools/audit-portable-hid-current.py --check
 ```
 
-本机仅有 Windows Rust target。单独检查 IPC、托盘曾发现全 workspace feature 合并掩盖的 Windows feature 缺项，已在所属包显式补齐。检查包含已有测试代码类型检查，没有执行测试、应用、agent、DLL 或硬件命令。Linux/macOS 源码核对不等于运行验收。资源总校验仍存在重构前 `audio-demo-play.svg` 的 manifest SHA 不匹配；未修改该资源或盲目刷新其 hash。
+本机仅有 Windows Rust target。单独检查 IPC、托盘曾发现全 workspace feature 合并掩盖的 Windows feature 缺项，已在所属包显式补齐。检查包含已有测试代码类型检查，没有执行测试、应用、agent、DLL 或硬件命令。Linux/macOS 源码核对不等于运行验收；资源检查按 [当前资产记录](assets-current-inventory.json) 核对字节、引用和重复项。

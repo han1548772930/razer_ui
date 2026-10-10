@@ -12,9 +12,10 @@
 | --- | --- | --- |
 | native library | 48 库逐项登记，762 个唯一静态候选声明 | 声明不等于原 DLL 内部语义，泛型 getter 不等于 Rust 协议替代；整库替代完成数仍为 0 |
 | 当前 PE 内部图 | 81 个字节校验过的文件，包含产品、CommonDLL 和 Windows 插件 | 导入表与潜在路径只能定位依赖，间接调用、动态加载、线程和全部返回语义仍需逐项消歧 |
+| IDA/Hex-Rays 当前取证 | 85 个输入，84 个已取证，320,630 个 native 函数索引、10,630 个选定函数正文；3 个 mixed CLR 库保留独立托管索引及 native 正文 | 1 个 ARM64 插件尚无受支持分析后端；未选定函数、间接调用及 managed IL 桥接仍缺，正文数量不代表整库语义闭合 |
 | 宿主原生依赖 | corpus 中 64 个 native_binary 条目，包含 4 DLL 和 60 `.node` 路径 | 不止此前内部图的 19 个 Windows 插件，还包含 macOS/Linux/Android 预编译插件、不同架构及 Node ABI；路径数量不代表唯一二进制数量 |
 | helper/system 程序引用 | 第一方宿主 JS 中 9 个 `.exe` 名称引用；当前官方包静态取得 4 个 CommonDLL helper PE（Power/Security/EngineMon/Handle） | 4 个本体和 CLI 字符串已留证，但分支语义、进程结果、注册表/服务副作用和 Rust 替代消费者仍未闭合 |
-| 宿主非产品链 | 本记录核对 16 个域 | 本地草稿、请求事件、生命周期片段分别记录；没有全程序等价验收结论 |
+| 宿主非产品链 | 本记录核对 17 个域 | 本地草稿、请求事件、生命周期片段分别记录；没有全程序等价验收结论 |
 
 `IoTNative`、`lighting_driver`、`NanoleafNative`、`PhilipsHueNative`、`RzNative_0518` 在当前库 inventory 中没有已获取并归属的资源。这里描述的是该清单的资源证据缺口，不据此推定其他位置不存在同名文件，也不推定库没有功能。动态归属和签名冲突保持未知，不能用其他产品补齐。
 
@@ -29,19 +30,24 @@
 | 模块安装/卸载/取消/清除设置 | 当前 Dashboard 交互 → 宿主 `preload.js` 通道 → 原后台服务 | 确认面板发 `ModuleCatalogEvent::ServiceCommand`；`shell.rs` 明确报告“未执行”，没有 installer、缓存校验、后台状态发布和清设置提交 |
 | 主程序升级与本地包生命周期 | `mainSubFunction.upgradeAppEngineVersion` → `simpleLaunchUserAppProcess` → `RzPowerTool.exe`；`lib/aio.js` 日期门控 | 已取得并静态核对 RzPowerTool PE 和 10 个 CLI 字符串；网络专属升级流程不实现，本地包安装、版本注册、旧版清理、relaunch 和相关 helper 分支结果仍未闭合 |
 | 固件更新 | 主宿主打开更新程序与当前 `update-fw` 页面链 | `firmware_update/state.rs` 是明确的本地 preview；不代表固件传输、硬件进度、成功、取消或恢复 |
-| Windows 服务 | `serviceFunction.js` → simple launch → `RzPowerTool --get-service-status/--start-service/--stop-service` | PE/命令入口已取证；`NativeRuntime::Shutdown` 只关闭已初始化的 mapping/simple，服务状态/启动/停止结果尚未接入 Rust |
+| Windows 服务 | `serviceFunction.js` → simple launch → `RzPowerTool --get-service-status/--start-service/--stop-service` | IDA 已核实 12 个允许服务的查询、启动/停止、依赖递归及 checkpoint/waitHint 等待；`razer-platform::windows_service_status` 与 shared worker IPC 已实现，无需加载 helper。保留原依赖失败忽略和父服务退出码语义，退出码 1 不证明所有依赖成功。其他平台明确不支持 SCM。原页面/host 消费者、非默认 locale及提权 launcher 仍缺；原 helper requireAdministrator，当前 worker 不获取提权令牌，权限失败如实返回。IPC 超时不撤销可能发生的服务副作用；`NativeRuntime::Shutdown` 是独立 mapping/simple 生命周期 |
 | 设备安全 | `modules/security/win/index.js` → `RzSecurityTool --verify-device-security` | PE 和命令入口已取证；设备安全验证分支、返回值和 Rust consumer 尚未闭合 |
 | 通知与深链 | `nativeNotificationHandler.js` → addon worker → HMAC URI → 全窗口事件 | 缺少 addon 替代、safeStorage、加密 key 文件、10 天 TTL、一次性 key 删除与 pending-protocol 队列 |
 | 账户与身份 | `lib/identityPipe.js`、`getIdentityFeature.js` → identity 服务事件 | Guest 展示不能替代身份管道、认证响应、凭据、安全存储和退出广播 |
 | IoT/LampArray | `IoTNativeAction`、`LampArrayAction` → 原 API/transport | `GamerRoomEvent::DeviceCommand` 到 shell 后明确未发送；缺少真实电源/帧写入、通知及响应刷新 |
 | 灯光 | `ffiLightingDriver.initDll/configure/hookLightingCallback/shutdown` | 当前 `lighting.rs` 仍调用原库；缺少完整 Rust 帧引擎、区域、设备与回调生命周期替代 |
+| speaker/microphone 音量与静音 | 当前1352 factory、Sound 页面、volume reducer/task、endpoint resolver → simple_service 导出 → IDA共同端点方法 | 四个原生接口已通过共享结果结构、Windows Core Audio 和 typed IPC 替代，不加载该 DLL；1352 speaker 页面真实读取、松开/静音提交、回读、取消及旧响应过滤已连接。本地草稿与实际观察分开。真实 productName 回退、原持续通知缓存、完整初始化重试、其他产品和 microphone 页面消费者仍缺；其他平台明确不支持该系统能力 |
 | FFI 与子进程 | Main/Sub loader、FFIProcess ready/crash、exit/suspend/shutdown 回调表 | worker 隔离、有限 getter 和模块保留存在；每库 ABI、各类关闭回调、崩溃重建和挂起恢复尚未全部闭合 |
 | 整体退出 | `main.js` 的 `quitApp/finalQuit`、cannot-exit 计数、poweroff、应用集合 | worker 录制与 mapping/simple shutdown 有实现；宿主完整顺序、阻止退出、pending callback 和全插件释放未等价 |
 | 兼容与互斥 | `lib/exeCompatibility.js`、`lib/RzMutx.js` | 原 Windows 兼容检查、注册表分支、令牌所有权、取消及互斥生命周期仍缺对应消费者 |
 
 以上列的是同一全量实现范围中的当前缺口。读取、观察、写入、Apply/Save/Cancel、持久化、失败和清理都需要现在按证据实现；没有独立的写回延期阶段。
 
+SysUtilsNative 的滚轮行数 getter/setter 已按 IDA 原码由 [wheel_scroll.rs](../../crates/razer-platform/src/wheel_scroll.rs) 和 shared IPC 替代，保留 SPI 参数、BOOL 返回及 `-1` 位模式。182 前台匹配、配置、高分辨率/haptic 任务和页面消费者仍未闭合。两条系统子链的完整证据见 [滚轮](sysutils-wheel-scroll-current-evidence.json) 与 [服务查询及控制](powertool-services-current-evidence.json)。鼠标普通/profile/高速回报率、182 休眠及回报率页面、9 款键盘亮度读写当前边界另见 [设备写入](device-write-current.md)。跨平台页面发现和共享直接路由已连接，未知接口号、未实现 relay/物理分组及三平台验收分别保留在 [HID 契约](cross-platform-hid-current.md)。
+
 原生音频列表另见 [simple_service 的 IDA 链路与 Rust 消费者](simple-audio-current.md)：32 个函数证据已核实实例/虚表、四字段 schema、Core Audio/SetupAPI 和初始化遍历顺序，`AudioDevices` 已连接设置页与 Control Pod，并不再加载原 DLL。原服务的持续事件缓存、通知/音量/会话订阅、完整失败语义仍缺；此子链不改变整库替代完成数为 0 的结论。
+
+simple_service 的 speaker/microphone 音量 getter/setter 已进一步追到共同的端点方法、Core Audio 虚表、量化、先音量后静音及部分失败行为，见 [IDA 与当前1352调用链证据](simple-audio-volume-current-evidence.json)。共享结果结构与 Windows 端点实现已接 `AudioVolumeRead/Write`；1352 的实际页面消费者、真实 endpoint 选择、队列、取消、回读和清理另见 [页面审计](leviathan-volume-ui-current-audit.md)。原持续通知缓存、完整端点生命周期、原 productName 回退及其他产品页面消费者仍需逐项完成。这一子链不能代表整个 simple_service 等价完成。
 
 ## 原库接入不能记作不依赖原库
 

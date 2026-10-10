@@ -1,0 +1,1070 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": 600,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 600,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          600,
+          625
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 602,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 602,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          602,
+          604
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 2,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 664,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 664,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          664,
+          662
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "claim_interfaces_by_pid": {
+          "662": 2,
+          "663": 3,
+          "664": 3
+        },
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 697,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 697,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          697,
+          698
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 708,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 708,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          708,
+          706
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "claim_interfaces_by_pid": {
+          "706": 2,
+          "707": 3,
+          "708": 3
+        },
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 716,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 716,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          716,
+          713
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "claim_interfaces_by_pid": {
+          "713": 2,
+          "714": 3,
+          "716": 3
+        },
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 717,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 717,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          717,
+          730
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "claim_interfaces_by_pid": {
+          "717": 3,
+          "718": 3,
+          "730": 2
+        },
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 724,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 724,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          724,
+          722
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "claim_interfaces_by_pid": {
+          "722": 2,
+          "723": 3,
+          "724": 3
+        },
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    },
+    {
+      "product_id": 727,
+      "source_class": "rzDevice25DualLinkKeyboard",
+      "get_command": [
+        3,
+        15,
+        132
+      ],
+      "set_command": [
+        3,
+        15,
+        4
+      ],
+      "regions_command": [
+        80,
+        15,
+        128
+      ],
+      "active_profile": 1,
+      "all_region": 0,
+      "fallback_region": 1,
+      "region_record_bytes": 5,
+      "transport": {
+        "product_id": 727,
+        "source_class": "rzDevice25DualLinkKeyboard",
+        "direct_pids": [
+          727,
+          725
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 3,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 128,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_8000Hz": 1,
+          "RATE_4000Hz": 2,
+          "RATE_2000Hz": 4,
+          "RATE_1000Hz": 8,
+          "RATE_500Hz": 16,
+          "RATE_250Hz": 32,
+          "RATE_125Hz": 64
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "alternate_commands": [
+          {
+            "command": [
+              1,
+              0,
+              70
+            ]
+          },
+          {
+            "command": [
+              3,
+              0,
+              65
+            ]
+          }
+        ],
+        "claim_interfaces_by_pid": {
+          "725": 2,
+          "726": 3,
+          "727": 3
+        },
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    }
+  ]
+}

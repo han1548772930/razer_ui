@@ -544,7 +544,7 @@ impl DeviceWorkspace {
                         Control::Idle,
                         if headset { "5" } else { "1" },
                         if headset { "60" } else { "15" },
-                        headset && !state.power_enabled,
+                        (headset && !state.power_enabled) || self.mouse_settings_write_pending(),
                         window,
                         cx,
                     )),

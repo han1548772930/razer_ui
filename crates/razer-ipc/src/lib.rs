@@ -35,6 +35,17 @@ pub enum ServiceRequest {
     },
     SimpleVersion,
     AudioDevices,
+    /// Core Audio endpoint ID from real enumeration, never USB or product ID.
+    AudioVolumeRead {
+        device_id: String,
+    },
+    /// Original volume then mute ordering; response retains partial failure
+    /// and a separate actual observation rather than fabricating atomic save.
+    AudioVolumeWrite {
+        device_id: String,
+        mute: bool,
+        volume: u8,
+    },
     /// Source-recovered RzAudioUtil enumeration through the OS adapter;
     /// distinct from simple_service's AudioDevices response schema.
     AudioEndpoints {
@@ -44,6 +55,11 @@ pub enum ServiceRequest {
     /// Portable OS collections. Paths are opaque bytes; no Windows GUID or
     /// logical receiver peer is fabricated from these nodes.
     HidNodes,
+    /// Observe the retained collection's actual descriptor, without sending a
+    /// Razer command. Used to disambiguate source-selected transport routes.
+    HidNodeReports {
+        node: razer_device::backend::HidNode,
+    },
     HidNodeRead {
         node: razer_device::backend::HidNode,
         product_id: u32,
@@ -58,6 +74,24 @@ pub enum ServiceRequest {
     },
     HidNodeReceiverStatus {
         node: razer_device::backend::HidNode,
+    },
+    HidNodeDpiStagesRead {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+    },
+    HidNodeDpiStagesWrite {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        draft: razer_device::mouse_dpi_stages::DpiStagesDraft,
+    },
+    HidNodeKeyboardBrightnessRead {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+    },
+    HidNodeKeyboardBrightnessWrite {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        percent: u8,
     },
     /// Current Audio Mixer DSP reports; some queries use a hardware mailbox
     /// selector, so this is not a side-effect-free register snapshot.
@@ -122,6 +156,20 @@ pub enum ServiceRequest {
         target: razer_device::device_reads::DeviceReadTarget,
         setting: razer_device::device_writes::DeviceWriteSetting,
     },
+    DeviceKeyboardBrightnessRead {
+        target: razer_device::device_reads::DeviceReadTarget,
+    },
+    DeviceDpiStagesRead {
+        target: razer_device::device_reads::DeviceReadTarget,
+    },
+    DeviceDpiStagesWrite {
+        target: razer_device::device_reads::DeviceReadTarget,
+        draft: razer_device::mouse_dpi_stages::DpiStagesDraft,
+    },
+    DeviceKeyboardBrightnessWrite {
+        target: razer_device::device_reads::DeviceReadTarget,
+        percent: u8,
+    },
     /// Observe global input through the current mapping-engine recorder.
     /// These requests do not submit macros or mappings to a device.
     StartMacroRecording,
@@ -134,6 +182,19 @@ pub enum ServiceRequest {
         device_container_id: String,
     },
     GlobalMode,
+    WheelScrollLinesRead,
+    WheelScrollLinesWrite {
+        lines: i32,
+    },
+    WindowsServiceStatus {
+        name: String,
+    },
+    WindowsServiceStart {
+        name: String,
+    },
+    WindowsServiceStop {
+        name: String,
+    },
     GlobalShortcuts,
     RegisterShortcut {
         vkey_code: u32,
@@ -310,6 +371,9 @@ impl ServiceClient {
         let writing_device = matches!(
             request,
             ServiceRequest::DeviceWrite { .. }
+                | ServiceRequest::AudioVolumeWrite { .. }
+                | ServiceRequest::HidNodeDpiStagesWrite { .. }
+                | ServiceRequest::DeviceDpiStagesWrite { .. }
                 | ServiceRequest::HidNodeWrite { .. }
                 | ServiceRequest::HidNodeMixerWrite { .. }
                 | ServiceRequest::HidNodeMixerRouteWrite { .. }
@@ -318,6 +382,9 @@ impl ServiceClient {
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
+                | ServiceRequest::AudioVolumeRead { .. }
+                | ServiceRequest::HidNodeDpiStagesRead { .. }
+                | ServiceRequest::DeviceDpiStagesRead { .. }
                 | ServiceRequest::NativeLibrarySnapshot { .. }
                 | ServiceRequest::AudioEndpoints { .. }
                 | ServiceRequest::HidNodeRead { .. }

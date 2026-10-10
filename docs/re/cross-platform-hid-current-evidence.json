@@ -152,8 +152,155 @@
       ]
     }
   ],
-  "implementation": "crates/razer-hid/src/native.rs",
-  "scope": "Existing protocol25 read capabilities only; numbered/new product protocols not inferred",
+  "implementation": "crates/razer-hid/src/transport/hidapi.rs",
+  "scope": "Source-gated portable collection discovery, subsequent receiver binding queries, direct mouse reads/writes and keyboard brightness; no unknown interface or receiver relay inference",
+  "protocol_evidence": [
+    {
+      "path": "docs/re/mouse-read-capabilities-current-evidence.json",
+      "sha256": "e91bc078d25a4b22d37ce72eb9b0d902533975d57e627efcdcfd60725f408289"
+    },
+    {
+      "path": "docs/re/device-write-capabilities-current-evidence.json",
+      "sha256": "7095fda9d0a93aad99f2fcbc239ca4513110ec16b34e3048367d8563c290fd30"
+    },
+    {
+      "path": "docs/re/receiver-discovery-current-evidence.json",
+      "sha256": "2b280b807314f3ca82a595148549eb2ba20b213832aa8bc2ebab746ec4bac96e"
+    },
+    {
+      "path": "docs/re/keyboard-settings-current-evidence.json",
+      "sha256": "acca07c1ecbb2022b35d7f4acf54f303d784996855c106c5b4f0fca01f001572"
+    }
+  ],
+  "implementation_receipts": [
+    {
+      "path": "crates/razer-discovery/src/direct/mod.rs",
+      "sha256": "d156d536d76f9adaccba4793a0ffc016a485e1d1cbf5672bee7a19953f3d7e68",
+      "reviewed_boundary_anchors": [
+        "mod windows;",
+        "cap.direct_pids.contains(&observed.physical_product_id())",
+        "ServiceRequest::HidNodes",
+        "ServiceRequest::HidNodeReports",
+        "setting.matches_value(&observed)",
+        "self.check_reply(&reply)?"
+      ]
+    },
+    {
+      "path": "crates/razer-discovery/src/direct/platform/windows.rs",
+      "sha256": "666cf693a325fcb15fc3edb8d4a431a0632be07b57472155433eb5fd5efa6c9f",
+      "reviewed_boundary_anchors": [
+        "ServiceRequest::HidDevices",
+        "paths.len() == 1",
+        "eq_ignore_ascii_case(observed.container())"
+      ]
+    },
+    {
+      "path": "crates/razer-discovery/src/discovery_portable.rs",
+      "sha256": "ee5b898c8565f3f5658862018525f69037f805a9c6ac6bda7855fdf5a9a5f2f5",
+      "reviewed_boundary_anchors": [
+        "node.interface_number < 0",
+        "crate::direct::collection_scope(node)",
+        "hid_node: Some(node.clone())",
+        "crate::direct::reports_match",
+        "DeviceConnectionObservation::HidPresent"
+      ]
+    },
+    {
+      "path": "crates/razer-discovery/src/receiver.rs",
+      "sha256": "2708cdf4a9d6372ac7ded39d081f7b420b10f94481a1e65cff127995d861b2d4",
+      "reviewed_boundary_anchors": [
+        "Self::from_observation(observed)",
+        "ServiceRequest::HidNodes",
+        "candidate| *candidate == node",
+        "direct::reports_match",
+        "ServiceRequest::HidNodeReceiverStatus",
+        "discovery::project_hid_receiver_query"
+      ]
+    },
+    {
+      "path": "crates/razer-settings/src/runtime_page.rs",
+      "sha256": "db7c787d99ba61adb9e1cca009f5754bdfadf2bfa3552e2ef739715b95ddfc12",
+      "reviewed_boundary_anchors": [
+        "#[cfg(not(windows))]",
+        "ServiceRequest::HidNodes",
+        "discovery::discover_portable",
+        "hid_nodes: Some(nodes)",
+        "device.hid_node().is_some()"
+      ]
+    },
+    {
+      "path": "crates/razer-settings/src/runtime_page/diagnostics.rs",
+      "sha256": "272a4989f84a1b142d7aef05cec1ea79ea56df038afd9180b5c8e26c0f8ec314",
+      "reviewed_boundary_anchors": [
+        "\"hid_nodes\": query(&self.hid_nodes)",
+        "\"hid_node\": device.hid_node()"
+      ]
+    },
+    {
+      "path": "crates/razer-service/src/runtime/portable.rs",
+      "sha256": "2dcce29bb62d879ac7153a68099f234e8103c217c463f3ec4f82bc57ee7c00e5",
+      "reviewed_boundary_anchors": [
+        "ServiceRequest::HidNodeReports",
+        "device.report_lengths()?",
+        "\"identity_scope\":\"hid_collection\""
+      ]
+    },
+    {
+      "path": "crates/razer-hid/src/transport/hidapi.rs",
+      "sha256": "cc90313dff8049993f77d1ff47250a39be65a3660260b0698b7ecc65917c881e",
+      "reviewed_boundary_anchors": [
+        "lock.try_lock()",
+        "_lock: lock",
+        "opened == *selected"
+      ]
+    },
+    {
+      "path": "crates/razer-shell/src/shell/device_discovery.rs",
+      "sha256": "493b82864a3bd47f25249c45ae972d8b503f637e37b8e5385f93584d18a94f86",
+      "reviewed_boundary_anchors": [
+        "observed.hid_node() == retained_node.as_ref()",
+        "route.write(&mut client, setting)?",
+        "receiver_route_for_owner",
+        "let result = query_route.query(&mut client);",
+        "retained_route.matches(observed)",
+        "this.discovery_revision != revision"
+      ]
+    },
+    {
+      "path": "crates/razer-pages/src/features/source_workspace.rs",
+      "sha256": "e37909a94344f9e58868488b15e849aad3319703eff54f30081902bed1e073f9",
+      "reviewed_boundary_anchors": [
+        "// Scheduling hint only; discovery owns exact node validation.",
+        "receiver_read_owner(&self.device)"
+      ]
+    },
+    {
+      "path": "crates/razer-shell/src/shell/mouse_polling_write.rs",
+      "sha256": "c71d2b62582d9b062952b2b20c0dea6b7063c49a4c6944ee4ab4cf4ea8f7b20e",
+      "reviewed_boundary_anchors": [
+        "current.hid_node() == route.hid_node()",
+        "DeviceWriteSetting::Polling { hz }"
+      ]
+    },
+    {
+      "path": "crates/razer-shell/src/shell/keyboard_brightness_write.rs",
+      "sha256": "2a4db27ba0fec815667c36147280f46419cb89e6f7e9b86ef77b1a980e17f917",
+      "reviewed_boundary_anchors": [
+        "direct::resolve",
+        "write_keyboard"
+      ]
+    },
+    {
+      "path": "crates/razer-shell/src/shell/keyboard_brightness_read.rs",
+      "sha256": "8527b0726f6ee3ac6aab88057ce88ca10b1f4eddab10e13e281c776057c9fcc9",
+      "reviewed_boundary_anchors": [
+        "direct::resolve",
+        "read_keyboard",
+        "current.hid_node() == route.hid_node()"
+      ]
+    }
+  ],
+  "connection_status": "Portable UI discovery and direct routes connected; Windows-only target checked; runtime acceptance not run",
   "policies": [
     "Fresh unique path + usage + interface identity before/after open",
     "Descriptor-derived Feature size; reject mismatches rather than backend padding/truncation",
@@ -164,6 +311,9 @@
     "No hardware execution",
     "Only Windows target statically compiled in this environment",
     "Portable nodes do not supply Windows physical ContainerId or invent receiver relay identity",
+    "Unknown interface_number including macOS -1 is explicitly rejected; source-equivalent mapping remains unimplemented",
+    "Portable physical grouping, hotplug and receiver relay remain gaps; products without proved collection selection are not discovered",
+    "179 subsequent binding queries use the retained physical receiver route; full 164/241 pairing/scan/write lifecycle remains incomplete",
     "Other DLL/COM/driver/service chains remain partial and separate"
   ]
 }

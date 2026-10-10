@@ -29,10 +29,15 @@ use razer_app_pages::app_picker;
 mod app_picker_host;
 use razer_app_pages::armory_page;
 use razer_app_pages::chroma_page;
+mod audio_volume;
 mod chroma_studio_window;
 mod chroma_window;
 mod device_discovery;
 mod display_window;
+mod keyboard_brightness_read;
+mod keyboard_brightness_write;
+mod mouse_dpi_stages;
+mod mouse_polling_write;
 use razer_app_pages::feedback_page;
 mod firmware_update;
 mod header_status;
@@ -831,6 +836,27 @@ impl AppShell {
             &entity,
             window,
             |this, entity, event, window, cx| match event {
+                WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
+                    this.write_mouse_idle(entity.clone(), *scope, *minutes, window, cx);
+                }
+                WorkspaceEvent::KeyboardBrightnessRequested { generation, percent } => {
+                    this.write_keyboard_brightness(entity.clone(), *generation, *percent, window, cx);
+                }
+                WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
+                    this.read_keyboard_brightness(entity.clone(), *generation, window, cx);
+                }
+                WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
+                    this.write_mouse_polling(entity.clone(), *scope, *field, *hz, window, cx);
+                }
+                WorkspaceEvent::MouseDpiStagesRequested { scope, revision, draft } => {
+                    this.write_mouse_dpi_stages(entity.clone(), *scope, *revision, draft.clone(), window, cx);
+                }
+                WorkspaceEvent::MouseDpiStagesReadRequested { scope, revision } => {
+                    this.read_mouse_dpi_stages(entity.clone(), *scope, *revision, window, cx);
+                }
+                WorkspaceEvent::AudioVolumeRequested { request } => {
+                    this.request_audio_volume(entity.clone(), *request, window, cx);
+                }
                 WorkspaceEvent::Changed => {
                     this.sync_gamer_room(cx);
                     this.sync_known_devices(cx);

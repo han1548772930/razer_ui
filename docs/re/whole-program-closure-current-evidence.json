@@ -18,7 +18,7 @@
     "runtime_policy": "Application, DLL, vendor JavaScript and hardware execution remain prohibited during development, so runtime acceptance is recorded separately and never fabricated."
   },
   "method": "Static receipt/hash verification and reviewed Rust boundary locators; no vendor code execution",
-  "generator_sha256": "30f9a3fce0dda62738c2e9715c05ed4c1aa930791743808e8a9bb857563f371f",
+  "generator_sha256": "23f09e0ad3a20abf23061796d145c650c0c54272b088309370f8d979b2008e54",
   "inputs": [
     {
       "path": "assets/data/native-library-inventory.json",
@@ -39,6 +39,31 @@
       "path": "docs/re/dll-device-communication-current.json.gz",
       "sha256": "002f22492188475cc558fe85748a1f1264ee08edb2d01254701e834ac9992f16",
       "bytes": 26811920
+    },
+    {
+      "path": "docs/re/receiver-query-projection-current-evidence.json",
+      "sha256": "423789168d227089b2e4e00d421186aec5697033a84b99497795aa9c630bca46",
+      "bytes": 12317
+    },
+    {
+      "path": "docs/re/cross-platform-hid-current-evidence.json",
+      "sha256": "f04dce197d66faed5d711473c93142f8871238c70ce02be71c3e4ba4e97ca727",
+      "bytes": 48654
+    },
+    {
+      "path": "docs/re/simple-audio-volume-current-evidence.json",
+      "sha256": "5112268accc367992b03bb765ea97121ad8ad7ab67b58f3dc9ec5a3a7575b97c",
+      "bytes": 487938
+    },
+    {
+      "path": "docs/re/leviathan-volume-ui-current-evidence.json",
+      "sha256": "b4455c721bc53b0b8734cd6777476a1cbdcd65d9683974f555cf11a83c36de21",
+      "bytes": 25818
+    },
+    {
+      "path": "docs/re/mouse-dpi-stages-current-evidence.json",
+      "sha256": "3e9aaeb56f0eff179e9c95132711de8d5da74a366aeb3ff0cfb36570ecb5b093",
+      "bytes": 67284
     }
   ],
   "summary": {
@@ -48,7 +73,7 @@
     "host_native_binary_entries_all_platforms": 64,
     "helper_reference_names": 9,
     "host_helper_exe_bodies": 4,
-    "reviewed_non_product_domains": 16,
+    "reviewed_non_product_domains": 17,
     "entire_library_replacements_completed": 0,
     "entire_program_equivalence_completed": false
   },
@@ -243,9 +268,9 @@
           "line": 17
         },
         {
-          "path": "crates/razer-service/src/runtime.rs",
+          "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageCall",
-          "line": 39
+          "line": 58
         }
       ],
       "status": "partially_implemented",
@@ -285,9 +310,9 @@
           "line": 17
         },
         {
-          "path": "crates/razer-service/src/runtime.rs",
+          "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageEvents",
-          "line": 42
+          "line": 61
         }
       ],
       "status": "partially_implemented",
@@ -327,9 +352,9 @@
           "line": 17
         },
         {
-          "path": "crates/razer-service/src/runtime.rs",
+          "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageClose",
-          "line": 35
+          "line": 54
         }
       ],
       "status": "partially_implemented",
@@ -751,7 +776,7 @@
         {
           "path": "crates/razer-shell/src/shell.rs",
           "symbol_or_token": "ModuleCatalogEvent::ServiceCommand",
-          "line": 587
+          "line": 592
         },
         {
           "path": "crates/razer-app-pages/src/module_service_remove.rs",
@@ -943,7 +968,7 @@
       ],
       "reviewed_rust_boundaries": [
         {
-          "path": "crates/razer-service/src/runtime.rs",
+          "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "pub fn run_worker",
           "line": 13
         }
@@ -1142,13 +1167,53 @@
       ],
       "reviewed_rust_boundaries": [
         {
-          "path": "crates/razer-service/src/runtime_native.rs",
+          "path": "crates/razer-platform/src/windows_service_status.rs",
+          "symbol_or_token": "pub fn query",
+          "line": 38
+        },
+        {
+          "path": "crates/razer-platform/src/windows_service_status.rs",
+          "symbol_or_token": "pub fn start",
+          "line": 8
+        },
+        {
+          "path": "crates/razer-platform/src/windows_service_status.rs",
+          "symbol_or_token": "pub fn stop",
+          "line": 23
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/services.rs",
+          "symbol_or_token": "fn start_handle",
+          "line": 104
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/services.rs",
+          "symbol_or_token": "fn stop_handle",
+          "line": 154
+        },
+        {
+          "path": "crates/razer-service/src/runtime/mod.rs",
+          "symbol_or_token": "ServiceRequest::WindowsServiceStatus",
+          "line": 39
+        },
+        {
+          "path": "crates/razer-service/src/runtime/mod.rs",
+          "symbol_or_token": "ServiceRequest::WindowsServiceStart",
+          "line": 31
+        },
+        {
+          "path": "crates/razer-service/src/runtime/mod.rs",
+          "symbol_or_token": "ServiceRequest::WindowsServiceStop",
+          "line": 35
+        },
+        {
+          "path": "crates/razer-service/src/runtime/windows/native.rs",
           "symbol_or_token": "ServiceRequest::Shutdown",
-          "line": 403
+          "line": 427
         }
       ],
       "status": "partially_implemented",
-      "gap": "Mapping/audio service shutdown is not RzPowerTool get/start/stop service commands; helper PE is acquired statically, but branch semantics, process result and Rust consumer remain unclosed.",
+      "gap": "IDA-proved query/start/stop for 12 allowed names, C ASCII comparison, SCM permissions, dependent recursion, checkpoint/waitHint polling, exit semantics and handle cleanup are implemented in the Windows adapter and shared IPC without loading RzPowerTool. Other platforms explicitly reject SCM operations. Original host/page consumers, locale changes and elevated helper launch remain unclosed: RzPowerTool requiresAdministrator while the worker does not acquire an elevated token. Exit 1 confirms the parent result only; original dependency errors are ignored. IPC timeout does not undo possible service side effects; mapping/audio shutdown is separate.",
       "runtime_acceptance": "not_run"
     },
     {
@@ -1383,7 +1448,7 @@
         {
           "path": "crates/razer-shell/src/shell.rs",
           "symbol_or_token": "GamerRoomEvent::DeviceCommand",
-          "line": 536
+          "line": 541
         }
       ],
       "status": "partially_implemented",
@@ -1450,6 +1515,273 @@
       ],
       "status": "partially_implemented",
       "gap": "Existing adapter loads lighting_driver; it is not a Rust replacement of lighting engine/frame/device lifecycle.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "simple_audio_volume",
+      "current_sources": [
+        {
+          "path": ".ref/host-4.0.827/electron/modules/simple_service/win/index.js",
+          "sha256": "7b16cb4d3a053004d0674de99390d3f3d552022406192898c3f4ff51ca889566",
+          "bytes": 47682,
+          "functions": [
+            {
+              "name": "constructor",
+              "start": 376,
+              "end": 807
+            },
+            {
+              "name": "safeErrorReason",
+              "start": 807,
+              "end": 929
+            },
+            {
+              "name": "initDll",
+              "start": 929,
+              "end": 4044
+            },
+            {
+              "name": "callDLL",
+              "start": 4044,
+              "end": 7190
+            },
+            {
+              "name": "setAppsServiceEventCallback",
+              "start": 7190,
+              "end": 7926
+            },
+            {
+              "name": "isAppsServiceEventRegistered",
+              "start": 7926,
+              "end": 8379
+            },
+            {
+              "name": "registerAppsServiceEvent",
+              "start": 8379,
+              "end": 9755
+            },
+            {
+              "name": "unregisterAppsServiceEvent",
+              "start": 9755,
+              "end": 10855
+            },
+            {
+              "name": "simpleGetVersionInfo",
+              "start": 10855,
+              "end": 11690
+            },
+            {
+              "name": "simpleGetUserApps",
+              "start": 11690,
+              "end": 12592
+            },
+            {
+              "name": "simpleAddUserAppFile",
+              "start": 12592,
+              "end": 13691
+            },
+            {
+              "name": "simpleRemoveUserAppFile",
+              "start": 13691,
+              "end": 14668
+            },
+            {
+              "name": "simpleRemoveUserApp",
+              "start": 14668,
+              "end": 15535
+            },
+            {
+              "name": "simpleRemoveUserAppDirectory",
+              "start": 15535,
+              "end": 16466
+            },
+            {
+              "name": "simpleLaunchUserAppProcess",
+              "start": 16466,
+              "end": 17462
+            },
+            {
+              "name": "simpleLaunchUserAppProcessNoWait",
+              "start": 17462,
+              "end": 18436
+            },
+            {
+              "name": "simpleLaunchUserAppInAsciiFolder",
+              "start": 18436,
+              "end": 19410
+            },
+            {
+              "name": "simpleLaunchRazerApp",
+              "start": 19410,
+              "end": 20341
+            },
+            {
+              "name": "simpleLaunchRazerAppNoWait",
+              "start": 20341,
+              "end": 21256
+            },
+            {
+              "name": "createCbAppsServiceEvent",
+              "start": 21256,
+              "end": 22039
+            },
+            {
+              "name": "simpleEnumerateAudioDevices",
+              "start": 22039,
+              "end": 22875
+            },
+            {
+              "name": "simpleGetMicrophoneVolume",
+              "start": 22875,
+              "end": 23784
+            },
+            {
+              "name": "simpleSetMicrophoneVolume",
+              "start": 23784,
+              "end": 24629
+            },
+            {
+              "name": "simpleGetSpeakerVolume",
+              "start": 24629,
+              "end": 25532
+            },
+            {
+              "name": "simpleSetSpeakerVolume",
+              "start": 25532,
+              "end": 26371
+            },
+            {
+              "name": "createCbAudioServiceEvent",
+              "start": 26371,
+              "end": 27364
+            },
+            {
+              "name": "setAudioServiceEventCallback",
+              "start": 27364,
+              "end": 28141
+            },
+            {
+              "name": "simpleRegisterSpeakerEvent",
+              "start": 28141,
+              "end": 29940
+            },
+            {
+              "name": "simpleRegisterMicrophoneEvent",
+              "start": 29940,
+              "end": 31748
+            },
+            {
+              "name": "simpleUnregisterMicrophoneEvent",
+              "start": 31748,
+              "end": 33145
+            },
+            {
+              "name": "simpleUnregisterSpeakerEvent",
+              "start": 33145,
+              "end": 34536
+            },
+            {
+              "name": "simpleRegisterAudioDeviceStateChangedEvent",
+              "start": 34536,
+              "end": 36109
+            },
+            {
+              "name": "simpleUnregisterAudioDeviceStateChangedEvent",
+              "start": 36109,
+              "end": 37436
+            },
+            {
+              "name": "simpleGetDefaultSpeaker",
+              "start": 37436,
+              "end": 38362
+            },
+            {
+              "name": "simpleGetDefaultMicrophone",
+              "start": 38362,
+              "end": 39294
+            },
+            {
+              "name": "simpleSetDefaultAudioDevice",
+              "start": 39294,
+              "end": 40200
+            },
+            {
+              "name": "simpleSetSidetoneConfig",
+              "start": 40200,
+              "end": 41050
+            },
+            {
+              "name": "simpleGetSidetoneVolume",
+              "start": 41050,
+              "end": 41955
+            },
+            {
+              "name": "simpleSetSidetoneVolume",
+              "start": 41955,
+              "end": 42796
+            },
+            {
+              "name": "simpleLaunchUserAppElavated",
+              "start": 42796,
+              "end": 43794
+            },
+            {
+              "name": "simpleLaunchUserAppElevatedNoWait",
+              "start": 43794,
+              "end": 44770
+            },
+            {
+              "name": "simpleLaunchRazerAppElevated",
+              "start": 44770,
+              "end": 45717
+            },
+            {
+              "name": "simpleLaunchUserAppElevated",
+              "start": 45717,
+              "end": 46715
+            },
+            {
+              "name": "simpleLaunchRazerAppElevatedNoWait",
+              "start": 46715,
+              "end": 47645
+            }
+          ]
+        }
+      ],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-device/src/simple_audio_volume.rs",
+          "symbol_or_token": "pub fn scalar_to_volume",
+          "line": 37
+        },
+        {
+          "path": "crates/razer-service/src/simple_audio_volume.rs",
+          "symbol_or_token": "pub fn write",
+          "line": 18
+        },
+        {
+          "path": "crates/razer-service/src/runtime/windows/audio_volume.rs",
+          "symbol_or_token": "fn observe",
+          "line": 111
+        },
+        {
+          "path": "crates/razer-service/src/runtime/portable.rs",
+          "symbol_or_token": "ServiceRequest::AudioVolumeWrite",
+          "line": 63
+        },
+        {
+          "path": "crates/razer-shell/src/shell/audio_volume.rs",
+          "symbol_or_token": "pub(super) fn request_audio_volume",
+          "line": 59
+        },
+        {
+          "path": "crates/razer-pages/src/features/audio_volume.rs",
+          "symbol_or_token": "pub fn finish_volume",
+          "line": 210
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "Current IDA-recovered shared speaker/microphone endpoint calls use Core Audio without simple_service DLL loading: native quantization, volume-before-mute, equal-value skips, partial failure without rollback, and separate real readback. Current 1352 speaker page connects actual exact-container endpoint reads, release/toggle writes, serialized cancellable requests and stale-response filtering; observations do not overwrite local saved drafts. Native productName fallback, original notification-maintained cache, endpoint replacement/notification lifecycle, full initialization retry behavior and other product/microphone UI consumers remain incomplete. Windows-only endpoint capabilities explicitly fail on other platforms.",
       "runtime_acceptance": "not_run"
     },
     {
@@ -1687,7 +2019,7 @@
       ],
       "reviewed_rust_boundaries": [
         {
-          "path": "crates/razer-service/src/runtime.rs",
+          "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "pub fn run_worker",
           "line": 13
         },
@@ -1854,9 +2186,9 @@
       ],
       "reviewed_rust_boundaries": [
         {
-          "path": "crates/razer-service/src/runtime_native.rs",
+          "path": "crates/razer-service/src/runtime/windows/native.rs",
           "symbol_or_token": "self.shutdown_macro_recording",
-          "line": 405
+          "line": 429
         }
       ],
       "status": "partially_implemented",
@@ -2120,7 +2452,7 @@
           "line": 1
         },
         {
-          "path": "crates/razer-service/src/runtime_mixer_driver.rs",
+          "path": "crates/razer-service/src/runtime/windows/mixer_driver.rs",
           "line": 1
         }
       ],
@@ -2230,11 +2562,11 @@
           "line": 93
         },
         {
-          "path": "crates/razer-service/src/runtime_macro.rs",
+          "path": "crates/razer-service/src/runtime/windows/macro_recording.rs",
           "line": 1
         },
         {
-          "path": "crates/razer-service/src/runtime_native.rs",
+          "path": "crates/razer-service/src/runtime/windows/native.rs",
           "line": 178
         }
       ],
@@ -2503,7 +2835,7 @@
         },
         {
           "path": "crates/razer-ipc/src/lib.rs",
-          "line": 38
+          "line": 49
         },
         {
           "path": "crates/razer-service/src/audio_util.rs",
@@ -3046,20 +3378,40 @@
           "line": 1
         },
         {
+          "path": "crates/razer-device/src/simple_audio_volume.rs",
+          "line": 1
+        },
+        {
           "path": "crates/razer-ipc/src/lib.rs",
-          "line": 39
+          "line": 50
+        },
+        {
+          "path": "crates/razer-pages/src/features/audio_volume.rs",
+          "line": 1
         },
         {
           "path": "crates/razer-platform/src/native_paths.rs",
           "line": 93
         },
         {
-          "path": "crates/razer-service/src/runtime_native.rs",
+          "path": "crates/razer-service/src/runtime/windows/audio_volume.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-service/src/runtime/windows/native.rs",
           "line": 196
         },
         {
           "path": "crates/razer-service/src/simple_audio.rs",
           "line": 1
+        },
+        {
+          "path": "crates/razer-service/src/simple_audio_volume.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-shell/src/shell/audio_volume.rs",
+          "line": 35
         }
       ],
       "entire_library_replacement": "not_completed",
@@ -3090,6 +3442,14 @@
         {
           "path": "crates/razer-catalog/src/engines.rs",
           "line": 82
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/wheel_scroll.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-platform/src/wheel_scroll.rs",
+          "line": 1
         }
       ],
       "entire_library_replacement": "not_completed",

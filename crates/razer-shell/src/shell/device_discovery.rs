@@ -1,6 +1,7 @@
 //! Read observations into retained workspaces without replacing their local drafts.
 use super::*;
 use razer_discovery::discovery;
+use razer_discovery::receiver::ReceiverRoute;
 use razer_ipc::ServiceClient;
 use razer_ipc::ServiceRequest;
 use razer_pages::features::ReceiverOperation;
@@ -25,10 +26,13 @@ fn receiver_scope_matches(observed: &discovery::ObservedDevice, container: &str,
 fn receiver_owner_matches(device: &Device, container: &str, pid: u32) -> bool {
     device.real_product_id == pid
         && device.device_container_id.eq_ignore_ascii_case(container)
-        && container.len() == 38
-        && container.starts_with('{')
-        && container.ends_with('}')
-        && uuid::Uuid::parse_str(container).is_ok_and(|id| !id.is_nil())
+        && ((container.len() == 38
+            && container.starts_with('{')
+            && container.ends_with('}')
+            && uuid::Uuid::parse_str(container).is_ok_and(|id| !id.is_nil()))
+            // Only a scheduling hint. The exact retained node and fresh
+            // enumeration must pass receiver_route_for_owner before I/O.
+            || container.starts_with(&format!("hid-collection:1532:{pid:04x}:")))
         && !device
             .serial_number
             .to_ascii_uppercase()
@@ -44,6 +48,30 @@ fn receiver_owner_matches(device: &Device, container: &str, pid: u32) -> bool {
                     | razer_model::model::DeviceConnectionObservation::HidPresent
             )
         )
+}
+
+fn receiver_route_for_owner(
+    observations: &[discovery::ObservedDevice],
+    device: &Device,
+    container: &str,
+    pid: u32,
+) -> anyhow::Result<ReceiverRoute> {
+    anyhow::ensure!(
+        receiver_owner_matches(device, container, pid),
+        "接收器物理连接未确认"
+    );
+    let owners = observations
+        .iter()
+        .filter(|observed| {
+            observed.matches(device)
+                && observed.physical_product_id() == pid
+                && observed.peer_product_id().is_none()
+        })
+        .collect::<Vec<_>>();
+    let [owner] = owners.as_slice() else {
+        anyhow::bail!("接收器缺少唯一的当前接口观察");
+    };
+    ReceiverRoute::from_observation(owner)
 }
 
 fn replace_receiver_observations(
@@ -67,6 +95,7 @@ fn same_receiver_peer(a: &discovery::ObservedDevice, b: &discovery::ObservedDevi
         && a.container().eq_ignore_ascii_case(b.container())
         && a.physical_product_id() == b.physical_product_id()
         && a.peer_product_id() == b.peer_product_id()
+        && a.hid_node() == b.hid_node()
         && a.connection() == b.connection()
 }
 
@@ -89,6 +118,151 @@ fn observe_polling_connection(
 }
 
 impl AppShell {
+    /// Current 182 MM/CM release -> ON_SET_POWER_SAVING_VALUE -> timeToSleep.
+    /// The worker owns direct HID route validation, serialization and readback.
+    pub(super) fn write_mouse_idle(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        scope: razer_pages::features::mouse_polling::MousePollingScope,
+        minutes: u8,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !workspace
+            .read(cx)
+            .mouse_idle_request_matches(scope, minutes, cx)
+        {
+            return;
+        }
+        let identity = workspace.read(cx).identity(cx);
+        let product_id = workspace.read(cx).device(cx).product_id;
+        let container = workspace.read(cx).device(cx).device_container_id.clone();
+        let routes = self
+            .device_observations
+            .iter()
+            .filter(|observed| {
+                observed.matches(workspace.read(cx).device(cx))
+                    && observed.peer_product_id().is_none()
+                    && matches!(
+                        observed.transport(),
+                        Some(discovery::ObservedTransport::Wired)
+                    )
+            })
+            .collect::<Vec<_>>();
+        let [observed] = routes.as_slice() else {
+            workspace.update(cx, |workspace, cx| {
+                workspace.finish_mouse_idle(scope, minutes, None, cx)
+            });
+            self.status =
+                "休眠设置未发送：尚无唯一的有线设备连接；接收器转发写入尚未实现。本地草稿已保留。"
+                    .into();
+            cx.notify();
+            return;
+        };
+        let physical_product_id = observed.physical_product_id();
+        let route_observation = (**observed).clone();
+        let retained_node = route_observation.hid_node().cloned();
+        let revision = self.discovery_revision;
+        // An already queued discovery read predates this mutation. It cannot
+        // later replace the confirmed parameter snapshot with an older value.
+        self.device_value_owners.remove(&identity);
+        self.device_read_scopes.remove(&identity);
+        self.status = "正在写入休眠时间并读取设备确认。".into();
+        cx.notify();
+        cx.spawn_in(window, async move |this, cx| {
+            let result = cx
+                .background_spawn(async move {
+                    use anyhow::Context as _;
+                    use razer_device::device_reads::DeviceReadValue;
+                    use razer_device::device_writes::DeviceWriteSetting;
+                    let cap = razer_device::device_reads::capability(product_id)
+                        .context("产品读取能力未核实")?;
+                    let raw_time = u16::from(minutes) * 60;
+                    let setting = DeviceWriteSetting::Idle { raw_time };
+                    let mut client = ServiceClient::spawn()?;
+                    let result = (|| {
+                        let route =
+                            razer_discovery::direct::resolve(&mut client, &route_observation, cap)?;
+                        match route.write(&mut client, setting)? {
+                            DeviceReadValue::Idle { raw_time: observed }
+                                if observed == raw_time =>
+                            {
+                                Ok(observed)
+                            }
+                            _ => anyhow::bail!("设备回读与休眠设置不一致"),
+                        }
+                    })();
+                    // Preserve a real acknowledgement even if teardown fails; never
+                    // retry a mutation just because the worker could not shut down.
+                    let shutdown_error = client
+                        .request(ServiceRequest::Shutdown)
+                        .err()
+                        .map(|error| format!("{error:#}"));
+                    result.map(|observed| (observed, shutdown_error))
+                })
+                .await;
+            let _ = this.update_in(cx, |this, _, cx| {
+                if !workspace
+                    .read(cx)
+                    .mouse_idle_in_flight_matches(scope, minutes, cx)
+                {
+                    return;
+                }
+                if !this.devices.contains(&workspace)
+                    || workspace.read(cx).identity(cx) != identity
+                    || !workspace
+                        .read(cx)
+                        .mouse_idle_request_matches(scope, minutes, cx)
+                {
+                    // Restore/disconnect cannot cancel an already sent command.
+                    // Its completion must release the slot without publishing an
+                    // old observation or replacing the current scope's status.
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.finish_mouse_idle(scope, minutes, None, cx)
+                    });
+                    return;
+                }
+                let route_current = this.discovery_revision == revision
+                    && this.device_observations.iter().any(|observed| {
+                        observed.matches(workspace.read(cx).device(cx))
+                            && observed.container().eq_ignore_ascii_case(&container)
+                            && observed.physical_product_id() == physical_product_id
+                            && observed.hid_node() == retained_node.as_ref()
+                            && observed.peer_product_id().is_none()
+                            && matches!(
+                                observed.transport(),
+                                Some(discovery::ObservedTransport::Wired)
+                            )
+                    });
+                let confirmed = route_current
+                    .then(|| result.as_ref().ok().map(|(raw, _)| *raw))
+                    .flatten();
+                this.device_value_owners.remove(&identity);
+                this.device_read_scopes.remove(&identity);
+                workspace.update(cx, |workspace, cx| {
+                    workspace.finish_mouse_idle(scope, minutes, confirmed, cx)
+                });
+                this.status = if !route_current {
+                    "设备连接已变化，未确认当前休眠设置。本地草稿已保留。".into()
+                } else {
+                    match result {
+                        Ok((_, None)) => format!(
+                            "设备已回读确认休眠时间：{minutes} 分钟；本地配置保存仍单独处理。"
+                        ),
+                        Ok((_, Some(error))) => format!(
+                            "设备已回读确认休眠时间：{minutes} 分钟；通信进程退出失败：{error}"
+                        ),
+                        Err(error) => format!(
+                            "休眠设置未确认：{error:#}。本地草稿已保留，请重新读取设备状态。"
+                        ),
+                    }
+                };
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
     pub(super) fn query_dock_pairing(
         &mut self,
         workspace: Entity<ProductWorkspace>,
@@ -109,6 +283,28 @@ impl AppShell {
         let container = device.device_container_id.clone();
         let product_id = device.real_product_id;
         let session = event.session();
+        let route =
+            receiver_route_for_owner(&self.device_observations, device, &container, product_id);
+        let route = match route {
+            Ok(route) => route,
+            Err(error) => {
+                self.receiver_queries.remove(&identity);
+                workspace.update(cx, |workspace, cx| {
+                    workspace.observe_dock_pairing(
+                        razer_pages::features::DockPairingObservation::result(
+                            session,
+                            "DUALLINK_BIND_INFO",
+                            Err(format!("{error:#}")),
+                        ),
+                        cx,
+                    );
+                });
+                cx.notify();
+                return;
+            }
+        };
+        let retained_route = route.clone();
+        let revision = self.discovery_revision;
         let generation = self.receiver_queries.entry(identity.clone()).or_default();
         *generation = (session, generation.1.wrapping_add(1));
         let generation = *generation;
@@ -116,12 +312,9 @@ impl AppShell {
             let result = cx
                 .background_spawn(async move {
                     let mut client = ServiceClient::spawn()?;
-                    let result = (|| {
-                        let hid = client.request(ServiceRequest::HidDevices)?;
-                        let value =
-                            discovery::query_receiver(&mut client, &hid, &container, product_id)?;
-                        discovery::pairing_payload(product_id, &value)
-                    })();
+                    let result = route
+                        .query(&mut client)
+                        .and_then(|projection| projection.pairing_payload());
                     let shutdown = client.request(ServiceRequest::Shutdown);
                     match (result, shutdown) {
                         (Ok(value), Ok(_)) => Ok(value),
@@ -130,7 +323,20 @@ impl AppShell {
                 })
                 .await;
             let _ = this.update(cx, |this, cx| {
-                if this.receiver_queries.get(&identity) != Some(&generation) {
+                if this.receiver_queries.get(&identity) != Some(&generation)
+                    || this.discovery_revision != revision
+                    || !this.devices.contains(&workspace)
+                    || workspace.read(cx).identity(cx) != identity
+                    || !receiver_owner_matches(
+                        workspace.read(cx).device(cx),
+                        &container,
+                        product_id,
+                    )
+                    || !this.device_observations.iter().any(|observed| {
+                        observed.matches(workspace.read(cx).device(cx))
+                            && retained_route.matches(observed)
+                    })
+                {
                     return;
                 }
                 this.receiver_queries.remove(&identity);
@@ -238,6 +444,9 @@ impl AppShell {
                 .filter(|workspace| observed.matches(workspace.read(cx).device(cx)))
                 .collect();
             if let [workspace] = matches.as_slice() {
+                if collect_read_scopes {
+                    workspace.update(cx, |workspace, cx| workspace.begin_dpi_basic_reads(cx));
+                }
                 observe_polling_connection(workspace, observed.transport(), cx);
                 if collect_read_scopes {
                     self.device_value_owners
@@ -374,6 +583,7 @@ impl AppShell {
             Ok(snapshot) => snapshot,
             Err(error) => {
                 self.status = format!("设备参数读取失败：{error}；本地草稿已保留。");
+                self.request_initial_dpi_stage_reads(cx);
                 cx.notify();
                 return;
             }
@@ -420,6 +630,9 @@ impl AppShell {
         if !snapshot.errors().is_empty() {
             self.status = format!("设备参数部分读取完成：{}", snapshot.errors().join("；"));
         }
+        // The basic query worker has completed; do not compete with its retained
+        // path lock during discovery's first/second phase handshake.
+        self.request_initial_dpi_stage_reads(cx);
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
         let tray_widgets = self.tray_widgets(cx);
@@ -427,6 +640,34 @@ impl AppShell {
             tray.set_widget_devices(tray_widgets, cx);
         }
         cx.notify();
+    }
+
+    fn request_initial_dpi_stage_reads(&mut self, cx: &mut Context<Self>) {
+        let candidates = self
+            .devices
+            .iter()
+            .filter(|workspace| {
+                let device = workspace.read(cx).device(cx);
+                device.product_id == 182
+                    && self
+                        .device_observations
+                        .iter()
+                        .filter(|route| {
+                            route.matches(device)
+                                && route.peer_product_id().is_none()
+                                && matches!(
+                                    route.transport(),
+                                    Some(discovery::ObservedTransport::Wired)
+                                )
+                        })
+                        .count()
+                        == 1
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        for workspace in candidates {
+            workspace.update(cx, |workspace, cx| workspace.finish_dpi_basic_reads(cx));
+        }
     }
 
     pub(super) fn query_receiver_pairing(
@@ -447,41 +688,41 @@ impl AppShell {
         }
         let container = workspace.read(cx).device(cx).device_container_id.clone();
         let product_id = workspace.read(cx).device(cx).real_product_id;
-        if !receiver_owner_matches(workspace.read(cx).device(cx), &container, product_id) {
-            self.receiver_queries.remove(&identity);
-            self.status = "配对信息读取不可用：尚未观察到真实接收器连接。".into();
-            workspace.update(cx, |workspace, cx| {
-                workspace.observe_receiver_pairing(
-                    ReceiverPairingObservation::failed(
-                        event.session(),
-                        ReceiverOperation::Bindings,
-                    ),
-                    cx,
-                );
-            });
-            cx.notify();
-            return;
-        }
+        let route = receiver_route_for_owner(
+            &self.device_observations,
+            workspace.read(cx).device(cx),
+            &container,
+            product_id,
+        );
+        let route = match route {
+            Ok(route) => route,
+            Err(error) => {
+                self.receiver_queries.remove(&identity);
+                self.status = format!("配对信息读取不可用：{error:#}");
+                workspace.update(cx, |workspace, cx| {
+                    workspace.observe_receiver_pairing(
+                        ReceiverPairingObservation::failed(
+                            event.session(),
+                            ReceiverOperation::Bindings,
+                        ),
+                        cx,
+                    );
+                });
+                cx.notify();
+                return;
+            }
+        };
         let revision = self.discovery_revision;
         let session = event.session();
         let generation = self.receiver_queries.entry(identity.clone()).or_default();
         *generation = (session, generation.1.wrapping_add(1));
         let generation = *generation;
         cx.spawn_in(window, async move |this, cx| {
-            let query_container = container.clone();
+            let query_route = route.clone();
             let result = cx
                 .background_spawn(async move {
                     let mut client = ServiceClient::spawn()?;
-                    let result = (|| {
-                        let hid = client.request(ServiceRequest::HidDevices)?;
-                        let value = discovery::query_receiver(
-                            &mut client,
-                            &hid,
-                            &query_container,
-                            product_id,
-                        )?;
-                        discovery::project_receiver_query(product_id, &query_container, &value)
-                    })();
+                    let result = query_route.query(&mut client);
                     let shutdown = client.request(ServiceRequest::Shutdown);
                     match (result, shutdown) {
                         (Ok(peers), Ok(_)) => Ok(peers),
@@ -499,6 +740,9 @@ impl AppShell {
                         &container,
                         product_id,
                     )
+                    || !this.device_observations.iter().any(|observed| {
+                        observed.matches(workspace.read(cx).device(cx)) && route.matches(observed)
+                    })
                 {
                     return;
                 }

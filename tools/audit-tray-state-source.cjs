@@ -143,7 +143,7 @@ const output = {
     account: 'userGet/userDataChange are renderer identity/storage events backed by existing auth credentials and user data, not device-query results.',
   },
   implementation_boundary: {
-    files: ['crates/razer-tray/src/lib.rs', 'crates/razer-service/src/lib.rs', 'crates/razer-service/src/runtime.rs'],
+    files: ['crates/razer-tray/src/lib.rs', 'crates/razer-service/src/lib.rs', 'crates/razer-service/src/runtime/mod.rs'],
     account_publisher: 'Not connected; the local tray mounts only the source Guest presentation branch and does not claim a signed-in identity.',
     launcher_publisher: 'Official catalog/preferences publisher not connected; one Synapse footer row activates this running local process. It is not an observed official apps/installedModules/launchers result.',
     available_next_step: 'A worker simpleGetUserApps query can publish installed-app observations after ABI/PE registration. It cannot replace source apps/installedModules/launchers/user storage state.',

@@ -22,6 +22,36 @@ use std::collections::BTreeMap;
 
 pub enum WorkspaceEvent {
     Changed,
+    /// Current 182 power slider release. Minutes are a user request, not an ack.
+    MouseIdleRequested {
+        scope: super::mouse_polling::MousePollingScope,
+        minutes: u8,
+    },
+    /// Current 182 polling button intent; local selection is not a device ack.
+    MousePollingRequested {
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+    },
+    MouseDpiStagesRequested {
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        draft: razer_device::mouse_dpi_stages::DpiStagesDraft,
+    },
+    MouseDpiStagesReadRequested {
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+    },
+    KeyboardBrightnessRequested {
+        generation: u64,
+        percent: u8,
+    },
+    KeyboardBrightnessReadRequested {
+        generation: u64,
+    },
+    AudioVolumeRequested {
+        request: super::audio_products::AudioVolumeRequest,
+    },
     IntroDismissed,
     ShareProfile,
     /// Navigation request for the locally implemented Chroma app window.
@@ -81,6 +111,7 @@ pub struct DeviceWorkspace {
     pub(super) controls: Controls,
     pub(super) sensitivity_controls: super::sensitivity::SensitivityControls,
     mouse_polling: mouse_polling_profile::State,
+    mouse_dpi: mouse_dpi_profile::State,
     pub(super) keyboard_controls: super::keyboard_controls::KeyboardControls,
     subscriptions: Vec<Subscription>,
     body_scroll: ScrollHandle,
@@ -119,6 +150,8 @@ pub struct DeviceWorkspace {
 impl EventEmitter<WorkspaceEvent> for DeviceWorkspace {}
 #[path = "mapping_editor.rs"]
 mod mapping_editor;
+#[path = "mouse_dpi_profile.rs"]
+mod mouse_dpi_profile;
 #[path = "mouse_polling_profile.rs"]
 mod mouse_polling_profile;
 pub(super) use mapping_editor::{MEDIA, WINDOWS, canonical_key, key_label, normalized_website};
@@ -334,6 +367,7 @@ impl DeviceWorkspace {
             },
             sensitivity_controls,
             mouse_polling,
+            mouse_dpi: mouse_dpi_profile::State::default(),
             keyboard_controls,
             subscriptions: vec![],
             body_scroll: ScrollHandle::default(),
@@ -764,6 +798,10 @@ impl DeviceWorkspace {
                 // their onMouseUp commits changeValue once. Other range controls
                 // retain their existing event policy.
                 let power_range = matches!(target, Control::Idle | Control::LowPower);
+                if target == Control::Idle && this.mouse_settings_write_pending() {
+                    this.sync_controls(window, cx);
+                    return;
+                }
                 let value = match event {
                     SliderEvent::Change(_) if power_range => {
                         cx.notify();
@@ -800,6 +838,9 @@ impl DeviceWorkspace {
                         Control::Audio(f) => s.audio.edit(f, value.round() as i8),
                         Control::Mic(f) => s.mic.edit(f, value.round() as i8),
                     });
+                    if target == Control::Idle {
+                        this.request_mouse_idle(value.round() as u8, cx);
+                    }
                 }
             },
         ));
@@ -807,6 +848,7 @@ impl DeviceWorkspace {
     }
     pub(super) fn sync_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.mouse_polling.sync_profile(&self.device.active_profile);
+        self.sync_dpi_scope(cx);
         let s = self.settings().clone();
         self.sensitivity_controls.sync(&s.sensitivity, window, cx);
         let mut values = vec![

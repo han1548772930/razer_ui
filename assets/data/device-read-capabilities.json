@@ -75,16 +75,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -111,6 +124,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 124,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -191,16 +207,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -227,6 +256,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 143,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -296,16 +328,27 @@
             0
           ],
           "min_response_bytes": 7
+        },
+        {
+          "name": "polling",
+          "method": "getPollingRate",
+          "command": [
+            1,
+            0,
+            133
+          ],
+          "payload": [],
+          "min_response_bytes": 1
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -332,6 +375,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 148,
+      "polling_value_offset": 0,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -412,16 +458,27 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getPollingRate",
+          "command": [
+            1,
+            0,
+            133
+          ],
+          "payload": [],
+          "min_response_bytes": 1
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -448,6 +505,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 156,
+      "polling_value_offset": 0,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -506,19 +566,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -541,16 +588,27 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getPollingRate",
+          "command": [
+            1,
+            0,
+            133
+          ],
+          "payload": [],
+          "min_response_bytes": 1
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -577,6 +635,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 165,
+      "polling_value_offset": 0,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -657,16 +718,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -693,6 +767,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 167,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -751,19 +828,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -786,16 +850,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -822,6 +899,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 170,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -880,19 +960,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -915,16 +982,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -951,6 +1031,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 175,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1031,16 +1114,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1067,6 +1163,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 180,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1125,19 +1224,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -1160,16 +1246,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1180,6 +1279,9 @@
         "FullCharging": 5,
         "ReachChargingLimit": 6
       },
+      "polling_physical_product_id": 182,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1238,19 +1340,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -1273,16 +1362,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1309,6 +1411,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 184,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1389,16 +1494,27 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getPollingRate",
+          "command": [
+            1,
+            0,
+            133
+          ],
+          "payload": [],
+          "min_response_bytes": 1
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1425,6 +1541,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 185,
+      "polling_value_offset": 0,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1483,19 +1602,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -1518,16 +1624,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1554,6 +1673,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 192,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1612,19 +1734,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -1647,16 +1756,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1683,6 +1805,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 196,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1741,19 +1866,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -1776,16 +1888,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1812,6 +1937,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 204,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1881,16 +2009,27 @@
             0
           ],
           "min_response_bytes": 7
+        },
+        {
+          "name": "polling",
+          "method": "getPollingRate",
+          "command": [
+            1,
+            0,
+            133
+          ],
+          "payload": [],
+          "min_response_bytes": 1
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -1917,6 +2056,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 211,
+      "polling_value_offset": 0,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -1975,19 +2117,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -2010,16 +2139,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -2046,6 +2188,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 218,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -2104,19 +2249,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -2139,16 +2271,27 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getPollingRate",
+          "command": [
+            1,
+            0,
+            133
+          ],
+          "payload": [],
+          "min_response_bytes": 1
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -2175,6 +2318,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 222,
+      "polling_value_offset": 0,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -2304,6 +2450,8 @@
           ]
         }
       ],
+      "polling_physical_product_id": 226,
+      "polling_default_hz": 8000,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -2362,19 +2510,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -2397,16 +2532,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -2433,6 +2581,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 231,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -2562,6 +2713,8 @@
           ]
         }
       ],
+      "polling_physical_product_id": 235,
+      "polling_default_hz": 8000,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -2760,11 +2913,7 @@
         662
       ],
       "vendor_id": 5426,
-      "claim_interface": {
-        "662": 2,
-        "663": 3,
-        "664": 3
-      },
+      "claim_interface": 3,
       "report_id": 0,
       "report_bytes": 91,
       "transaction_prefix": 128,
@@ -2842,6 +2991,11 @@
           ]
         }
       ],
+      "claim_interfaces_by_pid": {
+        "662": 2,
+        "663": 3,
+        "664": 3
+      },
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -2948,11 +3102,7 @@
         706
       ],
       "vendor_id": 5426,
-      "claim_interface": {
-        "706": 2,
-        "707": 3,
-        "708": 3
-      },
+      "claim_interface": 3,
       "report_id": 0,
       "report_bytes": 91,
       "transaction_prefix": 128,
@@ -3030,6 +3180,11 @@
           ]
         }
       ],
+      "claim_interfaces_by_pid": {
+        "706": 2,
+        "707": 3,
+        "708": 3
+      },
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -3044,11 +3199,7 @@
         713
       ],
       "vendor_id": 5426,
-      "claim_interface": {
-        "713": 2,
-        "714": 3,
-        "716": 3
-      },
+      "claim_interface": 3,
       "report_id": 0,
       "report_bytes": 91,
       "transaction_prefix": 128,
@@ -3126,6 +3277,11 @@
           ]
         }
       ],
+      "claim_interfaces_by_pid": {
+        "713": 2,
+        "714": 3,
+        "716": 3
+      },
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -3140,11 +3296,7 @@
         730
       ],
       "vendor_id": 5426,
-      "claim_interface": {
-        "717": 3,
-        "718": 3,
-        "730": 2
-      },
+      "claim_interface": 3,
       "report_id": 0,
       "report_bytes": 91,
       "transaction_prefix": 128,
@@ -3222,6 +3374,11 @@
           ]
         }
       ],
+      "claim_interfaces_by_pid": {
+        "717": 3,
+        "718": 3,
+        "730": 2
+      },
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -3236,11 +3393,7 @@
         722
       ],
       "vendor_id": 5426,
-      "claim_interface": {
-        "722": 2,
-        "723": 3,
-        "724": 3
-      },
+      "claim_interface": 3,
       "report_id": 0,
       "report_bytes": 91,
       "transaction_prefix": 128,
@@ -3318,6 +3471,11 @@
           ]
         }
       ],
+      "claim_interfaces_by_pid": {
+        "722": 2,
+        "723": 3,
+        "724": 3
+      },
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -3332,11 +3490,7 @@
         725
       ],
       "vendor_id": 5426,
-      "claim_interface": {
-        "725": 2,
-        "726": 3,
-        "727": 3
-      },
+      "claim_interface": 3,
       "report_id": 0,
       "report_bytes": 91,
       "transaction_prefix": 128,
@@ -3414,6 +3568,11 @@
           ]
         }
       ],
+      "claim_interfaces_by_pid": {
+        "725": 2,
+        "726": 3,
+        "727": 3
+      },
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,
@@ -3472,19 +3631,6 @@
           "min_response_bytes": 2
         },
         {
-          "name": "polling",
-          "method": "getUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            192
-          ],
-          "payload": [
-            1
-          ],
-          "min_response_bytes": 2
-        },
-        {
           "name": "dpi",
           "method": "getDpiLevel",
           "command": [
@@ -3507,16 +3653,29 @@
           ],
           "payload": [],
           "min_response_bytes": 2
+        },
+        {
+          "name": "polling",
+          "method": "getProfilePollingRate",
+          "command": [
+            2,
+            0,
+            142
+          ],
+          "payload": [
+            1
+          ],
+          "min_response_bytes": 2
         }
       ],
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "charging_codes": {
         "NoCharge_BatteryFull": 0,
@@ -3543,6 +3702,9 @@
           ]
         }
       ],
+      "polling_physical_product_id": 45066,
+      "polling_value_offset": 1,
+      "polling_default_hz": 100,
       "max_retry_in": 10,
       "max_retry_out": 20,
       "sleep_between_out_ms": 25,

@@ -338,4 +338,14 @@
 !/tools/ida-static-functions.py
 !/tools/audit-simple-audio-current.py
 !/tools/audit-ida-native-corpus.py
+!/tools/audit-sysutils-wheel-scroll-current.py
+!/tools/audit-powertool-services-current.py
 !/tools/expand-idle-write-capabilities.cjs
+!/tools/expand-polling-capabilities.cjs
+!/tools/audit-keyboard-settings-current.cjs
+!/tools/audit-mouse-idle-ui-current.cjs
+!/tools/audit-mouse-polling-ui-current.cjs
+!/tools/audit-mouse-dpi-ui-current.cjs
+!/tools/audit-mouse-dpi-stages-current.cjs
+!/tools/audit-simple-audio-volume-current.py
+!/tools/audit-leviathan-volume-ui-current.py

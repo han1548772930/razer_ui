@@ -7,13 +7,13 @@
       "min_dpi": 100,
       "max_dpi": 20000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -38,6 +38,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -48,13 +60,13 @@
       "min_dpi": 100,
       "max_dpi": 20000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -79,6 +91,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -89,13 +113,13 @@
       "min_dpi": 100,
       "max_dpi": 18000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -109,6 +133,18 @@
           "selector": 0,
           "read_kind": "dpi",
           "min_response_bytes": 7
+        },
+        {
+          "kind": "polling",
+          "method": "setPollingRate",
+          "command": [
+            1,
+            0,
+            5
+          ],
+          "selector": 0,
+          "read_kind": "polling",
+          "min_response_bytes": 1
         }
       ]
     },
@@ -118,13 +154,13 @@
       "min_dpi": 100,
       "max_dpi": 14000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -150,6 +186,18 @@
           "selector": 0,
           "read_kind": "idle",
           "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setPollingRate",
+          "command": [
+            1,
+            0,
+            5
+          ],
+          "selector": 0,
+          "read_kind": "polling",
+          "min_response_bytes": 1
         }
       ]
     },
@@ -159,13 +207,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -191,6 +239,18 @@
           "selector": 0,
           "read_kind": "idle",
           "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setPollingRate",
+          "command": [
+            1,
+            0,
+            5
+          ],
+          "selector": 0,
+          "read_kind": "polling",
+          "min_response_bytes": 1
         }
       ]
     },
@@ -200,13 +260,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -231,6 +291,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -241,13 +313,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -263,18 +335,6 @@
           "min_response_bytes": 7
         },
         {
-          "kind": "polling",
-          "method": "setUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            64
-          ],
-          "selector": 1,
-          "read_kind": "polling",
-          "min_response_bytes": 2
-        },
-        {
           "kind": "idle",
           "method": "setTimeToSleep",
           "command": [
@@ -284,6 +344,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -294,13 +366,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -316,18 +388,6 @@
           "min_response_bytes": 7
         },
         {
-          "kind": "polling",
-          "method": "setUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            64
-          ],
-          "selector": 1,
-          "read_kind": "polling",
-          "min_response_bytes": 2
-        },
-        {
           "kind": "idle",
           "method": "setTimeToSleep",
           "command": [
@@ -337,6 +397,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -347,13 +419,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -378,6 +450,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -388,13 +472,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -410,18 +494,6 @@
           "min_response_bytes": 7
         },
         {
-          "kind": "polling",
-          "method": "setUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            64
-          ],
-          "selector": 1,
-          "read_kind": "polling",
-          "min_response_bytes": 2
-        },
-        {
           "kind": "idle",
           "method": "setTimeToSleep",
           "command": [
@@ -431,6 +503,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -441,13 +525,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -463,18 +547,6 @@
           "min_response_bytes": 7
         },
         {
-          "kind": "polling",
-          "method": "setUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            64
-          ],
-          "selector": 1,
-          "read_kind": "polling",
-          "min_response_bytes": 2
-        },
-        {
           "kind": "idle",
           "method": "setTimeToSleep",
           "command": [
@@ -484,6 +556,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -494,13 +578,13 @@
       "min_dpi": 100,
       "max_dpi": 18000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -526,6 +610,18 @@
           "selector": 0,
           "read_kind": "idle",
           "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setPollingRate",
+          "command": [
+            1,
+            0,
+            5
+          ],
+          "selector": 0,
+          "read_kind": "polling",
+          "min_response_bytes": 1
         }
       ]
     },
@@ -535,13 +631,13 @@
       "min_dpi": 100,
       "max_dpi": 35000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -566,6 +662,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -576,13 +684,13 @@
       "min_dpi": 100,
       "max_dpi": 20000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -607,6 +715,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -617,13 +737,13 @@
       "min_dpi": 100,
       "max_dpi": 35000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -639,18 +759,6 @@
           "min_response_bytes": 7
         },
         {
-          "kind": "polling",
-          "method": "setUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            64
-          ],
-          "selector": 1,
-          "read_kind": "polling",
-          "min_response_bytes": 2
-        },
-        {
           "kind": "idle",
           "method": "setTimeToSleep",
           "command": [
@@ -660,6 +768,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -670,42 +790,13 @@
       "min_dpi": 100,
       "max_dpi": 18000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
-      },
-      "writes": [
-        {
-          "kind": "dpi",
-          "method": "setDpiLevel",
-          "command": [
-            7,
-            4,
-            5
-          ],
-          "selector": 0,
-          "read_kind": "dpi",
-          "min_response_bytes": 7
-        }
-      ]
-    },
-    {
-      "product_id": 218,
-      "source_class": "rzDevice25DualLinkMouse",
-      "min_dpi": 100,
-      "max_dpi": 26000,
-      "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -722,43 +813,31 @@
         },
         {
           "kind": "polling",
-          "method": "setUSBHighSpeedPollingRate",
+          "method": "setPollingRate",
           "command": [
-            2,
+            1,
             0,
-            64
-          ],
-          "selector": 1,
-          "read_kind": "polling",
-          "min_response_bytes": 2
-        },
-        {
-          "kind": "idle",
-          "method": "setTimeToSleep",
-          "command": [
-            2,
-            7,
-            3
+            5
           ],
           "selector": 0,
-          "read_kind": "idle",
-          "min_response_bytes": 2
+          "read_kind": "polling",
+          "min_response_bytes": 1
         }
       ]
     },
     {
-      "product_id": 222,
+      "product_id": 218,
       "source_class": "rzDevice25DualLinkMouse",
       "min_dpi": 100,
-      "max_dpi": 35000,
+      "max_dpi": 26000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -784,6 +863,71 @@
           "selector": 0,
           "read_kind": "idle",
           "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
+          "min_response_bytes": 2
+        }
+      ]
+    },
+    {
+      "product_id": 222,
+      "source_class": "rzDevice25DualLinkMouse",
+      "min_dpi": 100,
+      "max_dpi": 35000,
+      "polling_codes": {
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
+      },
+      "writes": [
+        {
+          "kind": "dpi",
+          "method": "setDpiLevel",
+          "command": [
+            7,
+            4,
+            5
+          ],
+          "selector": 0,
+          "read_kind": "dpi",
+          "min_response_bytes": 7
+        },
+        {
+          "kind": "idle",
+          "method": "setTimeToSleep",
+          "command": [
+            2,
+            7,
+            3
+          ],
+          "selector": 0,
+          "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setPollingRate",
+          "command": [
+            1,
+            0,
+            5
+          ],
+          "selector": 0,
+          "read_kind": "polling",
+          "min_response_bytes": 1
         }
       ]
     },
@@ -846,13 +990,13 @@
       "min_dpi": 100,
       "max_dpi": 30000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -877,6 +1021,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]
@@ -940,13 +1096,13 @@
       "min_dpi": 100,
       "max_dpi": 35000,
       "polling_codes": {
-        "RATE_8000Hz": 1,
-        "RATE_4000Hz": 2,
-        "RATE_2000Hz": 4,
-        "RATE_1000Hz": 8,
-        "RATE_500Hz": 16,
-        "RATE_250Hz": 32,
-        "RATE_125Hz": 64
+        "RATE_1000Hz": 1,
+        "RATE_500Hz": 2,
+        "RATE_333Hz": 3,
+        "RATE_250Hz": 4,
+        "RATE_200Hz": 5,
+        "RATE_125Hz": 8,
+        "RATE_100Hz": 10
       },
       "writes": [
         {
@@ -962,18 +1118,6 @@
           "min_response_bytes": 7
         },
         {
-          "kind": "polling",
-          "method": "setUSBHighSpeedPollingRate",
-          "command": [
-            2,
-            0,
-            64
-          ],
-          "selector": 1,
-          "read_kind": "polling",
-          "min_response_bytes": 2
-        },
-        {
           "kind": "idle",
           "method": "setTimeToSleep",
           "command": [
@@ -983,6 +1127,18 @@
           ],
           "selector": 0,
           "read_kind": "idle",
+          "min_response_bytes": 2
+        },
+        {
+          "kind": "polling",
+          "method": "setProfilePollingRate",
+          "command": [
+            2,
+            0,
+            14
+          ],
+          "selector": 1,
+          "read_kind": "polling",
           "min_response_bytes": 2
         }
       ]

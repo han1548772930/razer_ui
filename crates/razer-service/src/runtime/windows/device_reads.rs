@@ -47,7 +47,7 @@ fn current_target(target: &DeviceReadTarget, cap: &DeviceReadCapability) -> anyh
             .context("物理接收器能力未核实")?
             .claim_interface
     } else {
-        cap.claim_interface
+        cap.claim_interface_for(target.physical_product_id)?
     };
     ensure!(
         observed["vendor_id"] == cap.vendor_id
@@ -146,6 +146,13 @@ pub(super) fn query(target: &DeviceReadTarget, kind: DeviceReadKind) -> anyhow::
         .iter()
         .find(|command| command.name == kind)
         .context("此产品不支持该项源查询")?;
+    if kind == DeviceReadKind::Polling {
+        ensure!(
+            target.peer_product_id.is_none()
+                && cap.polling_physical_product_id == Some(target.physical_product_id),
+            "此轮询率分支只核实了直接设备；接收器连接状态分支尚未核实"
+        );
+    }
     let before = current_target(target, cap)?;
     verify_routing(target, cap)?;
     let started = Instant::now();
@@ -198,6 +205,12 @@ pub(super) fn write(
     let write_cap =
         device_writes::capability(target.product_id).context("产品没有源核实的设备写入能力")?;
     device_writes::prepare(write_cap, setting)?;
+    if setting.read_kind() == DeviceReadKind::Polling {
+        ensure!(
+            cap.polling_physical_product_id == Some(target.physical_product_id),
+            "轮询率写入的物理连接分支尚未核实"
+        );
+    }
     let before = current_target(target, cap)?;
     verify_routing(target, cap)?;
     let started = Instant::now();
@@ -225,4 +238,134 @@ pub(super) fn write(
         "transport_metadata":device.metadata(),"elapsed_ms":started.elapsed().as_millis() as u64,
         "evidence":"docs/re/device-write-capabilities-current-evidence.json"}),
     )
+}
+
+pub(super) fn keyboard_brightness(
+    target: &DeviceReadTarget,
+    percent: Option<u8>,
+) -> anyhow::Result<Value> {
+    use razer_device::keyboard_settings;
+    ensure!(
+        target.peer_product_id.is_none(),
+        "键盘接收器转发亮度链尚未核实"
+    );
+    let settings = keyboard_settings::capability(target.product_id)
+        .context("此产品没有当前源核实的键盘亮度能力")?;
+    if let Some(percent) = percent {
+        keyboard_settings::encode_percent(percent)?;
+    }
+    let cap = &settings.transport;
+    let before = current_target(target, cap)?;
+    verify_routing(target, cap)?;
+    let started = Instant::now();
+    let validate = || {
+        ensure!(
+            started.elapsed() < Duration::from_secs(20),
+            "键盘亮度操作超过确认期限"
+        );
+        ensure!(
+            current_target(target, cap)?["device_instance_id"] == before["device_instance_id"],
+            "键盘亮度操作期间设备实例发生变化"
+        );
+        Ok(())
+    };
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let feature_bytes = before["feature_report_bytes"]
+        .as_u64()
+        .and_then(|count| usize::try_from(count).ok())
+        .context("键盘接口缺少实际 Feature Report 长度")?;
+    let device = hid_transport::open(&target.path, feature_bytes)?;
+    validate()?;
+    let mut response = json!({"target":target,"source_class":settings.source_class,
+        "transport_metadata":device.metadata(),"evidence":"docs/re/keyboard-settings-current-evidence.json"});
+    if let Some(percent) = percent {
+        response["result"] = serde_json::to_value(keyboard_settings::apply(
+            &device,
+            settings,
+            percent,
+            || transaction(target, cap),
+            &validate,
+        )?)?;
+    } else {
+        response["reading"] = serde_json::to_value(keyboard_settings::read(
+            &device,
+            settings,
+            || transaction(target, cap),
+            &validate,
+        )?)?;
+    }
+    validate()?;
+    response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
+    Ok(response)
+}
+
+pub(super) fn dpi_stages(
+    target: &DeviceReadTarget,
+    draft: Option<&razer_device::mouse_dpi_stages::DpiStagesDraft>,
+) -> anyhow::Result<Value> {
+    use razer_device::mouse_dpi_stages;
+    ensure!(
+        target.peer_product_id.is_none(),
+        "DPI stage receiver relay has no current source-proven route"
+    );
+    let settings = mouse_dpi_stages::capability(target.product_id)
+        .context("Product has no current source-proven DPI stage capability")?;
+    let cap = &settings.transport;
+    if let Some(draft) = draft {
+        mouse_dpi_stages::pack(settings, draft)?;
+    }
+    let before = current_target(target, cap)?;
+    verify_routing(target, cap)?;
+    let IdentityLookup::Unique(identity) = device_identity::lookup(target.physical_product_id)
+    else {
+        anyhow::bail!("DPI stage target has no unique device identity");
+    };
+    ensure!(
+        !identity.is_dongle && !identity.is_ble,
+        "DPI stage target requires a source-proven direct device"
+    );
+    let started = Instant::now();
+    let validate = || {
+        ensure!(
+            started.elapsed() < Duration::from_secs(20),
+            "DPI stage operation exceeded its confirmation deadline"
+        );
+        ensure!(
+            current_target(target, cap)?["device_instance_id"] == before["device_instance_id"],
+            "Device instance changed during DPI stage operation"
+        );
+        Ok(())
+    };
+    let _guard = receiver::ReceiverLock::acquire(&target.device_container_id)?;
+    let feature_bytes = before["feature_report_bytes"]
+        .as_u64()
+        .and_then(|count| usize::try_from(count).ok())
+        .context("DPI stage target lacks an observed Feature Report size")?;
+    ensure!(
+        feature_bytes == cap.report_bytes,
+        "DPI stage observed report size does not match current source"
+    );
+    let device = hid_transport::open(&target.path, feature_bytes)?;
+    validate()?;
+    let mut response = json!({"target":target,"source_class":settings.source_class,"transport_metadata":device.metadata(),
+        "evidence":"docs/re/mouse-dpi-stages-current-evidence.json","profile_scope":"current_active_table","obm_profiles_written":false});
+    if let Some(draft) = draft {
+        response["result"] = serde_json::to_value(mouse_dpi_stages::apply_current(
+            &device,
+            settings,
+            draft,
+            || transaction(target, cap),
+            &validate,
+        )?)?;
+    } else {
+        response["reading"] = serde_json::to_value(mouse_dpi_stages::read_current(
+            &device,
+            settings,
+            || transaction(target, cap),
+            &validate,
+        )?)?;
+    }
+    validate()?;
+    response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
+    Ok(response)
 }

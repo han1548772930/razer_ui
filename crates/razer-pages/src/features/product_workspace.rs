@@ -99,6 +99,275 @@ impl EventEmitter<super::ReceiverDeviceRequested> for ProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
+    pub fn mouse_dpi_write_guard(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        draft: &razer_device::mouse_dpi_stages::DpiStagesDraft,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        match &self.body {
+            Body::Existing(body) => body.read(cx).mouse_dpi_write_guard(scope, revision, draft),
+            Body::Source(_) => None,
+        }
+    }
+    pub fn mouse_dpi_read_guard(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        match &self.body {
+            Body::Existing(body) => body.read(cx).mouse_dpi_read_guard(scope, revision),
+            Body::Source(_) => None,
+        }
+    }
+    pub fn begin_dpi_basic_reads(&mut self, cx: &mut Context<Self>) {
+        if let Body::Existing(body) = &self.body {
+            body.update(cx, |body, _| body.begin_dpi_basic_reads());
+        }
+    }
+    pub fn finish_dpi_basic_reads(&mut self, cx: &mut Context<Self>) {
+        if let Body::Existing(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_dpi_basic_reads(cx));
+        }
+    }
+    pub fn mouse_dpi_observation_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        draft: &razer_device::mouse_dpi_stages::DpiStagesDraft,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Existing(body) if body.read(cx).mouse_dpi_observation_matches(scope,revision,draft,cx))
+    }
+    pub fn mouse_dpi_request_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        draft: &razer_device::mouse_dpi_stages::DpiStagesDraft,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Existing(body) if body.read(cx).mouse_dpi_request_matches(scope,revision,draft,cx))
+    }
+    pub fn mouse_dpi_in_flight_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        draft: &razer_device::mouse_dpi_stages::DpiStagesDraft,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Existing(body) if body.read(cx).mouse_dpi_in_flight_matches(scope,revision,draft))
+    }
+    pub fn finish_mouse_dpi(
+        &mut self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        draft: &razer_device::mouse_dpi_stages::DpiStagesDraft,
+        observed: Option<razer_device::mouse_dpi_stages::DpiStagesReading>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Existing(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_mouse_dpi(scope, revision, draft, observed, cx);
+            });
+        }
+    }
+    pub fn request_mouse_dpi_read(&mut self, cx: &mut Context<Self>) {
+        if let Body::Existing(body) = &self.body {
+            body.update(cx, |body, cx| body.request_mouse_dpi_read(cx));
+        }
+    }
+    pub fn mouse_dpi_read_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Existing(body) if body.read(cx).mouse_dpi_read_matches(scope,revision,cx))
+    }
+    pub fn mouse_dpi_reading_token_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Existing(body) if body.read(cx).mouse_dpi_reading_token_matches(scope,revision))
+    }
+    pub fn finish_mouse_dpi_read(
+        &mut self,
+        scope: super::mouse_polling::MousePollingScope,
+        revision: u64,
+        observed: Option<razer_device::mouse_dpi_stages::DpiStagesReading>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Existing(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_mouse_dpi_read(scope, revision, observed, cx)
+            });
+        }
+    }
+    pub fn audio_volume_request_matches(
+        &self,
+        request: super::audio_products::AudioVolumeRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Source(body) if body.read(cx).audio_volume_request_matches(request,cx))
+    }
+    pub fn audio_volume_request_current(
+        &self,
+        request: super::audio_products::AudioVolumeRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Source(body) if body.read(cx).audio_volume_request_current(request,cx))
+    }
+    pub fn audio_volume_cancellation(
+        &self,
+        request: super::audio_products::AudioVolumeRequest,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        if let Body::Source(body) = &self.body {
+            body.read(cx).audio_volume_cancellation(request, cx)
+        } else {
+            None
+        }
+    }
+    pub fn finish_audio_volume(
+        &mut self,
+        request: super::audio_products::AudioVolumeRequest,
+        result: Result<super::audio_products::AudioVolumeCompletion, String>,
+        scope_current: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_audio_volume(request, result, scope_current, window, cx)
+            });
+        }
+    }
+    pub fn keyboard_brightness_read_matches(&self, generation: u64, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).keyboard_brightness_read_matches(generation,cx))
+    }
+    pub fn keyboard_brightness_read_current(&self, generation: u64, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).keyboard_brightness_read_current(generation,cx))
+    }
+    pub fn finish_keyboard_brightness_read(
+        &mut self,
+        generation: u64,
+        observed: Option<u8>,
+        error: Option<String>,
+        scope_current: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_keyboard_brightness_read(generation, observed, error, scope_current, cx)
+            });
+        }
+    }
+    pub fn mouse_polling_request_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Existing(body) if body.read(cx).mouse_polling_request_matches(scope,field,hz,cx))
+    }
+    pub fn mouse_polling_in_flight_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Existing(body) if body.read(cx).mouse_polling_in_flight_matches(scope,field,hz))
+    }
+    pub fn finish_mouse_polling(
+        &mut self,
+        scope: super::mouse_polling::MousePollingScope,
+        field: super::mouse_polling::PollingField,
+        hz: u32,
+        observed: Option<u32>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Existing(body) => body.update(cx, |body, cx| {
+                body.finish_mouse_polling(scope, field, hz, observed, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn keyboard_brightness_request_matches(
+        &self,
+        generation: u64,
+        percent: u8,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).keyboard_brightness_request_matches(generation,percent,cx))
+    }
+    pub fn finish_keyboard_brightness(
+        &mut self,
+        generation: u64,
+        percent: u8,
+        observed: Option<u8>,
+        scope_current: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_keyboard_brightness(generation, percent, observed, scope_current, cx)
+            });
+        }
+    }
+    pub fn keyboard_brightness_request_current(
+        &self,
+        generation: u64,
+        percent: u8,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Source(body) if body.read(cx).keyboard_brightness_request_current(generation,percent,cx))
+    }
+    pub fn cancel_keyboard_brightness_connection(&mut self, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.cancel_keyboard_brightness_connection(cx)
+            });
+        }
+    }
+    pub fn mouse_idle_request_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        minutes: u8,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Existing(body) if body.read(cx).mouse_idle_request_matches(scope, minutes, cx))
+    }
+
+    pub fn mouse_idle_in_flight_matches(
+        &self,
+        scope: super::mouse_polling::MousePollingScope,
+        minutes: u8,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Existing(body) if body.read(cx).mouse_idle_in_flight_matches(scope, minutes))
+    }
+
+    pub fn finish_mouse_idle(
+        &mut self,
+        scope: super::mouse_polling::MousePollingScope,
+        minutes: u8,
+        observed: Option<u16>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Existing(body) => body.update(cx, |body, cx| {
+                body.finish_mouse_idle(scope, minutes, observed, cx)
+            }),
+            _ => false,
+        }
+    }
     pub fn set_mapping_macro_library(
         &mut self,
         file: &super::macro_library::MacroLibraryFile,
@@ -333,6 +602,49 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
+                    WorkspaceEvent::KeyboardBrightnessRequested {
+                        generation,
+                        percent,
+                    } => WorkspaceEvent::KeyboardBrightnessRequested {
+                        generation: *generation,
+                        percent: *percent,
+                    },
+                    WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
+                        WorkspaceEvent::KeyboardBrightnessReadRequested {
+                            generation: *generation,
+                        }
+                    }
+                    WorkspaceEvent::AudioVolumeRequested { request } => {
+                        WorkspaceEvent::AudioVolumeRequested { request: *request }
+                    }
+                    WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
+                        WorkspaceEvent::MousePollingRequested {
+                            scope: *scope,
+                            field: *field,
+                            hz: *hz,
+                        }
+                    }
+                    WorkspaceEvent::MouseDpiStagesRequested {
+                        scope,
+                        revision,
+                        draft,
+                    } => WorkspaceEvent::MouseDpiStagesRequested {
+                        scope: *scope,
+                        revision: *revision,
+                        draft: draft.clone(),
+                    },
+                    WorkspaceEvent::MouseDpiStagesReadRequested { scope, revision } => {
+                        WorkspaceEvent::MouseDpiStagesReadRequested {
+                            scope: *scope,
+                            revision: *revision,
+                        }
+                    }
+                    WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
+                        WorkspaceEvent::MouseIdleRequested {
+                            scope: *scope,
+                            minutes: *minutes,
+                        }
+                    }
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,
@@ -364,6 +676,49 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
+                    WorkspaceEvent::KeyboardBrightnessRequested {
+                        generation,
+                        percent,
+                    } => WorkspaceEvent::KeyboardBrightnessRequested {
+                        generation: *generation,
+                        percent: *percent,
+                    },
+                    WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
+                        WorkspaceEvent::KeyboardBrightnessReadRequested {
+                            generation: *generation,
+                        }
+                    }
+                    WorkspaceEvent::AudioVolumeRequested { request } => {
+                        WorkspaceEvent::AudioVolumeRequested { request: *request }
+                    }
+                    WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
+                        WorkspaceEvent::MousePollingRequested {
+                            scope: *scope,
+                            field: *field,
+                            hz: *hz,
+                        }
+                    }
+                    WorkspaceEvent::MouseDpiStagesRequested {
+                        scope,
+                        revision,
+                        draft,
+                    } => WorkspaceEvent::MouseDpiStagesRequested {
+                        scope: *scope,
+                        revision: *revision,
+                        draft: draft.clone(),
+                    },
+                    WorkspaceEvent::MouseDpiStagesReadRequested { scope, revision } => {
+                        WorkspaceEvent::MouseDpiStagesReadRequested {
+                            scope: *scope,
+                            revision: *revision,
+                        }
+                    }
+                    WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
+                        WorkspaceEvent::MouseIdleRequested {
+                            scope: *scope,
+                            minutes: *minutes,
+                        }
+                    }
                     WorkspaceEvent::IntroDismissed => WorkspaceEvent::IntroDismissed,
                     WorkspaceEvent::ShareProfile => WorkspaceEvent::ShareProfile,
                     WorkspaceEvent::OpenChroma => WorkspaceEvent::OpenChroma,

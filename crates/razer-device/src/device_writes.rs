@@ -14,7 +14,7 @@ use std::{collections::BTreeMap, sync::OnceLock};
 pub enum DeviceWriteSetting {
     /// Current active X/Y DPI; does not write the persistent stage table.
     Dpi { x: u16, y: u16 },
-    /// The source caller's high-speed USB profile; not BLE/wireless polling.
+    /// The source-selected ordinary/profile/high-speed USB polling command.
     Polling { hz: u32 },
     /// Original setTimeToSleep units, before product-specific UI conversion.
     Idle { raw_time: u16 },
@@ -29,7 +29,8 @@ impl DeviceWriteSetting {
         }
     }
 
-    fn matches(&self, value: &DeviceReadValue) -> bool {
+    /// Check the typed observation without interpreting send completion as success.
+    pub fn matches_value(&self, value: &DeviceReadValue) -> bool {
         match (self, value) {
             (
                 Self::Dpi { x, y },
@@ -101,7 +102,13 @@ pub fn prepare(
         command.read_kind == setting.read_kind(),
         "源写入解析器不匹配"
     );
-    let mut payload = vec![command.selector];
+    let mut payload =
+        if matches!(setting, DeviceWriteSetting::Polling { .. }) && command.command[0] == 1 {
+            // Ordinary setPollingRate has just the rate code, without a profile.
+            Vec::new()
+        } else {
+            vec![command.selector]
+        };
     match setting {
         DeviceWriteSetting::Dpi { x, y } => {
             ensure!(
@@ -152,8 +159,8 @@ pub struct DeviceWriteResult {
 /// Read -> optional setter/ack -> readback on one retained route/lock.
 /// DPI and idle readback follow the original callers. The initial idle read
 /// and skipping an unchanged idle setter are application policy; the source
-/// idle task sends its setter before readback. Polling readback is also an
-/// application confirmation policy, distinguished in the source evidence.
+/// idle task sends its setter before readback. Polling's original task also
+/// checks before writing and verifies readback; its task cache is separate.
 pub fn apply(
     device: &dyn FeatureTransport,
     read_cap: &DeviceReadCapability,
@@ -176,7 +183,7 @@ pub fn apply(
     let previous =
         device_query::read_device(device, read_cap, getter, next_transaction()?, &validate)
             .context("写入前读取失败，尚未发送设置")?;
-    if setting.matches(&previous) {
+    if setting.matches_value(&previous) {
         validate()?;
         return Ok(DeviceWriteResult {
             requested: setting.clone(),
@@ -194,7 +201,7 @@ pub fn apply(
         device_query::read_device(device, read_cap, getter, next_transaction()?, &validate)
             .context("已收到写入应答，但重新读取失败，未确认最终设置")?;
     ensure!(
-        setting.matches(&observed),
+        setting.matches_value(&observed),
         "设备回读与请求设置不符，写入结果未确认"
     );
     validate().context("回读后设备身份或期限变化，写入结果未确认")?;

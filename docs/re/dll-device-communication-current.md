@@ -19,6 +19,14 @@
 
 MSVC 将同一逻辑函数拆成多个相邻 `RUNTIME_FUNCTION` 区间，区间结束不等于函数返回。工具单独记录跨区间的普通顺序执行边，避免丢掉后续 WriteFile/GetInputReport。导出之外的 Node 注册回调、虚表、工作线程和动态函数指针仍需独立追踪；导出为 0 或入口图小，不能说明插件没有功能。ARM64 文件只验证了字节和导出，不声称完成反汇编；含 CLR header 的 DLL 也没有完成 IL 恢复。
 
+## IDA / Hex-Rays 的当前覆盖
+
+[IDA 逐文件索引](ida-native-corpus-current.json) 对以上 81 个当前 PE 和 [4 个当前宿主 helper](host-helpers-current-evidence.json) 分别核对原件 SHA-256，在私有副本执行静态自动分析。85 个输入中，84 个取得 IDA 证据，1 个 ARM64 插件缺匹配后端，没有分析失败；共保存 320,630 个 native 函数索引和 10,630 个选定函数的 Hex-Rays 正文。每个正文保留 RVA、函数边界、原机器码 SHA-256、反汇编和交叉引用。正文选择范围是导出/PE 入口、一次直接引用展开及关键词字符串引用，仍不覆盖所有函数、间接调用或所有分支语义。
+
+三个 `RzIntelOverClockDLL` 的 CLR header flags 均为 `0x10`（native entry point，非 IL-only），不能因有 CLR header 就跳过 native 部分。对原字节不作修改，强制 AMD64 PE loader 后取得 2,668 个 native 函数索引和 160 个 Hex-Rays 正文；默认 CLI loader 得到的 2,059 个托管函数索引另存收据，不混入 native 总数。CLI loader 索引采用合成地址，其范围不是已核实的 PE RVA，不能作为原机器码边界使用。托管 IL、初始化和 native/managed 过渡仍是缺口，不能把 native 入口已反编译称为整库语义恢复。
+
+源获取、语义恢复、Rust 替代、页面/后台消费者及运行验收分别登记。上述数字是静态证据覆盖，整库 Rust 替代完成数仍为 0；没有运行目标代码或设备命令。
+
 ## “直接与设备通信”的实际边界
 
 原代码包含不同底层链路，不能把所有 DLL 统一替换成一种 HID 包。以下分类按已保存的导入及机器码路径导航，不根据库名认定整个库的职责，也不表示替换已经完成。
@@ -62,6 +70,7 @@ OpenLogi 使用 Logitech HID++ 1.0/2.0，不能据此采用 Logitech feature ID�
 
 ```text
 python tools/audit-dll-device-communication.py --check
+python tools/audit-ida-native-corpus.py --check
 python tools/audit-cmmixer-protocol-current.py --check
 python tools/audit-cmmixer-controls-current.py --check
 node tools/audit-openlogi-reference.cjs --check

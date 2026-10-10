@@ -1,6 +1,6 @@
 {
   "method": "Current middleware AST, official catalog comparison and static native contract markers; no Rust test, vendor JavaScript, app or DLL execution.",
-  "generator_sha256": "9d7e42ac185afbe81b11c866acfac39a7493aab893df9f8eed33f2f82e62d784",
+  "generator_sha256": "b097cbe1b3d0e559c41f401583ce6eecc9a14cc8167dedd49d6da8dc770d355e",
   "receipts": [
     {
       "module": 34340,
@@ -169,16 +169,32 @@
   },
   "native": [
     {
-      "path": "src/backend/discovery.rs",
-      "sha256": "14da32442bf7e4f482dd6d8af53e73487b8283ca3f307f921e8f1dd83af2d1c1"
+      "path": "crates/razer-discovery/src/discovery.rs",
+      "sha256": "4bd49776c61a8b718fd8cf789758050772f8717415effba927c291e3f9e3c981"
     },
     {
-      "path": "src/backend/discovery_receiver_projection.rs",
-      "sha256": "3f0ee8c7bdadd61d477849b19f2d109589b3985a3ae554060d60ae0523a68ca7"
+      "path": "crates/razer-discovery/src/discovery_receiver_projection.rs",
+      "sha256": "c24171b3ad9467d41136c8713a12b4a5b72c470ed1c5a4b443a013862b5c55fe"
     },
     {
-      "path": "src/backend/discovery_receiver_projection_tests.rs",
-      "sha256": "9ccd9e622a50468cca747bfc929d23dcfd8f947bc22c21c7813f9f6f71b18f8a"
+      "path": "crates/razer-discovery/src/discovery_receiver_projection_tests.rs",
+      "sha256": "356f3f9adf8dd3ffa7a2ace08f205a7ed6ddab3505bd37f8fa53dc7fde33503a"
+    },
+    {
+      "path": "crates/razer-discovery/src/receiver.rs",
+      "sha256": "2708cdf4a9d6372ac7ded39d081f7b420b10f94481a1e65cff127995d861b2d4"
+    },
+    {
+      "path": "crates/razer-discovery/src/receiver_route_tests.rs",
+      "sha256": "db5fd9a4ee0499636c3a52da19906a55ee770248e0d45c94308cc4cbdc755721"
+    },
+    {
+      "path": "crates/razer-shell/src/shell/device_discovery.rs",
+      "sha256": "493b82864a3bd47f25249c45ae972d8b503f637e37b8e5385f93584d18a94f86"
+    },
+    {
+      "path": "crates/razer-pages/src/features/source_workspace.rs",
+      "sha256": "e37909a94344f9e58868488b15e849aad3319703eff54f30081902bed1e073f9"
     }
   ],
   "tests": [
@@ -191,12 +207,18 @@
     "mismatched_scope_and_unverified_interface_envelopes_are_rejected",
     "malformed_or_duplicate_rows_never_become_successful_empty_observations"
   ],
+  "route_tests": [
+    "retained_receiver_route_rejects_peer_unknown_connection_and_replaced_collection",
+    "collection_binding_projection_preserves_raw_identity_and_checks_reply_scope"
+  ],
   "contract": {
     "scope": "Query name, vendor/product/interface/report size, nonzero braced container and row count must match; path and instance must be present. The native worker separately verifies the actual interface before and after I/O.",
+    "portable_scope": "Collection replies require exact retained node, source class, query kind, hid_collection identity scope and actual row count. Requery freshly enumerates the exact node and checks descriptor length before issuing the source V2 request; no Windows GUID is fabricated.",
     "identity": "Startup and incremental queries use one pure projection. Preserve raw PID/status and physical receiver container/PID; reject sentinel and standalone-self rows, retain a source-mapped product dongle peer.",
     "unknown": "Malformed frames fail. Unknown/ambiguous catalog identities and conflicting normalized rows retain errors plus unrelated resolved peers; partial absence is not disconnected.",
     "metadata": "No edition/layout/serial/profile/readiness/telemetry is synthesized. Catalog product name/category is descriptive only.",
     "consumers": "Binding payload is independent from observed peer results. UI owns accepted session/revision and topology updates; a payload error cannot erase known peers.",
+    "requery": "Shell resolves one actual physical owner from current observations; both binding query paths retain that route and filter generation, discovery revision and node on completion. UI collection prefix is only a scheduling hint, never authority to open a device.",
     "side_effects": "Original ye writes localStorage and registers runtime listeners; the native pure projection does neither. Query status=1 is not SLAVE_CONNECT_EVENT."
   }
 }

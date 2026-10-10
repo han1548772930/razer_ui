@@ -75,7 +75,20 @@ for (const marker of ['device_identity::lookup_receiver_peer(', 'capability.peer
 const testPath = 'crates/razer-discovery/src/discovery_receiver_projection_tests.rs';
 const tests = [...read(testPath).matchAll(/#\[test\]\s*fn (\w+)\(/g)].map(match => match[1]);
 if (tests.length !== 8) throw Error('Changed projection regression cases');
-const nativePaths = ['crates/razer-discovery/src/discovery.rs', projectionPath, testPath];
+const routePath = 'crates/razer-discovery/src/receiver.rs';
+const routeTestsPath = 'crates/razer-discovery/src/receiver_route_tests.rs';
+const route = read(routePath);
+for (const marker of ['observed.peer_product_id().is_none()',
+  'direct::collection_scope(node) == observed.container()', 'ServiceRequest::HidNodes',
+  'filter(|candidate| *candidate == node).count() == 1', 'direct::reports_match',
+  'ServiceRequest::HidNodeReceiverStatus', 'discovery::project_hid_receiver_query',
+  '#[cfg(windows)]', 'ServiceRequest::HidDevices']) {
+  if (!route.includes(marker)) throw Error('Missing retained receiver route boundary: ' + marker);
+}
+const routeTests = [...read(routeTestsPath).matchAll(/#\[test\]\s*fn (\w+)\(/g)].map(match => match[1]);
+if (routeTests.length !== 2) throw Error('Changed retained receiver scope regression cases');
+const nativePaths = ['crates/razer-discovery/src/discovery.rs', projectionPath, testPath, routePath, routeTestsPath,
+  'crates/razer-shell/src/shell/device_discovery.rs', 'crates/razer-pages/src/features/source_workspace.rs'];
 const output = {
   method: 'Current middleware AST, official catalog comparison and static native contract markers; no Rust test, vendor JavaScript, app or DLL execution.',
   generator_sha256: hash(fs.readFileSync(__filename)),
@@ -84,12 +97,15 @@ const output = {
   capability_dependency: { path: capabilityPath, sha256: hash(read(capabilityPath)), selected: selectedCapabilities },
   native: nativePaths.map(path => ({ path, sha256: hash(read(path)) })),
   tests,
+  route_tests: routeTests,
   contract: {
     scope: 'Query name, vendor/product/interface/report size, nonzero braced container and row count must match; path and instance must be present. The native worker separately verifies the actual interface before and after I/O.',
+    portable_scope: 'Collection replies require exact retained node, source class, query kind, hid_collection identity scope and actual row count. Requery freshly enumerates the exact node and checks descriptor length before issuing the source V2 request; no Windows GUID is fabricated.',
     identity: 'Startup and incremental queries use one pure projection. Preserve raw PID/status and physical receiver container/PID; reject sentinel and standalone-self rows, retain a source-mapped product dongle peer.',
     unknown: 'Malformed frames fail. Unknown/ambiguous catalog identities and conflicting normalized rows retain errors plus unrelated resolved peers; partial absence is not disconnected.',
     metadata: 'No edition/layout/serial/profile/readiness/telemetry is synthesized. Catalog product name/category is descriptive only.',
     consumers: 'Binding payload is independent from observed peer results. UI owns accepted session/revision and topology updates; a payload error cannot erase known peers.',
+    requery: 'Shell resolves one actual physical owner from current observations; both binding query paths retain that route and filter generation, discovery revision and node on completion. UI collection prefix is only a scheduling hint, never authority to open a device.',
     side_effects: 'Original ye writes localStorage and registers runtime listeners; the native pure projection does neither. Query status=1 is not SLAVE_CONNECT_EVENT.',
   },
 };

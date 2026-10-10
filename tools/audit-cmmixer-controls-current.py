@@ -345,7 +345,7 @@ def main():
         'caller_indices':list(range(9)),'source_flags':{'desired_access':0xc0000000,'share_mode':0,
             'creation_disposition':3,'attributes':0x80},
         'status':'Source recipe and Rust IPC/Windows adapter implemented; UI consumer and runtime target correlation unverified',
-        'rust':'crates/razer-service/src/runtime_mixer_driver.rs',
+        'rust':'crates/razer-service/src/runtime/windows/mixer_driver.rs',
         'identity_difference':'Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId',
         'rust_lifecycle':'Retain HID identity lock across sequence, open/close an exclusive driver handle for each stream as the source does'}
 
@@ -400,7 +400,7 @@ def main():
         'source_flags':{'desired_access':0xc0000000,'share_mode':0,
                         'creation_disposition':3,'attributes':0},
         'status':'Rust matrix codec, scoped Windows adapter and IPC reads/writes implemented; UI consumer and runtime target correlation unverified',
-        'rust':'crates/razer-service/src/runtime_mixer_driver.rs',
+        'rust':'crates/razer-service/src/runtime/windows/mixer_driver.rs',
         'confirmation_difference':'Rust checks actual returned length and reads back the selected boolean after writes; original does neither',
         'identity_difference':'Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId'}
 

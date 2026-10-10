@@ -4,6 +4,7 @@ const fs=require('fs'),path=require('path');
 const acorn=require('acorn');
 const {CurrentMiddlewareSource}=require('./current-middleware-source.cjs');
 const {walk,key,hash}=require('./webpack-source.cjs');
+const {sourceClaimInterfaces}=require('./expand-device-query-capabilities.cjs');
 const root=path.resolve(__dirname,'..'),check=process.argv.includes('--check');
 const bootstrap=JSON.parse(fs.readFileSync(path.join(root,'.ref/middleware/bootstrap-requests.json'),'utf8'));
 const plans=JSON.parse(fs.readFileSync(path.join(root,'.ref/middleware/receiver-protocol-requests.json'),'utf8'));
@@ -99,6 +100,10 @@ for(const productId of readProducts){
  const infoExpression=acorn.parseExpressionAt(source.text(infoReceipt.path),infoReceipt.offset,{ecmaVersion:'latest'});
  const infoNode=infoExpression.type==='SequenceExpression'?infoExpression.expressions[0]:infoExpression;
  const infoField=name=>source.literal(plan.device_info.module,infoNode.properties.find(p=>key(p.key)===name).value);
+ // Keep the original map in evidence; validate against the current source
+ // literal and select its exact primary PID before emitting runtime data.
+ if(info.productId!==infoField('productId')||JSON.stringify(info.claimInterface)!==JSON.stringify(infoField('claimInterface')))throw Error('Primary PID/interface differs from current source literal');
+ sourceClaimInterfaces(info);
  const batteryCaller=receipts.find(r=>r.label==='battery id caller').source;
  const pollingCaller=receipts.find(r=>r.label==='polling caller/default profile').source;
  if(!batteryCaller.includes('else V=0')||!pollingCaller.startsWith('(e=1)=>')||!boot.bootstrap.source.includes('useFeature("highSpeedPollingRate","yes")'))throw Error('Caller parameters/features changed; re-audit');
@@ -133,6 +138,7 @@ for(const productId of readProducts){
 const timings=JSON.parse(fs.readFileSync(path.join(root,'assets/data/receiver-query-capabilities.json'),'utf8'));
 const expansion=require('./expand-device-query-capabilities.cjs').expand(plans,bootstrap,products[0],timings);
 products.push(...expansion.products);
+require('./expand-polling-capabilities.cjs').expandQueries(products,expansion.gaps,plans,bootstrap);
 products.sort((a,b)=>a.product_id-b.product_id);
 const hostPath='.ref/host-4.0.827/electron/UsbRzDeviceAction.js';
 const hostText=fs.readFileSync(path.join(root,hostPath),'utf8');
@@ -150,7 +156,8 @@ const runtime=products.map(p=>{
  if(!timing||timing.source_class!==p.source_class||timing.transaction_prefix!==p.transaction_prefix||timing.transaction_modulus!==p.transaction_modulus)throw Error('Read transport class/timing changed');
  // Product UI DPI bounds remain evidence only; the source getter accepts the
  // full raw u16 range, so those edit limits must not become a read capability.
- return Object.fromEntries(Object.entries({...p,...Object.fromEntries(['max_retry_in','max_retry_out','sleep_between_out_ms','sleep_between_out_in_ms','sleep_between_in_ms'].map(k=>[k,timing[k]]))}).filter(([k])=>!['device_info','factory','bootstrap','receipts','acquisition','min_dpi','max_dpi'].includes(k)));
+ const interfaces=sourceClaimInterfaces(p.device_info.values);
+ return Object.fromEntries(Object.entries({...p,...interfaces,...Object.fromEntries(['max_retry_in','max_retry_out','sleep_between_out_ms','sleep_between_out_in_ms','sleep_between_in_ms'].map(k=>[k,timing[k]]))}).filter(([k])=>!['device_info','factory','bootstrap','receipts','acquisition','min_dpi','max_dpi','claim_interface_selection'].includes(k)));
 });
  const runtimeFile=path.join(root,'assets/data/device-read-capabilities.json'),runtimeBytes=JSON.stringify({schema_version:1,products:runtime},null,2)+'\n';
 if(check){if(fs.readFileSync(runtimeFile,'utf8')!==runtimeBytes)throw Error('Stale device read capabilities');}else fs.writeFileSync(runtimeFile,runtimeBytes);

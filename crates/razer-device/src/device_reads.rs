@@ -44,18 +44,44 @@ pub struct DeviceReadCapability {
     pub direct_pids: Vec<u32>,
     pub vendor_id: u16,
     pub claim_interface: u8,
+    /// Exact PID-keyed interface selection from DeviceInfo.claimInterface.
+    /// An absent map denotes the source's scalar interface; a missing PID in
+    /// a present map is unsupported and must never fall back to its first row.
+    #[serde(default)]
+    pub claim_interfaces_by_pid: BTreeMap<String, u8>,
     pub report_id: u8,
     pub report_bytes: usize,
     pub transaction_prefix: u8,
     pub transaction_modulus: u8,
     pub queries: Vec<ReadCommand>,
     pub polling_codes: BTreeMap<String, u8>,
+    /// Source parser byte: ordinary polling uses data[0], profiles use data[1].
+    #[serde(default)]
+    pub polling_value_offset: Option<usize>,
+    /// Only populated where the original switch default is source-verified.
+    #[serde(default)]
+    pub polling_default_hz: Option<u32>,
+    /// Polling branch proved for the physical product, not a receiver relay.
+    #[serde(default)]
+    pub polling_physical_product_id: Option<u32>,
     pub charging_codes: BTreeMap<String, u8>,
     pub max_retry_in: u8,
     pub max_retry_out: u8,
     pub sleep_between_out_ms: u64,
     pub sleep_between_out_in_ms: u64,
     pub sleep_between_in_ms: u64,
+}
+
+impl DeviceReadCapability {
+    pub fn claim_interface_for(&self, physical_product_id: u32) -> anyhow::Result<u8> {
+        if self.claim_interfaces_by_pid.is_empty() {
+            return Ok(self.claim_interface);
+        }
+        self.claim_interfaces_by_pid
+            .get(&physical_product_id.to_string())
+            .copied()
+            .with_context(|| format!("原产品接口映射不包含实际 PID {physical_product_id}"))
+    }
 }
 
 pub fn capability(product_id: u32) -> Option<&'static DeviceReadCapability> {
@@ -228,17 +254,22 @@ pub fn decode_report(
                 .context("未知充电状态编码")?,
         },
         DeviceReadKind::Polling => {
+            let code = data
+                .get(cap.polling_value_offset.unwrap_or(1))
+                .context("回报率响应缺少源码指定的字段")?;
             let name = cap
                 .polling_codes
                 .iter()
-                .find(|(_, code)| **code == data[1])
-                .map(|(name, _)| name)
-                .context("未知回报率编码")?;
-            let hz = name
-                .strip_prefix("RATE_")
-                .and_then(|name| name.strip_suffix("Hz"))
-                .context("源回报率名称无效")?
-                .parse()?;
+                .find(|(_, value)| *value == code)
+                .map(|(name, _)| name);
+            let hz = if let Some(name) = name {
+                name.strip_prefix("RATE_")
+                    .and_then(|name| name.strip_suffix("Hz"))
+                    .context("源回报率名称无效")?
+                    .parse()?
+            } else {
+                cap.polling_default_hz.context("未知回报率编码")?
+            };
             DeviceReadValue::Polling { hz }
         }
         DeviceReadKind::Dpi => {
@@ -283,7 +314,7 @@ mod tests {
         let (report, command) = reply(DeviceReadKind::Polling, &[1, 8]);
         assert!(matches!(
             decode_report(&report, cap, command, 7).unwrap(),
-            ReadReply::Complete(DeviceReadValue::Polling { hz: 1000 })
+            ReadReply::Complete(DeviceReadValue::Polling { hz: 125 })
         ));
         let (report, command) = reply(DeviceReadKind::Dpi, &[0, 3, 32, 6, 64, 0, 0]);
         assert!(matches!(
@@ -312,7 +343,6 @@ mod tests {
     fn rejects_unknown_codes_wrong_scope_and_partial_or_stale_reports() {
         let cap = capability(182).unwrap();
         for (kind, data) in [
-            (DeviceReadKind::Polling, vec![1, 3]),
             (DeviceReadKind::Charging, vec![0, 99]),
             (DeviceReadKind::Battery, vec![1, 255]),
             (DeviceReadKind::Dpi, vec![1, 3, 32, 3, 32, 0, 0]),

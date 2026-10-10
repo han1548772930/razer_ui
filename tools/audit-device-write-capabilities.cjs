@@ -33,6 +33,7 @@ for(const read of reads.products.filter(p=>p.product_id===182)){
   if(!target.node.superClass)break;target=resolve(target.id,target.node.superClass);}
  const writes=[];
  for(const [kind,name,selector] of [['dpi','setDpiLevel',0],['polling','setUSBHighSpeedPollingRate',1]]){
+  if(kind==='polling'&&!read.queries.some(q=>q.method==='getUSBHighSpeedPollingRate'))continue;
   const owner=chain.find(c=>c.node.body.body.some(m=>key(m.key)===name));assert(owner,'Setter not found');
   const method=owner.node.body.body.find(m=>key(m.key)===name);record(kind+' method',{id:owner.id,node:method});
   const delegates=[];walk(method,n=>{if(n.type==='CallExpression'&&n.arguments[0]?.type==='ThisExpression'&&n.arguments[1]?.type==='Identifier')delegates.push(n);});
@@ -43,7 +44,7 @@ for(const read of reads.products.filter(p=>p.product_id===182)){
   const header=resolve(helper.id,sends[0].arguments[0]);record(kind+' command',header);
   assert.equal(header.node.type,'NewExpression');assert.equal(header.node.callee.name,'Uint8Array');
   const command=source.literal(header.id,header.node.arguments[0]);
-  const alternate=read.receipts.filter(r=>r.label.startsWith('alternate transaction command '));
+  const alternate=[...new Map(read.receipts.filter(r=>r.label.startsWith('alternate transaction command ')).map(r=>[r.path+':'+r.offset+':'+r.end,r])).values()];
   assert.equal(alternate.length,2,'Missing alternate transaction proof');
   for(const receipt of alternate){
    const node=source.exported(receipt.module,receipt.label.endsWith(' z$')?'z$':'Z');
@@ -83,10 +84,11 @@ const boots=JSON.parse(fs.readFileSync(path.join(root,'.ref/middleware/bootstrap
 const expansion=require('./expand-device-write-capabilities.cjs').expand(reads,plans,boots);
 products.push(...expansion.products);
 require('./expand-idle-write-capabilities.cjs').expand(products,expansion.gaps,reads,plans,boots);
+require('./expand-polling-capabilities.cjs').expandWrites(products,expansion.gaps,reads,plans,boots);
 products.sort((a,b)=>a.product_id-b.product_id);
 const evidence={schema_version:1,method:'Manifest-verified current factories, individual setter payload/parser/transport and real caller gates; no vendor execution',
  read_evidence:{path:readPath,sha256:hash(fs.readFileSync(path.join(root,readPath)))},products,gaps:expansion.gaps,
- policy:{polling_readback:'Application confirmation policy; current setter caller does not itself prove a readback',
+ policy:{polling_readback:'Current task performs read-before-write and readback; primitive setter caller alone is not the complete task. The Rust retained session does not yet reproduce original task cancellation/cache/version persistence.',
   idle_units:'Raw u16 timeToSleep; current task multiplies UI value by 60 unless DeviceInfo.singleProfileDevice. UI conversion and persistent task cache remain separate consumer work.',
   scope:'Only these product bindings. No mapping, persistent DPI stage table, mode switch, pairing, BLE or firmware write inferred.'}};
 const runtime={schema_version:1,products:products.map(({receipts,acquisition,...p})=>p)};

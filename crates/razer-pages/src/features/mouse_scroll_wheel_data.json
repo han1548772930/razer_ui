@@ -41,12 +41,12 @@
       "uppercase": false
     },
     "help_key": "SCROLL_WHEEL_TOOLTIP",
-    "mode_description": true,
+    "mode_description": "SCROLL_MODE_DESC",
     "acceleration_descriptions": [
-      true
+      "SCROLL_ACCELERATION_DESC"
     ],
     "smart_reel_descriptions": [
-      true
+      "SMART_REEL_DESC"
     ]
   },
   {
@@ -91,12 +91,12 @@
       "uppercase": false
     },
     "help_key": "SCROLL_WHEEL_TOOLTIP",
-    "mode_description": true,
+    "mode_description": "SCROLL_MODE_DESC",
     "acceleration_descriptions": [
-      true
+      "SCROLL_ACCELERATION_DESC"
     ],
     "smart_reel_descriptions": [
-      true
+      "SMART_REEL_DESC"
     ]
   },
   {
@@ -143,13 +143,13 @@
       "uppercase": true
     },
     "help_key": "SCROLL_WHEEL_TOOLTIP",
-    "mode_description": true,
+    "mode_description": "SCROLL_MODE_DESC",
     "acceleration_descriptions": [
-      true
+      "SCROLL_ACCELERATION_LEVEL_DESC"
     ],
     "smart_reel_descriptions": [
-      true,
-      true
+      "SMART_REEL_DESC",
+      "SMART_REEL_LEVEL_DESC"
     ]
   },
   {
@@ -196,13 +196,13 @@
       "uppercase": true
     },
     "help_key": "SCROLL_WHEEL_TOOLTIP",
-    "mode_description": true,
+    "mode_description": "SCROLL_MODE_DESC",
     "acceleration_descriptions": [
-      true
+      "SCROLL_ACCELERATION_LEVEL_DESC"
     ],
     "smart_reel_descriptions": [
-      true,
-      true
+      "SMART_REEL_DESC",
+      "SMART_REEL_LEVEL_DESC"
     ]
   },
   {
@@ -249,13 +249,13 @@
       "uppercase": true
     },
     "help_key": "SCROLL_WHEEL_TOOLTIP",
-    "mode_description": true,
+    "mode_description": "SCROLL_MODE_DESC",
     "acceleration_descriptions": [
-      true
+      "SCROLL_ACCELERATION_LEVEL_DESC"
     ],
     "smart_reel_descriptions": [
-      true,
-      true
+      "SMART_REEL_DESC",
+      "SMART_REEL_LEVEL_DESC"
     ]
   },
   {
@@ -336,13 +336,13 @@
       "uppercase": true
     },
     "help_key": "SCROLL_WHEEL_TOOLTIP",
-    "mode_description": true,
+    "mode_description": "SCROLL_MODE_DESC",
     "acceleration_descriptions": [
-      true
+      "SCROLL_ACCELERATION_LEVEL_DESC"
     ],
     "smart_reel_descriptions": [
-      true,
-      true
+      "SMART_REEL_DESC",
+      "SMART_REEL_LEVEL_DESC"
     ]
   }
 ]

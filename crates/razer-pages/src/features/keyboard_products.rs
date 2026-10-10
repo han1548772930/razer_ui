@@ -17,12 +17,16 @@ use std::{collections::BTreeMap, sync::OnceLock};
 
 #[path = "keyboard_actuation.rs"]
 mod actuation;
+#[path = "keyboard_brightness.rs"]
+mod brightness;
 #[path = "keyboard_calibration.rs"]
 mod calibration;
 #[path = "keyboard_gaming_rows.rs"]
 mod gaming_rows;
 #[path = "keyboard_properties.rs"]
 mod properties;
+pub use brightness::KeyboardBrightnessReadRequested;
+pub use brightness::KeyboardBrightnessRequested;
 #[path = "keyboard_snap_tap.rs"]
 mod snap_tap;
 pub(super) use calibration::is_factory_profile;
@@ -115,6 +119,7 @@ pub struct KeyboardProductWorkspace {
     snap_tap: Option<snap_tap::State>,
     /// Retained OS icon choice; failed queries fall back to the legacy icon.
     properties_icon: Option<&'static str>,
+    brightness: brightness::State,
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
@@ -149,6 +154,7 @@ impl KeyboardProductWorkspace {
                     "synapse/keyboard-properties-legacy.svg"
                 }
             }),
+            brightness: brightness::State::default(),
         };
         if this.draft.pointer("/brightness/value").is_some() {
             this.add_slider("/brightness/value", 0., 100., 1., window, cx);
@@ -215,6 +221,7 @@ impl KeyboardProductWorkspace {
         snapshot
     }
     pub fn restore(&mut self, value: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.invalidate_brightness();
         self.dismiss_calibration(window, cx);
         self.draft = self.spec.default_profile();
         if let (Some(target), Some(saved)) =
@@ -237,6 +244,7 @@ impl KeyboardProductWorkspace {
             }
         }
         self.syncing = false;
+        self.request_brightness_read(cx);
         cx.notify();
     }
     fn add_slider(
@@ -264,6 +272,26 @@ impl KeyboardProductWorkspace {
         self.subscriptions.push(
             cx.subscribe_in(&slider, window, move |this, _, event, _, cx| {
                 if !this.syncing {
+                    if path_owned == "/brightness/value" {
+                        if let SliderEvent::Change(value) = event {
+                            this.preview_brightness(
+                                Some(value.start().clamp(min, max).round() as u8),
+                                cx,
+                            );
+                        }
+                        if let SliderEvent::Release(value) = event {
+                            this.preview_brightness(None, cx);
+                            let percent = value.start().clamp(min, max).round() as u8;
+                            this.draft["brightness"]["value"] = json!(percent);
+                            this.draft["brightness"]["isEnabled"] = json!(percent != 0);
+                            cx.emit(KeyboardProductChanged);
+                            this.request_brightness(cx);
+                            cx.notify();
+                        }
+                        // Current Range owns pointer preview; its default emits
+                        // the parent's changeValue only on pointer release.
+                        return;
+                    }
                     if let SliderEvent::Change(value) = event {
                         this.write(
                             &path_owned,
@@ -306,6 +334,9 @@ impl KeyboardProductWorkspace {
             .on_click(cx.listener(move |this, value, _, cx| {
                 if enabled {
                     this.write(&path, json!(value), cx);
+                    if path == "/brightness/isEnabled" {
+                        this.request_brightness(cx);
+                    }
                 }
             }))
             .into_any_element()
@@ -314,16 +345,20 @@ impl KeyboardProductWorkspace {
         let Some(slider) = self.sliders.get(path) else {
             return div().into_any_element();
         };
+        let value = if path == "/brightness/value" {
+            self.brightness_preview().map(|value| value.to_string())
+        } else {
+            None
+        }
+        .unwrap_or_else(|| {
+            self.draft
+                .pointer(path)
+                .map(Value::to_string)
+                .unwrap_or_default()
+        });
         v_flex()
             .gap_3()
-            .child(
-                h_flex().justify_between().child(label).child(
-                    self.draft
-                        .pointer(path)
-                        .map(Value::to_string)
-                        .unwrap_or_default(),
-                ),
-            )
+            .child(h_flex().justify_between().child(label).child(value))
             .child(Slider::new(slider).disabled(!enabled))
             .into_any_element()
     }
@@ -427,6 +462,14 @@ impl KeyboardProductWorkspace {
         let mut left = surface::panel(t("BRIGHTNESS"), cx)
             .child(self.toggle("/brightness/isEnabled", t("BRIGHTNESS"), true, cx))
             .child(self.range("/brightness/value", t("BRIGHTNESS"), on));
+        if razer_device::keyboard_settings::capability(self.spec.product_id).is_some() {
+            left = left.child(
+                div()
+                    .text_sm()
+                    .text_color(cx.theme().muted_foreground)
+                    .child(self.brightness_runtime_text()),
+            );
+        }
         if self.draft.get("switchOffLighting").is_some() {
             left = left.child(self.switch_off_lighting(window, cx));
         }

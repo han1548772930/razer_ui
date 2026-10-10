@@ -2,9 +2,9 @@
 use razer_ipc::{FRAME_PREFIX, RequestEnvelope, ResponseEnvelope, ServiceRequest, read_frame};
 use std::{io::Write, time::Duration};
 #[cfg(windows)]
-#[path = "runtime_native.rs"]
+#[path = "windows/native.rs"]
 mod native;
-#[path = "runtime_portable.rs"]
+#[path = "portable.rs"]
 mod portable;
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(4);
 
@@ -28,6 +28,25 @@ pub fn run_worker() -> i32 {
         };
         let shutdown = matches!(envelope.request, ServiceRequest::Shutdown);
         let result = match envelope.request {
+            ServiceRequest::WindowsServiceStart { name } => {
+                razer_platform::windows_service_status::start(&name)
+                    .map(|exit_code| serde_json::json!({"name":name,"exit_code":exit_code}))
+            }
+            ServiceRequest::WindowsServiceStop { name } => {
+                razer_platform::windows_service_status::stop(&name)
+                    .map(|exit_code| serde_json::json!({"name":name,"exit_code":exit_code}))
+            }
+            ServiceRequest::WindowsServiceStatus { name } => {
+                razer_platform::windows_service_status::query(&name)
+                    .map(|status| serde_json::json!({"name":name,"status":status}))
+            }
+            ServiceRequest::WheelScrollLinesRead => {
+                razer_platform::wheel_scroll::get().map(|lines| serde_json::json!({"lines":lines}))
+            }
+            ServiceRequest::WheelScrollLinesWrite { lines } => razer_platform::wheel_scroll::set(
+                lines,
+            )
+            .map(|accepted| serde_json::json!({"requested_lines":lines,"accepted":accepted})),
             ServiceRequest::HostStorageView { view } => {
                 host_storage.register_view(view);
                 Ok(serde_json::json!({"registered": true}))
@@ -43,10 +62,17 @@ pub fn run_worker() -> i32 {
                 .drain_events(view_id)
                 .and_then(|events| serde_json::to_value(events).map_err(Into::into)),
             request @ (ServiceRequest::AudioDevices
+            | ServiceRequest::AudioVolumeRead { .. }
+            | ServiceRequest::AudioVolumeWrite { .. }
             | ServiceRequest::AudioEndpoints { .. }
             | ServiceRequest::HidNodes
+            | ServiceRequest::HidNodeReports { .. }
+            | ServiceRequest::HidNodeDpiStagesRead { .. }
+            | ServiceRequest::HidNodeDpiStagesWrite { .. }
             | ServiceRequest::HidNodeRead { .. }
             | ServiceRequest::HidNodeWrite { .. }
+            | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
+            | ServiceRequest::HidNodeKeyboardBrightnessWrite { .. }
             | ServiceRequest::HidNodeMixerRead { .. }
             | ServiceRequest::HidNodeMixerWrite { .. }
             | ServiceRequest::HidNodeMixerRouteRead { .. }

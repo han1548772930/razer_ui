@@ -7,12 +7,12 @@
   "summary": {
     "receipted_pe_files": 85,
     "processed_files": 85,
-    "ida_acquired": 81,
+    "ida_acquired": 84,
     "analysis_failures": 0,
-    "unsupported": 4,
-    "indexed_functions": 317962,
-    "selected_function_bodies": 10470,
-    "decompiled_bodies": 10470,
+    "unsupported": 1,
+    "indexed_functions": 320630,
+    "selected_function_bodies": 10630,
+    "decompiled_bodies": 10630,
     "whole_library_replacements_completed": 0
   },
   "files": [
@@ -23,6 +23,9 @@
       "machine": 34404,
       "entry_rva": 574436,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -36,6 +39,8 @@
         "path": "docs/re/evidence/ida-native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318.json.gz",
         "sha256": "b7d866bb2cd3568acd0f6168fbcfbf2c44aea90a76ad80aa91d2d292a545e995"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -47,6 +52,9 @@
       "machine": 34404,
       "entry_rva": 2764592,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -60,6 +68,8 @@
         "path": "docs/re/evidence/ida-native/6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a.json.gz",
         "sha256": "0de0a733a231dd3a40a1e399ee48220cfac07226cd7dc38bcf38e48c34de0d61"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -71,6 +81,9 @@
       "machine": 34404,
       "entry_rva": 1795600,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -84,9 +97,21 @@
         "path": "docs/re/evidence/ida-native/f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b.json.gz",
         "sha256": "449d34b6af2ca0fe7850b75247314035f6b64c26d9008891a95f392d66907a3c"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
-      "runtime_acceptance": "not_run"
+      "runtime_acceptance": "not_run",
+      "supplemental_analyses": [
+        {
+          "path": "docs/re/simple-audio-volume-current-evidence.json",
+          "sha256": "5112268accc367992b03bb765ea97121ad8ad7ab67b58f3dc9ec5a3a7575b97c",
+          "selected_function_bodies": 36,
+          "additional_function_bodies_not_in_corpus_selection": 6,
+          "scope": "Speaker/microphone volume and mute, current factory/page/caller/ABI and direct Core Audio Rust writes; notification cache and whole library remain incomplete",
+          "runtime_acceptance": "not_run"
+        }
+      ]
     },
     {
       "path": ".ref/host-4.0.827/native-evidence/CommonDLL/simple_service_v1.2.2.9.dll",
@@ -95,6 +120,9 @@
       "machine": 34404,
       "entry_rva": 1795600,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -108,6 +136,8 @@
         "path": "docs/re/evidence/ida-native/2c24c80c8d3ea19d84f223ec58ae2b9b02c882f578e06b2c8272c545c1dbfd5d.json.gz",
         "sha256": "dd31f3b46719489eed69ca2a7a50102d1283f8929f83b4c0246fa2628cbfb2fb"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -119,6 +149,9 @@
       "machine": 34404,
       "entry_rva": 4932,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -132,6 +165,8 @@
         "path": "docs/re/evidence/ida-native/9797ca74448b0d84794af44bfe6ade6a7010c81c2fa596f6fef6e4a4441f194c.json.gz",
         "sha256": "548281a2be189e3708e532ad13a6faf31a5d892f28548f4298e674ccb4d3ceca"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -143,6 +178,9 @@
       "machine": 34404,
       "entry_rva": 43212,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -156,6 +194,8 @@
         "path": "docs/re/evidence/ida-native/832753b0e8f6c6e199430179c4b0972d03391ffca3c19bc81ee1e8074433e8f9.json.gz",
         "sha256": "8151359add6006135c28b1d1e93b7b27f9e50567d2826880cbe523053f0bcf65"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -167,6 +207,9 @@
       "machine": 34404,
       "entry_rva": 43388,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -180,6 +223,8 @@
         "path": "docs/re/evidence/ida-native/be85eded62b50952b22b941eafa8ce08b804ed47d267d131086d8a83bfbc93ff.json.gz",
         "sha256": "789221986f8d32dff8def2ff47f8fff7eb7dc51258fd68d84bca82ebfff3ee6e"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -191,6 +236,9 @@
       "machine": 34404,
       "entry_rva": 44276,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -204,6 +252,8 @@
         "path": "docs/re/evidence/ida-native/e0e89171fe365fab9fd15450adbaf3b35e76a1a6114ede27a16c56b96ce95369.json.gz",
         "sha256": "8297964df2f73f533fcf091294af8a7dca094e4b1f5e64dfbbaab03c9d577037"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -215,6 +265,9 @@
       "machine": 34404,
       "entry_rva": 44324,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -228,6 +281,8 @@
         "path": "docs/re/evidence/ida-native/1cb194a53914ae401fae8b112423652b813fdabe5cf74c6da6d8886ae141a3e2.json.gz",
         "sha256": "4f47d90ae70d794ceba41aff5afb2e349890b46ac0a11c280c7aff0628e77bf6"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -239,6 +294,9 @@
       "machine": 34404,
       "entry_rva": 4386,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -252,6 +310,8 @@
         "path": "docs/re/evidence/ida-native/809b0c0b50800cf8e575e7f3a16cccdb37264de58eb6739b286a9e817c3b2d2c.json.gz",
         "sha256": "5356f31370010597f1e54102153a7351596c0283ab4cac5d857e7e4042f7195e"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -263,6 +323,9 @@
       "machine": 34404,
       "entry_rva": 58452,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -276,6 +339,8 @@
         "path": "docs/re/evidence/ida-native/ad8397da04d13508a94bbe5a61dc154145ca03187797d5c574c06705b1a05a3d.json.gz",
         "sha256": "521ecb8375d2da74dcd78409d30fd38b94fca6c03750d39475d514e283c26eb0"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -287,6 +352,9 @@
       "machine": 34404,
       "entry_rva": 57436,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -300,6 +368,8 @@
         "path": "docs/re/evidence/ida-native/543b068fea0c3878380fb2b30508ad4fd970fcbb9ec0df6d24a163633be3512a.json.gz",
         "sha256": "2d756de538e1c050f6c87fb48066ab8ceae56a5361be1d4c42ba9c4c7eea8ba8"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -311,6 +381,9 @@
       "machine": 34404,
       "entry_rva": 48764,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -324,6 +397,8 @@
         "path": "docs/re/evidence/ida-native/5fb00db24123bc25fd418d783bad24eab38e3f44e0941480e4671ddc0ec06a81.json.gz",
         "sha256": "97a136bf3f8ca308adb908ae965f045d0939d13695232c399c990611d6fc0ba7"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -335,6 +410,9 @@
       "machine": 34404,
       "entry_rva": 352300,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -348,6 +426,8 @@
         "path": "docs/re/evidence/ida-native/196568febfb06c495a28e9206d18363db3474e9c7acd949ce041d437159cc8a2.json.gz",
         "sha256": "431ff8a220ff678f40609342a1d5120117850ac36d0c4e961e8fdf32a910dc59"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -359,6 +439,9 @@
       "machine": 34404,
       "entry_rva": 4932,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -372,6 +455,8 @@
         "path": "docs/re/evidence/ida-native/ce517c0d909b48b5ec3b1bc796fcd9a107c5ba96a75b4b7f861c0efd1f30874d.json.gz",
         "sha256": "33fa76b8a81052fe831b0e8c62a50a4f2784d4233ae5c27efebad21177fef54d"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -383,6 +468,9 @@
       "machine": 34404,
       "entry_rva": 37336,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -396,6 +484,8 @@
         "path": "docs/re/evidence/ida-native/d5c680965d558be4381aee898ba9c451b4c4e50bd78dc4a67579487eead93f13.json.gz",
         "sha256": "f61ece20448aaff31036c72986048efc69a484259b542d9d13876cd2573be372"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -407,6 +497,9 @@
       "machine": 34404,
       "entry_rva": 101332,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -420,6 +513,8 @@
         "path": "docs/re/evidence/ida-native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f.json.gz",
         "sha256": "6511f6cde46845d87e4912b6ec67af72bf8964b02430d68d79415d1b93fe854a"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -431,6 +526,9 @@
       "machine": 34404,
       "entry_rva": 397744,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -444,6 +542,8 @@
         "path": "docs/re/evidence/ida-native/5bdea80bf1fb8ef93003f56ebd624e07c25942bfa8b7b2105317c16ccf059e5e.json.gz",
         "sha256": "29fcb9aec188fb5f4b0900ea003de2bfb2d90de131933849107bc4d2cfe1c9fd"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -455,6 +555,9 @@
       "machine": 34404,
       "entry_rva": 49292,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -468,6 +571,8 @@
         "path": "docs/re/evidence/ida-native/8d6c9e66609fcc2901d5f821005e72dd6a83abae352ee90b04cdacaac047cbaa.json.gz",
         "sha256": "0660197a493864374d19f392548e3a9bdde05cacd696dee0e409df7888b4be62"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -479,6 +584,9 @@
       "machine": 34404,
       "entry_rva": 45784,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -492,6 +600,8 @@
         "path": "docs/re/evidence/ida-native/2009eb2e0853c329612c53416664ab016f287d601edb9ba07dfd981e16cf6f3b.json.gz",
         "sha256": "929b7955ba04f14e36c7846d6fc1b251dc44fda648bcc3d730402a36dfcd3635"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -503,8 +613,11 @@
       "machine": 43620,
       "entry_rva": 182904,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "unsupported_static_backend",
-      "reason": "CLR IL or ARM64 requires a matching static decompiler; x64 Hex-Rays evidence is not a substitute",
+      "reason": "Pure CLR IL or ARM64 requires a matching static decompiler; x64 Hex-Rays evidence is not a substitute",
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -516,6 +629,9 @@
       "machine": 332,
       "entry_rva": 153101,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -529,6 +645,8 @@
         "path": "docs/re/evidence/ida-native/9cbed3ae21915d0e2452e7723f80367077b3c35ff54c436bcc256d44ceeb1ff7.json.gz",
         "sha256": "4027d4c5065b2f5f1b27fbc7a0ab242df8c71ba1ca2aa8633420d272cfac86bd"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -540,6 +658,9 @@
       "machine": 34404,
       "entry_rva": 181660,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -553,6 +674,8 @@
         "path": "docs/re/evidence/ida-native/ffa217ade441b6ea2af52e4a3d3dc2159593499d74f03c7a734c996c60baee56.json.gz",
         "sha256": "2c58cd7ae05271af2cc608ce786538e63fbabe7aaf83030b74cd652da377b75f"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -564,6 +687,9 @@
       "machine": 34404,
       "entry_rva": 321404,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -577,6 +703,8 @@
         "path": "docs/re/evidence/ida-native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11.json.gz",
         "sha256": "18020db7da88a66c306b89e5eb1a0c13cc76359990d88f96506a92f759ec4822"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -588,8 +716,29 @@
       "machine": 34404,
       "entry_rva": 293663,
       "clr_directory_present": true,
-      "status": "unsupported_static_backend",
-      "reason": "CLR IL or ARM64 requires a matching static decompiler; x64 Hex-Rays evidence is not a substitute",
+      "clr_flags": 16,
+      "clr_il_only": false,
+      "clr_native_entry_point": true,
+      "status": "static_analysis_acquired",
+      "ida_version": "8.3",
+      "hexrays_available": true,
+      "function_index_count": 890,
+      "selected_function_bodies": 54,
+      "decompiled_bodies": 54,
+      "decompiler_failures": 0,
+      "unresolved_entry_count": 0,
+      "selection": "exports/PE entry, one direct-reference expansion, and all recovered keyword string xref functions; indirect calls and other function bodies remain gaps",
+      "evidence": {
+        "path": "docs/re/evidence/ida-native/0278fc29d16fa8334d22b8d62347f73ba9819139ef02ee10d20f1aa0ec7d1d56.json.gz",
+        "sha256": "93f840c5060963ba923e28ecffdec809acd1f57eb28aababaab260fb99817e3b"
+      },
+      "managed_index_evidence": {
+        "path": "docs/re/evidence/ida-native/0278fc29d16fa8334d22b8d62347f73ba9819139ef02ee10d20f1aa0ec7d1d56.clr-index.json.gz",
+        "sha256": "87e5a39621f8ea4e91698400aa5a2fcef7c46e7b7a5519ee8a29d792145bafd3",
+        "function_index_count": 699,
+        "limitation": "CLI loader synthetic-address function index only; addresses are not validated PE RVAs, and no native or managed pseudocode was recovered"
+      },
+      "managed_semantics_gap": "Mixed native/CLR image: acquired machine-code bodies do not recover managed IL, managed initialization or native/managed transition semantics",
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -601,6 +750,9 @@
       "machine": 34404,
       "entry_rva": 516740,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -614,6 +766,8 @@
         "path": "docs/re/evidence/ida-native/08d79db95def4026a78ebfaee3ecfa736295462efb33e8f27864d1004fd8903c.json.gz",
         "sha256": "59a1c7755e1a07240abd2573a6be6a17d62a5ab7cad13c8aba285458ce77d776"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -625,8 +779,29 @@
       "machine": 34404,
       "entry_rva": 284991,
       "clr_directory_present": true,
-      "status": "unsupported_static_backend",
-      "reason": "CLR IL or ARM64 requires a matching static decompiler; x64 Hex-Rays evidence is not a substitute",
+      "clr_flags": 16,
+      "clr_il_only": false,
+      "clr_native_entry_point": true,
+      "status": "static_analysis_acquired",
+      "ida_version": "8.3",
+      "hexrays_available": true,
+      "function_index_count": 888,
+      "selected_function_bodies": 52,
+      "decompiled_bodies": 52,
+      "decompiler_failures": 0,
+      "unresolved_entry_count": 0,
+      "selection": "exports/PE entry, one direct-reference expansion, and all recovered keyword string xref functions; indirect calls and other function bodies remain gaps",
+      "evidence": {
+        "path": "docs/re/evidence/ida-native/0bcff6300613d8888610799e0a8f8b0c89014df7623f9d88315e895d26780c28.json.gz",
+        "sha256": "91073ab483ad26dcb90c50b5b16720138fba3f97294ab95c0e71b273de7306f5"
+      },
+      "managed_index_evidence": {
+        "path": "docs/re/evidence/ida-native/0bcff6300613d8888610799e0a8f8b0c89014df7623f9d88315e895d26780c28.clr-index.json.gz",
+        "sha256": "81988be9452d484c8097e23613abde9c2627d2783ba25f062cecb331a016f44d",
+        "function_index_count": 661,
+        "limitation": "CLI loader synthetic-address function index only; addresses are not validated PE RVAs, and no native or managed pseudocode was recovered"
+      },
+      "managed_semantics_gap": "Mixed native/CLR image: acquired machine-code bodies do not recover managed IL, managed initialization or native/managed transition semantics",
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -638,6 +813,9 @@
       "machine": 34404,
       "entry_rva": 9298044,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -651,6 +829,8 @@
         "path": "docs/re/evidence/ida-native/0d88696c023364588ac2c21624f1ea1074db74defab1f67a41f60d5866b2d4d5.json.gz",
         "sha256": "0ab432c105119fe972ad8b5dc199bb17e426a4946f9a3e4567c01102cd161984"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -662,6 +842,9 @@
       "machine": 34404,
       "entry_rva": 372556,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -675,6 +858,8 @@
         "path": "docs/re/evidence/ida-native/0ebfed724e5fbcbd1ea9ba9456a2ed2dee704bf7b1466cfe30e4bdb3341d9783.json.gz",
         "sha256": "2e30e950f3a3a9bc9c657d5869d9f18831db19e98d21c8e3cbb0cd655b903c75"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -686,6 +871,9 @@
       "machine": 34404,
       "entry_rva": 372892,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -699,6 +887,8 @@
         "path": "docs/re/evidence/ida-native/12ae7a3ac98727b2e8151c244be3e92c4dab179f827f123ce6b91d97401c64f8.json.gz",
         "sha256": "50ce786bf65680e9ff7969b84803e9dcfc9333bc82cb37ec12d9df5de077100c"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -710,6 +900,9 @@
       "machine": 34404,
       "entry_rva": 1938976,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -723,6 +916,8 @@
         "path": "docs/re/evidence/ida-native/1544d6cba1844f35c863d4b540fb68cb037b5f3cb86fad08705f9b000c94b83f.json.gz",
         "sha256": "1d670c9857499953b6bce8414dd957135e7c5f186a119bbdc11b3a274cedf610"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -734,6 +929,9 @@
       "machine": 34404,
       "entry_rva": 387752,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -747,6 +945,8 @@
         "path": "docs/re/evidence/ida-native/15e390ee64e73aa7b9443feb2ec3d90629a494ce08916d0021554c6fcc31217a.json.gz",
         "sha256": "f5d5f7199d40d1c6e0bf50b937f3f2f102f1655d25d75cf0f314f539eb6ee47e"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -758,6 +958,9 @@
       "machine": 34404,
       "entry_rva": 392720,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -771,6 +974,8 @@
         "path": "docs/re/evidence/ida-native/1ea145fe182505cd8ae19a6bc1ea5362c70d18681b51195d026ec57c86ad06d8.json.gz",
         "sha256": "7212e351c6a282cb06bfd1e019b17bee5518627c77e1b7b2a416ce61a7d4dc13"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -782,6 +987,9 @@
       "machine": 34404,
       "entry_rva": 456840,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -795,6 +1003,8 @@
         "path": "docs/re/evidence/ida-native/25e02087a7667d1a1557eec141992fd1c3df2014c152d3a8069deeafec03e22e.json.gz",
         "sha256": "aa5a91b4c92acc786d134e831409cadd4ae9a399a9169d25f1cc2f5d8e8e2149"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -806,6 +1016,9 @@
       "machine": 34404,
       "entry_rva": 426628,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -819,6 +1032,8 @@
         "path": "docs/re/evidence/ida-native/2c578011d5835e9a0ac5dd6b08a735f1bc90ff7880755d23caf62967969f6111.json.gz",
         "sha256": "1b793660288287bb75ef37b055272fec1bd32d780425fac2d515bdb696e2542f"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -830,6 +1045,9 @@
       "machine": 34404,
       "entry_rva": 421220,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -843,6 +1061,8 @@
         "path": "docs/re/evidence/ida-native/3535570263eea4e9273e75eb744286f93cf6f9d271b66b5d2f67d2b6f6995dde.json.gz",
         "sha256": "c4b0e5e598e2a34ff5881f1d420dea729a20e62a46f494cc6dfaf6fa2bed30f2"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -854,6 +1074,9 @@
       "machine": 34404,
       "entry_rva": 589216,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -867,6 +1090,8 @@
         "path": "docs/re/evidence/ida-native/38cd5bed362817cd79c38f54b87ba1c4c9f489c02a760067f78774f21969796d.json.gz",
         "sha256": "b2926b16d96b0472c935ffacbd39b5666ca758fc3c3390ebfb258d501ac87f3a"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -878,6 +1103,9 @@
       "machine": 34404,
       "entry_rva": 89280,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -891,6 +1119,8 @@
         "path": "docs/re/evidence/ida-native/3d774d1582156a6ca0a69bd65c950599139206c5b06cc7103af4828b151d8bda.json.gz",
         "sha256": "e32ebd42143533c06bce8f010d6c1020bafb1f773d409c5167172270fea8df29"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -902,6 +1132,9 @@
       "machine": 34404,
       "entry_rva": 363044,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -915,6 +1148,8 @@
         "path": "docs/re/evidence/ida-native/48b542a7034eca9b4128d86693ffbe2e1748ffd6a58c15091ea5a53e2ae55bdd.json.gz",
         "sha256": "2a29ce4978d0b73588545c506bf7e425176d0b4fb8cd4723a0133e7a6e3581b5"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -926,6 +1161,9 @@
       "machine": 34404,
       "entry_rva": 289256,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -939,6 +1177,8 @@
         "path": "docs/re/evidence/ida-native/5094f6d12a37f7f63ac1ecd797572c7796d41fcca83d94a24528543122b54599.json.gz",
         "sha256": "d057538f41eab445900ffe67a12d1a8bc33c7f6b2276852e360fb4caeafa654b"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -950,6 +1190,9 @@
       "machine": 34404,
       "entry_rva": 309068,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -963,6 +1206,8 @@
         "path": "docs/re/evidence/ida-native/54b8d53c215c7992ab949aa75db1cd92706bdd1fb4a488a1efcdb695141f68c5.json.gz",
         "sha256": "e58a8517e83484b00e8a7f46738035c121171f0bd766922f4eefe99aed1e1acf"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -974,6 +1219,9 @@
       "machine": 34404,
       "entry_rva": 295596,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -987,6 +1235,8 @@
         "path": "docs/re/evidence/ida-native/55b50c56e92c582a39ef034c4e3c0d71be246ec15f945005286847b8f15c73ef.json.gz",
         "sha256": "b92a5310d99a6babd54bd5cd8580b5130ccf20fad542c9049e8be03deece09ea"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -998,6 +1248,9 @@
       "machine": 34404,
       "entry_rva": 362388,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1011,6 +1264,8 @@
         "path": "docs/re/evidence/ida-native/5d2bcb82f6e288394a58199e72dde4c13e1fd03174cd55ff39d7a3d9fdfbffb0.json.gz",
         "sha256": "ae14745c3413d88450d170262ec17c22b4bdc9a4cb6f4f2a4458795e6af50be0"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1022,6 +1277,9 @@
       "machine": 34404,
       "entry_rva": 706304,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1035,6 +1293,8 @@
         "path": "docs/re/evidence/ida-native/5de7cbbcdb0ddb70e5622d6570fb2debb5186ae1182e693d4f212e5df1ec835a.json.gz",
         "sha256": "ebb27a24dbb5e599927956a771861ac75eddf1c802beae95524af49d7b777d9a"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1046,6 +1306,9 @@
       "machine": 34404,
       "entry_rva": 42968,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1059,6 +1322,8 @@
         "path": "docs/re/evidence/ida-native/6150d86066e0e2a127a234ddc9d300ce9ac2b0cfa4c9d778fd026ea87cc1574b.json.gz",
         "sha256": "e9ecb986e789a8768acb84abc9a640ecb2d99e07e1e953bbf4899c9cbfa82d90"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1070,6 +1335,9 @@
       "machine": 34404,
       "entry_rva": 326620,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1083,6 +1351,8 @@
         "path": "docs/re/evidence/ida-native/661390780318d2c8d850e07d0c2b29266c56eb185910c8501f2c40adbfc0305a.json.gz",
         "sha256": "3abfc13bf10cb791b1dee216bfbe63eff69d9ec3c48ec78a58e2a2b6a548e2e0"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1094,6 +1364,9 @@
       "machine": 34404,
       "entry_rva": 444452,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1107,6 +1380,8 @@
         "path": "docs/re/evidence/ida-native/6f6c875527ca8a147ef07a2737979a5fa4af1f11b99f5e26be5128bc77baca73.json.gz",
         "sha256": "f4d322e3427de7f9432bc85cb0701390f7b799e1041bce630ba15a3c556b9d52"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1118,6 +1393,9 @@
       "machine": 34404,
       "entry_rva": 115800,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1131,6 +1409,8 @@
         "path": "docs/re/evidence/ida-native/70c26607d0b6728ea2818519630e604366b165161376e2d659a9cf9a1ea5d648.json.gz",
         "sha256": "da4819cf0d17a72457381366382a6aee128d6009342231d2bc1d5d34853627c1"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1142,6 +1422,9 @@
       "machine": 34404,
       "entry_rva": 576816,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1155,6 +1438,8 @@
         "path": "docs/re/evidence/ida-native/7966cf2f6deaf18a277acafed433063afec7db9f5c4275729601aab40b54eb9e.json.gz",
         "sha256": "da5de6f2a6548b2a52e86de8edeb6aabc5ff886980acac265936945c94dee943"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1166,6 +1451,9 @@
       "machine": 34404,
       "entry_rva": 298964,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1179,6 +1467,8 @@
         "path": "docs/re/evidence/ida-native/7f8f6ae7dd4e96a012727f9569a7cec415ad67e28ca9ce192847a72f768d0334.json.gz",
         "sha256": "41401402bcd74b38714647554255b83cd285576473c7d3c39c89d5d32c8788ec"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1190,6 +1480,9 @@
       "machine": 34404,
       "entry_rva": 94104,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1203,6 +1496,8 @@
         "path": "docs/re/evidence/ida-native/8099160275f98c1fee56497a46b83a32ef49fb8d67436bd46556ce31c67c9790.json.gz",
         "sha256": "cb39ccdf6f238e422766c84a00ea97b93f03d8c4b71610ed7489383a3bcc00d5"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1214,6 +1509,9 @@
       "machine": 34404,
       "entry_rva": 340968,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1227,6 +1525,8 @@
         "path": "docs/re/evidence/ida-native/821ba042908d3bcdc5bf7e099c1a1160bbb1246f62184ab63a85ce6f752fa101.json.gz",
         "sha256": "3d04724287841fd97129844bbbbed43be5a51e29df86dd7297173e426a82c7b2"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1238,6 +1538,9 @@
       "machine": 34404,
       "entry_rva": 387752,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1251,6 +1554,8 @@
         "path": "docs/re/evidence/ida-native/828499b9ef1146214032bc9fe60f448369fa050c0c3598d59b7c2827bd685edb.json.gz",
         "sha256": "365ba562a06c8e1211d94ea0b64a1a8a13c5da572f2fb0d3a19dea39365a3593"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1262,6 +1567,9 @@
       "machine": 34404,
       "entry_rva": 440448,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1275,6 +1583,8 @@
         "path": "docs/re/evidence/ida-native/84a540e5d1747a8c1912e2f4710850b9397ccaf4ea812be03f20da8f27aa9ae7.json.gz",
         "sha256": "fe16c8f31f9496739dc80eddad06d3e17cc91de18a666bcb9706e8f0c495f4c3"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1286,6 +1596,9 @@
       "machine": 34404,
       "entry_rva": 496432,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1299,6 +1612,8 @@
         "path": "docs/re/evidence/ida-native/8678a5eadd881ea7a569131369b3964d9519f1d584beddd315fb897e6f4af5ca.json.gz",
         "sha256": "8280b16c3fb24791ca9fa55139f0da1a045813146edb488e1b1b8f678a52628f"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1310,6 +1625,9 @@
       "machine": 34404,
       "entry_rva": 76088,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1323,6 +1641,8 @@
         "path": "docs/re/evidence/ida-native/87e07bf624706203eea9925fc3ec1787ab7d097c3fc4f55009176e5b676077f1.json.gz",
         "sha256": "233ef69fb05584de41817325e0f9d2d01903d1f7ff486faf2f13568f48c3de4a"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1334,6 +1654,9 @@
       "machine": 34404,
       "entry_rva": 516740,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1347,6 +1670,8 @@
         "path": "docs/re/evidence/ida-native/8ae90d8fea237c1ca062906383f878cf191a0c5d367e92233c2892ea3a2278f2.json.gz",
         "sha256": "62a30745a322f7599f9eae115b212bb919d7d219a0a3282e05edd258c88b6d21"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1358,6 +1683,9 @@
       "machine": 34404,
       "entry_rva": 429236,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1371,6 +1699,8 @@
         "path": "docs/re/evidence/ida-native/8c0b60c7011d6b3841bee6ef9d37719720288222abc8b656a9e494f7bdb77f4f.json.gz",
         "sha256": "83372a8e19f18e99cc9c00eb3a1c21ce3b69c54901908eee6e667316d288eb26"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1382,6 +1712,9 @@
       "machine": 34404,
       "entry_rva": 9293404,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1395,6 +1728,8 @@
         "path": "docs/re/evidence/ida-native/8e8f6923624762935d70b72f58bec00808db84df740340047919b53331130a0a.json.gz",
         "sha256": "91750afb4e217284dc05d24d19ab9fc38584eaf741242b8e29c6a9f91052d40c"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1406,6 +1741,9 @@
       "machine": 34404,
       "entry_rva": 9298044,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1419,6 +1757,8 @@
         "path": "docs/re/evidence/ida-native/8eaccd31629fd23bc43b9518fff2994272bdd7da359d8fe6deb547c4950730f4.json.gz",
         "sha256": "446536de200c655862340f977916cc7ea24d21be3b7d9fb0ad37b850ae7b862c"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1430,6 +1770,9 @@
       "machine": 34404,
       "entry_rva": 368884,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1443,6 +1786,8 @@
         "path": "docs/re/evidence/ida-native/9134a79a2aac0d3ca48087fe2ad62ab29b44ad334c9d85edf36171c7ea79caaf.json.gz",
         "sha256": "67157cdab6288559e8a884d7b29eecc3ef84789b593aa289c27321af9195df7f"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1454,8 +1799,29 @@
       "machine": 34404,
       "entry_rva": 293631,
       "clr_directory_present": true,
-      "status": "unsupported_static_backend",
-      "reason": "CLR IL or ARM64 requires a matching static decompiler; x64 Hex-Rays evidence is not a substitute",
+      "clr_flags": 16,
+      "clr_il_only": false,
+      "clr_native_entry_point": true,
+      "status": "static_analysis_acquired",
+      "ida_version": "8.3",
+      "hexrays_available": true,
+      "function_index_count": 890,
+      "selected_function_bodies": 54,
+      "decompiled_bodies": 54,
+      "decompiler_failures": 0,
+      "unresolved_entry_count": 0,
+      "selection": "exports/PE entry, one direct-reference expansion, and all recovered keyword string xref functions; indirect calls and other function bodies remain gaps",
+      "evidence": {
+        "path": "docs/re/evidence/ida-native/94e0cfa6121cea0ad0275547fb507cfc725022cf68263a9d3ed97ed998a9374a.json.gz",
+        "sha256": "0add35eb7a7a50a1e8c46c5b3fcc1b95f13b93f7ac79617d2e52f0ff55db0069"
+      },
+      "managed_index_evidence": {
+        "path": "docs/re/evidence/ida-native/94e0cfa6121cea0ad0275547fb507cfc725022cf68263a9d3ed97ed998a9374a.clr-index.json.gz",
+        "sha256": "2cf812d81d34900554395bdcf75bf37cd71043b7d15d445604eec080434bb47a",
+        "function_index_count": 699,
+        "limitation": "CLI loader synthetic-address function index only; addresses are not validated PE RVAs, and no native or managed pseudocode was recovered"
+      },
+      "managed_semantics_gap": "Mixed native/CLR image: acquired machine-code bodies do not recover managed IL, managed initialization or native/managed transition semantics",
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1467,6 +1833,9 @@
       "machine": 34404,
       "entry_rva": 1525800,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1480,6 +1849,8 @@
         "path": "docs/re/evidence/ida-native/9779234a43451b4500d4a4fe51a6b9e5750924ffb7facf499ce7a071cf7cc336.json.gz",
         "sha256": "85e7c69cfd1bd5cdb347595dec09af30fbb58a5cb337722572dc827cc61ae90c"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1491,6 +1862,9 @@
       "machine": 34404,
       "entry_rva": 288908,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1504,6 +1878,8 @@
         "path": "docs/re/evidence/ida-native/9f0ee89c1e003d2990880babc7612fa76d0259a716b955fbc0a7d34d5de8a418.json.gz",
         "sha256": "3c20c56e7bd7b00e24617c0b5f57d797482a5c2b8b41a3fe7a356371861619f4"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1515,6 +1891,9 @@
       "machine": 34404,
       "entry_rva": 428548,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1528,6 +1907,8 @@
         "path": "docs/re/evidence/ida-native/a55c0305b4b683a82a13f3062b042420ba4d8540ec49807d0c3b319a2261a333.json.gz",
         "sha256": "920bb3aebf841808886e4a9047fff7776ca43689dd06d6ee35862bff3d1d3319"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1539,6 +1920,9 @@
       "machine": 34404,
       "entry_rva": 1345152,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1552,6 +1936,8 @@
         "path": "docs/re/evidence/ida-native/aaf21e02a34db9ac603bd7a97721226486af8bf383707e70eef43b95159b140e.json.gz",
         "sha256": "188510bdc9401ad5cc30dacb81d6599e3e829d1e1f9cf0cd83eb5102ed90cfdb"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1563,6 +1949,9 @@
       "machine": 34404,
       "entry_rva": 417292,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1576,6 +1965,8 @@
         "path": "docs/re/evidence/ida-native/ac93e7e9beb1e6e8652b2bbf21801d9d9387ed90a173e314a8fdef9c61aa46bd.json.gz",
         "sha256": "413f5ea1d41166092ce304f829a661f3bed8d2fab4449e1f8d1f08c25fed8a43"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1587,6 +1978,9 @@
       "machine": 34404,
       "entry_rva": 292684,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1600,6 +1994,8 @@
         "path": "docs/re/evidence/ida-native/ae2799059f4dae73daa2349bb9dfcca0e535483663d9ef1b1f18a45fea97c395.json.gz",
         "sha256": "d3aea1244717d89120fad91c52db9a53397c5fb8ff7c2bba2f794641ca0357c4"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1611,6 +2007,9 @@
       "machine": 34404,
       "entry_rva": 68264,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1624,6 +2023,8 @@
         "path": "docs/re/evidence/ida-native/af10595e3ce6cf9b394488e1929fc6e3d54a887c6be62b66260d7ee507c9e8f2.json.gz",
         "sha256": "6aef716dbce10619d07bd8a1a6162c02da3c53245c87c59833d44f3b9aa542d5"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1635,6 +2036,9 @@
       "machine": 34404,
       "entry_rva": 420276,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1648,6 +2052,8 @@
         "path": "docs/re/evidence/ida-native/b06973af45bcc6cc6c10dd74e2fc0f1b9caa8124b0416e8f869b5640fc795a8c.json.gz",
         "sha256": "79fe069f7e0c6170670b8afbfb0f52b7dbaff88e2d4808a99e9845bf434a1182"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1659,6 +2065,9 @@
       "machine": 34404,
       "entry_rva": 1663224,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1672,6 +2081,8 @@
         "path": "docs/re/evidence/ida-native/b84535e588da1582ef1938b41d58d272baf88f37d9b76db1a89d970aa6c66802.json.gz",
         "sha256": "afc23381118c0166c96e509c3fa8ab580dc801518c73fcd005ae0ca863dff8fa"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1683,6 +2094,9 @@
       "machine": 34404,
       "entry_rva": 1823952,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1696,6 +2110,8 @@
         "path": "docs/re/evidence/ida-native/d3cf6173a2e8bb7af0a1066da3bd9d6038270884b6fcdc5afdaefd349755da5d.json.gz",
         "sha256": "f35ca06f4131724832e0d02ce94a9aa987160d20a2ecf6ebe2c44cbccf83c2b2"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1707,6 +2123,9 @@
       "machine": 34404,
       "entry_rva": 361044,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1720,6 +2139,8 @@
         "path": "docs/re/evidence/ida-native/d4fd77a92c860bb190d7aab604124e9d4343901fcea83069aa99d29db5a9586b.json.gz",
         "sha256": "a8b3a2ba611b0fbd7d91c917fb85fe9de1b77f8a5e242f3fd6250f12590ebaf6"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1731,6 +2152,9 @@
       "machine": 34404,
       "entry_rva": 443024,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1744,6 +2168,8 @@
         "path": "docs/re/evidence/ida-native/daee9fe0f5e9f9fa2a5fe83d9da56081464cc540eeb4452a81e81788c71bf3c2.json.gz",
         "sha256": "d81c7ed1a050abe46c4fb29bd9f3cf95fd9f5aebf50e0ba1e7f846beee746659"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1755,6 +2181,9 @@
       "machine": 34404,
       "entry_rva": 681272,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1768,6 +2197,8 @@
         "path": "docs/re/evidence/ida-native/dc9af9a15330512ac89b6544205c08b9ffadef3fef2d390a01ead9482ca79105.json.gz",
         "sha256": "2c3ec51a4595a3286eeab55a758c441935f1ee67956a402c62b933a61210088d"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1779,6 +2210,9 @@
       "machine": 34404,
       "entry_rva": 86960,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1792,6 +2226,8 @@
         "path": "docs/re/evidence/ida-native/e22f6289255816dfa82d02a77afea385eaede7d479a5966a908de35663f9df6e.json.gz",
         "sha256": "7dce7d992b26c9f33f9a39a8a44413dbbf8b2d46741f6e403e93b48c8fb0dd10"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1803,6 +2239,9 @@
       "machine": 34404,
       "entry_rva": 247684,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1816,6 +2255,8 @@
         "path": "docs/re/evidence/ida-native/e45d400a3cc1af287e7787ca38c66ff4e071f138e013c91c57ec39acc22aaf8e.json.gz",
         "sha256": "740c0630f6def585ffc89841aa63d555f08eb81e6405c59b84a0e06d5713a8d2"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1827,6 +2268,9 @@
       "machine": 34404,
       "entry_rva": 86960,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1840,6 +2284,8 @@
         "path": "docs/re/evidence/ida-native/e55e0e56cde4d2af41328fa13d28a5447a7d28d919537ef095d208dc8f314498.json.gz",
         "sha256": "c3dfcadf9883266975c11b1cfdf67d22e3e404882c4d4cd726f9fd8c84190065"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1851,6 +2297,9 @@
       "machine": 34404,
       "entry_rva": 123796,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1864,6 +2313,8 @@
         "path": "docs/re/evidence/ida-native/e8a1ca0efae2f7f3a73f2402d3110cc2ca1b54b19a836ca22859dd23ec3d1159.json.gz",
         "sha256": "8c974f0b04c02a42261ed41c4f35cafc9059bf42117582659c13e214078493da"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1875,6 +2326,9 @@
       "machine": 34404,
       "entry_rva": 403792,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1888,6 +2342,8 @@
         "path": "docs/re/evidence/ida-native/f2db7a896be775d7104171e354378e3e55c212efa05ff1f1e6ae9d378de746d8.json.gz",
         "sha256": "f5a3f974fd61aee5746f86205d5b7127b78c55a68f0700f4da0d4caa607cc282"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1899,6 +2355,9 @@
       "machine": 34404,
       "entry_rva": 563928,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1912,6 +2371,8 @@
         "path": "docs/re/evidence/ida-native/f7c0ddebcb635c27b022292c3c3446870d0010b6160fb6074c1dd9d09206e0e2.json.gz",
         "sha256": "772b26fbf704955856958bfcca7922640bf9d82bc4ead4d68a8ec08dccc87b91"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1923,6 +2384,9 @@
       "machine": 34404,
       "entry_rva": 389648,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1936,6 +2400,8 @@
         "path": "docs/re/evidence/ida-native/5d04be921ae8f9f2338fc4b69afbfdb5ac3435dd1d95511bc0c9f82c3f305c72.json.gz",
         "sha256": "2cd2bcf96e5cff033ab1b66ebf8cdfddc71df1f3efca0750b83b6136105d1429"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1947,6 +2413,9 @@
       "machine": 34404,
       "entry_rva": 249912,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1960,6 +2429,8 @@
         "path": "docs/re/evidence/ida-native/bfca5b229abadd69b6e767b3529791992ec9d21f909c816fdd13abf6ba27b438.json.gz",
         "sha256": "84e1a2d6a8c60a023794f78954a955e2a7cb8fe74f311d66aba95a61ae686144"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1971,6 +2442,9 @@
       "machine": 34404,
       "entry_rva": 333088,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -1984,6 +2458,8 @@
         "path": "docs/re/evidence/ida-native/f0746d88ad757353bbf08ab50a8af94df74ed21d8e9169db87126859792468ca.json.gz",
         "sha256": "552ea7076e1cb50ffba4d110e70b56ca9789ed14bc7ae18e351b48e0a6967e3e"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"
@@ -1995,6 +2471,9 @@
       "machine": 34404,
       "entry_rva": 221856,
       "clr_directory_present": false,
+      "clr_flags": null,
+      "clr_il_only": false,
+      "clr_native_entry_point": false,
       "status": "static_analysis_acquired",
       "ida_version": "8.3",
       "hexrays_available": true,
@@ -2008,6 +2487,8 @@
         "path": "docs/re/evidence/ida-native/02afe91dee521fb234a205ce5c5f9948de68d587d4b3858469b030a056143407.json.gz",
         "sha256": "356f1f5ee3ef3bb738c62720d67286e6a731d218a3cfdeef4d0f00cb8d8b1c6a"
       },
+      "managed_index_evidence": null,
+      "managed_semantics_gap": null,
       "semantic_completion": false,
       "rust_replacement_completion": false,
       "runtime_acceptance": "not_run"

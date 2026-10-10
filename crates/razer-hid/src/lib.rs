@@ -2,6 +2,7 @@
 //! Razer commands, capability selection and receiver peers belong above this
 //! module. See docs/re/cross-platform-hid-current.md for original-code receipts.
 mod descriptor;
+#[path = "transport/hidapi.rs"]
 mod native;
 
 pub use native::NativeBackend;

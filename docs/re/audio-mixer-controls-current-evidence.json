@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "6e04aa0e4a70ae9a68fb6968b8c6714e882223cf2970ac8307a6098063c48883",
+  "generator_sha256": "5f7af0c7145ca22e67fee992fddc40da23e14f648f1d230425e25f6faf3a1759",
   "method": "Manifest-bound current binaries, full property disassembly, exact instruction gates and numeric constants; no vendor execution",
   "binary_identity": [
     {
@@ -19757,7 +19757,7 @@
       "attributes": 128
     },
     "status": "Source recipe and Rust IPC/Windows adapter implemented; UI consumer and runtime target correlation unverified",
-    "rust": "crates/razer-service/src/runtime_mixer_driver.rs",
+    "rust": "crates/razer-service/src/runtime/windows/mixer_driver.rs",
     "identity_difference": "Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId",
     "rust_lifecycle": "Retain HID identity lock across sequence, open/close an exclusive driver handle for each stream as the source does"
   },
@@ -19999,7 +19999,7 @@
       "attributes": 0
     },
     "status": "Rust matrix codec, scoped Windows adapter and IPC reads/writes implemented; UI consumer and runtime target correlation unverified",
-    "rust": "crates/razer-service/src/runtime_mixer_driver.rs",
+    "rust": "crates/razer-service/src/runtime/windows/mixer_driver.rs",
     "confirmation_difference": "Rust checks actual returned length and reads back the selected boolean after writes; original does neither",
     "identity_difference": "Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId"
   },

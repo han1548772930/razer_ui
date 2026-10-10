@@ -14,19 +14,19 @@ use std::{
     },
 };
 
-#[path = "runtime_device_reads.rs"]
+#[path = "device_reads.rs"]
 mod device_reads;
-#[path = "runtime_hid.rs"]
+#[path = "hid.rs"]
 mod hid;
-#[path = "runtime_hid_transport.rs"]
+#[path = "hid_transport.rs"]
 mod hid_transport;
-#[path = "runtime_macro.rs"]
+#[path = "macro_recording.rs"]
 mod macro_recorder;
-#[path = "runtime_mixer_driver.rs"]
+#[path = "mixer_driver.rs"]
 mod mixer_driver;
-#[path = "runtime_receiver.rs"]
+#[path = "receiver.rs"]
 mod receiver;
-#[path = "runtime_usb.rs"]
+#[path = "usb.rs"]
 mod usb;
 
 // No userdata argument exists in these APIs. The worker permits one outstanding
@@ -224,11 +224,23 @@ impl NativeRuntime {
         }
         match request {
             ServiceRequest::HostStorageView { .. }
+            | ServiceRequest::AudioVolumeRead { .. }
+            | ServiceRequest::AudioVolumeWrite { .. }
+            | ServiceRequest::WheelScrollLinesRead
+            | ServiceRequest::WheelScrollLinesWrite { .. }
+            | ServiceRequest::WindowsServiceStatus { .. }
+            | ServiceRequest::WindowsServiceStart { .. }
+            | ServiceRequest::WindowsServiceStop { .. }
             | ServiceRequest::HostStorageClose { .. }
             | ServiceRequest::HostStorageCall { .. }
             | ServiceRequest::HostStorageEvents { .. }
             | ServiceRequest::AudioEndpoints { .. }
             | ServiceRequest::HidNodes
+            | ServiceRequest::HidNodeReports { .. }
+            | ServiceRequest::HidNodeDpiStagesRead { .. }
+            | ServiceRequest::HidNodeDpiStagesWrite { .. }
+            | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
+            | ServiceRequest::HidNodeKeyboardBrightnessWrite { .. }
             | ServiceRequest::HidNodeRead { .. }
             | ServiceRequest::HidNodeWrite { .. }
             | ServiceRequest::HidNodeMixerRead { .. }
@@ -279,6 +291,18 @@ impl NativeRuntime {
             ServiceRequest::DeviceRead { target, kind } => device_reads::query(&target, kind),
             ServiceRequest::DeviceWrite { target, setting } => {
                 device_reads::write(&target, &setting)
+            }
+            ServiceRequest::DeviceKeyboardBrightnessRead { target } => {
+                device_reads::keyboard_brightness(&target, None)
+            }
+            ServiceRequest::DeviceKeyboardBrightnessWrite { target, percent } => {
+                device_reads::keyboard_brightness(&target, Some(percent))
+            }
+            ServiceRequest::DeviceDpiStagesRead { target } => {
+                device_reads::dpi_stages(&target, None)
+            }
+            ServiceRequest::DeviceDpiStagesWrite { target, draft } => {
+                device_reads::dpi_stages(&target, Some(&draft))
             }
             ServiceRequest::NativeLibrarySnapshot {
                 library,

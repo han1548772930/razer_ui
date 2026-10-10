@@ -36,6 +36,11 @@ mod stream_mixer;
 mod stream_mixer_number;
 pub use oled_home::{OledRuntimeObservation, OledRuntimeRequested};
 pub use stream_mixer::StreamMixerObservation;
+#[path = "audio_volume.rs"]
+mod audio_volume;
+pub use audio_volume::{
+    AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
+};
 
 #[derive(Deserialize)]
 struct AudioOption {
@@ -201,6 +206,7 @@ pub struct AudioProductWorkspace {
     pod_audio_editor: Option<(String, Entity<control_pod_audio::AudioEditor>)>,
     pod_audio_subscription: Option<Subscription>,
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
+    volume: audio_volume::State,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
 impl EventEmitter<AudioStudioRequested> for AudioProductWorkspace {}
@@ -228,6 +234,7 @@ impl AudioProductWorkspace {
             pod_audio_editor: None,
             pod_audio_subscription: None,
             pod_runtime_devices: Vec::new(),
+            volume: audio_volume::State::default(),
         };
         this.initialize_equalizers();
         this.initialize_nommo_draft();
@@ -326,6 +333,7 @@ impl AudioProductWorkspace {
         snapshot
     }
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.invalidate_volume();
         self.restore_mixer(saved, window, cx);
         let staged_oled_language = self.staged.get("/device/oledLanguage").cloned();
         self.pod_audio_editor = None;
@@ -411,6 +419,7 @@ impl AudioProductWorkspace {
         }
         self.sync(window, cx);
         self.reset_mixer_numbers(window, cx);
+        self.request_volume_read(cx);
         cx.notify();
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
@@ -440,6 +449,16 @@ impl AudioProductWorkspace {
             .find(|c| c.path == path)
     }
     fn enabled(&self, control: &AudioControl) -> bool {
+        if self.spec.product_id == 1352
+            && matches!(
+                control.path.as_str(),
+                "/device/volume/value" | "/device/volume/isEnabled"
+            )
+        {
+            // Current bU makes the volume active on pointer-down even while
+            // muted; releasing a non-zero value unmutes via XU.changeValue.
+            return self.volume_active();
+        }
         self.draft.pointer(&control.path).is_some()
             && control
                 .enabled_by
@@ -486,6 +505,19 @@ impl AudioProductWorkspace {
             window,
             move |this, _, event, window, cx| {
                 if this.syncing {
+                    return;
+                }
+                if this.spec.product_id == 1352 && key == "/device/volume/value" {
+                    match event {
+                        SliderEvent::Change(value) => {
+                            this.preview_volume(value.start().clamp(0., 100.).round() as u8, cx)
+                        }
+                        SliderEvent::Release(value) => this.commit_volume(
+                            value.start().clamp(0., 100.).round() as u8,
+                            window,
+                            cx,
+                        ),
+                    }
                     return;
                 }
                 if matches!(this.spec.product_id, 1303 | 1304) && key == "/profile/brightness/value"
@@ -694,7 +726,13 @@ impl AudioProductWorkspace {
         self.sync_mixer(window, cx);
         self.sync_mixer_numbers(window, cx);
         for (path, state) in &self.sliders {
-            if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {
+            let visible = self
+                .volume_value()
+                .filter(|_| self.spec.product_id == 1352 && path == "/device/volume/value")
+                .map(f64::from);
+            if let Some(value) =
+                visible.or_else(|| self.draft.pointer(path).and_then(Value::as_f64))
+            {
                 state.update(cx, |s, cx| s.set_value(value as f32, window, cx));
             }
         }
@@ -749,20 +787,30 @@ impl AudioProductWorkspace {
             "toggle" => Checkbox::new(SharedString::from(format!("audio-{path}")))
                 .label(label)
                 .checked(
-                    self.draft
-                        .pointer(&path)
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false),
+                    self.volume_enabled()
+                        .filter(|_| {
+                            self.spec.product_id == 1352 && path == "/device/volume/isEnabled"
+                        })
+                        .unwrap_or_else(|| {
+                            self.draft
+                                .pointer(&path)
+                                .and_then(Value::as_bool)
+                                .unwrap_or(false)
+                        }),
                 )
                 .disabled(!enabled)
                 .on_click(cx.listener(move |this, value, window, cx| {
+                    if this.spec.product_id == 1352 && path == "/device/volume/isEnabled" {
+                        this.toggle_volume(*value, window, cx);
+                        return;
+                    }
                     if this.mixer.is_some()
                         && path == "/device/streamMixerSettings/isStreamMixerEnabled"
                     {
                         this.request_mixer_enable(*value, window, cx);
                         return;
                     }
-                    this.edit(&path, json!(value), window, cx)
+                    this.edit(&path, json!(value), window, cx);
                 }))
                 .into_any_element(),
             "select" => v_flex()
@@ -789,10 +837,16 @@ impl AudioProductWorkspace {
                 .into_any_element(),
             "slider" => {
                 let value = self
-                    .draft
-                    .pointer(&path)
-                    .and_then(Value::as_f64)
-                    .unwrap_or(f64::from(control.min));
+                    .volume_preview()
+                    .or_else(|| self.volume_value())
+                    .filter(|_| self.spec.product_id == 1352 && path == "/device/volume/value")
+                    .map(f64::from)
+                    .unwrap_or_else(|| {
+                        self.draft
+                            .pointer(&path)
+                            .and_then(Value::as_f64)
+                            .unwrap_or(f64::from(control.min))
+                    });
                 let digits = if control.step.fract() == 0. {
                     0
                 } else {
@@ -952,6 +1006,14 @@ impl AudioProductWorkspace {
                     );
                 }
                 panel = panel.children(section.controls.iter().map(|c| self.render_control(c, cx)));
+                if self.spec.product_id == 1352 && section.title == "VOLUME_HEADER" {
+                    panel = panel.child(
+                        div()
+                            .text_sm()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(self.volume_status()),
+                    );
+                }
                 if self.mixer.is_some()
                     && key == "STREAM_MIXER_HEADER"
                     && section.title == "PLAYBACK_MIX"

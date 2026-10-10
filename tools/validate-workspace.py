@@ -113,7 +113,7 @@ for name in ['razer-hid','razer-device']:
     for p in (ROOT/'crates'/name/'src').rglob('*.rs'):
         text=p.read_text('utf-8')
         assert not re.search(r'\b(?:use|extern crate)\s+(?:windows_sys|libloading|gpui_kit)\b',text),p
-transport=(ROOT/'crates/razer-service/src/runtime_hid_transport.rs').read_text('utf-8')
+transport=(ROOT/'crates/razer-service/src/runtime/windows/hid_transport.rs').read_text('utf-8')
 assert 'libloading' not in transport and 'include_bytes!' not in transport
 assert 'with_backend' in transport
 print(f'Workspace: {len(packages)-1} independent libraries + UI/agent executables; {len(reference["files"])} original files verified in {reference_location}; {len(source_files)} active Rust files UTF-8; include/dependency boundaries and relocation fingerprints valid')

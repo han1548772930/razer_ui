@@ -23,6 +23,12 @@ fn receiver_automatic_reads_require_live_physical_identity() {
     }
     device.device_container_id = "{72cbd6ee-ea6b-4aa4-8b10-d82c7796fd13}".into();
     assert!(super::receiver_read_owner(&device));
+    device.real_product_id = 179;
+    device.device_container_id = "hid-collection:1532:00b3:3:65280:1:6e6f6465".into();
+    assert!(super::receiver_read_owner(&device));
+    device.device_container_id = "hid-collection:1532:00f1:3:65280:1:6e6f6465".into();
+    assert!(!super::receiver_read_owner(&device));
+    device.device_container_id = "{72cbd6ee-ea6b-4aa4-8b10-d82c7796fd13}".into();
     device.observe_connection(Some(DeviceConnectionObservation::ReceiverPeer(1)));
     assert!(!super::receiver_read_owner(&device));
     device.observe_connection(Some(DeviceConnectionObservation::UsbPresent));

@@ -6,7 +6,6 @@ const root=path.resolve(__dirname,'..'), check=process.argv.includes('--check');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const requireValue=(v,message)=>{if(!v)throw Error(message);return v;};
 const catalog=JSON.parse(read('crates/razer-pages/src/features/mouse_products_data.json'));
-const pages=JSON.parse(read('docs/re/mouse-page-source.json')).products;
 // The independently maintained three-mode audit owns this existing capability.
 const specs=JSON.parse(read('crates/razer-pages/src/features/mouse_scroll_wheel_data.json')).filter(spec=>Array.isArray(spec.defaults.disabledModes));
 const reports=[];
@@ -25,7 +24,7 @@ for(const product of catalog.filter(product=>product.profile.scrollWheel&&!Array
  const source=Object.assign(Object.create(Source.prototype),{directory,
   files:[...new Set(Object.values(manifest.files))].filter(file=>/^\.\/static\/js\/.*\.js$/.test(file)).map(file=>directory+'/'+file.slice(2)),
   modules:new Map(),texts:new Map(),parsed:new Set()});
- const candidates=[],scanned=[],reducerReads=[],mappingTips=[];
+ const candidates=[],scanned=[],reducerReads=[],mappingTips=[],asts=new Map();
  for(const file of source.files){
   const text=source.text(file);scanned.push({path:file,sha256:hash(text)});
   if(/\.scrollWheelReducer\b|\["scrollWheelReducer"\]/.test(text))reducerReads.push(file);
@@ -33,6 +32,7 @@ for(const product of catalog.filter(product=>product.profile.scrollWheel&&!Array
   if(tip>=0)mappingTips.push({path:file,sha256:hash(text),offset:tip-120,end:tip+730,source:text.slice(tip-120,tip+730)});
   if(!text.includes('this.state.scrollModeUI'))continue;
   const ast=acorn.parse(text,{ecmaVersion:'latest'});
+  asts.set(file,ast);
   walk(ast,node=>{
    if(node.type!=='BlockStatement')return;
    for(const child of node.body){
@@ -71,10 +71,14 @@ for(const product of catalog.filter(product=>product.profile.scrollWheel&&!Array
    }
   }
  }
- function label(expr){
-  const found=requireValue(resolve(expr,context),'Unresolved label '+pid);
-  const key=requireValue(source.literal(found.context.id,found.node),'Nonliteral label');
-  receipts.push(receipt(found.name,found.node,found.context));return key;
+ function label(expr,ctx=context){
+  const found=requireValue(resolve(expr,ctx),'Unresolved label '+pid);
+  const key=source.literal(found.context.id,found.node);
+  requireValue(typeof key==='string'&&/^[A-Z][A-Z0-9_]*$/.test(key),'Expected i18n key, not translated object/value in '+pid);
+  receipts.push(receipt(found.name,found.node,found.context));
+  if(found.node.type==='Identifier'&&found.context.definitions.has(found.node.name))
+   receipts.push(receipt(found.name+' literal i18n key',found.context.definitions.get(found.node.name),found.context));
+  return key;
  }
  const objects=[];
  walk(candidate.node,node=>{if(node.type==='ObjectExpression')objects.push(new Map(node.properties.filter(p=>p.type==='Property').map(p=>[p.key.name??p.key.value,p.value])));});
@@ -97,16 +101,43 @@ for(const product of catalog.filter(product=>product.profile.scrollWheel&&!Array
   }
  });
  const textKeys=[];
- for(const props of objects)if(props.has('text')){const expr=props.get('text');if(expr.type==='MemberExpression')textKeys.push(label(expr));}
- const getKey=key=>requireValue(textKeys.includes(key),`Missing ${key} in ${pid}`);
+ walk(candidate.node,node=>{
+  if(node.type!=='CallExpression'||node.arguments[1]?.type!=='ObjectExpression')return;
+  const prop=node.arguments[1].properties.find(p=>p.type==='Property'&&(p.key.name??p.key.value)==='text');
+  if(prop?.value.type!=='MemberExpression')return;
+  const key=label(prop.value);textKeys.push(key);
+  receipts.push(receipt('translation text caller '+key,node,context));
+ });
+ const getKey=key=>{requireValue(textKeys.includes(key),`Missing ${key} in ${pid}`);return key;};
  // Resolve the actual Customize root, including imported exported components.
- const page=requireValue(pages.find(p=>p.product_id===pid)?.pages.find(page=>page.key==='TAB_CUSTOMIZE'),'Missing Customize '+pid);
- requireValue(hash(read(page.path))===page.sha256,'Stale Customize '+pid);
- const entry=acorn.parseExpressionAt(page.component,0,{ecmaVersion:'latest'}).arguments[0];
- let start=page.path===context.file?resolve(entry,context):undefined;
- if(!start){source.parse(page.path);for(const scope of source.modules.values()){
-  if(scope.file===page.path&&scope.fn.start<=page.nav_offset&&scope.fn.end>=page.nav_offset){start=resolve(entry,moduleContext(scope.id));if(start)break;}
- }}
+ // Read the live navigation object directly. The removed historical page
+ // inventory is not an implementation input or a fallback.
+ const mounts=[];
+ for(const file of source.files){
+  const text=source.text(file);if(!text.includes('component:')||!text.includes('navs'))continue;
+  const ast=asts.get(file)||acorn.parse(text,{ecmaVersion:'latest'}),blocks=[];
+  asts.set(file,ast);
+  walk(ast,node=>{if(node.type==='BlockStatement'){
+   const defs=definitions(node);if(defs.size)blocks.push({file,definitions:defs,start:node.start,end:node.end});
+  }});
+  walk(ast,node=>{
+   if(node.type!=='ObjectExpression')return;
+   const props=new Map(node.properties.filter(p=>p.type==='Property').map(p=>[p.key.name??p.key.value,p.value]));
+   if(props.get('id')?.type!=='Literal'||!props.has('name')||props.get('component')?.type!=='CallExpression')return;
+   for(const ctx of blocks.filter(block=>block.start<=node.start&&block.end>=node.end).sort((a,b)=>(a.end-a.start)-(b.end-b.start))){
+    const name=resolve(props.get('name'),ctx);if(!name)continue;
+    let key;try{key=source.literal(name.context.id,name.node);}catch{continue;}
+    if(key!=='TAB_CUSTOMIZE')continue;
+    const component=props.get('component'),entry=component.arguments[0],start=resolve(entry,ctx);
+    requireValue(start,'Cannot resolve current Customize root '+pid);
+    mounts.push({start,page:{path:file,sha256:hash(text),nav_offset:node.start,component:text.slice(component.start,component.end)},
+     navigation:receipt('current TAB_CUSTOMIZE navigation object',node,ctx)});break;
+   }
+  });
+ }
+ requireValue(mounts.length===1,'Ambiguous or missing current Customize mount '+pid);
+ const {page,start,navigation}=mounts[0];
+ receipts.push(navigation);
  requireValue(start,'Cannot resolve Customize root '+pid);
  const queue=[{...start,trail:[]}],seen=new Set(),reached=[];let trail;
  while(queue.length){
@@ -163,11 +194,19 @@ for(const product of catalog.filter(product=>product.profile.scrollWheel&&!Array
   smart_reel_descriptions:hasLevels?[getKey('SMART_REEL_DESC'),getKey('SMART_REEL_LEVEL_DESC')]:[getKey('SMART_REEL_DESC')]});
  reports.push({product_id:pid,status:hasLevels?'two_mode_levels':'two_mode_switches',manifest:{path:manifestPath,sha256:hash(read(manifestPath))},
   mounted_page:page.component,mount_chain:trail,receipts,css,
+  description_contract:{source:'actual mounted translation component text props resolve to i18n key strings; translated dictionaries are not page keys',
+   mode:getKey('SCROLL_MODE_DESC'),acceleration:[getKey(hasLevels?'SCROLL_ACCELERATION_LEVEL_DESC':'SCROLL_ACCELERATION_DESC')],
+   smart_reel:hasLevels?[getKey('SMART_REEL_DESC'),getKey('SMART_REEL_LEVEL_DESC')]:[getKey('SMART_REEL_DESC')]},
   behavior:{mode:'Either TwoWay half toggles, including the selected half; vendor dispatch is debounced 300ms',
    smart_reel_lock:hasLevels?'none':'selected source scrollMode FreeSpin; preserve stored enabled bit',
    levels:hasLevels?[0,4,1]:null,disabled_modes:false}});
 }
 specs.sort((a,b)=>a.product_id-b.product_id);
+for(const spec of specs){
+ if(Object.hasOwn(spec,'mode_description'))requireValue(typeof spec.mode_description==='string','Scroll mode description must be an i18n string');
+ for(const field of ['acceleration_descriptions','smart_reel_descriptions'])if(Object.hasOwn(spec,field))
+  requireValue(Array.isArray(spec[field])&&spec[field].every(key=>typeof key==='string'),'Scroll descriptions must be i18n strings: '+field);
+}
 for(const[file,value]of[['crates/razer-pages/src/features/mouse_scroll_wheel_data.json',specs],['docs/re/mouse-scroll-wheel-current-evidence.json',{method:'Current mounted AST/CSS and CONFIG only; no vendor execution',products:reports}]]){
  const output=JSON.stringify(value,null,2)+'\n';if(check)requireValue(read(file)===output,'Stale '+file);else fs.writeFileSync(path.join(root,file),output);
 }

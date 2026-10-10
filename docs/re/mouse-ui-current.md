@@ -10,6 +10,8 @@
 
 证据：[滚轮当前收据](mouse-scroll-wheel-current-evidence.json)、[三模式收据](mouse-226-scroll-current-evidence.json)。维护工具：`prepare-mouse-scroll-wheel.cjs --check`、`prepare-mouse-226-scroll.cjs --check`。
 
+描述字段保存当前实际挂载组件调用的 i18n 字符串键；两模式产品逐一记录 mode、acceleration 与 smart-reel 的文本属性调用，等级变体使用独立等级文案。生成器的存在性断言不作为文案值，`String`/`Vec<String>` 字段须通过嵌入 JSON 类型检查；导航从当前 manifest 与唯一 Customize 挂载 AST 恢复。
+
 ## DPI 与系统属性
 
 `mouse_dpi_rows.rs`按能力定义 profile 字段、最少可见行、阶段关闭行为、可见性/拖排回退、说明和负边距。70 的存储 Active 对应运行 visible，不可用它冒充运行拖动标题 Active；源字段缺失时不捏造编号。

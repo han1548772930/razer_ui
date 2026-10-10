@@ -57,6 +57,16 @@ impl PortableRuntime {
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
+            ServiceRequest::AudioVolumeRead { device_id } => Ok(serde_json::to_value(
+                crate::simple_audio_volume::read(&device_id)?,
+            )?),
+            ServiceRequest::AudioVolumeWrite {
+                device_id,
+                mute,
+                volume,
+            } => Ok(serde_json::to_value(crate::simple_audio_volume::write(
+                &device_id, mute, volume,
+            )?)?),
             ServiceRequest::AudioDevices => {
                 Ok(serde_json::to_value(crate::simple_audio::enumerate()?)?)
             }
@@ -113,6 +123,14 @@ impl PortableRuntime {
                     "identity_scope":"hid_collection", "enumeration_completeness":"not_reported_by_backend"}),
                 )
             }
+            ServiceRequest::HidNodeReports { node } => {
+                Self::revalidate(&node)?;
+                let device = with_backend(|backend| backend.open(&node))?;
+                let reports = device.report_lengths()?;
+                Self::revalidate(&node)?;
+                Ok(json!({"node":node,"reports":reports,
+                    "transport_metadata":device.metadata(),"identity_scope":"hid_collection"}))
+            }
             ServiceRequest::HidNodeRead {
                 node,
                 product_id,
@@ -123,7 +141,8 @@ impl PortableRuntime {
                 ensure!(
                     node.vendor_id == cap.vendor_id
                         && cap.direct_pids.contains(&u32::from(node.product_id))
-                        && node.interface_number == i32::from(cap.claim_interface),
+                        && node.interface_number
+                            == i32::from(cap.claim_interface_for(u32::from(node.product_id))?),
                     "HID 节点不符合源产品/接口选择；未知接口号不能猜测"
                 );
                 let IdentityLookup::Unique(identity) =
@@ -140,6 +159,12 @@ impl PortableRuntime {
                     .iter()
                     .find(|command| command.name == kind)
                     .context("产品不支持该源查询")?;
+                if kind == razer_device::device_reads::DeviceReadKind::Polling {
+                    ensure!(
+                        cap.polling_physical_product_id == Some(u32::from(node.product_id)),
+                        "轮询率物理连接分支尚未核实"
+                    );
+                }
                 let started = Instant::now();
                 let deadline = || deadline(started);
                 let device = with_backend(|backend| backend.open(&node))?;
@@ -166,6 +191,22 @@ impl PortableRuntime {
                     "identity_scope":"hid_collection", "evidence":"docs/re/mouse-read-capabilities-current-evidence.json"}),
                 )
             }
+            ServiceRequest::HidNodeKeyboardBrightnessRead { node, product_id } => {
+                self.keyboard_brightness(&node, product_id, None)
+            }
+            ServiceRequest::HidNodeKeyboardBrightnessWrite {
+                node,
+                product_id,
+                percent,
+            } => self.keyboard_brightness(&node, product_id, Some(percent)),
+            ServiceRequest::HidNodeDpiStagesRead { node, product_id } => {
+                self.dpi_stages(&node, product_id, None)
+            }
+            ServiceRequest::HidNodeDpiStagesWrite {
+                node,
+                product_id,
+                draft,
+            } => self.dpi_stages(&node, product_id, Some(&draft)),
             ServiceRequest::HidNodeWrite {
                 node,
                 product_id,
@@ -176,10 +217,17 @@ impl PortableRuntime {
                 let write_cap = razer_device::device_writes::capability(product_id)
                     .context("产品没有源核实的直接写入能力")?;
                 razer_device::device_writes::prepare(write_cap, &setting)?;
+                if setting.read_kind() == razer_device::device_reads::DeviceReadKind::Polling {
+                    ensure!(
+                        cap.polling_physical_product_id == Some(u32::from(node.product_id)),
+                        "轮询率写入物理连接分支尚未核实"
+                    );
+                }
                 ensure!(
                     node.vendor_id == cap.vendor_id
                         && cap.direct_pids.contains(&u32::from(node.product_id))
-                        && node.interface_number == i32::from(cap.claim_interface),
+                        && node.interface_number
+                            == i32::from(cap.claim_interface_for(u32::from(node.product_id))?),
                     "HID 写入节点不符合源产品/接口选择"
                 );
                 let IdentityLookup::Unique(identity) =
@@ -254,6 +302,158 @@ impl PortableRuntime {
             }
             _ => bail!("此操作需要尚未移植的平台服务或设备身份适配"),
         }
+    }
+}
+
+impl PortableRuntime {
+    fn dpi_stages(
+        &mut self,
+        node: &HidNode,
+        product_id: u32,
+        draft: Option<&razer_device::mouse_dpi_stages::DpiStagesDraft>,
+    ) -> anyhow::Result<Value> {
+        use razer_device::mouse_dpi_stages;
+        let settings = mouse_dpi_stages::capability(product_id)
+            .context("Product has no current source-proven DPI stage capability")?;
+        let cap = &settings.transport;
+        ensure!(
+            node.vendor_id == cap.vendor_id
+                && cap.direct_pids.contains(&u32::from(node.product_id))
+                && node.interface_number
+                    == i32::from(cap.claim_interface_for(u32::from(node.product_id))?),
+            "DPI stage collection does not match source product/interface"
+        );
+        let IdentityLookup::Unique(identity) = device_identity::lookup(u32::from(node.product_id))
+        else {
+            bail!("DPI stage target has no unique current device identity");
+        };
+        ensure!(
+            identity.product_id == product_id && !identity.is_dongle && !identity.is_ble,
+            "DPI stage route requires a source-proven direct device"
+        );
+        if let Some(draft) = draft {
+            mouse_dpi_stages::pack(settings, draft)?;
+        }
+        let started = Instant::now();
+        let validate = || {
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "DPI stage operation exceeded its confirmation deadline"
+            );
+            Self::revalidate(node)
+        };
+        validate()?;
+        // Retain the same open collection and process lock across set and get.
+        let device = with_backend(|backend| backend.open(node))?;
+        ensure!(
+            device
+                .report_lengths()?
+                .feature
+                .get(&cap.report_id)
+                .copied()
+                == Some(cap.report_bytes),
+            "DPI stage observed Feature Report size does not match current source"
+        );
+        let mut response = json!({"node":node,"product_id":product_id,"source_class":settings.source_class,
+            "identity_scope":"hid_collection","transport_metadata":device.metadata(),
+            "evidence":"docs/re/mouse-dpi-stages-current-evidence.json","profile_scope":"current_active_table","obm_profiles_written":false});
+        let mut next = || {
+            self.transaction(
+                node,
+                &cap.source_class,
+                cap.transaction_prefix,
+                cap.transaction_modulus,
+            )
+        };
+        if let Some(draft) = draft {
+            response["result"] = serde_json::to_value(mouse_dpi_stages::apply_current(
+                device.as_ref(),
+                settings,
+                draft,
+                &mut next,
+                &validate,
+            )?)?;
+        } else {
+            response["reading"] = serde_json::to_value(mouse_dpi_stages::read_current(
+                device.as_ref(),
+                settings,
+                &mut next,
+                &validate,
+            )?)?;
+        }
+        validate()?;
+        response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
+        Ok(response)
+    }
+
+    fn keyboard_brightness(
+        &mut self,
+        node: &HidNode,
+        product_id: u32,
+        percent: Option<u8>,
+    ) -> anyhow::Result<Value> {
+        use razer_device::keyboard_settings;
+        let settings =
+            keyboard_settings::capability(product_id).context("产品没有源核实的键盘亮度能力")?;
+        let cap = &settings.transport;
+        ensure!(
+            node.vendor_id == cap.vendor_id
+                && cap.direct_pids.contains(&u32::from(node.product_id))
+                && node.interface_number
+                    == i32::from(cap.claim_interface_for(u32::from(node.product_id))?),
+            "键盘亮度节点不符合源产品/接口"
+        );
+        let IdentityLookup::Unique(identity) = device_identity::lookup(u32::from(node.product_id))
+        else {
+            bail!("键盘亮度目标没有唯一设备身份");
+        };
+        ensure!(
+            identity.product_id == product_id && !identity.is_dongle && !identity.is_ble,
+            "键盘亮度入口只接受已核实的直接设备"
+        );
+        if let Some(percent) = percent {
+            keyboard_settings::encode_percent(percent)?;
+        }
+        let started = Instant::now();
+        let validate = || {
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "键盘亮度操作超过确认期限"
+            );
+            Self::revalidate(node)
+        };
+        validate()?;
+        let device = with_backend(|backend| backend.open(node))?;
+        let mut response = json!({"node":node,"product_id":product_id,"source_class":settings.source_class,
+            "identity_scope":"hid_collection","transport_metadata":device.metadata(),
+            "evidence":"docs/re/keyboard-settings-current-evidence.json"});
+        let mut next = || {
+            self.transaction(
+                node,
+                &cap.source_class,
+                cap.transaction_prefix,
+                cap.transaction_modulus,
+            )
+        };
+        if let Some(percent) = percent {
+            response["result"] = serde_json::to_value(keyboard_settings::apply(
+                device.as_ref(),
+                settings,
+                percent,
+                &mut next,
+                &validate,
+            )?)?;
+        } else {
+            response["reading"] = serde_json::to_value(keyboard_settings::read(
+                device.as_ref(),
+                settings,
+                &mut next,
+                &validate,
+            )?)?;
+        }
+        validate()?;
+        response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
+        Ok(response)
     }
 }
 

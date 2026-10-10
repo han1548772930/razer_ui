@@ -85,7 +85,7 @@ Mic/LineIn/LineOut 的 Both 写入替换整个 uint16，单声道替换选中字
 
 其他分支枚举驱动接口 GUID `c129656a-b1ab-4adf-88de-8d2993eb1232`。读 IOCTL=`0x1d6144`，返回 112 字节、28 个小端 float32；写 IOCTL=`0x1da148`，先读完整矩阵、替换选中浮点值、再写全部 112 字节。两张跳转表已从 PE 原字节解码：input 偏移 `[4,1,2,0,6,5,3]`，output 基址 `[0,21,7,14]`；已走 HID 的六组合不能绕过门控改走驱动。getter 仅在选中值精确等于 1.0 时为真，NaN 也为假。静态生成器核对全部 7×4 组合，得到 6 条 HID、22 条驱动路由；驱动写入保留其余 108 字节，包括其他浮点值的 NaN 位模式。
 
-共享 Rust 矩阵编解码和 [Windows 适配](../../crates/razer-service/src/runtime_mixer_driver.rs) 已连接 `HidNodeMixerRouteRead`/`HidNodeMixerRouteWrite`。矩阵按原 `CreateFileW` 参数独占同步打开，attributes=0。适配要求当前 HID 路径、实例、ContainerId 及同容器唯一驱动接口，操作前后重新观察；没有加载厂商 DLL。原件会遍历同类全部接口，Rust 限定选中设备，这是明确的身份策略差异；实际驱动接口是否与 HID 共享 ContainerId 未运行验证，缺失或歧义会报错。Rust 还校验实际返回 112 字节，并在写后回读目标布尔值；这两项是额外确认策略。页面消费尚缺。
+共享 Rust 矩阵编解码和 [Windows 适配](../../crates/razer-service/src/runtime/windows/mixer_driver.rs) 已连接 `HidNodeMixerRouteRead`/`HidNodeMixerRouteWrite`。矩阵按原 `CreateFileW` 参数独占同步打开，attributes=0。适配要求当前 HID 路径、实例、ContainerId 及同容器唯一驱动接口，操作前后重新观察；没有加载厂商 DLL。原件会遍历同类全部接口，Rust 限定选中设备，这是明确的身份策略差异；实际驱动接口是否与 HID 共享 ContainerId 未运行验证，缺失或歧义会报错。Rust 还校验实际返回 112 字节，并在写后回读目标布尔值；这两项是额外确认策略。页面消费尚缺。
 
 `RazerT2ResetStream` 只接受 write，使用同一驱动 GUID、IOCTL `0x222440`，输入为 4 字节 stream index，输出 4 字节缓冲的语义仍未知。原 JS `restartAudioDriver` 依次提交 0..8；不是任意流索引接口。原打开/接口失败 `0x10001`，IOCTL 失败 `0x10003`。Rust `HidNodeMixerRestartStreams` 已执行同一有序序列，每次按原 attributes=0x80 打开/释放驱动句柄，并跨序列保留身份锁。失败返回已完成的索引，不伪造音频恢复状态；成功只确认 IOCTL 完成，不解释原件忽略的输出缓冲。页面消费者和运行验收仍缺，其他平台明确不支持该 Windows 驱动能力。
 

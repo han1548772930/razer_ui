@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": 182,
+      "source_class": "rzDevice25DualLinkMouse",
+      "get_command": [
+        80,
+        4,
+        134
+      ],
+      "set_command": [
+        80,
+        4,
+        6
+      ],
+      "active_profile": 1,
+      "editor_stage_counts": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "protocol_record_capacity": 11,
+      "min_dpi": 100,
+      "max_dpi": 30000,
+      "dpi_step": 50,
+      "use_cycle_sensitivity": false,
+      "transport": {
+        "product_id": 182,
+        "source_class": "rzDevice25DualLinkMouse",
+        "direct_pids": [
+          182,
+          183
+        ],
+        "vendor_id": 5426,
+        "claim_interface": 0,
+        "report_id": 0,
+        "report_bytes": 91,
+        "transaction_prefix": 0,
+        "transaction_modulus": 31,
+        "queries": [
+          {
+            "name": "firmware",
+            "method": "getExtendedFirmwareVersion",
+            "command": [
+              4,
+              0,
+              135
+            ],
+            "payload": [],
+            "min_response_bytes": 4
+          },
+          {
+            "name": "battery",
+            "method": "getBatteryLevel",
+            "command": [
+              2,
+              7,
+              128
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "charging",
+            "method": "getChargingStatus",
+            "command": [
+              2,
+              7,
+              132
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "dpi",
+            "method": "getDpiLevel",
+            "command": [
+              7,
+              4,
+              133
+            ],
+            "payload": [
+              0
+            ],
+            "min_response_bytes": 7
+          },
+          {
+            "name": "idle",
+            "method": "getTimeToSleep",
+            "command": [
+              2,
+              7,
+              131
+            ],
+            "payload": [],
+            "min_response_bytes": 2
+          },
+          {
+            "name": "polling",
+            "method": "getProfilePollingRate",
+            "command": [
+              2,
+              0,
+              142
+            ],
+            "payload": [
+              1
+            ],
+            "min_response_bytes": 2
+          }
+        ],
+        "polling_codes": {
+          "RATE_1000Hz": 1,
+          "RATE_500Hz": 2,
+          "RATE_333Hz": 3,
+          "RATE_250Hz": 4,
+          "RATE_200Hz": 5,
+          "RATE_125Hz": 8,
+          "RATE_100Hz": 10
+        },
+        "charging_codes": {
+          "NoCharge_BatteryFull": 0,
+          "Charging": 1,
+          "ChargingFailed": 2,
+          "ForeignObjectDetection": 3,
+          "FastCharging": 4,
+          "FullCharging": 5,
+          "ReachChargingLimit": 6
+        },
+        "polling_physical_product_id": 182,
+        "polling_value_offset": 1,
+        "polling_default_hz": 100,
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25
+      }
+    }
+  ]
+}

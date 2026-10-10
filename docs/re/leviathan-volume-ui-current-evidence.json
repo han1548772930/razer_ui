@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "product_id": 1352,
+  "method": "Current source hashes and UTF16 locators verified independently; maintained Rust consumers checked statically",
+  "source_receipts": [
+    {
+      "path": ".ref/middleware/1352/main.6debfb04ffc1be201fd1.js",
+      "sha256": "62cc609495b61d5a77159c8dcf3e709bfd2c1e216c10430dba75447d1717535d",
+      "bytes": 159143,
+      "locators": [
+        {
+          "anchor": "const n={audioProtocol:{simpleService:",
+          "start_utf16": 142506,
+          "end_utf16": 142966,
+          "text": "],activeProfile:e.guid}}},35924:(e,t,o)=>{\"use strict\";o.d(t,{A:()=>r,B:()=>n});const n={audioProtocol:{simpleService:{registerAudioServiceEvent:!0}}},r={runtimeData:{serialNumber:\"\",editionId:0,layoutId:0,activeProfile:\"\",productId:1352,profiles:[],setupStatus:\"waiting\",isChromaDevice:!0},installData:null,updateData:null,lightingEffects:{canSyncQuickEffect:!1},validDevices:[],volume:null,preset:null}},31797:e=>{\"use strict\";e.exports=Buffer},40338:e=>{\"us"
+        },
+        {
+          "anchor": "const s=Object.assign(Object.assign({taskRunnerSetDPI:",
+          "start_utf16": 128839,
+          "end_utf16": 129439,
+          "text": "rentMacro:{}}})},47973:(e,t,o)=>{\"use strict\";o.d(t,{A:()=>a});var n=o(35924),r=o(93305),i=o(80759);const s=Object.assign(Object.assign({taskRunnerSetDPI:{setDpiStages:{}},calibrationInterfaces:{smartPixartCalibrationEngine:{}},hasLowBatteryValue:{config:{level:5}}},(0,r.X6)(n.A)),n.B);console.warn(\"Derived features:\",(0,r.X6)(n.A)),console.warn(s);const a=new i.NQ(s,{debug:!1})},93305:(e,t,o)=>{\"use strict\";o.d(t,{UF:()=>c,X6:()=>i,aD:()=>a,i:()=>s});var n=o(47973),r=o(2538);const i=e=>{const t={};return e.obm&&(t.isObm={yes:{macros:!0,brightness:!0,dpi:!0}}),e.runtimeData.hasBattery&&(t.isBa"
+        }
+      ]
+    },
+    {
+      "path": ".ref/middleware/1352/6259.6bff933f49e134f6804f.js",
+      "sha256": "2830ab96a57dcca0aaff62f9112630da80a1f8a05822eadecb1d5d5616ca58f9",
+      "bytes": 2340795,
+      "locators": [
+        {
+          "anchor": "const t=\"getAudioDeviceId\"",
+          "start_utf16": 2155545,
+          "end_utf16": 2157165,
+          "text": "(a,s)}c((o=o.apply(e,t||[])).next())}))};const C=\"microphone\",M=\"speaker\",N={},b=e=>O(void 0,void 0,void 0,(function*(){const t=\"getAudioDeviceId\",{useVirtualAudioChannel:n}=(0,r.i)(),o=d.jf.rzDevice;if(N[e]){if(N[e]&&n)return e===M?yield i.A.simpleUnregisterSpeakerEvent(N[e]):yield i.A.simpleUnregisterMicrophoneEvent(N[e]),delete N[e],b(e)}else try{let r,{deviceList:a}=yield i.A.simpleEnumerateAudioDevices();a=JSON.parse(a).filter((({type:t})=>t===e)),console.log(t,e,\"deviceList: \",a),r=n?a.find((({containerId:t,name:n})=>t===o.containerId&&n.includes(e===M?\"Headphone\":\"Microphone\"))):a.find((({containerId:e})=>e===o.containerId)),r||(console.warn(t,\"no match for containerId\"),r=a.find((({name:e})=>e.includes(o.device.productName)))),r?N[e]=r.id:console.warn(t,\"no match for name\")}catch(e){console.error(t,e)}return N[e]})),R=(e,t)=>O(void 0,void 0,void 0,(function*(){const n=yield b(C);n&&(yield i.A.simpleSetMicrophoneVolume(n,e,t))})),w=()=>O(void 0,void 0,void 0,(function*(){const e=yield b(C);if(e)return yield i.A.simpleGetMicrophoneVolume(e)})),k=(e,t)=>O(void 0,void 0,void 0,(function*(){const n=yield b(M);n&&(yield i.A.simpleSetSpeakerVolume(n,e,t))})),L=()=>O(void 0,void 0,void 0,(function*(){const e=yield b(M);if(e)return yield i.A.simpleGetSpeakerVolume(e)})),{audioProtocol:P}=(0,r.i)(),U=!!P&&(e=>{var t,n;const r=null!==(t=e.retryOptions)&&void 0!==t?t:{maxTry:8,delayInMs:2e3},a=null!==(n=e.supportedAudioHardwareType)&&void 0!==n?n:{microphone:!0,headphone:!0},s=()=>O(void 0,void 0,void 0,(function*(){const{muteId:e,volumeLevelId:t}=u.A.runtimeData,n=yield b(M);null!=n&&null!=e&&nul"
+        },
+        {
+          "anchor": "setHeadphoneMute:t=>",
+          "start_utf16": 2157224,
+          "end_utf16": 2158074,
+          "text": "setHeadphoneMute:t=>O(void 0,void 0,void 0,(function*(){const n=d.jf.rzDevice;return e.simpleService?yield k(!t.isEnabled,t.value):e.mappingEngine?yield o.A.setSpeakerMute(!t.isEnabled):yield n.setHeadphonesMute(!t.isEnabled)})),setHeadphoneVolume:t=>O(void 0,void 0,void 0,(function*(){const n=d.jf.rzDevice;return e.simpleService?k(!t.isEnabled,t.value):e.mappingEngine?o.A.setSpeakerVolume(t.value):yield n.setHeadphonesVolume(t.value)})),setMicrophoneMute:t=>O(void 0,void 0,void 0,(function*(){var n;if(e.rzProtocol){if(null===(n=e.rzProtocol.supportMicHardwareProtocol)||void 0===n?void 0:n.muteApi){const e=d.jf.rzDevice;return yield e.setMicMuteState(1,Number(!t.isEnabled))}const o=d.jf.rzDevice;return yield o.setMicrophoneMute(!t.isEnabled)}if(e.dllEvent){const e=d.jf.rzDevice;return t.isEnabled?yield Promise.allSettled([e.setLevelMeterE"
+        },
+        {
+          "anchor": "getSpeakerVolume:()=>",
+          "start_utf16": 2158765,
+          "end_utf16": 2159445,
+          "text": "getSpeakerVolume:()=>O(void 0,void 0,void 0,(function*(){if(!(null==a?void 0:a.headphone))return;const t=d.jf.rzDevice;let n=t.getHeadphonesInfo;e.simpleService&&(n=L),e.mappingEngine&&(n=o.A.getDefaultSpeakerDevice),e.dllEvent&&(n=t.getHeadphonesInfo);for(let e=0;e<=r.maxTry;e++){const t=yield n();if(t&&!1!==t.result)return t;e===r.maxTry&&console.warn(\"Reach maximum try for get device's volume\"),yield(0,D.yy)(r.delayInMs)}})),getMicrophoneVolume:()=>O(void 0,void 0,void 0,(function*(){var t,n,i,s,c;if(!(null==a?void 0:a.microphone))return;const l=d.jf.rzDevice;let u=l.getMicrophoneInfo;e.simpleService&&(u=w),e.mappingEngine&&(u=o.A.getDefaultMicrophoneDevice),e.dllEvent"
+        },
+        {
+          "anchor": "e.getSpeakerVolume().then",
+          "start_utf16": 1369726,
+          "end_utf16": 1370186,
+          "text": "a=Object.assign(y.A.runtimeData,g)}))}const An=e=>{(e=>{try{e.getSpeakerVolume().then((e=>{if(e&&e.result){const{muted:t,volume:n}=e,o={isEnabled:!t,value:n};y.A.volume=o,(0,ce.Q)({type:i.UuD,payload:o})}}))}catch(e){console.error(\"getSpeakerVolume  error\",e)}})(e),(e=>{var t;try{const n=null===(t=(0,ne.i)().rzDeviceType)||void 0===t?void 0:t.AudioKrystalT3;e.getMicrophoneVolume().then((e=>{if(e&&(e.result||\"SUCCESS\"===e.status)){const{muted:t,volume:o,jso"
+        },
+        {
+          "anchor": "case\"ON_CHANGE_VOLUME_VALUE\"",
+          "start_utf16": 1290688,
+          "end_utf16": 1291518,
+          "text": "ion:n}=e.payload;f.c.executeEventTask(h,S,(()=>je(this,void 0,void 0,(function*(){yield(0,se.Y4f)(e.timerTick,e.from,t,S,A,n)}))));break}case\"ON_CHANGE_VOLUME_ENABLED\":{const t=f.c.getCurrentEvent(),{volume:n,version:o}=t.payload;f.c.executeEventTask(h,S,(()=>je(this,void 0,void 0,(function*(){yield(0,se.dHe)(e.timerTick,t.from,n,S,A,o)}))));break}case\"ON_CHANGE_VOLUME_VALUE\":{const t=f.c.getCurrentEvent(),{volume:n,version:o}=t.payload;f.c.executeEventTask(h,S,(()=>je(this,void 0,void 0,(function*(){yield(0,se.bE0)(e.timerTick,t.from,n,S,A,o)}))));break}}break;case\"camera\":switch(I){case\"ON_SET_CAMERA_INFO\":{const t=f.c.getCurrentEvent(),{camera:n,version:o}=t.payload;f.c.executeEventTask(h,S,(()=>je(this,void 0,void 0,(function*(){yield(0,se.Vjm)(e.timerTick,t.from,n,S,A,o)}))));break}case\"ON_SET_IMAGE_SETTING\":{cons"
+        },
+        {
+          "anchor": "yield Ne(o)",
+          "start_utf16": 1739066,
+          "end_utf16": 1740166,
+          "text": "==l?void 0:l.message,value:{params:Object.assign({},a.value.params),result:Object.assign({},a.result)}}}),(0,m.Q)({type:u,payload:{timertick:e}}),console.log(\"set lighting effect result\",i,JSON.parse(JSON.stringify(c.jf.memoryStorageCache)),a)}function tn(e,t,n,o,i,r,a,s){return Oe(this,void 0,void 0,(function*(){if(s.value={params:{value:o.value}},null==a?void 0:a.signal.aborted)throw s.error=new Error(\"canceled\"),s.value.status=\"error\",s.error;yield Ne(o),s.value.status=\"completed\",y.A.setMemoryStorageItem&&(L.On.currValue=Object.assign(Object.assign({},L.On.currValue),{value:o.value}),L.On.lastModifiedDate=c.jf.currentTimerTick?c.jf.currentTimerTick:Date.now(),L.On.setting.value=Object.assign(Object.assign({},L.On.currValue),{value:o.value}),L.On.setting.version=n,yield y.A.setMemoryStorageItem(c.wI.TASK_MEMORY_STORAGE_KEY,JSON.stringify(c.jf.memoryStorageCache)))}))}function nn(e,t,n,i,r,a){var s,c;let l=\"\",d=\"\";\"actionFromUI\"===t?(l=o.D8R,d=o.nxO):(l=o.R81,d=o.VDc),\"completed\"===(null===(s=a.value)||void 0===s?void 0:s.status)||\"skipped\"===a.error?(0,m.Q)({type:l,payload:{versio"
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1352/static/js/main.95a4f703.js",
+      "sha256": "8dee0170de93fd9900024510e8c6edd315c30010d759ca12609ad6d2c8c73c80",
+      "bytes": 5532178,
+      "locators": [
+        {
+          "anchor": "class XU extends",
+          "start_utf16": 4577652,
+          "end_utf16": 4579832,
+          "text": "class XU extends f.Component{constructor(e){super(e),this.toggleSwitch=()=>{this.setState({volume:(0,g.A)((0,g.A)({},this.state.volume),{},{isEnabled:!this.state.volume.isEnabled})},()=>this.setValues())},this.changeValue=e=>{this.setState({volume:{isEnabled:!!e,value:e}},()=>this.setValues())},this.setValues=()=>{this.props.setVolume(this.state.volume)},this.changeVolume=e=>{let a={isEnabled:this.props.volume.isEnabled,value:e};this.props.setVolume(a)},this.soundPropertiesClicked=()=>{\"function\"===typeof Eo.A.OpenSoundVolume&&Eo.A.OpenSoundVolume()},this.checkDisableVolume=()=>!(![\"aux\",\"bluetooth\",\"optical\"].includes(this.props.inputSource)||!this.props.canDisabledVolume),this.state={volume:this.props.volume}}componentDidUpdate(e){e.volume.isEnabled===this.props.volume.isEnabled&&e.volume.value===this.props.volume.value||this.setState({volume:this.props.volume})}render(){var e;return(0,Y_.jsxs)(BR,{title:W_.dYs,tips:null!==(e=this.props.customTips)&&void 0!==e?e:W_.mTo,hasSwitch:!0,toggleSwitch:this.toggleSwitch,active:this.state.volume.isEnabled,disable:this.checkDisableVolume(),extraClass:\"volume\",children:[(0,Y_.jsx)(VU,{min:0,max:100,step:1,value:this.state.volume.value,active:this.state.volume.isEnabled,changeValue:this.changeValue,debounceTime:this.props.debounceTime,minTag:\"0\",maxTag:\"100\"}),(0,Y_.jsx)(\"div\",{className:\"img-text flex\",children:(0,Y_.jsx)(\"div\",{className:\"external volume\",onClick:this.soundPropertiesClicked,children:(0,Y_.jsx)(V_.A,{text:this.props.isSystemVolumeMixer?W_.eYr:W_.dRC})})}),this.props.showGameChatBalance&&(0,Y_.jsx)(xU,{gameChatBalanceConfig:this.props.gameChatBalanceConfig})]})}}const jU=(0,F.connect)(e=>{var a;return{volume:e.volumeReducer.volume,selectedProfile:e.profileReducer.profiles.find(a=>{let E=a.guid;return e.profileReducer.selectedProfileGuid===E}),inputSource:null===(a=e.inputSourceReducer)||void 0===a?void 0:a.inputSource}},e=>(0,y.bindActionCreators)((0,g.A)({},L),e))(XU);let ZU=null;class qU extends f.Component{constructor(e){super(e),this.getWindowsVersion=async()=>{const e=await Eo.A.getWindowVersion();ZU={osName:N_.B7H.windows,osVersion:e},this.setState({osName:N_.B7H.windows,osVersio"
+        },
+        {
+          "anchor": "class bU extends",
+          "start_utf16": 4567439,
+          "end_utf16": 4574889,
+          "text": "class bU extends f.Component{constructor(e){super(e),this.roundValue=(e,a)=>{let E=e;for(let t=0;a[t]<e;t++)E=a[t+1];return E},this.onChange=e=>{let a=this.props,E=a.allowDecimals,t=a.isRangeLimited,_=a.minLimit,o=a.maxLimit,i=E?parseFloat(e.target.value):parseInt(e.target.value);const n=this.props,r=n.min,s=n.max,T=n.dataset;T&&!T.includes(i)&&(i=this.roundValue(i,T)),0===r&&1===s||t&&!Number.isNaN(_)&&!Number.isNaN(o)&&(i<_||i>o)||this.cancelMouseUp||Number.isNaN(i)||(this.mouseIsDown?this.state.active&&(this.props.callOnChangeOnEveryStep&&this.props.changeValue(i),this.props.debounceTime&&(clearTimeout(this.debounceTimeout),this.debounceTimeout=setTimeout(()=>{this.props.changeValue(i)},this.props.debounceTime)),\"brightness\"===this.props.extraClass?this.setState({value:i,active:!!i}):this.setState({value:i})):this.props.changeValue(i,this.mouseIsDown))},this.handleKeyDown=e=>{35!==e.keyCode&&36!==e.keyCode&&37!==e.keyCode&&38!==e.keyCode&&39!==e.keyCode&&40!==e.keyCode||e.preventDefault()},this.updateValue=()=>{try{if(!this.tipDiv.current||!this.thumbTagDom.current||!this.fillDiv.current||!this.sliderDom.current)return;if(this.props.thumbTag)this.tipDiv.current.innerText=this.props.thumbTag;else if(!this.props.tipFormat){var e;const a=(null===(e=this.state.value)||void 0===e?void 0:e.toString())+(this.props.showTextReference&&this.state.value>=80?\"*\":\"\");this.tipDiv.current.innerText=a}const a=this.getTipWidth(),E=this.getSliderWidth();if(!this.props.noTip&&(0===a||0===E))return void requestAnimationFrame(()=>this.updateValue());const t=this.getPosition(),_=this.getPercent();this.tipDiv.current.style.left=\"\".concat(t,\"px\"),this.thumbTagDom.current.style.left=\"\".concat(t+11.5,\"px\"),this.fillDiv.current.style.width=\"calc(8px + \".concat(_,\"*(100% - 16px))\")}catch(a){console.error(\"Error in updateValue:\",a)}},this.onMouseDown=()=>{this.mouseIsDown=!0,this.cancelMouseUp=!1,!1===this.state.active&&this.setState({active:!0}),this.props.thumbTag&&(this.tipDiv.current.style.opacity=1,this.thumbTagDom.current.style.opacity=0)},this.onMouseUp=()=>{var e;if(this.cancelMouseUp)return this.cancelMouseUp=!1,void(this.mouseIsDown=!1);this.mouseIsDown&&(this.mouseIsDown=!1,console.log(\"onMouseUp\"),this.props.changeValue(this.state.value,null!==(e=this.props.position)&&void 0!==e?e:null,this.mouseIsDown))},this.onMouseMove=e=>{if(this.props.sendValueToParent&&this.props.sendValueToParent(this.state.value),!this.props.thumbTag)return;let a=e.nativeEvent.x-this.leftBound,E=this.getPosition();this.mouseIsDown||(no(a,E+3,E+19)?(this.tipDiv.current.style.opacity=1,this.thumbTagDom.current.style.opacity=0):(this.tipDiv.current.style.opacity=0,this.thumbTagDom.current.style.opacity=1))},this.onMouseEnter=e=>{if(!this.props.thumbTag)return;let a=e.nativeEvent.x-this.leftBound,E=this.getPosition();no(a,E+3,E+19)?(this.tipDiv.current.style.opacity=1,this.thumbTagDom.current.style.opacity=0):(this.tipDiv.current.style.opacity=0,this.thumbTagDom.current.style.opacity=1)},this.onMouseLeave=()=>{this.props.thumbTag&&(this.tipDiv.current.style.opacity=0,this.thumbTagDom.current.style.opacity=1)};const a=this.props,E=a.active,t=a.value;this.state={active:E,value:t},this.debounceTimeout=null,this.leftBound=0,this.sliderDom=v().createRef(),this.tipDiv=v().createRef(),this.fillDiv=v().createRef(),this.thumbTagDom=v().createRef(),this.FillRecommended=v().createRef(),this.mouseIsDown=!1,this.cancelMouseUp=!1}getPercent(){const e=this.props,a=e.min,E=e.max;return(this.state.value-a)/(E-a)}getPosition(){if(!this.tipDiv.current||!this.sliderDom.current)return 0;const e=this.getTipWidth(),a=this.getSliderWidth();return this.getPercent()*(a-16)-e/2+8}getTipWidth(){return this.tipDiv.current?this.tipDiv.current.getBoundingClientRect().width:0}getSliderWidth(){return this.sliderDom.current?this.sliderDom.current.getBoundingClientRect().width:0}componentDidMount(){this.leftBound=this.sliderDom.current.getBoundingClientRect().left,window.addEventListener(\"mouseup\",this.onMouseUp),this.props.thumbTag&&(this.tipDiv.current.style.opacity=0,this.thumbTagDom.current.style.opacity=1);const e=new IntersectionObserver(e=>{e[0].isIntersecting&&(this.updateValue(),this.cleanup())});e.observe(this.sliderDom.current),this.cleanup=()=>{e.unobserve(this.sliderDom.current)},this.updateValue()}componentWillUnmount(){window.removeEventListener(\"mouseup\",this.onMouseUp,!1),this.cleanup()}componentDidUpdate(e,a){const E=this.props,t=E.value,_=E.active;t!==e.value&&(this.props.cancelMouseUpOnValueChange&&this.mouseIsDown&&(this.mouseIsDown=!1,this.cancelMouseUp=!0,clearTimeout(this.debounceTimeout)),this.setState({value:t})),this.props.showTextReference?this.tipDiv.current.innerText.includes(\"*\")||(this.tipDiv.current.innerText=this.tipDiv.current.innerText+\"*\"):this.tipDiv.current.innerText.includes(\"*\")&&(this.tipDiv.current.innerText=this.tipDiv.current.innerText.trim().slice(0,-1)),_!==e.active&&this.setState({active:_}),this.state.value===a.value&&this.props.max===e.max&&this.props.min===e.min||this.updateValue(),e.isVisible!==this.props.isVisible&&this.updateValue()}render(){const e=this.props,a=e.min,E=e.max,t=e.step,_=e.minTag,o=e.midTag,i=e.boostTag,n=e.maxTag,r=e.extraClass,s=e.noTip,T=e.noTag,I=e.thumbTag,O=e.enableSliderRange,A=e.title,l=e.ariaLabel,S=e.disabledInput,R=this.state,d=R.active,N=R.value,c=this.onChange,u=this.onMouseMove,C=this.onMouseLeave,D=this.onMouseEnter,L=this.onMouseDown,P=this.handleKeyDown;var p=\"slider-container \".concat(d?\"on\":\"\",\" \").concat(s?\"no-tip\":\"\",\" \").concat(T?\"no-tag\":\"\",\" \").concat(r||\"\",\" \").concat(\"BRIGHTNESS_HEADER\"===A?\"no-pointer\":\"\"),m=\"\".concat(O?_||W_.$LP:\"\"),M=\"\".concat(O?n||W_.RYm:\"\"),h=\"\".concat(O&&o||\"\"),U=\"\".concat(O&&i||\"\"),G=this.props.thumbTag?this.props.thumbTag:this.props.tipFormat?this.props.tipFormat(this.state.value):this.state.value;return(0,Y_.jsxs)(\"div\",{className:p,children:[(0,Y_.jsx)(\"div\",{className:\"thumb-tag\",ref:this.thumbTagDom,children:I}),U?(0,Y_.jsxs)(Y_.Fragment,{children:[(0,Y_.jsx)(\"div\",{className:\"foot min\",children:(0,Y_.jsx)(V_.A,{text:m})}),(0,Y_.jsx)(\"div\",{className:\"foot mid1\",children:(0,Y_.jsx)(V_.A,{text:h})}),(0,Y_.jsx)(\"div\",{className:\"foot mid2\",children:(0,Y_.jsx)(V_.A,{text:M})}),(0,Y_.jsx)(\"div\",{className:\"foot max\",children:(0,Y_.jsx)(V_.A,{text:U})})]}):(0,Y_.jsxs)(Y_.Fragment,{children:[(0,Y_.jsx)(\"div\",{className:\"foot min\",children:(0,Y_.jsx)(V_.A,{text:m})}),(0,Y_.jsx)(\"div\",{className:\"foot mid\",children:(0,Y_.jsx)(V_.A,{text:h})}),(0,Y_.jsx)(\"div\",{className:\"foot max\",children:(0,Y_.jsx)(V_.A,{text:M})})]}),(0,Y_.jsx)(\"div\",{className:\"left\",ref:this.fillDiv}),(0,Y_.jsx)(\"div\",{className:\"track\"}),(0,Y_.jsx)(\"div\",{className:\"slider-tip\",ref:this.tipDiv,children:G}),(0,Y_.jsx)(\"input\",{onMouseDown:L,onMouseMove:u,onMouseEnter:D,onMouseLeave:C,ref:this.sliderDom,type:\"range\",min:a,max:E,value:N,step:t,className:\"slider\",onChange:c,onKeyDown:P,\"aria-label\":l,disabled:S})]})}}bU.defaultProps={enableSliderRange:!0};const VU=yU(bU),WU=e=>async a=>{void 0!==e&&a({type:oe.mce,payload:e})},YU=()=>e=>{e({type:mc})},wU=()=>e=>{e({type:pc})};class zU extends f.Component{constructor(e){super(e),this.onChange=e=>{let a=this.props.allowDecimals?parseFloat(e.target.value):parseInt(e.target.value);this.setState({value:a})},this.handleKeyDown=e=>{35!==e.keyCode&&36!==e.keyCode&&37!==e.keyCode&&38!==e.keyCode&&39!==e.keyCode&&40!==e.keyCode||e.preventDefault()},this.onMouseUp="
+        },
+        {
+          "anchor": "LG=()=>",
+          "start_utf16": 4593861,
+          "end_utf16": 4594351,
+          "text": "LG=()=>(0,Y_.jsxs)(gR,{children:[(0,Y_.jsx)(HU,{}),(0,Y_.jsxs)(yR,{direction:\"left\",children:[(0,Y_.jsx)(jU,{}),(0,Y_.jsx)(DG,{}),(0,Y_.jsx)(rG,{}),(0,Y_.jsx)(tG,{})]}),(0,Y_.jsxs)(yR,{direction:\"right\",children:[(0,Y_.jsx)(NG,{}),(0,Y_.jsx)($U,{})]})]});W_.qNE,W_.ZdM,W_.fmC,W_.onr,W_.Q4p;const PG=[{frequency:31,decibel:0},{frequency:63,decibel:0},{frequency:125,decibel:0},{frequency:250,decibel:0},{frequency:500,decibel:0},{frequency:1e3,decibel:0},{frequency:2e3,decibel:0},{frequency"
+        },
+        {
+          "anchor": "name:W_.s17,component:(0,Y_.jsx)(LG,{})",
+          "start_utf16": 4712569,
+          "end_utf16": 4712729,
+          "text": "I_REQUEST_MW,\"runUpdate\")};var a=[{id:1,name:W_.s17,component:(0,Y_.jsx)(LG,{})},{id:2,name:W_.Nji,component:(0,Y_.jsx)(KG,{})},{id:3,name:W_.lgc,component:(0,Y"
+        },
+        {
+          "anchor": "volumeReducer:function(e,a)",
+          "start_utf16": 4134875,
+          "end_utf16": 4136325,
+          "text": "volumeReducer:function(e,a){var E,t;if(\"undefined\"===typeof e)return Bs;const _=null!==(E=(null===_e.DeviceInfo||void 0===_e.DeviceInfo?void 0:_e.DeviceInfo.subCategory)||(null===_e.DeviceInfo||void 0===_e.DeviceInfo?void 0:_e.DeviceInfo.category))&&void 0!==E?E:null;switch(null===(t=Hs[_])||void 0===t||t.call(Hs,a,e),a.type){case oe.mce:{let E,t=(0,g.A)((0,g.A)({},e),{},{volume:a.payload});var o,i;if(e.volume.isEnabled!==a.payload.isEnabled)E=new TE(\"ON_CHANGE_VOLUME_ENABLED\",void 0,{volume:a.payload}),null===(o=window.mwBroadcastChannel)||void 0===o||o.postMessage({type:\"ON_CHANGE_VOLUME_ENABLED\",timerTick:void 0,payload:{volume:a.payload}});else E=new TE(\"ON_CHANGE_VOLUME_VALUE\",void 0,{volume:a.payload}),null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_CHANGE_VOLUME_VALUE\",timerTick:void 0,payload:{volume:a.payload}});return t=ka(t,{timertick:E.stateMachineEvent.timerTick,actionType:E.stateMachineEvent.type,payload:E.stateMachineEvent.payload}),t}case oe.UuD:{const E=a.payload,t=E.isEnabled,_=E.value;return(0,g.A)((0,g.A)({},e),{},{volume:{isEnabled:\"boolean\"===typeof t?t:e.volume.isEnabled,value:\"number\"===typeof _?_:e.volume.value}})}case oe.NaM:return ka(e,a.payload);case oe.mNq:return Ka(e,a);case oe.D8R:return xa(e,a);case oe.nxO:return Xa(e,a);case oe.pTe:return ja(e,a);case oe.R81:return Za(e,a);case oe.VDc:return qa(e,a);default:return e}},inputSourceReducer:function(e,a){if(\"undefined\"===t"
+        }
+      ]
+    }
+  ],
+  "native_volume_evidence": "docs/re/simple-audio-volume-current-evidence.json",
+  "consumers": [
+    {
+      "path": "crates/razer-pages/src/features/mod.rs",
+      "sha256": "3fa50509207249a89e3ffe7fe7572ef8ffb0f59240c258a3892f7f3da537f6b1",
+      "bytes": 2200
+    },
+    {
+      "path": "crates/razer-pages/src/features/audio_volume.rs",
+      "sha256": "bef66d2aa401f3ced388c5f56fc944d71daee1d60f80fcf86fe4d37f66b6bee7",
+      "bytes": 13598
+    },
+    {
+      "path": "crates/razer-pages/src/features/audio_products.rs",
+      "sha256": "4d53ca3fe8fb8ac9bd0ab54a1fa6772513c8eadf9a9746f8d022aefce7960470",
+      "bytes": 43008
+    },
+    {
+      "path": "crates/razer-pages/src/features/source_workspace.rs",
+      "sha256": "e37909a94344f9e58868488b15e849aad3319703eff54f30081902bed1e073f9",
+      "bytes": 69887
+    },
+    {
+      "path": "crates/razer-pages/src/features/product_workspace.rs",
+      "sha256": "201aa6e17c904a1ed402002815b4d3c4aa0d87bd13dd36ad33e85f2a8cc2233c",
+      "bytes": 41357
+    },
+    {
+      "path": "crates/razer-pages/src/features/workspace.rs",
+      "sha256": "18758ab384a93bf69ab0b5e6bc519ebe28d4a5565f86212811efc926b9d1b994",
+      "bytes": 55260
+    },
+    {
+      "path": "crates/razer-shell/src/shell/audio_volume.rs",
+      "sha256": "e1ae5ff3fa153e8510bd70b3df3e9ada1c5e859f1ed354bfe9397767fac836be",
+      "bytes": 9499
+    },
+    {
+      "path": "crates/razer-shell/src/shell.rs",
+      "sha256": "e7259d72a9cceed6c5612dd69a5e4180159172363ecb456abb2b3cd3843800d0",
+      "bytes": 104430
+    }
+  ],
+  "source_semantics": {
+    "route": "1352 factory enables simpleService; current mounted LG contains connected XU via jU",
+    "endpoint": "getAudioDeviceId filters exact speaker type, preserves enumeration order and takes first exact containerId; useVirtualAudioChannel is absent in this factory",
+    "initial_read": "getSpeakerVolume success maps isEnabled=!muted,value=volume through MW changed action; default maxTry=8,delayInMs=2000",
+    "write": "XU changeValue derives isEnabled=!!value; toggle preserves value; reducer emits enabled/value intent, task audioProtocol reaches simpleSetSpeakerVolume(endpointId,!isEnabled,value)"
+  },
+  "implementation": {
+    "initial_observation": "Active sound page plus real physical owner emits typed read. Real read changes visible volume overlay and slider only; local snapshot/draft and persisted profile are untouched",
+    "submission": "Pointer Release and toggle enqueue actual typed write; real endpoint .id comes from AudioDevices, never USB ID or ContainerId. Local restore/default state never emits a setter",
+    "lifetime": "Epoch, edit revision, cancellation token and retained pending slot discard stale replies, cancel not-yet-submitted requests, and replay latest queued explicit write. Application workers serialize; service retains per-endpoint process lock",
+    "confirmation": "Real read/write payloads validate exact endpoint ID, range, previous success, HRESULT/result and requested-volume submission relation. Source response, partial mutations, readback, route expiry and shutdown warning remain distinct",
+    "platform": "UI/controller use IPC; Windows Core Audio adapter is isolated in service; unsupported platform errors remain explicit"
+  },
+  "gaps": [
+    "Original name.includes(rzDevice.device.productName) fallback needs a live native productName field; current model catalog naming is not that observation",
+    "Original absent-endpoint and source callback-failure retry branches are not fully equivalent: false getter records retry nine times, current adapter errors and initial endpoint mismatch fail explicitly",
+    "Original audio service registration/callback notifications and the shared task memory/version/global-lock lifecycle are not fully connected to this page",
+    "Original Range keyboard immediate-change branch is not implemented by gpui-kit Slider; pointer release and toggle are implemented",
+    "Other 1352 sound panels and other products are outside this verified volume consumer; no whole-product completion claim"
+  ],
+  "runtime_acceptance": "Not executed: application, DLL, tests and device operations prohibited during development"
+}

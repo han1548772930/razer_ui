@@ -42,10 +42,12 @@ fn receiver_read_owner(device: &Device) -> bool {
             device.dashboard.connection_observation,
             Some(DeviceConnectionObservation::UsbPresent | DeviceConnectionObservation::HidPresent)
         )
-        && container.len() == 38
-        && container.starts_with('{')
-        && container.ends_with('}')
-        && uuid::Uuid::parse_str(container).is_ok_and(|id| !id.is_nil())
+        && ((container.len() == 38
+            && container.starts_with('{')
+            && container.ends_with('}')
+            && uuid::Uuid::parse_str(container).is_ok_and(|id| !id.is_nil()))
+            // Scheduling hint only; discovery owns exact node validation.
+            || container.starts_with(&format!("hid-collection:1532:{:04x}:", device.real_product_id)))
 }
 
 enum FamilyBody {
@@ -91,6 +93,100 @@ impl EventEmitter<super::ReceiverDeviceRequested> for SourceProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for SourceProductWorkspace {}
 
 impl SourceProductWorkspace {
+    pub fn audio_volume_request_matches(
+        &self,
+        request: super::audio_products::AudioVolumeRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,FamilyBody::Audio(body) if body.read(cx).volume_request_matches(request))
+    }
+    pub fn audio_volume_request_current(
+        &self,
+        request: super::audio_products::AudioVolumeRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,FamilyBody::Audio(body) if body.read(cx).volume_request_current(request))
+    }
+    pub fn audio_volume_cancellation(
+        &self,
+        request: super::audio_products::AudioVolumeRequest,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.read(cx).volume_cancellation(request)
+        } else {
+            None
+        }
+    }
+    pub fn finish_audio_volume(
+        &mut self,
+        request: super::audio_products::AudioVolumeRequest,
+        result: Result<super::audio_products::AudioVolumeCompletion, String>,
+        scope_current: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_volume(request, result, scope_current, window, cx)
+            });
+        }
+    }
+    pub fn keyboard_brightness_read_matches(&self, generation: u64, cx: &App) -> bool {
+        matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_read_matches(generation))
+    }
+    pub fn keyboard_brightness_read_current(&self, generation: u64, cx: &App) -> bool {
+        matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_read_current(generation))
+    }
+    pub fn finish_keyboard_brightness_read(
+        &mut self,
+        generation: u64,
+        observed: Option<u8>,
+        error: Option<String>,
+        scope_current: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_brightness_read(generation, observed, error, scope_current, cx)
+            });
+        }
+    }
+    pub fn keyboard_brightness_request_matches(
+        &self,
+        generation: u64,
+        percent: u8,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Keyboard(body) if body.read(cx).brightness_request_matches(generation, percent))
+    }
+    pub fn finish_keyboard_brightness(
+        &mut self,
+        generation: u64,
+        percent: u8,
+        observed: Option<u8>,
+        scope_current: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_brightness(generation, percent, observed, scope_current, cx)
+            });
+        }
+    }
+    pub fn keyboard_brightness_request_current(
+        &self,
+        generation: u64,
+        percent: u8,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_request_current(generation,percent))
+    }
+    pub fn cancel_keyboard_brightness_connection(&mut self, cx: &mut Context<Self>) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, _| body.cancel_brightness_connection());
+        }
+    }
     pub fn observe_read_values(
         &mut self,
         values: Option<razer_device::device_reads::DeviceReadValues>,
@@ -105,8 +201,16 @@ impl SourceProductWorkspace {
         observation: Option<razer_model::model::DeviceConnectionObservation>,
         cx: &mut Context<Self>,
     ) {
+        if self.device.dashboard.connection_observation != observation {
+            self.cancel_keyboard_brightness_connection(cx);
+            if let FamilyBody::Audio(body) = &self.body {
+                body.update(cx, |body, _| body.invalidate_volume());
+            }
+        }
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
+        self.sync_keyboard_read_activity(cx);
+        self.sync_audio_volume_activity(cx);
         self.sync_receiver_read_activity(cx);
         cx.notify();
     }
@@ -155,6 +259,8 @@ impl SourceProductWorkspace {
         self.active = active;
         self.sync_receiver_read_activity(cx);
         self.sync_mouse_active(window, cx);
+        self.sync_keyboard_read_activity(cx);
+        self.sync_audio_volume_activity(cx);
         if !active {
             if let FamilyBody::Gamepad(body) = &self.body {
                 body.update(cx, |body, cx| {
@@ -165,6 +271,38 @@ impl SourceProductWorkspace {
         }
     }
 
+    fn sync_audio_volume_activity(&self, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            let active = self.active
+                && self
+                    .current_page()
+                    .is_some_and(|page| page.kind().key() == "TAB_SOUND")
+                && matches!(
+                    self.device.dashboard.connection_observation,
+                    Some(
+                        razer_model::model::DeviceConnectionObservation::UsbPresent
+                            | razer_model::model::DeviceConnectionObservation::HidPresent
+                    )
+                );
+            body.update(cx, |body, cx| body.set_volume_active(active, cx));
+        }
+    }
+    fn sync_keyboard_read_activity(&self, cx: &mut Context<Self>) {
+        if let FamilyBody::Keyboard(body) = &self.body {
+            let active = self.active
+                && self
+                    .current_page()
+                    .is_some_and(|page| page.kind().key() == "TAB_LIGHTING")
+                && matches!(
+                    self.device.dashboard.connection_observation,
+                    Some(
+                        razer_model::model::DeviceConnectionObservation::UsbPresent
+                            | razer_model::model::DeviceConnectionObservation::HidPresent
+                    )
+                );
+            body.update(cx, |body, cx| body.set_brightness_read_active(active, cx));
+        }
+    }
     fn sync_receiver_read_activity(&self, cx: &mut Context<Self>) {
         let active = self.active
             && self
@@ -690,6 +828,29 @@ impl SourceProductWorkspace {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 event: &super::keyboard_products::KeyboardBrightnessRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::KeyboardBrightnessRequested {
+                        generation: event.generation(),
+                        percent: event.percent(),
+                    });
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 event: &super::keyboard_products::KeyboardBrightnessReadRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::KeyboardBrightnessReadRequested {
+                        generation: event.generation(),
+                    });
+                },
+            ));
             FamilyBody::Keyboard(body)
         } else if super::gamepad_products::source_product(device.product_id).is_some() {
             let body = cx.new(|cx| {
@@ -723,6 +884,12 @@ impl SourceProductWorkspace {
             let body = cx.new(|cx| {
                 super::audio_products::AudioProductWorkspace::new(device.product_id, window, cx)
             });
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, request: &super::audio_products::AudioVolumeRequest, cx| {
+                    cx.emit(WorkspaceEvent::AudioVolumeRequested { request: *request })
+                },
+            ));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self, _, event: &super::OledRuntimeRequested, cx| cx.emit(event.clone()),
@@ -1334,6 +1501,8 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn select_body_page(&self, window: &mut Window, cx: &mut Context<Self>) {
+        self.sync_keyboard_read_activity(cx);
+        self.sync_audio_volume_activity(cx);
         self.sync_receiver_read_activity(cx);
         self.sync_mouse_active(window, cx);
         if let Some(view) = &self.accessory {

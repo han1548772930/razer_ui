@@ -73,8 +73,8 @@ def refresh(ida, python_dir):
     analysis['implementation'] = [
         'crates/razer-device/src/simple_audio.rs',
         'crates/razer-service/src/simple_audio.rs',
-        'crates/razer-service/src/runtime.rs',
-        'crates/razer-service/src/runtime_portable.rs',
+        'crates/razer-service/src/runtime/mod.rs',
+        'crates/razer-service/src/runtime/portable.rs',
     ]
     analysis['consumers'] = ['crates/razer-settings/src/runtime_page.rs',
                              'crates/razer-pages/src/features/control_pod_audio.rs']

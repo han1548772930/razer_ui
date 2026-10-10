@@ -4,11 +4,7 @@
 pub fn copyright_year() -> String {
     #[cfg(target_os = "windows")]
     {
-        use windows_sys::Win32::{Foundation::SYSTEMTIME, System::SystemInformation::GetLocalTime};
-        let mut local_time = SYSTEMTIME::default();
-        // GetLocalTime initializes this writable SYSTEMTIME; no service is opened.
-        unsafe { GetLocalTime(&mut local_time) };
-        local_time.wYear.to_string()
+        crate::platform::windows::system::copyright_year()
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -24,34 +20,7 @@ pub fn copyright_year() -> String {
 pub fn is_windows_11() -> bool {
     #[cfg(target_os = "windows")]
     {
-        use windows_sys::Win32::System::Registry::{
-            HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW,
-        };
-        let wide = |text: &str| text.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
-        let key = wide(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-        let build_name = wide("CurrentBuildNumber");
-        let mut build = [0u16; 32];
-        let mut size = std::mem::size_of_val(&build) as u32;
-        // All buffers are live, writable and sized in bytes as required by Win32.
-        if unsafe {
-            RegGetValueW(
-                HKEY_LOCAL_MACHINE,
-                key.as_ptr(),
-                build_name.as_ptr(),
-                RRF_RT_REG_SZ,
-                std::ptr::null_mut(),
-                build.as_mut_ptr().cast(),
-                &mut size,
-            )
-        } != 0
-        {
-            return false;
-        }
-        let end = build.iter().position(|c| *c == 0).unwrap_or(build.len());
-        String::from_utf16(&build[..end])
-            .ok()
-            .and_then(|value| value.parse::<u32>().ok())
-            .is_some_and(|build| build >= 22000)
+        crate::platform::windows::system::is_windows_11()
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -64,57 +33,7 @@ pub fn is_windows_11() -> bool {
 pub fn supports_dynamic_lighting() -> bool {
     #[cfg(target_os = "windows")]
     {
-        use windows_sys::Win32::System::Registry::{
-            HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegGetValueW,
-        };
-        let wide = |text: &str| text.encode_utf16().chain(Some(0)).collect::<Vec<_>>();
-        let key = wide(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-        let build_name = wide("CurrentBuildNumber");
-        let revision_name = wide("UBR");
-        let mut build = [0u16; 32];
-        let mut size = std::mem::size_of_val(&build) as u32;
-        // All buffers are live, writable and sized in bytes as required by Win32.
-        if unsafe {
-            RegGetValueW(
-                HKEY_LOCAL_MACHINE,
-                key.as_ptr(),
-                build_name.as_ptr(),
-                RRF_RT_REG_SZ,
-                std::ptr::null_mut(),
-                build.as_mut_ptr().cast(),
-                &mut size,
-            )
-        } != 0
-        {
-            return false;
-        }
-        let end = build.iter().position(|c| *c == 0).unwrap_or(build.len());
-        let Some(build) = String::from_utf16(&build[..end])
-            .ok()
-            .and_then(|s| s.parse::<u32>().ok())
-        else {
-            return false;
-        };
-        if build >= 22631 {
-            return true;
-        }
-        if build != 22621 {
-            return false;
-        }
-        let mut revision = 0u32;
-        let mut size = std::mem::size_of_val(&revision) as u32;
-        let read_revision = unsafe {
-            RegGetValueW(
-                HKEY_LOCAL_MACHINE,
-                key.as_ptr(),
-                revision_name.as_ptr(),
-                RRF_RT_REG_DWORD,
-                std::ptr::null_mut(),
-                (&mut revision as *mut u32).cast(),
-                &mut size,
-            ) == 0
-        };
-        read_revision && revision >= 2506
+        crate::platform::windows::system::supports_dynamic_lighting()
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -130,14 +49,12 @@ pub enum Properties {
     Volume,
 }
 
-/// `RSA.openColorManagement`：原版通过 `simpleLaunchUserAppProcess("Common",
-/// "wLauncher_v<version>.exe", "colorcpl.exe")` 拉起 Windows 的颜色管理面板，
-/// 这里直接启动同一个程序。
+/// The original color-management action launches `colorcpl.exe` through its
+/// user-app launcher; this adapter directly launches the same utility.
 pub fn open_color_management() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("colorcpl.exe").spawn()?;
-        Ok(())
+        crate::platform::windows::system::open_color_management()
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -148,27 +65,18 @@ pub fn open_color_management() -> anyhow::Result<()> {
 pub fn open_character_map() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("charmap.exe").spawn()?;
-        Ok(())
+        crate::platform::windows::system::open_character_map()
     }
     #[cfg(not(target_os = "windows"))]
     anyhow::bail!("Character Map is only available on Windows")
 }
-/// 3858/3880 刷新率组件里 `displaySettings` 链接的动作。
-///
-/// 源调用 `RiA.A.msSettings("display")`：Electron 下走宿主动作 `msSettings`
-/// （`payload:{actionArgs:"display"}`），宿主把它转给 `sysutil/win` 原生模块
-/// （`msSettings:["void",["string"]]`）。该模块的实现是 DLL，静态不可读；应用内可读
-/// 的同族写法是 Dashboard 动作表里的
-/// `case"PowerUserMenu":return"cmd /c start ms-settings:"`，因此这里用同样的
-/// `cmd /c start ms-settings:<页面>` 打开源参数指定的 `display` 页。
+/// Current monitor refresh-rate links dispatch `msSettings("display")`.
+/// This existing adapter launches that Windows settings URI directly; this
+/// directory migration does not establish original launcher lifecycle parity.
 pub fn open_display_settings() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("cmd")
-            .args(["/c", "start", "ms-settings:display"])
-            .spawn()?;
-        Ok(())
+        crate::platform::windows::system::open_display_settings()
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -178,27 +86,7 @@ pub fn open_display_settings() -> anyhow::Result<()> {
 pub fn open(properties: Properties) -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
-        let mut command = match properties {
-            Properties::Volume => std::process::Command::new("sndvol.exe"),
-            _ => {
-                let mut command = std::process::Command::new("control.exe");
-                match properties {
-                    Properties::Mouse => {
-                        command.arg("main.cpl");
-                    }
-                    Properties::Keyboard => {
-                        command.args(["main.cpl", ",@1"]);
-                    }
-                    Properties::Sound => {
-                        command.arg("mmsys.cpl");
-                    }
-                    Properties::Volume => unreachable!(),
-                }
-                command
-            }
-        };
-        command.spawn()?;
-        Ok(())
+        crate::platform::windows::system::open(properties)
     }
     #[cfg(not(target_os = "windows"))]
     {

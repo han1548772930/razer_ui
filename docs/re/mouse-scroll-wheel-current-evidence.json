@@ -101,12 +101,44 @@
           "source": "un"
         },
         {
+          "symbol": "module:4693:NYz literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250228,
+          "end": 250249,
+          "source": "\"SCROLL_ACCELERATION\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 4539618,
+          "end": 4539648,
+          "source": "(0,Nt.jsx)(Kt.A,{text:aE.NYz})"
+        },
+        {
           "symbol": "module:4693:fAA",
           "path": ".ref/devices/153/static/js/main.9095b82c.js",
           "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
           "offset": 236602,
           "end": 236604,
           "source": "mn"
+        },
+        {
+          "symbol": "module:4693:fAA literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250336,
+          "end": 250362,
+          "source": "\"SCROLL_ACCELERATION_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION_DESC",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 4539807,
+          "end": 4539837,
+          "source": "(0,Nt.jsx)(Kt.A,{text:aE.fAA})"
         },
         {
           "symbol": "module:4693:KnW",
@@ -117,12 +149,44 @@
           "source": "Cn"
         },
         {
+          "symbol": "module:4693:KnW literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250253,
+          "end": 250266,
+          "source": "\"SCROLL_MODE\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 4539889,
+          "end": 4539919,
+          "source": "(0,Nt.jsx)(Kt.A,{text:aE.KnW})"
+        },
+        {
           "symbol": "module:4693:Crw",
           "path": ".ref/devices/153/static/js/main.9095b82c.js",
           "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
           "offset": 231413,
           "end": 231415,
           "source": "Pn"
+        },
+        {
+          "symbol": "module:4693:Crw literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250314,
+          "end": 250332,
+          "source": "\"SCROLL_MODE_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE_DESC",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 4539983,
+          "end": 4540013,
+          "source": "(0,Nt.jsx)(Kt.A,{text:aE.Crw})"
         },
         {
           "symbol": "module:4693:b_8",
@@ -133,12 +197,52 @@
           "source": "Dn"
         },
         {
+          "symbol": "module:4693:b_8 literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250270,
+          "end": 250282,
+          "source": "\"SMART_REEL\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 4540403,
+          "end": 4540433,
+          "source": "(0,Nt.jsx)(Kt.A,{text:aE.b_8})"
+        },
+        {
           "symbol": "module:4693:X3g",
           "path": ".ref/devices/153/static/js/main.9095b82c.js",
           "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
           "offset": 235037,
           "end": 235039,
           "source": "Mn"
+        },
+        {
+          "symbol": "module:4693:X3g literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250366,
+          "end": 250383,
+          "source": "\"SMART_REEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_DESC",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 4540580,
+          "end": 4540610,
+          "source": "(0,Nt.jsx)(Kt.A,{text:aE.X3g})"
+        },
+        {
+          "symbol": "current TAB_CUSTOMIZE navigation object",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 4954844,
+          "end": 4954940,
+          "source": "{id:1,name:aE.M9m,component:(0,Nt.jsx)(CT,{setDisplaySaveAlertRef:this.setDisplaySaveAlertRef})}"
         },
         {
           "symbol": "module:4693:DMP",
@@ -149,6 +253,14 @@
           "source": "Ln"
         },
         {
+          "symbol": "module:4693:DMP literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250286,
+          "end": 250295,
+          "source": "\"TACTILE\""
+        },
+        {
           "symbol": "module:4693:M16",
           "path": ".ref/devices/153/static/js/main.9095b82c.js",
           "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
@@ -157,12 +269,28 @@
           "source": "pn"
         },
         {
+          "symbol": "module:4693:M16 literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250299,
+          "end": 250310,
+          "source": "\"FREE_SPIN\""
+        },
+        {
           "symbol": "module:4693:YLr",
           "path": ".ref/devices/153/static/js/main.9095b82c.js",
           "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
           "offset": 235278,
           "end": 235280,
           "source": "hn"
+        },
+        {
+          "symbol": "module:4693:YLr literal i18n key",
+          "path": ".ref/devices/153/static/js/main.9095b82c.js",
+          "sha256": "41759f185d02dcedbf3215489d84b76148513c362e1140d5342e2c195027d9c2",
+          "offset": 250387,
+          "end": 250409,
+          "source": "\"SCROLL_WHEEL_TOOLTIP\""
         }
       ],
       "css": [
@@ -3304,6 +3432,16 @@
           ]
         }
       ],
+      "description_contract": {
+        "source": "actual mounted translation component text props resolve to i18n key strings; translated dictionaries are not page keys",
+        "mode": "SCROLL_MODE_DESC",
+        "acceleration": [
+          "SCROLL_ACCELERATION_DESC"
+        ],
+        "smart_reel": [
+          "SMART_REEL_DESC"
+        ]
+      },
       "behavior": {
         "mode": "Either TwoWay half toggles, including the selected half; vendor dispatch is debounced 300ms",
         "smart_reel_lock": "selected source scrollMode FreeSpin; preserve stored enabled bit",
@@ -3411,12 +3549,44 @@
           "source": "wn"
         },
         {
+          "symbol": "module:4693:NYz literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265034,
+          "end": 265055,
+          "source": "\"SCROLL_ACCELERATION\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 4582507,
+          "end": 4582537,
+          "source": "(0,St.jsx)(Ft.A,{text:Qe.NYz})"
+        },
+        {
           "symbol": "module:4693:fAA",
           "path": ".ref/devices/170/static/js/main.7a4583ef.js",
           "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
           "offset": 250497,
           "end": 250499,
           "source": "Zn"
+        },
+        {
+          "symbol": "module:4693:fAA literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265142,
+          "end": 265168,
+          "source": "\"SCROLL_ACCELERATION_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION_DESC",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 4582696,
+          "end": 4582726,
+          "source": "(0,St.jsx)(Ft.A,{text:Qe.fAA})"
         },
         {
           "symbol": "module:4693:KnW",
@@ -3427,12 +3597,44 @@
           "source": "zn"
         },
         {
+          "symbol": "module:4693:KnW literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265059,
+          "end": 265072,
+          "source": "\"SCROLL_MODE\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 4582778,
+          "end": 4582808,
+          "source": "(0,St.jsx)(Ft.A,{text:Qe.KnW})"
+        },
+        {
           "symbol": "module:4693:Crw",
           "path": ".ref/devices/170/static/js/main.7a4583ef.js",
           "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
           "offset": 245210,
           "end": 245212,
           "source": "jn"
+        },
+        {
+          "symbol": "module:4693:Crw literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265120,
+          "end": 265138,
+          "source": "\"SCROLL_MODE_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE_DESC",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 4582872,
+          "end": 4582902,
+          "source": "(0,St.jsx)(Ft.A,{text:Qe.Crw})"
         },
         {
           "symbol": "module:4693:b_8",
@@ -3443,12 +3645,52 @@
           "source": "kn"
         },
         {
+          "symbol": "module:4693:b_8 literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265076,
+          "end": 265088,
+          "source": "\"SMART_REEL\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 4583286,
+          "end": 4583316,
+          "source": "(0,St.jsx)(Ft.A,{text:Qe.b_8})"
+        },
+        {
           "symbol": "module:4693:X3g",
           "path": ".ref/devices/170/static/js/main.7a4583ef.js",
           "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
           "offset": 248867,
           "end": 248869,
           "source": "qn"
+        },
+        {
+          "symbol": "module:4693:X3g literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265172,
+          "end": 265189,
+          "source": "\"SMART_REEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_DESC",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 4583463,
+          "end": 4583493,
+          "source": "(0,St.jsx)(Ft.A,{text:Qe.X3g})"
+        },
+        {
+          "symbol": "current TAB_CUSTOMIZE navigation object",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 4917850,
+          "end": 4917946,
+          "source": "{id:1,name:Qe.M9m,component:(0,St.jsx)(YO,{setDisplaySaveAlertRef:this.setDisplaySaveAlertRef})}"
         },
         {
           "symbol": "module:4693:DMP",
@@ -3459,6 +3701,14 @@
           "source": "xn"
         },
         {
+          "symbol": "module:4693:DMP literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265092,
+          "end": 265101,
+          "source": "\"TACTILE\""
+        },
+        {
           "symbol": "module:4693:M16",
           "path": ".ref/devices/170/static/js/main.7a4583ef.js",
           "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
@@ -3467,12 +3717,28 @@
           "source": "Xn"
         },
         {
+          "symbol": "module:4693:M16 literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265105,
+          "end": 265116,
+          "source": "\"FREE_SPIN\""
+        },
+        {
           "symbol": "module:4693:YLr",
           "path": ".ref/devices/170/static/js/main.7a4583ef.js",
           "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
           "offset": 249141,
           "end": 249143,
           "source": "Qn"
+        },
+        {
+          "symbol": "module:4693:YLr literal i18n key",
+          "path": ".ref/devices/170/static/js/main.7a4583ef.js",
+          "sha256": "1dc3a5c507cd6c6633f42b0c2b2ec95471f9382c6c483e6332ba72072a6e3925",
+          "offset": 265193,
+          "end": 265215,
+          "source": "\"SCROLL_WHEEL_TOOLTIP\""
         }
       ],
       "css": [
@@ -6599,6 +6865,16 @@
           ]
         }
       ],
+      "description_contract": {
+        "source": "actual mounted translation component text props resolve to i18n key strings; translated dictionaries are not page keys",
+        "mode": "SCROLL_MODE_DESC",
+        "acceleration": [
+          "SCROLL_ACCELERATION_DESC"
+        ],
+        "smart_reel": [
+          "SMART_REEL_DESC"
+        ]
+      },
       "behavior": {
         "mode": "Either TwoWay half toggles, including the selected half; vendor dispatch is debounced 300ms",
         "smart_reel_lock": "selected source scrollMode FreeSpin; preserve stored enabled bit",
@@ -6754,12 +7030,44 @@
           "source": "Qo"
         },
         {
+          "symbol": "module:4693:KnW literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255181,
+          "end": 255194,
+          "source": "\"SCROLL_MODE\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4563839,
+          "end": 4563869,
+          "source": "(0,vt.jsx)(t_.A,{text:tE.KnW})"
+        },
+        {
           "symbol": "module:4693:Crw",
           "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
           "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
           "offset": 237177,
           "end": 237179,
           "source": "En"
+        },
+        {
+          "symbol": "module:4693:Crw literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255242,
+          "end": 255260,
+          "source": "\"SCROLL_MODE_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE_DESC",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4563933,
+          "end": 4563963,
+          "source": "(0,vt.jsx)(t_.A,{text:tE.Crw})"
         },
         {
           "symbol": "module:4693:b_8",
@@ -6770,12 +7078,44 @@
           "source": "Jo"
         },
         {
+          "symbol": "module:4693:b_8 literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255198,
+          "end": 255210,
+          "source": "\"SMART_REEL\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4564351,
+          "end": 4564381,
+          "source": "(0,vt.jsx)(t_.A,{text:tE.b_8})"
+        },
+        {
           "symbol": "module:4693:X3g",
           "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
           "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
           "offset": 240604,
           "end": 240606,
           "source": "an"
+        },
+        {
+          "symbol": "module:4693:X3g literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255264,
+          "end": 255281,
+          "source": "\"SMART_REEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_DESC",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4564528,
+          "end": 4564558,
+          "source": "(0,vt.jsx)(t_.A,{text:tE.X3g})"
         },
         {
           "symbol": "module:4693:a3B",
@@ -6786,12 +7126,44 @@
           "source": "tn"
         },
         {
+          "symbol": "module:4693:a3B literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255285,
+          "end": 255308,
+          "source": "\"SMART_REEL_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_LEVEL_DESC",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4564604,
+          "end": 4564634,
+          "source": "(0,vt.jsx)(t_.A,{text:tE.a3B})"
+        },
+        {
           "symbol": "module:4693:NYz",
           "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
           "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
           "offset": 238966,
           "end": 238968,
           "source": "Zo"
+        },
+        {
+          "symbol": "module:4693:NYz literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255120,
+          "end": 255141,
+          "source": "\"SCROLL_ACCELERATION\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4564916,
+          "end": 4564946,
+          "source": "(0,vt.jsx)(t_.A,{text:tE.NYz})"
         },
         {
           "symbol": "module:4693:MhB",
@@ -6802,12 +7174,44 @@
           "source": "qo"
         },
         {
+          "symbol": "module:4693:MhB literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255145,
+          "end": 255177,
+          "source": "\"SCROLL_ACCELERATION_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION_LEVEL_DESC",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4565105,
+          "end": 4565135,
+          "source": "(0,vt.jsx)(t_.A,{text:tE.MhB})"
+        },
+        {
+          "symbol": "current TAB_CUSTOMIZE navigation object",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 4906404,
+          "end": 4906500,
+          "source": "{id:1,name:tE.M9m,component:(0,vt.jsx)(yT,{setDisplaySaveAlertRef:this.setDisplaySaveAlertRef})}"
+        },
+        {
           "symbol": "module:4693:DMP",
           "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
           "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
           "offset": 237320,
           "end": 237322,
           "source": "$o"
+        },
+        {
+          "symbol": "module:4693:DMP literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255214,
+          "end": 255223,
+          "source": "\"TACTILE\""
         },
         {
           "symbol": "module:4693:M16",
@@ -6818,12 +7222,28 @@
           "source": "en"
         },
         {
+          "symbol": "module:4693:M16 literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255227,
+          "end": 255238,
+          "source": "\"FREE_SPIN\""
+        },
+        {
           "symbol": "module:4693:YLr",
           "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
           "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
           "offset": 240834,
           "end": 240836,
           "source": "_n"
+        },
+        {
+          "symbol": "module:4693:YLr literal i18n key",
+          "path": ".ref/devices/203/static/js/main.fe8e2b48.js",
+          "sha256": "1eaeb419ebd7ff6b9667f6682c22c4656144bac7b1bfec94ddf5a2474a7a3903",
+          "offset": 255312,
+          "end": 255334,
+          "source": "\"SCROLL_WHEEL_TOOLTIP\""
         }
       ],
       "css": [
@@ -9975,6 +10395,17 @@
           ]
         }
       ],
+      "description_contract": {
+        "source": "actual mounted translation component text props resolve to i18n key strings; translated dictionaries are not page keys",
+        "mode": "SCROLL_MODE_DESC",
+        "acceleration": [
+          "SCROLL_ACCELERATION_LEVEL_DESC"
+        ],
+        "smart_reel": [
+          "SMART_REEL_DESC",
+          "SMART_REEL_LEVEL_DESC"
+        ]
+      },
       "behavior": {
         "mode": "Either TwoWay half toggles, including the selected half; vendor dispatch is debounced 300ms",
         "smart_reel_lock": "none",
@@ -10134,12 +10565,44 @@
           "source": "Zn"
         },
         {
+          "symbol": "module:4693:KnW literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266519,
+          "end": 266532,
+          "source": "\"SCROLL_MODE\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4564853,
+          "end": 4564883,
+          "source": "(0,Ht.jsx)(Ei.A,{text:eE.KnW})"
+        },
+        {
           "symbol": "module:4693:Crw",
           "path": ".ref/devices/204/static/js/main.97f302da.js",
           "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
           "offset": 246297,
           "end": 246299,
           "source": "$n"
+        },
+        {
+          "symbol": "module:4693:Crw literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266580,
+          "end": 266598,
+          "source": "\"SCROLL_MODE_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE_DESC",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4564947,
+          "end": 4564977,
+          "source": "(0,Ht.jsx)(Ei.A,{text:eE.Crw})"
         },
         {
           "symbol": "module:4693:b_8",
@@ -10150,12 +10613,44 @@
           "source": "qn"
         },
         {
+          "symbol": "module:4693:b_8 literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266536,
+          "end": 266548,
+          "source": "\"SMART_REEL\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4565365,
+          "end": 4565395,
+          "source": "(0,Ht.jsx)(Ei.A,{text:eE.b_8})"
+        },
+        {
           "symbol": "module:4693:X3g",
           "path": ".ref/devices/204/static/js/main.97f302da.js",
           "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
           "offset": 250031,
           "end": 250033,
           "source": "es"
+        },
+        {
+          "symbol": "module:4693:X3g literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266602,
+          "end": 266619,
+          "source": "\"SMART_REEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_DESC",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4565542,
+          "end": 4565572,
+          "source": "(0,Ht.jsx)(Ei.A,{text:eE.X3g})"
         },
         {
           "symbol": "module:4693:a3B",
@@ -10166,12 +10661,44 @@
           "source": "Es"
         },
         {
+          "symbol": "module:4693:a3B literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266623,
+          "end": 266646,
+          "source": "\"SMART_REEL_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_LEVEL_DESC",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4565618,
+          "end": 4565648,
+          "source": "(0,Ht.jsx)(Ei.A,{text:eE.a3B})"
+        },
+        {
           "symbol": "module:4693:NYz",
           "path": ".ref/devices/204/static/js/main.97f302da.js",
           "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
           "offset": 248251,
           "end": 248253,
           "source": "jn"
+        },
+        {
+          "symbol": "module:4693:NYz literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266458,
+          "end": 266479,
+          "source": "\"SCROLL_ACCELERATION\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4565930,
+          "end": 4565960,
+          "source": "(0,Ht.jsx)(Ei.A,{text:eE.NYz})"
         },
         {
           "symbol": "module:4693:MhB",
@@ -10182,12 +10709,44 @@
           "source": "Xn"
         },
         {
+          "symbol": "module:4693:MhB literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266483,
+          "end": 266515,
+          "source": "\"SCROLL_ACCELERATION_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION_LEVEL_DESC",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4566119,
+          "end": 4566149,
+          "source": "(0,Ht.jsx)(Ei.A,{text:eE.MhB})"
+        },
+        {
+          "symbol": "current TAB_CUSTOMIZE navigation object",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 4947894,
+          "end": 4947990,
+          "source": "{id:1,name:eE.M9m,component:(0,Ht.jsx)(_A,{setDisplaySaveAlertRef:this.setDisplaySaveAlertRef})}"
+        },
+        {
           "symbol": "module:4693:DMP",
           "path": ".ref/devices/204/static/js/main.97f302da.js",
           "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
           "offset": 246451,
           "end": 246453,
           "source": "Qn"
+        },
+        {
+          "symbol": "module:4693:DMP literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266552,
+          "end": 266561,
+          "source": "\"TACTILE\""
         },
         {
           "symbol": "module:4693:M16",
@@ -10198,12 +10757,28 @@
           "source": "Jn"
         },
         {
+          "symbol": "module:4693:M16 literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266565,
+          "end": 266576,
+          "source": "\"FREE_SPIN\""
+        },
+        {
           "symbol": "module:4693:YLr",
           "path": ".ref/devices/204/static/js/main.97f302da.js",
           "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
           "offset": 250327,
           "end": 250329,
           "source": "as"
+        },
+        {
+          "symbol": "module:4693:YLr literal i18n key",
+          "path": ".ref/devices/204/static/js/main.97f302da.js",
+          "sha256": "9856f1b060550c67415d238d8b4b47de74528b5f89177e8d5f880faee3f92880",
+          "offset": 266650,
+          "end": 266672,
+          "source": "\"SCROLL_WHEEL_TOOLTIP\""
         }
       ],
       "css": [
@@ -13340,6 +13915,17 @@
           ]
         }
       ],
+      "description_contract": {
+        "source": "actual mounted translation component text props resolve to i18n key strings; translated dictionaries are not page keys",
+        "mode": "SCROLL_MODE_DESC",
+        "acceleration": [
+          "SCROLL_ACCELERATION_LEVEL_DESC"
+        ],
+        "smart_reel": [
+          "SMART_REEL_DESC",
+          "SMART_REEL_LEVEL_DESC"
+        ]
+      },
       "behavior": {
         "mode": "Either TwoWay half toggles, including the selected half; vendor dispatch is debounced 300ms",
         "smart_reel_lock": "none",
@@ -13694,12 +14280,44 @@
           "source": "Zn"
         },
         {
+          "symbol": "module:4693:KnW literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265851,
+          "end": 265864,
+          "source": "\"SCROLL_MODE\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4570624,
+          "end": 4570654,
+          "source": "(0,re.jsx)(Ci.A,{text:pE.KnW})"
+        },
+        {
           "symbol": "module:4693:Crw",
           "path": ".ref/devices/214/static/js/main.9287a47f.js",
           "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
           "offset": 245629,
           "end": 245631,
           "source": "$n"
+        },
+        {
+          "symbol": "module:4693:Crw literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265912,
+          "end": 265930,
+          "source": "\"SCROLL_MODE_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE_DESC",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4570718,
+          "end": 4570748,
+          "source": "(0,re.jsx)(Ci.A,{text:pE.Crw})"
         },
         {
           "symbol": "module:4693:b_8",
@@ -13710,12 +14328,44 @@
           "source": "qn"
         },
         {
+          "symbol": "module:4693:b_8 literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265868,
+          "end": 265880,
+          "source": "\"SMART_REEL\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4571136,
+          "end": 4571166,
+          "source": "(0,re.jsx)(Ci.A,{text:pE.b_8})"
+        },
+        {
           "symbol": "module:4693:X3g",
           "path": ".ref/devices/214/static/js/main.9287a47f.js",
           "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
           "offset": 249363,
           "end": 249365,
           "source": "es"
+        },
+        {
+          "symbol": "module:4693:X3g literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265934,
+          "end": 265951,
+          "source": "\"SMART_REEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_DESC",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4571313,
+          "end": 4571343,
+          "source": "(0,re.jsx)(Ci.A,{text:pE.X3g})"
         },
         {
           "symbol": "module:4693:a3B",
@@ -13726,12 +14376,44 @@
           "source": "Es"
         },
         {
+          "symbol": "module:4693:a3B literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265955,
+          "end": 265978,
+          "source": "\"SMART_REEL_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_LEVEL_DESC",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4571389,
+          "end": 4571419,
+          "source": "(0,re.jsx)(Ci.A,{text:pE.a3B})"
+        },
+        {
           "symbol": "module:4693:NYz",
           "path": ".ref/devices/214/static/js/main.9287a47f.js",
           "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
           "offset": 247583,
           "end": 247585,
           "source": "jn"
+        },
+        {
+          "symbol": "module:4693:NYz literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265790,
+          "end": 265811,
+          "source": "\"SCROLL_ACCELERATION\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4571701,
+          "end": 4571731,
+          "source": "(0,re.jsx)(Ci.A,{text:pE.NYz})"
         },
         {
           "symbol": "module:4693:MhB",
@@ -13742,12 +14424,44 @@
           "source": "Xn"
         },
         {
+          "symbol": "module:4693:MhB literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265815,
+          "end": 265847,
+          "source": "\"SCROLL_ACCELERATION_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION_LEVEL_DESC",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4571890,
+          "end": 4571920,
+          "source": "(0,re.jsx)(Ci.A,{text:pE.MhB})"
+        },
+        {
+          "symbol": "current TAB_CUSTOMIZE navigation object",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 4957352,
+          "end": 4957448,
+          "source": "{id:1,name:pE.M9m,component:(0,re.jsx)(fA,{setDisplaySaveAlertRef:this.setDisplaySaveAlertRef})}"
+        },
+        {
           "symbol": "module:4693:DMP",
           "path": ".ref/devices/214/static/js/main.9287a47f.js",
           "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
           "offset": 245783,
           "end": 245785,
           "source": "Qn"
+        },
+        {
+          "symbol": "module:4693:DMP literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265884,
+          "end": 265893,
+          "source": "\"TACTILE\""
         },
         {
           "symbol": "module:4693:M16",
@@ -13758,12 +14472,28 @@
           "source": "Jn"
         },
         {
+          "symbol": "module:4693:M16 literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265897,
+          "end": 265908,
+          "source": "\"FREE_SPIN\""
+        },
+        {
           "symbol": "module:4693:YLr",
           "path": ".ref/devices/214/static/js/main.9287a47f.js",
           "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
           "offset": 249659,
           "end": 249661,
           "source": "as"
+        },
+        {
+          "symbol": "module:4693:YLr literal i18n key",
+          "path": ".ref/devices/214/static/js/main.9287a47f.js",
+          "sha256": "fc230a799a333c5d2efd06962111ce0189d2ec3bafc1148af9576af520cf3183",
+          "offset": 265982,
+          "end": 266004,
+          "source": "\"SCROLL_WHEEL_TOOLTIP\""
         }
       ],
       "css": [
@@ -16900,6 +17630,17 @@
           ]
         }
       ],
+      "description_contract": {
+        "source": "actual mounted translation component text props resolve to i18n key strings; translated dictionaries are not page keys",
+        "mode": "SCROLL_MODE_DESC",
+        "acceleration": [
+          "SCROLL_ACCELERATION_LEVEL_DESC"
+        ],
+        "smart_reel": [
+          "SMART_REEL_DESC",
+          "SMART_REEL_LEVEL_DESC"
+        ]
+      },
       "behavior": {
         "mode": "Either TwoWay half toggles, including the selected half; vendor dispatch is debounced 300ms",
         "smart_reel_lock": "none",
@@ -17424,12 +18165,44 @@
           "source": "Hr"
         },
         {
+          "symbol": "module:4693:KnW literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362014,
+          "end": 362027,
+          "source": "\"SCROLL_MODE\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 29506,
+          "end": 29533,
+          "source": "(0,f.jsx)(E.A,{text:A.KnW})"
+        },
+        {
           "symbol": "module:4693:Crw",
           "path": ".ref/devices/45066/static/js/main.bc41890a.js",
           "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
           "offset": 342160,
           "end": 342162,
           "source": "zr"
+        },
+        {
+          "symbol": "module:4693:Crw literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362075,
+          "end": 362093,
+          "source": "\"SCROLL_MODE_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_MODE_DESC",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 29595,
+          "end": 29622,
+          "source": "(0,f.jsx)(E.A,{text:A.Crw})"
         },
         {
           "symbol": "module:4693:b_8",
@@ -17440,12 +18213,44 @@
           "source": "Vr"
         },
         {
+          "symbol": "module:4693:b_8 literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362031,
+          "end": 362043,
+          "source": "\"SMART_REEL\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 30005,
+          "end": 30032,
+          "source": "(0,f.jsx)(E.A,{text:A.b_8})"
+        },
+        {
           "symbol": "module:4693:X3g",
           "path": ".ref/devices/45066/static/js/main.bc41890a.js",
           "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
           "offset": 345774,
           "end": 345776,
           "source": "Xr"
+        },
+        {
+          "symbol": "module:4693:X3g literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362097,
+          "end": 362114,
+          "source": "\"SMART_REEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_DESC",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 30175,
+          "end": 30202,
+          "source": "(0,f.jsx)(E.A,{text:A.X3g})"
         },
         {
           "symbol": "module:4693:a3B",
@@ -17456,12 +18261,44 @@
           "source": "Jr"
         },
         {
+          "symbol": "module:4693:a3B literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362118,
+          "end": 362141,
+          "source": "\"SMART_REEL_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SMART_REEL_LEVEL_DESC",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 30247,
+          "end": 30274,
+          "source": "(0,f.jsx)(E.A,{text:A.a3B})"
+        },
+        {
           "symbol": "module:4693:NYz",
           "path": ".ref/devices/45066/static/js/main.bc41890a.js",
           "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
           "offset": 344037,
           "end": 344039,
           "source": "Br"
+        },
+        {
+          "symbol": "module:4693:NYz literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 361953,
+          "end": 361974,
+          "source": "\"SCROLL_ACCELERATION\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 30550,
+          "end": 30577,
+          "source": "(0,f.jsx)(E.A,{text:A.NYz})"
         },
         {
           "symbol": "module:4693:MhB",
@@ -17472,12 +18309,44 @@
           "source": "Wr"
         },
         {
+          "symbol": "module:4693:MhB literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 361978,
+          "end": 362010,
+          "source": "\"SCROLL_ACCELERATION_LEVEL_DESC\""
+        },
+        {
+          "symbol": "translation text caller SCROLL_ACCELERATION_LEVEL_DESC",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 30732,
+          "end": 30759,
+          "source": "(0,f.jsx)(E.A,{text:A.MhB})"
+        },
+        {
+          "symbol": "current TAB_CUSTOMIZE navigation object",
+          "path": ".ref/devices/45066/static/js/286.1978470e.chunk.js",
+          "sha256": "1773c4535cbeb1b7c484e7d4b0570bd69686c870f0c8b43e3c766a86cfc7e7a1",
+          "offset": 249605,
+          "end": 249699,
+          "source": "{id:1,name:x.M9m,component:(0,D.jsx)(qe,{setDisplaySaveAlertRef:this.setDisplaySaveAlertRef})}"
+        },
+        {
           "symbol": "module:4693:DMP",
           "path": ".ref/devices/45066/static/js/main.bc41890a.js",
           "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
           "offset": 342303,
           "end": 342305,
           "source": "jr"
+        },
+        {
+          "symbol": "module:4693:DMP literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362047,
+          "end": 362056,
+          "source": "\"TACTILE\""
         },
         {
           "symbol": "module:4693:M16",
@@ -17488,12 +18357,28 @@
           "source": "$r"
         },
         {
+          "symbol": "module:4693:M16 literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362060,
+          "end": 362071,
+          "source": "\"FREE_SPIN\""
+        },
+        {
           "symbol": "module:4693:YLr",
           "path": ".ref/devices/45066/static/js/main.bc41890a.js",
           "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
           "offset": 346048,
           "end": 346050,
           "source": "Qr"
+        },
+        {
+          "symbol": "module:4693:YLr literal i18n key",
+          "path": ".ref/devices/45066/static/js/main.bc41890a.js",
+          "sha256": "6c1b58fb90e4478c6d278f36b715c97c9b728125ba8512b3e60f49f08434fe71",
+          "offset": 362145,
+          "end": 362167,
+          "source": "\"SCROLL_WHEEL_TOOLTIP\""
         }
       ],
       "css": [
@@ -20630,6 +21515,17 @@
           ]
         }
       ],
+      "description_contract": {
+        "source": "actual mounted translation component text props resolve to i18n key strings; translated dictionaries are not page keys",
+        "mode": "SCROLL_MODE_DESC",
+        "acceleration": [
+          "SCROLL_ACCELERATION_LEVEL_DESC"
+        ],
+        "smart_reel": [
+          "SMART_REEL_DESC",
+          "SMART_REEL_LEVEL_DESC"
+        ]
+      },
       "behavior": {
         "mode": "Either TwoWay half toggles, including the selected half; vendor dispatch is debounced 300ms",
         "smart_reel_lock": "none",

@@ -81,11 +81,13 @@ Shell 在发起和返回时核对真实 owner、非 PREVIEW/DEMO、容器、物�
 
 ## 查询与生命周期
 
-自动父卡查询必须满足：真实 USB/HID 连接观察、合法非零且带花括号的 UUID、非 PREVIEW/DEMO 身份、工作区激活、当前为 Customize。激活、连接观察和切页都重新判定；本地缓存身份不能单独启用读取。
+自动父卡查询必须满足：真实 USB/HID 连接观察、非 PREVIEW/DEMO 身份、工作区激活、当前为 Customize。Windows owner 使用合法非零且带花括号的 UUID；portable owner 使用当前发现保留的真实 collection。页面 collection 前缀只是安排读取的提示，Shell 仍要求唯一当前物理 owner 并经 [ReceiverRoute](../../crates/razer-discovery/src/receiver.rs) 核对完整 node、接口与报告规格。激活、连接观察和切页都重新判定；本地缓存身份不能单独启用读取。
 
 父卡与工具共用全局唯一请求代际。打开工具会暂停父卡请求/重试，关闭后只有符合读取条件才恢复。离开页面、停用或取消后，迟到响应不能覆盖当前状态。
 
 后端 `project_receiver_query(receiver_pid, container, &raw)` 将同一真实查询纯投影为设备观察和配对描述，启动发现也使用此入口。它核对查询名、VID/物理 PID、接口、report 长度、非零带括号容器及条目数量，并要求实际 path/instance 字段存在；真正的接口唯一性与查询前后身份校验仍由 native worker 执行。原始 Value 不被修改。
+
+portable 的初次发现与后续查询共用 `project_hid_receiver_query`，要求响应中的完整 node、source class、`hid_collection` scope、查询种类和条目数量与实际请求一致。查询路由每次重新枚举唯一 node 并读取 descriptor，再发送原 `getMultipleDeviceWirelessConnectionStatusV2` 报文；不请求 Windows HID/USB 枚举，也不伪造 GUID。179 查询接受后增量发布同一 collection 的 peer；取消、新发现或 node/owner 变化拒绝迟到结果。Dock 的 BIND_INFO 也复用该路由，并补齐 owner/revision 保护；配对写入与完整164/241页面链仍未实现。
 
 投影保留同一接收器 container、physical_product_id、raw peer PID 与全部原始 status，不补 edition/layout/serial/profile/ready/telemetry。sentinel 与独立接收器自身行不生成设备；产品自己的 dongle PID 可按当前目录表示其无线设备。未知/歧义目录项或多个 raw PID 归一到同一产品时，保留错误及其他确定设备，不用插入顺序选状态。配对名称/类别转换失败与设备观察分开，不能把 partial 当成功空全量。源 AST、目录对照和回归源码见 [纯投影证据](receiver-query-projection-current-evidence.json)；`ye` 的存储写入/运行监听仍不执行。
 

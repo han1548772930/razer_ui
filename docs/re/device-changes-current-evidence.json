@@ -32,7 +32,8 @@
     "sha256": "2009eb2e0853c329612c53416664ab016f287d601edb9ba07dfd981e16cf6f3b"
   },
   "nativeAdapter": {
-    "path": "src/backend/device_changes.rs",
+    "path": "crates/razer-platform/src/platform/windows/device_changes.rs",
+    "facade": "crates/razer-platform/src/device_changes.rs",
     "mechanism": "Windows CM_Register_Notification for USB_DEVICE and GUID_DEVINTERFACE_HID; signals existing discovery only",
     "lifecycle": "Owned thread registers before Ready; callback enqueues only; owner drop ends thread, unregisters then releases context",
     "boundary": "Native Windows adaptation, not an assertion of a callable vendor C export. Does not observe radio-only peer changes or read mouse configuration."

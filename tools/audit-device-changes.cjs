@@ -33,7 +33,8 @@ const result = {
   receipts,
   usbClass: {guid: native.usb_device_guid, path: native.path, sha256: native.sha256},
   nativeAdapter: {
-    path: 'crates/razer-platform/src/device_changes.rs',
+    path: 'crates/razer-platform/src/platform/windows/device_changes.rs',
+    facade: 'crates/razer-platform/src/device_changes.rs',
     mechanism: 'Windows CM_Register_Notification for USB_DEVICE and GUID_DEVINTERFACE_HID; signals existing discovery only',
     lifecycle: 'Owned thread registers before Ready; callback enqueues only; owner drop ends thread, unregisters then releases context',
     boundary: 'Native Windows adaptation, not an assertion of a callable vendor C export. Does not observe radio-only peer changes or read mouse configuration.',

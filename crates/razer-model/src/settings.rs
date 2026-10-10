@@ -286,6 +286,25 @@ impl Sensitivity {
         }
         self.select_stage(index);
     }
+    /// Source 182 numeric editor remains active for a hidden stage row. The
+    /// slider/selection path still uses `editable_slot` and therefore hides it.
+    pub fn set_slot_axis_from_input(&mut self, id: u8, axis: usize, value: u32) {
+        let Some(index) = self.slots.iter().position(|slot| slot.id == id) else {
+            return;
+        };
+        if axis > 1 || !self.slots[index].enabled || (axis == 1 && !self.slots[index].independent) {
+            return;
+        }
+        let value = value.clamp(100, 30000).div_ceil(50) * 50;
+        self.stages[index][axis] = value;
+        if !self.slots[index].independent {
+            self.stages[index][1] = value;
+        }
+        if self.slots[index].enabled {
+            self.active = index;
+            self.independent = self.slots[index].independent;
+        }
+    }
     pub fn link_slot(&mut self, id: u8, independent: bool) {
         let Some(index) = self.editable_slot(id) else {
             return;

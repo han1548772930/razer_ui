@@ -64,6 +64,7 @@ struct SlotControls {
     repeat_tasks: [Option<Task<()>>; 2],
     repeat_actions: [Option<StepAction>; 2],
     suppress_pointer_click: [bool; 2],
+    preview: [Option<u32>; 2],
 }
 
 pub(super) struct SensitivityControls {
@@ -111,11 +112,32 @@ impl SensitivityControls {
                     &input,
                     window,
                     move |owner, _, event, window, cx| {
+                        if matches!(event, InputEvent::Change) {
+                            let state = &owner.settings().sensitivity;
+                            if let Some(index) = state
+                                .slots
+                                .iter()
+                                .position(|slot| slot.id == id && slot.enabled)
+                            {
+                                let canonical = state.stages[index][axis].to_string();
+                                if owner.sensitivity_controls.slots[&id].inputs[axis]
+                                    .read(cx)
+                                    .value()
+                                    .as_str()
+                                    != canonical
+                                {
+                                    owner.dpi_input_changed();
+                                }
+                            }
+                        }
                         if matches!(event, InputEvent::PressEnter { .. } | InputEvent::Blur) {
                             owner.stop_dpi_repeat(id, axis);
-                            owner.commit_dpi_draft(id, axis, window, cx);
                             if matches!(event, InputEvent::PressEnter { .. }) {
+                                // Original Enter/Escape blur the input; handleBlur
+                                // performs the single normalized commit.
                                 window.blur(cx);
+                            } else {
+                                owner.commit_dpi_draft(id, axis, window, cx);
                             }
                         }
                     },
@@ -128,8 +150,8 @@ impl SensitivityControls {
                     &slider,
                     window,
                     move |owner, _, event: &SliderEvent, window, cx| {
-                        let SliderEvent::Change(value) = event else {
-                            return;
+                        let value = match event {
+                            SliderEvent::Change(value) | SliderEvent::Release(value) => value,
                         };
                         let value = value.start().round() as u32;
                         let state = &owner.settings().sensitivity;
@@ -137,9 +159,29 @@ impl SensitivityControls {
                             owner.sync_controls(window, cx);
                             return;
                         };
-                        if state.stages[index][axis] != value {
-                            owner
-                                .edit(window, cx, |s| s.sensitivity.set_slot_axis(id, axis, value));
+                        if axis == 1 && !state.slots[index].independent {
+                            return;
+                        }
+                        match event {
+                            SliderEvent::Change(_) => {
+                                owner.dpi_input_changed();
+                                let controls =
+                                    owner.sensitivity_controls.slots.get_mut(&id).unwrap();
+                                controls.preview[axis] = Some(value);
+                                controls.inputs[axis].update(cx, |input, cx| {
+                                    input.set_value(value.to_string(), window, cx)
+                                });
+                                cx.notify();
+                            }
+                            SliderEvent::Release(_) => {
+                                owner
+                                    .sensitivity_controls
+                                    .slots
+                                    .get_mut(&id)
+                                    .unwrap()
+                                    .preview[axis] = None;
+                                owner.set_dpi_value(id, axis, value, window, cx);
+                            }
                         }
                     },
                 ));
@@ -156,6 +198,7 @@ impl SensitivityControls {
                     repeat_tasks: [None, None],
                     repeat_actions: [None, None],
                     suppress_pointer_click: [false, false],
+                    preview: [None, None],
                 },
             );
         }
@@ -165,9 +208,10 @@ impl SensitivityControls {
         }
     }
 
-    pub(super) fn sync(&self, state: &Sensitivity, window: &mut Window, cx: &mut App) {
+    pub(super) fn sync(&mut self, state: &Sensitivity, window: &mut Window, cx: &mut App) {
         for (slot, values) in state.slots.iter().zip(&state.stages) {
-            let controls = &self.slots[&slot.id];
+            let controls = self.slots.get_mut(&slot.id).unwrap();
+            controls.preview = [None, None];
             for (axis, value) in values.iter().enumerate() {
                 let text = value.to_string();
                 if controls.inputs[axis].read(cx).value().as_str() != text {
@@ -445,9 +489,6 @@ impl DeviceWorkspace {
                             || owner.device().active_profile != profile
                             || owner.page != crate::nav::Tab::Performance
                             || !window.is_window_active()
-                            || !owner.sensitivity_controls.slots[&id].inputs[axis]
-                                .focus_handle(cx)
-                                .is_focused(window)
                             || owner.sensitivity_controls.slots[&id].repeat_actions[axis]
                                 != Some(action)
                         {
@@ -491,7 +532,41 @@ impl DeviceWorkspace {
     ) {
         let input = &self.sensitivity_controls.slots[&id].inputs[axis];
         let value = parse_dpi_draft(&input.read(cx).value());
-        self.set_dpi_value(id, axis, value, window, cx);
+        self.set_dpi_input_value(id, axis, value, window, cx);
+    }
+
+    fn set_dpi_input_value(
+        &mut self,
+        id: u8,
+        axis: usize,
+        value: u32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(index) = self
+            .settings()
+            .sensitivity
+            .slots
+            .iter()
+            .position(|slot| slot.id == id)
+        else {
+            return;
+        };
+        if axis == 1 && !self.settings().sensitivity.slots[index].independent {
+            self.sync_controls(window, cx);
+            return;
+        }
+        if self.settings().sensitivity.stages[index][axis] != value {
+            self.dpi_input_changed();
+            self.edit(window, cx, |settings| {
+                settings
+                    .sensitivity
+                    .set_slot_axis_from_input(id, axis, value)
+            });
+            self.request_mouse_dpi(cx);
+        } else {
+            self.sync_controls(window, cx);
+        }
     }
 
     fn set_dpi_value(
@@ -513,13 +588,17 @@ impl DeviceWorkspace {
             return;
         }
         if state.stages[index][axis] != value {
+            self.dpi_input_changed();
             self.edit(window, cx, |settings| {
-                settings.sensitivity.set_slot_axis(id, axis, value)
+                settings
+                    .sensitivity
+                    .set_slot_axis_from_input(id, axis, value)
             });
         } else {
             // Canonicalize drafts such as "00100" even when the domain is unchanged.
             self.sync_controls(window, cx);
         }
+        self.request_mouse_dpi(cx);
     }
 
     fn step_dpi_value(
@@ -543,8 +622,21 @@ impl DeviceWorkspace {
             StepAction::Increment => current.saturating_add(50),
             StepAction::Decrement => current.saturating_sub(50),
         });
-        self.set_dpi_value(id, axis, value, window, cx);
-        input.update(cx, |input, cx| input.focus(window, cx));
+        // Source 4230.sendToParent(value,isRegisterEvent): focused editing
+        // previews steps/wheel until Blur; unfocused spinner presses submit.
+        if input.focus_handle(cx).is_focused(window) {
+            self.dpi_input_changed();
+            let controls = self.sensitivity_controls.slots.get_mut(&id).unwrap();
+            controls.preview[axis] = Some(value);
+            controls.inputs[axis].update(cx, |input, cx| {
+                input.set_value(value.to_string(), window, cx)
+            });
+            controls.sliders[axis]
+                .update(cx, |slider, cx| slider.set_value(value as f32, window, cx));
+            cx.notify();
+        } else {
+            self.set_dpi_input_value(id, axis, value, window, cx);
+        }
     }
 
     pub(super) fn sensitivity_panel(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -571,7 +663,9 @@ impl DeviceWorkspace {
                             .accessibility_label(razer_i18n::t("SENSITIVITY_STAGES"))
                             .checked(state.visible)
                             .on_change(cx.listener(|owner, next, w, cx| {
+                                owner.dpi_input_changed();
                                 owner.edit(w, cx, |s| s.sensitivity.visible = *next);
+                                owner.request_mouse_dpi(cx);
                             })),
                     ),
             )
@@ -683,11 +777,18 @@ impl DeviceWorkspace {
                 )
             }))
             .on_click(cx.listener(move |owner, _, w, cx| {
+                if owner.settings().sensitivity.active == index {
+                    return;
+                }
+                owner.dpi_input_changed();
                 owner.edit(w, cx, |s| {
                     if let Some(index) = s.sensitivity.editable_slot(id) {
                         s.sensitivity.select_stage(index);
                     }
-                })
+                });
+                // IM.setStage dispatches only the selected/display stage
+                // reducer. It does not call the stage-table submit chain.
+                owner.dpi_local_only_commit(cx);
             }));
 
         div()
@@ -727,7 +828,9 @@ impl DeviceWorkspace {
             .on_drop(cx.listener(move |owner, drag: &DpiDrag, w, cx| {
                 if drag.device == owner.identity() && drag.profile == owner.device().active_profile
                 {
+                    owner.dpi_input_changed();
                     owner.edit(w, cx, |s| s.sensitivity.move_slot(drag.slot, id));
+                    owner.request_mouse_dpi(cx);
                 }
             }))
             .child(stage_button)
@@ -751,7 +854,10 @@ impl DeviceWorkspace {
                                 axis,
                                 label: format!("{label} DPI {}", if axis == 0 { "X" } else { "Y" })
                                     .into(),
-                                disabled: !enabled,
+                                // Current Vm numeric editor uses active=!dragging;
+                                // hidden rows retain editable numeric input while
+                                // their slider and visual affordances are dimmed.
+                                disabled: false,
                                 show_controls: show_actions,
                                 input: controls.inputs[axis].clone(),
                                 owner: cx.entity().downgrade(),
@@ -765,8 +871,9 @@ impl DeviceWorkspace {
                                     .when(independent, |s| {
                                         // Vm's thumbTag belongs to the thumb, so enabling XY
                                         // must not push the trailing controls out of the row.
-                                        let fraction =
-                                            (state.stages[index][axis] - 100) as f32 / 29900.;
+                                        let value = controls.preview[axis]
+                                            .unwrap_or(state.stages[index][axis]);
+                                        let fraction = (value - 100) as f32 / 29900.;
                                         s.child(
                                             div()
                                                 .absolute()
@@ -818,7 +925,26 @@ impl DeviceWorkspace {
                                     .size_full(),
                                 )
                                 .on_click(cx.listener(move |owner, _, w, cx| {
-                                    owner.edit(w, cx, |s| s.sensitivity.link_slot(id, !independent))
+                                    let state = &owner.settings().sensitivity;
+                                    let Some(index) = state.editable_slot(id) else {
+                                        return;
+                                    };
+                                    // IM.toggleY submits only when relinking unequal
+                                    // X/Y. The independent flag itself is local.
+                                    let submit = independent
+                                        && state.stages[index][0] != state.stages[index][1];
+                                    owner.dpi_input_changed();
+                                    owner.edit(w, cx, |s| {
+                                        s.sensitivity.link_slot(id, !independent);
+                                        if submit {
+                                            s.sensitivity.select_stage(index);
+                                        }
+                                    });
+                                    if submit {
+                                        owner.request_mouse_dpi(cx);
+                                    } else {
+                                        owner.dpi_local_only_commit(cx);
+                                    }
                                 })),
                         )
                     }),
@@ -839,7 +965,9 @@ impl DeviceWorkspace {
                                 .disabled(enabled && state.enabled_count() <= 2)
                                 .on_change(cx.listener(
                                     move |owner, next, w, cx| {
-                                        owner.edit(w, cx, |s| s.sensitivity.set_enabled(id, *next))
+                                        owner.dpi_input_changed();
+                                        owner.edit(w, cx, |s| s.sensitivity.set_enabled(id, *next));
+                                        owner.request_mouse_dpi(cx);
                                     },
                                 )),
                             )
@@ -878,7 +1006,9 @@ impl DeviceWorkspace {
                                             .clamp(0, state.slots.len() as isize - 1)
                                             as usize;
                                         let target = state.slots[to].id;
+                                        owner.dpi_input_changed();
                                         owner.edit(w, cx, |s| s.sensitivity.move_slot(id, target));
+                                        owner.request_mouse_dpi(cx);
                                         cx.stop_propagation();
                                     },
                                 ))

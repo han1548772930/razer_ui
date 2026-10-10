@@ -14,6 +14,7 @@ function expand(reads,plans,boots){
   const alternate=audit.alternateCommands(),writes=[];
   for(const [kind,name,selector]of [['dpi','setDpiLevel',0],['polling','setUSBHighSpeedPollingRate',1]]){
    if(!read.queries.some(q=>q.name===kind))continue;
+   if(kind==='polling'&&!read.queries.some(q=>q.method==='getUSBHighSpeedPollingRate'))continue;
    try{
     const candidate=audit.query(name),reference=original.get(name)||ref.query(name);original.set(name,reference);
     assert.equal(canonical(audit.source,candidate.methodTarget.id,candidate.methodTarget.node),canonical(ref.source,reference.methodTarget.id,reference.methodTarget.node),'Setter interface differs');

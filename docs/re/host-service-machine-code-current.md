@@ -148,8 +148,40 @@ audio 的 `0x32270` 只在 service instance 存在时，通过它的首虚表 `+
 
 这证明原版同一 DLL 中确实调用 Windows Core Audio，不能把原版 DLL 描述成不依赖 Windows API。后续 [IDA 证据](simple-audio-current-evidence.json) 独立核实构造器、实例写入和虚表归属，补齐导出到该具体对象及 JSON schema 的链路；Rust 已接入真实系统枚举。持续对象生命周期、通知及完整错误分支仍未等价，不据此宣称整个服务完成。
 
+## SysUtilsNative 滚轮系统设置读写
+
+[当前滚轮链证据](sysutils-wheel-scroll-current-evidence.json) 独立核对产品 182 的当前 JS、宿主分发、FFI 类型、IDA 正文和原 PE 代码 SHA-256。产品 `jo` 任务从活动配置读取浏览应用列表与高分辨率滚动开关，将应用路径去空格、转小写并取 basename；进入匹配应用且高分辨率开启时把系统滚动行数设为 1，离开且当前行数为 1 时设为 3。系统 setter 返回 false 会立即标为 error，后续设备 haptic browser-mode 查询/写入不再执行；任务入口取消与异常分支也保留在证据中。
+
+宿主 `main.js → sysutil/win::callDLL → callDLLMain` 将无参 getter 或 `payload.actionArgs:[e]` 的 setter 交给 `SysUtilsNative.dll`。`getWheelScrollLines` RVA `0x77f10` 先将 UINT 初始化为 0，调用 `SystemParametersInfoW(0x68,0,&value,0)` 并忽略 BOOL，返回 FFI `int` 位模式；`setWheelScrollLines` RVA `0x77f60` 用参数原位模式调用 `SystemParametersInfoW(0x69,value,NULL,0)` 并返回 BOOL。失败 getter 返回初始化后的值，setter 返回 false；没有额外的注册表持久化、系统设置广播、服务初始化、回调、heap 分配或句柄清理。
+
+[Rust 平台适配](../../crates/razer-platform/src/wheel_scroll.rs) 直接复现这两个 Windows 调用和有符号位模式，保留 `-1` 整页滚动 sentinel。其他平台明确返回 unsupported，不映射成另一套系统设置。已接 worker IPC：`WheelScrollLinesRead` 返回 `{lines}`，`WheelScrollLinesWrite {lines}` 返回 `{requested_lines,accepted}`，setter 的 false 不会冒充成功。前台事件调度、活动配置及 haptic 任务/页面消费者尚未闭合，因此这两个导出的恢复不计为完整滚轮页面或 SysUtilsNative 整库替代。未执行系统读取、写入或设备命令。
+
+静态复核：`python -X utf8 tools/audit-sysutils-wheel-scroll-current.py --check`。
+
+## RzPowerTool 本地服务状态查询与控制
+
+[14 个 IDA 函数的服务证据](powertool-services-current-evidence.json) 包含 `WinMain`、服务名称门控、比较函数和启动/停止/依赖服务内部函数的原字节 hash、RVA、交叉引用与 Hex-Rays 正文。当前宿主 `serviceFunction.getServiceStatus` 将 `payload.actionArgs.toString()` 作为 `--get-service-status` 参数交给 `simpleLaunchRazerApp`；helper 的服务状态用进程 exitCode 返回。
+
+当前前端 RSA 桥先给服务名加双引号作为 `actionArgs`，`getServiceStatus` 从 launcher 响应取 `exitCode`（无响应默认 0），`startService` / `stopService` 返回 `!!exitCode`（无响应默认 false）。证据还保存了真实共享消费者：THX 服务任务按 `thxCarol` 选择 `Carol Routing Service` 或 `VSSrv`，状态为 1 时启动后重新读状态；Audio Mixer 的 `restartAudioService` 先停 `Audiosrv`，失败立即返回，成功才启动并返回其布尔结果。这些当前文件中的共享实现不代表 product 1308 的实际 factory 已启用所有功能，产品门控和本应用对应页面消费者仍须分别闭合。
+
+`WinMain` RVA `0x36430` 先经过 RVA `0x356e0` 的 12 个服务名门控，再以 `0xF003F` 打开本机 SCM、以 `0xF01FF` 打开服务，调用 `QueryServiceStatusEx` 读取 36 字节 `SERVICE_STATUS_PROCESS`。状态 1（stopped）与 3（stop-pending）原样返回，其余任何查询到的状态均折叠成 4，包括 start-pending、paused 等；不能把原值 4 解读成仅证明 running。名称不支持、打开失败或查询失败返回 0，service 与 SCM 的成功/失败路径都释放句柄，命令行数组最终 `LocalFree`。
+
+[Rust 查询适配](../../crates/razer-platform/src/windows_service_status.rs) 保留原权限、默认 C locale 的 ASCII 名称比较、0/1/3/4 语义和句柄释放，在 Windows 直接查询本地 SCM；其他平台明确 unsupported。已接 worker IPC `WindowsServiceStatus {name}`，响应 `{name,status}` 中 status 保存原 helper 的 exitCode 语义；这个 envelope 是本应用 IPC 结构，不冒充原进程 launcher 响应。原 helper 的 locale 标志位位于 `.data` 的虚拟补零尾部，初始为 0；另一个 CRT locale 分支已反编译，但它的进程 locale 变更未复现。原 helper 的启动/日志与真实页面调用链分别保留缺口，不将独立适配或 IPC 路由计为所有服务 UI 完成。
+
+同一 Rust 适配已实现 `start(name)` / `stop(name)` 的本地实际控制，返回原 helper 的退出码：1 成功、0 失败或服务不支持，非 Windows 明确 unsupported。已接 worker IPC `WindowsServiceStart {name}` / `WindowsServiceStop {name}`，响应 `{name,exit_code}` 保留该 0/1 值，并不冒充原 launcher 的 `exitCode` envelope；真实调用方需沿原布尔转换及刷新链分别接入。顶层经过同一 12 名称门控与 `SC_MANAGER_ALL_ACCESS=0xF003F`；启动用服务权限 `0xF01FF`，停止用 `0x2C`。SCM 返回的依赖服务名直接交给内部递归函数，不再次套顶层名单。
+
+启动链为 `DoStartService 0x35de0 → DoStartServiceHandle 0x35cf0 → HandleStartService 0x35810 → StartDependentServices 0x35b90`。第一次查询状态若不是 stopped=1 或 stop-pending=3，原版直接返回 true，并不补发启动命令。stop-pending 时按 `clamp(waitHint/10,1000,10000)` 毫秒等待后查询，checkpoint 增长会重置时间基线；否则 elapsed 大于新 waitHint 时失败，此检查发生在下一次状态判断之前。调用 `StartServiceW(handle,0,NULL)` 后再查询；start-pending 的 checkpoint 增长同样重置基线，否则 elapsed 超过本次已选等待时长的 30 倍时跳出。这个阶段查询失败也跳出并判断同一个状态缓冲区，最终状态等于 running=4 才成功。没有额外固定期限，持续 checkpoint 增长可延长整个请求。
+
+停止链为 `DoStopService 0x36360 → DoStopServiceHandle 0x36290 → StopDependentServices 0x36130 → HandleStopService 0x35eb0`。原版先递归停止 active dependent（筛选 1），再处理父服务；其时间基线在父服务第一次状态查询之前取得，此后不会因 checkpoint 或 `ControlService` 重置。已 stopped 立即成功，stop-pending 按同一 clamp 等待并查询，先判 stopped 成功，再判 elapsed 大于 30,000 毫秒失败。`ControlService(STOP=1)` 后则按完整 waitHint 睡眠，不作 clamp，再查询并先判 stopped，仍未停止才检查同一 30 秒阈值。因此阈值不是一个强制最大请求时长，睡眠可能超过它。
+
+依赖枚举先探测所需字节，首次 API 成功即返回 true；失败只有 ERROR_MORE_DATA=234 才用 `HeapAlloc(HEAP_ZERO_MEMORY=8)` 分配并再次枚举。启动筛选全部 dependent（3），父启动成功之后才递归；停止筛选 active dependent（1），先递归再停父服务。返回顺序保持 SCM 提供的顺序；原版忽略孩子失败、依赖枚举返回值，且第二次枚举失败仍会释放缓冲并返回 true。Rust 保留这些语义，用 RAII 释放枚举 heap 缓冲、每个 child/parent service 和 SCM 句柄。原返回 1 仅代表父服务成功，不证明每个依赖都成功，也没有回滚含义。
+
+原控制链没有取消或撤销接口，本应用也不添加自动回滚；调用方超时不能证明系统命令未发生。原 PE 的 `RT_MANIFEST` 明确要求 `requestedExecutionLevel=requireAdministrator`、`uiAccess=false`，收据保留 manifest 的 RVA、字节 SHA-256 和 XML。Rust 直接 worker 不会自动获得这个管理员令牌；保留原权限掩码不等于已复现原 helper 的提权环境，权限不足会如实返回 0。原 helper 提权/日志/进程 launcher 生命周期、非默认 CRT locale 行为和真实服务页面消费者仍未等价，不将这些内部状态机实现记为整个 helper 或全部界面完成。没有执行 helper、UAC、SCM 查询或系统写入。
+
+静态复核：`python -X utf8 tools/audit-powertool-services-current.py --check`；`--acquire` 仅在私有副本调用已安装 IDA/Hex-Rays，不运行目标。
+
 ## 重现静态验证与下一层
 
 `python -X utf8 tools/audit-host-service-code-current.py --check` 重新核对实际 DLL SHA、导出 RVA、`.pdata`、构造器/虚表、源码字符串、原始机器码 SHA 与反汇编。工具只执行微软 dumpbin 读取 PE，没有执行被分析的 DLL。
 
-后续原生逆向按用户要求以 IDA/Hex-Rays 为主，保留原字节、函数范围、伪代码和交叉引用；本页既有 dumpbin 收据仍用于复核原取证范围。继续追线程创建/调度/停止、事件注册/反注册、异常释放与最终 Windows/服务调用，并按 [全库清单](dll-function-inventory.md) 逐产品 DLL、其他 Node 插件与辅助程序展开。其余库不因有 FFI 表或导出表而标成已恢复内部实现。
+后续原生逆向按用户要求以 IDA/Hex-Rays 为主，保留原字节、函数范围、伪代码和交叉引用；本页既有 dumpbin 收据仍用于复核原取证范围。[IDA 全量输入索引](ida-native-corpus-current.json) 覆盖 81 个当前 PE 与 4 个宿主 helper，其中 84 个取得静态证据、1 个 ARM64 缺匹配后端；保存 320,630 个 native 函数索引和 10,630 个选定正文。三个 Intel 混合 CLR 库另用 native PE loader 取得机器码正文并单独保留托管索引，托管语义仍缺。该覆盖不表示全部函数或整个库已恢复，具体边界见 [DLL 当前分析](dll-device-communication-current.md)。继续追线程创建/调度/停止、事件注册/反注册、异常释放与最终 Windows/服务调用，并按 [全库清单](dll-function-inventory.md) 逐产品 DLL、其他 Node 插件与辅助程序展开。其余库不因有 FFI 表或导出表而标成已恢复内部实现。

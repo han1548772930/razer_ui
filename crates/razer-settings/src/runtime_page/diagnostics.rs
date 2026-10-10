@@ -12,6 +12,7 @@ fn value_count(values: &razer_device::device_reads::DeviceReadValues) -> usize {
         values.charging_status.is_some(),
         values.polling_hz.is_some(),
         values.dpi.is_some(),
+        values.idle_raw_time.is_some(),
     ]
     .into_iter()
     .filter(|present| *present)
@@ -123,6 +124,9 @@ impl Readings {
                 "status": if snapshot.errors().is_empty() { "received" } else { "partial" },
                 "observations": snapshot.devices().iter().map(|device| json!({
                     "product_id": device.product_id(),
+                    // Portable identity scopes are collection keys, never ContainerIds.
+                    "identity_scope": device.container(),
+                    "hid_node": device.hid_node(),
                     "connection_observation": format!("{:?}", device.connection()),
                     "read_values": device.read_values(),
                     // Declared-but-unqueried: which native libraries this product's
@@ -137,6 +141,7 @@ impl Readings {
         };
         let value = json!({
             "format_version": 1,
+            "platform": std::env::consts::OS,
             "recorded_at_utc": chrono::Utc::now().to_rfc3339(),
             "executable": executable,
             "executable_bytes": metadata.as_ref().map(|metadata| metadata.len()),
@@ -146,6 +151,16 @@ impl Readings {
             "services_requested": self.services_requested,
             "usb": query(&self.usb),
             "hid": query(&self.hid),
+            "hid_nodes": query(&self.hid_nodes),
+            "service_version": query(&self.version),
+            "audio_devices": query(&self.audio),
+            "platform_capabilities": {
+                "windows_usb_interfaces": if cfg!(windows) { "supported" } else { "unsupported" },
+                "windows_container_queries": if cfg!(windows) { "supported" } else { "unsupported" },
+                "service_version": if cfg!(windows) { "supported" } else { "unsupported" },
+                "audio_devices": if cfg!(windows) { "supported" } else { "unsupported" },
+                "portable_hid_enumeration_completeness": "not_reported_by_backend",
+            },
             "discovery": discovery,
             "device_configuration": {
                 "scope": "source_verified_basic_queries_only",

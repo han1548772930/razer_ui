@@ -207,6 +207,43 @@ pub fn project_receiver_query(
             .is_some_and(|rows| value["device_count"].as_u64() == Some(rows.len() as u64)),
         "接收器响应设备数量不匹配"
     );
+    build_projection(receiver_pid, container, value, None)
+}
+
+/// Validate a portable receiver reply against its exact retained collection.
+/// Shared peer/status semantics are reused without fabricating a ContainerId.
+pub fn project_hid_receiver_query(
+    node: &razer_device::backend::HidNode,
+    value: &Value,
+) -> anyhow::Result<ReceiverQueryProjection> {
+    let receiver_pid = u32::from(node.product_id);
+    let cap = capability(receiver_pid)?;
+    ensure!(
+        value["node"] == serde_json::to_value(node)?
+            && value["identity_scope"] == "hid_collection"
+            && node.vendor_id == cap.vendor_id
+            && node.interface_number == i32::from(cap.claim_interface)
+            && value["query"] == "receiver_wireless_status_v2"
+            && value["source_class"] == cap.source_class
+            && value["devices"]
+                .as_array()
+                .is_some_and(|rows| value["device_count"].as_u64() == Some(rows.len() as u64)),
+        "跨平台接收器响应与 collection/查询作用域不匹配"
+    );
+    build_projection(
+        receiver_pid,
+        &crate::direct::collection_scope(node),
+        value,
+        Some(node.clone()),
+    )
+}
+
+fn build_projection(
+    receiver_pid: u32,
+    container: &str,
+    value: &Value,
+    hid_node: Option<razer_device::backend::HidNode>,
+) -> anyhow::Result<ReceiverQueryProjection> {
     let projection = project_peers(receiver_pid, value)?;
     let pairing = payload(&projection).map_err(|error| format!("{error:#}"));
     let snapshot = DiscoverySnapshot {
@@ -224,6 +261,7 @@ pub fn project_receiver_query(
                 physical_product_id: receiver_pid,
                 peer_product_id: Some(peer.raw_product_id),
                 read_values: None,
+                hid_node: hid_node.clone(),
             })
             .collect(),
         errors: projection.errors,

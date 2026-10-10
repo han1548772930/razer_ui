@@ -15,8 +15,16 @@ use std::collections::{BTreeMap, BTreeSet};
 #[path = "discovery_startup_tests.rs"]
 mod startup_tests;
 
+#[cfg(test)]
+#[path = "receiver_route_tests.rs"]
+mod receiver_route_tests;
+
+#[path = "discovery_portable.rs"]
+mod portable;
 #[path = "discovery_receiver_projection.rs"]
 mod receiver_projection;
+pub use portable::discover_portable;
+pub use receiver_projection::project_hid_receiver_query;
 pub use receiver_projection::{ReceiverQueryProjection, pairing_payload, project_receiver_query};
 
 #[derive(Clone, Copy)]
@@ -38,8 +46,14 @@ pub struct ObservedDevice {
     physical_product_id: u32,
     peer_product_id: Option<u32>,
     read_values: Option<razer_device::device_reads::DeviceReadValues>,
+    hid_node: Option<razer_device::backend::HidNode>,
 }
 impl ObservedDevice {
+    /// Present only for an actual portable collection observation. Its scope
+    /// key is a local collection identity, never a Windows ContainerId.
+    pub fn hid_node(&self) -> Option<&razer_device::backend::HidNode> {
+        self.hid_node.as_ref()
+    }
     pub fn product_id(&self) -> u32 {
         self.product_id
     }
@@ -163,6 +177,7 @@ impl DiscoverySnapshot {
                 existing.use_ble = observed.use_ble;
                 existing.physical_product_id = observed.physical_product_id;
                 existing.peer_product_id = observed.peer_product_id;
+                existing.hid_node = observed.hid_node.clone();
                 existing.serial.clear();
             }
             if existing.serial.is_empty()
@@ -415,6 +430,7 @@ pub fn discover(
                 physical_product_id: pid,
                 peer_product_id: None,
                 read_values: None,
+                hid_node: None,
                 container: container.clone(),
                 // A receiver's USB string is not a queried wireless peer serial.
                 serial: if !identity.is_dongle && serials.len() == 1 {
@@ -508,6 +524,9 @@ fn read_observed_values(
 ) -> Option<razer_device::device_reads::DeviceReadValues> {
     use razer_device::device_reads::{self, DeviceReadTarget, DeviceReadValue, DeviceReadValues};
     let capability = device_reads::capability(observed.product_id)?;
+    if observed.hid_node.is_some() {
+        return Some(super::direct::read_values(client, observed, capability));
+    }
     // A radio binding without an actual online reply is not a read target.
     if matches!(observed.transport, Some(ObservedTransport::Dongle))
         && observed.peer_product_id.is_none()
@@ -533,7 +552,7 @@ fn read_observed_values(
             .context("物理接收器查询能力未核实")?
             .claim_interface
         } else {
-            capability.claim_interface
+            capability.claim_interface_for(observed.physical_product_id)?
         };
         let paths = select_interface_paths(
             items,

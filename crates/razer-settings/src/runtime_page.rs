@@ -31,6 +31,8 @@ struct Readings {
     connected: bool,
     usb: Option<Result<Value, String>>,
     hid: Option<Result<Value, String>>,
+    // Portable collection responses retain their own schema, never Windows interfaces.
+    hid_nodes: Option<Result<Value, String>>,
     version: Option<Result<Value, String>>,
     audio: Option<Result<Value, String>>,
     native: Vec<NativeReading>,
@@ -59,12 +61,23 @@ impl EventEmitter<DeviceValuesObserved> for RuntimePanel {}
 
 impl Readings {
     fn has_partial_results(&self) -> bool {
+        #[cfg(windows)]
+        let interfaces = [&self.usb, &self.hid];
+        #[cfg(not(windows))]
+        let interfaces = [&self.hid_nodes];
         let required = if self.services_requested || self.version.is_some() || self.audio.is_some()
         {
-            vec![&self.usb, &self.hid, &self.version, &self.audio]
+            interfaces
+                .into_iter()
+                .chain([&self.version, &self.audio])
+                .collect::<Vec<_>>()
         } else {
-            vec![&self.usb, &self.hid]
+            interfaces.into_iter().collect::<Vec<_>>()
         };
+        #[cfg(windows)]
+        let enumeration = [(&self.usb, "devices"), (&self.hid, "interfaces")];
+        #[cfg(not(windows))]
+        let enumeration = [(&self.hid_nodes, "nodes")];
         required.iter().any(|result| !matches!(result, Some(Ok(_))))
             || self.native.iter().any(|reading| match &reading.result {
                 Ok(value) => value["status"] != "received",
@@ -74,21 +87,19 @@ impl Readings {
                 Ok(snapshot) => !snapshot.errors().is_empty(),
                 Err(_) => true,
             })
-            || [(&self.usb, "devices"), (&self.hid, "interfaces")]
-                .iter()
-                .any(|(result, key)| {
-                    result
-                        .as_ref()
-                        .and_then(|result| result.as_ref().ok())
-                        .is_some_and(|value| {
-                            value.get(*key).and_then(Value::as_array).is_none()
-                                || value.get("complete") != Some(&Value::Bool(true))
-                                || value
-                                    .get("failures")
-                                    .and_then(Value::as_array)
-                                    .is_some_and(|failures| !failures.is_empty())
-                        })
-                })
+            || enumeration.iter().any(|(result, key)| {
+                result
+                    .as_ref()
+                    .and_then(|result| result.as_ref().ok())
+                    .is_some_and(|value| {
+                        value.get(*key).and_then(Value::as_array).is_none()
+                            || value.get("complete") != Some(&Value::Bool(true))
+                            || value
+                                .get("failures")
+                                .and_then(Value::as_array)
+                                .is_some_and(|failures| !failures.is_empty())
+                    })
+            })
     }
 
     fn status(&self) -> &'static str {
@@ -134,14 +145,19 @@ impl RuntimeBridge {
                                         let error = format!("{error:#}");
                                         Readings {
                                             connected: false,
+                                            #[cfg(windows)]
                                             usb: Some(Err(error.clone())),
+                                            #[cfg(windows)]
                                             hid: Some(Err(error.clone())),
+                                            #[cfg(not(windows))]
+                                            hid_nodes: Some(Err(error.clone())),
                                             version: services.then(|| Err(error.clone())),
                                             audio: services.then(|| Err(error.clone())),
                                             native: Vec::new(),
                                             discovery: Some(Err(error)),
                                             services_requested: services,
                                             diagnostic_report: None,
+                                            ..Readings::default()
                                         }
                                     }
                                 },
@@ -206,42 +222,95 @@ fn read_services(
     services: bool,
     progress: &DiscoveryProgress,
 ) -> Readings {
-    // Enumerate physical USB and HID separately before vendor services. Neither
-    // enumeration's failure discards the other one's real observations.
-    let usb = client
-        .request(ServiceRequest::UsbDevices)
-        .map_err(|error| format!("{error:#}"));
-    let hid = client
-        .request(ServiceRequest::HidDevices)
-        .map_err(|error| format!("{error:#}"));
-    let mut discovery =
-        discovery::discover(client, &usb, &hid).map_err(|error| format!("{error:#}"));
-    if let Ok(snapshot) = &mut discovery {
+    #[cfg(windows)]
+    let mut readings = {
+        // Enumerate physical USB and HID separately before vendor services. Neither
+        // enumeration's failure discards the other one's real observations.
+        let usb = client
+            .request(ServiceRequest::UsbDevices)
+            .map_err(|error| format!("{error:#}"));
+        let hid = client
+            .request(ServiceRequest::HidDevices)
+            .map_err(|error| format!("{error:#}"));
+        let discovered =
+            discovery::discover(client, &usb, &hid).map_err(|error| format!("{error:#}"));
+        Readings {
+            usb: Some(usb),
+            hid: Some(hid),
+            discovery: Some(discovered),
+            ..Readings::default()
+        }
+    };
+    #[cfg(not(windows))]
+    let mut readings = {
+        let nodes = client
+            .request(ServiceRequest::HidNodes)
+            .map_err(|error| format!("{error:#}"));
+        let discovered =
+            discovery::discover_portable(client, &nodes).map_err(|error| format!("{error:#}"));
+        Readings {
+            hid_nodes: Some(nodes),
+            discovery: Some(discovered),
+            ..Readings::default()
+        }
+    };
+    if let Some(Ok(snapshot)) = &mut readings.discovery {
         // Publish identified interfaces before slower configuration queries.
         // The UI captures profile/connection scope at this exact boundary.
         let (ready, acknowledged) = mpsc::channel();
         if progress.send_blocking((snapshot.clone(), ready)).is_ok()
             && acknowledged.recv_timeout(Duration::from_secs(30)).is_ok()
         {
-            discovery::read_device_values(client, &hid, snapshot);
+            #[cfg(windows)]
+            {
+                let missing_interfaces = Err("Windows HID 接口观察未保留".into());
+                discovery::read_device_values(
+                    client,
+                    readings.hid.as_ref().unwrap_or(&missing_interfaces),
+                    snapshot,
+                );
+            }
+            #[cfg(not(windows))]
+            {
+                // The shared reader selects the real hid_node route first. Its
+                // Windows interface input is unused for portable observations;
+                // neither convert nodes nor send collection keys as ContainerIds.
+                let unused_windows_interfaces = Err("当前平台不使用 Windows HID 接口观察".into());
+                discovery::read_device_values(client, &unused_windows_interfaces, snapshot);
+            }
         } else {
-            discovery = Err("界面尚未确认本次发现，设备参数查询未开始。".into());
+            readings.discovery = Some(Err("界面尚未确认本次发现，设备参数查询未开始。".into()));
         }
     }
+    #[cfg(windows)]
     let version = services.then(|| {
         client
             .request(ServiceRequest::SimpleVersion)
             .map_err(|error| format!("{error:#}"))
     });
+    #[cfg(not(windows))]
+    let version = services.then(|| Err("当前平台尚不支持 Razer Windows 服务版本查询".into()));
+    #[cfg(windows)]
     let audio = services.then(|| {
         client
             .request(ServiceRequest::AudioDevices)
             .map_err(|error| format!("{error:#}"))
     });
+    #[cfg(not(windows))]
+    let audio = services.then(|| Err("当前平台尚不支持原生系统音频设备查询".into()));
+    #[cfg(windows)]
     let mut native = Vec::new();
+    #[cfg(not(windows))]
+    let native = Vec::new();
+    #[cfg(windows)]
     if services {
-        if let Ok(snapshot) = &discovery {
+        if let Some(Ok(snapshot)) = &readings.discovery {
             for device in snapshot.devices() {
+                // A collection key is not accepted by native ContainerId APIs,
+                // even if a future Windows discovery path supplies HidNodes.
+                if device.hid_node().is_some() {
+                    continue;
+                }
                 for library in
                     razer_catalog::native_library::libraries_for_product(device.product_id())
                 {
@@ -267,17 +336,12 @@ fn read_services(
             }
         }
     }
-    Readings {
-        connected: !client.is_stopped(),
-        usb: Some(usb),
-        hid: Some(hid),
-        version,
-        audio,
-        native,
-        discovery: Some(discovery),
-        services_requested: services,
-        diagnostic_report: None,
-    }
+    readings.connected = !client.is_stopped();
+    readings.version = version;
+    readings.audio = audio;
+    readings.native = native;
+    readings.services_requested = services;
+    readings
 }
 
 pub struct RuntimePanel {
@@ -538,6 +602,9 @@ impl Render for RuntimePanel {
             .when_some(self.readings.hid.as_ref(), |this, result| {
                 this.child(hid_result(result, cx))
             })
+            .when_some(self.readings.hid_nodes.as_ref(), |this, result| {
+                this.child(hid_nodes_result(result, cx))
+            })
             .when_some(self.readings.usb.as_ref(), |this, result| {
                 this.child(usb_result(result, cx))
             })
@@ -590,7 +657,7 @@ impl Render for RuntimePanel {
                     }))
                 }).into_any_element()
             }))
-            .when(self.readings.hid.is_some(), |this| {
+            .when(self.readings.hid.is_some() || self.readings.hid_nodes.is_some(), |this| {
                 this.child(
                     Button::new("runtime-details")
                         .ghost()
@@ -616,6 +683,7 @@ impl Render for RuntimePanel {
                         [
                             ("USB 设备", &self.readings.usb),
                             ("HID 接口", &self.readings.hid),
+                            ("HID collection", &self.readings.hid_nodes),
                             ("版本", &self.readings.version),
                             ("音频", &self.readings.audio),
                         ]
@@ -658,6 +726,60 @@ fn reading(label: &str, result: &Result<Value, String>, cx: &App) -> AnyElement 
         .whitespace_normal()
         .when(result.is_err(), |this| this.text_color(cx.theme().danger))
         .child(text)
+        .into_any_element()
+}
+
+fn hid_nodes_result(result: &Result<Value, String>, cx: &App) -> AnyElement {
+    let Ok(value) = result else {
+        return reading("HID collection", result, cx);
+    };
+    let Ok(nodes) =
+        serde_json::from_value::<Vec<razer_device::backend::HidNode>>(value["nodes"].clone())
+    else {
+        return div()
+            .text_color(cx.theme().danger)
+            .child("HID collection 响应格式无法识别。")
+            .into_any_element();
+    };
+    // A successful hidapi response is an observation, not proof that all
+    // devices were enumerated. Keep the backend's unknown completeness visible.
+    let summary = format!(
+        "观察到 {} 项 HID collection；后端未报告枚举完整性，同一设备可能包含多个 collection。",
+        nodes.len()
+    );
+    v_flex()
+        .gap_2()
+        .child(
+            div()
+                .id("runtime-hid-nodes-summary")
+                .test_support()
+                .role(Role::Status)
+                .aria_label(summary.clone())
+                .child(summary),
+        )
+        .children(nodes.into_iter().enumerate().map(|(index, node)| {
+            let product = node
+                .product
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "未提供产品名称".into());
+            let serial = node
+                .serial_number
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "未提供".into());
+            let identity = format!(
+                "VID/PID {:04X}:{:04X} · 接口 {} · Usage {:04X}:{:04X}",
+                node.vendor_id, node.product_id, node.interface_number, node.usage_page, node.usage
+            );
+            v_flex()
+                .id(SharedString::from(format!("runtime-hid-node-{index}")))
+                .test_support()
+                .role(Role::ListItem)
+                .aria_label(format!("{product} · {identity} · {serial}"))
+                .gap_1()
+                .child(product)
+                .child(surface::note(format!("序列号：{serial} · {identity}"), cx))
+                .into_any_element()
+        }))
         .into_any_element()
 }
 
