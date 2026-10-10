@@ -4,6 +4,8 @@
     {
       "product_id": 164,
       "edition_id": 0,
+      "device_name": "Razer Mouse Dock Pro",
+      "schema_version": 13,
       "default_profile": {
         "guid": "",
         "name": " ",
@@ -43,6 +45,8 @@
     {
       "product_id": 241,
       "edition_id": 0,
+      "device_name": "Razer Mouse Dock V2 Pro",
+      "schema_version": 13,
       "default_profile": {
         "guid": "",
         "name": " ",

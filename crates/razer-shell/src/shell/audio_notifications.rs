@@ -141,10 +141,18 @@ impl AppShell {
             }
             Some((workspace.identity(cx), device.product_id))
         }).collect::<BTreeMap<_, _>>();
-        let removed = self.audio_notifications.keys()
-            .filter(|key| !desired.contains_key(*key)).cloned().collect::<Vec<_>>();
+        let removed = self
+            .audio_notifications
+            .keys()
+            .filter(|key| !desired.contains_key(*key))
+            .cloned()
+            .collect::<Vec<_>>();
         for key in removed {
-            if let Some(worker) = self.audio_notifications.remove(&key).and_then(Session::retire) {
+            if let Some(worker) = self
+                .audio_notifications
+                .remove(&key)
+                .and_then(Session::retire)
+            {
                 self.audio_notification_cleanup.push(worker);
             }
         }

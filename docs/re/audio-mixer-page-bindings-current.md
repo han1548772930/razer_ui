@@ -1,140 +1,114 @@
-# 1342 Audio Mixer page bindings
+# Current 1342 Audio Mixer page and submission chains
 
-The current 1342 middleware names the Noise Gate, Compressor, Vocal Fading,
-Key Shifter, Voice Changer and microphone EQ controls with `RazerT2*` properties in
-`AudioMixer.cde922aae2f0fea23404.js`. Those controls now produce typed
-`HidNodeMixerRead/Write` intents through the shared page workspace. The HID
-target is still checked by the service against the source-derived 1342
-identity and report recipes in `audio-mixer-protocol.json`.
+Current implementation evidence is the hashed 1342 frontend JS/CSS and
+middleware in [the source receipt](audio-mixer-page-bindings-source-current.json),
+plus [CmMixerLib native evidence](audio-mixer-dll-protocol-current.json) and
+[the new mapping-engine IDA/Hex-Rays receipt](evidence/mapping-engine-global-shortcuts-ida.json).
+No historical frontend/host source is used. Source acquisition, semantic
+recovery, Rust implementation, UI/backend connection and runtime acceptance
+remain separate; this page/product is not declared fully restored.
 
-The five reducer families (`outputMixerReducer`, `playbackMixReducer`,
-`streamMixReducer`, `lineOutReducer`, and `voiceChatReducer`) remain separate.
-The source calls `RzNativeAudioCamy` with virtual `DeviceId_*` values for those
-paths. They are not mapped to `MixerControl` endpoint properties because the
-current source contains no equivalence between those namespaces. Routing them
-to an HID target would fabricate a device write.
+The typed page intents reach the retained Shell/service HID collection. Each
+setter follows its original reports. `MixerWriteResult.transport_completed`
+means the source setter transport completed; it is not device state readback.
+The implementation performs no additional before-value getter, after-value
+getter, readback comparison or initial all-DSP refresh. Caller-required reads
+and setter-required register reads remain. Only explicit original GET replies
+enter the separate observed-state map; local drafts and preset storage remain
+local. Owner/revision cancellation and collection identity checks do not invent
+hardware GET commands or rollback.
 
-The Shell consumer accepts a unique current wired HID observation and checks
-the reply's node, product, target and source property before delivering a
-completion. Requests are serialized, cancellation is checked before submitting
-a new setting, and epoch/profile/discovery revisions reject old responses. EQ
-writes use the fixed current JS templates for all ten bands. Device observations
-remain separate from locally saved drafts.
+Voice `Ti` reads Magic Voice enabled state and changes it only when different.
+The changed switch setter reads its register once, copies low24 into the fixed
+C0 high template and toggles bit1. Enabled mode submission reads EQ/Magic/Echo
+gates in that order, then the original `pe` register query, then the selected
+fixed mode template. Modes MONSTER=0/CARTOON=1/LOW=2/HIGH=3 retain the original
+codes. Disable retains local mode and sends no mode. It does not query the
+result after the setter.
 
-The current `ki`/`wi` callers accept `basic.value` only in `useMode=0` and
-advanced threshold/target/timing fields only in `useMode=1`. A mode change
-itself does not submit settings. Basic forwards the numeric threshold without
-introducing a gain percentage conversion or additional setters. Key Shifter
-disabling submits zero while retaining its local level; Vocal Fading enabling
-submits the switch before the retained level. Microphone EQ editing enables EQ
-before writing the complete ten-band array. The pure Rust planner preserves
-these gates and order.
+Echo `Ci` reads enabled state and changes it only when different. The switch
+setter reads its register once, copies low24 into fixed80 and toggles mask12.
+When enabled, room/decay/gain/delay follow in order; each original scalar setter
+reads EQ/Magic/Echo gates before sending its fixed selector/template and value.
+They do not read that scalar's previous or resulting value. Room uses
+floor(room*24/100-43); Gain=0 is skipped by the original truthiness guard.
+Library defaults to [40,1.7,0.5,150]; named arrays and retained Custom values are
+source-derived. Changes reset the original 500ms debounce. A setter transport
+failure stops later fields; local zero is never represented as device zero.
 
-The original Noise Gate and Compressor wrappers show only the Basic slider in
-mode 0 and the detailed fields in mode 1, with Show More/Less outside the
-disabled settings body. The Rust mounted panels now preserve that condition
-and disable settings while their source switch is off. Show More/Less changes
-the locally retained mode without an invented device command; the next visible
-field uses its corresponding real DSP submission.
+Key Shifter submits zero when disabled and its retained level when enabled.
+Its fixed template reads the three gates and retains original negative sign
+encoding. Vocal Fading follows its enabled-state caller GET, changed switch
+register RMW, then retained level when enabled. Its scalar setter reads the
+three gates and truncates the level into the original fixed template. Neither
+path performs added getter verification after SET.
 
-Current `LM.changeTab` sends the named preset array, or retained Custom bands
-with Default fallback. `LM.onDrag` clones the full frequency array, replaces
-the changed gain and selects Custom. `LM.reset` always selects Custom with
-the Default zero array; it does not restore the selected named preset.
-These three UI paths now issue `HidNodeMixerEqWrite`, retaining one HID handle
-and collection lock for enable and bands 0..9. Each step requires real readback;
-an error stops later bands and reports the confirmed prefix without rollback.
-Requests queued during an active operation coalesce to the newest full array;
-revision changes/cancellation prevent stale completion publication. An already
-submitted original operation is not falsely described as canceled device state.
-The cancellation token is checked only before service submission. The worker
-does not receive that token during its eleven synchronous operations; only
-identity/deadline/error gates can stop later bands. A partial failure never
-copies attempted or confirmed prefix values into the visible local profile.
+`LM.changeTab`, `LM.onDrag` and `LM.reset` submit the full ten-band array. Reset
+selects Custom plus Default zeros. The source `setMicEQ(true)` sends fixed
+Output13 command0x5FFC0034 payload0x40000091 directly; disabled uses0x40000090.
+It has no register GET. Each band sends its original fixed template directly
+without any prior or subsequent band getter. Source setter data frequencies
+30/60/120 differ from display31/63/125; band register addresses advance by4.
+One retained collection executes enable then bands0..9; failure reports the
+submitted prefix and stops later fields. All eleven completions are transport
+completions. Basic bands expand [0,0,0,0,1,1,1,1,2,2], with independent Basic and
+Advanced Custom arrays. Current mode caller's `micBaicEqualizer` typo remains
+an explicit source error branch. Kitty's `deviceEqDifferent` import/confirmation
+is gated to AudioAWKittyBLE and is not added to AudioMixer.
 
-`setMicEQLevel_MultiBand` requires exactly ten entries and calls the ten setters
-in order. Each setter uses fixed JS Output `0x13` templates, register
-`0x5ffc0070 + 4*index`, data fields 30,60,120,250,500,1000,2000,4000,8000,16000,
-gain in bits 16..21 and bit0 set only for nonzero gain. No getter precedes that
-source write. The native getter has an overlapping data/gain field; preserving
-its returned data would therefore differ from the current source templates.
-The statically generated [EQ recipe](../../assets/data/audio-mixer-mic-eq-current.json)
-keeps setter data separate from current preset display labels 31/63/125.
+Noise Gate/Compressor maintain original Basic/Advanced visible control gates;
+Show More/Less retains local mode without an invented mode hardware command.
+Their source page codecs and remaining UI details require further individual
+closure. The five virtual AudioCamy reducer namespaces are separate from
+CmMixerLib DSP endpoint properties and must not be equated without evidence.
 
-Basic and Advanced have separate retained Custom arrays. The current three
-Basic bands BASS/MID/TREBLE expand into indices 0..3/4..7/8..9 respectively,
-then use the same ten-band write. Original Basic preset arrays and the Show
-More/Less mode selection are now present. The current mode caller persists
-mode, then tries the misspelled `micBaicEqualizer` in its Basic branch; no current
-source creates that alias. That automatic branch reports failure rather than
-inventing a successful write. Selecting a Basic preset, Reset or releasing a
-Basic band issues its actual `ON_SET_MIC_BASIC_EQ` equivalent. Advanced mode
-selection uses its retained complete array. The shared `deviceEqDifferent` confirmation/import flow is gated by
-`rzDevice.name === "AudioAWKittyBLE"` at the sole current `Qs()` call;
-AudioMixer does not execute that device comparison branch. It must be audited
-and implemented for that actual product rather than adding a new AudioMixer
-modal. Exact mounted EQ visual details still require completion; this does
-not claim the entire microphone page finished.
+Effects presets use the current initializer's random GUID and `Preset` name,
+separate from provisional frontend `Default`. Add/Duplicate/Rename/Reset/Delete
+and selection persist the device-scoped local `_audioMixerPresets` library.
+Rename trims and checks32 UTF-16 units; original name duplicate checks remain
+case-sensitive and ordering case-insensitive. Reset retains guid/name and
+removes mapping; Delete requires another preset, delays confirmation100ms and
+selects the first sorted survivor. Selection restores Voice/Echo/Key/Vocal and
+submits those original chains. Reset has one confirmation; Delete has Cancel.
+Current GPUI global Dialog/generic menus still differ from the original anchored
+profile-act/profile-del/popupReset layouts and are not marked complete.
 
-Current CSS separates the mounted Basic and Advanced widgets. Basic uses
-the custom 140px vertical track, BASS/MID/TREBLE title and separate numeric/dB
-rows, and hides the ordinary bubble/frequency/y-axis/reset elements. Advanced
-uses the 300px track and retains Reset. These branches are now reflected in
-the page; remaining exact widget styles, spacing and assets remain explicit
-visual gaps.
+The Effects mount now uses Microphone Voice/Echo on the left, Line In Key/Vocal
+on the right, original20px bottom headings, title switches, Voice27px tabs and
+Key/Vocal source slider styling. The top uses276px left group,250px selector
+plus26px action control and230x27px capture. Echo CU rotary canvas/drag geometry,
+room numeric editor, exact anchored popups and final visual details remain gaps.
 
-Remaining AudioMixer page consumers include the AudioCamy virtual reducers
-and product mapping/lighting. The shared gated Kitty comparison
-flow remains an independent product implementation gap. This receipt does not
-claim the complete 1342 page or product has been restored.
+`GU/yU` keyboard capture preserves sided Ctrl/Shift, default Ctrl+Alt with no
+held modifiers, ignored standalone Alt and Delete/Backspace removal. Source
+117-key identities are used; duplicate mapping display strings remove the
+current mapping and retain attempted warning text. Mouse/Hypershift capture,
+the source delayed listeners, general-mapping suppression, warning icon/tooltip
+and all native mapping/macro branches remain incomplete.
 
-The mounted Voice Changer switch and four mode options now follow
-`ON_SET_VOICE_CHANGER -> taskMakerSetVoiceChanger -> f2B/Ti`. The source first
-reads the Magic Voice switch, changes it only when needed, and when enabled
-submits MONSTER=0, CARTOON=1, LOW_PITCH=2 or HIGH_PITCH=3. Disabling retains the
-local mode and submits no mode. Every real write still requires device readback.
-The JS he switch template copies the three low query bytes into a fixed C0
-high byte before changing bit 1; `PageMagicVoiceEnabled` preserves that source
-operation separately from the native switch. The ge/ye/fe/Se mode templates
-differ from the native setter's reserved-bit mask: `PageMagicVoice` reconstructs the current fixed high template and
-observed EQ/Magic/Echo gates, while native `MagicVoice` retains its original DLL
-codec. The static auditor compares all four JS template codes against the
-recovered native code table. New local objects replace unsent same-family fields;
-failure stops the queued mode and never overwrites the visible local draft.
+Actual shortcut registration is direct Rust platform code, without loading
+mapping_engine.dll. Registration/removal returns its original OS completion;
+there is no extra registered-list query/confirmation gate. Source modifiers
+normalize into Windows MOD flags; WM_HOTKEY reads physical sides and selects
+the first subset-matching binding. Events reach the current connected workspace
+and selected preset's four DSP chains. Capture disables publication and clears
+queued events; focus-out enables; revision checks reject stale callbacks.
+Disconnect/quit retires workers and releases actual OS registrations. Non-Windows
+registration remains explicitly unsupported, while shared source identities
+are OS-independent.
 
-The connected Shell path supports a retained portable `HidNode` and a Windows
-`ContainerId` observation. The isolated Windows adapter joins the actual
-`HidDevices` path/container/VID/PID/usage/release/instance metadata to the actual
-hidapi `HidNode`; it never creates path bytes or guesses an interface number.
-Descriptor observations are checked with `validate_report_lengths`, shared
-with the device session. Only one same-container collection supporting the
-requested source recipe is accepted. Structural enumeration failures, missing
-nodes and multiple candidates are errors before a device report is sent.
-Windows metadata is observed again after descriptor access, before a setting
-and after a response; the service retains its exact-node checks before and
-after every report. This is an application identity policy: original
-`CmMixerOpenHID` selects the first VID/PID collection with no discovered usage
-gate. The bridge does not claim original ContainerId filtering. Its binary
-evidence remains in [the DLL receipt](audio-mixer-dll-protocol-current.json).
+The native receipt records21 functions, original SHA-256, RVA boundaries,
+pseudocode, instructions and xrefs. `0x141F0/0x143E0 -> 0xC97C0` registers;
+`0x14810/0x149E0 -> 0xC9AA0` unregisters. `0xC94C0` consumes WM_HOTKEY and uses
+GetKeyState; `0x189A0` serializes the first matching original binding;
+`0x11C460` confirms physical modifier bits. IDs0..0xBFFF reuse free IDs and
+MOD_NOREPEAT is absent. Thread-bound hWnd=NULL replaces native hidden HWND,
+enable/disable is idempotent rather than native disable-token errors, and the
+queue is bounded512; no original timeTick/event type is fabricated. These host
+implementation differences do not claim complete native semantic equivalence.
 
-The current profile restoration caller dispatches local `noiseGate` and
-`compressor` fields and enqueues their `ON_SET_*` actions with
-`MW_ACTION_FROM_LOCALSTORAGE`. The current caller does not seed these controls
-from an initial DSP threshold read. The visible controls therefore retain the
-local profile draft; real observed DSP values are stored separately, and failed
-reads/writes use existing window notifications. No debugging receipt rows are
-added to the original page layout. Full original profile application and all
-remaining callers are still required; this chain does not claim those complete.
-
-Static verification: `cargo check --locked -p razer-device -p razer-pages -p razer-service -p razer-shell --all-targets` and
-`git diff --check` passed. No DLL, application, device, or runtime JavaScript
-was executed. Runtime acceptance remains unperformed. See
-[audio-mixer-page-bindings-current.json](audio-mixer-page-bindings-current.json).
-
-Current JS/CSS hashes, UTF-16 ranges and original snippets are recorded in
-[audio-mixer-page-bindings-source-current.json](audio-mixer-page-bindings-source-current.json).
-Validate the receipt with `python tools/audit-audio-mixer-page-bindings-current.py --check`.
-
-The source-derived planner test definitions remain available for future
-authorized verification. No test execution is performed under the current
-static-only development requirement.
+Static verification uses `cargo check --locked --all-targets`, formatting,
+source audit `python tools/audit-audio-mixer-page-bindings-current.py --check`
+and diff checks. Existing static test definitions reflect source report order;
+no tests, application, DLL, device command or vendor JS were executed. Runtime
+acceptance remains unperformed. See [the structured chain receipt](audio-mixer-page-bindings-current.json).

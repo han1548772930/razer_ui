@@ -242,6 +242,9 @@ impl SourceProductWorkspace {
     ) {
         if self.device.dashboard.connection_observation != observation {
             self.cancel_keyboard_brightness_connection(cx);
+            if let FamilyBody::Controls(body) = &self.body {
+                body.update(cx, |body, _| body.cancel_brightness_connection());
+            }
             if let FamilyBody::Audio(body) = &self.body {
                 body.update(cx, |body, _| {
                     body.invalidate_volume();
@@ -335,11 +338,7 @@ impl SourceProductWorkspace {
 
     fn sync_audio_mixer_activity(&self, cx: &mut Context<Self>) {
         if let FamilyBody::Audio(body) = &self.body {
-            let active = self.active
-                && self.device.product_id == 1342
-                && self
-                    .current_page()
-                    .is_some_and(|page| matches!(page.kind().key(), "TAB_MIC" | "EFFECTS"))
+            let active = self.device.product_id == 1342
                 && matches!(
                     self.device.dashboard.connection_observation,
                     Some(
@@ -348,6 +347,12 @@ impl SourceProductWorkspace {
                     )
                 );
             body.update(cx, |body, cx| body.set_mixer_active(active, cx));
+        }
+    }
+    pub fn audio_mixer_page(&self) -> Option<Entity<super::audio_products::AudioProductWorkspace>> {
+        match &self.body {
+            FamilyBody::Audio(body) => Some(body.clone()),
+            _ => None,
         }
     }
     fn sync_keyboard_read_activity(&self, cx: &mut Context<Self>) {
@@ -374,6 +379,23 @@ impl SourceProductWorkspace {
             && receiver_read_owner(&self.device);
         if let FamilyBody::Controls(body) = &self.body {
             body.update(cx, |body, cx| body.set_receiver_active(active, cx));
+            let brightness_active = self.active
+                && matches!(self.device.product_id, 164 | 241)
+                && self
+                    .current_page()
+                    .is_some_and(|page| page.kind().key() == "TAB_LIGHTING")
+                && uuid::Uuid::parse_str(&self.device.device_container_id)
+                    .is_ok_and(|id| !id.is_nil())
+                && matches!(
+                    self.device.dashboard.connection_observation,
+                    Some(
+                        razer_model::model::DeviceConnectionObservation::UsbPresent
+                            | razer_model::model::DeviceConnectionObservation::HidPresent
+                    )
+                );
+            body.update(cx, |body, cx| {
+                body.set_brightness_read_active(brightness_active, cx)
+            });
         } else if let Some(body) = &self.supplement {
             body.update(cx, |body, cx| body.set_receiver_active(active, cx));
         }
@@ -963,6 +985,14 @@ impl SourceProductWorkspace {
             ));
             subscriptions.push(cx.subscribe(
                 &body,
+                |_: &mut Self, _, request: &super::audio_products::PresetShortcutRequest, cx| {
+                    cx.emit(WorkspaceEvent::AudioPresetShortcutRequested {
+                        request: request.clone(),
+                    });
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
                 |_: &mut Self, _, event: &super::OledRuntimeRequested, cx| cx.emit(event.clone()),
             ));
             subscriptions.push(cx.subscribe(
@@ -1044,6 +1074,18 @@ impl SourceProductWorkspace {
                 &body,
                 |this: &mut Self, body, _: &super::source_controls::SourceControlsChanged, cx| {
                     this.capture(body.read(cx).snapshot(), cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_, _, request: &super::ReceiverBrightnessRequested, cx| {
+                    cx.emit(WorkspaceEvent::ReceiverBrightnessRequested(*request))
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_, _, request: &super::ReceiverBrightnessReadRequested, cx| {
+                    cx.emit(WorkspaceEvent::ReceiverBrightnessReadRequested(*request))
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -1160,6 +1202,19 @@ impl SourceProductWorkspace {
         let profile_menu =
             cx.new(|cx| ListState::new(profile_menu::ProfileCommands::new(owner), window, cx));
         let help = cx.new(|cx| super::source_help::SourceHelp::new(device.clone(), cx));
+        subscriptions.push(cx.subscribe(
+            &help,
+            |_, _, event: &super::source_help::HelpResetEvent, cx| {
+                cx.emit(match event {
+                    super::source_help::HelpResetEvent::Requested(request) => {
+                        WorkspaceEvent::HelpResetRequested(*request)
+                    }
+                    super::source_help::HelpResetEvent::Canceled(request) => {
+                        WorkspaceEvent::HelpResetCanceled(*request)
+                    }
+                });
+            },
+        ));
         let dock_pairing = matches!(device.product_id, 164 | 241)
             .then(|| cx.new(|_| super::dock_pairing::DockPairing::new(&device)));
         if let Some(dock) = &dock_pairing {
@@ -1213,6 +1268,155 @@ impl SourceProductWorkspace {
     pub fn device(&self) -> &Device {
         &self.device
     }
+    pub fn receiver_brightness_matches(
+        &self,
+        generation: u64,
+        percent: Option<u8>,
+        current: bool,
+        cx: &App,
+    ) -> bool {
+        let FamilyBody::Controls(body) = &self.body else {
+            return false;
+        };
+        let body = body.read(cx);
+        match (percent, current) {
+            (Some(percent), true) => body.brightness_request_current(generation, percent),
+            (Some(percent), false) => body.brightness_request_matches(generation, percent),
+            (None, true) => body.brightness_read_scope_current(generation),
+            (None, false) => body.brightness_read_matches(generation),
+        }
+    }
+    pub fn finish_receiver_brightness(
+        &mut self,
+        generation: u64,
+        percent: Option<u8>,
+        outcome: Option<super::HelpResetOutcome>,
+        observed: Option<u8>,
+        error: Option<String>,
+        scope_current: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.receiver_brightness_matches(generation, percent, false, cx) {
+            return;
+        }
+        if scope_current {
+            if let Some(outcome) = outcome {
+                self.device.serial_number = outcome.serial_number;
+                self.help.update(cx, |help, _| {
+                    help.accept_source_serial(&self.device.serial_number)
+                });
+                let document = outcome.source_document;
+                self.device
+                    .source_device_settings
+                    .get_or_insert_with(|| serde_json::json!({}))["_receiver_source_document"] =
+                    document.clone();
+                if let Some(profiles) = document["profiles"].as_array() {
+                    for profile in profiles {
+                        let (Some(guid), Some(name)) =
+                            (profile["guid"].as_str(), profile["name"].as_str())
+                        else {
+                            continue;
+                        };
+                        if let Some(current) =
+                            self.device.profiles.iter_mut().find(|p| p.guid == guid)
+                        {
+                            current.source_settings = Some(profile.clone());
+                            current.name = name.into();
+                        } else {
+                            self.device.profiles.push(Profile {
+                                id: guid.into(),
+                                guid: guid.into(),
+                                name: name.into(),
+                                source_settings: Some(profile.clone()),
+                                settings: None,
+                                dpi_stages: None,
+                            });
+                        }
+                    }
+                    self.device.active_profile = document["activeProfile"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .into();
+                    self.refresh_profile_choices(window, cx);
+                    cx.emit(WorkspaceEvent::Changed);
+                }
+            }
+        }
+        if let FamilyBody::Controls(body) = &self.body {
+            body.update(cx, |body, cx| match percent {
+                Some(percent) => {
+                    body.finish_brightness(generation, percent, observed, error, scope_current, cx)
+                }
+                None => body.finish_brightness_read(generation, observed, error, scope_current, cx),
+            });
+        }
+        cx.notify();
+    }
+    pub fn help_reset_matches(&self, request: super::HelpResetRequest, cx: &App) -> bool {
+        self.help.read(cx).reset_matches(request)
+    }
+    pub fn finish_help_reset(
+        &mut self,
+        request: super::HelpResetRequest,
+        outcome: Option<super::HelpResetOutcome>,
+        error: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.help_reset_matches(request, cx) {
+            return;
+        }
+        if let Some(outcome) = outcome {
+            self.device.serial_number = outcome.serial_number;
+            self.help.update(cx, |help, _| {
+                help.accept_source_serial(&self.device.serial_number)
+            });
+            let document = outcome.source_document;
+            // Preserve the source document separately. Existing UI snapshots
+            // are never used to construct an original profile document.
+            self.device
+                .source_device_settings
+                .get_or_insert_with(|| serde_json::json!({}))["_receiver_source_document"] =
+                document.clone();
+            if let Some(profiles) = document["profiles"].as_array() {
+                for profile in profiles {
+                    let Some(guid) = profile["guid"].as_str() else {
+                        continue;
+                    };
+                    if let Some(current) = self.device.profiles.iter_mut().find(|p| p.guid == guid)
+                    {
+                        current.source_settings = Some(profile.clone());
+                        if let Some(name) = profile["name"].as_str() {
+                            current.name = name.into();
+                        }
+                        continue;
+                    }
+                    let Some(name) = profile["name"].as_str() else {
+                        continue;
+                    };
+                    self.device.profiles.push(Profile {
+                        id: guid.into(),
+                        guid: guid.into(),
+                        name: name.into(),
+                        source_settings: Some(profile.clone()),
+                        settings: None,
+                        dpi_stages: None,
+                    });
+                }
+                self.device.active_profile = document["activeProfile"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .into();
+                self.refresh_profile_choices(window, cx);
+                self.restore_active(window, cx);
+                cx.emit(WorkspaceEvent::Changed);
+            }
+        }
+        self.help
+            .update(cx, |help, cx| help.finish_reset(request, error, cx));
+        cx.notify();
+    }
     pub fn saved_snapshot(&self) -> Device {
         self.saved.clone()
     }
@@ -1245,6 +1449,22 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn capture(&mut self, mut value: Value, cx: &mut Context<Self>) {
+        // Current 1342 middleware stores Effects presets at device scope,
+        // outside profiles. Mirror that local library into every profile's
+        // persisted source snapshot so profile navigation cannot fork it.
+        if self.device.product_id == 1342 {
+            if let Some(presets) = value.get("_audioMixerPresets").cloned() {
+                for profile in &mut self.device.profiles {
+                    let settings = profile
+                        .source_settings
+                        .get_or_insert_with(|| serde_json::json!({}));
+                    if !settings.is_object() {
+                        *settings = serde_json::json!({});
+                    }
+                    settings["_audioMixerPresets"] = presets.clone();
+                }
+            }
+        }
         self.capture_device_settings(&mut value);
         if let Some(p) = self
             .device

@@ -1,0 +1,404 @@
+{
+  "schema_version": 1,
+  "method": "Current manifest-verified AST loader and native PE metadata, no vendor execution",
+  "offset_unit": "UTF-16 JavaScript code units",
+  "receipts": [
+    {
+      "role": "assigned-method:initLightingDriver",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 289293,
+      "end": 290229,
+      "source": "this.initLightingDriver=async function(){let t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const n=\"#initLightingDriver()\";var i=\"\",o=\"\";\"win32\"===p.osPlatform?(i=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\lighting_driver.dll\",o=\"RzLightingEngineApi.dll\"):\"darwin\"===p.osPlatform&&(i=d.A.userDataDir+\"/Apps/Synapse/lighting_driver.dylib\",o=\"RzLightingEngineApi.dylib\"),await(0,c.Vj)({action:\"InitDLL\",payload:\"\"===t?i:t});const a=await(0,c.Vj)({action:\"GetDllVersion\"});a?(console.debug(`${e.name}.${n} Lighting Driver version: ${a}`),await(0,c.Vj)({action:\"HookLightingCallback\",payload:{lightingDllName:o,callbackRegisterFunction:\"SetNodeFFIEvent\",lightingChannel:e.channelName}}),e.useLightingDriver=!0,null===p||void 0===p||p.doElectronAction({action:\"lightingEngineSetupDriver\"})):console.log(`${e.name}.${n} Lighting Driver has not been initialized`),console.log(`${e.name}.${n} Use lighting driver: ${e.useLightingDriver}`)}"
+    },
+    {
+      "role": "assigned-method:lightingDriverApi",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 290230,
+      "end": 290427,
+      "source": "this.lightingDriverApi=async(e,t)=>{if(this.useLightingDriver)try{return await(0,c.Vj)({action:e,payload:t})}catch(n){console.log(`${this.name}.sendLightingDriverAction() raised exception: ${n}`)}}"
+    },
+    {
+      "role": "assigned-method:init",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 299761,
+      "end": 303225,
+      "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+    },
+    {
+      "role": "assigned-method:initLightingDriver",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 407589,
+      "end": 407960,
+      "source": "this.initLightingDriver=async function(){let t=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";e.lightingEngine&&(await e.lightingEngine.initLightingDriver(t),await e.lightingEngine.lightingDriverApi(\"Configure\",{type:\"protocol.use_base_class\",name:[\"rzDevice25Linker\",\"rzDevice25DualLinkMouse\",\"rzDevice25DualLinkKeyboard\",\"rzDevice25Oled\",\"rzDevice25Noa\"]}))}"
+    },
+    {
+      "role": "assigned-method:createLightingDeviceEx",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 412117,
+      "end": 413347,
+      "source": "this.createLightingDeviceEx=async e=>{let{rzDevice:t,config:n,appName:i=\"\",deviceInfo:o=null}=e;const a=`RzLightingEngine.createLightingDeviceEx(${null===t||void 0===t?void 0:t.name}, ${null===t||void 0===t?void 0:t.productId}, ${null===t||void 0===t?void 0:t.instanceId}))`;let r;try{\"string\"===typeof n&&/^blob:/.test(n)&&(n=await(await fetch(n)).json()),r=await this.lightingEngine.createLightingDeviceEx(t,n),console.log(`${a} res:${JSON.stringify(r)}`);const e=parseInt(r,10);var s;if(r===e&&null!==o&&void 0!==o&&o.isChromaSupported)await this.lightingEngine.lightingDriverApi(\"AddDevice\",{device_handle:e,device_identifier:t.getLtDriverHandleIdentifier(),write_function:t.ltDriverSendFunctionName,category:null===t||void 0===t?void 0:t.category,protocol:null===t||void 0===t?void 0:t.name,is_dock:null===o||void 0===o?void 0:o.isDockingStation,base_class_name:null===t||void 0===t?void 0:t.baseClassName,batch_processing:t.ltDriverUseBatchProcessing,is_wdl_supported:(null===o||void 0===o?void 0:o.isWDLSupported)&&!(null!==o&&void 0!==o&&o.lampArrayDeviceId),is_electron_supported:t.isElectronLightingDriverSupported,report_id:null!==(s=t.reportId)&&void 0!==s?s:0})}catch(c){console.error(`${a} - ${c.message}`)}return r}"
+    },
+    {
+      "role": "assigned-method:destroyLightingDeviceAsync",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 413348,
+      "end": 413782,
+      "source": "this.destroyLightingDeviceAsync=async function(t){let n=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"\";const i=`RzLightingEngine.destroyLightingDeviceAsync(${JSON.stringify(t)}), appName:${n}`;let o;try{o=await e.lightingEngine.destroyLightingDeviceAsync(t),console.log(`${i} = ${JSON.stringify(o)}`),await e.lightingEngine.lightingDriverApi(\"RemoveDevice\",{device_handle:t})}catch(a){console.error(`${i} - ${a.message}`)}}"
+    },
+    {
+      "role": "assigned-method:lightingDriverApi",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 429758,
+      "end": 429922,
+      "source": "this.lightingDriverApi=async(e,t)=>{try{return await(0,d.Vj)({action:e,payload:t})}catch(n){console.log(`${this.name}.lightingDriverApi() raised exception: ${n}`)}}"
+    },
+    {
+      "role": "assigned-method:addMultiLinkSeqDevice",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 465430,
+      "end": 466748,
+      "source": "this.addMultiLinkSeqDevice=async function(t,n,i,o){let a=arguments.length>4&&void 0!==arguments[4]?arguments[4]:null;const r=\"addMultiLinkSeqDevice()\";if(console.log(`${e.name}.${r} ==>`),!e.isInit)return void console.log(`${e.name}.${r} !this.isInit ==><==`);if(void 0===o)return void console.warn(`${e.name}.${r} rzDevice === undefined, ret`);let s;try{var c;s=await e.mutex.lock();const d=`${t}-${n}`;if(!e.devicesMap.has(d))return void console.warn(`${e.name}.${r} primary device ${d} not found`);const l=e.devicesMap.get(d);await e.chromaSDKEngine.addMultiLinkSeqDevice(l,i,o),await e.chromaSDKEngine.lightingDriverApi(\"AddDevice\",{device_handle:l,device_identifier:o.getLtDriverHandleIdentifier(),write_function:o.ltDriverSendFunctionName,category:null===o||void 0===o?void 0:o.category,protocol:null===o||void 0===o?void 0:o.name,is_dock:null===a||void 0===a?void 0:a.isDockingStation,base_class_name:null===o||void 0===o?void 0:o.baseClassName,batch_processing:o.ltDriverUseBatchProcessing,link_seq_id:i,is_wdl_supported:(null===a||void 0===a?void 0:a.isWDLSupported)&&!(null!==a&&void 0!==a&&a.lampArrayDeviceId),is_electron_supported:o.isElectronLightingDriverSupported,report_id:null!==(c=o.reportId)&&void 0!==c?c:0})}catch(d){console.log(`${e.name}.${r} mutex e:${d.message},`,d)}finally{void 0!==s&&s()}}"
+    },
+    {
+      "role": "host-ipc-helper",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 605473,
+      "end": 605628,
+      "source": "g=async e=>{try{return await i.doLightingDriverAction(e)}catch(t){console.warn(`sendLightingDriverAction() ${JSON.stringify(e)}, error: ${t}`)}return null}"
+    },
+    {
+      "role": "assigned-method:init",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 796063,
+      "end": 797632,
+      "source": "this.init=async()=>{const e=\"init()\";let t;console.log(`${this.name}.${e} ==>`);try{if(this.isInit)return void console.log(`${this.name}.${e} this.isInit = true, ignore ==><==`);this.isInit=!0,t=await this.mutexInit.lock();const i=U.A.userId;console.log(`${this.name}.${e} user:${i}`),await this.initLightingState(),await this.getAvailableDevices();const o=P.A.get(S.RE,!1)||!1;if(this.useWDL!==o&&(this.useWDL=o,G.A.lightingDriverSkipWdlDevices(this.useWDL),console.log(`${this.name}.${e} new useWDL:`,this.useWDL)),this.useLampArrayProtocol&&await(0,te.Sr)(\"chroma-app\")){var n;const t=await j.A.getLampArraySettings(),i=await j.A.analyzeWdlSettings(t);(null===i||void 0===i||null===(n=i.warnings)||void 0===n?void 0:n.length)>0&&console.warn(`${this.name}.${e} Lamp Array settings are abnormal! Please prompt the user to follow the prompts to set the window. Warnings:`,i.warnings);const o=await j.A.getAllLampArrayDevices();for(const e of o)await j.A.onDeviceAdded(e)}setTimeout(async()=>{const t=\"setTimeout(0)\";console.log(`${this.name}.${e} ${t} ==>`),await this.initCheckForConnectedDevices(),console.log(`${this.name}.${e} ${t} ==><==`)},0),await G.A.setDevicePreviewFrameCallback(this.onDevicePreviewFrames),G.A.setDeviceFrameFilter(this.onDeviceFrameFilter),H.A.setDeviceFrameFilter(this.onDeviceFrameFilter);for(const[e,t]of Object.entries(ee.X))H.A.setDeviceLedMatrixMap(Number(e),t);this.deviceTypeMap={MOUSE:2,KEYBOARD:3}}catch(i){console.warn(`${this.name}.${e} mutex e:${i.message},`,i)}finally{void 0!==t&&t(),console.log(`${this.name}.${e} ==><==`)}}"
+    },
+    {
+      "role": "resource-loader",
+      "file": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+      "offset": 1616311,
+      "end": 1619771,
+      "source": "Promise.resolve((async()=>{const e=\"LightingEngineModule.initRzLightingEngine()\";if(console.log(`${e} ==>`),!(0,u.I4)())return void console.warn(`${e} not RazerAppEngine, return ==><==`);let n=\"\";const o=window.localStorage.getItem(\"installedResources\");if(o){let t;try{var a;t=JSON.parse(o);const i=null!==(a=t.synapse)&&void 0!==a?a:t.Common;if(console.log(`${e} commonFound`,i),i&&Array.isArray(i)){const t=i.find(e=>\"LightingEngineDLL\"===e.name);t&&(console.log(`${e} LightingEngineDLL: ${t?JSON.stringify(t):t}`),n=t.filePath)}}catch(_){console.log(`${e} error, ${_.message}, `,_)}}n?await t.A.init(`${r.A.userDataDir}\\\\Apps\\\\${n}`):await t.A.init();let s=!0;const c=window.localStorage.getItem(\"lighting-engine-settings\");if(c){let t;try{var l,E;t=JSON.parse(c),s=null===(l=null===(E=t)||void 0===E?void 0:E.useRzLightingDriver)||void 0===l||l}catch(_){console.log(`${e} error, ${_.message}, `,_)}}if(console.log(\"useRzLightingDriver:\",s),s&&(await(async()=>{const e=\"LightingEngineModule.initRzLightingDriver()\";console.log(`${e} ==>`);let n=\"\";const i=window.localStorage.getItem(\"installedResources\");if(i){let t;try{var o;t=JSON.parse(i);const a=null!==(o=t.synapse)&&void 0!==o?o:t.Common;if(console.log(`${e} commonFound`,a),a&&Array.isArray(a)){const t=a.find(e=>\"LightingDriverDLL\"===e.name);t&&(console.log(`${e} LightingDriverDLL: ${t?JSON.stringify(t):t}`),n=t.filePath)}}catch(_){console.log(`${e} error, ${_.message}, `,_)}}n?await t.A.initLightingDriver(`${r.A.userDataDir}\\\\Apps\\\\${n}`):await t.A.initLightingDriver(),console.log(`${e} ==><==`)})(),await(0,d.Sr)(\"chroma-app\")&&await(async()=>{const e=\"LightingEngineModule.initRzLampArray()\";console.log(`${e} ==>`);const[n,i,o]=await(0,d.Hy)([\"RzLampArrayDLL\",\"RazerWDLExe\",\"RazerWDLMsix\"]);console.log(`${e} loadLampArrayDLLPath ====> dllPath: ${n}, rpcExePath: ${i}, msixPackagePath: ${o}`),n||i||o?await t.A.initRzLampArray(n,i,o):await t.A.initRzLampArray(),console.log(`${e} ==><==`)})(),await(async()=>{const e=\"LightingEngineModule.initChromaAiColorGen()\";console.log(`${e} ==>`);let n=\"\";const i=window.localStorage.getItem(\"installedResources\");if(i){let t;try{var o;t=JSON.parse(i);const a=null!==(o=t.synapse)&&void 0!==o?o:t.Common;if(console.log(`${e} commonFound`,a),a&&Array.isArray(a)){const t=a.find(e=>\"RzChromaAIColorGenDLL\"===e.name);t&&(console.log(`${e} RzChromaAIColorGenDLL: ${t?JSON.stringify(t):t}`),n=t.filePath)}}catch(_){console.log(`${e} error, ${_.message}, `,_)}}n&&(n=`${r.A.userDataDir}/Apps/${n}`),await t.A.initChromaAiColorGen(n,[127,65535,802917,2460111,3753048,4894788,8008747,8323327,8388352,10517857,13421772,16553138,16711680,16744192,16776960,16777215]),console.log(`${e} ==><==`)})(),await(0,d.Sr)(\"chroma-app\"))){const t=await(async()=>{const e=\"LightingEngineModule.initRzChromaSDKEngine()\";let t;console.log(`${e} ==>`);try{const n=[\"RzChromaSDKProxyDLL\"],[o]=await(0,d.Hy)(n);if(console.log(`${e} RzChromaSDKProxyDLL ====> dllPath: ${o}`),o){const n=await i.A.init(o);n?(t=\"RzChromaSDKProxy.dll\",console.log(`${e} RzChromaSDKProxyDLL:${t} , result:${n} ==><==`)):console.error(`${e} Failed to initialize RzChromaSDKEngine with dllPath: ${o}`)}else console.warn(`${e} RzChromaSDKProxyDLL not found in installedResources`)}catch(_){console.error(`${e} error, ${_.message}, `,_)}return t})();t&&(console.log(`${e} initializing RzChromaSDKEngine lighting driver with dll: ${t}`),await i.A.initLightingDriver(t))}console.log(`${e} ==><==`)})())"
+    }
+  ],
+  "resources": [
+    {
+      "library_id": "lighting_driver",
+      "resource_name": "LightingDriverDLL",
+      "file": "lighting_driver_v1.9.14.0.dll",
+      "sha256": "9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b",
+      "bytes": 968392,
+      "md5": "e2e8c283b91f0c2b6ee0c1bbd837fe43",
+      "machine": 34404,
+      "exports": [
+        {
+          "name": "Configure",
+          "rva": 5216,
+          "forwarder": null
+        },
+        {
+          "name": "ConfigureInMem",
+          "rva": 5136,
+          "forwarder": null
+        },
+        {
+          "name": "FreeString",
+          "rva": 5328,
+          "forwarder": null
+        },
+        {
+          "name": "GetDllVersion",
+          "rva": 5104,
+          "forwarder": null
+        },
+        {
+          "name": "GetDllVersionInMem",
+          "rva": 5040,
+          "forwarder": null
+        },
+        {
+          "name": "HandleLightingCallback",
+          "rva": 5392,
+          "forwarder": null
+        },
+        {
+          "name": "HookLightingCallback",
+          "rva": 5360,
+          "forwarder": null
+        },
+        {
+          "name": "SetWriteFFICallback",
+          "rva": 9584,
+          "forwarder": null
+        },
+        {
+          "name": "Shutdown",
+          "rva": 9552,
+          "forwarder": null
+        },
+        {
+          "name": "Startup",
+          "rva": 5696,
+          "forwarder": null
+        }
+      ],
+      "input": ".ref/native-libraries/9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b/lighting_driver_v1.9.14.0.dll",
+      "path_rules": [
+        "apps_synapse"
+      ],
+      "bindings": [
+        {
+          "product_id": null,
+          "resource_name": "LightingDriverDLL",
+          "resource_version": "1.9.14.0",
+          "install_relative_path": null,
+          "install_path_template": "userDataDir/Apps/{installedResources[synapse ?? Common].find(name == LightingDriverDLL).filePath}",
+          "fallback_relative_path": "Synapse/lighting_driver.dll",
+          "source": "docs/re/application-resource-metadata-2026-10-09/background-resources.json",
+          "loader_receipt_role": "resource-loader",
+          "loader_source": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js"
+        }
+      ],
+      "declared_functions": []
+    },
+    {
+      "library_id": "RzLightingEngineApi",
+      "resource_name": "LightingEngineDLL",
+      "file": "RzLightingEngineApi_v4.0.55.0.dll",
+      "sha256": "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa",
+      "bytes": 2153672,
+      "md5": "3b96a399cda27c2e62cc298b40da57ca",
+      "machine": 34404,
+      "exports": [
+        {
+          "name": "CreateLightingDevice",
+          "rva": 282992,
+          "forwarder": null
+        },
+        {
+          "name": "CreateLightingEngine",
+          "rva": 283184,
+          "forwarder": null
+        },
+        {
+          "name": "DestroyLightingDevice",
+          "rva": 283152,
+          "forwarder": null
+        },
+        {
+          "name": "DestroyLightingEngine",
+          "rva": 283344,
+          "forwarder": null
+        },
+        {
+          "name": "FreeMalloc",
+          "rva": 213184,
+          "forwarder": null
+        },
+        {
+          "name": "GetDLLVersion",
+          "rva": 212208,
+          "forwarder": null
+        },
+        {
+          "name": "GetFeatureSet",
+          "rva": 209328,
+          "forwarder": null
+        },
+        {
+          "name": "PollEvents",
+          "rva": 208272,
+          "forwarder": null
+        },
+        {
+          "name": "RzLightingApi",
+          "rva": 210064,
+          "forwarder": null
+        },
+        {
+          "name": "RzLightingApiNoReturn",
+          "rva": 211808,
+          "forwarder": null
+        },
+        {
+          "name": "SetAllocator",
+          "rva": 205520,
+          "forwarder": null
+        },
+        {
+          "name": "SetEventInterface",
+          "rva": 205392,
+          "forwarder": null
+        },
+        {
+          "name": "SetNodeFFIEvent",
+          "rva": 213200,
+          "forwarder": null
+        },
+        {
+          "name": "SetOperatingMode",
+          "rva": 208128,
+          "forwarder": null
+        },
+        {
+          "name": "UsePollingMode",
+          "rva": 208256,
+          "forwarder": null
+        }
+      ],
+      "input": ".ref/native-libraries/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/RzLightingEngineApi_v4.0.55.0.dll",
+      "path_rules": [
+        "apps_synapse"
+      ],
+      "bindings": [
+        {
+          "product_id": null,
+          "resource_name": "LightingEngineDLL",
+          "resource_version": "4.0.55.0",
+          "install_relative_path": null,
+          "install_path_template": "userDataDir/Apps/{installedResources[synapse ?? Common].find(name == LightingEngineDLL).filePath}",
+          "fallback_relative_path": "Synapse/RzLightingEngineApi.dll",
+          "source": "docs/re/application-resource-metadata-2026-10-09/background-resources.json",
+          "loader_receipt_role": "resource-loader",
+          "loader_source": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js"
+        }
+      ],
+      "declared_functions": [
+        {
+          "name": "GetDLLVersion",
+          "returns": "pointer",
+          "args": [],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "FreeMalloc",
+          "returns": "void",
+          "args": [
+            "pointer"
+          ],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "RzLightingApi",
+          "returns": "pointer",
+          "args": [
+            "string"
+          ],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "SetNodeFFIEvent",
+          "returns": "bool",
+          "args": [
+            "pointer"
+          ],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "PollEvents",
+          "returns": "pointer",
+          "args": [],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "UsePollingMode",
+          "returns": "void",
+          "args": [
+            "bool"
+          ],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "RzLightingApiNoReturn",
+          "returns": "void",
+          "args": [
+            "string"
+          ],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "GetFeatureSet",
+          "returns": "pointer",
+          "args": [],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        },
+        {
+          "name": "SetOperatingMode",
+          "returns": "void",
+          "args": [
+            "int"
+          ],
+          "receipt": {
+            "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+            "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29",
+            "offset": 299761,
+            "end": 303225,
+            "source": "async init(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"\";const t=\"init()\";if(console.log(`${this.name}.${t} dllName: ${e}, this.dllName:${this.dllName} ==>`),this.isInit)return console.log(`${this.name}.${t} already init ==><==`),this.isInit;if(this.isElectron){if((\"\"===this.dllName||void 0===this.dllName&&\"\"!==e&&void 0!==e)&&(this.dllName=e),void 0===this.dllName&&(this.dllName=\"\"),\"\"===this.dllName&&(\"win32\"===p.osPlatform?this.dllName=d.A.userDataDir+\"\\\\Apps\\\\Synapse\\\\RzLightingEngineApi.dll\":\"darwin\"===p.osPlatform&&(this.dllName=d.A.userDataDir+\"/Apps/Synapse/RzLightingEngineApi.dylib\")),this.channelName+=\"_\"+a.getLastPartFromFilePath(this.dllName),this.dllName){let e=!1;const o={\"4.0.2.0\":{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],RzLightingApi:[\"pointer\",[\"string\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]]},\"4.0.3.0\":{PollEvents:[\"pointer\",[]],UsePollingMode:[\"void\",[\"bool\"]]},\"4.0.6.0\":{RzLightingApiNoReturn:[\"void\",[\"string\"]]},\"4.0.8.0\":{GetFeatureSet:[\"pointer\",[]]},\"4.0.9.0\":{SetOperatingMode:[\"void\",[\"int\"]]}};try{const i=this.usingIpcLighting?await(0,c.Qq)(this.dllName,this.channelName,o):(0,c.Sl)(this.dllName,this.channelName,o);if(console.log(`${this.name}.${t} Supported lighting API: ${JSON.stringify([...i])}`),i.has(\"4.0.3.0\")&&(e=!0),i.has(\"4.0.6.0\")&&(this.canUseRzLightingApiNoReturn=!0),i.has(\"4.0.8.0\")){const e=await this.invokeLightingCall(this.channelName,{action:\"GetFeatureSet\"});console.log(`FeatureSet: ${e}`);try{JSON.parse(e).forEach(e=>this.featureSet.add(e))}catch(n){console.warn(`${this.name}.${t} err:${n.message}`)}}if(i.has(\"4.0.9.0\")){const n=!0;let i=0,o=r.OperatingMode_FrameUpdate_Legacy;e&&(o=r.OperatingMode_FrameUpdate_Poll),n&&(o=r.OperatingMode_FrameUpdate_Push,e=!1),this.usingIpcLighting&&(i|=r.OperatingMode_Flag_EventWrappedCallback);const a=i<<16&4294967295|255&o;await this.invokeLightingCall(this.channelName,{action:\"SetOperatingMode\",payload:{actionArgs:a}}),console.log(`${this.name}.${t} operating mode: ${o}`)}if(i.size>0){this.isInit=!0;let n={action:\"GetDLLVersion\"};const i=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} GetDLLVersion:${i}`),(0,c.dA)({action:\"hid.isBatchLightingSupported\"}).then(e=>{e&&(this.isBatchLightingSupported=!0,A.y.isBatchLightingSupported=!0,this.timerResolutionActive&&4!==this.currentTimerResolution&&((0,c.dA)({action:\"hid.clearTimerResolution\"}),this.timerResolutionActive=!1,this.currentTimerResolution=0),this.timerResolutionActive||((0,c.dA)({action:\"hid.setTimerResolution\",payload:{resolution:4}}),this.timerResolutionActive=!0,this.currentTimerResolution=4))}),n={action:\"SetNodeFFIEvent\",payload:{actionArgs:this.usingIpcLighting?null:this.nodeFFICallback,useNewCallback:!0}};const o=await this.invokeLightingCall(this.channelName,n);console.log(`${this.name}.${t} SetNodeFFIEvent:${o}`),e&&(this.isUsePollingMode=!0,this.usePollingMode(!0),this.pollEventIntervalId=window.setInterval(()=>{this.pollEvents()},40))}}catch(i){console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${i.message}`)}}else console.warn(`${this.name}.${t} missing this.dllName:${this.dllName}`);this.isInit?console.log(`${this.name}.${t} dll loaded:${this.dllName}`):console.warn(`${this.name}.${t} isElectron:${this.isElectron}, dll NOT loaded`)}return console.log(`${this.name}.${t} isElectron:${this.isElectron}, this.isInit:${this.isInit} ==><==`),this.isInit}"
+          }
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Resources and selected native functions are acquired; complete lighting engine rendering, platform adapters and UI/runtime closure remain separate work."
+  ]
+}

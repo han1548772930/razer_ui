@@ -71,6 +71,23 @@ def main():
             function_index.append({"rva": address-base, "end_rva": function.end_ea-base,
                                    "name": ida_funcs.get_func_name(address),
                                    "chunks": [[start-base, end-base] for start, end in idautils.Chunks(address)]})
+    import_anchors = []
+    if config.get("import_pattern"):
+        pattern = re.compile(config["import_pattern"])
+        def imported(address, name, ordinal):
+            if name and pattern.search(name):
+                references = []
+                for reference in idautils.XrefsTo(address):
+                    function = ida_funcs.get_func(reference.frm)
+                    references.append({"from_rva": reference.frm-base,
+                                       "function_rva": function.start_ea-base if function else None})
+                    if function and function.start_ea-base not in requested:
+                        requested.append(function.start_ea-base)
+                import_anchors.append({"rva": address-base, "name": name,
+                                       "ordinal": ordinal, "references": references})
+            return True
+        for index in range(ida_nalt.get_import_module_qty()):
+            ida_nalt.enum_import_names(index, imported)
     functions = []
     for rva in requested:
         address = base + rva
@@ -100,6 +117,8 @@ def main():
               "hexrays_available": has_decompiler, "functions": functions,
               "limitations": ["Pseudocode is inferred from machine code; check types and indirect targets against original bytes.",
                                "Selected functions only, not full-program semantic completion."]}
+    if import_anchors:
+        result["import_anchors"] = import_anchors
     if config.get("corpus_mode"):
         result.update({"entries": entries, "unresolved_entries": unresolved,
                        "function_index": function_index, "string_anchors": string_anchors,

@@ -12096,7 +12096,7 @@
               {
                 "path": "/device/voiceChanger/value",
                 "label": "VOICE_CHANGER",
-                "kind": "select",
+                "kind": "presets",
                 "options": [
                   {
                     "label": "CARTOON",

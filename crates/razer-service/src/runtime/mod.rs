@@ -8,6 +8,15 @@ mod native;
 mod portable;
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(4);
 
+fn write_response(response: &ResponseEnvelope) -> anyhow::Result<()> {
+    let json = serde_json::to_string(response)?;
+    let output = std::io::stdout();
+    let mut output = output.lock();
+    writeln!(output, "{FRAME_PREFIX}{json}")?;
+    output.flush()?;
+    Ok(())
+}
+
 /// `main` must dispatch `--service-worker` here before initializing GPUI, then
 /// exit with this status. Never invoke this function from a UI callback.
 pub fn run_worker() -> i32 {
@@ -64,6 +73,11 @@ pub fn run_worker() -> i32 {
                 .drain_events(view_id)
                 .and_then(|events| serde_json::to_value(events).map_err(Into::into)),
             request @ (ServiceRequest::AudioDevices
+            | ServiceRequest::GlobalShortcuts
+            | ServiceRequest::RegisterShortcut { .. }
+            | ServiceRequest::UnregisterShortcut { .. }
+            | ServiceRequest::EnableGlobalShortcuts { .. }
+            | ServiceRequest::ShortcutEvents
             | ServiceRequest::AudioVolumeRead { .. }
             | ServiceRequest::AudioVolumeWrite { .. }
             | ServiceRequest::AudioEndpoints { .. }
@@ -124,19 +138,28 @@ pub fn run_worker() -> i32 {
                 fatal,
             },
         };
-        let Ok(json) = serde_json::to_string(&response) else {
-            return 2;
-        };
-        let output = std::io::stdout();
-        let mut output = output.lock();
-        if writeln!(output, "{FRAME_PREFIX}{json}")
-            .and_then(|_| output.flush())
-            .is_err()
-        {
+        if shutdown {
+            // ServiceClient terminates its child after receiving this reply.
+            // Finish owned WASAPI pumps, COM notifications and receiver input
+            // readers first, so a successful frame cannot race their teardown.
+            // This ordering is an owned Rust worker guarantee, not a claim
+            // that all original host/plugin lifecycle chains are implemented.
+            drop(portable);
+            #[cfg(windows)]
+            drop(runtime);
+            return if write_response(&response).is_err() {
+                2
+            } else if fatal {
+                3
+            } else {
+                0
+            };
+        }
+        if write_response(&response).is_err() {
             return 2;
         }
-        if fatal || shutdown {
-            return if fatal { 3 } else { 0 };
+        if fatal {
+            return 3;
         }
     }
 }

@@ -1,6 +1,6 @@
 {
   "method": "Acorn exact nodes, lexical binding resolution, current normal lighting branch and Help reset callbacks; no vendor execution",
-  "generator_sha256": "015ca6ffe81dc289b437660149cd1f0535b57786ff310a7bb03824f6ec6687c6",
+  "generator_sha256": "2f6e5326f9aeca42371e3fa3c1a33c65fb5bf66cb64903aa15c90bebf64efa80",
   "products": [
     {
       "product_id": 164,
@@ -58,7 +58,7 @@
       },
       "findings": [
         "Corrected the native descriptor receipt: this page passes no portComponent and mounts the regular quick-effects class; the inactive port branch is not evidence for this control.",
-        "Brightness and idle ranges/dependencies are present; native effect settings, quick/advanced selection and sync operation remain missing."
+        "Native Lighting now mounts original left brightness/idle and right effects columns, title-contained brightness switch, source slider geometry and source mouse-release submission. Actual brightness query/write connection is audited independently in receiver-brightness-page-current-evidence.json; complete effect settings, quick/advanced selection and sync remain missing."
       ]
     },
     {
@@ -117,7 +117,7 @@
       },
       "findings": [
         "Corrected the native descriptor receipt: this page passes no portComponent and mounts the regular quick-effects class; the inactive port branch is not evidence for this control.",
-        "Brightness and idle ranges/dependencies are present; native effect settings, quick/advanced selection and sync operation remain missing."
+        "Native Lighting now mounts original left brightness/idle and right effects columns, title-contained brightness switch, source slider geometry and source mouse-release submission. Actual brightness query/write connection is audited independently in receiver-brightness-page-current-evidence.json; complete effect settings, quick/advanced selection and sync remain missing."
       ]
     },
     {
@@ -134,7 +134,7 @@
         }
       },
       "findings": [
-        "Native permanent-disabled Reset confirmation replaced for this independently reviewed product by a local pending reset request and discard; no hardware reset or profile clearing."
+        "Current 164/241 ordinary Help taskMakerResetOBM is connected to actual serial-owned source document producer, metadata/cache mutation, local persistence, conditional device brightness and true partial receipts. Existing profiles are retained. Original two-second button cooldown is separate from real completion; effects and mappings are not yet submitted."
       ]
     },
     {
@@ -151,7 +151,7 @@
         }
       },
       "findings": [
-        "Native permanent-disabled Reset confirmation replaced for this independently reviewed product by a local pending reset request and discard; no hardware reset or profile clearing."
+        "Current 179 Help confirmation is acquired; its real reset branch remains unimplemented and confirmation stays disabled."
       ]
     },
     {
@@ -168,22 +168,42 @@
         }
       },
       "findings": [
-        "Native permanent-disabled Reset confirmation replaced for this independently reviewed product by a local pending reset request and discard; no hardware reset or profile clearing."
+        "Current 164/241 ordinary Help taskMakerResetOBM is connected to actual serial-owned source document producer, metadata/cache mutation, local persistence, conditional device brightness and true partial receipts. Existing profiles are retained. Original two-second button cooldown is separate from real completion; effects and mappings are not yet submitted."
       ]
     }
   ],
   "native": [
     {
-      "path": "src/features/source_help.rs",
-      "sha256": "edf26ac241e737c3b207de7f106ab0654a84a71fd2271174449a3c9422a4643a"
+      "path": "crates/razer-pages/src/features/source_help.rs",
+      "sha256": "9cd7ea4f5f3d4d975dfcace25d698176d0e06c1ee38ecbdfaad9ebf9a5a74f39"
     },
     {
-      "path": "src/features/source_controls.rs",
-      "sha256": "cef5d106725d37e5a67b3730e769bc64d01e31b1f1dc17f7a95ec38039e024bf"
+      "path": "crates/razer-pages/src/features/source_controls.rs",
+      "sha256": "46babd47ca536a8424fa16e253247a315d898e106c33cd25e3d681b2e8687a35"
     },
     {
-      "path": "src/features/accessory_controls_data.json",
+      "path": "crates/razer-pages/src/features/accessory_controls_data.json",
       "sha256": "f9f6d62921f51985eb2372b16ac5eb35198c31587bfb891f35fc13740bf9ebb8"
+    },
+    {
+      "path": "crates/razer-pages/src/features/source_controls/receiver_lighting_page.rs",
+      "sha256": "29e76980a235e3c67d085a0592e40c91113abb73faad25f830377ccdcac3db06"
+    },
+    {
+      "path": "crates/razer-pages/src/features/source_controls/receiver_brightness_ui.rs",
+      "sha256": "e4cd11fed452825bfbd03b7103ce443e3eaa9416d661c0bae4a104c74be115df"
+    },
+    {
+      "path": "crates/razer-shell/src/shell/receiver_reset.rs",
+      "sha256": "fb9990b3bd18cd81542c6ea1b481b61d370247fe2254cd3be4327746a3974685"
+    },
+    {
+      "path": "crates/razer-shell/src/shell/receiver_brightness_page.rs",
+      "sha256": "40365fa262032889c32fe096d0500ba4b2ea89c356d1ed6280c9c5158b5aa3da"
+    },
+    {
+      "path": "crates/razer-storage/src/receiver_reset.rs",
+      "sha256": "28d2c3c9a08af0ff044c3cabe0b6e95f44d6cfbc40dabb9af71b3872cc83706b"
     }
   ]
 }

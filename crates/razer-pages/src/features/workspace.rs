@@ -22,6 +22,10 @@ use std::collections::BTreeMap;
 
 pub enum WorkspaceEvent {
     Changed,
+    HelpResetRequested(super::HelpResetRequest),
+    HelpResetCanceled(super::HelpResetRequest),
+    ReceiverBrightnessRequested(super::ReceiverBrightnessRequested),
+    ReceiverBrightnessReadRequested(super::ReceiverBrightnessReadRequested),
     /// Current 182 power slider release. Minutes are a user request, not an ack.
     MouseIdleRequested {
         scope: super::mouse_polling::MousePollingScope,
@@ -54,6 +58,9 @@ pub enum WorkspaceEvent {
     },
     AudioMixerRequested {
         request: super::audio_products::AudioMixerRequest,
+    },
+    AudioPresetShortcutRequested {
+        request: super::audio_products::PresetShortcutRequest,
     },
     IntroDismissed,
     ShareProfile,

@@ -39,6 +39,10 @@ const STREAM_MIXER_ASSETS: &[(&str, &[u8])] =
 const SNAP_TAP_ASSETS: &[(&str, &[u8])] = include!("../../../assets/synapse/snap-tap-embedded.rs");
 const KEYBOARD_PROPERTIES_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/keyboard-properties-embedded.rs");
+const KEYBOARD_GAME_CONTROLLER_ASSETS: &[(&str, &[u8])] = &[(
+    "synapse/keyboard-game-controller.svg",
+    include_bytes!("../../../assets/synapse/keyboard-game-controller.svg"),
+)];
 const KEYBOARD_ACTUATION_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/keyboard-actuation-embedded.rs");
 const CHROMA_STUDIO_HOST_ASSETS: &[(&str, &[u8])] = &[(
@@ -92,6 +96,7 @@ impl AssetSource for SynapseAssets {
             .chain(STREAM_MIXER_ASSETS)
             .chain(SNAP_TAP_ASSETS)
             .chain(KEYBOARD_PROPERTIES_ASSETS)
+            .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
             .chain(KEYBOARD_ACTUATION_ASSETS)
             .chain(CHROMA_STUDIO_HOST_ASSETS)
             .chain(AUDIO_OLED_RUNTIME_ASSETS)
@@ -128,6 +133,7 @@ impl AssetSource for SynapseAssets {
                 .chain(STREAM_MIXER_ASSETS)
                 .chain(SNAP_TAP_ASSETS)
                 .chain(KEYBOARD_PROPERTIES_ASSETS)
+                .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
                 .chain(KEYBOARD_ACTUATION_ASSETS)
                 .chain(CHROMA_STUDIO_HOST_ASSETS)
                 .chain(AUDIO_OLED_RUNTIME_ASSETS)

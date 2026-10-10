@@ -48,18 +48,21 @@ for(const [pid,file,bounds,names] of [
       !mounted.source.includes(`jsx)(${names[0]},{})`)) throw Error('Lighting mount changed '+pid);
   products.push({product_id:pid,page:'TAB_LIGHTING',components,
     findings:['Corrected the native descriptor receipt: this page passes no portComponent and mounts the regular quick-effects class; the inactive port branch is not evidence for this control.',
-      'Brightness and idle ranges/dependencies are present; native effect settings, quick/advanced selection and sync operation remain missing.']});
+      'Native Lighting now mounts original left brightness/idle and right effects columns, title-contained brightness switch, source slider geometry and source mouse-release submission. Actual brightness query/write connection is audited independently in receiver-brightness-page-current-evidence.json; complete effect settings, quick/advanced selection and sync remain missing.']});
 }
-const help=JSON.parse(read('docs/re/source-help-evidence.json'));
+// Retained current exact-node anchors avoid depending on the retired general
+// Help inventory. Reparse and match every anchor against actual current bytes.
+const help=JSON.parse(read('docs/re/dock-lighting-help-review-current-evidence.json'));
 for(const pid of [164,179,241]) {
-  const product=help.products.find(p=>p.product_id===pid);
-  const page=product.pages[0], component=page.components.filter(c=>c.source.includes('copyDeviceSerial=')).sort((a,b)=>a.source.length-b.source.length)[0];
+  const page=help.products.find(p=>p.product_id===pid&&p.page==='HELP');
+  if(!page)throw Error('Missing retained current Help source anchor '+pid);
+  const component=page.components.help;
   const current=receipt(component.path,component.offset,component.end);
   if(current.source!==component.source || !current.source.includes('type:"ON_RESET_DEVICE"') || !current.source.includes('this.confirmDel='))throw Error('Help reset contract changed '+pid);
-  products.push({product_id:pid,page:'HELP',navigation_offset:page.offset,components:{help:current},
-    findings:['Native permanent-disabled Reset confirmation replaced for this independently reviewed product by a local pending reset request and discard; no hardware reset or profile clearing.']});
+  products.push({product_id:pid,page:'HELP',navigation_offset:page.navigation_offset,components:{help:current},
+    findings:[pid===179?'Current 179 Help confirmation is acquired; its real reset branch remains unimplemented and confirmation stays disabled.':'Current 164/241 ordinary Help taskMakerResetOBM is connected to actual serial-owned source document producer, metadata/cache mutation, local persistence, conditional device brightness and true partial receipts. Existing profiles are retained. Original two-second button cooldown is separate from real completion; effects and mappings are not yet submitted.']});
 }
-const native=['crates/razer-pages/src/features/source_help.rs','crates/razer-pages/src/features/source_controls.rs','crates/razer-pages/src/features/accessory_controls_data.json'];
+const native=['crates/razer-pages/src/features/source_help.rs','crates/razer-pages/src/features/source_controls.rs','crates/razer-pages/src/features/accessory_controls_data.json','crates/razer-pages/src/features/source_controls/receiver_lighting_page.rs','crates/razer-pages/src/features/source_controls/receiver_brightness_ui.rs','crates/razer-shell/src/shell/receiver_reset.rs','crates/razer-shell/src/shell/receiver_brightness_page.rs','crates/razer-storage/src/receiver_reset.rs'];
 const output='docs/re/dock-lighting-help-review-current-evidence.json';
 const value={method:'Acorn exact nodes, lexical binding resolution, current normal lighting branch and Help reset callbacks; no vendor execution',generator_sha256:hash(read('tools/audit-dock-lighting-help-current.cjs')),products,native:native.map(path=>({path,sha256:hash(read(path))}))};
 const serialized=JSON.stringify(value,null,2)+'\n';

@@ -24,6 +24,7 @@ pub(super) struct PortableRuntime {
     audio_notifications: crate::audio_notification::AudioNotifications,
     audio_router: crate::audio_router::AudioRouter,
     foreground_monitor: razer_platform::foreground_monitor::ForegroundMonitor,
+    global_shortcuts: razer_platform::global_shortcuts::GlobalShortcuts,
 }
 
 impl PortableRuntime {
@@ -60,6 +61,24 @@ impl PortableRuntime {
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
+            ServiceRequest::RegisterShortcut { vkey_code, modifiers, argument } => {
+                self.global_shortcuts.register(razer_platform::global_shortcuts::Shortcut {
+                    virtual_key:vkey_code, modifiers, argument,
+                })?;
+                Ok(json!({"registered":true,"vkey_code":vkey_code,"modifiers":modifiers}))
+            }
+            ServiceRequest::UnregisterShortcut { vkey_code, modifiers } => {
+                self.global_shortcuts.unregister(vkey_code,modifiers)?;
+                Ok(json!({"registered":false,"vkey_code":vkey_code,"modifiers":modifiers}))
+            }
+            ServiceRequest::EnableGlobalShortcuts { enable } => {
+                self.global_shortcuts.enable(enable)?;
+                Ok(json!({"enabled":enable}))
+            }
+            ServiceRequest::GlobalShortcuts => Ok(Value::Array(self.global_shortcuts.registered()?.into_iter().map(|s|
+                json!({"virtualKey":s.virtual_key,"modifiers":s.modifiers,"argument":s.argument})).collect())),
+            ServiceRequest::ShortcutEvents => Ok(Value::Array(self.global_shortcuts.drain()?.into_iter().map(|s|
+                json!({"event":json!({"virtualKey":s.virtual_key,"modifiers":s.modifiers,"argument":s.argument}).to_string()})).collect())),
             ServiceRequest::AudioRoutingEnable { enable } => self.audio_router.enable(enable),
             ServiceRequest::AudioRouteDevice {
                 primary_device,
@@ -553,7 +572,7 @@ fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow:
     validate()?;
     let device = with_backend(|backend| backend.open(&node))?;
     let target = MixerTarget {
-        control: MixerControl::EqEnabled,
+        control: MixerControl::PageEqEnabled,
         band: None,
         channel: MixerChannel::Both,
     };
@@ -564,7 +583,7 @@ fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow:
     results.push(
         session
             .apply(&target, &MixerValue::Boolean { enabled: true })
-            .context("Mic EQ enable not confirmed; no EQ band submitted")?,
+            .context("Mic EQ enable transport did not complete; no EQ band submitted")?,
     );
     let mut completed = Vec::<usize>::new();
     for (index, value) in values.iter().enumerate() {
@@ -574,7 +593,7 @@ fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow:
             channel: MixerChannel::Both,
         };
         let result = session.apply(&target, value).with_context(|| format!(
-            "Mic EQ band {index} not confirmed; enable completed, confirmed bands {completed:?}; no rollback or later band submitted"
+            "Mic EQ band {index} transport did not complete; enable completed, submitted bands {completed:?}; no rollback or later band submitted"
         ))?;
         results.push(result);
         completed.push(index);

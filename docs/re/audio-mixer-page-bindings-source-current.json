@@ -145,6 +145,36 @@
           "original": "(){const t=yield Ht(e,0,\"RazerT2EchoReverbEchoGainControl\",0);return t.jsonData.EchoOrReverbEchoGain=Number.parseFloat(t.jsonData.returnValue),console.log(`${en}.getEchoOrReverbEchoGainValue() return: ${t}`),t});var e}),this.setEchoOrReverbEchoDelayValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){const n=\"setEchoOrReverbEchoDelayValue\",o=(yield Xt(e)).jsonData.returnValue>0,i=(yield tn(e)).jsonData.returnValue>0,a=(yield nn(e)).jsonData.returnValue>0,s=[new Uint8Array(be[0])];o&&(s[0][8]+=1),i&&(s[0][8]+=2),a&&(s[0][8]+=$e),t=Math.trunc(t),s[0][7]=t;const u=yield e.sendCommand(s,Ve,null,new Uint8Array([]"
         },
         {
+          "token": "this.setKeyShifterLevelValue=",
+          "start_utf16": 92157,
+          "end_utf16": 92806,
+          "original": "oid 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2KeyShifterLevelEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnValue)>0,console.log(`${en}.getKeyShifterLevelState() return: ${t}`),t});var e}),this.setKeyShifterLevelValue=e=>jn(this,void 0,void 0,function*(){return on(this,e)}),this.getKeyShifterLevelValue=()=>jn(this,void 0,void 0,function*(){return e=this,Yt(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2KeyShifterLevelControl\",0);return t.jsonData.KeyShifterLevel=Number.parseInt(t.jsonData.returnValue),console.log(`${en}.getKeyShifterLevelValue() return: ${t}`),t});var e}),this.setVocalFadingState"
+        },
+        {
+          "token": "this.setVocalFadingState=",
+          "start_utf16": 92562,
+          "end_utf16": 93207,
+          "original": "oid 0,function*(){const t=yield Ht(e,0,\"RazerT2KeyShifterLevelControl\",0);return t.jsonData.KeyShifterLevel=Number.parseInt(t.jsonData.returnValue),console.log(`${en}.getKeyShifterLevelValue() return: ${t}`),t});var e}),this.setVocalFadingState=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){let n=yield e.sendCommand(Ye,Ze,null,new Uint8Array([]),-1,!0,!1);if(n.jsonData={eanbled:t},n.status===r.em)return n;const o=[new Uint8Array(et[0])];return o[0][8]=n.data[0],o[0][7]=n.data[1],o[0][6]=n.data[2],t?o[0][8]|=8:o[0][8]&=-9,n=yield e.sendCommand(o,Ze,null,new Uint8Array([]),-1,!1,!1),n.jsonData={enabl"
+        },
+        {
+          "token": "this.setVocalFadingLevelValue=",
+          "start_utf16": 93384,
+          "end_utf16": 94034,
+          "original": "void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2VocalFadingEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnValue)>0,console.log(`${en}.getVocalFadingState() return: ${t}`),t});var e}),this.setVocalFadingLevelValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,r=(yield nn(e)).jsonData.returnValue>0,i=[new Uint8Array(nt[0])];n&&(i[0][8]+=1),o&&(i[0][8]+=2),r&&(i[0][8]+=$e),t=Math.trunc(t),i[0][7]=t;const a=yield e.sendCommand(i,tt,null,new Uint8Array([]),-1,!1,!1);return a.jsonData={Voc"
+        },
+        {
+          "token": "t<0&&(t=255+t+1,i[0][6]=255),i[0][7]=t",
+          "start_utf16": 22551,
+          "end_utf16": 23209,
+          "original": " 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,r=(yield nn(e)).jsonData.returnValue>0,i=[new Uint8Array(qe[0])];n&&(i[0][8]+=1),o&&(i[0][8]+=2),r&&(i[0][8]+=$e),t<0&&(t=255+t+1,i[0][6]=255),i[0][7]=t;const a=yield e.sendCommand(i,Xe,null,new Uint8Array([]),-1,!1,!1);return a.jsonData={KeyShifterLevel:t},console.log(`${en}.setKeyShifterLevelValue(${t}) return: ${JSON.stringify(a)}`),a});var rn=function(e,t,n,o){return new(n||(n=Promise))(function(r,i){function a(e){try{u(o.next(e))}catch(e){i(e)}}function s(e){try{u(o.throw(e))}catch(e){i(e)}}function u(e){var t;e.done?r(e.value):(t=e.value,t "
+        },
+        {
+          "token": "o[0][8]=n.data[0],o[0][7]=n.data[1],o[0][6]=n.data[2],t?o[0][8]|=8:o[0][8]&=-9",
+          "start_utf16": 92830,
+          "end_utf16": 93528,
+          "original": "0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){let n=yield e.sendCommand(Ye,Ze,null,new Uint8Array([]),-1,!0,!1);if(n.jsonData={eanbled:t},n.status===r.em)return n;const o=[new Uint8Array(et[0])];return o[0][8]=n.data[0],o[0][7]=n.data[1],o[0][6]=n.data[2],t?o[0][8]|=8:o[0][8]&=-9,n=yield e.sendCommand(o,Ze,null,new Uint8Array([]),-1,!1,!1),n.jsonData={enabled:t},console.log(`${en}.setVocalFadingState(${t}) return: ${JSON.stringify(n)}`),n}))(this,e)}),this.getVocalFadingState=()=>jn(this,void 0,void 0,function*(){return e=this,Yt(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2VocalFadingEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnV"
+        },
+        {
           "token": "ge=[new Uint8Array([19,95,252,0,52,128,83,51,0])]",
           "start_utf16": 10229,
           "end_utf16": 10898,
@@ -179,6 +209,24 @@
           "start_utf16": 23074,
           "end_utf16": 23717,
           "original": "a(e){try{u(o.next(e))}catch(e){i(e)}}function s(e){try{u(o.throw(e))}catch(e){i(e)}}function u(e){var t;e.done?r(e.value):(t=e.value,t instanceof n?t:new n(function(e){e(t)})).then(a,s)}u((o=o.apply(e,t||[])).next())})};const an=\"MixerMic\",sn=(e,t,n,o,r,i)=>rn(void 0,void 0,void 0,function*(){let n=i;n<0&&(n=63+i+1),n=Math.trunc(n);let a=null;a=0===n?r:o,a[0][6]=n;const s=yield e.sendCommand(a,t,null,new Uint8Array([]),-1,!1);return s.jsonData={returnValue:i},console.log(`${an}.setEQSliderValue(${i}) return: ${s}`),s}),un=(e,t)=>rn(void 0,void 0,void 0,function*(){if(t>12||t<-12)return{status:r.$g,command:[],commandDesc:z,data:[],dataH"
+        },
+        {
+          "token": "Pt=(e,t,n,o,r,i)=>",
+          "start_utf16": 17620,
+          "end_utf16": 18258,
+          "original": "e.value,t instanceof n?t:new n(function(e){e(t)})).then(a,s)}u((o=o.apply(e,t||[])).next())})};const Jt=\"MixerInfoCommand\",Gt=(e,t,n)=>{let o=null;return u.Number_Int===n?o=a.W1(e,t):u.Number_Float===n&&(o=a.lR(e,t)),o},Pt=(e,t,n,o,r,i)=>zt(void 0,void 0,void 0,function*(){const o=yield e.sendCommand(t?r:i,n,null,new Uint8Array([]),-1,!1,!1);return o.jsonData={state:t},console.log(`${Jt}.setCheckBoxStateByUsbProtocol state: ${t} r: ${o}`),o}),Kt=(e,t,n,o)=>zt(void 0,void 0,void 0,function*(){const i=yield e._actionWithParams(\"MixerSDKLib_GetDeviceCount\",t);if(0===i)return console.warn(`${Jt}.getMixerPropertyControlData(${t}, ${n},"
+        },
+        {
+          "token": "J=(new Uint8Array([4,95,252,0,52]),[new Uint8Array([19,95,252,0,52,64,0,0,145])])",
+          "start_utf16": 8551,
+          "end_utf16": 9252,
+          "original": "ume Mic State\",L=(new Uint8Array([4,24,0,192,2]),new Uint8Array([3,24,0,192,0,224,224]),new Uint8Array([3,24,0,192,0,96,96]),[new Uint8Array([4,95,252,0,44])]),B=[new Uint8Array([19,95,252,0,44,0,0,25,25])],z=\"EQ State\",J=(new Uint8Array([4,95,252,0,52]),[new Uint8Array([19,95,252,0,52,64,0,0,145])]),G=[new Uint8Array([19,95,252,0,52,64,0,0,144])],P=(new Uint8Array([4,95,252,0,112]),[new Uint8Array([19,95,252,0,112,0,0,0,61])]),K=[new Uint8Array([19,95,252,0,112,0,0,0,60])],Q=(new Uint8Array([4,95,252,0,116]),[new Uint8Array([19,95,252,0,116,0,0,0,121])]),H=[new Uint8Array([19,95,252,0,116,0,0,0,120])],W=(new Uint8Array([4,95,252,0,120]),[new Uint8Array([19,95,252,0,120,0,0,0,241])]),X=[new U"
+        },
+        {
+          "token": "G=[new Uint8Array([19,95,252,0,52,64,0,0,144])]",
+          "start_utf16": 8633,
+          "end_utf16": 9300,
+          "original": "224]),new Uint8Array([3,24,0,192,0,96,96]),[new Uint8Array([4,95,252,0,44])]),B=[new Uint8Array([19,95,252,0,44,0,0,25,25])],z=\"EQ State\",J=(new Uint8Array([4,95,252,0,52]),[new Uint8Array([19,95,252,0,52,64,0,0,145])]),G=[new Uint8Array([19,95,252,0,52,64,0,0,144])],P=(new Uint8Array([4,95,252,0,112]),[new Uint8Array([19,95,252,0,112,0,0,0,61])]),K=[new Uint8Array([19,95,252,0,112,0,0,0,60])],Q=(new Uint8Array([4,95,252,0,116]),[new Uint8Array([19,95,252,0,116,0,0,0,121])]),H=[new Uint8Array([19,95,252,0,116,0,0,0,120])],W=(new Uint8Array([4,95,252,0,120]),[new Uint8Array([19,95,252,0,120,0,0,0,241])]),X=[new Uint8Array([19,95,252,0,120,0,0,0,240])],q=(new U"
         }
       ]
     },
@@ -407,6 +455,84 @@
           "start_utf16": 1221638,
           "end_utf16": 1222278,
           "original": ";t===_.wI.MW_ACTION_FROM_UI?(c=n.I5r,E=n.vZv):(c=n.mG,E=n.WQT);try{if(o){const e=(0,u.vc)(_.wI.LOCALSTORAGE_KEY),t=e.profiles.find(t=>t.guid===e.activeProfile);if(l=null!==(s=t.micEqualizerMode)&&void 0!==s?s:_.Ko.BASIC,t.micEqualizerMode=i,e.version=void 0===(null==e?void 0:e.version)?1:p.l9.nextVersion(e.version),y=e.version,(0,u.lR)(_.wI.LOCALSTORAGE_KEY,e),i==_.Ko.BASIC){const e=f.micBandBasicPreset,i=\"custom\"!==t.micBaicEqualizer.mode?e[t.micBaicEqualizer.mode]:t.micBaicEqualizer.customBands;(0,D.QY)({type:n.uDP,payload:t.micBaicEqualizer});const o=new v.V(_.pF.ON_SET_MIC_BASIC_EQ,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{active"
+        },
+        {
+          "token": "case _.pF.ON_SWITCH_PRESET:",
+          "start_utf16": 1312382,
+          "end_utf16": 1313029,
+          "original": "ertick:e,actionType:\"taskMakerImportProfile\",status:\"error\",message:t.message,value:{selectedProfileData:i}}})}})}(e.timerTick,e.from,t,0,0,r,L)}));break}default:d.c.removeCurrentEvent()}break;case _.n3.preset:switch(S){case _.pF.ON_SWITCH_PRESET:{const e=d.c.getCurrentEvent(),{newActivePresetGUID:t}=e.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a=0){return ko(this,void 0,void 0,function*(){let r,s,l,c=a;t===_.wI.MW_ACTION_FROM_UI?(s=n.R17,l=n.k9_):(s=n.SF9,l=n.qjo);try{if(o){const e=(0,u.d8)();r=e.activePreset,e.activePreset=i,e.version=void 0===(null==e?void 0:e.version)?1:p.l9.nextVers"
+        },
+        {
+          "token": "case _.pF.ON_ADD_PRESET:",
+          "start_utf16": 1315171,
+          "end_utf16": 1315815,
+          "original": "che)))}catch(t){(0,D.QY)({type:l,payload:{timertick:e,actionType:\"taskMakerSwitchPresetByDevice\",status:\"error\",message:t.message,value:{oldActivePreset:a,newActivePresetGuid:d}}})}})}(e.timerTick,e.from,t,i,L)}));break}case _.pF.ON_ADD_PRESET:{const e=d.c.getCurrentEvent(),{newPreset:t,version:i}=e.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a=0){return ko(this,void 0,void 0,function*(){let r,s,l,c,d=a;t===_.wI.MW_ACTION_FROM_UI?(s=n.R17,l=n.k9_):(s=n.SF9,l=n.qjo);try{if(o){const e=(0,u.d8)();r=e.presets,c=JSON.parse(JSON.stringify(e.presets));const t=JSON.parse(JSON.stringify(f.DEFAU"
+        },
+        {
+          "token": "case _.pF.ON_DUPLICATE_PRESET:",
+          "start_utf16": 1321791,
+          "end_utf16": 1322441,
+          "original": "Cache)))}catch(t){(0,D.QY)({type:c,payload:{timertick:e,actionType:\"taskMakerChangePresetMapping\",status:\"error\",message:t.message,value:{oldPresets:a,presetToBeChangeMapping:v}}})}})}(e.timerTick,e.from,i,t,L)}));break}case _.pF.ON_DUPLICATE_PRESET:{const e=d.c.getCurrentEvent(),{newPreset:t,sourcePresetGuid:i}=e.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a,s=0){return ko(this,void 0,void 0,function*(){let a,l,c,d,v=s;t===_.wI.MW_ACTION_FROM_UI?(l=n.R17,c=n.k9_):(l=n.SF9,c=n.qjo);try{if(r){const e=(0,u.d8)();a=e.presets,d=JSON.parse(JSON.stringify(e.presets));let t=e.presets.find(e=>e.guid"
+        },
+        {
+          "token": "case _.pF.ON_RENAME_PRESET:",
+          "start_utf16": 1319272,
+          "end_utf16": 1319919,
+          "original": "(_.jf.memoryStorageCache)))}catch(t){(0,D.QY)({type:d,payload:{timertick:e,actionType:\"taskMakerDeletePreset\",status:\"error\",message:t.message,value:{oldPresets:a,deletedGUID:i}}})}})}(e.timerTick,e.from,t,i,L)}));break}case _.pF.ON_RENAME_PRESET:{const e=d.c.getCurrentEvent(),{renamePresetGUID:t,newName:i}=e.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a,s=0){var l;return ko(this,void 0,void 0,function*(){let a,c,d,v,E=s;t===_.wI.MW_ACTION_FROM_UI?(c=n.R17,d=n.k9_):(c=n.SF9,d=n.qjo);try{if(r){const e=(0,u.d8)();a=JSON.parse(JSON.stringify(e.presets)),v=null===(l=e.presets)||void 0===l?voi"
+        },
+        {
+          "token": "case _.pF.ON_DELETE_PRESET:",
+          "start_utf16": 1317500,
+          "end_utf16": 1318147,
+          "original": "(_.jf.memoryStorageCache)))}catch(t){console.log(\"error\",t),(0,D.QY)({type:r,payload:{timertick:e,actionType:\"taskMakerResetPreset\",status:\"error\",message:t.message,value:{guid:i}}})}})}(e.timerTick,e.from,t,L)}));break}case _.pF.ON_DELETE_PRESET:{const e=d.c.getCurrentEvent(),{deletedGUID:t,newSelectedPresetGUID:i}=e.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a,s=0){var l,c;return ko(this,void 0,void 0,function*(){let a,d,v,E,f=s;t===_.wI.MW_ACTION_FROM_UI?(d=n.R17,v=n.k9_):(d=n.SF9,v=n.qjo);try{if(r){const e=(0,u.d8)();if(a=JSON.parse(JSON.stringify(e.presets)),E=e.activePreset,e.prese"
+        },
+        {
+          "token": "case _.pF.ON_RESET_PRESET:",
+          "start_utf16": 1316314,
+          "end_utf16": 1316960,
+          "original": "ify(_.jf.memoryStorageCache)))}catch(t){(0,D.QY)({type:s,payload:{timertick:e,actionType:\"taskMakerAddPreset\",status:\"error\",message:t.message,value:{oldPresets:r,newPreset:i}}})}})}(e.timerTick,e.from,t,L,0,i)}));break}case _.pF.ON_RESET_PRESET:{const e=d.c.getCurrentEvent(),{presetGuid:t}=e.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a=0){return ko(this,void 0,void 0,function*(){let r,s,l=a;t===_.wI.MW_ACTION_FROM_UI?(r=n.jpY,s=n.oBg):(r=n.$R0,s=n.wm9);try{if(o){const e=(0,u.d8)(),t=e.presets.findIndex(e=>e.guid===i),n=JSON.parse(JSON.stringify(f.DEFAULTPRESET));e.presets[t]=Object.ass"
+        },
+        {
+          "token": "case _.pF.ON_CHANGE_PRESET_MAPPING:",
+          "start_utf16": 1320464,
+          "end_utf16": 1321119,
+          "original": "memoryStorageCache)))}catch(t){(0,D.QY)({type:c,payload:{timertick:e,actionType:\"taskMakerRenamePreset\",status:\"error\",message:t.message,value:{oldPresets:a,presetToBeRenamed:v}}})}})}(e.timerTick,e.from,i,t,L)}));break}case _.pF.ON_CHANGE_PRESET_MAPPING:{const e=d.c.getCurrentEvent(),{changePresetGUID:t,newMapping:i}=e.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a,s=0){var l;return ko(this,void 0,void 0,function*(){let a,c,d,v,E=s;t===_.wI.MW_ACTION_FROM_UI?(c=n.R17,d=n.k9_):(c=n.SF9,d=n.qjo);try{if(r){const e=(0,u.d8)();let t;a=JSON.parse(JSON.stringify(e.presets)),v=null===(l=e.presets)||void "
+        },
+        {
+          "token": "nl=(e,t)=>",
+          "start_utf16": 1476665,
+          "end_utf16": 1477295,
+          "original": "SET_GAME_CHAT_BALANCE_VALUE\",_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{balanceMode:n,version:e.version});d.c.enqueueEvent(o);break}}break}}yield Xr.X.restoreDeviceData(e)}else console.warn(\"No active profile be found\")}),nl=(e,t)=>gs(void 0,void 0,void 0,function*(){var i;yield(0,A.f2)(e);const o=null===(i=e.presets)||void 0===i?void 0:i.find(t=>t.guid===e.activePreset);for(const[i,r]of Object.entries(e))switch(i){case\"presets\":{const i=r.map(e=>{const{guid:t,name:i,mapping:n}=e;return n&&(0,Oo.vw)(n,t,void 0),{guid:t,name:i,mapping:n}});(0,D.QY)({type:n.R97,payload:{presets:JSON.parse(JSON.stringify(i)),selectedPresetGuid:"
+        },
+        {
+          "token": "yield(0,A.f2)(e)",
+          "start_utf16": 1476717,
+          "end_utf16": 1477353,
+          "original": "ALSTORAGE,void 0,{balanceMode:n,version:e.version});d.c.enqueueEvent(o);break}}break}}yield Xr.X.restoreDeviceData(e)}else console.warn(\"No active profile be found\")}),nl=(e,t)=>gs(void 0,void 0,void 0,function*(){var i;yield(0,A.f2)(e);const o=null===(i=e.presets)||void 0===i?void 0:i.find(t=>t.guid===e.activePreset);for(const[i,r]of Object.entries(e))switch(i){case\"presets\":{const i=r.map(e=>{const{guid:t,name:i,mapping:n}=e;return n&&(0,Oo.vw)(n,t,void 0),{guid:t,name:i,mapping:n}});(0,D.QY)({type:n.R97,payload:{presets:JSON.parse(JSON.stringify(i)),selectedPresetGuid:e.activePreset}});let a=Object.keys(o||{});t&&(a=Object.ke"
+        },
+        {
+          "token": "v=e=>{var t;return{keyCode:Number",
+          "start_utf16": 949577,
+          "end_utf16": 950230,
+          "original": "catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i(function(e){e(t)})).then(a,s)}l((n=n.apply(e,t||[])).next())})};const u=new Map,d=(e,t)=>e+\"-\"+t,p=e=>e.split(\"-\").map(e=>Number(e)),v=e=>{var t;return{keyCode:Number(null===(t=n.R.find(t=>t.inputID===e.inputID))||void 0===t?void 0:t.keyCode),modifiers:(0,l.oZ)(e.inputModifiers)}},_=(e,t)=>c(void 0,void 0,void 0,function*(){try{return yield o.A.unregisterGlobalShortcut(t,e),!0}catch(e){return console.error(e),!1}}),E=(e,t,i)=>c(void 0,void 0,void 0,function*(){let n;if(i){const{modifiers:e,keyCode:t}=v(i);if(n=yield _(e,t),!n)return console.warn(\"Unregistered "
+        },
+        {
+          "token": "yield o.A.registerGlobalShortcut(t,e)",
+          "start_utf16": 950204,
+          "end_utf16": 950861,
+          "original": "onsole.warn(\"Unregistered global shortcut failed\",t,e),!1;u.delete(d(e,t))}if(void 0===e||void 0===e.inputID)return!0;const{modifiers:r,keyCode:a}=v(e);return n=yield((e,t)=>c(void 0,void 0,void 0,function*(){try{return yield o.A.registerGlobalShortcut(t,e),!0}catch(e){return console.error(e),!1}}))(r,a),n?(u.set(d(r,a),t),yield o.A.enableGlobalShortcut(),!0):(console.warn(\"registered global shortcut failed\",a,r),!1)});var f=i(50966),y=i(44857),m=i(59437),g=i(52671),h=i(55861),I=i(17901),O=i(73090),A=i(89750),S=i.n(A),T=function(e,t,i,n){return new(i||(i=Promise))(function(o,r){function a(e){try{l(n.next(e))}catch(e){r(e)}}function s(e){try{l(n.thro"
+        },
+        {
+          "token": "yield o.A.enableGlobalShortcut()",
+          "start_utf16": 950309,
+          "end_utf16": 950961,
+          "original": "tID)return!0;const{modifiers:r,keyCode:a}=v(e);return n=yield((e,t)=>c(void 0,void 0,void 0,function*(){try{return yield o.A.registerGlobalShortcut(t,e),!0}catch(e){return console.error(e),!1}}))(r,a),n?(u.set(d(r,a),t),yield o.A.enableGlobalShortcut(),!0):(console.warn(\"registered global shortcut failed\",a,r),!1)});var f=i(50966),y=i(44857),m=i(59437),g=i(52671),h=i(55861),I=i(17901),O=i(73090),A=i(89750),S=i.n(A),T=function(e,t,i,n){return new(i||(i=Promise))(function(o,r){function a(e){try{l(n.next(e))}catch(e){r(e)}}function s(e){try{l(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i(functio"
+        },
+        {
+          "token": "u.set(d(r,a),t)",
+          "start_utf16": 950293,
+          "end_utf16": 950928,
+          "original": "|void 0===e.inputID)return!0;const{modifiers:r,keyCode:a}=v(e);return n=yield((e,t)=>c(void 0,void 0,void 0,function*(){try{return yield o.A.registerGlobalShortcut(t,e),!0}catch(e){return console.error(e),!1}}))(r,a),n?(u.set(d(r,a),t),yield o.A.enableGlobalShortcut(),!0):(console.warn(\"registered global shortcut failed\",a,r),!1)});var f=i(50966),y=i(44857),m=i(59437),g=i(52671),h=i(55861),I=i(17901),O=i(73090),A=i(89750),S=i.n(A),T=function(e,t,i,n){return new(i||(i=Promise))(function(o,r){function a(e){try{l(n.next(e))}catch(e){r(e)}}function s(e){try{l(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.val"
         }
       ]
     },
@@ -545,6 +671,108 @@
           "start_utf16": 6478620,
           "end_utf16": 6479265,
           "original": "ime.value,activeI:ua(!0,d.releaseTime.value,d.releaseTime.min,d.releaseTime.max),name:(0,Qe.jsx)(Ze.A,{text:qe.qnZ}),unit:\"ms\",onChange:e=>C(\"releaseTime\",e)})]})]})]}),(0,Qe.jsx)(\"p\",{className:\"show-more\",onClick:()=>{I(JP({useMode:0==n?1:0}))},children:0==n?(0,Qe.jsx)(Ze.A,{text:qe.eiB}):(0,Qe.jsx)(Ze.A,{text:qe.Q$d})})]})})},PU=(0,U.memo)(pU),MU=()=>(0,Qe.jsxs)(um,{children:[(0,Qe.jsx)(Nm,{direction:\"left\",children:(0,Qe.jsxs)(\"div\",{style:{display:\"flex\",flexDirection:\"column\"},children:[(0,Qe.jsx)(uU,{}),(0,Qe.jsx)(AM,{title:qe.Z4S}),(0,Qe.jsx)(mU,{title:qe.fVe})]})}),(0,Qe.jsx)(Nm,{direction:\"right\",children:(0,Qe.jsxs)(\"div\",{sty"
+        },
+        {
+          "token": "className:\"wrapper-echoReverb\"",
+          "start_utf16": 6491171,
+          "end_utf16": 6491821,
+          "original": "x)(Ze.A,{text:qe.cSw}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.b1U})]}),(0,Qe.jsxs)(\"li\",{children:[(0,Qe.jsx)(Ze.A,{text:qe.iyh}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.R_w})]})]})]});return(0,Qe.jsx)(\"div\",{className:\"wrapper-echoReverb\",children:(0,Qe.jsx)(pm,{title:t,hasSwitch:!0,toggleSwitch:()=>{A(e=>(0,h.A)((0,h.A)({},e),{},{isEnabled:!n,activeMode:o,currentValues:E})),clearTimeout(_.current),_.current=setTimeout(()=>{s(fU({isEnabled:!n,activeMode:o,modeValues:E}))},500)},active:I.isEnabled,tips:d,children:(0,Qe.jsxs)(\"div\",{className:!I.isEnabled&&\"noClick\",children:[(0,Qe.jsx)(\"div\",{className:\"h2-title\",style:{marginBotto"
+        },
+        {
+          "token": "(0,Qe.jsx)(wU,{title:qe.jtn})",
+          "start_utf16": 6499061,
+          "end_utf16": 6499710,
+          "original": "jsxs)(\"div\",{style:{display:\"flex\",flexDirection:\"column\"},children:[(0,Qe.jsx)(\"div\",{className:\"h2-title mt20 ml10\",children:(0,Qe.jsx)(\"span\",{children:(0,Qe.jsx)(Ze.A,{text:qe.Cyx})})}),(0,Qe.jsx)(YU,{title:qe.kN1}),(0,Qe.jsx)(wU,{title:qe.jtn})]})}),(0,Qe.jsx)(Nm,{direction:\"right\",children:(0,Qe.jsxs)(\"div\",{style:{display:\"flex\",flexDirection:\"column\"},children:[(0,Qe.jsx)(\"div\",{className:\"h2-title mt20 ml10\",children:(0,Qe.jsx)(\"span\",{children:(0,Qe.jsx)(Ze.A,{text:qe.kGI})})}),(0,Qe.jsx)(bU,{title:qe.GiQ,customStyle:{zIndex:4,position:\"relative\"}}),(0,Qe.jsx)(VU,{title:qe.EoQ,customStyle:{zIndex:4,position:\"relative\"}})]})})]})]})"
+        },
+        {
+          "token": "s(fU({isEnabled:n,activeMode:t,modeValues:a}))",
+          "start_utf16": 6490441,
+          "end_utf16": 6491107,
+          "original": "=e?r:ae.echoAndReverbList.library}else a=ae.echoAndReverbList[t]||ae.echoAndReverbList.library;A(e=>(0,h.A)((0,h.A)({},e),{},{isEnabled:n,activeMode:t,currentValues:a})),clearTimeout(_.current),_.current=setTimeout(()=>{s(fU({isEnabled:n,activeMode:t,modeValues:a}))},500)},O=(e,t)=>{let a=[...E];a[e]=t,A(e=>(0,h.A)((0,h.A)({},e),{},{activeMode:\"custom\",currentValues:a})),clearTimeout(_.current),_.current=setTimeout(()=>{s(fU({isEnabled:n,activeMode:\"custom\",modeValues:a}))},500)},d=(0,Qe.jsxs)(Qe.Fragment,{children:[(0,Qe.jsx)(Ze.A,{text:qe.l4r}),(0,Qe.jsxs)(\"ul\",{children:[(0,Qe.jsxs)(\"li\",{children:[(0,Qe.jsx)(Ze.A,{text:qe.hHB}),(0,Qe.jsx)(\"br\",{}),(0,Qe."
+        },
+        {
+          "token": "s(fU({isEnabled:n,activeMode:\"custom\",modeValues:a}))",
+          "start_utf16": 6490645,
+          "end_utf16": 6491318,
+          "original": "setTimeout(()=>{s(fU({isEnabled:n,activeMode:t,modeValues:a}))},500)},O=(e,t)=>{let a=[...E];a[e]=t,A(e=>(0,h.A)((0,h.A)({},e),{},{activeMode:\"custom\",currentValues:a})),clearTimeout(_.current),_.current=setTimeout(()=>{s(fU({isEnabled:n,activeMode:\"custom\",modeValues:a}))},500)},d=(0,Qe.jsxs)(Qe.Fragment,{children:[(0,Qe.jsx)(Ze.A,{text:qe.l4r}),(0,Qe.jsxs)(\"ul\",{children:[(0,Qe.jsxs)(\"li\",{children:[(0,Qe.jsx)(Ze.A,{text:qe.hHB}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.emt})]}),(0,Qe.jsxs)(\"li\",{children:[(0,Qe.jsx)(Ze.A,{text:qe.cSw}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.b1U})]}),(0,Qe.jsxs)(\"li\",{children:[(0,Qe.jsx)(Ze.A,{text:qe.iyh}),(0,Qe.jsx)("
+        },
+        {
+          "token": "customValues=JSON.parse(JSON.stringify(i))",
+          "start_utf16": 6026990,
+          "end_utf16": 6027652,
+          "original": "ndefined\"===typeof e)return Ed;switch(t.type){case Rc:return(0,h.A)((0,h.A)({},e),t.payload.echoReverb);case Sc:return((e,t)=>{var a;const n=t.isEnabled,o=t.activeMode,i=t.modeValues;let r=(0,h.A)({},t);\"custom\"===o&&(r.customValues=JSON.parse(JSON.stringify(i)));let s=Object.assign({},e,(0,h.A)({},r));const E=new xe(\"ON_SET_ECHO_REVERB\",void 0,{isEnabled:n,activeMode:o,modeValues:i});return null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:\"ON_SET_ECHO_REVERB\",timerTick:void 0,payload:{echoReverb:{isEnabled:n,activeMode:o,modeValues:i}}}),s=Ce(s,{timertick:E.stateMachineEvent.timerTick,actionType:E.stateMachineEvent.type,payload:E.st"
+        },
+        {
+          "token": "step:.1,value:I.currentValues[2]",
+          "start_utf16": 6492820,
+          "end_utf16": 6493472,
+          "original": ",onOff:!0,min:.6,max:2.7,step:.1,value:I.currentValues[1],activeI:ua(!0,I.currentValues[1],.6,2.7),name:(0,Qe.jsx)(Ze.A,{text:qe.hHB}),unit:\"s\",onChange:e=>O(1,e)}),(0,Qe.jsx)(CU,{spatialDisabled:!1,onOff:!0,min:0,max:1,step:.1,value:I.currentValues[2],activeI:ua(!0,I.currentValues[2],0,1),name:(0,Qe.jsx)(Ze.A,{text:qe.cSw}),unit:\"\",onChange:e=>O(2,e)}),(0,Qe.jsx)(CU,{spatialDisabled:!1,onOff:!0,min:110,max:200,step:1,value:I.currentValues[3],activeI:ua(!0,I.currentValues[3],110,200),name:(0,Qe.jsx)(Ze.A,{text:qe.iyh}),unit:\"ms\",onChange:e=>O(3,e)})]})]})})})},bU=e=>{let t=e.title,a=e.customStyle;const n=(0,v.useSelector)(e=>e.keyShifterReducer"
+        },
+        {
+          "token": "class GU extends",
+          "start_utf16": 6479338,
+          "end_utf16": 6479974,
+          "original": ",Qe.jsx)(PU,{title:qe.qoV})]})})]}),hU=e=>t=>{void 0!==e&&t({type:WT,payload:e})},UU=e=>t=>{void 0!==e&&t({type:QT,payload:e})},gU=e=>t=>{void 0!==e&&t({type:sc,payload:e})},fU=e=>t=>{void 0!==e&&t({type:Sc,payload:e})};class GU extends U.Component{constructor(e){super(e),this.clickAway=e=>{var t;this.keyListener.current&&null!==(t=this.keyListener.current)&&void 0!==t&&t.contains(e.target)||this.stopListen()},this.getKey=(e,t)=>{let a;return a=Ut.find(a=>a.keyCode===e.toString()&&a.flag===t),a},this.onKeyDown=e=>{if(18===e.keyCode)return;if(e.keyCode===this.state.keyPressed&&e.code===this.state.keyCodeString)return;let t=this.g"
+        },
+        {
+          "token": "class yU extends",
+          "start_utf16": 6483882,
+          "end_utf16": 6484518,
+          "original": "return(0,Qe.jsx)(\"div\",{ref:this.keyListener,children:(0,Qe.jsx)(\"div\",{className:\"\".concat(n),onMouseUp:this.startListen,children:this.renderText()})})}}const vU=(0,v.connect)(()=>({}),e=>(0,y.zH)((0,h.A)({},n),e))(GU);class yU extends U.Component{constructor(e){super(e),this.clickAway=e=>{void 0!==this.actionRef.current&&null!==this.actionRef.current&&(this.actionRef.current.contains(e.target)||this.setState({displayActions:!1}))},this.setKeyActive=e=>{this.setState({isKeyActive:e},()=>{e&&this.props.toggleMappingPanel(!1)})},this.renderWarning=()=>this.state.hasWarning?(0,Qe.jsx)(\"div\",{className:\"shortcut_item_warning_icon_s"
+        },
+        {
+          "token": "Uo.A.disableGlobalShortcut()",
+          "start_utf16": 6481676,
+          "end_utf16": 6482324,
+          "original": "isten=e=>{this.state.keyActive||0!==e.button||(this.updateKeyActive(!0),setTimeout(()=>{var e;null===(e=window.apiElectron)||void 0===e||e.doElectronAction({action:\"registerNoBrowserInputHandler\"}),Uo.A.disableMapping(),Uo.A.disableGlobalShortcut(),Uo.A.registerDeviceModeChangedEvent(),Uo.A.on(\"devicemodechanged\",this.hyperShiftKeyListener),window.addEventListener(\"click\",this.clickAway),window.addEventListener(\"keydown\",this.onKeyDown),window.addEventListener(\"keyup\",this.onKeyUp),window.addEventListener(\"mousedown\",this.onMouseUp)},100))},this.stopListen=()=>{var e,t;null===(e=window.apiElectron)||void 0===e||e.doElectronAction({action:\"u"
+        },
+        {
+          "token": "Uo.A.enableGlobalShortcut()",
+          "start_utf16": 6482159,
+          "end_utf16": 6482806,
+          "original": "Up),window.addEventListener(\"mousedown\",this.onMouseUp)},100))},this.stopListen=()=>{var e,t;null===(e=window.apiElectron)||void 0===e||e.doElectronAction({action:\"unRegisterNoBrowserInputHandler\"}),Uo.A.enableMapping(),Uo.A.enableGlobalShortcut(),Uo.A.unregisterDeviceModeChangedEvent(),Uo.A.off(\"devicemodechanged\",this.hyperShiftKeyListener),window.removeEventListener(\"click\",this.clickAway),window.removeEventListener(\"keydown\",this.onKeyDown),window.removeEventListener(\"keyup\",this.onKeyUp),window.removeEventListener(\"mousedown\",this.onMouseUp),this.updateKeyActive(!1);let a=bo.A.get(\"synapseGlobalShortcuts\");if(!a||!a.appEngine)return;c"
+        },
+        {
+          "token": "this.getMouseInputID=",
+          "start_utf16": 6480793,
+          "end_utf16": 6481434,
+          "original": "!==e.keyCode&&this.setState({keyPressed:0,keyCodeString:\"\"})},this.getMouseKeyName=e=>{switch(e){case 2:return\"Scroll Button\";case 3:return\"Right Click\";case 4:return\"Button 4\";case 5:return\"Button 5\";default:return\"\"}},this.getMouseInputID=e=>{switch(e){case 2:return\"ScrollButton\";case 3:return\"RightClick\";case 4:return\"Button4\";case 5:return\"Button5\";default:return\"\"}},this.onMouseUp=e=>{if(!this.keyListener.current)return;if(!this.keyListener.current.contains(e.target))return;let t={name:this.getMouseKeyName(e.which),inputID:this.getMouseInputID(e.which)};if(\"\"===t.name)return;let a=structuredClone(this.state.modifierCodes);this.p"
+        },
+        {
+          "token": "qe.EvF",
+          "start_utf16": 6494536,
+          "end_utf16": 6495162,
+          "original": "0,v.useDispatch)(),s=e=>{r(gU({isEnabled:o,value:e}))};return(0,Qe.jsx)(\"div\",{className:\"wrapper-voiceChanger\",children:(0,Qe.jsx)(pm,{title:t,hasSwitch:!0,toggleSwitch:()=>{r(gU({isEnabled:!o,value:i}))},active:o,tips:qe.EvF,children:(0,Qe.jsx)(\"div\",{className:!o&&\"noClick\",children:(0,Qe.jsx)(\"div\",{className:\"sliderChart__preset-list\",children:WU.map(e=>(0,Qe.jsx)(CM,{name:e.name,id:e.id,isScale:!0,active:e.id===i,changeTab:s},e.id))})})})})},zU=[{action:qe.gjU},{action:\"divider\"},{action:qe.Pie},{action:qe.mjN},{action:qe.sG0},{action:qe.SJi}],kU=()=>{const e=(0,U.useState)(\"\"),t=(0,fe.A)(e,2),a=t[0],n=t[1],o=(0,"
+        },
+        {
+          "token": "qe.BqB",
+          "start_utf16": 6493488,
+          "end_utf16": 6494114,
+          "original": ".isEnabled,i=n.value,r=(0,v.useDispatch)();return(0,Qe.jsx)(\"div\",{className:\"wrapper-effectKeyShifter\",style:a,children:(0,Qe.jsx)(pm,{title:t,hasSwitch:!0,toggleSwitch:()=>{r(hU({isEnabled:!o,value:i}))},active:o,tips:qe.BqB,children:(0,Qe.jsx)(cP,{min:-12,max:12,step:1,minTag:\"-12\",maxTag:\"12\",value:i,active:o,changeValue:e=>{r(hU({isEnabled:o,value:e}))}})})})},VU=e=>{let t=e.title,a=e.customStyle;const n=(0,v.useSelector)(e=>e.vocalFadingReducer.vocalFading),o=n.isEnabled,i=n.value,r=(0,v.useDispatch)();return(0,Qe.jsx)(\"div\",{className:\"wrapper-effectVocalFading\",style:a,children:(0,Qe.jsx)(pm,{title:t,hasSwitch:"
+        },
+        {
+          "token": "qe.aL6",
+          "start_utf16": 6493960,
+          "end_utf16": 6494586,
+          "original": "isEnabled,i=n.value,r=(0,v.useDispatch)();return(0,Qe.jsx)(\"div\",{className:\"wrapper-effectVocalFading\",style:a,children:(0,Qe.jsx)(pm,{title:t,hasSwitch:!0,toggleSwitch:()=>{r(UU({isEnabled:!o,value:i}))},active:o,tips:qe.aL6,children:(0,Qe.jsx)(cP,{min:0,max:100,step:1,minTag:\"0\",maxTag:\"100\",value:i,active:o,changeValue:e=>{r(UU({isEnabled:o,value:e}))}})})})},WU=[{name:qe.ztm,id:1},{name:qe.tGb,id:0},{name:qe.GCQ,id:2},{name:qe._es,id:3}],YU=e=>{let t=e.title;const a=(0,v.useSelector)(e=>e.voiceChangerReducer.voiceChanger),n=a.isEnabled,o=void 0===n||n,i=a.value,r=(0,v.useDispatch)(),s=e=>{r(gU({isEnabled:o,value:e"
+        },
+        {
+          "token": "an=\"VOICE_CHANGER_TOOLTIP\"",
+          "start_utf16": 4941124,
+          "end_utf16": 4941770,
+          "original": "Za=\"COMPRESSOR_TOOLTIP\",qa=\"COMPRESSOR_THRESHOLD_TOOLTIP\",Qa=\"COMPRESSOR_SOFT_KNEE_WIDTH_TOOLTIP\",Ja=\"COMPRESSOR_RATIO_TOOLTIP\",$a=\"COMPRESSOR_GAIN_TOOLTIP\",en=\"COMPRESSOR_ATTACK_TOOLTIP\",tn=\"COMPRESSOR_RELEASE_TOOLTIP\",an=\"VOICE_CHANGER_TOOLTIP\",nn=\"ECHO_REVERB_TOOLTIP\",on=\"ECHO_REVERB_DECAY_TIME_TOOLTIP\",rn=\"ECHO_REVERB_GAIN_TOOLTIP\",sn=\"ECHO_REVERB_DELAY_TOOLTIP\",En=\"KEY_SHIFTER_TOOLTIP\",_n=\"VOCAL_FADING_TOOLTIP\",Tn=\"RAZER_WORDMARK_TOOLTIP\",cn=\"FADER_BASE_TOOLTIP\",In=\"CHANNEL_MUTE_TOOLTIP\",An=\"MICROPHONE_MUTE_TOOLTIP\",ln=\"CHANNEL_NUMBER_TOOLTIP\",On=\"FADER_FOREGROUND_TOOLTIP\",dn=\"BLEEP_BUTTON_TOOLTIP\",Sn=\"AUDIO_TROUBLESHOOTING\",un=\"AUDI"
+        },
+        {
+          "token": "En=\"KEY_SHIFTER_TOOLTIP\"",
+          "start_utf16": 4941273,
+          "end_utf16": 4941917,
+          "original": "OOLTIP\",en=\"COMPRESSOR_ATTACK_TOOLTIP\",tn=\"COMPRESSOR_RELEASE_TOOLTIP\",an=\"VOICE_CHANGER_TOOLTIP\",nn=\"ECHO_REVERB_TOOLTIP\",on=\"ECHO_REVERB_DECAY_TIME_TOOLTIP\",rn=\"ECHO_REVERB_GAIN_TOOLTIP\",sn=\"ECHO_REVERB_DELAY_TOOLTIP\",En=\"KEY_SHIFTER_TOOLTIP\",_n=\"VOCAL_FADING_TOOLTIP\",Tn=\"RAZER_WORDMARK_TOOLTIP\",cn=\"FADER_BASE_TOOLTIP\",In=\"CHANNEL_MUTE_TOOLTIP\",An=\"MICROPHONE_MUTE_TOOLTIP\",ln=\"CHANNEL_NUMBER_TOOLTIP\",On=\"FADER_FOREGROUND_TOOLTIP\",dn=\"BLEEP_BUTTON_TOOLTIP\",Sn=\"AUDIO_TROUBLESHOOTING\",un=\"AUDIO_TROUBLESHOOTING_DES\",Rn=\"AUDIO_TROUBLESHOOTING_BUTTON\",Nn=\"PRESET\",Dn=\"DEFAULT\",Cn=\"KEYBOARD\",Ln=\"CONTROLLER\",mn=\"CONTROLLER_V2\",pn=\"CONTROLLER_P"
+        },
+        {
+          "token": "_n=\"VOCAL_FADING_TOOLTIP\"",
+          "start_utf16": 4941298,
+          "end_utf16": 4941943,
+          "original": "TACK_TOOLTIP\",tn=\"COMPRESSOR_RELEASE_TOOLTIP\",an=\"VOICE_CHANGER_TOOLTIP\",nn=\"ECHO_REVERB_TOOLTIP\",on=\"ECHO_REVERB_DECAY_TIME_TOOLTIP\",rn=\"ECHO_REVERB_GAIN_TOOLTIP\",sn=\"ECHO_REVERB_DELAY_TOOLTIP\",En=\"KEY_SHIFTER_TOOLTIP\",_n=\"VOCAL_FADING_TOOLTIP\",Tn=\"RAZER_WORDMARK_TOOLTIP\",cn=\"FADER_BASE_TOOLTIP\",In=\"CHANNEL_MUTE_TOOLTIP\",An=\"MICROPHONE_MUTE_TOOLTIP\",ln=\"CHANNEL_NUMBER_TOOLTIP\",On=\"FADER_FOREGROUND_TOOLTIP\",dn=\"BLEEP_BUTTON_TOOLTIP\",Sn=\"AUDIO_TROUBLESHOOTING\",un=\"AUDIO_TROUBLESHOOTING_DES\",Rn=\"AUDIO_TROUBLESHOOTING_BUTTON\",Nn=\"PRESET\",Dn=\"DEFAULT\",Cn=\"KEYBOARD\",Ln=\"CONTROLLER\",mn=\"CONTROLLER_V2\",pn=\"CONTROLLER_PLAYSTATION\",Pn=\"DISABLE\",M"
         }
       ]
     },
@@ -593,6 +821,66 @@
           "start_utf16": 430928,
           "end_utf16": 431598,
           "original": "d62c;border-radius:50%;height:16px;width:16px}.wrapper-micEqualizer .vertical-slider__titleCustom{color:#ccc;font-size:14px;text-align:center;text-transform:uppercase}.wrapper-micEqualizer .vertical-slider__bubbleCustom,.wrapper-micEqualizer .vertical-slider__tagCustom{align-items:center;display:flex;height:27px;justify-content:center;margin:0;width:60px}.wrapper-micEqualizer .vertical-slider__bubbleCustom{border:1px solid #5d5d5d}.audioLevel_wrapper .box_audioLevel{display:flex;margin-bottom:3px;position:relative}.audioLevel_wrapper .box_audioLevel:before{background:#111;content:\"\";height:100%;opacity:.8;position:absolute;right:0;top:0;width:var(--width);z-inde"
+        },
+        {
+          "token": ".wrapper-effectsTop{display:flex;justify-content:center}",
+          "start_utf16": 439974,
+          "end_utf16": 440650,
+          "original": "ate(-50%)}.wrapper-echoReverb .box_volume .knob_wrapper .box_des span{display:block}.wrapper-effectKeyShifter,.wrapper-effectVocalFading{width:100%}.wrapper-voiceChanger .noClick{opacity:.3;pointer-events:none!important}.wrapper-effectsTop{display:flex;justify-content:center}.wrapper-effectsTop .rename-rect .show{top:0!important}.wrapper-effectsTop .wrapper-dropdown{flex:0 0 50%;max-width:50%}.wrapper-effectsTop .wrapper-dropdown .h2-title{margin-left:auto;width:276px}.wrapper-effectsTop .wrapper-dropdown .box-preset{display:flex;justify-content:flex-end}.wrapper-effectsTop .wrapper-shortcut{flex:0 0 50%;max-width:50%}.wrapper-effectsTop .wrapper-shortcut .box-shortcu"
+        },
+        {
+          "token": ".wrapper-effectsTop .wrapper-dropdown .h2-title{margin-left:auto;width:276px}",
+          "start_utf16": 440150,
+          "end_utf16": 440847,
+          "original": "ck{opacity:.3;pointer-events:none!important}.wrapper-effectsTop{display:flex;justify-content:center}.wrapper-effectsTop .rename-rect .show{top:0!important}.wrapper-effectsTop .wrapper-dropdown{flex:0 0 50%;max-width:50%}.wrapper-effectsTop .wrapper-dropdown .h2-title{margin-left:auto;width:276px}.wrapper-effectsTop .wrapper-dropdown .box-preset{display:flex;justify-content:flex-end}.wrapper-effectsTop .wrapper-shortcut{flex:0 0 50%;max-width:50%}.wrapper-effectsTop .wrapper-shortcut .box-shortcut .keyboard_listen{background-color:#111;border:1px solid #515151;color:#ccc;font-size:14px;height:27px;line-height:17px;max-height:27px;padding:4px 5px;position:relative;text-transform:none;transi"
+        },
+        {
+          "token": ".wrapper-effectsBottom .h2-title{margin:20px auto 0;max-width:600px;width:100%}",
+          "start_utf16": 440800,
+          "end_utf16": 441499,
+          "original": "px;position:relative;text-transform:none;transition:opacity .3s,border .3s;width:230px;will-change:opacity,border}.wrapper-effectsTop .wrapper-shortcut .box-shortcut .active{border-color:#44d62c}@media(max-width:1280px){.wrapper-effectsBottom .h2-title{margin:20px auto 0;max-width:600px;width:100%}}.wrapper-MixerTable table{text-align:center;width:100%}.wrapper-MixerTable table tbody,.wrapper-MixerTable table thead{background:#222}.wrapper-MixerTable table thead td{padding:5px;text-transform:uppercase}.wrapper-MixerTable table tbody .check-item{margin:0;padding:10px 26px}.wrapper-MixerTable table tbody .check-item .check-box{margin:0}.wrapper-MixerTable table tbody button{background:none;bo"
+        },
+        {
+          "token": ".wrapper-voiceChanger .noClick{opacity:.3;pointer-events:none!important}",
+          "start_utf16": 439902,
+          "end_utf16": 440594,
+          "original": "e-block;left:50%;position:absolute;top:calc(50% - 28px);transform:translate(-50%)}.wrapper-echoReverb .box_volume .knob_wrapper .box_des span{display:block}.wrapper-effectKeyShifter,.wrapper-effectVocalFading{width:100%}.wrapper-voiceChanger .noClick{opacity:.3;pointer-events:none!important}.wrapper-effectsTop{display:flex;justify-content:center}.wrapper-effectsTop .rename-rect .show{top:0!important}.wrapper-effectsTop .wrapper-dropdown{flex:0 0 50%;max-width:50%}.wrapper-effectsTop .wrapper-dropdown .h2-title{margin-left:auto;width:276px}.wrapper-effectsTop .wrapper-dropdown .box-preset{display:flex;justify-content:flex-end}.wrapper-effectsTop .wrapper-shortcut{flex:0 0 50%;max-widt"
+        },
+        {
+          "token": ".wrapper-echoReverb .noClick{opacity:.3;pointer-events:none!important}",
+          "start_utf16": 439229,
+          "end_utf16": 439919,
+          "original": "ight:10px}.wrapper-echoReverb .h2-title{margin-bottom:10px}.wrapper-echoReverb .room-size input[type=number]{background:none;border:1px solid #5d5d5d;color:#fff;height:27px;margin:0 10px 20px;padding:5px 10px;width:50px}.wrapper-echoReverb .noClick{opacity:.3;pointer-events:none!important}.wrapper-echoReverb .box_volume{display:flex;justify-content:space-between}.wrapper-echoReverb .box_volume .knob_wrapper{margin-top:25px;position:relative;text-align:center}.wrapper-echoReverb .box_volume .knob_wrapper .box_title{color:#ccc;font-size:14px;margin-top:10px;text-align:center;text-transform:uppercase}.wrapper-echoReverb .box_volume .knob_wrapper .box_des{display:inline-block;left:50%;"
+        },
+        {
+          "token": ".sliderChart__preset-list div{background-color:#111",
+          "start_utf16": 209442,
+          "end_utf16": 210113,
+          "original": "lex;margin-bottom:20px}.sliderChart__preset-list{flex-wrap:wrap;gap:12px;position:relative;z-index:2}.sliderChart__preset-list.scale{width:calc(100% + 10px)}.sliderChart__preset-list.scale div{flex:1 1;padding:7px 0 6px}.sliderChart__preset-list div{background-color:#111;border:1px solid #5d5d5d;border-radius:3px;color:#ccc;font-size:12px;height:27px;line-height:14px;min-width:90px;padding:6px 16px 7px;text-align:center;transition:border-color .3s,background-color .3s;white-space:nowrap;will-change:border-color,background-color}.sliderChart__preset-list div:hover{background-color:#0000001a;border-color:#44d62c}.sliderChart__preset-list div.active,.sliderChart__pr"
+        }
+      ]
+    },
+    {
+      "path": ".ref/middleware/1342/main.6861ee97d479a87c4d7a.js",
+      "sha256": "6ed678c3bfae4340c10927c06e269e9660634ed1085dbbd8214b10ced458334e",
+      "receipts": [
+        {
+          "token": "DEFAULTPRESET:()=>m",
+          "start_utf16": 149157,
+          "end_utf16": 149796,
+          "original": "&&(r=!1),E&&!E.writable&&(c=!1)}return(r||c||!o)&&(i?n(e,\"length\",t,!0,!0):n(e,\"length\",t)),e}},26061(e,t,o){\"use strict\";o.r(t),o.d(t,{APP_OUTPUT:()=>A,AVAILABLE_EDITION_ID:()=>U,Audio_EQ_Tabs:()=>f,CHROMA_OBJECT:()=>u,DEFAULTPRESET:()=>m,DEFAULTPROFILE:()=>R,DEFAULT_FIRMWARE_MAPPINGS:()=>I,DEFAULT_POWER_SAVING:()=>p,DEVICE_BASE_LOCAL_DATA:()=>y,DEVICE_NAME:()=>c,DeviceInfo:()=>l,EMPTY_GUID:()=>E,FIRMWARE_REPORT_IDS:()=>v,QUICK_EFFECTS:()=>T,audioBandFrequency:()=>S,audioBandPreset:()=>d,echoAndReverbList:()=>C,getDefaultPreset:()=>D,getDefaultProfile:()=>P,getDeviceDefaultLocalData:()=>w,getTranslations:()=>b,micBandBasicPreset:("
+        },
+        {
+          "token": "m={guid:\"6633f08d-8467-4fad-b854-635acf9c2315\"",
+          "start_utf16": 156607,
+          "end_utf16": 157273,
+          "original": ",min:1,max:50,step:1},releaseTime:{value:150,min:1,max:200,step:1}},micEqualizerMode:0,micEqualizer:{mode:\"default\",customBands:N.default},micEqualizerBasic:{mode:\"default\",customBands:g.default}};Object.freeze(R);const m={guid:\"6633f08d-8467-4fad-b854-635acf9c2315\",name:\"Default\",voiceChanger:{isEnabled:!1,value:1},echoReverb:{isEnabled:!1,activeMode:\"library\",modeValues:C.library},keyShifter:{isEnabled:!1,value:1,min:-12,max:12,step:1},vocalFading:{isEnabled:!1,value:20,min:0,max:100,step:1}};Object.freeze(m);const y={version:1,vendorId:5426,productId:1342,powerSaving:{isEnabled:!0,value:15},category:\"AUDIO\",subCategory:\"MIXER_AUDIO\",reportIDs:{5:\"hardware"
+        },
+        {
+          "token": "presets:[t],activePreset:t.guid",
+          "start_utf16": 157538,
+          "end_utf16": 158189,
+          "original": ".guid=(0,a.gZ)(),e},D=()=>{let e=JSON.parse(JSON.stringify(m));return e.name=\"Preset\",e.guid=(0,a.gZ)(),e},v={5:\"hardwareEventReportID\"},U=[0];function w(){const e=P(),t=D();return{...y,profiles:[e],activeProfile:e.guid,presets:[t],activePreset:t.guid}}const b=async function(e=0){const t=l.productId,r=U.includes(e)?e:0;return await o(51884)(`./${t}_${r}/translations`)}},4041(e,t,o){\"use strict\";o.d(t,{P3:()=>n,WB:()=>E,bX:()=>l,i$:()=>u,lY:()=>s,lb:()=>_,oE:()=>c,sA:()=>a,sV:()=>i,wu:()=>r});const r=4,n=5,i=6,s=7,a=8,_=9,c=16,E=10,l=33,u=32},35924(e,t,o){\"use strict\";o.d(t,{A:()=>n});var r=o(4041);const n={runtimeData:{serialNumber:\"\",editionI"
         }
       ]
     }

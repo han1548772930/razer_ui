@@ -325,6 +325,7 @@
 !/tools/audit-tray-window-current.py
 !/tools/audit-keyboard-actuation-sync.cjs
 !/tools/audit-settings-presentation-current.cjs
+!/tools/audit-settings-entrypoints-current.cjs
 !/tools/audit-tray-state-source.cjs
 !/tools/audit-tray-widgets-current.py
 !/tools/audit-tray-footer-current.cjs
@@ -353,8 +354,17 @@
 !/tools/audit-sysutils-foreground-current.py
 !/tools/audit-sysutils-keyboard-monitor-current.py
 !/tools/audit-sysutils-system-launch-current.py
+!/tools/audit-audio-router-current.py
+!/tools/prepare-keyboard-analog-properties.cjs
 !/tools/audit-audio-mixer-page-bindings-current.py
 !/tools/audit-hid-interrupt-current.py
 !/tools/audit-sysutils-keyboard-layout-current.py
 !/tools/audit-receiver-pairing-transport-current.cjs
 !/tools/audit-audio-util-active-consumers-current.cjs
+!/tools/audit-receiver-brightness-current.cjs
+!/tools/audit-receiver-brightness-page-current.cjs
+!/tools/audit-receiver-reset-current.cjs
+!/tools/acquire-lighting-native-current.py
+!/tools/acquire-lighting-engine-source-current.py
+!/tools/audit-lighting-native-current.cjs
+!/tools/validate-lighting-native-ida-current.py

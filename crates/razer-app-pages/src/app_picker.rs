@@ -700,6 +700,13 @@ impl AppPicker {
             self.dismiss(window, cx);
             return;
         }
+        self.show(window, cx);
+    }
+    /// Open the retained header picker using its actual catalog and anchor.
+    pub fn show(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.popup.read(cx).is_open() {
+            return;
+        }
         self.trigger_focus.focus(window, cx);
         if self.has_unread {
             self.has_unread = false;

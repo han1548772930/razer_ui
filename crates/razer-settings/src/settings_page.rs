@@ -96,12 +96,11 @@ pub enum SettingsEvent {
     ResetTutorials,
     Preview(u32),
     PreviewVariant(u32, u32, u32),
-    PreviewChromaTour,
-    PreviewAlexa,
-    PreviewAppPicker,
-    PreviewModules,
-    PreviewHeader,
-    PreviewProfileMigration,
+    ChromaTour,
+    Alexa,
+    AppPicker,
+    Modules,
+    Dashboard,
     ProfileMigration,
     ReleaseNotes,
     Pairing,
@@ -114,10 +113,10 @@ pub struct SettingsPage {
     preview_product: Entity<SelectState<Vec<Choice>>>,
     preview_edition: Entity<SelectState<Vec<Choice>>>,
     preview_layout: Entity<SelectState<Vec<Choice>>>,
+    runtime: Entity<super::runtime_page::RuntimePanel>,
     tutorial_reset: bool,
     storage_error: Option<String>,
     dynamic_lighting_supported: bool,
-    runtime: Entity<super::runtime_page::RuntimePanel>,
     subscriptions: Vec<Subscription>,
 }
 impl EventEmitter<SettingsEvent> for SettingsPage {}
@@ -155,12 +154,7 @@ impl SettingsPage {
         cx.emit(SettingsEvent::Language);
         self.changed(cx);
     }
-    pub fn new(
-        mut values: AppPreferences,
-        runtime: Entity<super::runtime_page::RuntimePanel>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
+    pub fn new(mut values: AppPreferences, runtime: Entity<super::runtime_page::RuntimePanel>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let saved = values.clone();
         let locale = i18n::locale();
         if let Some((code, _)) = LANGUAGES
@@ -202,10 +196,10 @@ impl SettingsPage {
             preview_product,
             preview_edition,
             preview_layout,
+            runtime,
             tutorial_reset: false,
             storage_error: None,
             dynamic_lighting_supported: razer_platform::system::supports_dynamic_lighting(),
-            runtime,
             subscriptions: vec![],
         };
         this.subscriptions.push(cx.subscribe_in(
@@ -369,6 +363,7 @@ impl SettingsPage {
         v_flex()
             .w(surface::css(600.))
             .min_w(surface::css(600.))
+            .my(surface::css(10.))
             .py(surface::css(surface::WIDGET_PADDING_Y))
             .px(surface::css(surface::WIDGET_PADDING_X))
             .bg(cx.theme().group_box)
@@ -377,7 +372,7 @@ impl SettingsPage {
             .gap(surface::css(20.))
             .child(
                 h_flex()
-                    .gap_3()
+                    .gap(surface::css(10.))
                     .child(
                         div()
                             .font_family("RazerF5")
@@ -390,15 +385,18 @@ impl SettingsPage {
     }
     fn synapse(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let startup = self.values.startup_draft.unwrap_or_default();
+        let column_margin = settings_column_margin(window);
         h_flex()
             .items_start()
             .flex_wrap()
-            .gap(surface::css(20.))
+            .max_w(surface::css(1240.))
+            .mx_auto()
             .justify_center()
             .child(
                 v_flex()
                     .w(surface::css(600.))
-                    .gap(surface::css(20.))
+                    .flex_shrink_0()
+                    .mx(column_margin)
                     .child(
                         self.panel("AUTO_LAUNCH", cx).child(
                             v_flex()
@@ -510,7 +508,8 @@ impl SettingsPage {
             .child(
                 v_flex()
                     .w(surface::css(600.))
-                    .gap(surface::css(20.))
+                    .flex_shrink_0()
+                    .mx(column_margin)
                     .child(
                         self.panel("TUTORIAL_RESET", cx).child(
                             h_flex()
@@ -581,7 +580,7 @@ impl SettingsPage {
         self.panel_with_control(
             "RECOMMENDATION_HEADER",
             surface::SynapseSwitch::new("settings-recommendations")
-                .label(i18n::t("RECOMMENDATION_HEADER"))
+                .accessibility_label(i18n::t("RECOMMENDATION_HEADER"))
                 .checked(self.values.recommendations)
                 .on_change(cx.listener(|this, checked, _, cx| {
                     this.values.recommendations = *checked;
@@ -690,7 +689,8 @@ impl SettingsPage {
         )
         .into_any_element()
     }
-    fn general(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn general(&self, window: &Window, cx: &mut Context<Self>) -> AnyElement {
+        let column_margin = settings_column_margin(window);
         let whats_new = i18n::t("RELEASE_PATCH_NOTE_WHATS_NEW");
         let (before, after) = whats_new
             .split_once("{{releasePatchNote}}")
@@ -698,12 +698,14 @@ impl SettingsPage {
         h_flex()
             .items_start()
             .flex_wrap()
-            .gap(surface::css(20.))
+            .max_w(surface::css(1240.))
+            .mx_auto()
             .justify_center()
             .child(
                 v_flex()
                     .w(surface::css(600.))
-                    .gap(surface::css(20.))
+                    .flex_shrink_0()
+                    .mx(column_margin)
                     .child(
                         self.panel("LANGUAGE", cx).child(
                             surface::select(&self.language)
@@ -739,7 +741,13 @@ impl SettingsPage {
                         ),
                     ),
             )
-            .child(self.about(cx))
+            .child(
+                v_flex()
+                    .w(surface::css(600.))
+                    .flex_shrink_0()
+                    .mx(column_margin)
+                    .child(self.about(cx)),
+            )
             .into_any_element()
     }
     fn about(&self, cx: &App) -> AnyElement {
@@ -790,8 +798,7 @@ impl SettingsPage {
                         ].map(|(id, label, asset, hover, url)| social_link(id, i18n::t(label).into(), asset, hover, url, false, cx)))),
             )
             .into_any_element()
-    }
-    fn connection(&self, cx: &mut Context<Self>) -> AnyElement {
+    }    fn connection(&self, cx: &mut Context<Self>) -> AnyElement {
         v_flex()
             .gap_4()
             .child(self.runtime.clone())
@@ -865,14 +872,14 @@ impl SettingsPage {
                                 Button::new("preview-profile-migration")
                                     .label("预览配置迁移状态…")
                                     .outline()
-                                    .on_click(cx.listener(|_, _, _, cx| { cx.emit(SettingsEvent::PreviewProfileMigration); })),
+                                    .on_click(cx.listener(|_, _, _, cx| { cx.emit(SettingsEvent::ProfileMigration); })),
                             )
                             .child(
                                 Button::new("preview-module-pages")
                                     .label("模块状态样例…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::PreviewModules)
+                                        cx.emit(SettingsEvent::Modules)
                                     })),
                             )
                             .children(razer_catalog::AUDITED_MOUSE_MAT_IDS.into_iter().map(
@@ -894,7 +901,7 @@ impl SettingsPage {
                                     .label("预览更多应用…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::PreviewAppPicker)
+                                        cx.emit(SettingsEvent::AppPicker)
                                     })),
                             )
                             .child(
@@ -902,7 +909,7 @@ impl SettingsPage {
                                     .label("Alexa 状态样例…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::PreviewAlexa)
+                                        cx.emit(SettingsEvent::Alexa)
                                     })),
                             )
                             .child(
@@ -910,7 +917,7 @@ impl SettingsPage {
                                     .label("预览 Chroma 入门教程…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::PreviewChromaTour)
+                                        cx.emit(SettingsEvent::ChromaTour)
                                     })),
                             )
                             .child(
@@ -918,70 +925,56 @@ impl SettingsPage {
                                     .label("顶部状态样例…")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
-                                        cx.emit(SettingsEvent::PreviewHeader)
+                                        cx.emit(SettingsEvent::Dashboard)
                                     })),
                             )
                             .child(
                                 Button::new("preview-lighting-settings")
                                     .label("灯光设置状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| lighting::open_preview(window, cx)),
+                                    .on_click(cx.listener(|this, _, _, cx| { this.page = Page::Synapse; cx.notify(); })),
                             )
                             .child(
                                 Button::new("preview-keyboard-calibration")
                                     .label("磁轴键盘校准状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| {
-                                        razer_pages::features::keyboard_products::open_calibration_preview(window, cx);
-                                    }),
+                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(740)))),
                             )
                             .child(
                                 Button::new("preview-hue")
                                     .label("Philips Hue 状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| {
-                                        razer_pages::features::hue::open_preview(window, cx);
-                                    }),
+                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(769)))),
                             )
                             .child(
                                 Button::new("preview-aether-strip")
                                     .label("Aether 灯带状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| {
-                                        razer_pages::features::aether_strip::open_preview(window, cx);
-                                    }),
+                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(784)))),
                             )
                             .child(
                                 Button::new("preview-wireless-argb")
                                     .label("无线 ARGB 状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| {
-                                        razer_pages::features::wireless_argb::open_preview(window, cx);
-                                    }),
+                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3884)))),
                             )
                             .child(
                                 Button::new("preview-wired-argb")
                                     .label("主板与 ARGB 端口状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| {
-                                        razer_pages::features::wired_argb::open_preview(window, cx);
-                                    }),
+                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3871)))),
                             )
                             .child(
                                 Button::new("preview-automation")
                                     .label("自动化状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| {
-                                        razer_pages::features::automation::open_preview(window, cx);
-                                    }),
+                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3946)))),
                             )
                             .child(
                                 Button::new("open-pairing-page")
                                     .label("鼠标底座配对状态样例…")
                                     .outline()
-                                    .on_click(|_, window, cx| {
-                                        razer_pages::features::dock_pairing::open_preview(window, cx);
-                                    }),
+                                    .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(241)))),
                             )
                             .child(
                                 Button::new("open-multi-pairing-page")
@@ -1062,6 +1055,21 @@ fn social_link(
         )
         .focus_visible(|link| link.bg(cx.theme().secondary_hover))
 }
+fn settings_column_margin(window: &Window) -> Rems {
+    // Current 720 CSS: the last .body-widgets div.widget-col media rule wins
+    // over the earlier .main-setting div.widget-col rule at <= 1279 CSS px.
+    surface::css(
+        if surface::stacked_device_columns(
+            f32::from(window.viewport_size().width),
+            f32::from(window.rem_size()),
+        ) {
+            30.
+        } else {
+            0.
+        },
+    )
+}
+
 fn policy_link(id: &'static str, label: String, url: &'static str, cx: &App) -> impl IntoElement {
     gpui_kit::base::Link::new(id)
         .href(url)
@@ -1095,7 +1103,7 @@ impl Render for SettingsPage {
                         [
                             (Page::Synapse, "settings-tab-synapse", "SYNAPSE"),
                             (Page::General, "settings-tab-general", "GENERAL"),
-                            (Page::Connection, "settings-tab-connection", "服务连接"),
+                            (Page::Connection, "settings-tab-connection", "????"),
                         ]
                         .map(|(page, id, label)| {
                             surface::navigation_button(id, i18n::t(label), self.page == page, cx)
@@ -1116,15 +1124,13 @@ impl Render for SettingsPage {
                     .child(
                         v_flex()
                             .w_full()
-                            .min_w(surface::css(660.))
-                            .max_w(surface::css(1280.))
-                            .mx_auto()
-                            .px(surface::css(30.))
-                            .py(surface::css(20.))
-                            .gap(surface::css(20.))
+                            .min_w(surface::css(600.))
+                            .px(surface::css(20.))
+                            .pt(surface::css(10.))
+                            .pb(surface::css(20.))
                             .child(match self.page {
                                 Page::Synapse => self.synapse(window, cx),
-                                Page::General => self.general(cx),
+                                Page::General => self.general(window, cx),
                                 Page::Connection => self.connection(cx),
                             }),
                     ),

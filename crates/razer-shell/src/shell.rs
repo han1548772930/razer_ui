@@ -40,7 +40,9 @@ mod keyboard_brightness_read;
 mod keyboard_brightness_write;
 mod mouse_dpi_stages;
 mod mouse_polling_write;
+mod receiver_brightness_page;
 mod receiver_pairing;
+mod receiver_reset;
 use razer_app_pages::feedback_page;
 mod firmware_update;
 mod header_status;
@@ -132,6 +134,10 @@ pub struct AppShell {
     devices: Vec<Entity<ProductWorkspace>>,
     receiver_queries: BTreeMap<String, (u64, u64)>,
     receiver_pairing_operations: BTreeMap<String, receiver_pairing::Session>,
+    receiver_reset: BTreeMap<String, receiver_reset::Session>,
+    receiver_reset_cleanup: Vec<std::thread::JoinHandle<()>>,
+    receiver_brightness_page: BTreeMap<String, receiver_brightness_page::Session>,
+    receiver_brightness_cleanup: Vec<std::thread::JoinHandle<()>>,
     receiver_pairing_cleanup: Vec<std::thread::JoinHandle<()>>,
     receiver_devices: BTreeMap<String, (u32, u32)>,
     receiver_devices_complete: bool,
@@ -140,6 +146,8 @@ pub struct AppShell {
     device_value_owners: std::collections::BTreeSet<String>,
     device_read_scopes: BTreeMap<String, razer_pages::features::mouse_polling::MousePollingScope>,
     audio_notifications: BTreeMap<String, audio_notifications::Session>,
+    audio_preset_shortcuts: BTreeMap<String, audio_mixer::presets::Session>,
+    audio_preset_shortcut_cleanup: Vec<std::thread::JoinHandle<()>>,
     audio_notification_cleanup: Vec<std::thread::JoinHandle<()>>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
@@ -298,12 +306,15 @@ impl AppShell {
         let runtime = cx.new(|_| runtime_page::RuntimePanel::new());
         let gamer_room_seen = preferences.gamer_room_tutorial_seen;
         let dashboard_seen = preferences.dashboard_tutorial_seen;
-        let settings =
-            cx.new(|cx| settings_page::SettingsPage::new(preferences, runtime.clone(), window, cx));
+        let settings = cx.new(|cx| settings_page::SettingsPage::new(preferences, runtime.clone(), window, cx));
         let mut this = Self {
             devices: vec![],
             receiver_queries: BTreeMap::new(),
             receiver_pairing_operations: BTreeMap::new(),
+            receiver_reset: BTreeMap::new(),
+            receiver_reset_cleanup: Vec::new(),
+            receiver_brightness_page: BTreeMap::new(),
+            receiver_brightness_cleanup: Vec::new(),
             receiver_pairing_cleanup: Vec::new(),
             discovery_revision: 0,
             device_observations: Vec::new(),
@@ -312,6 +323,8 @@ impl AppShell {
             receiver_devices_complete: false,
             device_read_scopes: BTreeMap::new(),
             audio_notifications: BTreeMap::new(),
+            audio_preset_shortcuts: BTreeMap::new(),
+            audio_preset_shortcut_cleanup: Vec::new(),
             audio_notification_cleanup: Vec::new(),
             host_tabs: host_tabs::HostTabs::new(cx),
             location: Location::Main(Tab::Home),
@@ -430,37 +443,19 @@ impl AppShell {
                     cx.refresh_windows();
                 }
                 settings_page::SettingsEvent::Preview(pid) => this.add_preview(*pid, window, cx),
-                settings_page::SettingsEvent::PreviewVariant(pid, edition, layout) => {
-                    this.add_preview_variant(*pid, *edition, *layout, window, cx)
-                }
-                settings_page::SettingsEvent::PreviewChromaTour => {
-                    this.navigate(Location::Tour(TourKind::Chroma), window, cx);
-                }
-                settings_page::SettingsEvent::PreviewAlexa => {
-                    alexa_page::open_preview(window, cx);
-                }
-                settings_page::SettingsEvent::PreviewAppPicker => {
-                    app_picker::open_preview(window, cx);
-                }
-                settings_page::SettingsEvent::PreviewProfileMigration => {
-                    profile_migration::open_preview(window, cx);
-                }
+                settings_page::SettingsEvent::PreviewVariant(pid, edition, layout) => this.add_preview_variant(*pid, *edition, *layout, window, cx),
+                settings_page::SettingsEvent::ChromaTour => this.navigate(Location::Tour(TourKind::Chroma), window, cx),
+                settings_page::SettingsEvent::Alexa => this.open_module_tab(service_pages::ModulePage::Alexa, window, cx),
+                settings_page::SettingsEvent::AppPicker => this.app_picker.update(cx, |picker, cx| picker.show(window, cx)),
+                settings_page::SettingsEvent::Modules => this.navigate(Location::Main(Tab::Modules), window, cx),
+                settings_page::SettingsEvent::Dashboard => this.navigate(Location::Main(Tab::Home), window, cx),
+                settings_page::SettingsEvent::Pairing => this.navigate(Location::Pairing("multi-device-pairing".into()), window, cx),
                 settings_page::SettingsEvent::ProfileMigration => {
                     this.navigate(Location::ProfileMigration, window, cx);
-                }
-                settings_page::SettingsEvent::PreviewModules => {
-                    this.module_catalog
-                        .update(cx, |catalog, cx| catalog.open_preview(window, cx));
-                }
-                settings_page::SettingsEvent::PreviewHeader => {
-                    header_status::open_preview(window, cx);
                 }
                 settings_page::SettingsEvent::ReleaseNotes => {
                     this.release_notes = Some(release_notes::open(window, cx));
                     cx.notify();
-                }
-                settings_page::SettingsEvent::Pairing => {
-                    this.navigate(Location::Pairing("multi-device-pairing".into()), window, cx)
                 }
                 settings_page::SettingsEvent::ResetTutorials => {
                     this.tracking_intro_seen = false;
@@ -807,7 +802,10 @@ impl AppShell {
         });
         this.install_tray(window, cx);
         this.install_audio_notification_cleanup(cx);
+        this.install_audio_preset_shortcut_cleanup(cx);
         this.install_receiver_pairing_cleanup(cx);
+        this.install_receiver_reset_cleanup(cx);
+        this.install_receiver_brightness_cleanup(cx);
         this.subscriptions.push(cx.subscribe_in(
             &runtime,
             window,
@@ -873,6 +871,13 @@ impl AppShell {
                 WorkspaceEvent::AudioMixerRequested { request } => {
                     this.request_audio_mixer(entity.clone(), request.clone(), window, cx);
                 }
+                WorkspaceEvent::AudioPresetShortcutRequested { request } => {
+                    this.request_audio_preset_shortcuts(entity.clone(),request.clone(),window,cx);
+                }
+                WorkspaceEvent::HelpResetRequested(request) => this.request_help_reset(entity.clone(),*request,window,cx),
+                WorkspaceEvent::HelpResetCanceled(request) => this.cancel_help_reset(entity,*request,cx),
+                WorkspaceEvent::ReceiverBrightnessRequested(request) => this.receiver_brightness_write(entity.clone(),*request,window,cx),
+                WorkspaceEvent::ReceiverBrightnessReadRequested(request) => this.receiver_brightness_read(entity.clone(),*request,window,cx),
                 WorkspaceEvent::Changed => {
                     this.sync_gamer_room(cx);
                     this.sync_known_devices(cx);

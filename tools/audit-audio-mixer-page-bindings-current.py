@@ -9,12 +9,14 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "docs/re/audio-mixer-page-bindings-source-current.json"
 EQ_OUTPUT = ROOT / "assets/data/audio-mixer-mic-eq-current.json"
 ECHO_OUTPUT = ROOT / "assets/data/audio-mixer-echo-current.json"
+PRESET_OUTPUT = ROOT / "assets/data/audio-mixer-presets-current.json"
 SOURCES = [
     ".ref/middleware/1342/AudioMixer.cde922aae2f0fea23404.js",
     ".ref/middleware/1342/5736.fdd55044a41484df28aa.js",
     ".ref/middleware/1342/8793.8b70f445ce1f22fe05df.js",
     ".ref/devices/1342/static/js/main.2623357c.js",
     ".ref/devices/1342/static/css/main.07a2c4ed.css",
+    ".ref/middleware/1342/main.6861ee97d479a87c4d7a.js",
 ]
 TOKENS = {
     SOURCES[0]: [
@@ -30,11 +32,19 @@ TOKENS = {
         "this.setEchoOrReverbState=", "this.setEchoOrReverbRoomValue=",
         "this.setEchoOrReverbDecayTimeValue=", "this.setEchoOrReverbEchoGainValue=",
         "this.setEchoOrReverbEchoDelayValue=",
+        "this.setKeyShifterLevelValue=", "this.setVocalFadingState=",
+        "this.setVocalFadingLevelValue=",
+        "t<0&&(t=255+t+1,i[0][6]=255),i[0][7]=t",
+        "o[0][8]=n.data[0],o[0][7]=n.data[1],o[0][6]=n.data[2],t?o[0][8]|=8:o[0][8]&=-9",
         "ge=[new Uint8Array([19,95,252,0,52,128,83,51,0])]",
         "ye=[new Uint8Array([19,95,252,0,52,128,226,143,0])]",
         "fe=[new Uint8Array([19,95,252,0,52,128,97,71,0])]",
         "Se=[new Uint8Array([19,95,252,0,52,128,171,133,0])]",
         "this.setMicEQLevel_MultiBand=", "const an=\"MixerMic\",sn=",
+        'Pt=(e,t,n,o,r,i)=>',
+        'J=(new Uint8Array([4,95,252,0,52]),[new Uint8Array([19,95,252,0,52,64,0,0,145])])',
+        'G=[new Uint8Array([19,95,252,0,52,64,0,0,144])]',
+
     ],
     SOURCES[1]: [
         "setNoiseGateThresholdValue(Number(r.value))",
@@ -69,6 +79,14 @@ TOKENS = {
         '"AudioAWKittyBLE"===_.jf.rzDevice.name?(M.A.deviceEQData=yield Qs()',
         'f.micBandFrequency[4*i+3]', 'f.micBandFrequency[4*i+1]',
         't.micBaicEqualizer.mode', 't.micEqualizerMode=i',
+        'case _.pF.ON_SWITCH_PRESET:', 'case _.pF.ON_ADD_PRESET:',
+        'case _.pF.ON_DUPLICATE_PRESET:', 'case _.pF.ON_RENAME_PRESET:',
+        'case _.pF.ON_DELETE_PRESET:', 'case _.pF.ON_RESET_PRESET:',
+        'case _.pF.ON_CHANGE_PRESET_MAPPING:',
+        'nl=(e,t)=>', 'yield(0,A.f2)(e)',
+        'v=e=>{var t;return{keyCode:Number',
+        'yield o.A.registerGlobalShortcut(t,e)', 'yield o.A.enableGlobalShortcut()',
+        'u.set(d(r,a),t)',
     ],
     SOURCES[2]: ["DeviceId_PlaybackMix:131074", "DeviceId_StreamMix:131073",
                  "SetDeviceVolume", "SetDeviceMute", "SetMixLevel", "SetMixEnable"],
@@ -78,7 +96,17 @@ TOKENS = {
                  "deviceEqDifferent", "saveDeviceEq",
                  "voiceChangerReducer", 'type:"ON_SET_VOICE_CHANGER"',
                  'className:"wrapper-noiseGate"', 'T(QP({useMode:0==n?1:0}))',
-                 'className:"wrapper-compressor"', 'I(JP({useMode:0==n?1:0}))'],
+                 'className:"wrapper-compressor"', 'I(JP({useMode:0==n?1:0}))',
+                 'className:"wrapper-echoReverb"',
+                 '(0,Qe.jsx)(wU,{title:qe.jtn})',
+                 's(fU({isEnabled:n,activeMode:t,modeValues:a}))',
+                 's(fU({isEnabled:n,activeMode:"custom",modeValues:a}))',
+                 'customValues=JSON.parse(JSON.stringify(i))',
+                 'step:.1,value:I.currentValues[2]',
+                 'class GU extends', 'class yU extends',
+                 'Uo.A.disableGlobalShortcut()', 'Uo.A.enableGlobalShortcut()',
+                 'this.getMouseInputID=', 'qe.EvF', 'qe.BqB', 'qe.aL6',
+                 'an="VOICE_CHANGER_TOOLTIP"', 'En="KEY_SHIFTER_TOOLTIP"', '_n="VOCAL_FADING_TOOLTIP"'],
     SOURCES[4]: [
         ".sliderChart__yAxisTitle{",
         ".vertical-slider__inputCustom{-webkit-appearance:none;background:#204d19",
@@ -87,7 +115,15 @@ TOKENS = {
         ".wrapper-micEqualizer .box-showLess .sliderChart__reset-button",
         ".vertical-slider__titleCustom{",
         ".wrapper-micEqualizer .vertical-slider__tagCustom{",
+        ".wrapper-effectsTop{display:flex;justify-content:center}",
+        ".wrapper-effectsTop .wrapper-dropdown .h2-title{margin-left:auto;width:276px}",
+        ".wrapper-effectsBottom .h2-title{margin:20px auto 0;max-width:600px;width:100%}",
+        ".wrapper-voiceChanger .noClick{opacity:.3;pointer-events:none!important}",
+        ".wrapper-echoReverb .noClick{opacity:.3;pointer-events:none!important}",
+        ".sliderChart__preset-list div{background-color:#111",
     ],
+    SOURCES[5]: ['DEFAULTPRESET:()=>m', 'm={guid:"6633f08d-8467-4fad-b854-635acf9c2315"',
+                 'presets:[t],activePreset:t.guid'],
 }
 
 def eq_recipe():
@@ -133,6 +169,22 @@ def audit():
     wrapper = (ROOT / SOURCES[0]).read_text(encoding="utf-8")
     protocol = json.loads((ROOT / "assets/data/audio-mixer-protocol.json").read_text(encoding="utf-8"))
     voice = next(item for item in protocol["properties"] if item["key"] == "magic_voice")
+    for key, symbol, high, selector in [
+        ("key_shift", "qe", 128, 240),
+        ("vocal_fading_level", "nt", 128, 144),
+        ("vocal_fading_enabled", "et", 0, 0),
+    ]:
+        match = re.search(r'\b' + symbol + r'=(?:\(new Uint8Array\(\[[^]]+\]\),)?\[new Uint8Array\(\[([0-9,]+)\]\)\]', wrapper)
+        if not match:
+            raise ValueError(f"Current {key} fixed template missing")
+        payload = list(map(int, match.group(1).split(",")))
+        prop = next(item for item in protocol["properties"] if item["key"] == key)
+        if payload[0] != 19 or payload[5:] != [high,0,0,selector]:
+            raise ValueError(f"Current {key} template changed")
+        if int.from_bytes(bytes(payload[1:5]), "big") != prop["command"]:
+            raise ValueError(f"Current JS/native {key} command differs")
+        if selector and prop["selector"] != selector:
+            raise ValueError(f"Current JS/native {key} selector differs")
     for mode, symbol in enumerate(["ge", "ye", "fe", "Se"]):
         match = re.search(r'\b' + symbol + r'=\[new Uint8Array\(\[([0-9,]+)\]\)\]', wrapper)
         if not match:
@@ -173,10 +225,43 @@ def echo_recipe():
     table = re.search(r'je=new Uint16Array\(\[([0-9,]+)\]\)', wrapper)
     if not table:
         raise ValueError("Current Echo gain table missing")
+    section = wrapper[wrapper.index('Ce=[new Uint8Array'):wrapper.index(',Ee="Enable Noise Gate State"')]
+    templates = [list(map(int,item.split(','))) for item in
+        re.findall(r'new Uint8Array\(\[([0-9,]+)\]\)',section)]
+    templates = [item for item in templates if item[:6] == [19,95,252,0,52,128]]
+    if len(templates) != 4:
+        raise ValueError("Current Echo needs four fixed value templates")
+    selectors = dict(zip(["reverb_room","reverb_decay","echo_gain","echo_delay"],[item[8] for item in templates]))
+    protocol = json.loads((ROOT / "assets/data/audio-mixer-protocol.json").read_text(encoding="utf-8"))
+    for key,selector in selectors.items():
+        if next(item for item in protocol["properties"] if item["key"]==key)["selector"] != selector:
+            raise ValueError("Current JS/native Echo selector differs")
     return {"product_id":1342, "presets":presets,
             "gain_table":list(map(int,table.group(1).split(','))),
+            "template_selectors":selectors,
             "default_mode":"library", "delay_ms":500,
             "source":SOURCES[0], "ui_source":SOURCES[3]}
+
+
+def preset_recipe(echo):
+    source = (ROOT / SOURCES[5]).read_text(encoding="utf-8")
+    match = re.search(r'\bm=(\{guid:"6633f08d-8467-4fad-b854-635acf9c2315"[^;]+\});Object.freeze\(m\)', source)
+    if not match:
+        raise ValueError("Current DEFAULTPRESET missing")
+    raw = match.group(1).replace('!1','false').replace('!0','true')
+    raw = re.sub(r'([{,])(\w+):', r'\1"\2":', raw)
+    raw = raw.replace('C.library',json.dumps(echo['presets']['library']))
+    page=(ROOT/SOURCES[3]).read_text(encoding="utf-8")
+    start=page.index('Ut=[{name:')
+    end=page.index('}],',start)+2
+    keys=[{"name":json.loads('"'+name+'"'),"input_id":input_id,"virtual_key":int(code)}
+          for name,input_id,code in re.findall(r'\{name:"((?:[^"\\]|\\.)*)",inputID:"([^"]+)"[^{}]*?keyCode:"([0-9]+)"[^{}]*?\}',page[start:end])]
+    if len(keys)!=117:
+        raise ValueError(f"Current shortcut key table changed: {len(keys)}")
+    return {"product_id":1342, "default_preset":json.loads(raw),
+            "shortcut_keys":keys,
+            "restore_order":["voiceChanger","echoReverb","keyShifter","vocalFading"],
+            "source":SOURCES[5], "middleware_source":SOURCES[1]}
 
 
 if __name__ == "__main__":
@@ -186,6 +271,7 @@ if __name__ == "__main__":
     value = audit()
     eq = eq_recipe()
     echo = echo_recipe()
+    preset = preset_recipe(echo)
     descriptor_path = ROOT / "crates/razer-pages/src/features/audio_products_data.json"
     descriptors = json.loads(descriptor_path.read_text(encoding="utf-8"))
     current = next(item for item in descriptors if item["product_id"] == 1342)
@@ -210,6 +296,8 @@ if __name__ == "__main__":
             "enabled_by":"/device/echoReverb/isEnabled"})
     echo_spec = {"title":"ECHO_REVERB","controls":echo_controls}
     effects = next(item for item in current["pages"] if item["key"]=="EFFECTS")
+    voice_control = next(control for section in effects["sections"] for control in section["controls"]
+                         if control["path"]=="/device/voiceChanger/value")
     if arguments.check:
         if json.loads(OUTPUT.read_text(encoding="utf-8")) != value:
             raise SystemExit("1342 page source receipt is stale")
@@ -221,13 +309,19 @@ if __name__ == "__main__":
             raise SystemExit("1342 microphone basic EQ spec is stale")
         if json.loads(ECHO_OUTPUT.read_text(encoding="utf-8")) != echo:
             raise SystemExit("1342 Echo source recipe is stale")
+        if json.loads(PRESET_OUTPUT.read_text(encoding="utf-8")) != preset:
+            raise SystemExit("1342 default preset source recipe is stale")
         if next((item for item in effects["sections"] if item["title"]=="ECHO_REVERB"),None) != echo_spec:
             raise SystemExit("1342 Echo UI spec is stale")
+        if voice_control["kind"] != "presets":
+            raise SystemExit("1342 Voice Changer must use the current source buttons")
     else:
         OUTPUT.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         EQ_OUTPUT.write_text(json.dumps(eq, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         ECHO_OUTPUT.write_text(json.dumps(echo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        PRESET_OUTPUT.write_text(json.dumps(preset, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         current_eq["frequencies"] = display
+        voice_control["kind"] = "presets"
         current["equalizers"] = [item for item in current["equalizers"] if item["key"]!="mic_basic"]+[basic_spec]
         effects["sections"] = [item for item in effects["sections"] if item["title"]!="ECHO_REVERB"]+[echo_spec]
         current["draft"]["device"]["echoReverb"] = {"isEnabled":False,"activeMode":"library",

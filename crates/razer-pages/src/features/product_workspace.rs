@@ -99,6 +99,12 @@ impl EventEmitter<super::ReceiverDeviceRequested> for ProductWorkspace {}
 impl EventEmitter<super::DockPairingEvent> for ProductWorkspace {}
 
 impl ProductWorkspace {
+    pub fn audio_mixer_page(&self, cx: &App) -> Option<Entity<super::AudioProductWorkspace>> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).audio_mixer_page(),
+            _ => None,
+        }
+    }
     pub fn mouse_dpi_write_guard(
         &self,
         scope: super::mouse_polling::MousePollingScope,
@@ -642,6 +648,18 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
+                    WorkspaceEvent::HelpResetRequested(request) => {
+                        WorkspaceEvent::HelpResetRequested(*request)
+                    }
+                    WorkspaceEvent::HelpResetCanceled(request) => {
+                        WorkspaceEvent::HelpResetCanceled(*request)
+                    }
+                    WorkspaceEvent::ReceiverBrightnessRequested(request) => {
+                        WorkspaceEvent::ReceiverBrightnessRequested(*request)
+                    }
+                    WorkspaceEvent::ReceiverBrightnessReadRequested(request) => {
+                        WorkspaceEvent::ReceiverBrightnessReadRequested(*request)
+                    }
                     WorkspaceEvent::KeyboardBrightnessRequested {
                         generation,
                         percent,
@@ -652,6 +670,11 @@ impl ProductWorkspace {
                     WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
                         WorkspaceEvent::KeyboardBrightnessReadRequested {
                             generation: *generation,
+                        }
+                    }
+                    WorkspaceEvent::AudioPresetShortcutRequested { request } => {
+                        WorkspaceEvent::AudioPresetShortcutRequested {
+                            request: request.clone(),
                         }
                     }
                     WorkspaceEvent::AudioVolumeRequested { request } => {
@@ -721,6 +744,18 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
+                    WorkspaceEvent::HelpResetRequested(request) => {
+                        WorkspaceEvent::HelpResetRequested(*request)
+                    }
+                    WorkspaceEvent::HelpResetCanceled(request) => {
+                        WorkspaceEvent::HelpResetCanceled(*request)
+                    }
+                    WorkspaceEvent::ReceiverBrightnessRequested(request) => {
+                        WorkspaceEvent::ReceiverBrightnessRequested(*request)
+                    }
+                    WorkspaceEvent::ReceiverBrightnessReadRequested(request) => {
+                        WorkspaceEvent::ReceiverBrightnessReadRequested(*request)
+                    }
                     WorkspaceEvent::KeyboardBrightnessRequested {
                         generation,
                         percent,
@@ -731,6 +766,11 @@ impl ProductWorkspace {
                     WorkspaceEvent::KeyboardBrightnessReadRequested { generation } => {
                         WorkspaceEvent::KeyboardBrightnessReadRequested {
                             generation: *generation,
+                        }
+                    }
+                    WorkspaceEvent::AudioPresetShortcutRequested { request } => {
+                        WorkspaceEvent::AudioPresetShortcutRequested {
+                            request: request.clone(),
                         }
                     }
                     WorkspaceEvent::AudioVolumeRequested { request } => {
@@ -1043,6 +1083,60 @@ impl ProductWorkspace {
                 value.change_profile_metadata(profile, change, window, cx)
             }),
         }
+    }
+    pub fn help_reset_matches(&self, request: super::HelpResetRequest, cx: &App) -> bool {
+        matches!(&self.body,Body::Source(entity) if entity.read(cx).help_reset_matches(request,cx))
+    }
+    pub fn receiver_brightness_matches(
+        &self,
+        generation: u64,
+        percent: Option<u8>,
+        current: bool,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body,Body::Source(body) if body.read(cx).receiver_brightness_matches(generation,percent,current,cx))
+    }
+    pub fn finish_receiver_brightness(
+        &mut self,
+        generation: u64,
+        percent: Option<u8>,
+        outcome: Option<super::HelpResetOutcome>,
+        observed: Option<u8>,
+        error: Option<String>,
+        scope_current: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_receiver_brightness(
+                    generation,
+                    percent,
+                    outcome,
+                    observed,
+                    error,
+                    scope_current,
+                    window,
+                    cx,
+                )
+            });
+        }
+        cx.notify();
+    }
+    pub fn finish_help_reset(
+        &mut self,
+        request: super::HelpResetRequest,
+        document: Option<super::HelpResetOutcome>,
+        error: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(entity) = &self.body {
+            entity.update(cx, |view, cx| {
+                view.finish_help_reset(request, document, error, window, cx)
+            });
+        }
+        cx.notify();
     }
     pub fn saved_snapshot(&self, cx: &App) -> Device {
         match &self.body {

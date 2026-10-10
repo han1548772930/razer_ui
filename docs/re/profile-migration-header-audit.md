@@ -19,7 +19,7 @@ Dashboard 使用 `.ref/applications/synapse/dashboard/`，版本依据见 [当�
 ## 实现边界
 
 - 工具栏、设置中的原迁移按钮、应用选择器的迁移项共用 `Location::ProfileMigration`，创建或聚焦唯一 `HostTab::ProfileMigration`。该页签不是普通弹窗。刷新重新创建页状态，关闭释放页实体并把 `AppPreferences.profile_migration_icon_visible` 置为 `false`；沿现有自动保存队列持久化。旧工作区缺此字段时默认 `true`。已关闭后仍可从设置和应用选择器重新打开，不自动恢复已隐藏的工具栏图标。
-- 正常页不创建场景选择器，也不装载示例记录。显式“服务连接 → 配置迁移状态预览”才通过 `open_preview` 显示原有预览控件，预览不参与设备数据或图标隐藏生命周期。
+- 正常页不创建场景选择器，也不装载示例记录。“服务连接 → 打开配置迁移”现与工具栏及原设置按钮共用正式 HostTab，不再调用 `open_preview` 测试弹窗。入口修复依据见 [设置入口](settings-entrypoints-current.md)。
 - 扫描器及迁移 DLL 尚未接入。正常页只显示已有原版横幅和禁用的迁移按钮；不把“未知”伪装成原版的“未找到备份”，也不虚构扫描进度或导入结果。这是本地适配器对未知状态的处理，不声称等同于原版服务已运行后的页面。
 - 原迁移应用 `OD` 会初始化 `_g` 并调用 `scanData()`；本实现没有执行这些下载的脚本或 DLL。预览中的记录、进度和日期仍是明确标识的示例，不作为当前用户数据或服务事实。
 - `je` 另有迁移提示气泡：Dashboard `7861.1b0e99a4.chunk.js` 的 `closeIntroductionBanner` 发 `show-profile-migration-toast`，且 `!validDevices.some(firmwareUpdateInfo) && !newFWVersion` 才显示；提示文案是 `TRANSFER_ALL_SYNAPSE_PROFILES_DESC`。本地尚无这两个真实固件状态，不能把 Unknown 当成“无更新”；本次不自动触发该气泡，固件预览状态也不代替真实条件。

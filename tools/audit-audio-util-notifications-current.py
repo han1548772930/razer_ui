@@ -65,8 +65,18 @@ def main():
     assert pe.get_data(0x6fc0, 9) == bytes.fromhex('4883c108e927bcffff')
     assert table(0x99510, 2) == [0x3bd0, 0x38b0]
     assert table(0x9d070, 8) == [0x467e0, 0x3cbe0, 0x467a0, 0x46f00, 0x46ec0, 0x46ee0, 0x46ea0, 0x46f20]
+    active_path = 'docs/re/audio-util-active-consumers-current.json'
+    active_raw = (ROOT / active_path).read_bytes()
+    active = json.loads(active_raw)
+    assert active['automatic_notification_products'] == [1422, 1446]
+    for product in active['products']:
+        for item in product['registrations'] + product['receipts']:
+            assert sha((ROOT / item['path']).read_bytes()) == item['sha256']
+    shell = (ROOT / 'crates/razer-shell/src/shell/audio_notifications.rs').read_text('utf-8')
+    assert 'matches!(product_id, 1422 | 1446)' in shell
+    assert 'Session::retire' in shell and 'audio_notification_cleanup' in shell
     consumers = []
-    for product in [1398, 1422, 1427, 1446, 2638, 2641, 4124, 4126]:
+    for product in active['automatic_notification_products']:
         count = 0
         for path in sorted((ROOT / f'.ref/middleware/{product}').glob('*.js')):
             data = path.read_bytes()
@@ -95,6 +105,10 @@ def main():
         'command_table': {'rva': 0x99450, 'invoke_rva': 0x6fc0, 'body_rva': 0x2bf0},
         'notification_vtable': {'rva': 0x9d070, 'slots': table(0x9d070, 8)},
         'current_consumers': consumers,
+        'activation_receipt': {'path': active_path, 'sha256': sha(active_raw),
+                               'automatic_notification_products': active['automatic_notification_products'],
+                               'non_automatic_products': [p['product_id'] for p in active['products']
+                                                          if not p['automatic_audio_notifications']]},
         'semantics': {
             'source_request': {'module': 'AudioEnumerator', 'command': 'EnableNotification', 'cmdData': {'enable': 'bool or numeric source value'}},
             'source_response': {'response': {'enabled': 'integer source value'}},
@@ -105,7 +119,7 @@ def main():
             'forwarded_notifications': [0, 1, 3],
             'endpoint_id': 'Require non-null/nonempty UTF-16 endpoint ID; state/flow/role/property and event kind are omitted from source payload',
             'event': {'event': 'RzAudioUtilEvent', 'eventType': 'AudioEnumerator_DeviceChange', 'endpointId': 'UTF-8 source conversion'},
-            'current_ui_consumer': 'Wrapper emits exact eventType; product listener uses AudioEnumerator_deviceChange with lowercase d and only console.log. No source-proved cache invalidation or refresh from this event.',
+            'current_ui_consumer': 'Only 1422/1446 boot roots activate Audio_StreamMixer and its automatic enable. Other examined products activate generic AudioUtil, whose init does not enable notifications. Wrapper emits exact eventType; active listener uses AudioEnumerator_deviceChange with lowercase d and only console.log. No source-proved cache invalidation or refresh from this event.',
             'native_registration_failures': 'Enable dispatcher ignores register result and sets response; Rust surfaces register/unregister errors instead of fabricating success',
             'cleanup': 'Explicit disable unregisters and releases; Rust retained owner additionally unregisters before apartment shutdown',
         },
@@ -117,7 +131,7 @@ def main():
                            'platforms': 'Windows Core Audio; explicit unsupported on other platforms',
                            'runtime_acceptance': 'not executed; no OS registration or vendor DLL verification'},
         'remaining_gaps': ['OS notification registration/delivery and Shell lifecycle runtime acceptance have not been executed',
-                           'AudioRouter enable/route/cleanup and MediaPlayer command/event chains remain incomplete',
+                           'AudioRouter complete page consumers and MediaPlayer command/event chains remain incomplete',
                            'RzAudioUtil 1.0.1.1 has separate dispatchMediaRecorder semantics and does not export AudioEnumerator'],
     }
     output = (json.dumps(evidence, ensure_ascii=False, indent=2) + '\n').encode('utf-8')

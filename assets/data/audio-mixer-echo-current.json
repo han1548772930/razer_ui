@@ -45,6 +45,12 @@
     3686,
     4096
   ],
+  "template_selectors": {
+    "reverb_room": 80,
+    "reverb_decay": 96,
+    "echo_gain": 16,
+    "echo_delay": 48
+  },
   "default_mode": "library",
   "delay_ms": 500,
   "source": ".ref/middleware/1342/AudioMixer.cde922aae2f0fea23404.js",

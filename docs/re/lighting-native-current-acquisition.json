@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "method": "official current resource bytes, metadata SHA-256 and size verified; static input only; not executed",
+  "resources": [
+    {
+      "resource_name": "LightingDriverDLL",
+      "version": "1.9.14.0",
+      "metadata": "docs/re/application-resource-metadata-2026-10-09/background-resources.json",
+      "url": "https://app-assets.razer.com/files/synapse/lighting_driver_v1.9.14.0.dll",
+      "sha256": "9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b",
+      "bytes": 968392,
+      "input": ".ref/native-libraries/9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b/lighting_driver_v1.9.14.0.dll",
+      "file": "lighting_driver_v1.9.14.0.dll",
+      "md5": "e2e8c283b91f0c2b6ee0c1bbd837fe43",
+      "machine": 34404,
+      "exports": [
+        {
+          "name": "Configure",
+          "rva": 5216,
+          "forwarder": null
+        },
+        {
+          "name": "ConfigureInMem",
+          "rva": 5136,
+          "forwarder": null
+        },
+        {
+          "name": "FreeString",
+          "rva": 5328,
+          "forwarder": null
+        },
+        {
+          "name": "GetDllVersion",
+          "rva": 5104,
+          "forwarder": null
+        },
+        {
+          "name": "GetDllVersionInMem",
+          "rva": 5040,
+          "forwarder": null
+        },
+        {
+          "name": "HandleLightingCallback",
+          "rva": 5392,
+          "forwarder": null
+        },
+        {
+          "name": "HookLightingCallback",
+          "rva": 5360,
+          "forwarder": null
+        },
+        {
+          "name": "SetWriteFFICallback",
+          "rva": 9584,
+          "forwarder": null
+        },
+        {
+          "name": "Shutdown",
+          "rva": 9552,
+          "forwarder": null
+        },
+        {
+          "name": "Startup",
+          "rva": 5696,
+          "forwarder": null
+        }
+      ]
+    },
+    {
+      "resource_name": "LightingEngineDLL",
+      "version": "4.0.55.0",
+      "metadata": "docs/re/application-resource-metadata-2026-10-09/background-resources.json",
+      "url": "https://app-assets.razer.com/files/synapse/LightingEngine/v4.0.55.0/RzLightingEngineApi_v4.0.55.0.dll",
+      "sha256": "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa",
+      "bytes": 2153672,
+      "input": ".ref/native-libraries/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/RzLightingEngineApi_v4.0.55.0.dll",
+      "file": "RzLightingEngineApi_v4.0.55.0.dll",
+      "md5": "3b96a399cda27c2e62cc298b40da57ca",
+      "machine": 34404,
+      "exports": [
+        {
+          "name": "CreateLightingDevice",
+          "rva": 282992,
+          "forwarder": null
+        },
+        {
+          "name": "CreateLightingEngine",
+          "rva": 283184,
+          "forwarder": null
+        },
+        {
+          "name": "DestroyLightingDevice",
+          "rva": 283152,
+          "forwarder": null
+        },
+        {
+          "name": "DestroyLightingEngine",
+          "rva": 283344,
+          "forwarder": null
+        },
+        {
+          "name": "FreeMalloc",
+          "rva": 213184,
+          "forwarder": null
+        },
+        {
+          "name": "GetDLLVersion",
+          "rva": 212208,
+          "forwarder": null
+        },
+        {
+          "name": "GetFeatureSet",
+          "rva": 209328,
+          "forwarder": null
+        },
+        {
+          "name": "PollEvents",
+          "rva": 208272,
+          "forwarder": null
+        },
+        {
+          "name": "RzLightingApi",
+          "rva": 210064,
+          "forwarder": null
+        },
+        {
+          "name": "RzLightingApiNoReturn",
+          "rva": 211808,
+          "forwarder": null
+        },
+        {
+          "name": "SetAllocator",
+          "rva": 205520,
+          "forwarder": null
+        },
+        {
+          "name": "SetEventInterface",
+          "rva": 205392,
+          "forwarder": null
+        },
+        {
+          "name": "SetNodeFFIEvent",
+          "rva": 213200,
+          "forwarder": null
+        },
+        {
+          "name": "SetOperatingMode",
+          "rva": 208128,
+          "forwarder": null
+        },
+        {
+          "name": "UsePollingMode",
+          "rva": 208256,
+          "forwarder": null
+        }
+      ]
+    }
+  ]
+}

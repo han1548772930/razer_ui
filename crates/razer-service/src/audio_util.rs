@@ -145,13 +145,27 @@ pub(crate) mod windows {
         }
     }
     pub(crate) fn property(device: &Com, pid: u32) -> Result<String> {
+        property_inner(device, pid, false)
+    }
+
+    /// CMmEndpoint::GetDeviceFriendlyName (0x440c0) accepts nonnegative store
+    /// HRESULTs and leaves its initial empty string on GetValue failure.
+    pub(crate) fn router_friendly_name(device: &Com) -> Result<String> {
+        property_inner(device, 14, true)
+    }
+
+    fn property_inner(device: &Com, pid: u32, router: bool) -> Result<String> {
         type OpenStore = unsafe extern "system" fn(*mut c_void, u32, *mut *mut c_void) -> i32;
         type GetValue =
             unsafe extern "system" fn(*mut c_void, *const PropertyKey, *mut PROPVARIANT) -> i32;
         let open: OpenStore = unsafe { device.method(4) };
         let mut pointer = null_mut();
         let hr = unsafe { open(device.raw(), 0, &mut pointer) };
-        let store = Com::from_result(hr, pointer, "IMMDevice::OpenPropertyStore(STGM_READ)")?;
+        let store = if router {
+            Com::from_hresult(hr, pointer, "IMMDevice::OpenPropertyStore(STGM_READ)")?
+        } else {
+            Com::from_result(hr, pointer, "IMMDevice::OpenPropertyStore(STGM_READ)")?
+        };
         let key = PropertyKey {
             fmtid: DEVICE_PROPERTY_SET,
             pid,
@@ -159,15 +173,21 @@ pub(crate) mod windows {
         let mut value = Property(PROPVARIANT::default());
         let get: GetValue = unsafe { store.method(5) };
         let hr = unsafe { get(store.raw(), &key, &mut value.0) };
+        if router && hr < 0 {
+            return Ok(String::new());
+        }
         ensure!(
-            accepts_property_result(hr),
+            (router && hr >= 0) || accepts_property_result(hr),
             "IPropertyStore::GetValue({pid}) failed: 0x{:08x}",
             hr as u32
         );
         let raw = unsafe { value.0.Anonymous.Anonymous };
-        ensure!(raw.vt == 31, "endpoint property {pid} is not VT_LPWSTR");
         // Variant owns this pointer; borrow it, then clear exactly once.
         let pointer = unsafe { raw.Anonymous.pwszVal };
+        if router && pointer.is_null() {
+            return Ok(String::new());
+        }
+        ensure!(raw.vt == 31, "endpoint property {pid} is not VT_LPWSTR");
         let borrowed = std::mem::ManuallyDrop::new(TaskString(pointer));
         borrowed.read()
     }

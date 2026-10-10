@@ -47,9 +47,33 @@ pub(super) struct SourceHelp {
     copied_serial: bool,
     view_more: bool,
     copy_task: Option<Task<()>>,
+    confirmation_generation: u64,
     reset_generation: u64,
     pending_reset: bool,
+    reset_cooldown: bool,
+    reset_cooldown_task: Option<Task<()>>,
+    reset_error: Option<String>,
 }
+#[derive(Clone, Copy, Debug)]
+pub struct HelpResetRequest {
+    generation: u64,
+}
+/// Actual query identity accompanies the raw source document separately.
+/// Transport fields must never be injected into the original storage document.
+pub struct HelpResetOutcome {
+    pub source_document: serde_json::Value,
+    pub serial_number: String,
+}
+impl HelpResetRequest {
+    pub fn generation(self) -> u64 {
+        self.generation
+    }
+}
+pub(super) enum HelpResetEvent {
+    Requested(HelpResetRequest),
+    Canceled(HelpResetRequest),
+}
+impl EventEmitter<HelpResetEvent> for SourceHelp {}
 impl SourceHelp {
     pub(super) fn new(device: Device, _: &mut Context<Self>) -> Self {
         Self {
@@ -58,19 +82,33 @@ impl SourceHelp {
             copied_serial: false,
             view_more: false,
             copy_task: None,
+            confirmation_generation: 0,
             reset_generation: 0,
             pending_reset: false,
+            reset_cooldown: false,
+            reset_cooldown_task: None,
+            reset_error: None,
         }
     }
     pub(super) fn set_device(&mut self, device: &Device, cx: &mut Context<Self>) {
         if self.device.product_id != device.product_id
             || self.device.serial_number != device.serial_number
+            || self.device.device_container_id != device.device_container_id
         {
+            if self.pending_reset {
+                cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                    generation: self.reset_generation,
+                }));
+            }
             self.copy_task = None;
             self.copied_serial = false;
             self.view_more = false;
             self.reset_generation = self.reset_generation.wrapping_add(1);
+            self.confirmation_generation = self.confirmation_generation.wrapping_add(1);
             self.pending_reset = false;
+            self.reset_cooldown = false;
+            self.reset_cooldown_task = None;
+            self.reset_error = None;
         }
         if self.device.product_id != device.product_id {
             self.page_offset = None;
@@ -80,10 +118,19 @@ impl SourceHelp {
     }
     pub(super) fn set_page(&mut self, offset: usize, cx: &mut Context<Self>) {
         if self.page_offset != Some(offset) {
+            if self.pending_reset {
+                cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                    generation: self.reset_generation,
+                }));
+            }
             self.page_offset = Some(offset);
             self.view_more = false;
             self.reset_generation = self.reset_generation.wrapping_add(1);
+            self.confirmation_generation = self.confirmation_generation.wrapping_add(1);
             self.pending_reset = false;
+            self.reset_cooldown = false;
+            self.reset_cooldown_task = None;
+            self.reset_error = None;
             cx.notify();
         }
     }
@@ -120,12 +167,12 @@ impl SourceHelp {
         if !page.reset && !(page.oled_reset && !self.device.use_ble) {
             return;
         }
-        if self.pending_reset {
+        if self.reset_cooldown {
             return;
         }
         // These current Help classes' confirmDel emits ON_RESET_DEVICE.
         // Other reset variants (OBM/OLED/firmware) remain separately audited.
-        let local_reset = matches!(self.device.product_id, 164 | 179 | 241);
+        let local_reset = matches!(self.device.product_id, 164 | 241);
         let title = self.device.display_name();
         let message = if page.oled_reset && !self.device.use_ble {
             i18n::t(&page.reset_title)
@@ -143,27 +190,20 @@ impl SourceHelp {
                 "FACTORY_RESET_MSG_NO_OBM_DEVICE"
             })
         };
-        self.reset_generation = self.reset_generation.wrapping_add(1);
-        let generation = self.reset_generation;
+        self.confirmation_generation = self.confirmation_generation.wrapping_add(1);
+        let generation = self.confirmation_generation;
         let owner = cx.weak_entity();
-        window.open_dialog(cx, move |dialog, _, cx| {
+        window.open_dialog(cx, move |dialog, _, _cx| {
             dialog
                 .title(title.clone())
                 .child(message.clone())
-                .child(surface::note(
-                    if local_reset {
-                        "确认后将保留本地重置请求，尚未发送到设备。"
-                    } else {
-                        "设备服务未连接，无法恢复设备出厂设置。"
-                    },
-                    cx,
-                ))
                 .on_close({
                     let owner = owner.clone();
                     move |_, _, cx| {
                         let _ = owner.update(cx, |view, _| {
-                            if view.reset_generation == generation {
-                                view.reset_generation = view.reset_generation.wrapping_add(1);
+                            if view.confirmation_generation == generation {
+                                view.confirmation_generation =
+                                    view.confirmation_generation.wrapping_add(1);
                             }
                         });
                     }
@@ -179,9 +219,9 @@ impl SourceHelp {
                                     let owner = owner.clone();
                                     move |_, window, cx| {
                                         let _ = owner.update(cx, |view, _| {
-                                            if view.reset_generation == generation {
-                                                view.reset_generation =
-                                                    view.reset_generation.wrapping_add(1);
+                                            if view.confirmation_generation == generation {
+                                                view.confirmation_generation =
+                                                    view.confirmation_generation.wrapping_add(1);
                                             }
                                         });
                                         window.close_dialog(cx);
@@ -198,11 +238,37 @@ impl SourceHelp {
                                         let accepted = owner
                                             .update(cx, |view, cx| {
                                                 if !local_reset
-                                                    || view.reset_generation != generation
+                                                    || view.confirmation_generation != generation
                                                 {
                                                     return false;
                                                 }
                                                 view.pending_reset = true;
+                                                view.reset_error = None;
+                                                view.reset_generation =
+                                                    view.reset_generation.wrapping_add(1);
+                                                let request = HelpResetRequest {
+                                                    generation: view.reset_generation,
+                                                };
+                                                view.reset_cooldown = true;
+                                                // Original Help resetDevice re-enables after two
+                                                // seconds independently of middleware completion.
+                                                view.reset_cooldown_task = Some(cx.spawn_in(
+                                                    window,
+                                                    async move |view, cx| {
+                                                        cx.background_executor()
+                                                            .timer(Duration::from_secs(2))
+                                                            .await;
+                                                        let _ = view.update(cx, |view, cx| {
+                                                            if view.reset_generation
+                                                                == request.generation
+                                                            {
+                                                                view.reset_cooldown = false;
+                                                                cx.notify();
+                                                            }
+                                                        });
+                                                    },
+                                                ));
+                                                cx.emit(HelpResetEvent::Requested(request));
                                                 cx.notify();
                                                 true
                                             })
@@ -215,6 +281,29 @@ impl SourceHelp {
                         ),
                 )
         });
+    }
+    pub(super) fn reset_matches(&self, request: HelpResetRequest) -> bool {
+        self.pending_reset && self.reset_generation == request.generation
+    }
+    pub(super) fn accept_source_serial(&mut self, serial: &str) {
+        if self.device.serial_number != serial {
+            self.device.serial_number = serial.to_owned();
+            self.copy_task = None;
+            self.copied_serial = false;
+        }
+    }
+    pub(super) fn finish_reset(
+        &mut self,
+        request: HelpResetRequest,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.reset_matches(request) {
+            return;
+        }
+        self.pending_reset = false;
+        self.reset_error = error;
+        cx.notify();
     }
 }
 
@@ -349,39 +438,14 @@ impl Render for SourceHelp {
                         help_button(
                             "source-help-reset",
                             i18n::t("RESET"),
-                            self.pending_reset,
+                            self.reset_cooldown,
                             cx,
                         )
                         .self_start()
                         .on_click(cx.listener(|this, _, window, cx| this.show_reset(window, cx))),
                     )
-                    .when(self.pending_reset, |panel| {
-                        panel.child(
-                            v_flex()
-                                .id("source-help-reset-local-intent")
-                                .test_support()
-                                .role(Role::Status)
-                                .aria_label("重置请求尚未发送到设备。")
-                                .gap(surface::css(10.))
-                                .child("已准备重置请求，尚未发送到设备。")
-                                .child(
-                                    help_button(
-                                        "source-help-reset-discard",
-                                        i18n::t("CANCEL"),
-                                        false,
-                                        cx,
-                                    )
-                                    .self_start()
-                                    .on_click(cx.listener(
-                                        |this, _, _, cx| {
-                                            this.pending_reset = false;
-                                            this.reset_generation =
-                                                this.reset_generation.wrapping_add(1);
-                                            cx.notify();
-                                        },
-                                    )),
-                                ),
-                        )
+                    .when_some(self.reset_error.clone(), |panel, error| {
+                        panel.child(surface::note(error, cx))
                     }),
             );
         }

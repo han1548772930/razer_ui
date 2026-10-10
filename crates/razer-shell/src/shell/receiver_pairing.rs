@@ -101,7 +101,7 @@ fn persist_confirmed(
     }
 }
 
-mod route;
+pub(super) mod route;
 
 fn action(event: &DockPairingEvent) -> anyhow::Result<(String, PairingAction)> {
     let p = event.payload();

@@ -24,11 +24,14 @@ mod oled_page;
 mod oled_presets;
 mod oled_system_editor;
 mod receiver;
+mod receiver_brightness_ui;
+mod receiver_lighting_page;
 pub use receiver::{
     ReceiverCategory, ReceiverDeviceRequested, ReceiverDevicesObservation, ReceiverOperation,
     ReceiverPairingEvent, ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer,
     ReceiverProgress,
 };
+pub use receiver_brightness_ui::{ReceiverBrightnessReadRequested, ReceiverBrightnessRequested};
 
 #[derive(Deserialize)]
 struct OptionSpec {
@@ -224,6 +227,8 @@ pub struct SourceControls {
     /// 原版白框按下后记录的抓取偏移（`left/top/bottom/right`）。
     pan_tilt_drag: Option<PanTiltDrag>,
     receiver: receiver::ReceiverState,
+    brightness: receiver_brightness_ui::State,
+    receiver_brightness_dragging: bool,
     collapsed_camera_groups: std::collections::BTreeSet<String>,
     camera_preview: Option<camera_preview::CameraPreviewState>,
 }
@@ -263,6 +268,8 @@ impl SourceControls {
             pan_tilt_bounds: Rc::new(Cell::new(None)),
             pan_tilt_drag: None,
             receiver: receiver::ReceiverState::default(),
+            brightness: receiver_brightness_ui::State::default(),
+            receiver_brightness_dragging: false,
             collapsed_camera_groups: Default::default(),
             camera_preview: spec
                 .pages
@@ -298,10 +305,34 @@ impl SourceControls {
                         if this.syncing {
                             return;
                         }
-                        let SliderEvent::Change(value) = event else {
-                            return;
-                        };
-                        this.edit(&target, serde_json::json!(value.start()), window, cx);
+                        if matches!(this.spec.product_id, 164 | 241)
+                            && target.ends_with(":brightness")
+                        {
+                            match event {
+                                SliderEvent::Change(value) => this.preview_brightness(
+                                    Some(value.start().round().clamp(0., 100.) as u8),
+                                    cx,
+                                ),
+                                SliderEvent::Release(value) => {
+                                    this.receiver_brightness_dragging = false;
+                                    this.preview_brightness(None, cx);
+                                    this.edit(
+                                        &target,
+                                        serde_json::json!(value.start()),
+                                        window,
+                                        cx,
+                                    );
+                                }
+                            }
+                        } else if matches!(this.spec.product_id, 164 | 241)
+                            && target.ends_with(":idle-minutes")
+                        {
+                            if let SliderEvent::Release(value) = event {
+                                this.edit(&target, serde_json::json!(value.start()), window, cx);
+                            }
+                        } else if let SliderEvent::Change(value) = event {
+                            this.edit(&target, serde_json::json!(value.start()), window, cx);
+                        }
                     },
                 ));
                 this.sliders.insert(key.clone(), state);
@@ -573,7 +604,9 @@ impl SourceControls {
         let Some(control) = self.control(key) else {
             return;
         };
-        if self.disabled(control)
+        let receiver_brightness =
+            matches!(self.spec.product_id, 164 | 241) && control.path == "/brightness/value";
+        if (!receiver_brightness && self.disabled(control))
             || control.visible_when.as_ref().is_some_and(|condition| {
                 self.draft.pointer(&self.resolve_path(&condition.path)) != Some(&condition.value)
             })
@@ -622,7 +655,11 @@ impl SourceControls {
         {
             return;
         }
-        if self.value(control) == Some(&value) {
+        if self.value(control) == Some(&value)
+            && !(receiver_brightness
+                && self.draft["brightness"]["isEnabled"] == false
+                && value.as_u64().is_some_and(|value| value > 0))
+        {
             return;
         }
         if control.path.starts_with("@image/") {
@@ -666,6 +703,14 @@ impl SourceControls {
         self.normalize();
         self.sync(window, cx);
         cx.emit(SourceControlsChanged);
+        if matches!(self.spec.product_id, 164 | 241)
+            && matches!(
+                control.path.as_str(),
+                "/brightness/value" | "/brightness/isEnabled"
+            )
+        {
+            self.request_brightness(cx);
+        }
         cx.notify();
     }
     /// Writes one resolved path directly. Multi-field controls (pan and tilt,
@@ -833,6 +878,8 @@ impl SourceControls {
         self.draft.clone()
     }
     pub fn restore(&mut self, value: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
+        self.invalidate_brightness();
+        self.receiver_brightness_dragging = false;
         let previous_indicator = self.draft.pointer("/runtime/indicatorLedStatus").cloned();
         self.draft = self.spec.profile.clone();
         self.staged.clear();
@@ -1274,7 +1321,8 @@ impl SourceControls {
         if control.renderer.as_deref() == Some("hyperpolling-pairing") {
             return self.render_hyperpolling_pairing(cx);
         }
-        let disabled = self.disabled(control);
+        let disabled = self.disabled(control)
+            && !(matches!(self.spec.product_id, 164 | 241) && control.path == "/brightness/value");
         if control.renderer.as_deref() == Some("indicator-radio") {
             return self.render_indicator_radio(control, disabled, cx);
         }
@@ -1856,6 +1904,9 @@ fn merge_known(target: &mut Value, saved: &Value) {
 }
 impl Render for SourceControls {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if matches!(self.spec.product_id, 164 | 241) && self.page == "TAB_LIGHTING" {
+            return self.receiver_lighting_page(window, cx);
+        }
         if self.spec.product_id == 691 && self.page == "OLED" {
             return self.render_oled_page(window, cx);
         }
@@ -1950,6 +2001,10 @@ impl Render for SourceControls {
                 }
                 for control in &section.controls {
                     panel = panel.child(self.render_control(control, window, cx));
+                }
+                if matches!(self.spec.product_id, 164 | 241) && section.title == "BRIGHTNESS_HEADER"
+                {
+                    panel = panel.child(surface::note(self.brightness_runtime_text(), cx));
                 }
                 if let Some(note) = &section.note {
                     panel = panel.child(surface::note(razer_i18n::t(note), cx));

@@ -8,6 +8,8 @@ use razer_pages::features::{
 };
 use std::sync::{Mutex, OnceLock};
 
+#[path = "audio_mixer/presets.rs"]
+pub(super) mod presets;
 #[path = "audio_mixer/route.rs"]
 mod route;
 
@@ -143,7 +145,7 @@ impl AppShell {
                                     serde_json::from_value(response["results"].clone())?;
                                 ensure!(
                                     results.len() == 11
-                                        && results.iter().all(|result| result.verified),
+                                        && results.iter().all(|result| result.transport_completed),
                                     "Mic EQ缺少完整设备回读确认"
                                 );
                                 ensure!(
@@ -185,6 +187,7 @@ impl AppShell {
                                         | "/device/compressor/isEnabled"
                                         | "/device/vocalFading/isEnabled"
                                         | "/device/voiceChanger/isEnabled"
+                                        | "/device/echoReverb/isEnabled"
                                 ) {
                                     let response =
                                         client.request(ServiceRequest::HidNodeMixerRead {
@@ -249,7 +252,7 @@ impl AppShell {
                                     serde_json::to_value(&write.requested)? == sent_value,
                                     "Mixer 写入回执与请求不匹配"
                                 );
-                                ensure!(write.verified, "Mixer 写入缺少真实回读确认");
+                                ensure!(write.transport_completed, "Mixer 写入缺少真实回读确认");
                                 AudioMixerReply::Write(write)
                             }
                         };

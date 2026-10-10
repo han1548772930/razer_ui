@@ -3,6 +3,7 @@
 //! Chromium database or vendor profile file formats.
 pub mod host;
 pub mod receiver_pairing;
+pub mod receiver_reset;
 use std::path::Path;
 pub fn read_document<T>(
     path: &Path,

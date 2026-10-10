@@ -1,6 +1,7 @@
 //! Host operations, topology invalidation and read-only installed-file discovery.
 pub mod device_changes;
 pub mod foreground_monitor;
+pub mod global_shortcuts;
 pub mod keyboard_layout;
 pub mod keyboard_layout_monitor;
 pub mod native_paths;

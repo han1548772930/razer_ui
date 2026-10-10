@@ -10,14 +10,16 @@
 
 | 层 | 当前可核实范围 | 完成边界 |
 | --- | --- | --- |
-| native library | 48 库逐项登记，762 个唯一静态候选声明 | 声明不等于原 DLL 内部语义，泛型 getter 不等于 Rust 协议替代；整库替代完成数仍为 0 |
+| native library | 49 库逐项登记，771 个唯一静态候选声明 | 声明不等于原 DLL 内部语义，泛型 getter 不等于 Rust 协议替代；整库替代完成数仍为 0 |
 | 当前 PE 内部图 | 81 个字节校验过的文件，包含产品、CommonDLL 和 Windows 插件 | 导入表与潜在路径只能定位依赖，间接调用、动态加载、线程和全部返回语义仍需逐项消歧 |
 | IDA/Hex-Rays 当前取证 | 85 个输入，84 个已取证，320,630 个 native 函数索引、10,630 个选定函数正文；3 个 mixed CLR 库保留独立托管索引及 native 正文 | 1 个 ARM64 插件尚无受支持分析后端；未选定函数、间接调用及 managed IL 桥接仍缺，正文数量不代表整库语义闭合 |
 | 宿主原生依赖 | corpus 中 64 个 native_binary 条目，包含 4 DLL 和 60 `.node` 路径 | 不止此前内部图的 19 个 Windows 插件，还包含 macOS/Linux/Android 预编译插件、不同架构及 Node ABI；路径数量不代表唯一二进制数量 |
 | helper/system 程序引用 | 第一方宿主 JS 中 9 个 `.exe` 名称引用；当前官方包静态取得 4 个 CommonDLL helper PE（Power/Security/EngineMon/Handle） | 4 个本体和 CLI 字符串已留证，但分支语义、进程结果、注册表/服务副作用和 Rust 替代消费者仍未闭合 |
-| 宿主及共享原生链 | 本记录核对 24 个域 | 本地草稿、请求事件、生命周期片段分别记录；没有全程序等价验收结论 |
+| 宿主及共享原生链 | 本记录核对 25 个域 | 本地草稿、请求事件、生命周期片段分别记录；没有全程序等价验收结论 |
 
-`IoTNative`、`lighting_driver`、`NanoleafNative`、`PhilipsHueNative`、`RzNative_0518` 在当前库 inventory 中没有已获取并归属的资源。这里描述的是该清单的资源证据缺口，不据此推定其他位置不存在同名文件，也不推定库没有功能。动态归属和签名冲突保持未知，不能用其他产品补齐。
+`IoTNative`、`NanoleafNative`、`PhilipsHueNative`、`RzNative_0518` 在当前库 inventory 中没有已获取并归属的资源。这里描述的是该清单的资源证据缺口，不据此推定其他位置不存在同名文件，也不推定库没有功能。动态归属和签名冲突保持未知，不能用其他产品补齐。
+
+当前 lighting-engine 后台的 HTML、manifest 和声明的 JS/CSS 共 158 个输入已静态取得，入口和 manifest 第二次独立读取字节一致。其真实 loader 从 `installedResources` 的 `synapse ?? Common` 数组按 `LightingDriverDLL`/`LightingEngineDLL` 名称取 `filePath`，拼接 `userDataDir/Apps/filePath`；Driver 接 host `lightingDriver` 的 `InitDLL`，Engine 接动态 FFI 初始化。因此两个当前官方字节已分别归属 inventory 的 `lighting_driver` 与 `RzLightingEngineApi`，动态路径与 Synapse fallback 单独留证，不能按名称合并或猜成 CommonDLL 路径。IDA/Hex-Rays 保留 Driver 94 个、Engine 112 个被选函数正文，当前仅实现共享 Rzp25NewChroma 逐行 report/CRC/transaction/write/delay；尚未连接产品 renderer，也未闭合全部 effects、调度、其他 translator、平台 adapter 和 UI/运行验收。见[灯光原链与实际边界](lighting-native-current.md)、[获取收据](lighting-native-current-acquisition.json)与[loader 归属收据](lighting-native-current-source-evidence.json)。
 
 ## 原链与 Rust 的实际边界
 
@@ -35,7 +37,7 @@
 | 通知与深链 | `nativeNotificationHandler.js` → addon worker → HMAC URI → 全窗口事件 | 缺少 addon 替代、safeStorage、加密 key 文件、10 天 TTL、一次性 key 删除与 pending-protocol 队列 |
 | 账户与身份 | `lib/identityPipe.js`、`getIdentityFeature.js` → identity 服务事件 | Guest 展示不能替代身份管道、认证响应、凭据、安全存储和退出广播 |
 | IoT/LampArray | `IoTNativeAction`、`LampArrayAction` → 原 API/transport | `GamerRoomEvent::DeviceCommand` 到 shell 后明确未发送；缺少真实电源/帧写入、通知及响应刷新 |
-| 灯光 | `ffiLightingDriver.initDll/configure/hookLightingCallback/shutdown` | 当前 `lighting.rs` 仍调用原库；缺少完整 Rust 帧引擎、区域、设备与回调生命周期替代 |
+| 灯光 | 当前 lighting-engine 的 installedResources loader → Engine/Driver 独立库 → Configure/protocol/register/callback → host HID/IoT/LampArray 写出 | 两库字节、loader 归属、206 个被选 IDA 正文与一种共享直接 RGB translator 已留证；`lighting.rs` 仍有原库适配，完整 effects/产品 renderer、区域、调度、其他协议与回调生命周期尚未替代 |
 | speaker/microphone 音量与静音 | 当前1352 factory、Sound 页面、volume reducer/task、endpoint resolver → simple_service 导出 → IDA共同端点方法 | 四个原生接口已通过共享结果结构、Windows Core Audio 和 typed IPC 替代，不加载该 DLL；1352 speaker 页面真实读取、松开/静音提交、回读、取消及旧响应过滤已连接。本地草稿与实际观察分开。真实 productName 回退、原持续通知缓存、完整初始化重试、其他产品和 microphone 页面消费者仍缺；其他平台明确不支持该系统能力 |
 | FFI 与子进程 | Main/Sub loader、FFIProcess ready/crash、exit/suspend/shutdown 回调表 | worker 隔离、有限 getter 和模块保留存在；每库 ABI、各类关闭回调、崩溃重建和挂起恢复尚未全部闭合 |
 | 整体退出 | `main.js` 的 `quitApp/finalQuit`、cannot-exit 计数、poweroff、应用集合 | worker 录制与 mapping/simple shutdown 有实现；宿主完整顺序、阻止退出、pending callback 和全插件释放未等价 |
@@ -53,11 +55,19 @@ simple_service 的 speaker/microphone 音量 getter/setter 已进一步追到共
 
 `native_query.rs::version` 的 RzAudioUtil 分支已按两个当前资源的 IDA 正文返回各自版本语义，不加载原 DLL：八产品为 1.0.3.1，1401 为 1.0.1.1，未知/缺产品拒绝。其他库的版本分支仍使用原导出和原 allocator。`native_read.rs::getter` 要求源声明、ContainerId 调用、init/terminate、FreeMalloc 和匹配资源；随后通过 `EngineLibrary::load` 载入原 DLL，并用 `ManuallyDrop` 保留模块至隔离 worker 退出。这是源码门控的原库查询，不是这些函数内部的 Rust 实现。`SysUtilsNative` 还有明确的加载限制；无参版本候选也不能绕过资源、生命周期和返回所有权门控。
 
-当前 RzAudioUtil 的端点通知已恢复 callback 过滤、payload、重复 enable、整类 disable 与 Core Audio 注册/注销，接共享 worker IPC。八产品 Shell 已连接真实观察作用域的启动 enable、retained worker drain、失连/退出 disable 与 Shutdown；1401 的独立版本未套用这份通知证据。原产品监听事件的大小写不匹配和仅日志行为也已保留，不能声称已替代 simple_service 的持续设备缓存，详见 [端点通知](audio-util-notifications-current.md)。
+当前 RzAudioUtil 的端点通知已恢复 callback 过滤、payload、重复 enable、整类 disable 与 Core Audio 注册/注销，接共享 worker IPC。八产品启动注册及实际导出类 `init` 逐一核对后，只有 1422/1446 的 `audio_streamMixer` 自动启用通知；另六产品的通用 `audioUtil` 初始化不能由共享包代码推定 enable。Shell 为这两个实际消费者接通真实观察作用域、retained worker drain、失连/退出 disable 与 Shutdown，退休线程保留清理所有权。原产品监听事件的大小写不匹配和仅日志行为也已保留，不能声称已替代 simple_service 的持续设备缓存，详见 [端点通知](audio-util-notifications-current.md)。
+
+AudioRouter 的 [45 个 IDA 函数与实际路由实现](audio-router-current.md) 已补入：共享 FIFO/漂移补偿、Windows WASAPI 采集到播放、真实 IMMDevice 跨线程传递、EnableRouting/RouteDevice、通知 timer 与停止释放通过 typed IPC 替代原库。1422/1446 的真实 feature 注册与 class methods 单独留证。设备类提交和完整混音器页面消费者、原统计字段及部分异常/释放重试分支仍有缺口；不能由服务路由完成推定产品整页或整库完成。
 
 SysUtilsNative 前台监控已按 IDA 恢复独立线程、Windows hook、300ms debounce、Explorer 重查、UWP child path 与事件格式，接 URL 订阅和 worker IPC；产品激活条件及实际 profile/滚轮/haptic 消费链仍需取证后接入。182 middleware 公共 task 的存在不证明 DeathAdder 支持或启用了该功能。独立键盘布局 getter 已按原调用线程 KLID、十六进制转换和 signed int 位模式接 IPC；两秒变化timer、线程归属及原host Stop错误分支已有独立实现，实际产品caller/UI消息线程接入仍有缺口。系统属性/显示设置五入口已按IDA WinExec命令连接现有页面。分别见 [前台监控](sysutils-foreground-current.md)、[键盘布局](sysutils-keyboard-layout-current.md)、[布局监控](sysutils-keyboard-monitor-current.md)与[系统启动](sysutils-system-launch-current.md)。
 
 164/241 的 Scan/Pair/Unpair 已按实际 category factory 恢复事务位、报文与事件完成条件；命令 ACK 与硬件成功分开。独立 [中断读取](hid-interrupt-current.md) 已实现，配对 Session 要求先有真实事件订阅，失败/取消走 Scan4 和清理。mapping_engine 的准确全部collection selector、真实中断provider、异步服务及Dock消费者已接，配对后真实edition/layout、V2连接刷新和本地物理键缓存也已实现。原runtime/serial发布、profile合并及mapping重连和其他平台等价物理分组仍是缺口，不能将这些子链当完整接收器功能。详见 [接收器契约](receiver-ui-current.md)。
+
+164/241 的 Help Reset 已追到实际无 key 的 `taskMakerResetOBM` 分支：当前两产品未注册通用 DeviceResetFeature，也不在硬件 OBM reset 分支，不能发送猜测的固件 reset 命令。真实 `[22,0,130]` 串号查询用于默认文档与 serial metadata；UI 快照及 USB serial 不能替代该值。源 schema-13 默认配置、缺串号 activeProfileGuid 的初始 profile、重置时追加唯一默认 profile、版本递增、本地 CAS 保存和页面刷新已连接。该 JSON 文件是应用本地适配。随后的[接收器亮度](receiver-brightness-current.md)使用主 Linker E0 / profile 1 / region 15，严格保留原pre-read/conditional setter，不追加getter或值比较，setter回应与独立getter观察分开。效果、映射及原host memory/cache发布仍未闭合，不能报告全部重置完成。
+
+页面细节与原交互始终属于全量范围。[设置实际挂载和入口](settings-entrypoints-current.md)已按当前组件调用链修正卡片和列几何，并移除原版没有的第三个诊断页及测试快捷操作；未挂载的历史侧栏CSS不用于实现。[164/241 Lighting](receiver-brightness-page-current.md)及[1342 Effects](audio-mixer-page-bindings-current.md)各自保留具体控件、菜单、参数和真实服务缺口，路由或静态编译通过不代表整页完成。
+
+SysUtilsNative 的 `OpenGameController` 已通过 IDA 原函数恢复为 `WinExec("control joy.cpl",5)`，连接 614/642/678/679/688 五个实际模拟键盘页面调用者，原第二行 SVG、列位置、间隔与交互样式单独留证，见[模拟键盘系统属性](keyboard-analog-properties-current.md)。这是当前源码实际注册的系统属性操作，不把共享组件的存在当作其他产品已启用。
 
 机器矩阵的 `literal_rust_locators_not_consumer_proof` 仅供找文件。字符串出现在 diagnostics/catalog/路径列表中，不能计入函数实现；矩阵不会从这些定位自动生成“完成”状态。
 

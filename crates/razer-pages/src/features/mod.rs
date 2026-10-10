@@ -28,12 +28,13 @@ mod product_surface;
 mod product_workspace;
 mod source_controls;
 mod source_help;
+pub use source_help::{HelpResetOutcome, HelpResetRequest};
 mod source_workspace;
 pub use product_workspace::ProductWorkspace;
 pub use source_controls::{
-    ReceiverCategory, ReceiverDeviceRequested, ReceiverDevicesObservation, ReceiverOperation,
-    ReceiverPairingEvent, ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer,
-    ReceiverProgress,
+    ReceiverBrightnessReadRequested, ReceiverBrightnessRequested, ReceiverCategory,
+    ReceiverDeviceRequested, ReceiverDevicesObservation, ReceiverOperation, ReceiverPairingEvent,
+    ReceiverPairingIntent, ReceiverPairingObservation, ReceiverPeer, ReceiverProgress,
 };
 pub mod gamepad_products;
 pub mod keyboard_products;
@@ -50,6 +51,7 @@ pub mod audio_mixer;
 mod audio_products;
 pub use audio_products::{
     AudioMixerCompletion, AudioMixerOperation, AudioMixerReply, AudioMixerRequest,
+    AudioProductWorkspace, PresetShortcutBinding, PresetShortcutRequest,
 };
 pub use audio_products::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,

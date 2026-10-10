@@ -1542,14 +1542,14 @@
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_pairing.rs",
-      "sha256": "2dad1b303a9dd5ef5e99d0297710ae812051b7afb144110c479b931d9cb74d2a",
-      "bytes": 25805,
+      "sha256": "8f2aae7e9746ddf3019795da9e4f443b74261a7345748585fc665cd5e77967f5",
+      "bytes": 25816,
       "runtime_acceptance": false
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_pairing/route.rs",
-      "sha256": "25bcb862b8789a07f583275b6b6d26b70016e7b782c0d16a4fe258a7a1e9959a",
-      "bytes": 499,
+      "sha256": "9518c5d19a793eb42ff0d70f3fd854b147e0cdbaa41e594fbc26408ef2bd894c",
+      "bytes": 553,
       "runtime_acceptance": false
     },
     {

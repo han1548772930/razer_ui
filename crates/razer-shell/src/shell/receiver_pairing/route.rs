@@ -4,7 +4,7 @@ use razer_ipc::ServiceClient;
 #[cfg(windows)]
 mod windows;
 
-pub(super) fn command_path(
+pub(in crate::shell) fn command_path(
     client: &mut ServiceClient,
     product_id: u32,
     container: &str,

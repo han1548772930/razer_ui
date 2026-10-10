@@ -91,8 +91,8 @@ impl AudioMixerPath {
             Self::CompressorMakeupGain => MixerControl::CompressorMakeupGain,
             Self::CompressorAttack => MixerControl::CompressorAttack,
             Self::CompressorRelease => MixerControl::CompressorRelease,
-            Self::VocalFadingEnabled => MixerControl::VocalFadingEnabled,
-            Self::VocalFadingLevel => MixerControl::VocalFadingLevel,
+            Self::VocalFadingEnabled => MixerControl::PageVocalFadingEnabled,
+            Self::VocalFadingLevel => MixerControl::PageVocalFadingLevel,
             Self::VoiceChangerEnabled => MixerControl::PageMagicVoiceEnabled,
             Self::VoiceChangerMode => MixerControl::PageMagicVoice,
             Self::EchoReverbEnabled => MixerControl::PageEchoReverbEnabled,
@@ -100,9 +100,9 @@ impl AudioMixerPath {
             Self::ReverbDecay => MixerControl::PageReverbDecay,
             Self::EchoGain => MixerControl::PageEchoGain,
             Self::EchoDelay => MixerControl::PageEchoDelay,
-            Self::KeyShift => MixerControl::KeyShift,
+            Self::KeyShift => MixerControl::PageKeyShift,
             Self::MicEqBand(_) => MixerControl::EqBand,
-            Self::MicEqEnabled => MixerControl::EqEnabled,
+            Self::MicEqEnabled => MixerControl::PageEqEnabled,
         };
         MixerTarget {
             control,
@@ -285,24 +285,47 @@ pub fn write_plan(
         return Ok(actions);
     }
     if path.starts_with("/device/echoReverb/") {
-        let enabled = draft.pointer("/device/echoReverb/isEnabled")
+        let enabled = draft
+            .pointer("/device/echoReverb/isEnabled")
             .and_then(serde_json::Value::as_bool)
             .ok_or_else(|| anyhow::anyhow!("Echo/Reverb enabled missing"))?;
-        let mut actions = vec![("/device/echoReverb/isEnabled".into(), MixerValue::Boolean { enabled })];
-        if !enabled { return Ok(actions); }
-        let array = draft.pointer("/device/echoReverb/modeValues")
+        let mut actions = vec![(
+            "/device/echoReverb/isEnabled".into(),
+            MixerValue::Boolean { enabled },
+        )];
+        if !enabled {
+            return Ok(actions);
+        }
+        let array = draft
+            .pointer("/device/echoReverb/modeValues")
             .and_then(serde_json::Value::as_array)
             .ok_or_else(|| anyhow::anyhow!("Echo/Reverb full array missing"))?;
         anyhow::ensure!(array.len() == 4, "Echo/Reverb needs four source fields");
-        for (index, (min, max)) in [(0.,100.),(0.6,2.7),(0.,1.),(110.,200.)].into_iter().enumerate() {
-            let original = array[index].as_f64().ok_or_else(|| anyhow::anyhow!("Echo field must be numeric"))?;
-            anyhow::ensure!(original.is_finite() && (min..=max).contains(&original), "Echo field exceeds mounted source range");
-            let value = if index == 0 { (original * 24. / 100. - 43.).floor() } else { original };
+        for (index, (min, max)) in [(0., 100.), (0.6, 2.7), (0., 1.), (110., 200.)]
+            .into_iter()
+            .enumerate()
+        {
+            let original = array[index]
+                .as_f64()
+                .ok_or_else(|| anyhow::anyhow!("Echo field must be numeric"))?;
+            anyhow::ensure!(
+                original.is_finite() && (min..=max).contains(&original),
+                "Echo field exceeds mounted source range"
+            );
+            let value = if index == 0 {
+                (original * 24. / 100. - 43.).floor()
+            } else {
+                original
+            };
             // Current Ci guards each field with truthiness. Gain zero is
             // deliberately omitted rather than inventing a zero command.
             if value != 0. {
-                actions.push((format!("/device/echoReverb/modeValues/{index}"),
-                    MixerValue::Scalar { value: value as f32 }));
+                actions.push((
+                    format!("/device/echoReverb/modeValues/{index}"),
+                    MixerValue::Scalar {
+                        value: value as f32,
+                    },
+                ));
             }
         }
         Ok(actions)
@@ -311,7 +334,10 @@ pub fn write_plan(
     }
 }
 
-fn write_plan_non_effect(path: &str, draft: &serde_json::Value) -> anyhow::Result<Vec<(String, MixerValue)>> {
+fn write_plan_non_effect(
+    path: &str,
+    draft: &serde_json::Value,
+) -> anyhow::Result<Vec<(String, MixerValue)>> {
     if path.starts_with("/device/vocalFading/") {
         let enabled = draft
             .pointer("/device/vocalFading/isEnabled")
@@ -439,6 +465,29 @@ mod tests {
         assert_eq!(plan.len(), 2);
         assert!(matches!(plan[0].1, MixerValue::Boolean { enabled: true }));
         assert!(matches!(plan[1].1, MixerValue::Scalar { value: 43. }));
+    }
+    #[test]
+    fn echo_full_object_preserves_source_floor_zero_skip_and_disable() {
+        let mut state = json!({"device":{"echoReverb":{
+            "isEnabled":true,"activeMode":"custom","modeValues":[40,1.7,0,150]
+        }}});
+        let actions = write_plan("/device/echoReverb/activeMode", &state).unwrap();
+        assert_eq!(actions.len(), 4);
+        assert_eq!(actions[0].0, "/device/echoReverb/isEnabled");
+        assert!(matches!(actions[1].1, MixerValue::Scalar { value: -34. }));
+        assert_eq!(actions[2].0, "/device/echoReverb/modeValues/1");
+        assert_eq!(actions[3].0, "/device/echoReverb/modeValues/3");
+        assert!(!actions.iter().any(|(path, _)| path.ends_with("/2")));
+        state["device"]["echoReverb"]["isEnabled"] = json!(false);
+        let actions = write_plan("/device/echoReverb/isEnabled", &state).unwrap();
+        assert_eq!(actions.len(), 1);
+        assert!(matches!(
+            actions[0].1,
+            MixerValue::Boolean { enabled: false }
+        ));
+        state["device"]["echoReverb"]["isEnabled"] = json!(true);
+        state["device"]["echoReverb"]["modeValues"][0] = json!(101);
+        assert!(write_plan("/device/echoReverb/activeMode", &state).is_err());
     }
     #[test]
     fn eq_enables_before_band_and_rejects_out_of_table_indices() {

@@ -180,7 +180,10 @@ pub fn resource_candidates(
             if binding.product_id != product_id {
                 continue;
             }
-            let relative = PathBuf::from(&binding.install_relative_path);
+            let Some(name) = binding.static_relative_path() else {
+                continue;
+            };
+            let relative = PathBuf::from(name);
             if relative.is_absolute()
                 || relative.components().any(|c| {
                     matches!(
@@ -191,8 +194,7 @@ pub fn resource_candidates(
             {
                 continue;
             }
-            let path = if let Some(file) = binding.install_relative_path.strip_prefix("CommonDLL/")
-            {
+            let path = if let Some(file) = name.strip_prefix("CommonDLL/") {
                 installed
                     .common_dll
                     .as_ref()

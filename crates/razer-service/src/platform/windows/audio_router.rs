@@ -153,10 +153,16 @@ impl Owner {
                     let _ = ready_sender.send(Err(error));
                 }
             })?;
-        match ready
-            .recv()
-            .context("AudioRouter owner exited during initialization")?
-        {
+        let initialized = match ready.recv() {
+            Ok(initialized) => initialized,
+            Err(error) => {
+                // The sender can disappear before COM teardown has finished.
+                // Retain cleanup ownership instead of detaching the worker.
+                let _ = thread.join();
+                return Err(error).context("AudioRouter owner exited during initialization");
+            }
+        };
+        match initialized {
             Ok(()) => Ok(Self {
                 sender: Some(sender),
                 thread: Some(thread),
@@ -401,7 +407,7 @@ impl Router {
                 let friendly = (|| {
                     let enumerator = enumerator()?;
                     let endpoint = device(&enumerator, &event.endpoint_id)?;
-                    crate::audio_util::windows::property(&endpoint, 14)
+                    crate::audio_util::windows::router_friendly_name(&endpoint)
                 })();
                 let Ok(friendly) = friendly else {
                     continue;
@@ -499,9 +505,15 @@ impl Marshalled {
 impl Drop for Marshalled {
     fn drop(&mut self) {
         if !self.0.is_null() {
-            unsafe { CoReleaseMarshalData(self.0) };
-            // Release the IStream if it was never consumed by the PCM thread.
-            let _ = Com::from_hresult(0, self.0, "AudioRouter marshal stream cleanup");
+            // An unused marshal packet must be rewound before releasing its
+            // reference; releasing IStream alone leaks the marshalled object.
+            if let Ok(stream) = Com::from_hresult(0, self.0, "AudioRouter marshal stream cleanup") {
+                type Seek = unsafe extern "system" fn(*mut c_void, i64, u32, *mut u64) -> i32;
+                let seek: Seek = unsafe { stream.method(5) };
+                if unsafe { seek(stream.raw(), 0, 0, null_mut()) } >= 0 {
+                    unsafe { CoReleaseMarshalData(stream.raw()) };
+                }
+            }
         }
     }
 }
@@ -547,10 +559,16 @@ impl Stream {
                 }
                 result
             })?;
-        match ready
-            .recv()
-            .context("AudioRouter pump exited during initialization")?
-        {
+        let initialized = match ready.recv() {
+            Ok(initialized) => initialized,
+            Err(error) => {
+                // A failed readiness handshake is not proof that the audio
+                // clients, event handles and apartment have already released.
+                let _ = thread.join();
+                return Err(error).context("AudioRouter pump exited during initialization");
+            }
+        };
+        match initialized {
             Ok(()) => Ok(Self {
                 stop,
                 thread: Some(thread),
@@ -767,7 +785,7 @@ impl Pump {
             match unsafe { WaitForMultipleObjects(3, events.as_ptr(), 0, u32::MAX) } {
                 0 => break,
                 1 => {
-                    if let Err(error) = self.capture() {
+                    if let Err(error) = self.capture(diagnostics) {
                         let mut diagnostics = diagnostics
                             .lock()
                             .map_err(|_| anyhow::anyhow!("AudioRouter diagnostics poisoned"))?;
@@ -776,7 +794,9 @@ impl Pump {
                     }
                 }
                 2 => {
-                    if let Err(error) = self.render(started.elapsed().as_millis() as u64) {
+                    if let Err(error) =
+                        self.render(started.elapsed().as_millis() as u64, diagnostics)
+                    {
                         let mut diagnostics = diagnostics
                             .lock()
                             .map_err(|_| anyhow::anyhow!("AudioRouter diagnostics poisoned"))?;
@@ -809,7 +829,7 @@ impl Pump {
         }
         Ok(())
     }
-    fn capture(&mut self) -> Result<()> {
+    fn capture(&mut self, diagnostics: &Mutex<PumpDiagnostics>) -> Result<()> {
         type Next = unsafe extern "system" fn(*mut c_void, *mut u32) -> i32;
         type Get = unsafe extern "system" fn(
             *mut c_void,
@@ -873,11 +893,28 @@ impl Pump {
                 "capture ReleaseBuffer",
             );
             copied?;
-            released?;
+            if let Err(error) = released {
+                // Native 0x48570 counts ReleaseBuffer errors, then continues
+                // immediately to the next actual packet rather than aborting.
+                let mut diagnostics = diagnostics
+                    .lock()
+                    .map_err(|_| anyhow::anyhow!("AudioRouter diagnostics poisoned"))?;
+                diagnostics.capture_errors += 1;
+                diagnostics.last_capture_error = Some(format!("{error:#}"));
+            }
         }
         Ok(())
     }
-    fn render(&mut self, elapsed_ms: u64) -> Result<()> {
+    fn render(&mut self, elapsed_ms: u64, diagnostics: &Mutex<PumpDiagnostics>) -> Result<()> {
+        while self.render_packet(elapsed_ms, diagnostics)? {}
+        Ok(())
+    }
+
+    fn render_packet(
+        &mut self,
+        elapsed_ms: u64,
+        diagnostics: &Mutex<PumpDiagnostics>,
+    ) -> Result<bool> {
         type Padding = unsafe extern "system" fn(*mut c_void, *mut u32) -> i32;
         let call: Padding = unsafe { self.render_audio.method(6) };
         let mut padding = 0;
@@ -891,7 +928,7 @@ impl Pump {
         );
         let frames = self.render_frames - padding;
         if frames == 0 {
-            return Ok(());
+            return Ok(false);
         }
         type Get = unsafe extern "system" fn(*mut c_void, u32, *mut *mut u8) -> i32;
         type Release = unsafe extern "system" fn(*mut c_void, u32, u32) -> i32;
@@ -922,7 +959,14 @@ impl Pump {
             "render ReleaseBuffer",
         );
         copied?;
-        released
+        if let Err(error) = released {
+            let mut diagnostics = diagnostics
+                .lock()
+                .map_err(|_| anyhow::anyhow!("AudioRouter diagnostics poisoned"))?;
+            diagnostics.render_errors += 1;
+            diagnostics.last_render_error = Some(format!("{error:#}"));
+        }
+        Ok(true)
     }
 }
 impl Drop for Pump {

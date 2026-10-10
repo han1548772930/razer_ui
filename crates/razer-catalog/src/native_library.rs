@@ -92,7 +92,21 @@ pub struct NativeSession {
 #[derive(Debug, Clone, Deserialize)]
 pub struct NativeResourceBinding {
     pub product_id: Option<u32>,
-    pub install_relative_path: String,
+    /// Absent when the current loader reads installedResources.filePath.
+    pub install_relative_path: Option<String>,
+    #[serde(default)]
+    pub install_path_template: Option<String>,
+    #[serde(default)]
+    pub fallback_relative_path: Option<String>,
+}
+
+impl NativeResourceBinding {
+    /// A static candidate, never a claim that the runtime resource was observed.
+    pub fn static_relative_path(&self) -> Option<&str> {
+        self.install_relative_path
+            .as_deref()
+            .or(self.fallback_relative_path.as_deref())
+    }
 }
 
 /// Manifest-pinned bytes and statically inspected direct exports.
@@ -230,7 +244,9 @@ pub fn candidate_paths(
             if product_id.is_some() && binding.product_id != product_id {
                 continue;
             }
-            let name = &binding.install_relative_path;
+            let Some(name) = binding.static_relative_path() else {
+                continue;
+            };
             let (rule, path) = if let Some(file) = name.strip_prefix("CommonDLL/") {
                 (
                     PathRule::CommonDll,
@@ -344,4 +360,41 @@ pub fn readable_exports(library: &NativeLibrary, product_id: u32) -> Vec<&str> {
         })
         .map(|function| function.name.as_str())
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn current_dynamic_lighting_bindings_parse_without_fabricating_an_install_path() {
+        for (id, fallback) in [
+            ("lighting_driver", "Synapse/lighting_driver.dll"),
+            ("RzLightingEngineApi", "Synapse/RzLightingEngineApi.dll"),
+        ] {
+            let library = find(id).expect("current lighting source resource");
+            let binding = &library.resources[0].bindings[0];
+            assert!(binding.install_relative_path.is_none());
+            assert!(
+                binding
+                    .install_path_template
+                    .as_deref()
+                    .unwrap()
+                    .contains("installedResources")
+            );
+            assert_eq!(binding.static_relative_path(), Some(fallback));
+            let candidates = candidate_paths(
+                library,
+                None,
+                std::path::Path::new("programs"),
+                std::path::Path::new("userData"),
+            );
+            assert_eq!(candidates.len(), 1);
+            assert_eq!(candidates[0].0, PathRule::AppsSynapse);
+            assert_eq!(
+                candidates[0].1,
+                std::path::Path::new("userData").join("Apps").join(fallback)
+            );
+        }
+    }
 }

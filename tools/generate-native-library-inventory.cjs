@@ -38,6 +38,27 @@ for (const resource of hostPE.files) {
   l.file_names.add(resource.file);l.path_rules.add('common_dll');
 }
 const files = [];
+// Current lighting-engine selects resources by installedResources name/filePath.
+// Keep the dynamically stored path and Synapse fallback separately; no guessed
+// CommonDLL or product ownership is introduced by the downloaded filename.
+const lighting = JSON.parse(fs.readFileSync(path.join(root,'docs/re/lighting-native-current-source-evidence.json'),'utf8'));
+for (const resource of lighting.resources) {
+  const l=get(resource.library_id);
+  l.kind=resource.library_id==='lighting_driver'?'lighting_driver':'lighting_engine';
+  l.channel=resource.library_id==='lighting_driver'?'lightingDriver':'ConfigureFFI';
+  l.file_names.add(resource.file);
+  for(const rule of resource.path_rules)l.path_rules.add(rule);
+  l.resources.push({file:resource.file,sha256:resource.sha256,bytes:resource.bytes,md5:resource.md5,machine:resource.machine,
+    exports:resource.exports.filter(e=>e.name&&!e.forwarder).map(e=>e.name),bindings:resource.bindings});
+  for(const declaration of resource.declared_functions){
+    const key=declaration.name+':'+JSON.stringify([declaration.returns,declaration.args]);
+    l.declarations.set(key,{...declaration,call_sites:[],calls:[]});
+  }
+  for(const receipt of lighting.receipts.filter(r=>r.role==='resource-loader'||r.role==='host-ipc-helper')){
+    assert.equal(hash(fs.readFileSync(path.join(root,receipt.file))),receipt.sha256);
+    l.receipts.push({path:receipt.file,sha256:receipt.sha256,offset:receipt.offset,end:receipt.end,source:receipt.source});
+  }
+}
 const astCache = new Map();
 for (const item of fs.readdirSync(path.join(root, '.ref/middleware'), {withFileTypes: true})) {
   if (!item.isDirectory() || !/^\d+$/.test(item.name)) continue;
@@ -195,6 +216,7 @@ for (const {file, body, product, host} of files) {
   if (++scanned % 40 === 0) console.log(`Static native binding scan ${scanned}/${files.length}`);
 }
 const outputLibraries = [...libraries.values()].map(l => {
+  if(l.id==='lighting_driver')l.path_rules.delete('common_dll');
   const byName = new Map();
   for (const d of l.declarations.values()) {const list = byName.get(d.name) || []; list.push(d); byName.set(d.name,list);}
   const conflicts = [...byName].filter(([,v]) => v.length > 1).map(([name, variants]) => ({name, variants}));

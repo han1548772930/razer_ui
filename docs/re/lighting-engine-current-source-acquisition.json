@@ -1,0 +1,1271 @@
+{
+  "schema_version": 1,
+  "method": "Official current HTML, manifests and declared JS/CSS fetched as inert data; no downloaded code execution",
+  "source_route": "https://apps.razer.com/synapse/lighting-engine/",
+  "receipts": [
+    {
+      "path": ".ref/applications/synapse/lighting-engine/index.html",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/index.html",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/index.html",
+      "http_status": 200,
+      "bytes": 3622,
+      "sha256": "f615f0018120df9d772cdea63efeddc366f3e632ddd79b17d6c6bd1ef272c6bf"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/asset-manifest.json",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/asset-manifest.json",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/asset-manifest.json",
+      "http_status": 200,
+      "bytes": 31963,
+      "sha256": "403abceee9d1bd32b345ba71c2442a8015da6850071e58760504729b786bdfed"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/manifest.json",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/manifest.json",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/manifest.json",
+      "http_status": 200,
+      "bytes": 1244,
+      "sha256": "4231d2b755bfde4362e214cd88544b102e38415415ad00cb8729bfaecf33d9e9"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/service-worker.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/service-worker.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/service-worker.js",
+      "http_status": 200,
+      "bytes": 39947,
+      "sha256": "4dc45b0c7a2a34ce4a150f1cd9681061fa57f4458f4191004c8d26a006f14387"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/css/main.ae450e7f.css",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/css/main.ae450e7f.css",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/css/main.ae450e7f.css",
+      "http_status": 200,
+      "bytes": 2543,
+      "sha256": "3ab8284bc4d241912fff61cdd09ff84cabac2ae3022b075efb62ac59d2616074"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1090.a19a5978.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1090.a19a5978.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1090.a19a5978.chunk.js",
+      "http_status": 200,
+      "bytes": 1687,
+      "sha256": "f527ade6f827f91d7ea63e84a68e47e9aadbb285fa6a69b402b2f983777180f7"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1163.2bad81b7.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1163.2bad81b7.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1163.2bad81b7.chunk.js",
+      "http_status": 200,
+      "bytes": 11156,
+      "sha256": "ee0da8918644685541ea7379ecea1ecbebda9a8dc6cd3cf278110a55abd02033"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1231.ba9f8b29.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1231.ba9f8b29.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1231.ba9f8b29.chunk.js",
+      "http_status": 200,
+      "bytes": 2712,
+      "sha256": "4982cd2ce2c2304c76a6e9ff8b743dc7ce9deca42693a484a6c1fddc5d4b33ae"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1262.3adbe739.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1262.3adbe739.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1262.3adbe739.chunk.js",
+      "http_status": 200,
+      "bytes": 4703,
+      "sha256": "f702c7c8f0a9d4ebcda0b3c6161d5aa04f8d29064e6fc01fa343f6ef78427cc7"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1316.0069217f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1316.0069217f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1316.0069217f.chunk.js",
+      "http_status": 200,
+      "bytes": 7873,
+      "sha256": "8bb4799c8bd2f379a55c869b1ec668c259162bd01057677af6a0e0966abdb770"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/141.f5f4f003.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/141.f5f4f003.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/141.f5f4f003.chunk.js",
+      "http_status": 200,
+      "bytes": 15282,
+      "sha256": "0c20325561ccd990b944fded7e51ec23567c539b6e9cfce859fab9811864ecd8"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1452.0a3833b7.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1452.0a3833b7.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1452.0a3833b7.chunk.js",
+      "http_status": 200,
+      "bytes": 12346,
+      "sha256": "64f6193a7ff06392dbcfabbee5ad034371da5a4e577c3d29062ac32606ae72e2"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/147.56d38f8c.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/147.56d38f8c.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/147.56d38f8c.chunk.js",
+      "http_status": 200,
+      "bytes": 12616,
+      "sha256": "706dc8642ac4306766c192c64255cf5d1543af635ee0d1d6aa5c4b553a3cf5ca"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1495.b90eb9fe.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1495.b90eb9fe.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1495.b90eb9fe.chunk.js",
+      "http_status": 200,
+      "bytes": 94832,
+      "sha256": "21e2b85b55285813a67b76ca3e1ff73cfefa0d1caf27723d6dd7f03337ffb3e9"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1498.0de8d78d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1498.0de8d78d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1498.0de8d78d.chunk.js",
+      "http_status": 200,
+      "bytes": 4861,
+      "sha256": "76c926ebf1d165c41294b774f4d587e586e9b0d91bc57adc76f4aa5ada2624b4"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1523.636478a7.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1523.636478a7.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1523.636478a7.chunk.js",
+      "http_status": 200,
+      "bytes": 1278,
+      "sha256": "0a51dac597954f0cbca8aeac89d23a2d84d872fce46efd1b7f964b9954e6d78c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1611.0d50a29f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1611.0d50a29f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1611.0d50a29f.chunk.js",
+      "http_status": 200,
+      "bytes": 13651,
+      "sha256": "3023bc889eed77219c99044f1537f5a3150b05014d72bbd00f04ff8d12bbd442"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1794.f863c2a3.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1794.f863c2a3.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1794.f863c2a3.chunk.js",
+      "http_status": 200,
+      "bytes": 24059,
+      "sha256": "41eca9fe1ca7ca88057d7cbf8d2f08d33c12574d4c1ae69e05fa5d9acf5b3e95"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1904.57106f9e.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1904.57106f9e.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1904.57106f9e.chunk.js",
+      "http_status": 200,
+      "bytes": 5282,
+      "sha256": "7f351ba3a488d8e4ccf4c28a26e6a76d5a7faeee227fb51908cbc98c83423e54"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1928.9ea8e218.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1928.9ea8e218.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1928.9ea8e218.chunk.js",
+      "http_status": 200,
+      "bytes": 2950,
+      "sha256": "c36e282c54b3dbc12a90e8d494994ae5c87bdfaf49cc38176da72d72615e3e99"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/1965.47852a71.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1965.47852a71.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/1965.47852a71.chunk.js",
+      "http_status": 200,
+      "bytes": 3578,
+      "sha256": "24c42f949a5e3ba1abdb67d264e1dc3f379e90bd3edd520da5c8c24e7ee38df3"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2026.eef4994d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2026.eef4994d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2026.eef4994d.chunk.js",
+      "http_status": 200,
+      "bytes": 3083,
+      "sha256": "7625eec39f9445d4e1135fcff1317c634fa9201bbcd03e7033169cbac2a8f68a"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2237.a178d175.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2237.a178d175.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2237.a178d175.chunk.js",
+      "http_status": 200,
+      "bytes": 12590,
+      "sha256": "3a802e867600c000a3d6c6eb1185a0fcd407eb4941fc252b2a8f674897bf5a3e"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2248.4c5a1b70.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2248.4c5a1b70.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2248.4c5a1b70.chunk.js",
+      "http_status": 200,
+      "bytes": 10182,
+      "sha256": "ffd15cf23a50a9fff09d7a5ad5ebf6d9dc18c00953478a37c6e0b0c14038e63d"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2314.7b1154d0.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2314.7b1154d0.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2314.7b1154d0.chunk.js",
+      "http_status": 200,
+      "bytes": 10159,
+      "sha256": "a0775a071ff2f2221199ea060fc2772ccb7bb4c478949d11c8e33073934ad839"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2335.cadd5587.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2335.cadd5587.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2335.cadd5587.chunk.js",
+      "http_status": 200,
+      "bytes": 20663,
+      "sha256": "797bbc2f2139c6b5c370d25e7ec1140935581582bcd65efd9d704cec7f1fbb7c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2342.73f8cec2.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2342.73f8cec2.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2342.73f8cec2.chunk.js",
+      "http_status": 200,
+      "bytes": 1876,
+      "sha256": "7e420523730e23440a126e1033c74b45c702e4c6901d456f4bd3947992bee0e4"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2379.01eb99ae.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2379.01eb99ae.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2379.01eb99ae.chunk.js",
+      "http_status": 200,
+      "bytes": 16610,
+      "sha256": "2e6bb2e14a1e208b6e35705a00aa74220962e12002f244b0ff4f4d7f71796205"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2409.4abb4541.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2409.4abb4541.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2409.4abb4541.chunk.js",
+      "http_status": 200,
+      "bytes": 3924,
+      "sha256": "7c7c976b98447b99a2db3b53a4d83eee384b2e23690e0f4d5cc4552cf876898a"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2437.fe09467b.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2437.fe09467b.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2437.fe09467b.chunk.js",
+      "http_status": 200,
+      "bytes": 37378,
+      "sha256": "20edfee3a8bf25ceab0119c2fe615285840ab5801811f8cc88cd3062c1b64c2f"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2578.d2f30ac3.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2578.d2f30ac3.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2578.d2f30ac3.chunk.js",
+      "http_status": 200,
+      "bytes": 3182,
+      "sha256": "f88fa00662723031b4b995256150fea8b98966954d5bc5054a2d9089a8af130b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2616.2bbc2c50.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2616.2bbc2c50.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2616.2bbc2c50.chunk.js",
+      "http_status": 200,
+      "bytes": 13945,
+      "sha256": "16f9f6b0bb3f538a728b0ebb47e3e9a13ac028abff6044ea5f530543cc44cad9"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2632.72f92fa9.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2632.72f92fa9.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2632.72f92fa9.chunk.js",
+      "http_status": 200,
+      "bytes": 8482,
+      "sha256": "6b8c0054ea6c68995da576626c82c51a3c33131fa94be64c42d00526bf0fec45"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2640.a0016a8c.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2640.a0016a8c.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2640.a0016a8c.chunk.js",
+      "http_status": 200,
+      "bytes": 28122,
+      "sha256": "bab9b44c939b81140610c1ed106cd21a846ad6f950a3c6b3ffcf636723a3c688"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2643.5d180b8b.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2643.5d180b8b.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2643.5d180b8b.chunk.js",
+      "http_status": 200,
+      "bytes": 5261,
+      "sha256": "41fc919d85c9af2b059db7cd4ee328d7fb004405a1710bd8b010af1c0a1f3f18"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2655.794bc7fb.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2655.794bc7fb.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2655.794bc7fb.chunk.js",
+      "http_status": 200,
+      "bytes": 1072,
+      "sha256": "67a763699cd4b2dff17889ace92b0baa224925672579271af07d7945517e028f"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/269.d3a85360.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/269.d3a85360.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/269.d3a85360.chunk.js",
+      "http_status": 200,
+      "bytes": 1363,
+      "sha256": "bb758dd89d8387b745723a322ae0e90fea9ca03e7eaad43314cd759ac7e585f5"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2832.cb57b801.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2832.cb57b801.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2832.cb57b801.chunk.js",
+      "http_status": 200,
+      "bytes": 2216,
+      "sha256": "e6e9048e3a665b73c64f1475da4e8e250982069b211a619f6e919241a4078e5b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2848.1f79dc13.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2848.1f79dc13.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2848.1f79dc13.chunk.js",
+      "http_status": 200,
+      "bytes": 2657,
+      "sha256": "85cad6131d0d1709368af7187f971b49324fd7bb464914697f1acb330a341408"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2890.ae1ebde4.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2890.ae1ebde4.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2890.ae1ebde4.chunk.js",
+      "http_status": 200,
+      "bytes": 3065,
+      "sha256": "2ec6947943cdba64c9d9937c896326733324ddbc319613851192c0ccfef08719"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/2902.edfea870.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2902.edfea870.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/2902.edfea870.chunk.js",
+      "http_status": 200,
+      "bytes": 14657,
+      "sha256": "217f76800ff2135faa0d7b31233ba78c3e74a4b85554a7622358929f3b56c83c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3061.c4568942.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3061.c4568942.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3061.c4568942.chunk.js",
+      "http_status": 200,
+      "bytes": 8160,
+      "sha256": "31b17c71f926fe73841a833f5cd0a9ad1189e1354bd9ca2a11de66c6cad10ffb"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3065.47c4cfeb.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3065.47c4cfeb.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3065.47c4cfeb.chunk.js",
+      "http_status": 200,
+      "bytes": 7501,
+      "sha256": "02625485f2a819928c503572d6389a28d4c7a49c063ae405e87e4100c0abac65"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3243.240d2581.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3243.240d2581.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3243.240d2581.chunk.js",
+      "http_status": 200,
+      "bytes": 9780,
+      "sha256": "f7403adcaa93c83458c15acb3263a4f447a14f8a6c0db82b91e1d050326788a4"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/330.0ed888ab.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/330.0ed888ab.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/330.0ed888ab.chunk.js",
+      "http_status": 200,
+      "bytes": 16300,
+      "sha256": "a0b10ef3c3bd48b200c611deb993f86372d11eabe96db2d00bb86a4d5d65a0cb"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/334.04d6e89d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/334.04d6e89d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/334.04d6e89d.chunk.js",
+      "http_status": 200,
+      "bytes": 1345,
+      "sha256": "79d8baba65eb0e7070ca9c27fd5d34457183923789ea208397248ac1f810adc1"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3351.9a7389ed.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3351.9a7389ed.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3351.9a7389ed.chunk.js",
+      "http_status": 200,
+      "bytes": 3380,
+      "sha256": "c244748d82331ee57d3aedabad02a828a6bfe094080d423fa79976ab7dead183"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3378.6c1708d3.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3378.6c1708d3.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3378.6c1708d3.chunk.js",
+      "http_status": 200,
+      "bytes": 20441,
+      "sha256": "d4a44eac8632c70cdb017d0cdb8bcd82d5a68dc0ad15cb9b7e765b16be6c1196"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3445.dbe82487.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3445.dbe82487.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3445.dbe82487.chunk.js",
+      "http_status": 200,
+      "bytes": 6499,
+      "sha256": "e37f3efb0f3b095d5405a54c5afac5bbf437f870e82c5b79b67f49ddfd39c22e"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3537.81890f09.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3537.81890f09.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3537.81890f09.chunk.js",
+      "http_status": 200,
+      "bytes": 1384,
+      "sha256": "802af01bfd0316b7caa0f85194f80598fa39cf8089066881d6c8e7124af28793"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3591.7b88cb0f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3591.7b88cb0f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3591.7b88cb0f.chunk.js",
+      "http_status": 200,
+      "bytes": 7082,
+      "sha256": "01d3e60da945a8a018c980a065236ca8b40a09878969de4cada1f652d1b9e17e"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3611.3a26b428.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3611.3a26b428.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3611.3a26b428.chunk.js",
+      "http_status": 200,
+      "bytes": 1719,
+      "sha256": "fe6ab4d1ebb9bdc5206bcbc7c965d8f79fa53f9b7f8380fb5c71b7443f5e7b9b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3657.41cc782d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3657.41cc782d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3657.41cc782d.chunk.js",
+      "http_status": 200,
+      "bytes": 5239,
+      "sha256": "7924b6892d09d787a883145be8212f39ecc26967686036426bff5f7a90cedcf3"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3743.43ff0485.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3743.43ff0485.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3743.43ff0485.chunk.js",
+      "http_status": 200,
+      "bytes": 1547,
+      "sha256": "e3682d5baa044098dd1916f515e29b3d535b64ee62cb09f28081e18c983b1f34"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3791.02de476d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3791.02de476d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3791.02de476d.chunk.js",
+      "http_status": 200,
+      "bytes": 94411,
+      "sha256": "23e8671a8c7c6d774618aab0472c9d26669a731769725094b6a9c84342675d3b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3852.644f0c3f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3852.644f0c3f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3852.644f0c3f.chunk.js",
+      "http_status": 200,
+      "bytes": 11190,
+      "sha256": "f9a8cf993bc139a5250eecc86b237bb52abe4c73b743af170e42d8824c3d9743"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3949.328c69e2.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3949.328c69e2.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3949.328c69e2.chunk.js",
+      "http_status": 200,
+      "bytes": 12960,
+      "sha256": "139a115064f36b9ff43667bfd2d1f50d12fbdb4bd672b029b0c8e1da367d93a3"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/3961.14cef1f5.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3961.14cef1f5.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/3961.14cef1f5.chunk.js",
+      "http_status": 200,
+      "bytes": 8972,
+      "sha256": "fab3a240e20b309c0b0bfd57092c68cfa4ae4bc3b4d3560d02b803ef54ec5599"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4026.cf360c84.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4026.cf360c84.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4026.cf360c84.chunk.js",
+      "http_status": 200,
+      "bytes": 7532,
+      "sha256": "2ba1f825d27f7658c76f06ec2118d0b51b094e1f78935c28c3bdd31d28bd921a"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4060.9c9b1c48.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4060.9c9b1c48.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4060.9c9b1c48.chunk.js",
+      "http_status": 200,
+      "bytes": 18617,
+      "sha256": "fb031cd0c487366d73d5d4614d46a61fc4971d75d1795d95213d7d931243451e"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/420.8daf62ba.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/420.8daf62ba.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/420.8daf62ba.chunk.js",
+      "http_status": 200,
+      "bytes": 1377,
+      "sha256": "034bf0215557cfa6143490f7021e13556c1c01354fc2b25505cb22232ed62608"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4233.c2eb3380.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4233.c2eb3380.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4233.c2eb3380.chunk.js",
+      "http_status": 200,
+      "bytes": 17809,
+      "sha256": "630023c911f998ab2dd3d3787b230e372b5ac252bc4ff8496f9311a96ed28eec"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4238.dbf77bc0.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4238.dbf77bc0.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4238.dbf77bc0.chunk.js",
+      "http_status": 200,
+      "bytes": 1834,
+      "sha256": "876b2aabe79422a6c5615a1893dbebd06bef05bda9e41b1d9a457c30acf89634"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4307.e6935f60.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4307.e6935f60.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4307.e6935f60.chunk.js",
+      "http_status": 200,
+      "bytes": 3124,
+      "sha256": "e6349cb0ec1aebd0567ad63d5cba009436192c4f69ae1353c8eae8018565cb2d"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4472.7d1a2aec.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4472.7d1a2aec.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4472.7d1a2aec.chunk.js",
+      "http_status": 200,
+      "bytes": 3221,
+      "sha256": "ec1b207670e792187ffc9aed4813a9c3e6e6f74d4ea06d50e740b7aecbfb4f5b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4496.d67e5d54.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4496.d67e5d54.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4496.d67e5d54.chunk.js",
+      "http_status": 200,
+      "bytes": 1651,
+      "sha256": "62c37770e9dc0e5fc36d0c31499a094ba308ba5fc5618deee8498149fb532e2d"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4507.1df3a862.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4507.1df3a862.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4507.1df3a862.chunk.js",
+      "http_status": 200,
+      "bytes": 3735,
+      "sha256": "ca25d2e1920edf5ea5aaf314820281543449e74ef8981164c77245512dd44931"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4525.9a7090bb.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4525.9a7090bb.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4525.9a7090bb.chunk.js",
+      "http_status": 200,
+      "bytes": 7648,
+      "sha256": "a04bf5f74fcb2fcd7fe18ae2712e1ecb23bb9b9cb272d7a9bef05dc0e6d0b0c6"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/464.e0226794.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/464.e0226794.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/464.e0226794.chunk.js",
+      "http_status": 200,
+      "bytes": 31888,
+      "sha256": "9bb160894323f56150e6c37a89ee8bff78b12e7bd996e57c8a7e2edbeeb5de9d"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4669.a9c0bcb1.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4669.a9c0bcb1.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4669.a9c0bcb1.chunk.js",
+      "http_status": 200,
+      "bytes": 4674,
+      "sha256": "8891c103d7a76f2c6f496fbc88660ec62d2baf730cac6f0a96e967a683d77f3f"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4699.606f4a65.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4699.606f4a65.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4699.606f4a65.chunk.js",
+      "http_status": 200,
+      "bytes": 1377,
+      "sha256": "a24f14678922603bc6ac12280b5499725e7a1149e28175ca3634208264c5da3b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4831.60221e01.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4831.60221e01.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4831.60221e01.chunk.js",
+      "http_status": 200,
+      "bytes": 1296,
+      "sha256": "6ddeb71555d634f23bea64e82428ddf3139d4b298742dc1dc79b28fa0f889784"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4851.960a2a90.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4851.960a2a90.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4851.960a2a90.chunk.js",
+      "http_status": 200,
+      "bytes": 18323,
+      "sha256": "d7efabcd3a481d5d2f56e4d5a261e8206c3ccaf2d9b6e2602744382d2c6623d9"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/4953.206de8ae.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4953.206de8ae.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/4953.206de8ae.chunk.js",
+      "http_status": 200,
+      "bytes": 11514,
+      "sha256": "8d6e12267965d439c3c0480abd399255c3d125b03416a4444fe82d156e235c0b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5057.19eaccbe.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5057.19eaccbe.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5057.19eaccbe.chunk.js",
+      "http_status": 200,
+      "bytes": 10698,
+      "sha256": "8a5980325966d7b0ddebc7a97b843bbc709f3e10123558a3d11c9ea92ad1685d"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5142.732f7e7e.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5142.732f7e7e.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5142.732f7e7e.chunk.js",
+      "http_status": 200,
+      "bytes": 13233,
+      "sha256": "471558b1e09da67a0f9233a831f32e978b89e261442c9c6fa0f28752bd3c7488"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5271.4dc18fe9.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5271.4dc18fe9.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5271.4dc18fe9.chunk.js",
+      "http_status": 200,
+      "bytes": 21788,
+      "sha256": "100829ef0e0ffc277cf403afb5258821ac0df35ffe93bdbebd5f91e04d8f7a80"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5303.21c30f0c.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5303.21c30f0c.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5303.21c30f0c.chunk.js",
+      "http_status": 200,
+      "bytes": 29687,
+      "sha256": "8cf776216ee1574fd8fc8fb5551d8262595df84f61b4ea9227a53aa18b77bc30"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5437.6f30c865.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5437.6f30c865.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5437.6f30c865.chunk.js",
+      "http_status": 200,
+      "bytes": 36012,
+      "sha256": "6004a8fbc2c782772684083893a9d441b3ee60295387fb4f720314ad38a79745"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5451.323e7eff.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5451.323e7eff.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5451.323e7eff.chunk.js",
+      "http_status": 200,
+      "bytes": 3639,
+      "sha256": "09a105e395df57cf0f0054d6e92d6e7f283f914827d4523e5023889f620a55f2"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5591.2003e494.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5591.2003e494.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5591.2003e494.chunk.js",
+      "http_status": 200,
+      "bytes": 11128,
+      "sha256": "b0760a3fd0b46bfd3102b7fec1cfac2d17e2a78cb1e1ff72e27f8d803b10c370"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5834.febb2e8f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5834.febb2e8f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5834.febb2e8f.chunk.js",
+      "http_status": 200,
+      "bytes": 10358,
+      "sha256": "ea5eab5ead1cfdaca5f9be8f119ce974ae7173c7c7a91da57a98c04d5313641c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5865.5fa44d67.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5865.5fa44d67.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5865.5fa44d67.chunk.js",
+      "http_status": 200,
+      "bytes": 3265,
+      "sha256": "e2e1ee6c228c64b0353cf03959af56e76fc2e831b66b3e630bf12a384ed7a627"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/5917.8f143371.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5917.8f143371.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/5917.8f143371.chunk.js",
+      "http_status": 200,
+      "bytes": 1154,
+      "sha256": "4b5f7c178e4d46db4b07e5b4e9cb51397b3505a44dbda280ae19b43e7b5521d9"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6002.896e64c0.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6002.896e64c0.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6002.896e64c0.chunk.js",
+      "http_status": 200,
+      "bytes": 1078,
+      "sha256": "adf158e762e860448c9c0944a7574dea9c855732b27ff29319ed1058c7a4f24b"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6024.1973f19d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6024.1973f19d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6024.1973f19d.chunk.js",
+      "http_status": 200,
+      "bytes": 17529,
+      "sha256": "f10a5e181ed4b3f1cfd4d8673e5e962b5c2f31914569e80d7d6a81ccc8bcae3c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6094.4edc6f7c.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6094.4edc6f7c.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6094.4edc6f7c.chunk.js",
+      "http_status": 200,
+      "bytes": 2271,
+      "sha256": "035a5b80fec002b8d200b212c636ba7f8e16ba802d64cddc738355ef9bb3486e"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/610.8c407e7c.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/610.8c407e7c.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/610.8c407e7c.chunk.js",
+      "http_status": 200,
+      "bytes": 8270,
+      "sha256": "b836a9b18c305c89e029afedd9510c1d16bbecb853c754789fc83213da7177fc"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6191.db6d8725.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6191.db6d8725.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6191.db6d8725.chunk.js",
+      "http_status": 200,
+      "bytes": 13223,
+      "sha256": "03d53f93d1a0cdf5fb1c359bb8fd815940d2932762c58831c24756318f4a22b0"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6214.c7a994aa.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6214.c7a994aa.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6214.c7a994aa.chunk.js",
+      "http_status": 200,
+      "bytes": 88271,
+      "sha256": "e08bf2759c658cb5ce9cde125f5c92cec4448235bbf9679dc6572054cc06683c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6315.5bc5432f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6315.5bc5432f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6315.5bc5432f.chunk.js",
+      "http_status": 200,
+      "bytes": 12553,
+      "sha256": "5d31289a3c401c80477b828fb681dac3fb4332dad6da120c8ed8b7bf343ffd43"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/645.88c92eed.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/645.88c92eed.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/645.88c92eed.chunk.js",
+      "http_status": 200,
+      "bytes": 18591,
+      "sha256": "f0aff876d9b5e54dee728dcc2cb67d928335fdbafbb4dc5d2ade2e69f321c288"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6531.fbc7bfaa.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6531.fbc7bfaa.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6531.fbc7bfaa.chunk.js",
+      "http_status": 200,
+      "bytes": 21733,
+      "sha256": "e2e8d6569372ae34faf827908fffe070af753866f17d7424f480de93ceb4c863"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/6886.4d4b19b1.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6886.4d4b19b1.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/6886.4d4b19b1.chunk.js",
+      "http_status": 200,
+      "bytes": 4278,
+      "sha256": "75db4d0a2f2e9f9f78f34b7233f8ff884bec0c1b3b7fde05d02c22a01a9094e5"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/689.7e751471.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/689.7e751471.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/689.7e751471.chunk.js",
+      "http_status": 200,
+      "bytes": 1160,
+      "sha256": "e8c26d428968b4e8b4223a3a5da48125f6c4915f51701174f599c849bb407400"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7030.ec46f72f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7030.ec46f72f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7030.ec46f72f.chunk.js",
+      "http_status": 200,
+      "bytes": 3082,
+      "sha256": "c134e344a9da74aca6a804fb7d1be83cdf6b380db618769f3e8b09a7fcc4db8e"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7094.0e384ee8.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7094.0e384ee8.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7094.0e384ee8.chunk.js",
+      "http_status": 200,
+      "bytes": 2821,
+      "sha256": "4d925fce378877f5c19de6cf4250e00b1d0856350421f692e07ce57355e36e4d"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7135.96272e9d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7135.96272e9d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7135.96272e9d.chunk.js",
+      "http_status": 200,
+      "bytes": 14188,
+      "sha256": "395078d7063550d9336eaf5bfb59a8ae3737992ec0e269628b621336b47e5249"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7196.06590209.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7196.06590209.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7196.06590209.chunk.js",
+      "http_status": 200,
+      "bytes": 110754,
+      "sha256": "019026b8837452991d47126715bb257c0ae082fad00a993f3fc1dbaa3d525b89"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7268.a1cf7025.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7268.a1cf7025.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7268.a1cf7025.chunk.js",
+      "http_status": 200,
+      "bytes": 12099,
+      "sha256": "1944a4bd0ab6f84f826dc3dd89abb49368f2372b19ba33561fe10c8d237ee791"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7665.dadce4fa.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7665.dadce4fa.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7665.dadce4fa.chunk.js",
+      "http_status": 200,
+      "bytes": 16698,
+      "sha256": "05d0a9facf6b98c2ca0f45f3bbeeb6d2c68b2f49a0360b612ca63b7190aba5ec"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7743.c87cd5af.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7743.c87cd5af.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7743.c87cd5af.chunk.js",
+      "http_status": 200,
+      "bytes": 7726,
+      "sha256": "c9b5c29de6b160ab5f2d94c48c6061ac1f02c89e112271ec878a3106e29039b5"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7772.863e0a4f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7772.863e0a4f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7772.863e0a4f.chunk.js",
+      "http_status": 200,
+      "bytes": 2695,
+      "sha256": "10916b5e648a1a9735c1ce18e3a96692c0c131a1e4d3071036d6da101143d7d5"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7826.466085bd.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7826.466085bd.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7826.466085bd.chunk.js",
+      "http_status": 200,
+      "bytes": 23685,
+      "sha256": "aff7803850c3d00f2b7e2237c0d4d8560b168d14c7ffc582a53b9f1a692a2cc4"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/7827.4c415365.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7827.4c415365.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/7827.4c415365.chunk.js",
+      "http_status": 200,
+      "bytes": 12242,
+      "sha256": "cead32bc62fb938b0345699ad8052048573b49140d89830595cafc028c565cff"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8086.8d7e1ef8.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8086.8d7e1ef8.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8086.8d7e1ef8.chunk.js",
+      "http_status": 200,
+      "bytes": 396561,
+      "sha256": "20766c9c4b065b1bffa68e4bd06e098a77de2ae92a93fa71a34099ab86306efc"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8462.e9e3b192.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8462.e9e3b192.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8462.e9e3b192.chunk.js",
+      "http_status": 200,
+      "bytes": 1831,
+      "sha256": "d5a6bd2be082e82e2391a5819e6f114ebfe44cf4feccac10d34fd5cd7a75cd64"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8507.2c5f9e57.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8507.2c5f9e57.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8507.2c5f9e57.chunk.js",
+      "http_status": 200,
+      "bytes": 1376,
+      "sha256": "6aca78279494c4004726068052274513c65154eea4e938ceecf4596fde7fcba3"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8508.b51f3dda.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8508.b51f3dda.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8508.b51f3dda.chunk.js",
+      "http_status": 200,
+      "bytes": 9353,
+      "sha256": "0d07b6d89483bc4e2b90ed2e2010a6fd206f22b94323038f63bd67158c0a7efa"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8586.e9e3ac67.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8586.e9e3ac67.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8586.e9e3ac67.chunk.js",
+      "http_status": 200,
+      "bytes": 3252,
+      "sha256": "f4deed8d5de205d1841892d5adad60faf2b6672d81a4749b465f37393959f762"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8648.a0d12920.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8648.a0d12920.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8648.a0d12920.chunk.js",
+      "http_status": 200,
+      "bytes": 6951,
+      "sha256": "ec20465572ae91a122f0f4369892c625fb3909c3aa0f74cddb573fbcf848e937"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8863.c592ce2c.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8863.c592ce2c.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8863.c592ce2c.chunk.js",
+      "http_status": 200,
+      "bytes": 2798,
+      "sha256": "9c61e5f4144cc51ffa458e1108479270db3439cc3a9df2824ddb34905c3286f5"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8980.657a587d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8980.657a587d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8980.657a587d.chunk.js",
+      "http_status": 200,
+      "bytes": 1376,
+      "sha256": "a5f2907f05eaa205275ba9bdd2806af6dbabde824fa73c06ebb892da55a81a39"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/8991.f2cdc059.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8991.f2cdc059.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/8991.f2cdc059.chunk.js",
+      "http_status": 200,
+      "bytes": 732,
+      "sha256": "34970135a1dee997da078e06d6a53786eb194d60648ae6d38cdcb801b203106e"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9144.44eae7af.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9144.44eae7af.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9144.44eae7af.chunk.js",
+      "http_status": 200,
+      "bytes": 24350,
+      "sha256": "5bc1ce463b95b37417cb5b9cf6ccf543a49786271260c9fa4b2e08c602052b11"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9158.68c43008.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9158.68c43008.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9158.68c43008.chunk.js",
+      "http_status": 200,
+      "bytes": 5501,
+      "sha256": "077f0fbb471dc76b783742633d5f4b52a4156af2495c9fd09756e718c5c64ed7"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9242.3dc3416d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9242.3dc3416d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9242.3dc3416d.chunk.js",
+      "http_status": 200,
+      "bytes": 9776,
+      "sha256": "01b06d0420f02c88388ad7f308c85a300d84d1527334b32eb7349613e89c5dc6"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9375.ee327816.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9375.ee327816.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9375.ee327816.chunk.js",
+      "http_status": 200,
+      "bytes": 135320,
+      "sha256": "cf86f636cb4367a0bcc7a377879d7f1f4e58a44aa8379f28a9bc9d81ff0dbbca"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9410.e509e3b7.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9410.e509e3b7.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9410.e509e3b7.chunk.js",
+      "http_status": 200,
+      "bytes": 38694,
+      "sha256": "102c0b82430a62834ea37e64404e6fcd942fe577a50f1c227e9353169d8f1e2c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/947.a683a51f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/947.a683a51f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/947.a683a51f.chunk.js",
+      "http_status": 200,
+      "bytes": 3961,
+      "sha256": "6e375e65d0ba64afdb059c7d26109e765ba3ab93110b4554711aefc4376a8653"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9652.2b59e269.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9652.2b59e269.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9652.2b59e269.chunk.js",
+      "http_status": 200,
+      "bytes": 13492,
+      "sha256": "1a30d12f639fde450551cb10f3c2abcc1723e6998d933bb187ad7cad2a04bff2"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/973.47dcfc7a.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/973.47dcfc7a.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/973.47dcfc7a.chunk.js",
+      "http_status": 200,
+      "bytes": 1101,
+      "sha256": "b3e97d564a97085c799579f3d418343d418e14af86b8491bf0d88873e8134a40"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9750.06e36932.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9750.06e36932.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9750.06e36932.chunk.js",
+      "http_status": 200,
+      "bytes": 2383,
+      "sha256": "b4598c7ab0166a9ea10da6197383ee75405fe570df206b08e05357f56e10ed69"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/986.aea5147a.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/986.aea5147a.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/986.aea5147a.chunk.js",
+      "http_status": 200,
+      "bytes": 8826,
+      "sha256": "e28389d521d9251f6b5ed615499c83c5fb2314d3c18774a741735952fd9bab57"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9879.dc7418e2.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9879.dc7418e2.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9879.dc7418e2.chunk.js",
+      "http_status": 200,
+      "bytes": 15041,
+      "sha256": "72e19c9266892b2908a80133b2d82b7912120513a03459e5a4a0b695c0539f77"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9916.a5ade8bc.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9916.a5ade8bc.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9916.a5ade8bc.chunk.js",
+      "http_status": 200,
+      "bytes": 29202,
+      "sha256": "6b5ece46d977ca0a9ce38e1e04bacd831176de7a92848c0b1db5810c37e3ba9c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9932.d318bc2e.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9932.d318bc2e.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9932.d318bc2e.chunk.js",
+      "http_status": 200,
+      "bytes": 6653,
+      "sha256": "d73d668ff5d8752cffbc9880643547eda7dc12650d6d7a5d6f5d097314d10785"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/9972.52823c07.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9972.52823c07.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/9972.52823c07.chunk.js",
+      "http_status": 200,
+      "bytes": 4004,
+      "sha256": "d99c2cd263b5471fb2b6f8859781b464a32e76d3e94b058be60a5acce57c1412"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/main.3588205d.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/main.3588205d.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/main.3588205d.js",
+      "http_status": 200,
+      "bytes": 1830558,
+      "sha256": "e89e84e185c4e34b41e011080001241aa9a44756b4d188c24b1d0d64cea8fe29"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioAprilParser.28c0f024.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioAprilParser.28c0f024.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioAprilParser.28c0f024.chunk.js",
+      "http_status": 200,
+      "bytes": 2273,
+      "sha256": "dafc7ad7dee53f1d61fc1522d4631c77b4e9a0f1b0a16d31566b97ee84d187ca"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioAvneraParser.9adefb9b.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioAvneraParser.9adefb9b.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioAvneraParser.9adefb9b.chunk.js",
+      "http_status": 200,
+      "bytes": 1522,
+      "sha256": "7b0b78c69922fc2ce5fb35259d7f47a19055d82edf7975c1ce67aec7e2551593"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioBillieT1Parser.649e1e15.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioBillieT1Parser.649e1e15.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioBillieT1Parser.649e1e15.chunk.js",
+      "http_status": 200,
+      "bytes": 5385,
+      "sha256": "56440e5e975654fba4ccc612aff3b12b7b8af8b9b825f8af0fc41dd46bde2df9"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioMixerParser.5b85ec36.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMixerParser.5b85ec36.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMixerParser.5b85ec36.chunk.js",
+      "http_status": 200,
+      "bytes": 2264,
+      "sha256": "239945f0aba70b3a3b2ee2fbebfd5b23f802d5ad368476be9a24cafae7997651"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicMabelT1Parser.029914d1.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicMabelT1Parser.029914d1.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicMabelT1Parser.029914d1.chunk.js",
+      "http_status": 200,
+      "bytes": 3262,
+      "sha256": "3ec3c19a91c76c217cc94375f9e3720ff988095489b11afbfad67146494c80b3"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicMabelT1_ecrParser.0d88f60e.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicMabelT1_ecrParser.0d88f60e.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicMabelT1_ecrParser.0d88f60e.chunk.js",
+      "http_status": 200,
+      "bytes": 3389,
+      "sha256": "6c8a2ed916e862999c8a96db6d664ac51a9a656ca46ccba4151525d164356287"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicParser.5442f181.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicParser.5442f181.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioMxicParser.5442f181.chunk.js",
+      "http_status": 200,
+      "bytes": 3252,
+      "sha256": "93b07b02ef889d3922466d9c98d687ea34cb264bd1aa4bf50eabf60096dcb517"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioNXPParser.83e332fd.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioNXPParser.83e332fd.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioNXPParser.83e332fd.chunk.js",
+      "http_status": 200,
+      "bytes": 1321,
+      "sha256": "fea5623bd2504ae1ce60c325fc2f6a322cc0c51da63192235580fbb354513f92"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioOdessaT2WirelessParser.e1a31dbb.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioOdessaT2WirelessParser.e1a31dbb.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioOdessaT2WirelessParser.e1a31dbb.chunk.js",
+      "http_status": 200,
+      "bytes": 2569,
+      "sha256": "ec853f8f47e703a70a5ee1279996021a014e9ec7562a17cb0cf8449fcfb800b8"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsAudioValkyrieParser.3ebae401.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioValkyrieParser.3ebae401.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsAudioValkyrieParser.3ebae401.chunk.js",
+      "http_status": 200,
+      "bytes": 2358,
+      "sha256": "fcd8e0a83714c878106773d33d22d017a7ea3023e35cd9ed5f25a75087c616fd"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsKateT2Parser.43ddb413.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsKateT2Parser.43ddb413.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsKateT2Parser.43ddb413.chunk.js",
+      "http_status": 200,
+      "bytes": 1756,
+      "sha256": "fc1c9453e7d073a5ae878eacf28e7720f7072383cad651bc090aa6db9720b911"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsNommoV2Parser.faa31cbb.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsNommoV2Parser.faa31cbb.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsNommoV2Parser.faa31cbb.chunk.js",
+      "http_status": 200,
+      "bytes": 1117,
+      "sha256": "08941570c40773a74daa3b011d5010912e86211c3ee86f44825f02950f6f644a"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsPWMPCFanParser.c62ba346.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsPWMPCFanParser.c62ba346.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsPWMPCFanParser.c62ba346.chunk.js",
+      "http_status": 200,
+      "bytes": 1042,
+      "sha256": "86d51cbd80d7e7683f611adcb2bf715c862ff0bf542b6a0301ef505d50956721"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25Controller8kParser.512f8534.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25Controller8kParser.512f8534.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25Controller8kParser.512f8534.chunk.js",
+      "http_status": 200,
+      "bytes": 3436,
+      "sha256": "cf414b92fc4a071ab7e43820f071d0b696784170cb183009b9e6b85d14f5e87f"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25ControllerParser.5d66314e.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25ControllerParser.5d66314e.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25ControllerParser.5d66314e.chunk.js",
+      "http_status": 200,
+      "bytes": 3312,
+      "sha256": "592b69b4c92db6f20734648ff660443c6d25573c27d02805c17905672dfad075"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25EstherParser.9e1fcd31.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25EstherParser.9e1fcd31.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25EstherParser.9e1fcd31.chunk.js",
+      "http_status": 200,
+      "bytes": 12482,
+      "sha256": "e7cedadd7500b7c28424838dbb0812cdbdf6c41034887c87caeb9d36df8aeca4"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25GlitterParser.ec873231.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25GlitterParser.ec873231.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25GlitterParser.ec873231.chunk.js",
+      "http_status": 200,
+      "bytes": 7530,
+      "sha256": "64fe5f186c9f2a77e66e0ce98b52719db2af9283a03d7180736e55c9084ee3d6"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25KeypadParser.bf44541a.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25KeypadParser.bf44541a.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25KeypadParser.bf44541a.chunk.js",
+      "http_status": 200,
+      "bytes": 11913,
+      "sha256": "07ed67d37716461c9021097746c2f4a25baec8be0925fe5382f458c1b34f9791"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25OledParser.492ac3f8.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25OledParser.492ac3f8.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25OledParser.492ac3f8.chunk.js",
+      "http_status": 200,
+      "bytes": 19049,
+      "sha256": "fcd27a521e4aa8f252879990991fa708612fa05db15ab1fa61bf94d481717c9c"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25PSArcadeControllerParser.74b7f847.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25PSArcadeControllerParser.74b7f847.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25PSArcadeControllerParser.74b7f847.chunk.js",
+      "http_status": 200,
+      "bytes": 3765,
+      "sha256": "944db805a8dfeb1142188f5223203ed79fa9b701e777afcc7899ef19e26f78b8"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25Parser.3e08fffa.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25Parser.3e08fffa.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25Parser.3e08fffa.chunk.js",
+      "http_status": 200,
+      "bytes": 11198,
+      "sha256": "bc168feaa3537ff12091a7fae84b2ea431c5b2d89702874f35c8bd1cad8cfc46"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25PlayStationControllerParser.1ee42813.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25PlayStationControllerParser.1ee42813.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol25PlayStationControllerParser.1ee42813.chunk.js",
+      "http_status": 200,
+      "bytes": 4496,
+      "sha256": "3b2fb2bde701c0f0b1b0f8b829313dc9073cfb7f73facb13cc281dbda16d5bf4"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol30OledParser.d6b1b82f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol30OledParser.d6b1b82f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol30OledParser.d6b1b82f.chunk.js",
+      "http_status": 200,
+      "bytes": 13484,
+      "sha256": "dfc6898f08155cde53cac970184f957c63565725d229cb8bc4c1683bb673ebe1"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol30Parser.6ca9803d.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol30Parser.6ca9803d.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol30Parser.6ca9803d.chunk.js",
+      "http_status": 200,
+      "bytes": 7976,
+      "sha256": "2b2059b896198559e3cea40cf2147f9800712d75e57e30b7e9a4a60c5d5b1ab7"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40Parser.8d71ef65.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40Parser.8d71ef65.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40Parser.8d71ef65.chunk.js",
+      "http_status": 200,
+      "bytes": 12853,
+      "sha256": "4004ea0a55ff6ffb88e8c8e68b14930f8c4b44964da4fb7e1781864d76cce2c7"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40ParserEarbuds.2749a974.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40ParserEarbuds.2749a974.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40ParserEarbuds.2749a974.chunk.js",
+      "http_status": 200,
+      "bytes": 7861,
+      "sha256": "25a893f3fa3b8896b377ebcbcd61eed5b1e480290c0261dfd7776551c6d4e6d5"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40ParserHeadset.3aed49ff.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40ParserHeadset.3aed49ff.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocol40ParserHeadset.3aed49ff.chunk.js",
+      "http_status": 200,
+      "bytes": 4456,
+      "sha256": "6b91fd0f64ac2ac400d0de0a6b00b6b4741b50f5d91a9dc44d1c27505b6ca289"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocolElsaParser.472c165f.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocolElsaParser.472c165f.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocolElsaParser.472c165f.chunk.js",
+      "http_status": 200,
+      "bytes": 1936,
+      "sha256": "f93de6d3094c2fa1cc0a8ebd93af6ed424e235387e9952d9b70b3707c8fa60ac"
+    },
+    {
+      "path": ".ref/applications/synapse/lighting-engine/static/js/rzHardwareEventsProtocolLaylaParser.a17a99c6.chunk.js",
+      "source_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocolLaylaParser.a17a99c6.chunk.js",
+      "final_url": "https://apps.razer.com/synapse/lighting-engine/static/js/rzHardwareEventsProtocolLaylaParser.a17a99c6.chunk.js",
+      "http_status": 200,
+      "bytes": 1651,
+      "sha256": "bd85123f2a070e1d7da1a0d0ceaed5541d4eeda9f66e38c240e4db1cd87496df"
+    }
+  ]
+}

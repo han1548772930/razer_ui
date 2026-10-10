@@ -25,6 +25,11 @@ use std::{
 #[path = "control_pod_audio.rs"]
 mod control_pod_audio;
 pub use control_pod_audio::RuntimeAudioDevice;
+#[path = "audio_mixer_effects_page.rs"]
+mod audio_mixer_effects_page;
+#[path = "audio_mixer_presets.rs"]
+mod audio_mixer_presets;
+pub use audio_mixer_presets::{PresetShortcutBinding, PresetShortcutRequest};
 #[path = "audio_demo.rs"]
 mod demo;
 #[path = "audio_nommo.rs"]
@@ -223,6 +228,9 @@ pub struct AudioProductWorkspace {
     mixer_eq_queue: Option<[i32; 10]>,
     mixer_revisions: BTreeMap<String, u64>,
     mixer_error: Option<String>,
+    mixer_echo_timer: Option<Task<()>>,
+    mixer_echo_generation: u64,
+    effect_presets: Option<audio_mixer_presets::State>,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
 impl EventEmitter<AudioStudioRequested> for AudioProductWorkspace {}
@@ -259,6 +267,9 @@ impl AudioProductWorkspace {
             mixer_eq_queue: None,
             mixer_revisions: BTreeMap::new(),
             mixer_error: None,
+            mixer_echo_timer: None,
+            mixer_echo_generation: 0,
+            effect_presets: None,
         };
         this.initialize_equalizers();
         this.initialize_nommo_draft();
@@ -334,6 +345,7 @@ impl AudioProductWorkspace {
                 );
             }
         }
+        this.initialize_effect_presets(window, cx);
         this.sync(window, cx);
         this
     }
@@ -357,6 +369,7 @@ impl AudioProductWorkspace {
     pub fn snapshot(&self) -> Value {
         let mut snapshot = self.draft.clone();
         self.mixer_snapshot(&mut snapshot);
+        self.effect_preset_snapshot(&mut snapshot);
         snapshot
     }
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
@@ -384,6 +397,7 @@ impl AudioProductWorkspace {
             self.restore_oled_home_saved(saved);
         }
         self.normalize_nommo_draft();
+        self.restore_effect_presets(saved, window, cx);
         self.normalize_oled_home(window);
         // Restored snapshots never widen a current source's supported range.
         for control in self
@@ -401,7 +415,7 @@ impl AudioProductWorkspace {
                 }
             } else if matches!(
                 control.kind.as_str(),
-                "select" | "options" | "image_options"
+                "select" | "options" | "image_options" | "presets"
             ) {
                 let valid = self
                     .draft
@@ -562,6 +576,14 @@ impl AudioProductWorkspace {
                     }
                     return;
                 }
+                if this.spec.product_id == 1342 && key.starts_with("/device/echoReverb/") {
+                    // Current O handler previews each drag change and resets
+                    // its 500ms timer; it does not wait for pointer release.
+                    if let SliderEvent::Change(value) = event {
+                        this.edit(&key, normalized(value.start(), min, max, step), window, cx);
+                    }
+                    return;
+                }
                 if this.spec.product_id == 1342
                     && (mixer_path(&key).is_some()
                         || key.starts_with("/equalizers/mic_basic/bands/"))
@@ -640,6 +662,24 @@ impl AudioProductWorkspace {
         } else {
             return;
         }
+        if self.spec.product_id == 1342 && path == "/device/echoReverb/activeMode" {
+            let state = &mut self.draft["device"]["echoReverb"];
+            let mode = state["activeMode"].as_str().unwrap_or("library");
+            let bands = if mode == "custom" {
+                state["customValues"].clone()
+            } else {
+                razer_device::audio_mixer::echo_presets()
+                    .get(mode)
+                    .map(|bands| json!(bands))
+                    .unwrap_or_else(|| json!(razer_device::audio_mixer::echo_presets()["library"]))
+            };
+            state["modeValues"] = bands;
+        } else if self.spec.product_id == 1342 && path.starts_with("/device/echoReverb/modeValues/")
+        {
+            let state = &mut self.draft["device"]["echoReverb"];
+            state["activeMode"] = json!("custom");
+            state["customValues"] = state["modeValues"].clone();
+        }
         if enabled {
             if let Some(control) = self.control(path) {
                 for peer in &control.exclusive_with {
@@ -689,12 +729,57 @@ impl AudioProductWorkspace {
                 }
             }
         }
+        if self.spec.product_id == 1342 {
+            self.retain_active_effect(path);
+        }
         self.sync(window, cx);
         cx.emit(AudioProductChanged);
         if self.spec.product_id == 1342 {
-            self.request_mixer_write(path, self.draft.pointer(path).cloned(), cx);
+            if path.starts_with("/device/echoReverb/") {
+                self.schedule_echo_write(window, cx);
+            } else {
+                self.request_mixer_write(path, self.draft.pointer(path).cloned(), cx);
+            }
         }
         cx.notify();
+    }
+
+    fn schedule_echo_write(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.mixer_echo_generation = self.mixer_echo_generation.wrapping_add(1);
+        let generation = self.mixer_echo_generation;
+        let epoch = self.mixer_io.epoch;
+        self.mixer_io.edit_revision = self.mixer_io.edit_revision.wrapping_add(1);
+        let revision = self.mixer_io.edit_revision;
+        for path in std::iter::once("/device/echoReverb/isEnabled".to_owned())
+            .chain((0..4).map(|index| format!("/device/echoReverb/modeValues/{index}")))
+        {
+            self.mixer_revisions.insert(path, revision);
+        }
+        self.mixer_write_queue
+            .retain(|(path, _)| !path.starts_with("/device/echoReverb/"));
+        if self
+            .mixer_io
+            .pending
+            .as_ref()
+            .is_some_and(|request| request.path.starts_with("/device/echoReverb/"))
+        {
+            if let Some(cancel) = &self.mixer_io.cancellation {
+                cancel.store(true, std::sync::atomic::Ordering::Release);
+            }
+        }
+        self.mixer_echo_timer = Some(cx.spawn_in(window, async move |owner, cx| {
+            cx.background_executor()
+                .timer(std::time::Duration::from_millis(500))
+                .await;
+            let _ = owner.update_in(cx, |this, _, cx| {
+                if this.mixer_io.active
+                    && this.mixer_io.epoch == epoch
+                    && this.mixer_echo_generation == generation
+                {
+                    this.request_mixer_write("/device/echoReverb/isEnabled", None, cx);
+                }
+            });
+        }));
     }
 
     /// Emit a source-verified HID DSP write for controls backed by
@@ -717,11 +802,15 @@ impl AudioProductWorkspace {
             return;
         }
         self.mixer_io.edit_revision = self.mixer_io.edit_revision.wrapping_add(1);
-        if let Some(base) = ["/device/vocalFading/", "/device/voiceChanger/"]
-            .into_iter()
-            .find(|base| path.starts_with(base))
+        if let Some(base) = [
+            "/device/vocalFading/",
+            "/device/voiceChanger/",
+            "/device/echoReverb/",
+        ]
+        .into_iter()
+        .find(|base| path.starts_with(base))
         {
-            // Both source callers receive the entire retained object. A
+            // Source effect callers receive the entire retained object. A
             // newer switch/mode supersedes unsent fields from the old object.
             self.mixer_write_queue
                 .retain(|(queued_path, _)| !queued_path.starts_with(base));
@@ -861,53 +950,16 @@ impl AudioProductWorkspace {
         if self.spec.product_id != 1342 {
             return;
         }
-        if self.mixer_io.active == active
-            && (!active
-                || self
-                    .mixer_io
-                    .pending
-                    .as_ref()
-                    .is_some_and(|request| request.epoch == self.mixer_io.epoch)
-                || !self.mixer_read_queue.is_empty()
-                || !self.mixer_observed.is_empty())
-        {
+        if self.mixer_io.active == active {
             return;
         }
         self.mixer_io.active = active;
         self.invalidate_mixer();
         self.mixer_read_queue.clear();
         if active {
-            self.seed_mixer_reads();
+            self.submit_restored_effect_preset(cx);
             self.dispatch_next_mixer_read(cx);
         }
-    }
-
-    fn seed_mixer_reads(&mut self) {
-        self.mixer_read_queue.extend(
-            [
-                "/device/noiseGate/isEnabled",
-                "/device/noiseGate/threshold/value",
-                "/device/noiseGate/targetGain/value",
-                "/device/noiseGate/attackTime/value",
-                "/device/noiseGate/releaseTime/value",
-                "/device/compressor/isEnabled",
-                "/device/compressor/threshold/value",
-                "/device/compressor/softKneeWidth/value",
-                "/device/compressor/ratio/value",
-                "/device/compressor/makeUpGain/value",
-                "/device/compressor/attackTime/value",
-                "/device/compressor/releaseTime/value",
-                "/device/vocalFading/isEnabled",
-                "/device/vocalFading/value",
-                "/device/voiceChanger/isEnabled",
-                "/device/voiceChanger/value",
-                "/device/keyShifter/value",
-            ]
-            .into_iter()
-            .map(str::to_owned),
-        );
-        self.mixer_read_queue
-            .extend((0..10).map(|index| format!("/equalizers/mic/bands/{index}")));
     }
 
     fn dispatch_next_mixer_read(&mut self, cx: &mut Context<Self>) {
@@ -955,6 +1007,8 @@ impl AudioProductWorkspace {
         self.mixer_read_queue.clear();
         self.mixer_write_queue.clear();
         self.mixer_eq_queue = None;
+        self.mixer_echo_timer = None;
+        self.mixer_echo_generation = self.mixer_echo_generation.wrapping_add(1);
         self.mixer_observed.clear();
         self.mixer_error = None;
     }
@@ -995,24 +1049,19 @@ impl AudioProductWorkspace {
                     self.mixer_error = completion.warning;
                     let observed = match completion.reply {
                         AudioMixerReply::Read(value) => Some(value),
-                        AudioMixerReply::Write(write) if write.verified => Some(write.observed),
-                        AudioMixerReply::Write(_) => {
-                            self.mixer_error = Some("DSP 写入没有设备回读确认".into());
+                        AudioMixerReply::Write(write) => {
+                            if !write.transport_completed {
+                                self.mixer_error =
+                                    Some("DSP setter transport did not complete".into());
+                            }
                             None
                         }
                         AudioMixerReply::MicEqWrite(results) => {
-                            if results.len() == 11 && results.iter().all(|write| write.verified) {
-                                for (index, write) in results.into_iter().enumerate() {
-                                    let path = if index == 0 {
-                                        "/equalizers/mic/isEnabled".into()
-                                    } else {
-                                        format!("/equalizers/mic/bands/{}", index - 1)
-                                    };
-                                    self.mixer_observed.insert(path, write.observed);
-                                }
-                            } else {
+                            if results.len() != 11
+                                || !results.iter().all(|write| write.transport_completed)
+                            {
                                 self.mixer_error =
-                                    Some("Mic EQ完整数组缺少全部设备回读确认".into());
+                                    Some("Mic EQ source setter chain did not complete".into());
                             }
                             None
                         }
@@ -1032,6 +1081,8 @@ impl AudioProductWorkspace {
                                 !path.starts_with("/device/vocalFading/")
                             } else if request.path == "/device/voiceChanger/isEnabled" {
                                 !path.starts_with("/device/voiceChanger/")
+                            } else if request.path == "/device/echoReverb/isEnabled" {
+                                !path.starts_with("/device/echoReverb/")
                             } else {
                                 self.mixer_revisions.get(path).copied().unwrap_or(0)
                                     != request.edit_revision
@@ -1336,6 +1387,28 @@ impl AudioProductWorkspace {
                     )
                 })
                 .into_any_element(),
+            "presets" => v_flex()
+                .gap_2()
+                .child(label)
+                .child(
+                    h_flex()
+                        .gap_2()
+                        .flex_wrap()
+                        .children(control.options.iter().map(|option| {
+                            let path = path.clone();
+                            let value = option.value.clone();
+                            Button::new(SharedString::from(format!("audio-preset-{path}-{value}")))
+                                .small()
+                                .outline()
+                                .label(t(&option.label))
+                                .selected(self.draft.pointer(&path) == Some(&value))
+                                .disabled(!enabled)
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    this.edit(&path, value.clone(), window, cx);
+                                }))
+                        })),
+                )
+                .into_any_element(),
             "slider" => {
                 let value = self
                     .volume_preview()
@@ -1512,6 +1585,9 @@ impl AudioProductWorkspace {
         // 屏保网格都不是通用音频控件的形态，见 audio_oled.rs。
         if self.spec.product_id == 1383 && key == "TAB_OLED" {
             return self.kraken_oled_page(window, cx);
+        }
+        if self.spec.product_id == 1342 && key == "EFFECTS" {
+            return self.mixer_effects_page(window, cx);
         }
         let page = self.spec.pages.iter().find(|p| p.key == key);
         let mut sections = Vec::new();

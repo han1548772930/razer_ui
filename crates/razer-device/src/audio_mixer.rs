@@ -10,6 +10,7 @@ use std::{collections::BTreeMap, sync::OnceLock, thread, time::Duration};
 pub enum MixerControl {
     DspFirmware,
     EqEnabled,
+    PageEqEnabled,
     EqBand,
     MagicVoiceEnabled,
     PageMagicVoiceEnabled,
@@ -40,8 +41,11 @@ pub enum MixerControl {
     CompressorAttack,
     CompressorRelease,
     KeyShift,
+    PageKeyShift,
     VocalFadingEnabled,
+    PageVocalFadingEnabled,
     VocalFadingLevel,
+    PageVocalFadingLevel,
     MicMonitorVolume,
     HeadphonesVolume,
     HeadphonesMuted,
@@ -70,7 +74,7 @@ impl MixerControl {
     fn key(self) -> &'static str {
         match self {
             Self::DspFirmware => "dsp_firmware",
-            Self::EqEnabled => "eq_enabled",
+            Self::EqEnabled | Self::PageEqEnabled => "eq_enabled",
             Self::EqBand => "eq_band",
             Self::MagicVoiceEnabled => "magic_voice_enabled",
             Self::PageMagicVoiceEnabled => "magic_voice_enabled",
@@ -99,8 +103,11 @@ impl MixerControl {
             Self::CompressorAttack => "compressor_attack",
             Self::CompressorRelease => "compressor_release",
             Self::KeyShift => "key_shift",
+            Self::PageKeyShift => "key_shift",
             Self::VocalFadingEnabled => "vocal_fading_enabled",
+            Self::PageVocalFadingEnabled => "vocal_fading_enabled",
             Self::VocalFadingLevel => "vocal_fading_level",
+            Self::PageVocalFadingLevel => "vocal_fading_level",
             Self::MicMonitorVolume => "mic_monitor_volume",
             Self::HeadphonesVolume => "headphones_volume",
             Self::HeadphonesMuted => "headphones_muted",
@@ -481,9 +488,12 @@ struct EchoRecipe {
 }
 fn echo_recipe() -> &'static EchoRecipe {
     static RECIPE: OnceLock<EchoRecipe> = OnceLock::new();
-    RECIPE.get_or_init(|| serde_json::from_str(include_str!(
-        "../../../assets/data/audio-mixer-echo-current.json"
-    )).expect("source-derived Echo/Reverb recipe"))
+    RECIPE.get_or_init(|| {
+        serde_json::from_str(include_str!(
+            "../../../assets/data/audio-mixer-echo-current.json"
+        ))
+        .expect("source-derived Echo/Reverb recipe")
+    })
 }
 pub fn echo_presets() -> &'static BTreeMap<String, [f32; 4]> {
     &echo_recipe().presets
@@ -773,8 +783,8 @@ impl<'a> MixerSession<'a> {
         }
     }
 
-    /// The original setter confirms transport completion only. This result
-    /// additionally verifies an actual readback, without fabricating an ACK.
+    /// Follow the source setter reports; completion is transport completion,
+    /// not an additional getter or a claimed observed device state.
     pub fn apply(
         &self,
         target: &MixerTarget,
@@ -782,17 +792,70 @@ impl<'a> MixerSession<'a> {
     ) -> anyhow::Result<MixerWriteResult> {
         let (prop, command) = property(target)?;
         validate_value(prop, requested)?;
-        let previous = self.read(target).context("设置前读取失败，未发送设置")?;
-        let initial = self.query_property(prop, command)?;
-        let payload = if matches!(target.control, MixerControl::PageMagicVoiceEnabled | MixerControl::PageEchoReverbEnabled) {
-            let MixerValue::Boolean { enabled } = requested else {
-                bail!("Current page Magic Voice switch must be boolean");
+        if let MixerValue::Scalar { value } = requested {
+            let page_range = match target.control {
+                MixerControl::PageReverbRoom => Some((-43., -19.)),
+                MixerControl::PageReverbDecay => Some((0.6, 2.7)),
+                MixerControl::PageEchoGain => Some((0., 1.)),
+                MixerControl::PageEchoDelay => Some((110., 200.)),
+                _ => None,
             };
-            // Current JS he template copies the three low query bytes into
-            // its fixed C0 high byte, then changes bit 1.
-            let mask = if matches!(target.control, MixerControl::PageMagicVoiceEnabled) { 2 } else { 12 };
-            let copied = if mask == 2 { 0xc0000000 } else { 0x80000000 } | (initial & 0x00ffffff);
-            if *enabled { copied | mask } else { copied & !mask }
+            if let Some((min, max)) = page_range {
+                ensure!(
+                    (min..=max).contains(value),
+                    "Echo field exceeds the current page caller range"
+                );
+            }
+        }
+        self.validate_reports(prop)?;
+        let fixed_scalar = matches!(
+            target.control,
+            MixerControl::PageMagicVoice
+                | MixerControl::PageReverbRoom
+                | MixerControl::PageReverbDecay
+                | MixerControl::PageEchoGain
+                | MixerControl::PageEchoDelay
+                | MixerControl::PageKeyShift
+                | MixerControl::PageVocalFadingLevel
+        );
+        // Source fixed scalar templates and EQ bands do not query their prior value.
+        let initial = if fixed_scalar
+            || matches!(
+                target.control,
+                MixerControl::EqBand | MixerControl::PageEqEnabled
+            ) {
+            0
+        } else {
+            self.query_property(prop, command)?
+        };
+        let payload = if matches!(target.control, MixerControl::PageEqEnabled) {
+            let MixerValue::Boolean { enabled } = requested else {
+                bail!("Current page EQ switch must be boolean");
+            };
+            if *enabled { 0x40000091 } else { 0x40000090 }
+        } else if matches!(
+            target.control,
+            MixerControl::PageMagicVoiceEnabled
+                | MixerControl::PageEchoReverbEnabled
+                | MixerControl::PageVocalFadingEnabled
+        ) {
+            let MixerValue::Boolean { enabled } = requested else {
+                bail!("Current page DSP switch must be boolean");
+            };
+            // Current JS he/De/et copy the three low query bytes into their
+            // fixed C0/80/00 high byte, then change the source gate.
+            let (high, mask) = match target.control {
+                MixerControl::PageMagicVoiceEnabled => (0xc0000000, 2),
+                MixerControl::PageEchoReverbEnabled => (0x80000000, 12),
+                MixerControl::PageVocalFadingEnabled => (0, 8),
+                _ => unreachable!(),
+            };
+            let copied = high | (initial & 0x00ffffff);
+            if *enabled {
+                copied | mask
+            } else {
+                copied & !mask
+            }
         } else if matches!(target.control, MixerControl::PageMagicVoice) {
             let MixerValue::Scalar { value } = requested else {
                 bail!("Current page Magic Voice mode must be numeric");
@@ -816,6 +879,8 @@ impl<'a> MixerSession<'a> {
                     flags |= mask;
                 }
             }
+            // Current setMagicVoiceMode queries pe after its three gate reads.
+            let _ = self.query_property(prop, command)?;
             let code = prop
                 .codes
                 .as_ref()
@@ -825,10 +890,17 @@ impl<'a> MixerSession<'a> {
             // Current JS ge/ye/fe/Se are fixed templates. Rebuild only the
             // three source gates; do not carry native reserved bits forward.
             0x80000000 | (u32::from(*code) << 8) | flags
-        } else if matches!(target.control, MixerControl::PageReverbRoom
-            | MixerControl::PageReverbDecay | MixerControl::PageEchoGain | MixerControl::PageEchoDelay) {
+        } else if matches!(
+            target.control,
+            MixerControl::PageReverbRoom
+                | MixerControl::PageReverbDecay
+                | MixerControl::PageEchoGain
+                | MixerControl::PageEchoDelay
+                | MixerControl::PageKeyShift
+                | MixerControl::PageVocalFadingLevel
+        ) {
             let MixerValue::Scalar { value } = requested else {
-                bail!("Current Echo/Reverb field must be numeric");
+                bail!("Current page DSP field must be numeric");
             };
             let mut flags = prop.selector.context("Source Echo selector missing")?;
             for (control, mask) in [
@@ -836,12 +908,23 @@ impl<'a> MixerSession<'a> {
                 (MixerControl::MagicVoiceEnabled, 2),
                 (MixerControl::EchoReverbEnabled, 12),
             ] {
-                if matches!(self.read(&MixerTarget { control, band:None, channel:MixerChannel::Both })?,
-                    MixerValue::Boolean { enabled:true }) { flags |= mask; }
+                if matches!(
+                    self.read(&MixerTarget {
+                        control,
+                        band: None,
+                        channel: MixerChannel::Both
+                    })?,
+                    MixerValue::Boolean { enabled: true }
+                ) {
+                    flags |= mask;
+                }
             }
             let raw = if matches!(target.control, MixerControl::PageEchoGain) {
                 let index = (*value * 10.).trunc() as usize;
-                *echo_recipe().gain_table.get(index).context("Echo gain source index exceeds 0..10")?
+                *echo_recipe()
+                    .gain_table
+                    .get(index)
+                    .context("Echo gain source index exceeds 0..10")?
             } else {
                 numeric_raw(prop, *value)?
             };
@@ -851,34 +934,10 @@ impl<'a> MixerSession<'a> {
         };
         self.write_property(prop, command, payload)
             .context("DSP 设置发送未能确认；设备可能已经接受，请重新读取")?;
-        let observed = self
-            .read(target)
-            .context("DSP 设置已发送，但回读未能确认")?;
-        let expected = match requested {
-            MixerValue::Scalar { .. } if prop.recipe == "endpoint_volume" => MixerValue::Scalar {
-                value: decode_volume(prop, payload, target.channel)?,
-            },
-            MixerValue::Scalar { value } if prop.recipe != "magic_voice" => MixerValue::Scalar {
-                value: decode_scalar(prop, numeric_raw(prop, *value)?)?,
-            },
-            MixerValue::EqBand { .. } => decode_eq(payload),
-            _ => requested.clone(),
-        };
-        let verified = match (&expected, &observed) {
-            (MixerValue::Boolean { enabled: a }, MixerValue::Boolean { enabled: b }) => a == b,
-            (MixerValue::Scalar { value: a }, MixerValue::Scalar { value: b }) => a == b,
-            (MixerValue::EqBand { data: a, gain: c }, MixerValue::EqBand { data: b, gain: d }) => {
-                a == b && c == d
-            }
-            _ => false,
-        };
-        ensure!(verified, "DSP 回读与原码量化后的请求值不符，未确认设置成功");
         (self.validate)()?;
         Ok(MixerWriteResult {
             requested: requested.clone(),
-            previous,
-            observed,
-            verified,
+            transport_completed: true,
         })
     }
 }
@@ -886,9 +945,7 @@ impl<'a> MixerSession<'a> {
 #[derive(Deserialize, Serialize)]
 pub struct MixerWriteResult {
     pub requested: MixerValue,
-    pub previous: MixerValue,
-    pub observed: MixerValue,
-    pub verified: bool,
+    pub transport_completed: bool,
 }
 
 fn select(prop: &Property, initial: u32) -> anyhow::Result<u32> {
@@ -1336,16 +1393,9 @@ mod tests {
             .unwrap()
             .apply(&eq, &requested)
             .unwrap();
-        assert!(result.verified);
-        assert!(matches!(
-            result.observed,
-            MixerValue::EqBand {
-                data: 0x61234,
-                gain: -4
-            }
-        ));
+        assert!(result.transport_completed);
         assert_eq!(
-            mock.outputs()[2],
+            mock.outputs()[0],
             wire(19, 0x5ffc0078, &[0, 0x3c, 0x24, 0x69])
         );
     }
@@ -1360,8 +1410,8 @@ mod tests {
             .unwrap()
             .apply(&headphones, &MixerValue::Scalar { value: -6.1 })
             .unwrap();
-        assert!(matches!(result.observed, MixerValue::Scalar { value } if value == -6.75));
-        assert_eq!(mock.outputs()[2], wire(3, 0x1800c028, &[0xca, 0xca]));
+        assert!(result.transport_completed);
+        assert_eq!(mock.outputs()[1], wire(3, 0x1800c028, &[0xca, 0xca]));
         let console = MixerTarget {
             channel: MixerChannel::Channel0,
             ..target(MixerControl::ConsoleVolume)
@@ -1439,32 +1489,26 @@ mod tests {
     }
 
     #[test]
-    fn source_write_failure_or_readback_failure_never_returns_verified_or_rolls_back() {
-        for final_reply in [reply32(0), Err("mock readback failed"), Ok(vec![18, 1])] {
-            let mock = ReportMock::new(vec![reply32(0), reply32(0xa0), final_reply]);
-            let validate = || Ok(());
-            assert!(
-                MixerSession::new(&mock, &validate)
-                    .unwrap()
-                    .apply(
-                        &target(MixerControl::EqEnabled),
-                        &MixerValue::Boolean { enabled: true }
-                    )
-                    .is_err()
-            );
-            assert_eq!(
-                mock.outputs(),
-                vec![
-                    wire(4, 0x5ffc0034, &[]),
-                    wire(4, 0x5ffc0034, &[]),
-                    wire(19, 0x5ffc0034, &[0, 0, 0, 0xa1]),
-                    wire(4, 0x5ffc0034, &[])
-                ]
-            );
-        }
-        let mut mock = ReportMock::new(vec![reply32(0), reply32(0xa0)]);
-        mock.fail_output = Some(3);
+    fn source_write_completion_does_not_add_a_getter() {
+        let mock = ReportMock::new(vec![reply32(0xa0)]);
         let validate = || Ok(());
+        let result = MixerSession::new(&mock, &validate)
+            .unwrap()
+            .apply(
+                &target(MixerControl::EqEnabled),
+                &MixerValue::Boolean { enabled: true },
+            )
+            .unwrap();
+        assert!(result.transport_completed);
+        assert_eq!(
+            mock.outputs(),
+            vec![
+                wire(4, 0x5ffc0034, &[]),
+                wire(19, 0x5ffc0034, &[0, 0, 0, 0xa1])
+            ]
+        );
+        let mut mock = ReportMock::new(vec![reply32(0xa0)]);
+        mock.fail_output = Some(2);
         assert!(
             MixerSession::new(&mock, &validate)
                 .unwrap()
@@ -1474,18 +1518,7 @@ mod tests {
                 )
                 .is_err()
         );
-        assert_eq!(mock.outputs().len(), 3);
-        let mock = ReportMock::new(vec![Err("initial read failed")]);
-        assert!(
-            MixerSession::new(&mock, &validate)
-                .unwrap()
-                .apply(
-                    &target(MixerControl::EqEnabled),
-                    &MixerValue::Boolean { enabled: true }
-                )
-                .is_err()
-        );
-        assert_eq!(mock.outputs().len(), 1);
+        assert_eq!(mock.outputs().len(), 2);
     }
 
     #[test]

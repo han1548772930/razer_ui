@@ -207,51 +207,6 @@
   },
   "current_consumers": [
     {
-      "product_id": 1398,
-      "path": ".ref/middleware/1398/main.11fdb3ee2d36c7e8efa4.js",
-      "sha256": "bcaa5c81648c67799f276f84cd8bd4a347c08c5ceacfcb73d4238a66f633c3e4",
-      "offset_unit": "Python Unicode code points",
-      "offset": 935224,
-      "token": "dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})",
-      "snippet": "Array.isArray(e.devices)?e.devices:[]}))}enableAudioDeviceChangeNotification(e){return vs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})}))}enableRouting(e){return vs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioRouter\",\"EnableRouting\",{enable:e})}))}routeExternalDevice(e,t){return vs(this,void 0,void 0,(function*(){const i={primaryDevice:e,routedDevice:t};return "
-    },
-    {
-      "product_id": 1398,
-      "path": ".ref/middleware/1398/main.11fdb3ee2d36c7e8efa4.js",
-      "sha256": "bcaa5c81648c67799f276f84cd8bd4a347c08c5ceacfcb73d4238a66f633c3e4",
-      "offset_unit": "Python Unicode code points",
-      "offset": 920881,
-      "token": "enableAudioDeviceChangeNotification(!0)",
-      "snippet": "=this.audioUtil)||void 0===t?void 0:t.init(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.er"
-    },
-    {
-      "product_id": 1398,
-      "path": ".ref/middleware/1398/main.11fdb3ee2d36c7e8efa4.js",
-      "sha256": "bcaa5c81648c67799f276f84cd8bd4a347c08c5ceacfcb73d4238a66f633c3e4",
-      "offset_unit": "Python Unicode code points",
-      "offset": 667801,
-      "token": "s.response(\"RzAudioUtilEvent\"",
-      "snippet": "{this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1"
-    },
-    {
-      "product_id": 1398,
-      "path": ".ref/middleware/1398/main.11fdb3ee2d36c7e8efa4.js",
-      "sha256": "bcaa5c81648c67799f276f84cd8bd4a347c08c5ceacfcb73d4238a66f633c3e4",
-      "offset_unit": "Python Unicode code points",
-      "offset": 667937,
-      "token": "this.emit(e.eventType,e)",
-      "snippet": "odeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initiali"
-    },
-    {
-      "product_id": 1398,
-      "path": ".ref/middleware/1398/main.11fdb3ee2d36c7e8efa4.js",
-      "sha256": "bcaa5c81648c67799f276f84cd8bd4a347c08c5ceacfcb73d4238a66f633c3e4",
-      "offset_unit": "Python Unicode code points",
-      "offset": 920921,
-      "token": "this.audioUtil.on(\"AudioEnumerator_deviceChange\"",
-      "snippet": "it(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",n);th"
-    },
-    {
       "product_id": 1422,
       "path": ".ref/middleware/1422/8539.79323eca355460a8ff0d.js",
       "sha256": "893bc2b1260b2389887d17bf23a56ae1f8af948b4e6879f4a9c51479a15d2734",
@@ -297,51 +252,6 @@
       "snippet": "it(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)}),this.audioUtil.on(\"AudioRouter_StatusChange\",e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)})}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",n);this.i"
     },
     {
-      "product_id": 1427,
-      "path": ".ref/middleware/1427/2498.88cfef4cd055553edbe3.js",
-      "sha256": "a42f789333ecfb696dcbec56c4f26442fead93ca81e5b090ac4b6df397ed3347",
-      "offset_unit": "Python Unicode code points",
-      "offset": 227762,
-      "token": "dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})",
-      "snippet": "Array.isArray(e.devices)?e.devices:[]}))}enableAudioDeviceChangeNotification(e){return hs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})}))}enableRouting(e){return hs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioRouter\",\"EnableRouting\",{enable:e})}))}routeExternalDevice(e,t){return hs(this,void 0,void 0,(function*(){const n={primaryDevice:e,routedDevice:t};return "
-    },
-    {
-      "product_id": 1427,
-      "path": ".ref/middleware/1427/2498.88cfef4cd055553edbe3.js",
-      "sha256": "a42f789333ecfb696dcbec56c4f26442fead93ca81e5b090ac4b6df397ed3347",
-      "offset_unit": "Python Unicode code points",
-      "offset": 213511,
-      "token": "enableAudioDeviceChangeNotification(!0)",
-      "snippet": "=this.audioUtil)||void 0===t?void 0:t.init(),i){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.er"
-    },
-    {
-      "product_id": 1427,
-      "path": ".ref/middleware/1427/2498.88cfef4cd055553edbe3.js",
-      "sha256": "a42f789333ecfb696dcbec56c4f26442fead93ca81e5b090ac4b6df397ed3347",
-      "offset_unit": "Python Unicode code points",
-      "offset": 2016,
-      "token": "s.response(\"RzAudioUtilEvent\"",
-      "snippet": "{this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1"
-    },
-    {
-      "product_id": 1427,
-      "path": ".ref/middleware/1427/2498.88cfef4cd055553edbe3.js",
-      "sha256": "a42f789333ecfb696dcbec56c4f26442fead93ca81e5b090ac4b6df397ed3347",
-      "offset_unit": "Python Unicode code points",
-      "offset": 2152,
-      "token": "this.emit(e.eventType,e)",
-      "snippet": "odeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return r(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initiali"
-    },
-    {
-      "product_id": 1427,
-      "path": ".ref/middleware/1427/2498.88cfef4cd055553edbe3.js",
-      "sha256": "a42f789333ecfb696dcbec56c4f26442fead93ca81e5b090ac4b6df397ed3347",
-      "offset_unit": "Python Unicode code points",
-      "offset": 213551,
-      "token": "this.audioUtil.on(\"AudioEnumerator_deviceChange\"",
-      "snippet": "it(),i){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",i);th"
-    },
-    {
       "product_id": 1446,
       "path": ".ref/middleware/1446/8539.84676161aef6933093a6.js",
       "sha256": "d0bcdbed3aecd9814a0dbd030340462f94e905882e2b307073579fba1f21ed6c",
@@ -385,188 +295,24 @@
       "offset": 1224870,
       "token": "this.audioUtil.on(\"AudioEnumerator_deviceChange\"",
       "snippet": "it(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)}),this.audioUtil.on(\"AudioRouter_StatusChange\",e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)})}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",n);this.i"
-    },
-    {
-      "product_id": 2638,
-      "path": ".ref/middleware/2638/main.ce290ea3a2c8cf6a1d88.js",
-      "sha256": "f14a73d14be17df6e46397e0baa4c7bc6e6570b4ecb24590159ae2aa971216c1",
-      "offset_unit": "Python Unicode code points",
-      "offset": 956424,
-      "token": "dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})",
-      "snippet": "Array.isArray(e.devices)?e.devices:[]}))}enableAudioDeviceChangeNotification(e){return Rs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})}))}enableRouting(e){return Rs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioRouter\",\"EnableRouting\",{enable:e})}))}routeExternalDevice(e,t){return Rs(this,void 0,void 0,(function*(){const i={primaryDevice:e,routedDevice:t};return "
-    },
-    {
-      "product_id": 2638,
-      "path": ".ref/middleware/2638/main.ce290ea3a2c8cf6a1d88.js",
-      "sha256": "f14a73d14be17df6e46397e0baa4c7bc6e6570b4ecb24590159ae2aa971216c1",
-      "offset_unit": "Python Unicode code points",
-      "offset": 942081,
-      "token": "enableAudioDeviceChangeNotification(!0)",
-      "snippet": "=this.audioUtil)||void 0===t?void 0:t.init(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.er"
-    },
-    {
-      "product_id": 2638,
-      "path": ".ref/middleware/2638/main.ce290ea3a2c8cf6a1d88.js",
-      "sha256": "f14a73d14be17df6e46397e0baa4c7bc6e6570b4ecb24590159ae2aa971216c1",
-      "offset_unit": "Python Unicode code points",
-      "offset": 678955,
-      "token": "s.response(\"RzAudioUtilEvent\"",
-      "snippet": "{this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1"
-    },
-    {
-      "product_id": 2638,
-      "path": ".ref/middleware/2638/main.ce290ea3a2c8cf6a1d88.js",
-      "sha256": "f14a73d14be17df6e46397e0baa4c7bc6e6570b4ecb24590159ae2aa971216c1",
-      "offset_unit": "Python Unicode code points",
-      "offset": 679091,
-      "token": "this.emit(e.eventType,e)",
-      "snippet": "odeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initiali"
-    },
-    {
-      "product_id": 2638,
-      "path": ".ref/middleware/2638/main.ce290ea3a2c8cf6a1d88.js",
-      "sha256": "f14a73d14be17df6e46397e0baa4c7bc6e6570b4ecb24590159ae2aa971216c1",
-      "offset_unit": "Python Unicode code points",
-      "offset": 942121,
-      "token": "this.audioUtil.on(\"AudioEnumerator_deviceChange\"",
-      "snippet": "it(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",n);th"
-    },
-    {
-      "product_id": 2641,
-      "path": ".ref/middleware/2641/main.c5d4890695071a363997.js",
-      "sha256": "7136737901785839f62b0aa6001156425bb9b6094f382aeffe0e8a8239c8099e",
-      "offset_unit": "Python Unicode code points",
-      "offset": 959331,
-      "token": "dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})",
-      "snippet": "Array.isArray(e.devices)?e.devices:[]}))}enableAudioDeviceChangeNotification(e){return Rs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})}))}enableRouting(e){return Rs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioRouter\",\"EnableRouting\",{enable:e})}))}routeExternalDevice(e,t){return Rs(this,void 0,void 0,(function*(){const i={primaryDevice:e,routedDevice:t};return "
-    },
-    {
-      "product_id": 2641,
-      "path": ".ref/middleware/2641/main.c5d4890695071a363997.js",
-      "sha256": "7136737901785839f62b0aa6001156425bb9b6094f382aeffe0e8a8239c8099e",
-      "offset_unit": "Python Unicode code points",
-      "offset": 944988,
-      "token": "enableAudioDeviceChangeNotification(!0)",
-      "snippet": "=this.audioUtil)||void 0===t?void 0:t.init(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.er"
-    },
-    {
-      "product_id": 2641,
-      "path": ".ref/middleware/2641/main.c5d4890695071a363997.js",
-      "sha256": "7136737901785839f62b0aa6001156425bb9b6094f382aeffe0e8a8239c8099e",
-      "offset_unit": "Python Unicode code points",
-      "offset": 680793,
-      "token": "s.response(\"RzAudioUtilEvent\"",
-      "snippet": "{this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1"
-    },
-    {
-      "product_id": 2641,
-      "path": ".ref/middleware/2641/main.c5d4890695071a363997.js",
-      "sha256": "7136737901785839f62b0aa6001156425bb9b6094f382aeffe0e8a8239c8099e",
-      "offset_unit": "Python Unicode code points",
-      "offset": 680929,
-      "token": "this.emit(e.eventType,e)",
-      "snippet": "odeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initiali"
-    },
-    {
-      "product_id": 2641,
-      "path": ".ref/middleware/2641/main.c5d4890695071a363997.js",
-      "sha256": "7136737901785839f62b0aa6001156425bb9b6094f382aeffe0e8a8239c8099e",
-      "offset_unit": "Python Unicode code points",
-      "offset": 945028,
-      "token": "this.audioUtil.on(\"AudioEnumerator_deviceChange\"",
-      "snippet": "it(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",n);th"
-    },
-    {
-      "product_id": 4124,
-      "path": ".ref/middleware/4124/main.3677f1798f75ba44ad39.js",
-      "sha256": "36887be305e355271469451ec7708c7e6275320b956a753e23043b0bff7e1d09",
-      "offset_unit": "Python Unicode code points",
-      "offset": 935224,
-      "token": "dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})",
-      "snippet": "Array.isArray(e.devices)?e.devices:[]}))}enableAudioDeviceChangeNotification(e){return vs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})}))}enableRouting(e){return vs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioRouter\",\"EnableRouting\",{enable:e})}))}routeExternalDevice(e,t){return vs(this,void 0,void 0,(function*(){const i={primaryDevice:e,routedDevice:t};return "
-    },
-    {
-      "product_id": 4124,
-      "path": ".ref/middleware/4124/main.3677f1798f75ba44ad39.js",
-      "sha256": "36887be305e355271469451ec7708c7e6275320b956a753e23043b0bff7e1d09",
-      "offset_unit": "Python Unicode code points",
-      "offset": 920881,
-      "token": "enableAudioDeviceChangeNotification(!0)",
-      "snippet": "=this.audioUtil)||void 0===t?void 0:t.init(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.er"
-    },
-    {
-      "product_id": 4124,
-      "path": ".ref/middleware/4124/main.3677f1798f75ba44ad39.js",
-      "sha256": "36887be305e355271469451ec7708c7e6275320b956a753e23043b0bff7e1d09",
-      "offset_unit": "Python Unicode code points",
-      "offset": 667801,
-      "token": "s.response(\"RzAudioUtilEvent\"",
-      "snippet": "{this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1"
-    },
-    {
-      "product_id": 4124,
-      "path": ".ref/middleware/4124/main.3677f1798f75ba44ad39.js",
-      "sha256": "36887be305e355271469451ec7708c7e6275320b956a753e23043b0bff7e1d09",
-      "offset_unit": "Python Unicode code points",
-      "offset": 667937,
-      "token": "this.emit(e.eventType,e)",
-      "snippet": "odeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initiali"
-    },
-    {
-      "product_id": 4124,
-      "path": ".ref/middleware/4124/main.3677f1798f75ba44ad39.js",
-      "sha256": "36887be305e355271469451ec7708c7e6275320b956a753e23043b0bff7e1d09",
-      "offset_unit": "Python Unicode code points",
-      "offset": 920921,
-      "token": "this.audioUtil.on(\"AudioEnumerator_deviceChange\"",
-      "snippet": "it(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",n);th"
-    },
-    {
-      "product_id": 4126,
-      "path": ".ref/middleware/4126/main.460063859626cc3aa87e.js",
-      "sha256": "b9e9134ad83872aff9b4c09a783f699003c6cafcefaf948393a1533cd0949f5b",
-      "offset_unit": "Python Unicode code points",
-      "offset": 959331,
-      "token": "dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})",
-      "snippet": "Array.isArray(e.devices)?e.devices:[]}))}enableAudioDeviceChangeNotification(e){return Rs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioEnumerator\",\"EnableNotification\",{enable:e})}))}enableRouting(e){return Rs(this,void 0,void 0,(function*(){return yield this.audioUtil.dispatch(\"AudioRouter\",\"EnableRouting\",{enable:e})}))}routeExternalDevice(e,t){return Rs(this,void 0,void 0,(function*(){const i={primaryDevice:e,routedDevice:t};return "
-    },
-    {
-      "product_id": 4126,
-      "path": ".ref/middleware/4126/main.460063859626cc3aa87e.js",
-      "sha256": "b9e9134ad83872aff9b4c09a783f699003c6cafcefaf948393a1533cd0949f5b",
-      "offset_unit": "Python Unicode code points",
-      "offset": 944988,
-      "token": "enableAudioDeviceChangeNotification(!0)",
-      "snippet": "=this.audioUtil)||void 0===t?void 0:t.init(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.er"
-    },
-    {
-      "product_id": 4126,
-      "path": ".ref/middleware/4126/main.460063859626cc3aa87e.js",
-      "sha256": "b9e9134ad83872aff9b4c09a783f699003c6cafcefaf948393a1533cd0949f5b",
-      "offset_unit": "Python Unicode code points",
-      "offset": 680793,
-      "token": "s.response(\"RzAudioUtilEvent\"",
-      "snippet": "{this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1"
-    },
-    {
-      "product_id": 4126,
-      "path": ".ref/middleware/4126/main.460063859626cc3aa87e.js",
-      "sha256": "b9e9134ad83872aff9b4c09a783f699003c6cafcefaf948393a1533cd0949f5b",
-      "offset_unit": "Python Unicode code points",
-      "offset": 680929,
-      "token": "this.emit(e.eventType,e)",
-      "snippet": "odeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initiali"
-    },
-    {
-      "product_id": 4126,
-      "path": ".ref/middleware/4126/main.460063859626cc3aa87e.js",
-      "sha256": "b9e9134ad83872aff9b4c09a783f699003c6cafcefaf948393a1533cd0949f5b",
-      "offset_unit": "Python Unicode code points",
-      "offset": 945028,
-      "token": "this.audioUtil.on(\"AudioEnumerator_deviceChange\"",
-      "snippet": "it(),n){const e=yield this.audioUtil.getDLLVersion();console.log(`[init]RzAudioUtil version:${e}`),yield this.enableAudioDeviceChangeNotification(!0),this.audioUtil.on(\"AudioEnumerator_deviceChange\",(e=>{console.log(\"[init] AudioEnumerator_deviceChange event received:\",e)})),this.audioUtil.on(\"AudioRouter_StatusChange\",(e=>{console.log(\"[init] AudioRouter_StatusChange event received:\",e)}))}else console.error(\"[!!][init]RzAudioUtil init failed. r:\",n);th"
     }
   ],
+  "activation_receipt": {
+    "path": "docs/re/audio-util-active-consumers-current.json",
+    "sha256": "52754c085eb44ccefcf234e621d66ef1a43dcdd4a8e5380a63eb0d6cd2acdfe0",
+    "automatic_notification_products": [
+      1422,
+      1446
+    ],
+    "non_automatic_products": [
+      1398,
+      1427,
+      2638,
+      2641,
+      4124,
+      4126
+    ]
+  },
   "semantics": {
     "source_request": {
       "module": "AudioEnumerator",
@@ -603,7 +349,7 @@
       "eventType": "AudioEnumerator_DeviceChange",
       "endpointId": "UTF-8 source conversion"
     },
-    "current_ui_consumer": "Wrapper emits exact eventType; product listener uses AudioEnumerator_deviceChange with lowercase d and only console.log. No source-proved cache invalidation or refresh from this event.",
+    "current_ui_consumer": "Only 1422/1446 boot roots activate Audio_StreamMixer and its automatic enable. Other examined products activate generic AudioUtil, whose init does not enable notifications. Wrapper emits exact eventType; active listener uses AudioEnumerator_deviceChange with lowercase d and only console.log. No source-proved cache invalidation or refresh from this event.",
     "native_registration_failures": "Enable dispatcher ignores register result and sets response; Rust surfaces register/unregister errors instead of fabricating success",
     "cleanup": "Explicit disable unregisters and releases; Rust retained owner additionally unregisters before apartment shutdown"
   },
@@ -621,7 +367,7 @@
   },
   "remaining_gaps": [
     "OS notification registration/delivery and Shell lifecycle runtime acceptance have not been executed",
-    "AudioRouter enable/route/cleanup and MediaPlayer command/event chains remain incomplete",
+    "AudioRouter complete page consumers and MediaPlayer command/event chains remain incomplete",
     "RzAudioUtil 1.0.1.1 has separate dispatchMediaRecorder semantics and does not export AudioEnumerator"
   ]
 }

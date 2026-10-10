@@ -26,8 +26,12 @@ mod macro_recorder;
 mod mixer_driver;
 #[path = "receiver.rs"]
 mod receiver;
+#[path = "receiver_brightness.rs"]
+mod receiver_brightness;
 #[path = "receiver_events.rs"]
 mod receiver_events;
+#[path = "receiver_identity.rs"]
+mod receiver_identity;
 #[path = "receiver_pairing.rs"]
 mod receiver_pairing;
 #[path = "usb.rs"]
@@ -353,6 +357,19 @@ impl NativeRuntime {
                 path,
                 device_container_id,
             } => receiver::query(&path, &device_container_id),
+            ServiceRequest::ReceiverBrightnessRead {
+                path,
+                device_container_id,
+            } => receiver_brightness::request(&path, &device_container_id, None),
+            ServiceRequest::ReceiverBrightnessWrite {
+                path,
+                device_container_id,
+                percent,
+            } => receiver_brightness::request(&path, &device_container_id, Some(percent)),
+            ServiceRequest::ReceiverIdentityRead {
+                path,
+                device_container_id,
+            } => receiver_identity::read(&path, &device_container_id),
             ServiceRequest::ReceiverPairingStart {
                 operation_id,
                 path,
@@ -387,57 +404,25 @@ impl NativeRuntime {
                 anyhow::ensure!(!value.trim().is_empty(), "{symbol} 返回空结果");
                 Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
             }
-            ServiceRequest::GlobalMode | ServiceRequest::GlobalShortcuts => {
+            ServiceRequest::GlobalMode => {
                 self.mapping()?;
-                let symbol = if matches!(request, ServiceRequest::GlobalMode) {
-                    "getGlobalMode"
-                } else {
-                    "getGlobalShortcuts"
-                };
-                let query: Query = unsafe { self.mapping_symbol(symbol)? };
+                let query: Query = unsafe { self.mapping_symbol("getGlobalMode")? };
                 let value = self
                     .call(|| unsafe { query(callback3) })?
                     .value
-                    .context("映射引擎未返回结果")?;
-                anyhow::ensure!(!value.trim().is_empty(), "{symbol} 返回空结果");
+                    .context("Mapping engine did not return global mode")?;
+                anyhow::ensure!(
+                    !value.trim().is_empty(),
+                    "getGlobalMode returned empty data"
+                );
                 Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
             }
-            ServiceRequest::RegisterShortcut {
-                vkey_code,
-                modifiers,
-                argument,
-            } => {
-                self.mapping()?;
-                if !self.event_callback_installed {
-                    // Original createCbGlobalShortcutEvent: void(int,string,ulonglong).
-                    let install: SetShortcutCallback =
-                        unsafe { self.mapping_symbol("setGlobalShortcutEventCallback")? };
-                    self.call(|| unsafe { install(shortcut_event, callback2) })?;
-                    self.event_callback_installed = true;
-                }
-                let argument = CString::new(argument).context("快捷键参数含 NUL")?;
-                let register: RegisterShortcut =
-                    unsafe { self.mapping_symbol("registerGlobalShortcut")? };
-                let result = self.call(|| unsafe {
-                    register(vkey_code, modifiers, argument.as_ptr(), callback2)
-                });
-                if self.poisoned {
-                    // The completion callback did not establish that native code
-                    // has finished with the argument. Keep it until process exit.
-                    std::mem::forget(argument);
-                }
-                result?;
-                Ok(json!({"registered": true, "vkey_code": vkey_code, "modifiers": modifiers}))
-            }
-            ServiceRequest::UnregisterShortcut {
-                vkey_code,
-                modifiers,
-            } => {
-                self.mapping()?;
-                let unregister: UnregisterShortcut =
-                    unsafe { self.mapping_symbol("unregisterGlobalShortcut")? };
-                self.call(|| unsafe { unregister(vkey_code, modifiers, callback2) })?;
-                Ok(json!({"registered": false, "vkey_code": vkey_code, "modifiers": modifiers}))
+            ServiceRequest::GlobalShortcuts
+            | ServiceRequest::RegisterShortcut { .. }
+            | ServiceRequest::UnregisterShortcut { .. }
+            | ServiceRequest::EnableGlobalShortcuts { .. }
+            | ServiceRequest::ShortcutEvents => {
+                bail!("Global shortcuts must use the direct Rust platform owner")
             }
             ServiceRequest::SubmitGlobalShortcutMappings { app_engine } => {
                 if !app_engine.get("mappings").is_some_and(Value::is_array)
@@ -456,9 +441,6 @@ impl NativeRuntime {
                 result?;
                 Ok(json!({"accepted": true}))
             }
-            ServiceRequest::ShortcutEvents => Ok(Value::Array(
-                self.shortcut_events.try_iter().take(512).collect(),
-            )),
             ServiceRequest::Shutdown => {
                 let mut errors = Vec::new();
                 self.shutdown_macro_recording(&mut errors);

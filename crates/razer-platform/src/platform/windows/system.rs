@@ -116,6 +116,8 @@ pub(crate) fn open(properties: Properties) -> anyhow::Result<()> {
         Properties::Keyboard => c"control keyboard",
         Properties::Sound => c"control mmsys.cpl sounds",
         Properties::Volume => c"sndvol.exe",
+        // Current OpenGameController RVA 0x3ffd0 uses this exact utility.
+        Properties::GameController => c"control joy.cpl",
     };
     source_win_exec(command)
 }

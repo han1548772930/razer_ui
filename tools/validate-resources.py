@@ -473,6 +473,7 @@ for receipt in (
     "chroma-settings-current-evidence", "gamepad-2636-calibration-current-evidence",
     "profiles-transfer-current-evidence", "monitor-pages-review-current-evidence",
     "receiver-pairing-current-evidence", "mouse-polling-model-current-evidence",
+    "keyboard-analog-properties-current-evidence",
 ):
     supplemental_receipts(json.loads((ROOT / f"docs/re/{receipt}.json").read_text("utf-8")))
 supplemental_receipts(json.loads((directory / "tray-widget-assets.json").read_text("utf-8")))

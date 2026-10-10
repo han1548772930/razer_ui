@@ -47,6 +47,7 @@ pub enum Properties {
     Keyboard,
     Sound,
     Volume,
+    GameController,
 }
 
 /// The original color-management action launches `colorcpl.exe` through its

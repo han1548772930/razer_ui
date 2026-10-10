@@ -147,7 +147,7 @@ impl KeyboardProductWorkspace {
             calibration_preview: false,
             calibration_modal: None,
             snap_tap: None,
-            properties_icon: (pid == 515).then(|| {
+            properties_icon: matches!(pid, 515 | 614 | 642 | 678 | 679 | 688).then(|| {
                 if razer_platform::system::is_windows_11() {
                     "synapse/keyboard-properties-win11.svg"
                 } else {
@@ -1369,14 +1369,22 @@ impl KeyboardProductWorkspace {
         if gaming_mode || self.properties_icon.is_some() {
             page = page.child(
                 surface::page_columns()
-                    .when(gaming_mode, |columns| {
+                    .when(gaming_mode || self.analog_properties_on_left(), |columns| {
                         columns.child(surface::page_column(
                             v_flex()
-                                .child(self.gaming_mode(cx))
-                                .children(self.snap_panel(cx)),
+                                .when(gaming_mode, |column| {
+                                    column
+                                        .child(self.gaming_mode(cx))
+                                        .children(self.snap_panel(cx))
+                                })
+                                .when(self.analog_properties_on_left(), |column| {
+                                    column.children(self.keyboard_properties(cx))
+                                }),
                         ))
                     })
-                    .children(self.keyboard_properties(cx).map(surface::page_column)),
+                    .when(!self.analog_properties_on_left(), |columns| {
+                        columns.children(self.keyboard_properties(cx).map(surface::page_column))
+                    }),
             );
         }
         page.into_any_element()

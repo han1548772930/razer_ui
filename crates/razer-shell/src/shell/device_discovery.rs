@@ -398,6 +398,7 @@ impl AppShell {
             Err(error) => {
                 self.status = format!("设备发现失败：{error}；本地草稿已保留。");
                 self.sync_audio_notifications(window, cx);
+                self.sync_audio_preset_shortcut_cleanup(cx);
                 self.sync_known_devices(cx);
                 cx.notify();
                 return;
@@ -419,6 +420,7 @@ impl AppShell {
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
         self.sync_audio_notifications(window, cx);
+        self.sync_audio_preset_shortcut_cleanup(cx);
         let tray_widgets = self.tray_widgets(cx);
         if let Some(tray) = &mut self.tray {
             tray.set_widget_devices(tray_widgets, cx);
@@ -583,6 +585,7 @@ impl AppShell {
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
         self.sync_audio_notifications(window, cx);
+        self.sync_audio_preset_shortcut_cleanup(cx);
         let tray_widgets = self.tray_widgets(cx);
         if let Some(tray) = &mut self.tray {
             tray.set_widget_devices(tray_widgets, cx);

@@ -80,6 +80,19 @@ pub enum ServiceRequest {
         view_url: String,
     },
     HidDevices,
+    ReceiverBrightnessRead {
+        path: String,
+        device_container_id: String,
+    },
+    ReceiverBrightnessWrite {
+        path: String,
+        device_container_id: String,
+        percent: u8,
+    },
+    ReceiverIdentityRead {
+        path: String,
+        device_container_id: String,
+    },
     /// Portable OS collections. Paths are opaque bytes; no Windows GUID or
     /// logical receiver peer is fabricated from these nodes.
     HidNodes,
@@ -243,6 +256,9 @@ pub enum ServiceRequest {
         name: String,
     },
     GlobalShortcuts,
+    EnableGlobalShortcuts {
+        enable: bool,
+    },
     RegisterShortcut {
         vkey_code: u32,
         modifiers: u32,
@@ -418,6 +434,7 @@ impl ServiceClient {
         let writing_device = matches!(
             request,
             ServiceRequest::DeviceWrite { .. }
+                | ServiceRequest::ReceiverBrightnessWrite { .. }
                 | ServiceRequest::AudioRouteDevice { .. }
                 | ServiceRequest::AudioRoutingEnable { .. }
                 | ServiceRequest::AudioVolumeWrite { .. }
@@ -432,6 +449,7 @@ impl ServiceClient {
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
+                | ServiceRequest::ReceiverBrightnessRead { .. }
                 | ServiceRequest::AudioRouterEvents
                 | ServiceRequest::AudioVolumeRead { .. }
                 | ServiceRequest::HidNodeDpiStagesRead { .. }
