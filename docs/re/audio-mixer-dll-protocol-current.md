@@ -57,7 +57,7 @@ child 从 RVA `0x134b0` 取 UTF-16 名称表，逐项精确比较，索引上限
 
 以上均是机器码返回路径，并非实机结果。[控制项证据](audio-mixer-controls-current-evidence.json) 对 37 项属性做整段反汇编和指令门控，生成 [运行配方](../../assets/data/audio-mixer-protocol.json)。Rust [audio_mixer.rs](../../crates/razer-device/src/audio_mixer.rs) 已实现 47 个展开控制项：26 个 DSP/寄存器控制（包括固件只读查询和麦克风监听）、15 个硬件端点 Volume/Mute/Peak 控制、6 条硬件混音路由。它们来自 30 个不同的原分发表属性，不能写成 47 个独立原 DLL 函数。另提供 3 个麦克风监听常量及 5 组端点范围元数据，均标记为源常量，不冒充设备观察。
 
-这些控制项接通独立 agent/IPC 的 `HidNodeMixerRead`/`HidNodeMixerWrite`；字段类型、范围、EQ 频段、声道、描述符、身份及回读确认均在 Rust 中检查。另已接通驱动矩阵及原 0..8 流重置请求。产品页面尚未连接该读写链，本地编辑/保存仍是本地草稿。6 个原属性仍缺 COM 分支；整个 DLL 完成数仍为 0，初始化、回调、页面消费和运行验收不能以配方覆盖替代。
+这些控制项接通独立 agent/IPC 的 `HidNodeMixerRead`/`HidNodeMixerWrite`；字段类型、范围、EQ 频段、声道、描述符、身份及回读确认均在 Rust 中检查。另已接通驱动矩阵及原 0..8 流重置请求。1342 页面的 Noise Gate、Compressor、Vocal Fading、Key Shifter 和 Mic EQ 正在通过当前实际 caller 接入该链，模式与级联提交见 [页面专项](audio-mixer-page-bindings-current.md)。虚拟音频 mixer reducers 不对应这些 HID 端点，仍缺单独实现；本地保存也不能记作设备持久化。6 个原属性仍缺 COM 分支；整个 DLL 完成数仍为 0，初始化、回调、完整页面消费和运行验收不能以配方覆盖替代。
 
 麦克风监听寄存器使用原码 `RazerT2MicMonitorVolumeControl`：查询 `0x5ffc002c`，字段为返回 uint32 的 `0x7f0000`、右移 16 位，负值以绝对值写回，范围由原常量证明为 `-45..=0`、步长 `1`。该读写已进入 Rust DSP session 和 IPC 写回链，仍需页面实际消费者接通。
 
@@ -102,6 +102,10 @@ child `CmMixerOpenHID` 会释放旧对象，再构造并枚举 HID；选择函�
 当前 JS 中存在 `RazerT2KeyShifterLevelEnable`，但这份 child 的 37 项分发表中没有这个名称。不能给它补造 table 项，也不能据此宣布整个功能不可用；仍需追其他实现、分支和实际消费者。
 
 DSP mailbox 读取会写 selector 并轮询，不是纯查询。原 formatter 接受第 5 次仍繁忙的结果；Rust 此时返回繁忙错误。写入无设备 ACK，Rust 额外回读并比对按原码量化后的值，量化确认是本项目策略。EQ 的第一个原 uint32 字段物理单位仍未知，未命名为 Hz；固件原 uint32 未猜测版本分量。各 setter 的类型、范围在发送报告前检查。
+
+EQ 原函数 `0xdd30..0xde60` 的 getter 使用 `(raw >> 1) & 0x7ffff`，gain 从 byte(raw >> 14) 按有符号数除 4 并截断；setter 则对 data 使用 `0x7fff` 掩码，gain 使用 `0x3f` 掩码。两个字段在 getter 中重叠，不能假设原始 data 与 gain 无损往返。例如 setter 输入 `data=0x1234,gain=-4` 的 payload 为 `0x003c2469`，getter 返回 `data=0x61234,gain=-4`。Rust 接受原 uint32 data 并保留 setter 的低 15 位掩码，不再错误拒绝来自真实 getter 的高位字段。页面写入遵循当前 JS 的固定频段模板，使用 data 30/60/120/250/500/1000/2000/4000/8000/16000，不能保留 getter 中与 gain 重叠的 data。原 getter 值只作为独立设备观察；麦克风 EQ 完整数组提交先启用，再依次写 0..9，各步按原 codec 回读确认。详见 [页面链](audio-mixer-page-bindings-current.md)。
+
+已执行 `cargo test --locked -p razer-device audio_mixer::tests` 的 11 项纯 Rust/mock 测试，覆盖原 16/32 位报文字节序、collection 最大长度、EQ 重叠与量化、驱动矩阵保留字节和重置顺序、失败回读、峰值清零、mailbox 轮询上限。模拟传输测试不加载原库或访问设备，不是硬件验收。
 
 HID helper 不等价于全部混音、服务或驱动功能。当前 JSON 的 `unsupported_properties`、`partial_properties` 及专项 COM/driver/lifecycle 记录保留未闭合边界。平台共用协议已隔离，Windows COM/驱动不在其他平台伪装成功；目前只有 Windows 静态编译检查，没有设备或三平台运行验收。
 

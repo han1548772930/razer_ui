@@ -49,7 +49,7 @@ Indicator 编辑和保存属于本地草稿，不等于设备设置保存。打�
 
 164/241 的产品横幅、单/双设备信息与正式 DockDialog 使用各自 [配对源证据](dock-pairing-current-evidence.json)和资源。164 指定 zia_pairing 单设备图；单设备弹层为#111/#515151，双设备#222/#5d5d5d、共享CSS左右20px卡片内边距及外侧2px选中描边；241实际挂载再用inline将左右内边距覆为10px，见下文父子树级联，不能把共享规则作为241最终值。进度原 SVG 作 1 秒旋转，动作透明度保留源 300ms；这些静态声明不代表完整 viewport/滚动或实窗焦点验收。
 
-241 配对 dongle713 的源握手为设置 duallink_warning → 设备页转 continue_pairing → 工具从当前候选中取 dongle713 以 mode1 产生 Bind 请求，随后清标记。本地保留此顺序，没有候选就保持无绑定；正式 request 发 DockPairingEvent 并等待对应观察，不能将预览进度或本地意图当已发送/成功。已有 Bindings observation 链不代表实际 Scan/Pair/Unpair 传输已接入。
+241 配对 dongle713 的源握手为设置 duallink_warning → 设备页转 continue_pairing → 工具从当前候选中取 dongle713 以 mode1 产生 Bind 请求，随后清标记。本地保留此顺序，没有候选就保持无绑定；正式 request 发 DockPairingEvent 并等待对应观察，不能将预览进度或本地意图当已发送/成功。Scan/Pair/Unpair 的直接传输与可取消 worker 已接通，当前硬件证据、页面接线及配对后的持久化/发布须分别核对，见下文直接配对传输。
 
 页面/弹层警告先受 showBothDevicesConnectedWarning 门控，弹层另需鼠标和键盘都有绑定；页面警告为 12px #999，弹层为 14px/17px #ccc、margin-top50px、max-width520px。该条件不能替代上文完整 I/Y/K/W 轮询条件。164 工具说明键为 ENABLE_LAUNCH_PAIRING_UTILITY_INFO，241 源拼写为 ENABLE_LAUNCH_PARING_UTILITY_INFO，分别从产品自身语言表取值。validate-dock-pairing.py 已静态核对两产品当前收据、语言和资源，不能用共享公共翻译掩盖缺键。
 
@@ -87,7 +87,7 @@ Shell 在发起和返回时核对真实 owner、非 PREVIEW/DEMO、容器、物�
 
 后端 `project_receiver_query(receiver_pid, container, &raw)` 将同一真实查询纯投影为设备观察和配对描述，启动发现也使用此入口。它核对查询名、VID/物理 PID、接口、report 长度、非零带括号容器及条目数量，并要求实际 path/instance 字段存在；真正的接口唯一性与查询前后身份校验仍由 native worker 执行。原始 Value 不被修改。
 
-portable 的初次发现与后续查询共用 `project_hid_receiver_query`，要求响应中的完整 node、source class、`hid_collection` scope、查询种类和条目数量与实际请求一致。查询路由每次重新枚举唯一 node 并读取 descriptor，再发送原 `getMultipleDeviceWirelessConnectionStatusV2` 报文；不请求 Windows HID/USB 枚举，也不伪造 GUID。179 查询接受后增量发布同一 collection 的 peer；取消、新发现或 node/owner 变化拒绝迟到结果。Dock 的 BIND_INFO 也复用该路由，并补齐 owner/revision 保护；配对写入与完整164/241页面链仍未实现。
+portable 的初次发现与后续查询共用 `project_hid_receiver_query`，要求响应中的完整 node、source class、`hid_collection` scope、查询种类和条目数量与实际请求一致。查询路由每次重新枚举唯一 node 并读取 descriptor，再发送原 `getMultipleDeviceWirelessConnectionStatusV2` 报文；不请求 Windows HID/USB 枚举，也不伪造 GUID。179 查询接受后增量发布同一 collection 的 peer；取消、新发现或 node/owner 变化拒绝迟到结果。Dock 的 BIND_INFO 也复用该路由，并补齐 owner/revision 保护；164/241 配对命令使用共享 Rust 协议和下文 Windows 物理身份适配，其他平台的等价物理集合归属适配及完整页面链仍有缺口。
 
 投影保留同一接收器 container、physical_product_id、raw peer PID 与全部原始 status，不补 edition/layout/serial/profile/ready/telemetry。sentinel 与独立接收器自身行不生成设备；产品自己的 dongle PID 可按当前目录表示其无线设备。未知/歧义目录项或多个 raw PID 归一到同一产品时，保留错误及其他确定设备，不用插入顺序选状态。配对名称/类别转换失败与设备观察分开，不能把 partial 当成功空全量。源 AST、目录对照和回归源码见 [纯投影证据](receiver-query-projection-current-evidence.json)；`ye` 的存储写入/运行监听仍不执行。
 
@@ -175,7 +175,7 @@ dongle713 的警告链为单键盘扫描/候选选择触发 isDualLinkWarning，
 | --- | --- | --- |
 | getMultipleDeviceWirelessConnectionStatusV2 | [80,0,191] | 回复第 0 字节是数量，随后每组三字节 status、PID 两字节；helper 没有在循环前显式验证 data 的完整长度 |
 | deviceScan | [1,0,70] | 输入扫描 status；回复 status 与扫描 enum |
-| setDevicePairingMode | [3,0,65] | mode、dongle PID 的低/高字节；回复 mode/enum/productId |
+| setDevicePairingMode | [3,0,65] | mode、dongle PID 的高/低字节（ft 为高字节、Zz 为低字节）；回复 mode/enum/productId |
 | setDeviceUnpair | [2,0,66] | dongle PID 两字节；回复 productId |
 
 Electron 分支的 sendCommand 使用 `hid.sendFeatureReportMutex` 或 `hid.sendFeatureReport`，随后 `_getUSBTransferInResult` 通过 `hid.getFeatureReport` 读回复；protocol="25"、reportLength=91，锁名带 PID/container。`99494/NH → window.top.apiElectron.doRzDeviceAction → 当前 host preload invoke("rzDeviceAction") → main 的 An.handleAction → UsbRzDeviceAction`。host 的发送 case 调 node-rz-hid 的 hidDevice.sendFeatureReport，读取 case 调 getFeatureReport，保留 container、interface、PID、usage、USB instance 的设备匹配条件。没有 Electron 时还存在源 WebUSB controlTransferOut 分支。**因此 241 本节配对/V2 路径的原代码依据是 HID transport；产品 DLL、host native addon 和 HID 不可混为一条链。** 本节没有执行任何 transport。
@@ -251,4 +251,30 @@ Firmware整个卡受currentFWVersion gate；非SystemInfo分支先显示Current 
 
 ### 本轮明确未完成的边界
 
-本轮已说明241普通主根、Pairing父卡/对话框、Lighting三张卡及八个真实效果、Help本产品挂载的两列、状态来源/动作、主要布局声明和HID wrapper→当前host边界。仍未完成全部产品所有displayMode、78548硬件通知注册全生命周期、全部颜色picker/安装资源内部状态、目录/图片语言每个组合、lazy CSS最终级联、初始化服务错误恢复和实体设备读数验证；node-rz-hid与产品DLL的C/C++内部不能据JS包装宣称恢复原始工程。当前Rust对照仍须按源条件逐项核查，本次仅补文档/静态证据，没有修改Rust、vendor或接入写回。
+已说明241普通主根、Pairing父卡/对话框、Lighting三张卡及八个真实效果、Help本产品挂载的两列、状态来源/动作、主要布局声明和HID wrapper→当前host边界。下节另外接入164/241实际配对命令及原生事件传输，不将其扩称全部产品完成。仍未完成全部产品所有displayMode、78548通用硬件通知注册全生命周期、全部颜色picker/安装资源内部状态、目录/图片语言每个组合、lazy CSS最终级联、初始化服务错误恢复和实体设备读数验证；node-rz-hid与产品DLL的C/C++内部不能据JS包装宣称恢复原始工程。当前Rust对照仍须按源条件逐项核查。
+
+## 164/241 直接配对传输与 IDA 原生证据
+
+[当前传输证据](receiver-pairing-transport-current-evidence.json)保存当前源码/目录收据、四条产品/类别能力及独立[IDA静态函数证据](evidence/ida-native/receiver-pairing-mapping-engine-current.json)。原 `mapping_engine.dll` SHA-256为 `6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a`；新跟踪函数保留IDA 8.3/Hex-Rays伪代码、RVA/边界、代码hash和交叉引用。所有目标均为静态分析，没有加载DLL或执行导出。
+
+164/241当前main均未启用 `useHidHwEvents`；实际注册走mapping_engine。`0x11a702 → 0x119de6` 枚举present HID interfaces，以同一ContainerId和产品PID收集全部路径，不限usage/page或Feature接口。其属性引用指令 `0x11a162` 指向数据 `0x2e9a38`；原字节解出 `DEVPKEY_Device_ContainerId={8c7ed206-3f8a-4827-b3ab-ae9e1faefc6c},pid=2`。`0x1232f8`读取容量100字节，`0x1244e0`只转发实际完成字节数；`0x2b770`逐字节序列化为数组。100是容量而非固定事件长度，也没有可猜测的零前缀。
+
+共享 Rust `receiver_pairing::Session` 发送源91字节Feature报文、校验真实应答，Pair必须等待record5/9、event54、status2；Scan必须等待event55、status2才能完成。命令ACK及ACK中的End不等于成功事件。扫描解析PID高/低、layout独立字节、edition低字节；不套用其他Glitter解析器的16位edition。164 Scan/Pair前缀0、Unpair224；241目标键盘Scan/Pair128、Unpair0，目标鼠标Scan/Pair0、Unpair128。`DUALLINK_CANCEL`另走primary linker，原取消前缀为0，不能继承目标键盘的128。
+
+`receiver_events`用实际身份重新观察全部collection、保留路径/实例，使用共享 `read_interrupt`读取真实中断字节；没有Input descriptor的collection不生产事件，但仍保留在身份核对中。句柄在完成/取消/失败时全部释放。Windows只负责ContainerId适配，共享协议和HID读取不加载mapping_engine；其他平台尚缺同等物理集合归属适配，不能以VID/PID猜同一设备。
+
+worker正式请求为 `ReceiverPairingStart/Poll/Cancel`。Start保存唯一operation ID并启动线程，Poll区分running/canceling/completed/failed/canceled；Cancel仅接受取消，后续Poll才能说明原deviceScan4及订阅清理结果。90秒为本应用等待预算，不是原协议常量。操作中校验实际实例、取消与期限；cleanup另用身份守卫允许取消命令，但不能写到替换后的设备。worker关闭等待取消清理，不遗留独立读线程。
+
+扫描UI候选经 `razer_discovery::receiver_pairing::project_scan_candidates` 对照当前 `AvailableDevices`、`DualDongleCompatibleDevices`、`DevicePairingBuddies`生成；源目录各保留HTTP及字节SHA。713映射键盘716，183映射鼠标182；目录/兼容匹配不能把dongleId直接当productId。原扫描helper不复制keyboardLayout到UI layoutId，因此本转换保留缺失。有Available条目时保留扫描edition与源版本名；原无Available分支的unknown/0是源默认值，不是设备读取。当前未合并历史connectedDeviceInfo来制造同一owner的在线状态。原middleware不按请求类别过滤全部扫描结果；UI再按键盘/鼠标分列并限制自动配对候选。
+
+原Unpair从 `3746/is` 确认动作传 `dev.dongleId || dev.productId`，`ds`将其放入名为productId的字段，`34340/Te`再传setDeviceUnpair。不可只看字段名认定716一定代替713。失败后等待原2000ms再读V2：241检查目标是否仍在，164检查是否还有绑定；身份变化/取消/重读失败不会伪报解绑。应用另在解绑完成后做真实V2回读，确认目标已不存在才清本地绑定；此额外确认策略与原失败恢复分别记录。
+
+源 `Ee` 在event54成功后用新普通类别factory读取 `getEdition [3,0,134]`：byte0为keyboardLayout、byte1为edition、byte2为firmwareId；外层最多3次，失败间100ms。164普通metadata前缀0；241键盘128、鼠标0，与Scan/Pair反类namespace不同。鼠标layout为0时继续真实 `getHWModule [1,0,185]`，取status。worker与Shell已接这些读取；edition失败原默认0/0另标 `source_fallback`，实际 `reading` 保持null，不能将扫描版号或原默认当作成功读取。当前还没有原 `Ie/_e` runtime记录的优先覆盖，鼠标侧键runtime布局分支仍需真实输入。
+
+[Shell配对消费者](../../crates/razer-shell/src/shell/receiver_pairing.rs)接正式Dock动作、异步Start/Poll/Cancel、完成证据、真实绑定刷新和本地缓存。真实原owner、container、PID、route、discovery revision及operation token全都匹配才向页面交付；页面另外检查会话与打开状态。旧完成不能移除新操作，线程异常断开返回错误。关闭/取消立即发取消信号，旧worker保留到清理完成，应用退出在后台等待全部当前及已退休worker；不在UI线程等待运行中的线程。50ms轮询与100秒父端预算是应用适配，不是原固件常量。
+
+源扫描返回全数组 `scanedInfo`，241 `as`再按类别分列；自动配对要求全数组长度为1且类别匹配当前扫描列。现有分列不再把另一类候选判为读取失败，也不会把混合数组过滤后的单候选自动配对。BIND_INFO、Pair/Unpair后真实V2查询的观察在页面接受结果后增量发布至当前接收器关联的设备工作区，刷新托盘/导航连接；发布不借扫描或缓存生成在线设备、serial、遥测或参数读数。
+
+[本地配对缓存](../../crates/razer-storage/src/receiver_pairing.rs)恢复源 `ye/ge/X/Ce/Me` 的物理键 `5426/dongleId/deviceContainerId`、只新增不存在键、真实主设备descriptor字段、解绑只删相同物理键。Shell在硬件确认后接增删和文件保存，文件是本应用的 `duallink-devices.json`，不是Chromium文件格式，也不是设备读取。本地保存有磁盘快照冲突保护，不覆盖其他owner记录。硬件已成功而本地保存失败时保留硬件结果并单独报告cache错误，不将保存失败伪装成设备命令失败。
+
+原runtime序列订阅、`Ue`注册/清理、profile合并、mapping重连及非Windows等价物理分组尚未全部接通；worker保留 `runtime_published:false` / `runtime_cleanup_complete:false`。本地cache写成功和连接V2刷新不改变这些完成状态。协议、projection、分列/迟到响应回归用例仅由 `cargo check --locked --all-targets` 编译，没有执行测试。生成证据、静态资源/JSON检查与编译结果分别记录，设备实际接受/写回及完整产品视觉验收仍未运行。

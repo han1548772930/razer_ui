@@ -12,12 +12,21 @@ pub enum MixerControl {
     EqEnabled,
     EqBand,
     MagicVoiceEnabled,
+    PageMagicVoiceEnabled,
     MagicVoice,
+    /// Current AudioMixer JS fixed-template setter. Native MagicVoice retains
+    /// its separately recovered read/modify/write codec.
+    PageMagicVoice,
     EchoReverbEnabled,
+    PageEchoReverbEnabled,
     ReverbRoom,
+    PageReverbRoom,
     ReverbDecay,
+    PageReverbDecay,
     EchoGain,
+    PageEchoGain,
     EchoDelay,
+    PageEchoDelay,
     NoiseGateEnabled,
     NoiseGateThreshold,
     NoiseGateTargetGain,
@@ -64,12 +73,19 @@ impl MixerControl {
             Self::EqEnabled => "eq_enabled",
             Self::EqBand => "eq_band",
             Self::MagicVoiceEnabled => "magic_voice_enabled",
+            Self::PageMagicVoiceEnabled => "magic_voice_enabled",
             Self::MagicVoice => "magic_voice",
+            Self::PageMagicVoice => "magic_voice",
             Self::EchoReverbEnabled => "echo_reverb_enabled",
+            Self::PageEchoReverbEnabled => "echo_reverb_enabled",
             Self::ReverbRoom => "reverb_room",
+            Self::PageReverbRoom => "reverb_room",
             Self::ReverbDecay => "reverb_decay",
+            Self::PageReverbDecay => "reverb_decay",
             Self::EchoGain => "echo_gain",
+            Self::PageEchoGain => "echo_gain",
             Self::EchoDelay => "echo_delay",
+            Self::PageEchoDelay => "echo_delay",
             Self::NoiseGateEnabled => "noise_gate_enabled",
             Self::NoiseGateThreshold => "noise_gate_threshold",
             Self::NoiseGateTargetGain => "noise_gate_target_gain",
@@ -425,6 +441,54 @@ pub fn accepts(product_id: u32, vendor_id: u16, physical_product_id: u16) -> boo
         == (cap.product_id, cap.vendor_id, cap.physical_product_id)
 }
 
+/// Current JS writes fixed per-band templates, rather than preserving getter
+/// data (whose native bitfield overlaps gain). This is not an inferred unit.
+pub fn mic_eq_values(bands: &[i32; 10]) -> anyhow::Result<[MixerValue; 10]> {
+    #[derive(Deserialize)]
+    struct Recipe {
+        product_id: u32,
+        data_by_band: [u32; 10],
+        enable_before_bands: bool,
+        band_order: [u8; 10],
+    }
+    static RECIPE: OnceLock<Recipe> = OnceLock::new();
+    let recipe = RECIPE.get_or_init(|| {
+        serde_json::from_str(include_str!(
+            "../../../assets/data/audio-mixer-mic-eq-current.json"
+        ))
+        .expect("source-derived microphone EQ templates")
+    });
+    ensure!(
+        recipe.product_id == 1342
+            && recipe.enable_before_bands
+            && recipe.band_order == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "Mic EQ source recipe changed"
+    );
+    ensure!(
+        bands.iter().all(|gain| (-12..=12).contains(gain)),
+        "Mic EQ gain exceeds current source range"
+    );
+    Ok(std::array::from_fn(|index| MixerValue::EqBand {
+        data: recipe.data_by_band[index],
+        gain: bands[index],
+    }))
+}
+
+#[derive(Deserialize)]
+struct EchoRecipe {
+    presets: BTreeMap<String, [f32; 4]>,
+    gain_table: [u16; 11],
+}
+fn echo_recipe() -> &'static EchoRecipe {
+    static RECIPE: OnceLock<EchoRecipe> = OnceLock::new();
+    RECIPE.get_or_init(|| serde_json::from_str(include_str!(
+        "../../../assets/data/audio-mixer-echo-current.json"
+    )).expect("source-derived Echo/Reverb recipe"))
+}
+pub fn echo_presets() -> &'static BTreeMap<String, [f32; 4]> {
+    &echo_recipe().presets
+}
+
 fn property(target: &MixerTarget) -> anyhow::Result<(&'static Property, u32)> {
     let prop = capability()
         .properties
@@ -451,6 +515,46 @@ fn property(target: &MixerTarget) -> anyhow::Result<(&'static Property, u32)> {
 
 pub fn source_property(target: &MixerTarget) -> anyhow::Result<&'static str> {
     Ok(&property(target)?.0.source_property)
+}
+
+/// Select a source-compatible collection from descriptor observations without
+/// sending anything. The same checks gate every session recipe at execution.
+pub fn validate_report_lengths(
+    target: &MixerTarget,
+    lengths: &ReportLengths,
+) -> anyhow::Result<()> {
+    validate_property_reports(property(target)?.0, lengths)
+}
+
+fn report_size(lengths: &BTreeMap<u8, usize>, id: u8, minimum: usize) -> anyhow::Result<usize> {
+    let size = *lengths
+        .get(&id)
+        .context("实际 descriptor 缺少源 Report ID")?;
+    let wire_size = *lengths.values().max().context("descriptor 未声明报告")?;
+    ensure!(
+        size >= minimum && wire_size <= capability().reports.max_output_bytes,
+        "实际报告长度与原 helper 缓冲边界不符"
+    );
+    Ok(wire_size)
+}
+
+fn validate_property_reports(prop: &Property, lengths: &ReportLengths) -> anyhow::Result<()> {
+    let reports = &capability().reports;
+    report_size(&lengths.output, reports.query_id, 5)?;
+    match prop.width {
+        Some(16) => {
+            report_size(&lengths.input, reports.query_u16_response_id, 3)?;
+            report_size(&lengths.output, reports.write_u16_id, 7)?;
+        }
+        None | Some(32) => {
+            report_size(&lengths.input, reports.query_response_id, 5)?;
+            if prop.recipe != "firmware" {
+                report_size(&lengths.output, reports.write_id, 9)?;
+            }
+        }
+        _ => bail!("源寄存器宽度未实现"),
+    }
+    Ok(())
 }
 
 /// One retained handle and OS lock across mailbox selection, polling and RMW.
@@ -480,41 +584,17 @@ impl<'a> MixerSession<'a> {
         id: u8,
         minimum: usize,
     ) -> anyhow::Result<usize> {
-        let size = *lengths
-            .get(&id)
-            .context("实际 descriptor 缺少源 Report ID")?;
-        let wire_size = *lengths.values().max().context("descriptor 未声明报告")?;
-        ensure!(
-            size >= minimum && wire_size <= capability().reports.max_output_bytes,
-            "实际报告长度与原 helper 缓冲边界不符"
-        );
         // Native helpers use HIDP_CAPS.Input/OutputReportByteLength, i.e. the
         // collection maximum, rather than the size of the selected Report ID.
         // Reject caps larger than their 66-byte local buffer rather than
         // reproducing truncation/overflow or relying on OS padding.
-        Ok(wire_size)
+        report_size(lengths, id, minimum)
     }
 
     // Check all reports used by this recipe before even sending its first
     // query. Unrelated 16/32-bit reports do not constrain other recipes.
     fn validate_reports(&self, prop: &Property) -> anyhow::Result<()> {
-        let reports = &capability().reports;
-        self.report_size(&self.lengths.output, reports.query_id, 5)?;
-        match prop.width {
-            Some(16) => {
-                self.report_size(&self.lengths.input, reports.query_u16_response_id, 3)?;
-                self.report_size(&self.lengths.output, reports.write_u16_id, 7)?;
-            }
-            None | Some(32) => {
-                self.report_size(&self.lengths.input, reports.query_response_id, 5)?;
-                // Mailbox queries and peak reads also write to the device.
-                if prop.recipe != "firmware" {
-                    self.report_size(&self.lengths.output, reports.write_id, 9)?;
-                }
-            }
-            _ => bail!("源寄存器宽度未实现"),
-        }
-        Ok(())
+        validate_property_reports(prop, &self.lengths)
     }
 
     fn send(&self, id: u8, command: u32, value: Option<u32>) -> anyhow::Result<()> {
@@ -704,7 +784,71 @@ impl<'a> MixerSession<'a> {
         validate_value(prop, requested)?;
         let previous = self.read(target).context("设置前读取失败，未发送设置")?;
         let initial = self.query_property(prop, command)?;
-        let payload = encode(prop, initial, requested, target.channel)?;
+        let payload = if matches!(target.control, MixerControl::PageMagicVoiceEnabled | MixerControl::PageEchoReverbEnabled) {
+            let MixerValue::Boolean { enabled } = requested else {
+                bail!("Current page Magic Voice switch must be boolean");
+            };
+            // Current JS he template copies the three low query bytes into
+            // its fixed C0 high byte, then changes bit 1.
+            let mask = if matches!(target.control, MixerControl::PageMagicVoiceEnabled) { 2 } else { 12 };
+            let copied = if mask == 2 { 0xc0000000 } else { 0x80000000 } | (initial & 0x00ffffff);
+            if *enabled { copied | mask } else { copied & !mask }
+        } else if matches!(target.control, MixerControl::PageMagicVoice) {
+            let MixerValue::Scalar { value } = requested else {
+                bail!("Current page Magic Voice mode must be numeric");
+            };
+            ensure!(
+                (0. ..=3.).contains(value),
+                "Current page Magic Voice accepts only source modes 0..3"
+            );
+            let mut flags = 0u32;
+            for (control, mask) in [
+                (MixerControl::EqEnabled, 1u32),
+                (MixerControl::MagicVoiceEnabled, 2),
+                (MixerControl::EchoReverbEnabled, 12),
+            ] {
+                let observed = self.read(&MixerTarget {
+                    control,
+                    band: None,
+                    channel: MixerChannel::Both,
+                })?;
+                if matches!(observed, MixerValue::Boolean { enabled: true }) {
+                    flags |= mask;
+                }
+            }
+            let code = prop
+                .codes
+                .as_ref()
+                .context("Source Magic Voice table missing")?
+                .get(&(*value as i32).to_string())
+                .context("Source Magic Voice mode missing")?;
+            // Current JS ge/ye/fe/Se are fixed templates. Rebuild only the
+            // three source gates; do not carry native reserved bits forward.
+            0x80000000 | (u32::from(*code) << 8) | flags
+        } else if matches!(target.control, MixerControl::PageReverbRoom
+            | MixerControl::PageReverbDecay | MixerControl::PageEchoGain | MixerControl::PageEchoDelay) {
+            let MixerValue::Scalar { value } = requested else {
+                bail!("Current Echo/Reverb field must be numeric");
+            };
+            let mut flags = prop.selector.context("Source Echo selector missing")?;
+            for (control, mask) in [
+                (MixerControl::EqEnabled, 1u32),
+                (MixerControl::MagicVoiceEnabled, 2),
+                (MixerControl::EchoReverbEnabled, 12),
+            ] {
+                if matches!(self.read(&MixerTarget { control, band:None, channel:MixerChannel::Both })?,
+                    MixerValue::Boolean { enabled:true }) { flags |= mask; }
+            }
+            let raw = if matches!(target.control, MixerControl::PageEchoGain) {
+                let index = (*value * 10.).trunc() as usize;
+                *echo_recipe().gain_table.get(index).context("Echo gain source index exceeds 0..10")?
+            } else {
+                numeric_raw(prop, *value)?
+            };
+            0x80000000 | (u32::from(raw) << 8) | flags
+        } else {
+            encode(prop, initial, requested, target.channel)?
+        };
         self.write_property(prop, command, payload)
             .context("DSP 设置发送未能确认；设备可能已经接受，请重新读取")?;
         let observed = self
@@ -739,7 +883,7 @@ impl<'a> MixerSession<'a> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct MixerWriteResult {
     pub requested: MixerValue,
     pub previous: MixerValue,
@@ -755,6 +899,9 @@ fn select(prop: &Property, initial: u32) -> anyhow::Result<u32> {
 }
 
 fn decode_eq(raw: u32) -> MixerValue {
+    // CmMixerLib sub_18000DD30: the 19-bit getter data overlaps the gain
+    // field. movsx cl followed by signed /4 truncates toward zero. Preserve
+    // those source semantics rather than assuming setter/getter roundtrip.
     MixerValue::EqBand {
         data: (raw >> 1) & 0x7ffff,
         gain: i32::from(((raw >> 14) as u8) as i8) / 4,
@@ -785,11 +932,11 @@ fn validate_value(prop: &Property, value: &MixerValue) -> anyhow::Result<()> {
             );
             Ok(())
         }
-        ("eq_band", MixerValue::EqBand { data, gain }) => {
-            ensure!(
-                *data <= 0x7fff && (-32..=31).contains(gain),
-                "EQ 参数超出源位域范围"
-            );
+        ("eq_band", MixerValue::EqBand { gain, .. }) => {
+            // The native setter validates only the signed gain and masks the
+            // entire uint32 data argument to 15 bits. Getter data includes
+            // overlapping gain bits, so rejecting those bits breaks RMW.
+            ensure!((-32..=31).contains(gain), "EQ 参数超出源位域范围");
             Ok(())
         }
         ("firmware", _) => bail!("DSP 固件版本属性拒绝写入，不能用作升级入口"),
@@ -898,4 +1045,508 @@ fn decode_scalar(prop: &Property, raw: u16) -> anyhow::Result<f32> {
     };
     ensure!(value.is_finite(), "DSP 返回不可解析的非有限数值");
     Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::VecDeque;
+    use std::sync::Mutex;
+
+    struct MatrixMock {
+        matrix: Mutex<Vec<u8>>,
+        writes: Mutex<Vec<Vec<u8>>>,
+        resets: Mutex<Vec<u32>>,
+    }
+
+    impl MatrixMock {
+        fn new() -> Self {
+            Self {
+                matrix: Mutex::new(vec![0; driver_spec().matrix_bytes]),
+                writes: Mutex::new(Vec::new()),
+                resets: Mutex::new(Vec::new()),
+            }
+        }
+    }
+
+    impl MixerDriverTransport for MatrixMock {
+        fn read_matrix(&self) -> anyhow::Result<Vec<u8>> {
+            Ok(self.matrix.lock().unwrap().clone())
+        }
+
+        fn write_matrix(&self, bytes: &[u8]) -> anyhow::Result<()> {
+            self.writes.lock().unwrap().push(bytes.to_vec());
+            *self.matrix.lock().unwrap() = bytes.to_vec();
+            Ok(())
+        }
+
+        fn reset_stream(&self, index: u32) -> anyhow::Result<()> {
+            self.resets.lock().unwrap().push(index);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn source_driver_matrix_route_reads_writes_and_verifies_real_bytes() {
+        let route = MixerRoute {
+            input: 1,
+            output: 1,
+        };
+        assert!(matches!(
+            matrix_route(&route).unwrap(),
+            MatrixRoute::Driver { index: 22 }
+        ));
+        let device = MatrixMock::new();
+        {
+            let mut matrix = device.matrix.lock().unwrap();
+            matrix[22 * 4..22 * 4 + 4].copy_from_slice(&1.0f32.to_le_bytes());
+            matrix[21 * 4..21 * 4 + 4].copy_from_slice(&0x7fc01234u32.to_le_bytes());
+        }
+        let before = device.matrix.lock().unwrap().clone();
+        assert!(read_driver_route(&device, &route, || Ok(())).unwrap());
+        let result = write_driver_route(&device, &route, false, || Ok(())).unwrap();
+        assert!(result.previous);
+        assert!(!result.observed);
+        assert!(result.verified);
+        let matrix = device.matrix.lock().unwrap();
+        assert_eq!(&matrix[22 * 4..22 * 4 + 4], &[0, 0, 0, 0]);
+        assert_eq!(&matrix[..22 * 4], &before[..22 * 4]);
+        assert_eq!(&matrix[22 * 4 + 4..], &before[22 * 4 + 4..]);
+        assert_eq!(device.writes.lock().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn source_driver_rejects_hid_routes_and_preserves_reset_sequence() {
+        let hid_route = MixerRoute {
+            input: 0,
+            output: 0,
+        };
+        assert!(matches!(
+            matrix_route(&hid_route).unwrap(),
+            MatrixRoute::Hid(_)
+        ));
+        let device = MatrixMock::new();
+        assert!(driver_index(&hid_route).is_err());
+        let result = restart_streams(&device, || Ok(())).unwrap();
+        assert_eq!(result.completed_indices, (0..=8).collect::<Vec<_>>());
+        assert_eq!(*device.resets.lock().unwrap(), (0..=8).collect::<Vec<_>>());
+        assert_eq!(
+            result.confirmation,
+            "ioctl_completion_only_no_audio_state_readback"
+        );
+    }
+
+    #[test]
+    fn source_mixer_codec_keeps_eq_band_layout_and_endpoint_channel_rules() {
+        let eq = MixerTarget {
+            control: MixerControl::EqBand,
+            band: Some(2),
+            channel: MixerChannel::Both,
+        };
+        assert_eq!(source_property(&eq).unwrap(), "RazerT2DSPEQBandControl");
+        let raw = encode(
+            property(&eq).unwrap().0,
+            0,
+            &MixerValue::EqBand {
+                data: 0x1234,
+                gain: -4,
+            },
+            MixerChannel::Both,
+        )
+        .unwrap();
+        assert_eq!(raw, 0x003c2469);
+        assert!(matches!(
+            decode_eq(raw),
+            MixerValue::EqBand {
+                data: 0x61234,
+                gain: -4
+            }
+        ));
+        assert!(
+            property(&MixerTarget {
+                control: MixerControl::HeadphonesVolume,
+                band: None,
+                channel: MixerChannel::Channel0,
+            })
+            .is_ok()
+        );
+        assert_eq!(
+            property(&eq).unwrap().1
+                - property(&MixerTarget {
+                    control: MixerControl::EqBand,
+                    band: Some(1),
+                    channel: MixerChannel::Both,
+                })
+                .unwrap()
+                .1,
+            4
+        );
+    }
+
+    // CmMixerLib helpers C170/C460 and C300/C5D0 use Output/Input,
+    // BE commands/payloads and LE replies. Never touch a real HID handle.
+    struct ReportMock {
+        lengths: ReportLengths,
+        replies: Mutex<VecDeque<Result<Vec<u8>, &'static str>>>,
+        outputs: Mutex<Vec<Vec<u8>>>,
+        fail_output: Option<usize>,
+    }
+
+    impl ReportMock {
+        fn new(replies: Vec<Result<Vec<u8>, &'static str>>) -> Self {
+            Self {
+                lengths: ReportLengths {
+                    input: BTreeMap::from([(2, 3), (18, 5), (99, 12)]),
+                    output: BTreeMap::from([(3, 7), (4, 5), (19, 9), (99, 12)]),
+                    feature: BTreeMap::new(),
+                },
+                replies: Mutex::new(replies.into()),
+                outputs: Mutex::new(Vec::new()),
+                fail_output: None,
+            }
+        }
+
+        fn outputs(&self) -> Vec<Vec<u8>> {
+            self.outputs.lock().unwrap().clone()
+        }
+    }
+
+    impl FeatureTransport for ReportMock {
+        fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+            panic!("CmMixerLib source does not use Feature sends")
+        }
+
+        fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+            panic!("CmMixerLib source does not use Feature reads")
+        }
+
+        fn write_output(&self, report: &[u8]) -> anyhow::Result<()> {
+            let mut outputs = self.outputs.lock().unwrap();
+            outputs.push(report.to_vec());
+            ensure!(
+                self.fail_output != Some(outputs.len()),
+                "mock Output failure"
+            );
+            Ok(())
+        }
+
+        fn get_input(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            let reply = self
+                .replies
+                .lock()
+                .unwrap()
+                .pop_front()
+                .expect("planned Input");
+            let bytes = reply.map_err(anyhow::Error::msg)?;
+            assert!(bytes.len() <= report.len());
+            report[..bytes.len()].copy_from_slice(&bytes);
+            Ok(bytes.len())
+        }
+
+        fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
+            Ok(self.lengths.clone())
+        }
+
+        fn metadata(&self) -> serde_json::Value {
+            serde_json::json!({"mock": true})
+        }
+    }
+
+    fn reply32(raw: u32) -> Result<Vec<u8>, &'static str> {
+        let mut bytes = vec![18];
+        bytes.extend_from_slice(&raw.to_le_bytes());
+        Ok(bytes)
+    }
+
+    fn reply16(raw: u16) -> Result<Vec<u8>, &'static str> {
+        let mut bytes = vec![2];
+        bytes.extend_from_slice(&raw.to_le_bytes());
+        Ok(bytes)
+    }
+
+    fn target(control: MixerControl) -> MixerTarget {
+        MixerTarget {
+            control,
+            band: None,
+            channel: MixerChannel::Both,
+        }
+    }
+
+    fn wire(id: u8, command: u32, payload: &[u8]) -> Vec<u8> {
+        let mut report = vec![id];
+        report.extend_from_slice(&command.to_be_bytes());
+        report.extend_from_slice(payload);
+        report.resize(12, 0);
+        report
+    }
+
+    #[test]
+    fn source_helpers_keep_output_big_endian_input_little_endian_and_caps_padding() {
+        let mock = ReportMock::new(vec![reply32(0x12345678), reply16(0xabcd)]);
+        let validate = || Ok(());
+        let session = MixerSession::new(&mock, &validate).unwrap();
+        assert_eq!(session.query(0x5ffc001c).unwrap(), 0x12345678);
+        assert_eq!(session.query_u16(0x1800c028).unwrap(), 0xabcd);
+        session.write(0x5ffc002c, 0x12345678).unwrap();
+        session.write_u16(0x1800c028, 0xabcd).unwrap();
+        assert_eq!(
+            mock.outputs(),
+            vec![
+                wire(4, 0x5ffc001c, &[]),
+                wire(4, 0x1800c028, &[]),
+                wire(19, 0x5ffc002c, &[0x12, 0x34, 0x56, 0x78]),
+                wire(3, 0x1800c028, &[0xab, 0xcd]),
+            ]
+        );
+        assert!(mock.replies.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn source_eq_getter_overlap_and_signed_truncation_survive_read_modify_write() {
+        let eq = MixerTarget {
+            control: MixerControl::EqBand,
+            band: Some(2),
+            channel: MixerChannel::Both,
+        };
+        let prop = property(&eq).unwrap().0;
+        // IDA sub_18000DD30 has no data-range guard; only &0x7fff.
+        let requested = MixerValue::EqBand {
+            data: 0x61234,
+            gain: -4,
+        };
+        validate_value(prop, &requested).unwrap();
+        assert_eq!(
+            encode(prop, u32::MAX, &requested, MixerChannel::Both).unwrap(),
+            0x003c2469
+        );
+        assert!(matches!(
+            decode_eq(0x0020ffff),
+            MixerValue::EqBand {
+                data: 0x7fff,
+                gain: -31
+            }
+        ));
+        let mock = ReportMock::new(vec![
+            reply32(0x003c2469),
+            reply32(0x003c2469),
+            reply32(0x003c2469),
+        ]);
+        let validate = || Ok(());
+        let result = MixerSession::new(&mock, &validate)
+            .unwrap()
+            .apply(&eq, &requested)
+            .unwrap();
+        assert!(result.verified);
+        assert!(matches!(
+            result.observed,
+            MixerValue::EqBand {
+                data: 0x61234,
+                gain: -4
+            }
+        ));
+        assert_eq!(
+            mock.outputs()[2],
+            wire(19, 0x5ffc0078, &[0, 0x3c, 0x24, 0x69])
+        );
+    }
+
+    #[test]
+    fn source_endpoint_volume_quantization_and_console_channel_order() {
+        let headphones = target(MixerControl::HeadphonesVolume);
+        // Both preserves source mask 0x8080; -6.1 quantizes to -6.75.
+        let mock = ReportMock::new(vec![reply16(0xd3d3), reply16(0xd3d3), reply16(0xcaca)]);
+        let validate = || Ok(());
+        let result = MixerSession::new(&mock, &validate)
+            .unwrap()
+            .apply(&headphones, &MixerValue::Scalar { value: -6.1 })
+            .unwrap();
+        assert!(matches!(result.observed, MixerValue::Scalar { value } if value == -6.75));
+        assert_eq!(mock.outputs()[2], wire(3, 0x1800c028, &[0xca, 0xca]));
+        let console = MixerTarget {
+            channel: MixerChannel::Channel0,
+            ..target(MixerControl::ConsoleVolume)
+        };
+        assert!(matches!(
+            MixerSession::new(&ReportMock::new(vec![reply32(0x0a14)]), &validate)
+                .unwrap()
+                .read(&console)
+                .unwrap(),
+            MixerValue::Scalar { value: -20.0 }
+        ));
+        let headphones = MixerTarget {
+            channel: MixerChannel::Channel0,
+            ..headphones
+        };
+        assert!(matches!(
+            decode_volume(property(&headphones).unwrap().0, 0x5046, headphones.channel).unwrap(),
+            -2.25
+        ));
+    }
+
+    #[test]
+    fn source_read_rejects_partial_wrong_id_and_transport_failure() {
+        for reply in [
+            Ok(vec![18, 1, 2, 3]),
+            Ok(vec![17, 1, 2, 3, 4]),
+            Err("mock Input failure"),
+        ] {
+            let mock = ReportMock::new(vec![reply]);
+            let validate = || Ok(());
+            assert!(
+                MixerSession::new(&mock, &validate)
+                    .unwrap()
+                    .read(&target(MixerControl::DspFirmware))
+                    .is_err()
+            );
+            assert_eq!(mock.outputs().len(), 1);
+        }
+        for reply in [Ok(vec![2, 1]), Ok(vec![18, 1, 2])] {
+            let mock = ReportMock::new(vec![reply]);
+            let validate = || Ok(());
+            assert!(
+                MixerSession::new(&mock, &validate)
+                    .unwrap()
+                    .read(&target(MixerControl::HeadphonesVolume))
+                    .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn source_descriptor_missing_short_and_over_buffer_reports_fail_before_send() {
+        for mode in 0..3 {
+            let mut mock = ReportMock::new(vec![]);
+            match mode {
+                0 => {
+                    mock.lengths.input.remove(&18);
+                }
+                1 => {
+                    mock.lengths.input.insert(18, 4);
+                }
+                _ => {
+                    mock.lengths.output.insert(99, 67);
+                }
+            }
+            let validate = || Ok(());
+            assert!(
+                MixerSession::new(&mock, &validate)
+                    .unwrap()
+                    .read(&target(MixerControl::DspFirmware))
+                    .is_err()
+            );
+            assert!(mock.outputs().is_empty());
+        }
+    }
+
+    #[test]
+    fn source_write_failure_or_readback_failure_never_returns_verified_or_rolls_back() {
+        for final_reply in [reply32(0), Err("mock readback failed"), Ok(vec![18, 1])] {
+            let mock = ReportMock::new(vec![reply32(0), reply32(0xa0), final_reply]);
+            let validate = || Ok(());
+            assert!(
+                MixerSession::new(&mock, &validate)
+                    .unwrap()
+                    .apply(
+                        &target(MixerControl::EqEnabled),
+                        &MixerValue::Boolean { enabled: true }
+                    )
+                    .is_err()
+            );
+            assert_eq!(
+                mock.outputs(),
+                vec![
+                    wire(4, 0x5ffc0034, &[]),
+                    wire(4, 0x5ffc0034, &[]),
+                    wire(19, 0x5ffc0034, &[0, 0, 0, 0xa1]),
+                    wire(4, 0x5ffc0034, &[])
+                ]
+            );
+        }
+        let mut mock = ReportMock::new(vec![reply32(0), reply32(0xa0)]);
+        mock.fail_output = Some(3);
+        let validate = || Ok(());
+        assert!(
+            MixerSession::new(&mock, &validate)
+                .unwrap()
+                .apply(
+                    &target(MixerControl::EqEnabled),
+                    &MixerValue::Boolean { enabled: true }
+                )
+                .is_err()
+        );
+        assert_eq!(mock.outputs().len(), 3);
+        let mock = ReportMock::new(vec![Err("initial read failed")]);
+        assert!(
+            MixerSession::new(&mock, &validate)
+                .unwrap()
+                .apply(
+                    &target(MixerControl::EqEnabled),
+                    &MixerValue::Boolean { enabled: true }
+                )
+                .is_err()
+        );
+        assert_eq!(mock.outputs().len(), 1);
+    }
+
+    #[test]
+    fn source_peak_read_sends_clear_and_surfaces_clear_failure() {
+        for fail in [None, Some(2)] {
+            let mut mock = ReportMock::new(vec![reply32(0x40008000)]);
+            mock.fail_output = fail;
+            let validate = || Ok(());
+            let result = MixerSession::new(&mock, &validate)
+                .unwrap()
+                .read(&target(MixerControl::HeadphonesPeak));
+            if fail.is_some() {
+                assert!(result.is_err());
+            } else {
+                assert!(matches!(
+                    result.unwrap(),
+                    MixerValue::Peak {
+                        left: 1.0,
+                        right: 0.5
+                    }
+                ));
+            }
+            assert_eq!(
+                mock.outputs(),
+                vec![
+                    wire(4, 0x5ffc0054, &[]),
+                    wire(19, 0x5ffc0054, &[0, 0, 0, 0])
+                ]
+            );
+        }
+    }
+
+    #[test]
+    fn source_mailbox_uses_selector_and_exhausts_original_poll_limit() {
+        let initial = 0x11223344;
+        let done = u32::from((-2500i16) as u16) << 8;
+        let mock = ReportMock::new(vec![reply32(initial), reply32(0x80000000), reply32(done)]);
+        let validate = || Ok(());
+        assert!(matches!(
+            MixerSession::new(&mock, &validate)
+                .unwrap()
+                .read(&target(MixerControl::ReverbRoom))
+                .unwrap(),
+            MixerValue::Scalar { value: -25.0 }
+        ));
+        assert_eq!(
+            mock.outputs()[1],
+            wire(19, 0x5ffc0034, &[0xd1, 0x22, 0x33, 0x54])
+        );
+        let mock = ReportMock::new(
+            std::iter::once(reply32(0))
+                .chain(std::iter::repeat_n(reply32(0x80000000), 5))
+                .collect(),
+        );
+        assert!(
+            MixerSession::new(&mock, &validate)
+                .unwrap()
+                .read(&target(MixerControl::ReverbRoom))
+                .is_err()
+        );
+        assert_eq!(mock.outputs().len(), 7);
+        assert!(mock.replies.lock().unwrap().is_empty());
+    }
 }

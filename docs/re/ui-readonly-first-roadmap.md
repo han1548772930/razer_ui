@@ -12,7 +12,7 @@
 
 2026-10-10 静态检查发现 `validate-ui-fix-registry.py` 的旧修复记录仍指向已删除的 `src/` 路径，另有既存源码证据指纹变化；该登记校验当前不通过。需要按现行 crates 位置逐项重新核对原行为和证据，再迁移记录，不能盲目刷新全部 hash。当前 DLL 协议的编译/证据检查通过不表示这一 UI 登记缺口已解决。
 
-页面细节继续从 [产品内部树与动作](product-ui-details-current.md)、[共享控件交互](shared-ui-controls-current.md)、[应用内部细节](application-ui-details-current.md)、[全页面样式与字体](ui-style-sources-current.md)进入。核对到真实caller和挂载条件后才能使用共享功能；参数/事件/CSS候选仍不是逐分支语义完成，也不是Rust对照或视觉验收。241的Lighting/Help实际分支已补入 [接收器契约](receiver-ui-current.md)，配对、灯光和重置的真实提交/响应链尚未接通，不能由本地操作推定设备成功。
+页面细节继续从 [产品内部树与动作](product-ui-details-current.md)、[共享控件交互](shared-ui-controls-current.md)、[应用内部细节](application-ui-details-current.md)、[全页面样式与字体](ui-style-sources-current.md)进入。核对到真实caller和挂载条件后才能使用共享功能；参数/事件/CSS候选仍不是逐分支语义完成，也不是Rust对照或视觉验收。241的Lighting/Help实际分支已补入 [接收器契约](receiver-ui-current.md)，164/241配对真实提交/事件完成、后续metadata读取、连接刷新及本地缓存链已接；原runtime/profile发布、灯光和重置真实提交/响应仍有缺口，不能由本地操作推定设备成功。
 
 1. 先查 [修复登记](ui-fix-registry.json)及对应当前契约。源码依据、实现和防回归检查未变化的已修项不重复改写；收到新的问题或指纹变化时，只复查受影响的具体行为。
 2. 按 [当前缺口](remaining-ui-work.md)和[逐页队列](ui-review-queue-2026-10-07.json)推进。旧报告中的“未实现”不得覆盖当前代码与登记结果。

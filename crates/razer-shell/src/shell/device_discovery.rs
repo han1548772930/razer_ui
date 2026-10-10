@@ -50,7 +50,7 @@ fn receiver_owner_matches(device: &Device, container: &str, pid: u32) -> bool {
         )
 }
 
-fn receiver_route_for_owner(
+pub(super) fn receiver_route_for_owner(
     observations: &[discovery::ObservedDevice],
     device: &Device,
     container: &str,
@@ -267,18 +267,20 @@ impl AppShell {
         &mut self,
         workspace: Entity<ProductWorkspace>,
         event: &razer_pages::features::DockPairingEvent,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let identity = workspace.read(cx).identity(cx);
         if event.kind() == "DUALLINK_CANCEL" {
             self.receiver_queries.remove(&identity);
+            self.retire_receiver_pairing(&identity);
             return;
         }
-        // Scanning, pairing and unpairing are retained local UI intents. Only
-        // the source-verified existing binding query is sent to the device.
         if event.kind() != "DUALLINK_BIND_INFO" {
+            self.submit_dock_pairing(workspace, event, window, cx);
             return;
         }
+        self.retire_receiver_pairing(&identity);
         let device = workspace.read(cx).device(cx);
         let container = device.device_container_id.clone();
         let product_id = device.real_product_id;
@@ -308,13 +310,11 @@ impl AppShell {
         let generation = self.receiver_queries.entry(identity.clone()).or_default();
         *generation = (session, generation.1.wrapping_add(1));
         let generation = *generation;
-        cx.spawn(async move |this, cx| {
+        cx.spawn_in(window, async move |this, cx| {
             let result = cx
                 .background_spawn(async move {
                     let mut client = ServiceClient::spawn()?;
-                    let result = route
-                        .query(&mut client)
-                        .and_then(|projection| projection.pairing_payload());
+                    let result = route.query(&mut client);
                     let shutdown = client.request(ServiceRequest::Shutdown);
                     match (result, shutdown) {
                         (Ok(value), Ok(_)) => Ok(value),
@@ -322,7 +322,7 @@ impl AppShell {
                     }
                 })
                 .await;
-            let _ = this.update(cx, |this, cx| {
+            let _ = this.update_in(cx, |this, window, cx| {
                 if this.receiver_queries.get(&identity) != Some(&generation)
                     || this.discovery_revision != revision
                     || !this.devices.contains(&workspace)
@@ -340,17 +340,33 @@ impl AppShell {
                     return;
                 }
                 this.receiver_queries.remove(&identity);
-                let result = result.map_err(|error| format!("{error:#}"));
-                workspace.update(cx, |workspace, cx| {
+                let payload = result
+                    .as_ref()
+                    .map_err(|error| format!("{error:#}"))
+                    .and_then(|projection| {
+                        projection
+                            .pairing_payload()
+                            .map_err(|error| format!("{error:#}"))
+                    });
+                let accepted = workspace.update(cx, |workspace, cx| {
                     workspace.observe_dock_pairing(
                         razer_pages::features::DockPairingObservation::result(
                             session,
                             "DUALLINK_BIND_INFO",
-                            result,
+                            payload,
                         ),
                         cx,
                     )
                 });
+                if accepted {
+                    this.publish_receiver_query(
+                        &container,
+                        product_id,
+                        result.as_ref().ok(),
+                        window,
+                        cx,
+                    );
+                }
                 cx.notify();
             });
         })
@@ -367,6 +383,7 @@ impl AppShell {
         // not an invented offline reply. No profile/identity is overwritten.
         self.discovery_revision = self.discovery_revision.wrapping_add(1);
         self.receiver_queries.clear();
+        self.cancel_receiver_pairing();
         self.device_observations.clear();
         self.device_read_scopes.clear();
         self.device_value_owners.clear();
@@ -380,6 +397,7 @@ impl AppShell {
             Ok(snapshot) => snapshot,
             Err(error) => {
                 self.status = format!("设备发现失败：{error}；本地草稿已保留。");
+                self.sync_audio_notifications(window, cx);
                 self.sync_known_devices(cx);
                 cx.notify();
                 return;
@@ -400,6 +418,7 @@ impl AppShell {
         };
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
+        self.sync_audio_notifications(window, cx);
         let tray_widgets = self.tray_widgets(cx);
         if let Some(tray) = &mut self.tray {
             tray.set_widget_devices(tray_widgets, cx);
@@ -500,7 +519,7 @@ impl AppShell {
 
     /// Replace only peers of the receiver that actually answered. Query errors
     /// expire that scope to unknown; unrelated interfaces retain their evidence.
-    fn publish_receiver_query(
+    pub(super) fn publish_receiver_query(
         &mut self,
         container: &str,
         product_id: u32,
@@ -563,6 +582,7 @@ impl AppShell {
         }
         self.sync_known_devices(cx);
         self.sync_gamer_room(cx);
+        self.sync_audio_notifications(window, cx);
         let tray_widgets = self.tray_widgets(cx);
         if let Some(tray) = &mut self.tray {
             tray.set_widget_devices(tray_widgets, cx);

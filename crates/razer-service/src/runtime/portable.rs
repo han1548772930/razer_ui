@@ -21,6 +21,9 @@ use std::{
 #[derive(Default)]
 pub(super) struct PortableRuntime {
     transactions: HashMap<String, u8>,
+    audio_notifications: crate::audio_notification::AudioNotifications,
+    audio_router: crate::audio_router::AudioRouter,
+    foreground_monitor: razer_platform::foreground_monitor::ForegroundMonitor,
 }
 
 impl PortableRuntime {
@@ -57,6 +60,39 @@ impl PortableRuntime {
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
+            ServiceRequest::AudioRoutingEnable { enable } => self.audio_router.enable(enable),
+            ServiceRequest::AudioRouteDevice {
+                primary_device,
+                routed_device,
+                primary_device_id,
+            } => self
+                .audio_router
+                .route(primary_device, routed_device, primary_device_id),
+            ServiceRequest::AudioRouterEvents => self.audio_router.drain(),
+            ServiceRequest::ForegroundMonitorStart { view_url } => {
+                Ok(json!(self.foreground_monitor.start(&view_url)?))
+            }
+            ServiceRequest::ForegroundMonitorStop { view_url } => {
+                Ok(json!(self.foreground_monitor.stop(&view_url)?))
+            }
+            ServiceRequest::ForegroundMonitorEvents { view_url } => {
+                let events = self.foreground_monitor.drain(&view_url)?;
+                Ok(json!(
+                    events
+                        .into_iter()
+                        .map(|event| json!({
+                            "event": "foregroundWindow",
+                            "data": {"name": event.name, "path": event.path}
+                        }))
+                        .collect::<Vec<_>>()
+                ))
+            }
+            ServiceRequest::AudioNotificationsEnable { enable } => {
+                self.audio_notifications.enable(enable)
+            }
+            ServiceRequest::AudioNotificationsDrain => {
+                Ok(serde_json::to_value(self.audio_notifications.drain()?)?)
+            }
             ServiceRequest::AudioVolumeRead { device_id } => Ok(serde_json::to_value(
                 crate::simple_audio_volume::read(&device_id)?,
             )?),
@@ -91,6 +127,11 @@ impl PortableRuntime {
                 target,
                 value,
             } => mixer_request(node, product_id, target, Some(value)),
+            ServiceRequest::HidNodeMixerEqWrite {
+                node,
+                product_id,
+                bands,
+            } => mixer_eq_request(node, product_id, bands),
             ServiceRequest::HidNodeMixerRouteRead {
                 node,
                 product_id,
@@ -490,6 +531,61 @@ fn deadline(started: Instant) -> anyhow::Result<()> {
         "设备查询已超过观察期限"
     );
     Ok(())
+}
+
+fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow::Result<Value> {
+    use razer_device::audio_mixer::{
+        MixerChannel, MixerControl, mic_eq_values, validate_report_lengths,
+    };
+    ensure!(
+        razer_device::audio_mixer::accepts(product_id, node.vendor_id, node.product_id),
+        "Mic EQ HID collection does not match the current product source"
+    );
+    let values = mic_eq_values(&bands)?;
+    let started = Instant::now();
+    let validate = || {
+        ensure!(
+            started.elapsed() < Duration::from_secs(20),
+            "Mic EQ submission exceeded its confirmation deadline"
+        );
+        PortableRuntime::revalidate(&node)
+    };
+    validate()?;
+    let device = with_backend(|backend| backend.open(&node))?;
+    let target = MixerTarget {
+        control: MixerControl::EqEnabled,
+        band: None,
+        channel: MixerChannel::Both,
+    };
+    let lengths = device.report_lengths()?;
+    validate_report_lengths(&target, &lengths)?;
+    let session = MixerSession::new(device.as_ref(), &validate)?;
+    let mut results = Vec::new();
+    results.push(
+        session
+            .apply(&target, &MixerValue::Boolean { enabled: true })
+            .context("Mic EQ enable not confirmed; no EQ band submitted")?,
+    );
+    let mut completed = Vec::<usize>::new();
+    for (index, value) in values.iter().enumerate() {
+        let target = MixerTarget {
+            control: MixerControl::EqBand,
+            band: Some(index as u8),
+            channel: MixerChannel::Both,
+        };
+        let result = session.apply(&target, value).with_context(|| format!(
+            "Mic EQ band {index} not confirmed; enable completed, confirmed bands {completed:?}; no rollback or later band submitted"
+        ))?;
+        results.push(result);
+        completed.push(index);
+    }
+    validate().context("Mic EQ reports submitted; final collection identity was not confirmed")?;
+    Ok(
+        json!({"node":node,"product_id":product_id,"target":target,"bands":bands,"results":results,
+        "source_property":razer_device::audio_mixer::source_property(&target)?,
+        "completed_bands":completed,"identity_scope":"hid_collection",
+        "evidence":"docs/re/audio-mixer-page-bindings-source-current.json"}),
+    )
 }
 
 fn mixer_request(

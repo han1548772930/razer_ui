@@ -29,6 +29,8 @@ use razer_app_pages::app_picker;
 mod app_picker_host;
 use razer_app_pages::armory_page;
 use razer_app_pages::chroma_page;
+mod audio_mixer;
+mod audio_notifications;
 mod audio_volume;
 mod chroma_studio_window;
 mod chroma_window;
@@ -38,6 +40,7 @@ mod keyboard_brightness_read;
 mod keyboard_brightness_write;
 mod mouse_dpi_stages;
 mod mouse_polling_write;
+mod receiver_pairing;
 use razer_app_pages::feedback_page;
 mod firmware_update;
 mod header_status;
@@ -128,12 +131,16 @@ pub struct AppShell {
     tray_ignore_release: bool,
     devices: Vec<Entity<ProductWorkspace>>,
     receiver_queries: BTreeMap<String, (u64, u64)>,
+    receiver_pairing_operations: BTreeMap<String, receiver_pairing::Session>,
+    receiver_pairing_cleanup: Vec<std::thread::JoinHandle<()>>,
     receiver_devices: BTreeMap<String, (u32, u32)>,
     receiver_devices_complete: bool,
     discovery_revision: u64,
     device_observations: Vec<razer_discovery::discovery::ObservedDevice>,
     device_value_owners: std::collections::BTreeSet<String>,
     device_read_scopes: BTreeMap<String, razer_pages::features::mouse_polling::MousePollingScope>,
+    audio_notifications: BTreeMap<String, audio_notifications::Session>,
+    audio_notification_cleanup: Vec<std::thread::JoinHandle<()>>,
     host_tabs: host_tabs::HostTabs,
     location: Location,
     history: Vec<Location>,
@@ -296,12 +303,16 @@ impl AppShell {
         let mut this = Self {
             devices: vec![],
             receiver_queries: BTreeMap::new(),
+            receiver_pairing_operations: BTreeMap::new(),
+            receiver_pairing_cleanup: Vec::new(),
             discovery_revision: 0,
             device_observations: Vec::new(),
             device_value_owners: std::collections::BTreeSet::new(),
             receiver_devices: BTreeMap::new(),
             receiver_devices_complete: false,
             device_read_scopes: BTreeMap::new(),
+            audio_notifications: BTreeMap::new(),
+            audio_notification_cleanup: Vec::new(),
             host_tabs: host_tabs::HostTabs::new(cx),
             location: Location::Main(Tab::Home),
             history: vec![],
@@ -795,6 +806,8 @@ impl AppShell {
             false
         });
         this.install_tray(window, cx);
+        this.install_audio_notification_cleanup(cx);
+        this.install_receiver_pairing_cleanup(cx);
         this.subscriptions.push(cx.subscribe_in(
             &runtime,
             window,
@@ -856,6 +869,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::AudioVolumeRequested { request } => {
                     this.request_audio_volume(entity.clone(), *request, window, cx);
+                }
+                WorkspaceEvent::AudioMixerRequested { request } => {
+                    this.request_audio_mixer(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::Changed => {
                     this.sync_gamer_room(cx);
@@ -952,8 +968,8 @@ impl AppShell {
         self.subscriptions.push(cx.subscribe_in(
             &entity,
             window,
-            |this, entity, event: &razer_pages::features::DockPairingEvent, _, cx| {
-                this.query_dock_pairing(entity.clone(), event, cx);
+            |this, entity, event: &razer_pages::features::DockPairingEvent, window, cx| {
+                this.query_dock_pairing(entity.clone(), event, window, cx);
             },
         ));
         self.devices.push(entity);

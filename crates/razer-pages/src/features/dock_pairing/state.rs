@@ -64,6 +64,8 @@ impl Channel {
 #[derive(Clone, Default)]
 pub(super) struct PairingState {
     pub(super) channels: [Channel; 2],
+    /// Source `scanedInfo` contains the full scan response before lane filtering.
+    pub(super) scanned: Vec<Peer>,
     pub(super) pending: Option<super::DockPairingEvent>,
     pub(super) active: Option<super::DockPairingEvent>,
 }

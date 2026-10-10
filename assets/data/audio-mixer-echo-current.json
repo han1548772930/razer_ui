@@ -1,0 +1,52 @@
+{
+  "product_id": 1342,
+  "presets": {
+    "library": [
+      40,
+      1.7,
+      0.5,
+      150
+    ],
+    "chapel": [
+      60,
+      2.2,
+      0.3,
+      150
+    ],
+    "arena": [
+      100,
+      2.7,
+      0.6,
+      190
+    ],
+    "marbleroom": [
+      30,
+      0.8,
+      0.2,
+      140
+    ],
+    "smallconcerthall": [
+      50,
+      1.2,
+      0.2,
+      110
+    ]
+  },
+  "gain_table": [
+    0,
+    409,
+    819,
+    1228,
+    1638,
+    2048,
+    2457,
+    2867,
+    3276,
+    3686,
+    4096
+  ],
+  "default_mode": "library",
+  "delay_ms": 500,
+  "source": ".ref/middleware/1342/AudioMixer.cde922aae2f0fea23404.js",
+  "ui_source": ".ref/devices/1342/static/js/main.2623357c.js"
+}

@@ -349,3 +349,12 @@
 !/tools/audit-mouse-dpi-stages-current.cjs
 !/tools/audit-simple-audio-volume-current.py
 !/tools/audit-leviathan-volume-ui-current.py
+!/tools/audit-audio-util-notifications-current.py
+!/tools/audit-sysutils-foreground-current.py
+!/tools/audit-sysutils-keyboard-monitor-current.py
+!/tools/audit-sysutils-system-launch-current.py
+!/tools/audit-audio-mixer-page-bindings-current.py
+!/tools/audit-hid-interrupt-current.py
+!/tools/audit-sysutils-keyboard-layout-current.py
+!/tools/audit-receiver-pairing-transport-current.cjs
+!/tools/audit-audio-util-active-consumers-current.cjs

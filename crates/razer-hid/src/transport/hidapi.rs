@@ -1,4 +1,4 @@
-//! Feature/Output/control-Input backend. No vendor binary or direct Win32 FFI.
+//! Feature/Output/control-Input/interrupt backend. No vendor binary or direct Win32 FFI.
 use anyhow::{Context as _, ensure};
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use razer_device::backend::{FeatureTransport, HidBackend, HidNode, ReportLengths};
@@ -161,6 +161,44 @@ impl FeatureTransport for NativeTransport {
 
     fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
         Ok(self.lengths.clone())
+    }
+
+    fn read_interrupt(&self, report: &mut [u8], timeout_ms: u32) -> anyhow::Result<usize> {
+        let timeout = i32::try_from(timeout_ms).context("Interrupt 等待时间超出有限超时范围")?;
+        let maximum = self
+            .lengths
+            .input
+            .values()
+            .max()
+            .copied()
+            .context("此 collection 未声明 Input Report")?;
+        // Our descriptor lengths include the API ID slot even for ID zero.
+        // hid_read_timeout omits that slot for unnumbered interrupt reports.
+        let unnumbered = self.lengths.input.contains_key(&0);
+        ensure!(
+            !unnumbered || self.lengths.input.len() == 1,
+            "此 collection 混合无编号与编号 Input Report，无法确定事件格式"
+        );
+        let raw_maximum = maximum - usize::from(unnumbered);
+        ensure!(
+            raw_maximum > 0 && report.len() >= raw_maximum,
+            "Interrupt 缓冲区小于 descriptor 声明的最大报告"
+        );
+        let count = self
+            .device
+            .read_timeout(report, timeout)
+            .context("HID Interrupt Input Report 读取失败")?;
+        ensure!(count <= report.len(), "Interrupt 实际字节数超出缓冲区");
+        if count == 0 {
+            return Ok(0);
+        }
+        let id = if unnumbered { 0 } else { report[0] };
+        let api_count = count + usize::from(unnumbered);
+        ensure!(
+            valid_io_length(&self.lengths.input, id, api_count),
+            "Interrupt Report 的实际 ID/长度与 descriptor 不一致"
+        );
+        Ok(count)
     }
 
     fn metadata(&self) -> Value {

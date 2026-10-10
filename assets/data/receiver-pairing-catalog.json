@@ -1,0 +1,1170 @@
+{
+  "schema_version": 1,
+  "source_scope": [
+    164,
+    241
+  ],
+  "masters": [
+    {
+      "productId": 164,
+      "dongleId": 164,
+      "bleId": 0,
+      "claimInterface": 0
+    },
+    {
+      "productId": 241,
+      "dongleId": 241,
+      "bleId": 0,
+      "claimInterface": 3,
+      "supports8KHzPollingRate": true
+    }
+  ],
+  "devices": [
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER BLACKWIDOW V3 PRO",
+          "CHSName": "RAZER 黑寡妇蜘蛛V3无线版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER BLACKWIDOW V3 PRO",
+          "CHSName": "RAZER 黑寡妇蜘蛛V3无线版"
+        }
+      ],
+      "DeviceDonglePid": 604,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        183,
+        191,
+        197,
+        205,
+        215,
+        219,
+        212,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceSiblings": [
+        602,
+        603
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER BLACKWIDOW V3 MINI HYPERSPEED",
+          "CHSName": "RAZER 黑寡妇蜘蛛V3迷你无线版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER BLACKWIDOW V3 MINI HYPERSPEED",
+          "CHSName": "RAZER 黑寡妇蜘蛛V3迷你无线版"
+        },
+        {
+          "EID": 129,
+          "Name": "RAZER BLACKWIDOW V3 MINI HYPERSPEED PHANTOM EDITION",
+          "CHSName": "RAZER 黑寡妇蜘蛛V3迷你幽灵版"
+        },
+        {
+          "EID": 130,
+          "Name": "RAZER BLACKWIDOW V3 MINI HYPERSPEED PHANTOM EDITION",
+          "CHSName": "RAZER 黑寡妇蜘蛛V3迷你幽灵版"
+        }
+      ],
+      "DeviceDonglePid": 625,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        183,
+        191,
+        197,
+        205,
+        215,
+        219,
+        212,
+        234,
+        227,
+        45067
+      ],
+      "DeviceSiblings": [
+        600,
+        626
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER BLACKWIDOW V4 MINI HYPERSPEED",
+          "CHSName": "RAZER 黑寡妇蜘蛛V4迷你无线版"
+        }
+      ],
+      "DeviceDonglePid": 698,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        183,
+        191,
+        197,
+        205,
+        215,
+        219,
+        212,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceSiblings": [
+        697,
+        699
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER NAGA V2 PRO",
+          "CHSName": "RAZER 那伽梵蛇专业版"
+        }
+      ],
+      "DeviceDonglePid": 168,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        167
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER BASILISK V3 PRO",
+          "CHSName": "RAZER 巴塞利斯蛇 V3 专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer Basilisk V3 Pro White Edition",
+          "CHSName": "RAZER 巴塞利斯蛇 V3 专业版"
+        }
+      ],
+      "DeviceDonglePid": 171,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        170,
+        172
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER BASILISK V3 PRO 35K",
+          "CHSName": "RAZER 巴塞利斯蛇 V3 专业版 35K"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER BASILISK V3 PRO 35K WHITE EDITION",
+          "CHSName": "RAZER 巴塞利斯蛇 V3 专业版 35K 白色"
+        }
+      ],
+      "DeviceDonglePid": 205,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        204,
+        206
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Basilisk V4 Pro",
+          "CHSName": "Razer 巴塞利斯蛇 V4 专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer Basilisk V4 Pro White Edition",
+          "CHSName": "Razer 巴塞利斯蛇 V4 专业版 白色"
+        }
+      ],
+      "DeviceDonglePid": 227,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        226,
+        228
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Basilisk V4 HyperSpeed",
+          "CHSName": "Razer 巴塞利斯蛇 V4 极速版"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer Basilisk V4 HyperSpeed White Edition",
+          "CHSName": "Razer 巴塞利斯蛇 V4 极速版 白色"
+        }
+      ],
+      "DeviceDonglePid": 234,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        724,
+        730,
+        241
+      ],
+      "DeviceSiblings": [
+        235,
+        236
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Basilisk V3 Pro 35K Phantom Green Edition",
+          "CHSName": "RAZER 巴塞利斯蛇 V3  专业版 35K 幻影绿"
+        },
+        {
+          "EID": 80,
+          "Name": "Razer Basilisk V3 Pro 35K Phantom White Edition",
+          "CHSName": "Razer 巴塞利斯蛇 V3 专业版 35K 幻影白"
+        },
+        {
+          "EID": 81,
+          "Name": "Razer Basilisk V3 Pro 35K Phantom Black Edition",
+          "CHSName": "Razer 巴塞利斯蛇 V3 专业版 35K 幻影黑"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer Basilisk V3 Pro 35K Phantom White Edition",
+          "CHSName": "Razer 巴塞利斯蛇 V3 专业版 35K 幻影白"
+        }
+      ],
+      "DeviceDonglePid": 215,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        214,
+        216
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER BASILISK V3 PRO 35K - XBOX 25 ANNIVERSARY EDITION",
+          "CHSName": "Razer 巴塞利斯蛇V3专业版35K Xbox 25周年限定款"
+        }
+      ],
+      "DeviceDonglePid": 45067,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        45066,
+        45068
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER NAGA V3 PRO",
+          "CHSName": "RAZER 那伽梵蛇 V3 专业版"
+        }
+      ],
+      "DeviceDonglePid": 232,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        231
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER VIPER V2 PRO",
+          "CHSName": "RAZER 毒蝰V2专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER VIPER V2 PRO WHITE EDITION",
+          "CHSName": "RAZER 毒蝰V2专业版 白色"
+        }
+      ],
+      "DeviceDonglePid": 166,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        165
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER DEATHADDER V3 PRO",
+          "CHSName": "RAZER炼狱蝰蛇 V3 专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER DEATHADDER V3 PRO WHITE EDITION",
+          "CHSName": "RAZER炼狱蝰蛇 V3 专业版 白色"
+        }
+      ],
+      "DeviceDonglePid": 183,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        182
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER DEATHADDER V2 X HYPERSPEED",
+          "CHSName": "RAZER 炼狱蝰蛇 V2 X 极速版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER DEATHADDER V2 X HYPERSPEED CUSTOMS EDITION",
+          "CHSName": "RAZER 炼狱蝰蛇 V2 X 极速版 定制款"
+        },
+        {
+          "EID": 129,
+          "Name": "RAZER DEATHADDER V2 X HYPERSPEED QUARTZ EDITION",
+          "CHSName": "RAZER 炼狱蝰蛇 V2 X 极速版 粉晶"
+        }
+      ],
+      "DeviceDonglePid": 156,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        156,
+        157
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Cobra Pro",
+          "CHSName": "Razer 眼镜蛇专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer Cobra Pro White Edition",
+          "CHSName": "Razer 眼镜蛇专业版 白色"
+        }
+      ],
+      "DeviceDonglePid": 176,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        175,
+        177
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER DEATHSTALKER V2 PRO",
+          "CHSName": "RAZER 噬魂金蝎V2专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER DEATHSTALKER V2 PRO",
+          "CHSName": "RAZER 噬魂金蝎V2专业版"
+        }
+      ],
+      "DeviceDonglePid": 656,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        183,
+        191,
+        197,
+        205,
+        215,
+        219,
+        212,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceSiblings": [
+        657,
+        658
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER DEATHSTALKER V2 PRO TENKEYLESS",
+          "CHSName": "RAZER 噬魂金蝎 V2 无线竞技版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER DEATHSTALKER V2 PRO TENKEYLESS",
+          "CHSName": "RAZER 噬魂金蝎 V2 无线竞技版"
+        }
+      ],
+      "DeviceDonglePid": 662,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        191,
+        197,
+        205,
+        215,
+        219,
+        212,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceSiblings": [
+        663,
+        664
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed",
+          "CHSName": "RAZER 黑寡妇蜘蛛V4矮轴竞技极速版"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed",
+          "CHSName": "RAZER 黑寡妇蜘蛛V4矮轴竞技极速版"
+        },
+        {
+          "EID": 129,
+          "Name": "Razer BlackWidow V4 Low-profile Tenkeyless HyperSpeed",
+          "CHSName": "RAZER 黑寡妇蜘蛛V4矮轴竞技极速版"
+        }
+      ],
+      "DeviceDonglePid": 722,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        193,
+        197,
+        205,
+        207,
+        215,
+        219,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceSiblings": [
+        723,
+        724
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer BlackWidow V4 Tenkeyless HyperSpeed",
+          "CHSName": "RAZER 黑寡妇蜘蛛 V4 竞技极速版"
+        }
+      ],
+      "DeviceDonglePid": 725,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        193,
+        197,
+        205,
+        215,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceSiblings": [
+        726,
+        727
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer BlackWidow V4 Low-profile HyperSpeed",
+          "CHSName": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer BlackWidow V4 Low-profile HyperSpeed",
+          "CHSName": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+        },
+        {
+          "EID": 129,
+          "Name": "Razer BlackWidow V4 Low-profile HyperSpeed",
+          "CHSName": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+        },
+        {
+          "EID": 130,
+          "Name": "Razer BlackWidow V4 Low-profile HyperSpeed",
+          "CHSName": "Razer 黑寡妇蜘蛛V4矮轴极速版"
+        }
+      ],
+      "DeviceDonglePid": 713,
+      "DevicePairingBuddies": [
+        125,
+        144,
+        148,
+        176,
+        185,
+        159,
+        168,
+        181,
+        171,
+        166,
+        123,
+        136,
+        131,
+        156,
+        193,
+        197,
+        205,
+        219,
+        215,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceSiblings": [
+        723,
+        724,
+        714,
+        716
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Joro",
+          "CHSName": "Razer 乔罗金蛛"
+        }
+      ],
+      "DeviceDonglePid": 730,
+      "DevicePairingBuddies": [],
+      "DeviceSiblings": [
+        717,
+        718
+      ],
+      "DeviceType": "KEYBOARD"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Mouse Dock Pro",
+          "CHSName": "Razer 幻彩鼠标底座"
+        }
+      ],
+      "DeviceDonglePid": 164,
+      "DevicePairingBuddies": [
+        168,
+        171,
+        176,
+        205,
+        215,
+        219,
+        223,
+        227,
+        232,
+        45067,
+        234
+      ],
+      "DeviceType": "ACCESSORY"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Mouse Dock V2 Pro",
+          "CHSName": "RAZER 鼠标底座 V2 专业版"
+        }
+      ],
+      "DeviceDonglePid": 241,
+      "DevicePairingBuddies": [
+        168,
+        171,
+        176,
+        166,
+        123,
+        136,
+        131,
+        156,
+        183,
+        191,
+        193,
+        197,
+        205,
+        215,
+        219,
+        223,
+        227,
+        232,
+        234,
+        604,
+        625,
+        698,
+        656,
+        662,
+        713,
+        730,
+        725,
+        722
+      ],
+      "DeviceType": "ACCESSORY"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER DEATHADDER V3 HYPERSPEED",
+          "CHSName": "RAZER 毒蝰V3 专业版"
+        }
+      ],
+      "DeviceDonglePid": 197,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        196
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "RAZER DEATHADDER V4 PRO",
+          "CHSName": "RAZER 炼狱蝰蛇 V4 专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "RAZER DEATHADDER V4 PRO WHITE EDITION",
+          "CHSName": "RAZER 炼狱蝰蛇 V4 专业版 白色"
+        }
+      ],
+      "DeviceDonglePid": 191,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        730
+      ],
+      "DeviceSiblings": [
+        190
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Viper V3 Pro",
+          "CHSName": "RAZER 毒蝰V3 专业版"
+        },
+        {
+          "EID": 128,
+          "Name": "Razer Viper V3 Pro White Edition",
+          "CHSName": "RAZER 毒蝰V3 专业版 白色"
+        },
+        {
+          "EID": 129,
+          "Name": "Razer | Pokémon Gengar Edition Wireless Mouse",
+          "CHSName": "雷蛇 | 宝可梦 耿鬼款无线鼠标"
+        },
+        {
+          "EID": 130,
+          "Name": "Razer Viper V3 Pro Sentinels Edition",
+          "CHSName": "Razer 毒蝰V3专业版 Sentinels Edition"
+        },
+        {
+          "EID": 131,
+          "Name": "Razer Viper V3 Pro Faker Edition",
+          "CHSName": "Razer 毒蝰V3 专业版 Faker 限定款"
+        },
+        {
+          "EID": 132,
+          "Name": "Razer Viper V3 Pro Esport Green Edition",
+          "CHSName": "Razer 毒蝰V3专业版 电竞绿"
+        },
+        {
+          "EID": 133,
+          "Name": "Razer | Pokémon Pikachu Edition Wireless Mouse",
+          "CHSName": "Razer | Pokémon 皮卡丘款无线鼠标"
+        }
+      ],
+      "DeviceDonglePid": 193,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        192
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Cobra HyperSpeed",
+          "CHSName": "Razer 眼镜蛇极速版"
+        }
+      ],
+      "DeviceDonglePid": 219,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        725,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        218,
+        220
+      ],
+      "DeviceType": "MOUSE"
+    },
+    {
+      "ProductInfo": [
+        {
+          "EID": 0,
+          "Name": "Razer Viper V3 Pro SE",
+          "CHSName": "Razer毒蝰 V3 专业版SE"
+        }
+      ],
+      "DeviceDonglePid": 223,
+      "DevicePairingBuddies": [
+        604,
+        625,
+        698,
+        656,
+        662,
+        722,
+        713,
+        730
+      ],
+      "DeviceSiblings": [
+        222
+      ],
+      "DeviceType": "MOUSE"
+    }
+  ],
+  "available": [
+    {
+      "productId": 664,
+      "dongleId": 662,
+      "bleId": 663
+    },
+    {
+      "productId": 717,
+      "dongleId": 730,
+      "bleId": 718
+    },
+    {
+      "productId": 658,
+      "dongleId": 656,
+      "bleId": 657
+    },
+    {
+      "productId": 600,
+      "dongleId": 625,
+      "bleId": 626
+    },
+    {
+      "productId": 602,
+      "dongleId": 604,
+      "bleId": 603
+    },
+    {
+      "productId": 697,
+      "dongleId": 698,
+      "bleId": 699
+    },
+    {
+      "productId": 716,
+      "dongleId": 713,
+      "bleId": 714
+    },
+    {
+      "productId": 727,
+      "dongleId": 725,
+      "bleId": 726
+    },
+    {
+      "productId": 190,
+      "dongleId": 191,
+      "isNotChromaDevice": true
+    },
+    {
+      "productId": 192,
+      "dongleId": 193,
+      "isNotChromaDevice": true
+    },
+    {
+      "productId": 170,
+      "dongleId": 171,
+      "bleId": 172
+    },
+    {
+      "productId": 182,
+      "dongleId": 183,
+      "isNotChromaDevice": true
+    },
+    {
+      "productId": 196,
+      "dongleId": 197,
+      "isNotChromaDevice": true
+    },
+    {
+      "productId": 165,
+      "dongleId": 166,
+      "isNotChromaDevice": true
+    },
+    {
+      "productId": 156,
+      "dongleId": 156,
+      "bleId": 157,
+      "isNotChromaDevice": true
+    },
+    {
+      "productId": 204,
+      "dongleId": 205,
+      "bleId": 206
+    },
+    {
+      "productId": 214,
+      "dongleId": 215,
+      "bleId": 216
+    },
+    {
+      "productId": 45066,
+      "dongleId": 45067,
+      "bleId": 45068
+    },
+    {
+      "productId": 167,
+      "dongleId": 168,
+      "bleId": 169
+    },
+    {
+      "productId": 231,
+      "dongleId": 232,
+      "bleId": 233
+    },
+    {
+      "productId": 131,
+      "dongleId": 131,
+      "bleId": 130,
+      "isNotChromaDevice": true
+    },
+    {
+      "productId": 122,
+      "dongleId": 123
+    },
+    {
+      "productId": 134,
+      "dongleId": 136
+    },
+    {
+      "productId": 175,
+      "dongleId": 176,
+      "bleId": 177
+    },
+    {
+      "productId": 218,
+      "dongleId": 219,
+      "bleId": 220
+    },
+    {
+      "productId": 222,
+      "dongleId": 223
+    },
+    {
+      "productId": 226,
+      "dongleId": 227,
+      "bleId": 228
+    },
+    {
+      "productId": 235,
+      "dongleId": 234,
+      "bleId": 236
+    },
+    {
+      "productId": 724,
+      "dongleId": 722,
+      "bleId": 723
+    }
+  ]
+}

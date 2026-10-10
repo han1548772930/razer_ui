@@ -18,7 +18,7 @@
     "runtime_policy": "Application, DLL, vendor JavaScript and hardware execution remain prohibited during development, so runtime acceptance is recorded separately and never fabricated."
   },
   "method": "Static receipt/hash verification and reviewed Rust boundary locators; no vendor code execution",
-  "generator_sha256": "23f09e0ad3a20abf23061796d145c650c0c54272b088309370f8d979b2008e54",
+  "generator_sha256": "30a5a4b900ffef297d3cdc24e942e6e82b86d7d951e44c0e3938acb50e07fb34",
   "inputs": [
     {
       "path": "assets/data/native-library-inventory.json",
@@ -52,7 +52,7 @@
     },
     {
       "path": "docs/re/simple-audio-volume-current-evidence.json",
-      "sha256": "5112268accc367992b03bb765ea97121ad8ad7ab67b58f3dc9ec5a3a7575b97c",
+      "sha256": "a6e43c38f55ce442745233c99c8c538dae87128e9379e2be591a548d5fcb1f04",
       "bytes": 487938
     },
     {
@@ -62,8 +62,53 @@
     },
     {
       "path": "docs/re/mouse-dpi-stages-current-evidence.json",
-      "sha256": "3e9aaeb56f0eff179e9c95132711de8d5da74a366aeb3ff0cfb36570ecb5b093",
-      "bytes": 67284
+      "sha256": "f42172771a60f3cabfa50092b992689d87da5969cc40d2895a958155ba7a2b02",
+      "bytes": 67339
+    },
+    {
+      "path": "docs/re/hid-interrupt-current-evidence.json",
+      "sha256": "98eba738955f9e78a73c04acca0626ac9d472baf08fe948495ab87890a0ad24b",
+      "bytes": 20983
+    },
+    {
+      "path": "docs/re/receiver-pairing-transport-current-evidence.json",
+      "sha256": "121c8877e971529557d870531ad4fd17f32529ab757905a16b19254f1fcfde90",
+      "bytes": 168322
+    },
+    {
+      "path": "docs/re/audio-util-notifications-current-evidence.json",
+      "sha256": "6e31e951bbcbd587a45f6527dd6668f648d45d7c63a4e097060181fe50c5f20f",
+      "bytes": 41029
+    },
+    {
+      "path": "docs/re/rzaudioutil-dll-version-current-evidence.json",
+      "sha256": "b4afc72b5ecd1907a06c3bd7be46776028f6c895757454c333717573e6320a9e",
+      "bytes": 54240
+    },
+    {
+      "path": "docs/re/sysutils-keyboard-layout-current-evidence.json",
+      "sha256": "28aaa275f8ba6ffbfcd840c6924fbcdec3ac42e80ef1e28752fb49c9057b867b",
+      "bytes": 7624
+    },
+    {
+      "path": "docs/re/sysutils-foreground-current-evidence.json",
+      "sha256": "5e6dae37396e68b430ccd8231d3a47f5082f63ef9115d6c67c91463595a80e34",
+      "bytes": 18925
+    },
+    {
+      "path": "docs/re/sysutils-keyboard-monitor-current-evidence.json",
+      "sha256": "4d8688535383ec0f3b2dacd6933b2c10da62594de67c67fcf82ef47696d79fca",
+      "bytes": 10339
+    },
+    {
+      "path": "docs/re/sysutils-system-launch-current-evidence.json",
+      "sha256": "a27475ad7c14c2d152318ede381b629ddb4b66b3965ca1175d6ce39a64989920",
+      "bytes": 18979
+    },
+    {
+      "path": "docs/re/audio-mixer-page-bindings-current.json",
+      "sha256": "b4ba2f0c264bb95d65831cb04c3a39c614b0272396bccabcc847b5a83eec0c49",
+      "bytes": 5756
     }
   ],
   "summary": {
@@ -73,7 +118,7 @@
     "host_native_binary_entries_all_platforms": 64,
     "helper_reference_names": 9,
     "host_helper_exe_bodies": 4,
-    "reviewed_non_product_domains": 17,
+    "reviewed_non_product_domains": 24,
     "entire_library_replacements_completed": 0,
     "entire_program_equivalence_completed": false
   },
@@ -270,7 +315,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageCall",
-          "line": 58
+          "line": 60
         }
       ],
       "status": "partially_implemented",
@@ -312,7 +357,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageEvents",
-          "line": 61
+          "line": 63
         }
       ],
       "status": "partially_implemented",
@@ -354,7 +399,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageClose",
-          "line": 54
+          "line": 56
         }
       ],
       "status": "partially_implemented",
@@ -776,7 +821,7 @@
         {
           "path": "crates/razer-shell/src/shell.rs",
           "symbol_or_token": "ModuleCatalogEvent::ServiceCommand",
-          "line": 592
+          "line": 601
         },
         {
           "path": "crates/razer-app-pages/src/module_service_remove.rs",
@@ -1194,22 +1239,22 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::WindowsServiceStatus",
-          "line": 39
+          "line": 41
         },
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::WindowsServiceStart",
-          "line": 31
+          "line": 33
         },
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::WindowsServiceStop",
-          "line": 35
+          "line": 37
         },
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
           "symbol_or_token": "ServiceRequest::Shutdown",
-          "line": 427
+          "line": 459
         }
       ],
       "status": "partially_implemented",
@@ -1448,7 +1493,7 @@
         {
           "path": "crates/razer-shell/src/shell.rs",
           "symbol_or_token": "GamerRoomEvent::DeviceCommand",
-          "line": 541
+          "line": 550
         }
       ],
       "status": "partially_implemented",
@@ -1767,7 +1812,7 @@
         {
           "path": "crates/razer-service/src/runtime/portable.rs",
           "symbol_or_token": "ServiceRequest::AudioVolumeWrite",
-          "line": 63
+          "line": 89
         },
         {
           "path": "crates/razer-shell/src/shell/audio_volume.rs",
@@ -2034,6 +2079,1346 @@
       "runtime_acceptance": "not_run"
     },
     {
+      "id": "hardware_interrupt_and_receiver_pairing",
+      "current_sources": [
+        {
+          "path": ".ref/host-4.0.827/electron/modules/hidHardwareEvents/index.js",
+          "sha256": "d9b9e1964a145263bdf2b03c0f1f50f66e9c9ada78256301fb3f66f0d6fc94cd",
+          "bytes": 1826,
+          "functions": [
+            {
+              "name": "t",
+              "start": 183,
+              "end": 235
+            },
+            {
+              "name": "registerDevice",
+              "start": 286,
+              "end": 1511
+            },
+            {
+              "name": "unregisterDevice",
+              "start": 1529,
+              "end": 1759
+            },
+            {
+              "name": "getRegisteredHIDDevices",
+              "start": 1784,
+              "end": 1789
+            }
+          ]
+        },
+        {
+          "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+          "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+          "bytes": 197694,
+          "functions": [
+            {
+              "name": "U",
+              "start": 908,
+              "end": 1702
+            },
+            {
+              "name": "constructor",
+              "start": 1741,
+              "end": 4233
+            },
+            {
+              "name": "createDeviceKey",
+              "start": 4233,
+              "end": 4278
+            },
+            {
+              "name": "createAPIData",
+              "start": 4278,
+              "end": 4666
+            },
+            {
+              "name": "isArgUsbDeviceValid",
+              "start": 4666,
+              "end": 4895
+            },
+            {
+              "name": "isArgDeviceValid",
+              "start": 4895,
+              "end": 5109
+            },
+            {
+              "name": "initDll",
+              "start": 5109,
+              "end": 12830
+            },
+            {
+              "name": "callDLL",
+              "start": 12830,
+              "end": 18826
+            },
+            {
+              "name": "callDLLSync",
+              "start": 18826,
+              "end": 19390
+            },
+            {
+              "name": "callDLLAsync",
+              "start": 19390,
+              "end": 20117
+            },
+            {
+              "name": "getUSBDeviceInfoFromDeviceMap",
+              "start": 20117,
+              "end": 20615
+            },
+            {
+              "name": "createUsbDeviceMapEntry",
+              "start": 20615,
+              "end": 21213
+            },
+            {
+              "name": "addUsbDevice",
+              "start": 21213,
+              "end": 25342
+            },
+            {
+              "name": "n",
+              "start": 24009,
+              "end": 24408
+            },
+            {
+              "name": "removeUsbDevice",
+              "start": 25342,
+              "end": 27215
+            },
+            {
+              "name": "isInputNotificationRegistered",
+              "start": 27215,
+              "end": 28727
+            },
+            {
+              "name": "registerInputNotification",
+              "start": 28727,
+              "end": 30365
+            },
+            {
+              "name": "unregisterInputNotification",
+              "start": 30365,
+              "end": 31793
+            },
+            {
+              "name": "setInputNotificationCallback",
+              "start": 31793,
+              "end": 33101
+            },
+            {
+              "name": "isHardwareEventRegistered",
+              "start": 33101,
+              "end": 34591
+            },
+            {
+              "name": "registerHardwareEvent",
+              "start": 34591,
+              "end": 36541
+            },
+            {
+              "name": "unregisterHardwareEvent",
+              "start": 36541,
+              "end": 38043
+            },
+            {
+              "name": "setHardwareEventCallback",
+              "start": 38043,
+              "end": 39439
+            },
+            {
+              "name": "enableMapping",
+              "start": 39439,
+              "end": 40215
+            },
+            {
+              "name": "disableMapping",
+              "start": 40215,
+              "end": 40993
+            },
+            {
+              "name": "isUnsupportedMappingRegistered",
+              "start": 40993,
+              "end": 42542
+            },
+            {
+              "name": "setUnsupportedMappingCallback",
+              "start": 42542,
+              "end": 43951
+            },
+            {
+              "name": "registerUnsupportedMapping",
+              "start": 43951,
+              "end": 45635
+            },
+            {
+              "name": "unregisterUnsupportedMapping",
+              "start": 45635,
+              "end": 47123
+            },
+            {
+              "name": "createCbInputRedirect",
+              "start": 47123,
+              "end": 48092
+            },
+            {
+              "name": "setInputRedirectCallback",
+              "start": 48092,
+              "end": 49481
+            },
+            {
+              "name": "isInputRedirectEnabledGeneric",
+              "start": 49481,
+              "end": 51003
+            },
+            {
+              "name": "enableInputRedirectGeneric",
+              "start": 51003,
+              "end": 52644
+            },
+            {
+              "name": "disableInputRedirectGeneric",
+              "start": 52644,
+              "end": 54356
+            },
+            {
+              "name": "isInputRedirectEnabled",
+              "start": 54356,
+              "end": 54456
+            },
+            {
+              "name": "enableInputRedirect",
+              "start": 54456,
+              "end": 54550
+            },
+            {
+              "name": "disableInputRedirect",
+              "start": 54550,
+              "end": 54646
+            },
+            {
+              "name": "isMouseMoveRedirectEnabled",
+              "start": 54646,
+              "end": 56140
+            },
+            {
+              "name": "createCbMouseMoveRedirect",
+              "start": 56140,
+              "end": 57141
+            },
+            {
+              "name": "setMouseMoveRedirectCallback",
+              "start": 57141,
+              "end": 58542
+            },
+            {
+              "name": "enableMouseMoveRedirect",
+              "start": 58542,
+              "end": 60326
+            },
+            {
+              "name": "disableMouseMoveRedirect",
+              "start": 60326,
+              "end": 61954
+            },
+            {
+              "name": "queryRunningMacrosAndKeysPressed",
+              "start": 61954,
+              "end": 63388
+            },
+            {
+              "name": "localStorageSetItem",
+              "start": 63388,
+              "end": 64155
+            },
+            {
+              "name": "localStorageDeleteItem",
+              "start": 64155,
+              "end": 64963
+            },
+            {
+              "name": "localStorageDeleteAllItems",
+              "start": 64963,
+              "end": 65765
+            },
+            {
+              "name": "setSpeakerVolumeChangedCallback",
+              "start": 65765,
+              "end": 66546
+            },
+            {
+              "name": "setMicrophoneVolumeChangedCallback",
+              "start": 66546,
+              "end": 67334
+            },
+            {
+              "name": "setDefaultSpeakerDeviceChangedCallback",
+              "start": 67334,
+              "end": 68134
+            },
+            {
+              "name": "setDefaultMicrophoneDeviceChangedCallback",
+              "start": 68134,
+              "end": 68943
+            },
+            {
+              "name": "registerAudioServiceEvent",
+              "start": 68943,
+              "end": 70545
+            },
+            {
+              "name": "unregisterAudioServiceEvent",
+              "start": 70545,
+              "end": 71687
+            },
+            {
+              "name": "getDefaultSpeakerDevice",
+              "start": 71687,
+              "end": 72619
+            },
+            {
+              "name": "getDefaultMicrophoneDevice",
+              "start": 72619,
+              "end": 73558
+            },
+            {
+              "name": "speakerVolumeStepDown",
+              "start": 73558,
+              "end": 74348
+            },
+            {
+              "name": "speakerVolumeStepUp",
+              "start": 74348,
+              "end": 75134
+            },
+            {
+              "name": "microphoneVolumeStepDown",
+              "start": 75134,
+              "end": 75930
+            },
+            {
+              "name": "microphoneVolumeStepUp",
+              "start": 75930,
+              "end": 76722
+            },
+            {
+              "name": "setSpeakerVolume",
+              "start": 76722,
+              "end": 77520
+            },
+            {
+              "name": "setSpeakerMute",
+              "start": 77520,
+              "end": 78312
+            },
+            {
+              "name": "setMicrophoneVolume",
+              "start": 78312,
+              "end": 79116
+            },
+            {
+              "name": "setMicrophoneMute",
+              "start": 79116,
+              "end": 79914
+            },
+            {
+              "name": "hasMacroRecordingStarted",
+              "start": 79914,
+              "end": 80724
+            },
+            {
+              "name": "setMacroRecorderEventCallback",
+              "start": 80724,
+              "end": 81544
+            },
+            {
+              "name": "registerMacroRecorderEvent",
+              "start": 81544,
+              "end": 82835
+            },
+            {
+              "name": "unregisterMacroRecorderEvent",
+              "start": 82835,
+              "end": 83986
+            },
+            {
+              "name": "startMacroRecording",
+              "start": 83986,
+              "end": 84814
+            },
+            {
+              "name": "stopMacroRecording",
+              "start": 84814,
+              "end": 85625
+            },
+            {
+              "name": "getMacroRecordingMode",
+              "start": 85625,
+              "end": 86463
+            },
+            {
+              "name": "isHypershiftActive",
+              "start": 86463,
+              "end": 87310
+            },
+            {
+              "name": "isOtfsActive",
+              "start": 87310,
+              "end": 88158
+            },
+            {
+              "name": "getDeviceMode",
+              "start": 88158,
+              "end": 89034
+            },
+            {
+              "name": "getGlobalMode",
+              "start": 89034,
+              "end": 89890
+            },
+            {
+              "name": "setDeviceModeChangedEventCallback",
+              "start": 89890,
+              "end": 90716
+            },
+            {
+              "name": "registerDeviceModeChangedEvent",
+              "start": 90716,
+              "end": 92055
+            },
+            {
+              "name": "unregisterDeviceModeChangedEvent",
+              "start": 92055,
+              "end": 93242
+            },
+            {
+              "name": "isDeviceModeChangedEventRegistered",
+              "start": 93242,
+              "end": 93971
+            },
+            {
+              "name": "createCbInputNotification",
+              "start": 93971,
+              "end": 94885
+            },
+            {
+              "name": "s",
+              "start": 94008,
+              "end": 94736
+            },
+            {
+              "name": "createCbHardwareEvent",
+              "start": 94885,
+              "end": 95803
+            },
+            {
+              "name": "s",
+              "start": 94918,
+              "end": 95658
+            },
+            {
+              "name": "createCbUnSupportedMappingEvent",
+              "start": 95803,
+              "end": 96754
+            },
+            {
+              "name": "s",
+              "start": 95846,
+              "end": 96581
+            },
+            {
+              "name": "createCbSpeakerVolumeChanged",
+              "start": 96754,
+              "end": 97236
+            },
+            {
+              "name": "s",
+              "start": 96794,
+              "end": 97116
+            },
+            {
+              "name": "createCbMicrophoneVolumeChanged",
+              "start": 97236,
+              "end": 97730
+            },
+            {
+              "name": "s",
+              "start": 97279,
+              "end": 97607
+            },
+            {
+              "name": "createCbDefaultSpeakerDeviceChanged",
+              "start": 97730,
+              "end": 98379
+            },
+            {
+              "name": "createCbDefaultMicrophoneDeviceChanged",
+              "start": 98379,
+              "end": 99043
+            },
+            {
+              "name": "createCbMacroRecorderStarted",
+              "start": 99043,
+              "end": 99589
+            },
+            {
+              "name": "createCbMacroRecorderStopped",
+              "start": 99589,
+              "end": 100135
+            },
+            {
+              "name": "createCbMacroItem",
+              "start": 100135,
+              "end": 100595
+            },
+            {
+              "name": "s",
+              "start": 100164,
+              "end": 100478
+            },
+            {
+              "name": "createCbDeviceModeChanged",
+              "start": 100595,
+              "end": 101137
+            },
+            {
+              "name": "createCbGlobalShortcutEvent",
+              "start": 101137,
+              "end": 101691
+            },
+            {
+              "name": "s",
+              "start": 101176,
+              "end": 101558
+            },
+            {
+              "name": "getGlobalShortcuts",
+              "start": 101691,
+              "end": 102527
+            },
+            {
+              "name": "isGlobalShortcutRegistered",
+              "start": 102527,
+              "end": 103502
+            },
+            {
+              "name": "setGlobalShortcutEventCallback",
+              "start": 103502,
+              "end": 104353
+            },
+            {
+              "name": "registerGlobalShortcut",
+              "start": 104353,
+              "end": 105416
+            },
+            {
+              "name": "unregisterGlobalShortcut",
+              "start": 105416,
+              "end": 106266
+            },
+            {
+              "name": "unregisterGlobalShortcuts",
+              "start": 106266,
+              "end": 107035
+            },
+            {
+              "name": "enableGlobalShortcut",
+              "start": 107035,
+              "end": 107773
+            },
+            {
+              "name": "disableGlobalShortcut",
+              "start": 107773,
+              "end": 108560
+            },
+            {
+              "name": "createCbGlobalShortcutEnableEvent",
+              "start": 108560,
+              "end": 109118
+            },
+            {
+              "name": "setGlobalShortcutEnableEventCallback",
+              "start": 109118,
+              "end": 109960
+            },
+            {
+              "name": "isGlobalShortcutEnableEventRegistered",
+              "start": 109960,
+              "end": 110691
+            },
+            {
+              "name": "registerGlobalShortcutEnableEvent",
+              "start": 110691,
+              "end": 112163
+            },
+            {
+              "name": "unregisterGlobalShortcutEnableEvent",
+              "start": 112163,
+              "end": 113371
+            },
+            {
+              "name": "createCbDeviceEvent",
+              "start": 113371,
+              "end": 114223
+            },
+            {
+              "name": "n",
+              "start": 113428,
+              "end": 114080
+            },
+            {
+              "name": "registerDeviceEvent",
+              "start": 114223,
+              "end": 114522
+            },
+            {
+              "name": "unregisterDeviceEvent",
+              "start": 114522,
+              "end": 114822
+            },
+            {
+              "name": "stopRunningTurbosAndMacros",
+              "start": 114822,
+              "end": 116344
+            },
+            {
+              "name": "handleNodeUSBEventRemove",
+              "start": 116344,
+              "end": 117565
+            },
+            {
+              "name": "removeUsbDeviceImp",
+              "start": 117565,
+              "end": 118309
+            },
+            {
+              "name": "addUsbDeviceWithoutFilterDriver",
+              "start": 118309,
+              "end": 121035
+            },
+            {
+              "name": "isAnalogKeyEventRegistered",
+              "start": 121035,
+              "end": 122689
+            },
+            {
+              "name": "createCbAnalogKeyEvent",
+              "start": 122689,
+              "end": 123576
+            },
+            {
+              "name": "s",
+              "start": 122723,
+              "end": 123430
+            },
+            {
+              "name": "setAnalogKeyEventCallback",
+              "start": 123576,
+              "end": 124966
+            },
+            {
+              "name": "registerAnalogKeyEvent",
+              "start": 124966,
+              "end": 127118
+            },
+            {
+              "name": "unregisterAnalogKeyEvent",
+              "start": 127118,
+              "end": 128610
+            },
+            {
+              "name": "unregisterAllAnalogKeysEvent",
+              "start": 128610,
+              "end": 130084
+            },
+            {
+              "name": "registerAllAnalogKeysEvent",
+              "start": 130084,
+              "end": 132176
+            },
+            {
+              "name": "addDevice",
+              "start": 132176,
+              "end": 135924
+            },
+            {
+              "name": "o",
+              "start": 134608,
+              "end": 135007
+            },
+            {
+              "name": "removeDevice",
+              "start": 135924,
+              "end": 137519
+            },
+            {
+              "name": "notifyInputForExternalDevice",
+              "start": 137519,
+              "end": 139178
+            },
+            {
+              "name": "createCbGlobalShortcutUnsupportedMappingEvent",
+              "start": 139178,
+              "end": 139906
+            },
+            {
+              "name": "s",
+              "start": 139235,
+              "end": 139719
+            },
+            {
+              "name": "setGlobalShortcutUnsupportedMappingCallback",
+              "start": 139906,
+              "end": 140803
+            },
+            {
+              "name": "isAllDevicesHooksEnabled",
+              "start": 140803,
+              "end": 141282
+            },
+            {
+              "name": "enableAllDevicesHooks",
+              "start": 141282,
+              "end": 142074
+            },
+            {
+              "name": "disableAllDevicesHooks",
+              "start": 142074,
+              "end": 142868
+            },
+            {
+              "name": "isJoystickEventRegistered",
+              "start": 142868,
+              "end": 144395
+            },
+            {
+              "name": "createCbJoystickEvent",
+              "start": 144395,
+              "end": 145276
+            },
+            {
+              "name": "s",
+              "start": 144428,
+              "end": 145131
+            },
+            {
+              "name": "setJoystickEventCallback",
+              "start": 145276,
+              "end": 146663
+            },
+            {
+              "name": "registerJoystickEvent",
+              "start": 146663,
+              "end": 148662
+            },
+            {
+              "name": "unregisterJoystickEvent",
+              "start": 148662,
+              "end": 150123
+            },
+            {
+              "name": "isXboxGamepadEventRegistered",
+              "start": 150123,
+              "end": 151662
+            },
+            {
+              "name": "createCbXboxGamepadEvent",
+              "start": 151662,
+              "end": 152561
+            },
+            {
+              "name": "s",
+              "start": 151698,
+              "end": 152413
+            },
+            {
+              "name": "setXboxGamepadEventCallback",
+              "start": 152561,
+              "end": 153957
+            },
+            {
+              "name": "registerXboxGamepadEvent",
+              "start": 153957,
+              "end": 155995
+            },
+            {
+              "name": "unregisterXboxGamepadEvent",
+              "start": 155995,
+              "end": 157471
+            },
+            {
+              "name": "createCbInputMonitoringEvent",
+              "start": 157471,
+              "end": 158221
+            },
+            {
+              "name": "s",
+              "start": 157511,
+              "end": 158069
+            },
+            {
+              "name": "setInputMonitoringCallback",
+              "start": 158221,
+              "end": 159392
+            },
+            {
+              "name": "startKeyboardInputMonitoring",
+              "start": 159392,
+              "end": 160208
+            },
+            {
+              "name": "stopKeyboardInputMonitoring",
+              "start": 160208,
+              "end": 161021
+            },
+            {
+              "name": "hasKeyboardInputMonitoringStarted",
+              "start": 161021,
+              "end": 161834
+            },
+            {
+              "name": "startMouseInputMonitoring",
+              "start": 161834,
+              "end": 162644
+            },
+            {
+              "name": "stopMouseInputMonitoring",
+              "start": 162644,
+              "end": 163451
+            },
+            {
+              "name": "hasMouseInputMonitoringStarted",
+              "start": 163451,
+              "end": 164258
+            },
+            {
+              "name": "setMouseSensorRotationAngle",
+              "start": 164258,
+              "end": 165474
+            },
+            {
+              "name": "getMouseSensorRotationAngle",
+              "start": 165474,
+              "end": 166668
+            },
+            {
+              "name": "loadLatestDLL",
+              "start": 166668,
+              "end": 167221
+            },
+            {
+              "name": "createCbSnaptapKeyEvent",
+              "start": 167221,
+              "end": 168135
+            },
+            {
+              "name": "s",
+              "start": 167256,
+              "end": 167988
+            },
+            {
+              "name": "isSnaptapKeyEventRegistered",
+              "start": 168135,
+              "end": 169670
+            },
+            {
+              "name": "setSnaptapKeyEventCallback",
+              "start": 169670,
+              "end": 171063
+            },
+            {
+              "name": "registerSnaptapKeyEvent",
+              "start": 171063,
+              "end": 172759
+            },
+            {
+              "name": "unregisterSnaptapKeyEvent",
+              "start": 172759,
+              "end": 174230
+            },
+            {
+              "name": "handleBLEEvent",
+              "start": 174230,
+              "end": 175014
+            },
+            {
+              "name": "handleBLEEvent_removeDevice",
+              "start": 175014,
+              "end": 176230
+            },
+            {
+              "name": "isKeyboardInputRedirectEnabled",
+              "start": 176230,
+              "end": 176346
+            },
+            {
+              "name": "enableKeyboardInputRedirect",
+              "start": 176346,
+              "end": 176456
+            },
+            {
+              "name": "disableKeyboardInputRedirect",
+              "start": 176456,
+              "end": 176568
+            },
+            {
+              "name": "isMouseInputRedirectEnabled",
+              "start": 176568,
+              "end": 176678
+            },
+            {
+              "name": "enableMouseInputRedirect",
+              "start": 176678,
+              "end": 176782
+            },
+            {
+              "name": "disableMouseInputRedirect",
+              "start": 176782,
+              "end": 176888
+            },
+            {
+              "name": "isRazerKeyInputRedirectEnabled",
+              "start": 176888,
+              "end": 177004
+            },
+            {
+              "name": "enableRazerKeyInputRedirect",
+              "start": 177004,
+              "end": 177114
+            },
+            {
+              "name": "disableRazerKeyInputRedirect",
+              "start": 177114,
+              "end": 177226
+            },
+            {
+              "name": "registerIntervaledHardwareEvent",
+              "start": 177226,
+              "end": 179813
+            },
+            {
+              "name": "isAllAnalogKeysEventRegistered",
+              "start": 179813,
+              "end": 181352
+            },
+            {
+              "name": "registerIntervaledJoystickEvent",
+              "start": 181352,
+              "end": 183940
+            },
+            {
+              "name": "registerIntervaledXboxGamepadEvent",
+              "start": 183940,
+              "end": 186573
+            },
+            {
+              "name": "registerIntervaledAnalogKeysEvent",
+              "start": 186573,
+              "end": 189227
+            },
+            {
+              "name": "_createCbBigDataEvent",
+              "start": 189227,
+              "end": 189656
+            },
+            {
+              "name": "s",
+              "start": 189260,
+              "end": 189566
+            },
+            {
+              "name": "setBigDataEventCallback",
+              "start": 189656,
+              "end": 190470
+            },
+            {
+              "name": "registerBigDataEvent",
+              "start": 190470,
+              "end": 191689
+            },
+            {
+              "name": "unregisterBigDataEvent",
+              "start": 191689,
+              "end": 192786
+            },
+            {
+              "name": "isBigDataEventRegistered",
+              "start": 192786,
+              "end": 193428
+            },
+            {
+              "name": "_createCbKeepAliveEvent",
+              "start": 193428,
+              "end": 193867
+            },
+            {
+              "name": "s",
+              "start": 193463,
+              "end": 193775
+            },
+            {
+              "name": "setKeepAliveCallback",
+              "start": 193867,
+              "end": 194677
+            },
+            {
+              "name": "hasKeepAliveStarted",
+              "start": 194677,
+              "end": 195317
+            },
+            {
+              "name": "startKeepAlive",
+              "start": 195317,
+              "end": 196565
+            },
+            {
+              "name": "stopKeepAlive",
+              "start": 196565,
+              "end": 197657
+            }
+          ]
+        }
+      ],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-device/src/backend.rs",
+          "symbol_or_token": "fn read_interrupt",
+          "line": 54
+        },
+        {
+          "path": "crates/razer-hid/src/transport/hidapi.rs",
+          "symbol_or_token": ".read_timeout(report, timeout)",
+          "line": 189
+        },
+        {
+          "path": "crates/razer-device/src/receiver_pairing.rs",
+          "symbol_or_token": "pub trait HardwareEvents",
+          "line": 64
+        },
+        {
+          "path": "crates/razer-device/src/receiver_pairing.rs",
+          "symbol_or_token": "pub fn pair",
+          "line": 376
+        },
+        {
+          "path": "crates/razer-service/src/runtime/windows/receiver_events.rs",
+          "symbol_or_token": "impl HardwareEvents for Events",
+          "line": 88
+        },
+        {
+          "path": "crates/razer-service/src/runtime/windows/receiver_pairing.rs",
+          "symbol_or_token": "pub(super) struct Controller",
+          "line": 27
+        },
+        {
+          "path": "crates/razer-shell/src/shell/receiver_pairing.rs",
+          "symbol_or_token": "fn submit_dock_pairing",
+          "line": 352
+        },
+        {
+          "path": "crates/razer-storage/src/receiver_pairing.rs",
+          "symbol_or_token": "pub struct PairingCache",
+          "line": 9
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "IDA-proved mapping_engine all-collection ContainerId/PID selector and actual interrupt bytes are implemented without vendor loading. Typed asynchronous Start/Poll/Cancel controller and Dock UI preserve actual event54/55 completion, owner epochs, cancellation cleanup and full-array/lane scan semantics. Local ye/ge physical-key cache add/remove is connected only after real hardware confirmation; it is a local document adaptation, not a device read or original Chromium file. Post-pair metadata, product runtime/serial publishing, profile combining/reconnect, and equivalent non-Windows physical grouping remain separate required gaps. Runtime acceptance not run.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "audio_util_notifications",
+      "current_sources": [],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-device/src/audio_notification.rs",
+          "symbol_or_token": "pub struct NotificationQueue",
+          "line": 26
+        },
+        {
+          "path": "crates/razer-service/src/audio_notification.rs",
+          "symbol_or_token": "pub fn enable",
+          "line": 26
+        },
+        {
+          "path": "crates/razer-service/src/platform/windows/audio_notification.rs",
+          "symbol_or_token": "struct Registration",
+          "line": 158
+        },
+        {
+          "path": "crates/razer-service/src/runtime/portable.rs",
+          "symbol_or_token": "ServiceRequest::AudioNotificationsEnable",
+          "line": 80
+        },
+        {
+          "path": "crates/razer-shell/src/shell/audio_notifications.rs",
+          "symbol_or_token": "fn run",
+          "line": 59
+        },
+        {
+          "path": "crates/razer-shell/src/shell/audio_notifications.rs",
+          "symbol_or_token": "fn sync_audio_notifications",
+          "line": 123
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "Current RzAudioUtil 1.0.3.1 IDA proves filter 0/1/3, exact payload, repeated callback enable and all-of-type disable. Direct Windows COM callback and worker IPC implement registration, events, unregister, reference ownership and apartment cleanup; other platforms explicitly reject this OS capability. Shell starts one retained worker per uniquely observed current instance of the eight source-verified products, enables once, drains actual notifications, and disables/shuts down on loss or quit; 1401 is excluded. No application/notification registration runtime acceptance is performed. Native event DeviceChange differs in case from product deviceChange listeners, which only log; no automatic device cache refresh is invented.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "audio_util_source_versions",
+      "current_sources": [],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-service/src/native_query.rs",
+          "symbol_or_token": "fn source_rzaudioutil_version",
+          "line": 19
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "Current GetDLLVersion bodies for eight 1.0.3.1 products and separate 1401 1.0.1.1 resource are replaced by byte-proved constant formatting without vendor DLL loading. Other libraries' generic version path still loads original exports and allocators; a deterministic version query is not a complete DLL replacement.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "sysutils_foreground_monitor",
+      "current_sources": [
+        {
+          "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+          "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+          "bytes": 7394,
+          "functions": [
+            {
+              "name": "constructor",
+              "start": 259,
+              "end": 486
+            },
+            {
+              "name": "initDll",
+              "start": 486,
+              "end": 4441
+            },
+            {
+              "name": "callDLL",
+              "start": 4441,
+              "end": 5863
+            },
+            {
+              "name": "callDLLSync",
+              "start": 5863,
+              "end": 5911
+            },
+            {
+              "name": "callDLLAsync",
+              "start": 5911,
+              "end": 5977
+            },
+            {
+              "name": "handleFFIEvent",
+              "start": 5977,
+              "end": 7357
+            }
+          ]
+        }
+      ],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-platform/src/foreground_monitor.rs",
+          "symbol_or_token": "pub struct ForegroundMonitor",
+          "line": 64
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/foreground_monitor.rs",
+          "symbol_or_token": "SetWinEventHook(3, 0x17",
+          "line": 399
+        },
+        {
+          "path": "crates/razer-service/src/runtime/portable.rs",
+          "symbol_or_token": "ServiceRequest::ForegroundMonitorEvents",
+          "line": 68
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "Current IDA hooks, listener thread/window, 300 ms debounce, Explorer recheck, UWP child resolution and path event formatter are implemented with URL subscriptions and worker IPC, without SysUtilsNative loading. Original per-product activation/profile task, direct scroll/haptic setter consumer and non-default CRT locale case comparison remain unclosed; a shared task body in 182 middleware is not evidence that DeathAdder supports or enables haptic scrolling. Other platforms explicitly reject this Windows hook capability; runtime acceptance is not run.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "sysutils_keyboard_layout_query",
+      "current_sources": [
+        {
+          "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+          "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+          "bytes": 7394,
+          "functions": [
+            {
+              "name": "constructor",
+              "start": 259,
+              "end": 486
+            },
+            {
+              "name": "initDll",
+              "start": 486,
+              "end": 4441
+            },
+            {
+              "name": "callDLL",
+              "start": 4441,
+              "end": 5863
+            },
+            {
+              "name": "callDLLSync",
+              "start": 5863,
+              "end": 5911
+            },
+            {
+              "name": "callDLLAsync",
+              "start": 5911,
+              "end": 5977
+            },
+            {
+              "name": "handleFFIEvent",
+              "start": 5977,
+              "end": 7357
+            }
+          ]
+        }
+      ],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-platform/src/keyboard_layout.rs",
+          "symbol_or_token": "pub fn get",
+          "line": 3
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/keyboard_layout.rs",
+          "symbol_or_token": "GetKeyboardLayoutNameA",
+          "line": 2
+        },
+        {
+          "path": "crates/razer-service/src/runtime/mod.rs",
+          "symbol_or_token": "ServiceRequest::KeyboardLayoutRead",
+          "line": 31
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "Current IDA calling-thread KLID getter preserves zero initialization, ignored BOOL, hexadecimal parse and signed int FFI bits; independent Windows adapter and typed IPC replace this getter without vendor loading. Page/macro consumers remain unconnected. The separate two-second timer is recorded in its own domain; macOS/Linux equivalents require their own source proof.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "sysutils_keyboard_layout_monitor",
+      "current_sources": [
+        {
+          "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+          "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+          "bytes": 7394,
+          "functions": [
+            {
+              "name": "constructor",
+              "start": 259,
+              "end": 486
+            },
+            {
+              "name": "initDll",
+              "start": 486,
+              "end": 4441
+            },
+            {
+              "name": "callDLL",
+              "start": 4441,
+              "end": 5863
+            },
+            {
+              "name": "callDLLSync",
+              "start": 5863,
+              "end": 5911
+            },
+            {
+              "name": "callDLLAsync",
+              "start": 5911,
+              "end": 5977
+            },
+            {
+              "name": "handleFFIEvent",
+              "start": 5977,
+              "end": 7357
+            }
+          ]
+        }
+      ],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-platform/src/keyboard_layout_monitor.rs",
+          "symbol_or_token": "pub struct KeyboardLayoutMonitor",
+          "line": 7
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/keyboard_layout_monitor.rs",
+          "symbol_or_token": "SetTimer",
+          "line": 1
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "IDA-proved calling-thread 2000ms timer, signed change events, repeated start and original host stop/foreground-list bug are implemented with thread-affine ownership and URL routing. No current product start/stop caller was found by the maintained static search. Actual message-pumped UI owner integration remains a gap; blocking-stdin worker or a substitute thread must not be presented as an equivalent consumer. No timer runtime acceptance performed.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "sysutils_system_properties_launch",
+      "current_sources": [
+        {
+          "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+          "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+          "bytes": 7394,
+          "functions": [
+            {
+              "name": "constructor",
+              "start": 259,
+              "end": 486
+            },
+            {
+              "name": "initDll",
+              "start": 486,
+              "end": 4441
+            },
+            {
+              "name": "callDLL",
+              "start": 4441,
+              "end": 5863
+            },
+            {
+              "name": "callDLLSync",
+              "start": 5863,
+              "end": 5911
+            },
+            {
+              "name": "callDLLAsync",
+              "start": 5911,
+              "end": 5977
+            },
+            {
+              "name": "handleFFIEvent",
+              "start": 5977,
+              "end": 7357
+            }
+          ]
+        }
+      ],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-platform/src/system.rs",
+          "symbol_or_token": "pub fn open_display_settings",
+          "line": 75
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/system.rs",
+          "symbol_or_token": "WinExec",
+          "line": 126
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "Five current native command bodies and existing mouse/keyboard/audio/display page callers are verified: control keyboard, control mmsys.cpl sounds, control main.cpl, sndvol.exe and explorer ms-settings:display use WinExec SW_SHOW=5 without vendor DLL loading. Native launch failures are surfaced explicitly. Generic parameterized msSettings, other system launch functions and full DLL Initialize/Terminate chains remain gaps; non-Windows capability is explicit and no system commands were executed.",
+      "runtime_acceptance": "not_run"
+    },
+    {
       "id": "whole_program_exit",
       "current_sources": [
         {
@@ -2188,7 +3573,7 @@
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
           "symbol_or_token": "self.shutdown_macro_recording",
-          "line": 429
+          "line": 461
         }
       ],
       "status": "partially_implemented",
@@ -2527,7 +3912,7 @@
         },
         {
           "path": "crates/razer-service/src/native_query.rs",
-          "line": 38
+          "line": 79
         }
       ],
       "entire_library_replacement": "not_completed",
@@ -2567,7 +3952,11 @@
         },
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
-          "line": 178
+          "line": 184
+        },
+        {
+          "path": "crates/razer-service/src/runtime/windows/receiver_events.rs",
+          "line": 1
         }
       ],
       "entire_library_replacement": "not_completed",
@@ -2830,6 +4219,10 @@
       ],
       "literal_rust_locators_not_consumer_proof": [
         {
+          "path": "crates/razer-device/src/audio_notification.rs",
+          "line": 1
+        },
+        {
           "path": "crates/razer-device/src/audio_util.rs",
           "line": 1
         },
@@ -2838,8 +4231,20 @@
           "line": 49
         },
         {
+          "path": "crates/razer-service/src/audio_notification.rs",
+          "line": 30
+        },
+        {
           "path": "crates/razer-service/src/audio_util.rs",
           "line": 1
+        },
+        {
+          "path": "crates/razer-service/src/native_query.rs",
+          "line": 14
+        },
+        {
+          "path": "crates/razer-shell/src/shell/audio_notifications.rs",
+          "line": 75
         }
       ],
       "entire_library_replacement": "not_completed",
@@ -3399,7 +4804,7 @@
         },
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
-          "line": 196
+          "line": 202
         },
         {
           "path": "crates/razer-service/src/simple_audio.rs",
@@ -3442,6 +4847,34 @@
         {
           "path": "crates/razer-catalog/src/engines.rs",
           "line": 82
+        },
+        {
+          "path": "crates/razer-platform/src/foreground_monitor.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-platform/src/keyboard_layout.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-platform/src/keyboard_layout_monitor.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/foreground_monitor.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/keyboard_layout.rs",
+          "line": 1
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/keyboard_layout_monitor.rs",
+          "line": 62
+        },
+        {
+          "path": "crates/razer-platform/src/platform/windows/system.rs",
+          "line": 111
         },
         {
           "path": "crates/razer-platform/src/platform/windows/wheel_scroll.rs",

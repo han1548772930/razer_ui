@@ -1,6 +1,7 @@
 //! Native audio controls backed by each product's current mounted source.
 //! The snapshot is a local draft: it never claims an audio driver acknowledgement.
 use super::Choice;
+use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::{
     ActiveTheme, Disableable, Selectable, Sizable,
     button::{Button, ButtonVariants},
@@ -11,11 +12,15 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_device::audio_mixer::MixerValue;
 use razer_i18n::t;
 use razer_widgets::surface;
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{collections::BTreeMap, sync::OnceLock};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    sync::OnceLock,
+};
 
 #[path = "control_pod_audio.rs"]
 mod control_pod_audio;
@@ -38,6 +43,10 @@ pub use oled_home::{OledRuntimeObservation, OledRuntimeRequested};
 pub use stream_mixer::StreamMixerObservation;
 #[path = "audio_volume.rs"]
 mod audio_volume;
+pub use super::audio_mixer::{
+    AudioMixerCompletion, AudioMixerOperation, AudioMixerReply, AudioMixerRequest, AudioMixerState,
+    path as mixer_path,
+};
 pub use audio_volume::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
 };
@@ -207,9 +216,17 @@ pub struct AudioProductWorkspace {
     pod_audio_subscription: Option<Subscription>,
     pod_runtime_devices: Vec<RuntimeAudioDevice>,
     volume: audio_volume::State,
+    pub(super) mixer_io: AudioMixerState,
+    mixer_observed: BTreeMap<String, MixerValue>,
+    mixer_read_queue: VecDeque<String>,
+    mixer_write_queue: VecDeque<(String, MixerValue)>,
+    mixer_eq_queue: Option<[i32; 10]>,
+    mixer_revisions: BTreeMap<String, u64>,
+    mixer_error: Option<String>,
 }
 impl EventEmitter<AudioProductChanged> for AudioProductWorkspace {}
 impl EventEmitter<AudioStudioRequested> for AudioProductWorkspace {}
+impl EventEmitter<AudioMixerRequest> for AudioProductWorkspace {}
 impl EventEmitter<AudioNavigation> for AudioProductWorkspace {}
 
 impl AudioProductWorkspace {
@@ -235,6 +252,13 @@ impl AudioProductWorkspace {
             pod_audio_subscription: None,
             pod_runtime_devices: Vec::new(),
             volume: audio_volume::State::default(),
+            mixer_io: AudioMixerState::default(),
+            mixer_observed: BTreeMap::new(),
+            mixer_read_queue: VecDeque::new(),
+            mixer_write_queue: VecDeque::new(),
+            mixer_eq_queue: None,
+            mixer_revisions: BTreeMap::new(),
+            mixer_error: None,
         };
         this.initialize_equalizers();
         this.initialize_nommo_draft();
@@ -326,6 +350,9 @@ impl AudioProductWorkspace {
                     "presets":eq.presets.iter().map(|p| (p.key.clone(), json!(p.bands))).collect::<serde_json::Map<_,_>>()});
             }
         }
+        if self.spec.product_id == 1342 {
+            self.draft["equalizers"]["mic"]["useMode"] = json!(0);
+        }
     }
     pub fn snapshot(&self) -> Value {
         let mut snapshot = self.draft.clone();
@@ -334,6 +361,7 @@ impl AudioProductWorkspace {
     }
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
         self.invalidate_volume();
+        self.invalidate_mixer();
         self.restore_mixer(saved, window, cx);
         let staged_oled_language = self.staged.get("/device/oledLanguage").cloned();
         self.pod_audio_editor = None;
@@ -449,6 +477,20 @@ impl AudioProductWorkspace {
             .find(|c| c.path == path)
     }
     fn enabled(&self, control: &AudioControl) -> bool {
+        if self.spec.product_id == 1342 {
+            for base in ["/device/noiseGate/", "/device/compressor/"] {
+                if control.path.starts_with(base)
+                    && !control.path.ends_with("/isEnabled")
+                    && self
+                        .draft
+                        .pointer(&format!("{base}isEnabled"))
+                        .and_then(Value::as_bool)
+                        != Some(true)
+                {
+                    return false;
+                }
+            }
+        }
         if self.spec.product_id == 1352
             && matches!(
                 control.path.as_str(),
@@ -517,6 +559,38 @@ impl AudioProductWorkspace {
                             window,
                             cx,
                         ),
+                    }
+                    return;
+                }
+                if this.spec.product_id == 1342
+                    && (mixer_path(&key).is_some()
+                        || key.starts_with("/equalizers/mic_basic/bands/"))
+                {
+                    match event {
+                        SliderEvent::Change(_) => {
+                            let revision = this.mixer_io.edit_revision.wrapping_add(1);
+                            this.mixer_io.edit_revision = revision;
+                            this.mixer_revisions.insert(key.clone(), revision);
+                            if key.starts_with("/equalizers/mic") {
+                                // A newer drag has no submitted array until
+                                // release. Do not send a previous queued array
+                                // while the current edit is still in progress.
+                                this.mixer_eq_queue = None;
+                                this.mixer_revisions
+                                    .insert("/equalizers/mic".into(), revision);
+                                if this.mixer_io.pending.as_ref().is_some_and(|request| {
+                                    request.path.starts_with("/equalizers/mic")
+                                }) {
+                                    if let Some(cancel) = &this.mixer_io.cancellation {
+                                        cancel.store(true, std::sync::atomic::Ordering::Release);
+                                    }
+                                }
+                            }
+                            cx.notify();
+                        }
+                        SliderEvent::Release(value) => {
+                            this.edit(&key, normalized(value.start(), min, max, step), window, cx);
+                        }
                     }
                     return;
                 }
@@ -617,6 +691,368 @@ impl AudioProductWorkspace {
         }
         self.sync(window, cx);
         cx.emit(AudioProductChanged);
+        if self.spec.product_id == 1342 {
+            self.request_mixer_write(path, self.draft.pointer(path).cloned(), cx);
+        }
+        cx.notify();
+    }
+
+    /// Emit a source-verified HID DSP write for controls backed by
+    /// `MixerSDKLib_PropertyControl`. AudioCamy virtual endpoints are omitted
+    /// by `mixer_path` and remain local until their own adapter is connected.
+    fn request_mixer_write(&mut self, path: &str, _value: Option<Value>, cx: &mut Context<Self>) {
+        if path.starts_with("/equalizers/mic/bands/")
+            || path.starts_with("/equalizers/mic_basic/bands/")
+        {
+            self.request_mic_eq_write(cx);
+            return;
+        }
+        if !self.mixer_io.active {
+            return;
+        }
+        let Ok(actions) = super::audio_mixer::write_plan(path, &self.draft) else {
+            return;
+        };
+        if actions.is_empty() {
+            return;
+        }
+        self.mixer_io.edit_revision = self.mixer_io.edit_revision.wrapping_add(1);
+        if let Some(base) = ["/device/vocalFading/", "/device/voiceChanger/"]
+            .into_iter()
+            .find(|base| path.starts_with(base))
+        {
+            // Both source callers receive the entire retained object. A
+            // newer switch/mode supersedes unsent fields from the old object.
+            self.mixer_write_queue
+                .retain(|(queued_path, _)| !queued_path.starts_with(base));
+            for field in ["isEnabled", "value"] {
+                self.mixer_revisions
+                    .insert(format!("{base}{field}"), self.mixer_io.edit_revision);
+            }
+            if self
+                .mixer_io
+                .pending
+                .as_ref()
+                .is_some_and(|request| request.path.starts_with(base))
+            {
+                if let Some(cancel) = &self.mixer_io.cancellation {
+                    cancel.store(true, std::sync::atomic::Ordering::Release);
+                }
+            }
+        }
+        for (path, value) in actions {
+            self.mixer_revisions
+                .insert(path.clone(), self.mixer_io.edit_revision);
+            if let Some((_, queued_value)) = self
+                .mixer_write_queue
+                .iter_mut()
+                .find(|(queued_path, _)| queued_path == &path)
+            {
+                *queued_value = value;
+            } else {
+                self.mixer_write_queue.push_back((path, value));
+            }
+        }
+        self.dispatch_next_mixer_read(cx);
+    }
+
+    fn request_mic_eq_write(&mut self, cx: &mut Context<Self>) {
+        if !self.mixer_io.active {
+            return;
+        }
+        let bands = match super::audio_mixer::mic_eq_bands(&self.draft) {
+            Ok(bands) => bands,
+            Err(error) => {
+                self.mixer_error = Some(error.to_string());
+                return;
+            }
+        };
+        self.mixer_io.edit_revision = self.mixer_io.edit_revision.wrapping_add(1);
+        let revision = self.mixer_io.edit_revision;
+        for path in std::iter::once("/equalizers/mic".to_owned())
+            .chain(std::iter::once("/equalizers/mic/isEnabled".to_owned()))
+            .chain((0..10).map(|index| format!("/equalizers/mic/bands/{index}")))
+        {
+            self.mixer_revisions.insert(path, revision);
+        }
+        if self
+            .mixer_io
+            .pending
+            .as_ref()
+            .is_some_and(|request| request.path.starts_with("/equalizers/mic"))
+        {
+            if let Some(cancel) = &self.mixer_io.cancellation {
+                cancel.store(true, std::sync::atomic::Ordering::Release);
+            }
+        }
+        self.mixer_eq_queue = Some(bands);
+        self.dispatch_next_mixer_read(cx);
+    }
+
+    fn dispatch_mixer_write(&mut self, path: &str, value: MixerValue, cx: &mut Context<Self>) {
+        let Some(mapped) = mixer_path(path) else {
+            return;
+        };
+        self.mixer_io.generation = self.mixer_io.generation.wrapping_add(1);
+        let request = AudioMixerRequest {
+            generation: self.mixer_io.generation,
+            operation: AudioMixerOperation::Write,
+            path: path.to_owned(),
+            target: mapped.target(),
+            value: Some(value),
+            eq_bands: None,
+            epoch: self.mixer_io.epoch,
+            edit_revision: self.mixer_revisions.get(path).copied().unwrap_or(0),
+        };
+        self.mixer_io.pending = Some(request.clone());
+        self.mixer_io.cancellation = Some(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(
+            false,
+        )));
+        cx.emit(request);
+    }
+
+    pub fn mixer_request_matches(&self, request: &AudioMixerRequest) -> bool {
+        self.mixer_io.pending.as_ref().is_some_and(|pending| {
+            pending.generation == request.generation
+                && pending.path == request.path
+                && pending.operation == request.operation
+        })
+    }
+    pub fn mixer_request_current(&self, request: &AudioMixerRequest) -> bool {
+        self.mixer_request_matches(request)
+            && self.mixer_io.active
+            && self.mixer_io.epoch == request.epoch
+            && self
+                .mixer_revisions
+                .get(&request.path)
+                .copied()
+                .unwrap_or(0)
+                == request.edit_revision
+    }
+
+    /// Queue one source-named DSP read. The caller supplies the currently
+    /// mounted control; no catalog default is treated as a hardware value.
+    pub fn request_mixer_read(&mut self, path: &str, cx: &mut Context<Self>) {
+        if self.spec.product_id != 1342 || self.mixer_io.pending.is_some() {
+            return;
+        }
+        let Some(mapped) = mixer_path(path) else {
+            return;
+        };
+        self.mixer_io.generation = self.mixer_io.generation.wrapping_add(1);
+        let request = AudioMixerRequest {
+            generation: self.mixer_io.generation,
+            operation: AudioMixerOperation::Read,
+            path: path.to_owned(),
+            target: mapped.target(),
+            value: None,
+            eq_bands: None,
+            epoch: self.mixer_io.epoch,
+            edit_revision: self.mixer_revisions.get(path).copied().unwrap_or(0),
+        };
+        self.mixer_io.pending = Some(request.clone());
+        self.mixer_io.cancellation = Some(std::sync::Arc::new(std::sync::atomic::AtomicBool::new(
+            false,
+        )));
+        cx.emit(request);
+    }
+
+    pub fn set_mixer_active(&mut self, active: bool, cx: &mut Context<Self>) {
+        if self.spec.product_id != 1342 {
+            return;
+        }
+        if self.mixer_io.active == active
+            && (!active
+                || self
+                    .mixer_io
+                    .pending
+                    .as_ref()
+                    .is_some_and(|request| request.epoch == self.mixer_io.epoch)
+                || !self.mixer_read_queue.is_empty()
+                || !self.mixer_observed.is_empty())
+        {
+            return;
+        }
+        self.mixer_io.active = active;
+        self.invalidate_mixer();
+        self.mixer_read_queue.clear();
+        if active {
+            self.seed_mixer_reads();
+            self.dispatch_next_mixer_read(cx);
+        }
+    }
+
+    fn seed_mixer_reads(&mut self) {
+        self.mixer_read_queue.extend(
+            [
+                "/device/noiseGate/isEnabled",
+                "/device/noiseGate/threshold/value",
+                "/device/noiseGate/targetGain/value",
+                "/device/noiseGate/attackTime/value",
+                "/device/noiseGate/releaseTime/value",
+                "/device/compressor/isEnabled",
+                "/device/compressor/threshold/value",
+                "/device/compressor/softKneeWidth/value",
+                "/device/compressor/ratio/value",
+                "/device/compressor/makeUpGain/value",
+                "/device/compressor/attackTime/value",
+                "/device/compressor/releaseTime/value",
+                "/device/vocalFading/isEnabled",
+                "/device/vocalFading/value",
+                "/device/voiceChanger/isEnabled",
+                "/device/voiceChanger/value",
+                "/device/keyShifter/value",
+            ]
+            .into_iter()
+            .map(str::to_owned),
+        );
+        self.mixer_read_queue
+            .extend((0..10).map(|index| format!("/equalizers/mic/bands/{index}")));
+    }
+
+    fn dispatch_next_mixer_read(&mut self, cx: &mut Context<Self>) {
+        if !self.mixer_io.active || self.mixer_io.pending.is_some() {
+            return;
+        }
+        if let Some(bands) = self.mixer_eq_queue.take() {
+            self.mixer_io.generation = self.mixer_io.generation.wrapping_add(1);
+            let request = AudioMixerRequest {
+                generation: self.mixer_io.generation,
+                operation: AudioMixerOperation::MicEqWrite,
+                path: "/equalizers/mic".into(),
+                target: super::audio_mixer::AudioMixerPath::MicEqEnabled.target(),
+                value: None,
+                eq_bands: Some(bands),
+                epoch: self.mixer_io.epoch,
+                edit_revision: self
+                    .mixer_revisions
+                    .get("/equalizers/mic")
+                    .copied()
+                    .unwrap_or(0),
+            };
+            self.mixer_io.pending = Some(request.clone());
+            self.mixer_io.cancellation = Some(std::sync::Arc::new(
+                std::sync::atomic::AtomicBool::new(false),
+            ));
+            cx.emit(request);
+            return;
+        }
+        if let Some((path, value)) = self.mixer_write_queue.pop_front() {
+            self.dispatch_mixer_write(&path, value, cx);
+            return;
+        }
+        let Some(path) = self.mixer_read_queue.pop_front() else {
+            return;
+        };
+        self.request_mixer_read(&path, cx);
+    }
+
+    pub fn invalidate_mixer(&mut self) {
+        if let Some(cancel) = &self.mixer_io.cancellation {
+            cancel.store(true, std::sync::atomic::Ordering::Release);
+        }
+        self.mixer_io.epoch = self.mixer_io.epoch.wrapping_add(1);
+        self.mixer_read_queue.clear();
+        self.mixer_write_queue.clear();
+        self.mixer_eq_queue = None;
+        self.mixer_observed.clear();
+        self.mixer_error = None;
+    }
+
+    pub fn mixer_request_cancellation(
+        &self,
+        request: &AudioMixerRequest,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        self.mixer_request_matches(request)
+            .then(|| self.mixer_io.cancellation.clone())
+            .flatten()
+    }
+
+    pub fn finish_mixer(
+        &mut self,
+        request: AudioMixerRequest,
+        result: Result<AudioMixerCompletion, String>,
+        scope_current: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.mixer_request_matches(&request) {
+            return;
+        }
+        let previous_error = self.mixer_error.clone();
+        let current = scope_current
+            && self.mixer_io.active
+            && request.epoch == self.mixer_io.epoch
+            && self
+                .mixer_revisions
+                .get(&request.path)
+                .copied()
+                .unwrap_or(0)
+                == request.edit_revision;
+        if current {
+            match result {
+                Ok(completion) => {
+                    self.mixer_error = completion.warning;
+                    let observed = match completion.reply {
+                        AudioMixerReply::Read(value) => Some(value),
+                        AudioMixerReply::Write(write) if write.verified => Some(write.observed),
+                        AudioMixerReply::Write(_) => {
+                            self.mixer_error = Some("DSP 写入没有设备回读确认".into());
+                            None
+                        }
+                        AudioMixerReply::MicEqWrite(results) => {
+                            if results.len() == 11 && results.iter().all(|write| write.verified) {
+                                for (index, write) in results.into_iter().enumerate() {
+                                    let path = if index == 0 {
+                                        "/equalizers/mic/isEnabled".into()
+                                    } else {
+                                        format!("/equalizers/mic/bands/{}", index - 1)
+                                    };
+                                    self.mixer_observed.insert(path, write.observed);
+                                }
+                            } else {
+                                self.mixer_error =
+                                    Some("Mic EQ完整数组缺少全部设备回读确认".into());
+                            }
+                            None
+                        }
+                    };
+                    if let Some(value) = observed {
+                        self.mixer_observed.insert(request.path.clone(), value);
+                    }
+                }
+                Err(error) => {
+                    self.mixer_error = Some(error);
+                    if request.operation == AudioMixerOperation::Write {
+                        // Abort the remainder of this source caller's cascade.
+                        self.mixer_write_queue.retain(|(path, _)| {
+                            if request.path == "/equalizers/mic/isEnabled" {
+                                !path.starts_with("/equalizers/mic/")
+                            } else if request.path == "/device/vocalFading/isEnabled" {
+                                !path.starts_with("/device/vocalFading/")
+                            } else if request.path == "/device/voiceChanger/isEnabled" {
+                                !path.starts_with("/device/voiceChanger/")
+                            } else {
+                                self.mixer_revisions.get(path).copied().unwrap_or(0)
+                                    != request.edit_revision
+                            }
+                        });
+                    }
+                }
+            }
+        } else if request.epoch == self.mixer_io.epoch && !scope_current {
+            self.invalidate_mixer();
+            self.mixer_error = Some("DSP 连接已变化；设备可能已更新，当前状态未确认".into());
+        }
+        self.mixer_io.pending = None;
+        self.mixer_io.cancellation = None;
+        if self.mixer_error != previous_error {
+            if let Some(error) = &self.mixer_error {
+                window.push_notification(error.clone(), cx);
+            }
+        }
+        self.dispatch_next_mixer_read(cx);
+        self.sync(window, cx);
         cx.notify();
     }
     fn sync_haptic_regions(&mut self, path: &str) {
@@ -679,6 +1115,35 @@ impl AudioProductWorkspace {
             }
         }
     }
+    fn change_mic_eq_mode(&mut self, basic: bool, window: &mut Window, cx: &mut Context<Self>) {
+        self.draft["equalizers"]["mic"]["useMode"] = json!(u8::from(basic));
+        self.mixer_eq_queue = None;
+        self.mixer_io.edit_revision = self.mixer_io.edit_revision.wrapping_add(1);
+        self.mixer_revisions
+            .insert("/equalizers/mic".into(), self.mixer_io.edit_revision);
+        if self
+            .mixer_io
+            .pending
+            .as_ref()
+            .is_some_and(|request| request.path.starts_with("/equalizers/mic"))
+        {
+            if let Some(cancel) = &self.mixer_io.cancellation {
+                cancel.store(true, std::sync::atomic::Ordering::Release);
+            }
+        }
+        // Current mode task persists useMode, then reads the misspelled
+        // micBaicEqualizer profile field. No source writes that alias, so it
+        // cannot be fabricated as a successful automatic Basic submission.
+        if basic {
+            window.push_notification("未能应用麦克风均衡器模式，请重新选择预设。", cx);
+        } else {
+            self.request_mic_eq_write(cx);
+        }
+        self.sync(window, cx);
+        cx.emit(AudioProductChanged);
+        cx.notify();
+    }
+
     fn select_preset(
         &mut self,
         key: &str,
@@ -697,11 +1162,47 @@ impl AudioProductWorkspace {
         let state = &mut self.draft["equalizers"][key];
         state["selected"] = json!(preset);
         state["bands"] = state["presets"][preset].clone();
+        if self.spec.product_id == 1342 && matches!(key, "mic" | "mic_basic") {
+            if preset != "custom" {
+                if let Some(original) = self
+                    .spec
+                    .equalizers
+                    .iter()
+                    .find(|eq| eq.key == key)
+                    .and_then(|eq| eq.presets.iter().find(|item| item.key == preset))
+                {
+                    state["bands"] = json!(original.bands);
+                }
+            }
+            self.request_mic_eq_write(cx);
+        }
         self.sync(window, cx);
         cx.emit(AudioProductChanged);
         cx.notify();
     }
     fn reset_equalizer(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
+        if self.spec.product_id == 1342 && matches!(key, "mic" | "mic_basic") {
+            // LM.reset always selects Custom with the Default array, preserving
+            // every named preset. The reducer replaces only customBands.
+            let Some(default) = self
+                .spec
+                .equalizers
+                .iter()
+                .find(|eq| eq.key == key)
+                .and_then(|eq| eq.presets.iter().find(|preset| preset.key == "default"))
+            else {
+                return;
+            };
+            let state = &mut self.draft["equalizers"][key];
+            state["selected"] = json!("custom");
+            state["bands"] = json!(default.bands);
+            state["presets"]["custom"] = json!(default.bands);
+            self.request_mic_eq_write(cx);
+            self.sync(window, cx);
+            cx.emit(AudioProductChanged);
+            cx.notify();
+            return;
+        }
         let state = &mut self.draft["equalizers"][key];
         if let Some(preset) = self
             .spec
@@ -879,6 +1380,17 @@ impl AudioProductWorkspace {
         }
     }
     fn render_equalizer(&self, key: &str, cx: &mut Context<Self>) -> AnyElement {
+        let current_mic = self.spec.product_id == 1342 && key == "mic";
+        let basic = self
+            .draft
+            .pointer("/equalizers/mic/useMode")
+            .and_then(Value::as_u64)
+            == Some(1);
+        let key = if current_mic && basic {
+            "mic_basic"
+        } else {
+            key
+        };
         let Some(eq) = self.spec.equalizers.iter().find(|e| e.key == key) else {
             return div().into_any_element();
         };
@@ -909,39 +1421,70 @@ impl AudioProductWorkspace {
                     .min_w_0()
                     .items_center()
                     .gap_3()
-                    .child(div().text_xs().child(format!(
-                        "{:+.0}",
-                        state["bands"][index].as_f64().unwrap_or(0.)
-                    )))
-                    .when_some(self.sliders.get(&path), |d, s| {
-                        d.child(Slider::new(s).vertical().h(surface::css(180.)))
+                    .when(!current_mic || !basic, |view| {
+                        view.child(div().text_xs().child(format!(
+                            "{:+.0}",
+                            state["bands"][index].as_f64().unwrap_or(0.)
+                        )))
                     })
-                    .child(div().text_xs().child(frequency.clone()))
+                    .when(current_mic && basic, |view| {
+                        view.child(div().text_sm().child(t(frequency)))
+                    })
+                    .when_some(self.sliders.get(&path), |d, s| {
+                        d.child(Slider::new(s).vertical().h(surface::css(if current_mic {
+                            if basic { 140. } else { 300. }
+                        } else {
+                            180.
+                        })))
+                    })
+                    .when(!current_mic || !basic, |view| {
+                        view.child(div().text_xs().child(frequency.clone()))
+                    })
+                    .when(current_mic && basic, |view| {
+                        view.child(
+                            div()
+                                .text_xs()
+                                .child(format!("{}", state["bands"][index].as_f64().unwrap_or(0.))),
+                        )
+                        .child(div().text_xs().child("dB"))
+                    })
             }));
         let key = key.to_owned();
         v_flex()
             .gap_5()
             .child(presets)
             .child(bands)
-            .child(
-                h_flex()
-                    .justify_between()
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(cx.theme().muted_foreground)
-                            .child(format!("{} … {:+} dB", eq.min, eq.max)),
-                    )
-                    .child(
-                        Button::new(SharedString::from(format!("audio-eq-reset-{key}")))
-                            .small()
-                            .ghost()
-                            .label(t("RESET"))
-                            .on_click(cx.listener(move |this, _, window, cx| {
-                                this.reset_equalizer(&key, window, cx)
-                            })),
-                    ),
-            )
+            .when(!current_mic || !basic, |view| {
+                view.child(
+                    h_flex()
+                        .justify_between()
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(cx.theme().muted_foreground)
+                                .child(format!("{} … {:+} dB", eq.min, eq.max)),
+                        )
+                        .child(
+                            Button::new(SharedString::from(format!("audio-eq-reset-{key}")))
+                                .small()
+                                .ghost()
+                                .label(t("RESET"))
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    this.reset_equalizer(&key, window, cx)
+                                })),
+                        ),
+                )
+            })
+            .when(current_mic, |view| {
+                view.child(
+                    Button::new("audio-mic-eq-mode")
+                        .ghost()
+                        .label(t(if basic { "SHOW_MORE" } else { "SHOW_LESS" }))
+                        .on_click(cx.listener(move |this, _, window, cx| {
+                            this.change_mic_eq_mode(!basic, window, cx)
+                        })),
+                )
+            })
             .into_any_element()
     }
 }
@@ -1005,7 +1548,37 @@ impl AudioProductWorkspace {
                             .child(t(description)),
                     );
                 }
-                panel = panel.children(section.controls.iter().map(|c| self.render_control(c, cx)));
+                let dsp_mode_base = if self.spec.product_id == 1342 {
+                    match section.title.as_str() {
+                        "NOISE_GATE" => Some("/device/noiseGate"),
+                        "COMPRESSOR" => Some("/device/compressor"),
+                        _ => None,
+                    }
+                } else {
+                    None
+                };
+                panel = panel.children(
+                    section
+                        .controls
+                        .iter()
+                        .filter(|control| {
+                            dsp_mode_base.is_none()
+                                || super::audio_mixer::accepts_mode(&control.path, &self.draft)
+                        })
+                        .map(|c| self.render_control(c, cx)),
+                );
+                if let Some(base) = dsp_mode_base {
+                    let path = format!("{base}/useMode");
+                    let advanced = self.draft.pointer(&path).and_then(Value::as_u64) == Some(1);
+                    panel = panel.child(
+                        Button::new(SharedString::from(format!("audio-dsp-mode-{base}")))
+                            .ghost()
+                            .label(t(if advanced { "SHOW_LESS" } else { "SHOW_MORE" }))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.edit(&path, json!(u8::from(!advanced)), window, cx);
+                            })),
+                    );
+                }
                 if self.spec.product_id == 1352 && section.title == "VOLUME_HEADER" {
                     panel = panel.child(
                         div()

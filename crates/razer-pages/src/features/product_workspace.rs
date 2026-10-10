@@ -246,6 +246,45 @@ impl ProductWorkspace {
             });
         }
     }
+    pub fn mixer_request_matches(
+        &self,
+        request: &super::audio_products::AudioMixerRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mixer_request_matches(request, cx))
+    }
+    pub fn mixer_cancellation(
+        &self,
+        request: &super::audio_products::AudioMixerRequest,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        if let Body::Source(body) = &self.body {
+            body.read(cx).mixer_cancellation(request, cx)
+        } else {
+            None
+        }
+    }
+    pub fn mixer_request_current(
+        &self,
+        request: &super::audio_products::AudioMixerRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mixer_request_current(request, cx))
+    }
+    pub fn finish_mixer(
+        &mut self,
+        request: super::audio_products::AudioMixerRequest,
+        result: Result<super::audio_products::AudioMixerCompletion, String>,
+        scope_current: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_mixer(request, result, scope_current, window, cx)
+            });
+        }
+    }
     pub fn keyboard_brightness_read_matches(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).keyboard_brightness_read_matches(generation,cx))
     }
@@ -433,10 +472,11 @@ impl ProductWorkspace {
         &mut self,
         observation: super::DockPairingObservation,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.observe_dock_pairing(observation, cx));
+            return body.update(cx, |body, cx| body.observe_dock_pairing(observation, cx));
         }
+        false
     }
     pub fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
@@ -617,6 +657,11 @@ impl ProductWorkspace {
                     WorkspaceEvent::AudioVolumeRequested { request } => {
                         WorkspaceEvent::AudioVolumeRequested { request: *request }
                     }
+                    WorkspaceEvent::AudioMixerRequested { request } => {
+                        WorkspaceEvent::AudioMixerRequested {
+                            request: request.clone(),
+                        }
+                    }
                     WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
                         WorkspaceEvent::MousePollingRequested {
                             scope: *scope,
@@ -690,6 +735,11 @@ impl ProductWorkspace {
                     }
                     WorkspaceEvent::AudioVolumeRequested { request } => {
                         WorkspaceEvent::AudioVolumeRequested { request: *request }
+                    }
+                    WorkspaceEvent::AudioMixerRequested { request } => {
+                        WorkspaceEvent::AudioMixerRequested {
+                            request: request.clone(),
+                        }
                     }
                     WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
                         WorkspaceEvent::MousePollingRequested {

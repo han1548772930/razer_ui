@@ -6,6 +6,8 @@
 //! `docs/re/dll-readonly-inventory.md`。设备与服务写回属于当前实现范围；
 //! 已证明的直接协议读写与未闭合的 DLL/平台适配分别登记。
 #![allow(dead_code)]
+pub mod audio_notification;
+pub mod audio_router;
 pub mod audio_util;
 pub mod native_query;
 pub mod native_read;

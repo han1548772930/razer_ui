@@ -22,7 +22,7 @@ use windows_sys::Win32::{
 const APPLICATION_QUERY_BUDGET: Duration = Duration::from_secs(10);
 static QUERY_LOCK: Mutex<()> = Mutex::new(());
 
-fn next_transaction(
+pub(super) fn next_transaction(
     path: &str,
     container: &str,
     selected: &ReceiverCapability,
@@ -98,7 +98,7 @@ pub(super) fn valid_container(value: &str) -> bool {
         && inner.bytes().any(|ch| ch.is_ascii_hexdigit() && ch != b'0')
 }
 
-fn select_target(
+pub(super) fn select_target(
     snapshot: &Value,
     path: &str,
     container: &str,

@@ -551,3 +551,321 @@ pub fn synchronize_profile_slots(
     }
     Ok(results)
 }
+
+#[cfg(test)]
+mod tests {
+    // Every assertion below is tied to the current 182 receipts in
+    // docs/re/mouse-dpi-ui-current-evidence.json: Ke's visible remap,
+    // setDPIStages' 3+7*count packet-size override, and the getter parser's
+    // one-based records. No historical bundle or vendor implementation runs.
+    use super::*;
+    use serde_json::json;
+    use std::collections::VecDeque;
+    use std::sync::Mutex;
+
+    struct Reply {
+        status: u8,
+        data: Vec<u8>,
+        declared_len: Option<u8>,
+    }
+
+    struct MockTransport {
+        sent: Mutex<Vec<Vec<u8>>>,
+        replies: Mutex<VecDeque<Reply>>,
+    }
+
+    impl MockTransport {
+        fn new(replies: impl IntoIterator<Item = Reply>) -> Self {
+            Self {
+                sent: Mutex::new(Vec::new()),
+                replies: Mutex::new(replies.into_iter().collect()),
+            }
+        }
+
+        fn sent(&self) -> Vec<Vec<u8>> {
+            self.sent.lock().unwrap().clone()
+        }
+    }
+
+    impl FeatureTransport for MockTransport {
+        fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+            self.sent.lock().unwrap().push(report.to_vec());
+            Ok(())
+        }
+
+        fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            let reply = self
+                .replies
+                .lock()
+                .unwrap()
+                .pop_front()
+                .context("mock reply exhausted")?;
+            let sent = self
+                .sent
+                .lock()
+                .unwrap()
+                .last()
+                .context("mock has no sent report")?
+                .clone();
+            report.fill(0);
+            report[1] = reply.status;
+            report[2] = sent[2];
+            let len = reply.declared_len.unwrap_or(reply.data.len() as u8);
+            report[6] = len;
+            report[7] = sent[7];
+            report[8] = sent[8];
+            report[9..9 + reply.data.len()].copy_from_slice(&reply.data);
+            Ok(91)
+        }
+
+        fn metadata(&self) -> serde_json::Value {
+            json!({"mock":true})
+        }
+    }
+
+    fn cap() -> &'static MouseDpiStagesCapability {
+        capability(182).unwrap()
+    }
+
+    fn draft(
+        enabled: bool,
+        active_stage: usize,
+        rows: &[(u16, u16, bool, bool)],
+    ) -> DpiStagesDraft {
+        DpiStagesDraft {
+            enabled,
+            active_stage,
+            stages: rows
+                .iter()
+                .map(|&(x, y, visible, independent)| DpiStage {
+                    x,
+                    y,
+                    visible,
+                    independent,
+                })
+                .collect(),
+        }
+    }
+
+    fn getter_data(active: u8, rows: &[(u16, u16, u16)]) -> Vec<u8> {
+        let mut data = vec![1, active, rows.len() as u8];
+        for (index, &(x, y, z)) in rows.iter().enumerate() {
+            data.push(index as u8 + 1);
+            data.extend_from_slice(&x.to_be_bytes());
+            data.extend_from_slice(&y.to_be_bytes());
+            data.extend_from_slice(&z.to_be_bytes());
+        }
+        data
+    }
+
+    fn reply(data: Vec<u8>) -> Reply {
+        Reply {
+            status: 2,
+            data,
+            declared_len: None,
+        }
+    }
+
+    #[test]
+    fn source_ke_filters_visible_rows_and_remaps_active_stage() {
+        let packed = pack(
+            cap(),
+            &draft(
+                true,
+                3,
+                &[
+                    (400, 400, true, false),
+                    (800, 800, false, false),
+                    (1600, 3200, true, true),
+                    (6400, 6400, true, false),
+                    (12800, 12800, true, false),
+                ],
+            ),
+        )
+        .unwrap();
+        assert_eq!(packed.active_stage, 2);
+        assert_eq!(
+            packed
+                .stages
+                .iter()
+                .map(|row| (row.index, row.x, row.y, row.z))
+                .collect::<Vec<_>>(),
+            vec![
+                (0, 400, 400, 0),
+                (1, 1600, 3200, 0),
+                (2, 6400, 6400, 0),
+                (3, 12800, 12800, 0),
+            ]
+        );
+    }
+
+    #[test]
+    fn source_ke_disabled_mode_sends_only_selected_stage() {
+        let packed = pack(
+            cap(),
+            &draft(
+                false,
+                3,
+                &[
+                    (400, 400, true, false),
+                    (800, 800, true, false),
+                    (1600, 3200, true, true),
+                    (6400, 6400, true, false),
+                    (12800, 12800, true, false),
+                ],
+            ),
+        )
+        .unwrap();
+        assert_eq!(packed.active_stage, 1);
+        assert_eq!(
+            packed.stages,
+            vec![PackedDpiStage {
+                index: 0,
+                x: 1600,
+                y: 3200,
+                z: 0
+            }]
+        );
+    }
+
+    #[test]
+    fn setter_and_getter_use_source_report_bytes_and_successful_readback() {
+        let device = MockTransport::new([
+            reply(vec![1, 1, 2]),
+            reply(getter_data(2, &[(400, 400, 0), (1600, 3200, 0)])),
+        ]);
+        let requested = draft(
+            true,
+            3,
+            &[
+                (400, 400, true, false),
+                (800, 800, false, false),
+                (1600, 3200, true, true),
+            ],
+        );
+        let result = apply_current(
+            &device,
+            cap(),
+            &requested,
+            {
+                let mut transaction = 0u8;
+                move || {
+                    let current = transaction;
+                    transaction += 1;
+                    Ok(current)
+                }
+            },
+            || Ok(()),
+        )
+        .unwrap();
+        assert!(result.verified);
+        let sent = device.sent();
+        assert_eq!(sent.len(), 2);
+        let setter = &sent[0];
+        assert_eq!(setter.len(), 91);
+        assert_eq!(&setter[6..9], &[17, 4, 6]); // 3 + 7*2 overrides 80
+        assert_eq!(
+            &setter[9..26],
+            &[1, 2, 2, 0, 1, 144, 1, 144, 0, 0, 1, 6, 64, 12, 128, 0, 0]
+        );
+        assert_eq!(
+            setter[89],
+            setter[3..89].iter().fold(0, |sum, byte| sum ^ byte)
+        );
+        let getter = &sent[1];
+        assert_eq!(&getter[6..9], &[80, 4, 134]);
+        assert_eq!(getter[9], 1);
+    }
+
+    #[test]
+    fn malformed_or_mismatched_getter_is_rejected() {
+        let malformed = MockTransport::new([Reply {
+            status: 2,
+            data: vec![1, 1, 1, 1],
+            declared_len: Some(4),
+        }]);
+        assert!(read_current(&malformed, cap(), || Ok(0), || Ok(())).is_err());
+
+        let mismatched = MockTransport::new([reply(vec![2, 1, 1, 1, 1, 144, 1, 144, 0, 0])]);
+        assert!(read_current(&mismatched, cap(), || Ok(0), || Ok(())).is_err());
+    }
+
+    #[test]
+    fn write_returns_error_when_follow_up_readback_fails() {
+        let device = MockTransport::new([
+            reply(vec![1, 1, 1]),
+            Reply {
+                status: 2,
+                data: vec![1, 1, 1, 1],
+                declared_len: Some(4),
+            },
+        ]);
+        let requested = draft(true, 1, &[(400, 400, true, false), (800, 800, true, false)]);
+        let error = apply_current(
+            &device,
+            cap(),
+            &requested,
+            {
+                let mut transaction = 0u8;
+                move || {
+                    let current = transaction;
+                    transaction += 1;
+                    Ok(current)
+                }
+            },
+            || Ok(()),
+        )
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("readback"));
+        assert_eq!(device.sent().len(), 2);
+    }
+
+    #[test]
+    fn invalid_drafts_are_rejected_before_any_device_send() {
+        let mut cases = vec![
+            draft(true, 0, &[(400, 400, true, false), (800, 800, true, false)]),
+            draft(
+                true,
+                2,
+                &[(400, 400, true, false), (800, 800, false, false)],
+            ),
+            draft(true, 1, &[(99, 400, true, false), (800, 800, true, false)]),
+            draft(
+                true,
+                1,
+                &[(400, 30001, true, true), (800, 800, true, false)],
+            ),
+            draft(true, 1, &[(400, 400, true, false)]),
+        ];
+        cases.push(draft(true, 1, &[(400, 400, true, false); 6]));
+        for requested in cases {
+            let device = MockTransport::new([]);
+            assert!(apply_current(&device, cap(), &requested, || Ok(0), || Ok(())).is_err());
+            assert!(device.sent().is_empty());
+        }
+    }
+
+    #[test]
+    fn a_complete_but_different_readback_never_returns_verified() {
+        let device = MockTransport::new([
+            reply(vec![1, 1, 2]),
+            reply(getter_data(1, &[(400, 400, 0), (800, 1600, 0)])),
+        ]);
+        let requested = draft(true, 1, &[(400, 400, true, false), (800, 800, true, false)]);
+        let mut transaction = 0u8;
+        let error = apply_current(
+            &device,
+            cap(),
+            &requested,
+            || {
+                let current = transaction;
+                transaction += 1;
+                Ok(current)
+            },
+            || Ok(()),
+        )
+        .unwrap_err();
+        assert!(format!("{error:#}").contains("does not match the requested table"));
+        assert_eq!(device.sent().len(), 2);
+    }
+}

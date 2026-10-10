@@ -1,0 +1,75 @@
+{
+  "product_id": 1342,
+  "data_by_band": [
+    30,
+    60,
+    120,
+    250,
+    500,
+    1000,
+    2000,
+    4000,
+    8000,
+    16000
+  ],
+  "display_frequencies": [
+    31,
+    63,
+    125,
+    250,
+    500,
+    1000.0,
+    2000.0,
+    4000.0,
+    8000.0,
+    16000.0
+  ],
+  "basic_presets": {
+    "default": [
+      0,
+      0,
+      0
+    ],
+    "radiovoice": [
+      2,
+      0,
+      1
+    ],
+    "balanced": [
+      -1,
+      0,
+      1
+    ],
+    "midfocused": [
+      1,
+      1,
+      0
+    ]
+  },
+  "basic_expansion": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2
+  ],
+  "enable_before_bands": true,
+  "band_order": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "source": ".ref/middleware/1342/AudioMixer.cde922aae2f0fea23404.js"
+}

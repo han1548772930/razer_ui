@@ -1,0 +1,1606 @@
+{
+  "schema_version": 1,
+  "method": "Current acquisition-verified 164/241 AST, current official host source and retained IDA mapping_engine analysis; vendor JavaScript and native targets never executed",
+  "generator_sha256": "db081cf887267db04c85a55b57a2547e56ab4ec867b0a8a5b380f8287345f998",
+  "receipts": [
+    {
+      "product_id": 164,
+      "name": "current product feature",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 157868,
+      "end": 157992,
+      "source": "i.default.useFeature(\"rzDeviceType\",\"rzDevice25\",{isDualLinkDevice:!0,duallinkDeviceType:\"LINKER\",brightness:{regionId:15}})"
+    },
+    {
+      "product_id": 164,
+      "name": "current main feature scope: original mapping_engine event producer",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "feature_names": [
+        "rzDeviceType",
+        "useMWManifest",
+        "useGetDockEditionAPI",
+        "isMouseDockDevice"
+      ],
+      "useHidHwEvents": false
+    },
+    {
+      "product_id": 164,
+      "module": 30580,
+      "name": "fr",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 645533,
+      "end": 645557,
+      "source": "new Uint8Array([3,0,65])"
+    },
+    {
+      "product_id": 164,
+      "module": 30580,
+      "name": "jI",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 645590,
+      "end": 645614,
+      "source": "new Uint8Array([2,0,66])"
+    },
+    {
+      "product_id": 164,
+      "module": 30580,
+      "name": "pJ",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 645641,
+      "end": 645665,
+      "source": "new Uint8Array([1,0,70])"
+    },
+    {
+      "product_id": 164,
+      "module": 84816,
+      "name": "ox",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 636137,
+      "end": 636369,
+      "source": "(e,t,n)=>c(void 0,void 0,void 0,(function*(){const o=new Uint8Array(i.fr[0]);o[0]=t,o[1]=s.ft(n),o[2]=s.Zz(n);const a=yield e.sendCommand(i.fr,i.AL,o);return a.jsonData={mode:a.data[0],modeEnum:s.oW(r.rz,a.data[0]),productId:n},a}))"
+    },
+    {
+      "product_id": 164,
+      "module": 84816,
+      "name": "Mk",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 636372,
+      "end": 636550,
+      "source": "(e,t)=>c(void 0,void 0,void 0,(function*(){const n=new Uint8Array(i.jI[0]);n[0]=s.ft(t),n[1]=s.Zz(t);const o=yield e.sendCommand(i.jI,i.$L,n);return o.jsonData={productId:t},o}))"
+    },
+    {
+      "product_id": 164,
+      "module": 84816,
+      "name": "O7",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 636553,
+      "end": 636749,
+      "source": "(e,t)=>c(void 0,void 0,void 0,(function*(){const n=new Uint8Array(i.pJ[0]);n[0]=t;const o=yield e.sendCommand(i.pJ,i.x$,n);return o.jsonData={status:o.data[0],statusEnum:s.oW(r.Ob,o.data[0])},o}))"
+    },
+    {
+      "product_id": 164,
+      "module": 84816,
+      "name": "ki",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 627998,
+      "end": 628092,
+      "source": "e=>c(void 0,void 0,void 0,(function*(){const t=yield e.sendCommand(i.Se,i.ho);return y(t),t}))"
+    },
+    {
+      "product_id": 164,
+      "module": 84816,
+      "name": "q8",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 630363,
+      "end": 630514,
+      "source": "e=>c(void 0,void 0,void 0,(function*(){const t=yield e.sendCommand(i.cr,i.WM);return t.jsonData={status:t.data[0],statusEnum:s.oW(r.Dm,t.data[0])},t}))"
+    },
+    {
+      "product_id": 164,
+      "module": 84816,
+      "name": "edition response byte parser",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 627874,
+      "end": 627995,
+      "source": "e=>{e.jsonData={keyboardLayout:e.data[0],keyboardLayoutEnum:s.oW(r.UM,e.data[0]),edition:e.data[1],firmwareId:e.data[2]}}"
+    },
+    {
+      "product_id": 164,
+      "module": 30580,
+      "name": "Se",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 643323,
+      "end": 643348,
+      "source": "new Uint8Array([3,0,134])"
+    },
+    {
+      "product_id": 164,
+      "module": 30580,
+      "name": "cr",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 645048,
+      "end": 645073,
+      "source": "new Uint8Array([1,0,185])"
+    },
+    {
+      "product_id": 164,
+      "module": 96204,
+      "name": "v5",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2262324,
+      "end": 2262922,
+      "source": "(e=null)=>H(void 0,void 0,void 0,(function*(){var t;const n=e||o.razerWindow.rzDevice,i=d.default.getFeatures(\"isSidePanel\");if(null===(t=null==i?void 0:i.yes)||void 0===t?void 0:t.singleSidepadLayout)return{jsonData:{status:i.yes.singleSidepadLayout.status,statusEnum:i.yes.singleSidepadLayout.statusEnum}};try{return\"function\"==typeof(null==n?void 0:n.getHWModule)?yield n.getHWModule():(console.warn(\"[getHardwareModule] getHWModule function is not available on rzDevice.\"),{jsonData:{}})}catch(e){return console.error(\"[getHardwareModule] Error retrieving hardware module:\",e),{jsonData:{}}}}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "postpair factory",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1208991,
+      "end": 1209467,
+      "source": "function(e){let t;return function(o,i=ze.MOUSE){return L(this,void 0,void 0,(function*(){if(!t)if(\"MOUSE\"!==e){const{default:e}=yield Promise.resolve().then(n.bind(n,48320));t=new e(o,i,\"\",5*_.SLEEP_TIME_BETWEEN_OUT,5*_.SLEEP_TIME_BETWEEN_OUT_IN,5*_.SLEEP_TIME_BETWEEN_IN)}else{const{default:e}=yield Promise.resolve().then(n.bind(n,14770));t=new e(o,i,\"\",5*_.SLEEP_TIME_BETWEEN_OUT,5*_.SLEEP_TIME_BETWEEN_OUT_IN,5*_.SLEEP_TIME_BETWEEN_IN)}return t}))}}(f.DeviceInfo.category)"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "mouse layout fallback",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1190416,
+      "end": 1191257,
+      "source": "(e,t,n)=>L(void 0,void 0,void 0,(function*(){try{if(!e)return console.warn(\"[getMouseLayoutId] No slaveDevice provided.\"),0;if(\"MOUSE\"!==e.category)return console.warn(\"[getMouseLayoutId] slaveDevice is not a mouse. slaveDevice = \",e),e.layoutId||0;let o=U?yield(0,T.oP)(U,t):null;if(null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(o=U?yield(0,T.oP)(U,n):null,null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(\"function\"==typeof e.getHWModule){const{jsonData:{status:t}}=yield(0,k.v5)(e);return t||e.layoutId||0}console.warn(\"[getMouseLayoutId] getHWModule function not available on slaveDevice.\"),console.warn(\"[getMouseLayoutId] sidepadLayout not available on slaveDevice = \",e)}catch(t){return console.error(\"[getMouseLayoutId] Error retrieving mouse layout ID:\",t,\"slaveDevice = \",e),e.layoutId||0}return e.layoutId||0}))"
+    },
+    {
+      "product_id": 164,
+      "module": 7755,
+      "name": "postpair getEdition",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 790360,
+      "end": 790571,
+      "source": "getEdition(){return dl(this,void 0,void 0,(function*(){let e;for(let t=0;t<3;t++)try{return e=yield s.ki(this),e}catch(e){if(!(t<2))throw new r.$1({error:e,productId:this.productId});yield a._v(100)}return e}))}"
+    },
+    {
+      "product_id": 164,
+      "module": 7755,
+      "name": "postpair getHWModule",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 797986,
+      "end": 798063,
+      "source": "getHWModule(){return dl(this,void 0,void 0,(function*(){return s.q8(this)}))}"
+    },
+    {
+      "product_id": 164,
+      "module": 50652,
+      "name": "ZK",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 960089,
+      "end": 960593,
+      "source": "{NOT_SUPPORTED:0,KEYS_EXTENDED_BUFFER:1,MEDIA_KEYS:2,POWER_KEYS:3,RAZER_KEYS:4,NOTIFICATION_EVENTS:5,ANALOG_KEYBOARD_NOTIFICATION_EVENTS_ADC_VALUE_DATA:6,ANALOG_KEYBOARD_NOTIFICATION_EVENTS_ADC_VALUE_KEY:7,DONGLE_SECONDARY_DEVICE_RAZER_KEYS:8,DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS:9,DONGLE_SECONDARY_DEVICE_MOUSE_EVENTS:10,CALIBRATION_MOUSE_REDIRECT:77,CALIBRATION_Z_Q_DATA_EVENT:90,AUDIO_HAPTIC_INTENSITY_STATUS_EVENTS:97,KEYMAP_CYCLE_BUTTON:103,PROFILE_CYCLE_BUTTON:104,CONTROLLER_SYNC_EVENT:240}"
+    },
+    {
+      "product_id": 164,
+      "module": 50652,
+      "name": "J7",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 961635,
+      "end": 963284,
+      "source": "{PROFILE_CHANGE:1,DPI_CHANGE:2,DETACHMENT:3,ATTACHMENT:4,LIFTED_EVENT:5,DOWNED_EVENT:6,GESTURE_DETECTED:7,BRIGHTNESS_CHANGE_EVENT:8,WIRELESS_CHANGE_EVENT:9,CALIBRATION_CHANGE_EVENT:10,MACRO_KEY_COVER_CHANGE_EVENT:11,DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT:12,DEVICE_HARDWARE_CHANGE_EVENT:13,MOUSE_KEYPAD_MODULE_CHANGE_EVENT:14,AUDIO_VOLUME_CHANGE:15,RESERVED:16,AUDIO_MUTE_STATE_CHANGE:17,AUDIO_INPUT_SOURCE_CHANGE:18,AUDIO_IO_STATUS_CHANGE:19,EQ_PRESET_CHANGE:20,EQ_SETTING_CHANGE:21,DOLBY_STATE_CHANGE:22,AUTO_SLEEP_MODE_CHANGE:23,LED_EFFECT_COLOR_SETTING_CHANGED:24,LAMP_ARRAY_EVENT:25,THREE_D_MODE_CHANGED:26,AUDIO_OUTPUT_SOURCE_CHANGED:28,CAMERA_TRACKING_STATUS:29,THX_SPATIAL_TOGGLE_EVENT:32,ANC_STATE_CHANGE:33,FAN_FORCE_AUTO_EVENT:48,BATTERY_CHANGE_EVENT:49,HW_DETECTION_DONE_EVENT:50,POWER_WATTAGE_EVENT:51,POWER_SECURITY_EVENT:52,WIRELESS_CHANGE_EVENT_V2:53,PAIR_STATUS_UPDATE:54,SCAN_STATUS_UPDATE:55,ACTIVE_CONNECTION_CHANGE_EVENT:56,SCROLL_FREE_OR_NOTCH_MODE_CHANGE_EVENT:57,HAPTICORE_SCROLL_STAGE_CHANGED_EVENT:58,DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT_V2:59,FAN_CONNECTION_CHANGE_EVENT:64,BATTERY_FULLY_CHARGED_EVENT:65,ANALOG_KEY_ADJUSTMENT_MODE_CTRL_EVENT:66,CHROMA_BUTTON_TAP:67,AUDIO_MIC_VOLUME_CHANGE:68,BUTTON_CHANGE:70,SENSOR_TEMPERATURE_CHANGE:71,OLED_MODE:81,OLED_MENU:82,OLED_COMMAND_DIAL:83,OLED_CHROMA_EFFECT:84,OLED_LOW_POWER_MODE_CHANGE:85,AUDIO_SIDETONE_LEVEL_CHANGE_ValkyrieT3_PC:85,DONGLE_CONNECTION_QUALITY_STATUS:86,AUDIO_SIDETONE_LEVEL_CHANGE:87,POLLING_RATE_CHANGE:88,KBD_MODE_SWITCH_SLIDER_CHANGE:89,HAPTIC_GAIN_CHANGE:32,HAPTIC_INTENSITY_LEVEL_CHANGE:112,HAPTIC_PROFILE_CHANGE:113,HAPTIC_SOURCE_CHANGE:114}"
+    },
+    {
+      "product_id": 164,
+      "module": 50652,
+      "name": "yi",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 964825,
+      "end": 964913,
+      "source": "{NotApplicable:0,ParingStart:1,PairingSuccessAndStop:2,PairingTimeout:3,PairingCancel:4}"
+    },
+    {
+      "product_id": 164,
+      "module": 50652,
+      "name": "jQ",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 964939,
+      "end": 964979,
+      "source": "{NotApplicable:0,Start:1,End:2,Cancel:4}"
+    },
+    {
+      "product_id": 164,
+      "module": 52975,
+      "name": "U1",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 122598,
+      "end": 122621,
+      "source": "(e,t)=>(255&e)<<8|255&t"
+    },
+    {
+      "product_id": 164,
+      "module": 52975,
+      "name": "ft",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 122635,
+      "end": 122646,
+      "source": "e=>e>>8&255"
+    },
+    {
+      "product_id": 164,
+      "module": 52975,
+      "name": "Zz",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 122624,
+      "end": 122632,
+      "source": "e=>255&e"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "q",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1181650,
+      "end": 1181735,
+      "source": "e=>e===o.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS||e===o.ZK.NOTIFICATION_EVENTS"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Se",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1195288,
+      "end": 1195712,
+      "source": "(e,{payload:t})=>L(void 0,void 0,void 0,(function*(){const{mode:n,device:o}=t||{},r=(0,T.f2)(o.category,!0),a=(0,l.lq)((t=>L(void 0,void 0,void 0,(function*(){return yield Ee(t,e,o)}))),-1,\"bind\");console.log(\"[duallink] 🎈 bindDevice\",n,o,o.dongleId);const s=yield r.setDevicePairingMode(n,o.dongleId).catch((t=>(i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,error:t}),(0,l.EW)(a),{})));console.log(\"[duallink] 🎈 binded\",s)}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Te",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1195716,
+      "end": 1197961,
+      "source": "(e,{payload:t})=>L(void 0,void 0,void 0,(function*(){const{productId:n,category:o}=t||{},r=(0,T.f2)(o,!0),a=yield Y(),s=ne(g.razerWindow.rzDevice.productId);if(s){const n=a.find((e=>e.dongleId===s.master.dongleId)),o=(0,y.Xs)(n.productId);return void i.Z.postBCMsg(v.PR.USER_COMMAND,{type:e,payload:t,timerTick:Date.now()},o)}const l=Ae(n),c=l&&a.find((e=>e.dongleId===l.dongleId)),d=c?(0,y.Xs)(c.productId,!0):null,u=t=>{const n=Object.assign(Object.assign({},t),{type:e});console.log(\"[duallink] unBindDevice sendToUi\",n),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,n),d&&i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,n,d)};console.log(\"[duallink] 🎈 unBindDevice\",t,n,s);const p=()=>L(void 0,void 0,void 0,(function*(){l&&(yield ge({vendorId:5426,productId:n,dongleId:l.dongleId,deviceContainerId:U})),setTimeout((()=>{s||(L(void 0,void 0,void 0,(function*(){var e;let t,n=1e3;for(let o=0;o<20;o++){console.log(`[duallink] trying to connect device ${o}/20`);try{t=null===(e=yield r.connectDevice())||void 0===e?void 0:e.result}catch(e){console.warn(`[duallink] try to connect current device ${r.productId} with error`)}if(t)break;if(20===o){console.warn(\"Reach maximum try for connecting device\"),n=0;break}yield(0,m._v)(n),n*=2}t?console.log(`[duallink] connect current device ${r.productId} successful`):console.warn(`[duallink] fail to connect current device ${r.productId}`)})),Me())}),500)})),f=yield r.setDeviceUnpair(n).catch((e=>L(void 0,void 0,void 0,(function*(){console.warn(\"[duallink] 🎈 unBindDevice failed\",e);const t=()=>{u({error:e})};yield(0,m._v)(2e3);const i=yield he().catch((()=>(t(),null)));if(console.warn(\"[duallink] 🎈 unBindDevice failed, and query bindInfo again, result\",i),V())if(i&&i.length>0)if(i.find((e=>e.productId===n||l&&e.productId===l.dongleId)))t(),console.warn(`[duallink] unBindDevice fail for dongleid ${null==l?void 0:l.dongleId}, res: `,f);else{const e={productId:null==l?void 0:l.dongleId};console.log(\"[duallink] unBindDevice\",null==l?void 0:l.dongleId),u({payload:e}),p(),we&&we(o)}else u({payload:{}}),p();else i&&i[0]?t():(u({payload:{}}),p())}))));(null==f?void 0:f.jsonData)?(console.log(\"[duallink] unBindDevice\",f),u({payload:f.jsonData}),p(),we&&we(o)):console.warn(\"[duallink] unBindDevice fail, res: \",f)}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Ee",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1192885,
+      "end": 1194957,
+      "source": "(e,t,n,r=!0)=>L(void 0,void 0,void 0,(function*(){var a,s;const c=g.razerWindow.rzDevice;let d;!function(e){e[e.START=1]=\"START\",e[e.SUCCESS=2]=\"SUCCESS\",e[e.TIMEOUT=3]=\"TIMEOUT\"}(d||(d={}));const{data:u,recordId:p}=e,{eventId:y,eventValue:m}=u;if(console.log(\"[duallink] handleHardwareEvent\",p,y,m,e),q(p)&&y===o.J7.PAIR_STATUS_UPDATE&&m){if(console.warn(\"[duallink] pairingStatus \",m,\" bind device current state \",null==m?void 0:m.statusEnum),m.status===d.TIMEOUT)return i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:t,error:m.statusEnum}),Le=!1,void(0,l.EW)(e.registerId);if(m.status!==d.SUCCESS)return;const o=yield Y(),u=yield Z(),p=JSON.parse(null!==(a=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==a?a:\"[]\")||[],y=o.find((e=>e.dongleId===n.dongleId)),g=u.Devices.find((e=>e.DeviceDonglePid===n.dongleId)),_=g&&(g.ProductInfo||[]),h=_.find((e=>e.EID===n.editionId))||_.find((e=>0===e.EID))||{},E={en:h.Name||\"unknown-\"+n.dongleId,\"zh-cn\":h.CHSName||\"未知设备-\"+n.dongleId};let I;I=V()?(0,T.f2)(n.category):yield $e({vendorId:5426,category:me(),productId:c.productId,deviceContainerId:U},f.DeviceInfo.claimInterface),I.productId=n.dongleId,I.device.dongleId=n.dongleId,I.category=I.device.category;const S=yield I.getEdition().catch((()=>({jsonData:{edition:0,keyboardLayout:0}}))),{edition:D,keyboardLayout:A}=S&&S.jsonData||{};if(m.device={productId:y&&y.productId||0,category:m.typeDesc||I.category,name:E,productName:E,editionName:E,editionId:D||0,layoutId:A||0,dongleId:n.dongleId},y){let e=p.find((e=>e.productId===y.productId));V()&&(e=Ie(y.productId)),e&&(m.device=Object.assign(Object.assign({},e),{dongleId:n.dongleId}))}if(\"MOUSE\"===(null===(s=null==m?void 0:m.device)||void 0===s?void 0:s.category)&&0===m.device.layoutId){const e=yield _e(I,n.productId,n.dongleId);m.device.layoutId=e||m.device.layoutId}i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:t,payload:m}),r&&(0,l.EW)(e.registerId),yield ye({vendorId:5426,category:m.typeDesc||I.category,productId:n.productId,deviceContainerId:U,dongleId:n.dongleId}),Ce(n.dongleId),Le=!1,Re&&Re(n.category)}return!1}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Ke",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1204211,
+      "end": 1207975,
+      "source": "{DUALLINK_CONNECT_TYPE:e=>L(void 0,void 0,void 0,(function*(){const t=g.razerWindow.rzDevice;let n=1;if(f.DeviceInfo.dongleId===t.productId)if(yield ie({productId:t.productId,containerId:U}))n=2;else{n=3;const{master:{productId:e}}=Oe(t.productId);[B.UMA,B.ZIA].includes(e)&&(n=5)}i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:n})})),DUALLINK_BIND_INFO:e=>L(void 0,void 0,void 0,(function*(){let t=!0;const n=yield he().catch((n=>(t=!1,console.warn(`[duallink] response ${e} get error`,n),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:[],error:n}),[])));t&&i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:n})})),DUALLINK_SCAN_DEVICE:(e,{payload:{status:t,category:n}})=>L(void 0,void 0,void 0,(function*(){var r,a;Le=!0;const s=(0,T.f2)(n,!0),c={1:\"start scan\",4:\"cancel scan\"}[t];if(!c)return void console.warn(\"[duallink] 🎈scan devices,ui request is invalid\");console.warn(\"[duallink] 🎈scan devices,ui request is ====> \",c);const d=(0,l.lq)((t=>L(void 0,void 0,void 0,(function*(){const{data:n,recordId:r}=t,{eventId:a,eventValue:c}=n;if(console.log(\"[duallink] scanDevice onHardwareEvent\",a,c,t),q(r)&&a===o.J7.SCAN_STATUS_UPDATE&&c){const{statusEnum:n}=c;if(\"End\"===n){console.log(\"[duallink] 🎈scan devices after scan ====> \",c);const n=yield(e=>L(void 0,void 0,void 0,(function*(){var t,n,o,i,r;const a=yield Y(),l=JSON.parse(null!==(t=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==t?t:\"[]\")||[],c=yield Z(),d=s.productId,u=[],{deviceCount:p}=e;if(p>0)for(let t=1;t<=p;t++){const s=e[`device_${t}_editionId`],p=e[`device_${t}_productId`],v=c.Devices.find((e=>e.DeviceDonglePid===p)),f=c.Devices.find((e=>e.DeviceDonglePid===d));if(void 0===v&&(\"LINKER\"===(null===(o=null===(n=(0,D.N$)().rzDeviceType)||void 0===n?void 0:n.rzDevice25)||void 0===o?void 0:o.duallinkDeviceType)||\"LINKERMULTIDEVICES\"===(null===(r=null===(i=(0,D.N$)().rzDeviceType)||void 0===i?void 0:i.rzDevice25)||void 0===r?void 0:r.duallinkDeviceType)))continue;if(!f.DevicePairingBuddies.includes(p))continue;const y=v&&v.ProductInfo||[],g=y.find((e=>e.EID===s))||y.find((e=>0===e.EID))||{},m={en:g.Name||\"unknown-\"+p,\"zh-cn\":g.CHSName||\"未知设备-\"+p},_={name:m,productName:m,editionName:m,category:v&&v.DeviceType||\"\",editionId:s,dongleId:p,productId:v&&v.DeviceSiblings&&v.DeviceSiblings[0]||0},h=a.find((e=>e.dongleId===_.dongleId));if(h){let e=l.find((e=>e.productId===h.productId));V()&&(e=Ie(h.productId)),_.productId=h.productId,u.push(Object.assign(Object.assign({},_),e||{}))}else u.push(Object.assign(Object.assign({},_),{name:{en:\"unknown-\"+_.dongleId},productName:{en:\"unknown-\"+_.dongleId},editionName:{en:\"unknown-\"+_.dongleId},category:me(),editionId:0,layoutId:0}))}return console.log(\"[duallink] 🎈 handleScanDevices\",e,\"==>\",u),u})))(c);i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:n}),(0,l.EW)(t.registerId)}}return!1}))),-1,\"scan\"),u=yield s.deviceScan(t).catch((t=>(console.error(\"[duallink] 🎈scan devices failed\",t),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,error:t}),(0,l.EW)(d),{})));console.log(\"[duallink] 🎈scan devices r ====>\",null===(r=null==u?void 0:u.jsonData)||void 0===r?void 0:r.status,null===(a=null==u?void 0:u.jsonData)||void 0===a?void 0:a.statusEnum)})),DUALLINK_BIND_DEVICE:Se,DUALLINK_UNBIND_DEVICE:Te,DUALLINK_CANCEL:()=>L(void 0,void 0,void 0,(function*(){const e=g.razerWindow.rzDevice;console.log(\"[duallink] dual link canceled\"),Le=!1,yield e.deviceScan(4).catch((e=>{console.error(\"[duallink] 🎈cancel scan devices failed\",e)}))})),DUALLINK_DEVICE_INFO:e=>L(void 0,void 0,void 0,(function*(){const t=yield Fe().catch((t=>{console.warn(`[duallink.DUALLINK_DEVICE_INFO] response ${e} get error`,t),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:[],error:t})}));i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:t})}))}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "j",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1180998,
+      "end": 1181266,
+      "source": "(e=\"AvailableDevices\")=>L(void 0,void 0,void 0,(function*(){const t=`${G}/dashboard/${e}.json`;try{const e=yield fetch(t,{method:\"GET\",headers:{\"Cache-Control\":\"no-cache\"}});return yield e.json()}catch(e){console.error(\"[duallink] request\",t,\"failed\",e)}return null}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Y",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1181269,
+      "end": 1181359,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){return z||(z=yield j(\"AvailableDevices\"),z||[])}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Z",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1181362,
+      "end": 1181473,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){return $||($=yield j(\"DualDongleCompatibleDevices\"),$||{Devices:[]})}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "me",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1190358,
+      "end": 1190412,
+      "source": "()=>\"MOUSE\"===f.DeviceInfo.category?\"KEYBOARD\":\"MOUSE\""
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Ie",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1194961,
+      "end": 1195284,
+      "source": "e=>{var t;const n=JSON.parse(null!==(t=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==t?t:\"[]\")||[];let o;const i=De();if(i&&i.length>0){const t=i.find((t=>t.productId===e));if(t){const e=X(t);if(e&&Ue.exists(e)){const i=Ue.getSerialNumber(e);o=n.find((e=>e.productId===t.productId&&e.serialNumber===i))}}}return o}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "ye",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1188977,
+      "end": 1190048,
+      "source": "(e,t=!0)=>L(void 0,void 0,void 0,(function*(){var n;const o=(yield ee(Q))||{},i=X(e);console.log(`[duallink] 🎈 addDevice ${i}`,o,e,\"saveToLocalStorage=\",t),void 0===o[i]&&(e.master={productId:f.DeviceInfo.productId,dongleId:f.DeviceInfo.dongleId||0,bleId:f.DeviceInfo.bleId||0,claimInterface:f.DeviceInfo.claimInterface},o[i]=e,t&&localStorage.setItem(Q,JSON.stringify(o)));const r=yield a.Z.getWindowStorageItem(I.rt.DEVICE_RUNTIME_DATA),s=(r?JSON.parse(r):[]).reduce(((t,{value:n})=>{const o=JSON.parse(n);if(o.deviceContainerId===U&&o.productId===e.productId)return o}));console.warn(\"slave runtime data:\",s),(null===(n=null==s?void 0:s.serialNumber)||void 0===n?void 0:n.length)>0?(console.warn(`Found slave's serial number ${s.serialNumber}`),V()?(null==e?void 0:e.productId)?Ue.add(i,s.serialNumber):console.warn(\"[duallink.addDevice] device.productId is undefined\"):H=s.serialNumber):(S.Z.onEvent(Ye(Ze)),console.warn(\"attached windowstorage listener to get slave runtime data\")),console.log(\"[duallink] 🌳 addDevice\",e,o),V()?void 0===fe[i]&&(fe[i]=o[i]):fe=o}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "X",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1181759,
+      "end": 1181814,
+      "source": "e=>`${e.vendorId}/${e.dongleId}/${e.deviceContainerId}`"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "ee",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1181818,
+      "end": 1181915,
+      "source": "e=>{var t;const n=null!==(t=localStorage.getItem(e))&&void 0!==t?t:\"{}\";return JSON.parse(n)||{}}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Q",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1181738,
+      "end": 1181756,
+      "source": "\"duallink-devices\""
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Ne",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1198714,
+      "end": 1199469,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){var e,t;const n=yield he().catch((e=>{console.warn(\"[duallink] queryBindInfo failed\",e),setTimeout(Ne,1e3)}));if(n&&(0===(null===(e=n[0])||void 0===e?void 0:e.status)||\"\"===(null===(t=n[0])||void 0===t?void 0:t.serialNumber))&&be<5)return console.log(\"Recheck slave status ====>\",n[0].status),be++,void setTimeout((()=>L(void 0,void 0,void 0,(function*(){return yield Ne().catch((e=>{console.warn(\"[duallink] initMasterDevice failed\",e)}))}))),200*(be+1));if(console.log(\"[duallink] initMasterDevice bindedInfo ===>\",n),n&&n.length)for(const e of n){const t=e.status===x.connected;yield ye({vendorId:5426,productId:e.productId,deviceContainerId:U,dongleId:e.dongleId||e.productId},t),Ce(e.dongleId||e.productId)}}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Ce",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1198473,
+      "end": 1198603,
+      "source": "e=>L(void 0,void 0,void 0,(function*(){const t=g.razerWindow.rzDevice;t.dualLinkPrimaryPId=t.productId,t.dualLinkSecondaryPId=e}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "De",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1197965,
+      "end": 1198177,
+      "source": "()=>{const e=g.razerWindow.rzDevice,t=Object.values(fe).filter((t=>t.master.dongleId===e.productId&&t.deviceContainerId===U));return console.log(\"[duallink] getSlaves pairedDevices=\",fe,e.productId,\"slave=\",t),t}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "ge",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1190052,
+      "end": 1190354,
+      "source": "e=>L(void 0,void 0,void 0,(function*(){const t=(yield ee(Q))||{},n=X(e);console.log(`[duallink] 🎈 removeDevice ${n}`,t,e,t[n]),void 0!==t[n]&&(delete t[n],localStorage.setItem(Q,JSON.stringify(t))),V()?Ue.remove(n):H=void 0,console.log(\"[duallink] 🌳 removeDevice\",e,t),V()?fe[n]&&delete fe[n]:fe=t}))"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Me",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1198607,
+      "end": 1198695,
+      "source": "()=>{const e=g.razerWindow.rzDevice;e.dualLinkPrimaryPId=0,e.dualLinkSecondaryPId=65535}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "N",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1178861,
+      "end": 1179860,
+      "source": "class N{constructor(){this.slaveSerialNumbers=new Map}add(e,t){e?(this.slaveSerialNumbers.has(e)?(console.log(`[SlaveSerialNumberManager.add] Updating serial number for key: ${e}, old serial number: ${this.slaveSerialNumbers.get(e)}, new serial number: ${t}`),this.slaveSerialNumbers[e]=t):console.log(`[SlaveSerialNumberManager.add] Adding new serial number for key: ${e}, serial number: ${t} `),this.slaveSerialNumbers.set(e,t)):console.error(\"[SlaveSerialNumberManager.add] deviceKey: \",e,\"serial number: \",t)}remove(e){return e&&this.slaveSerialNumbers.has(e)?(this.slaveSerialNumbers.delete(e),!0):(console.warn(\"[SlaveSerialNumberManager.remove] deviceKey not found in the slaveSerialNumber map, deviceKey:\",e),!1)}exists(e){return!(!e||!this.slaveSerialNumbers.has(e))}getSerialNumber(e){return e&&this.slaveSerialNumbers.has(e)?this.slaveSerialNumbers.get(e)||\"\":(console.warn(\"[SlaveSerialNumberManager.getSerialNumber] deviceKey not found in the slaveSerialNumber map, deviceKey:\",e),\"\")}}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Ye",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1209880,
+      "end": 1210752,
+      "source": "e=>{const t=n=>{const o={[I.rt.DEVICE_RUNTIME_DATA]:({newValue:n,keyState:o,srcURL:i})=>{if(!decodeURI(i).includes(U))return;const r=n?JSON.parse(n):null;if(r.serialNumber){if(console.warn(`Found slave's serial number ${r.serialNumber}, remove slave windowstorage listener`),V())if(null==r?void 0:r.productId){const e=De();if(e&&e.length>0){const t=e.find((e=>e.productId===r.productId)),n=X(t);if(Ue.exists(n))return void console.warn(\"[duallink.addSerialNumberListenerForSlave] Skipping as the SerialNumber has already been added for the slave!\",r);Ue.add(n,r.serialNumber)}else console.warn(\"[duallink.addSerialNumberListenerForSlave] No slaves found in the paired devices!\")}else console.warn(\"[duallink.addSerialNumberListenerForSlave] device.productId is undefined\");else H=r.serialNumber;e&&e(),S.Z.offEvent(t)}}};\"function\"==typeof o[n.key]&&o[n.key](n)};return t}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Ze",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1210756,
+      "end": 1210842,
+      "source": "()=>{const e=De();if(e)for(const t of e)Be(t,`synapse_${null==t?void 0:t.productId}`)}"
+    },
+    {
+      "product_id": 164,
+      "module": 34340,
+      "name": "Be",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 1201877,
+      "end": 1202354,
+      "source": "(e,t)=>L(void 0,void 0,void 0,(function*(){if(V())yield ke.combineSlaveToMaster(e,t);else if(e&&`synapse_${e.productId}`===t){const t=localStorage.getItem(`synapse_${e.master.productId}`);if(!t){let t=yield ae(e);return void(t&&(t=yield(0,u.N7)(t,a.Z),yield(0,T.M6)(t),console.warn(\"There are no master exist in localstorage, set slave mapping data directly.\")))}const n=JSON.parse(t);try{let e=yield se(n);e=yield(0,u.N7)(e,a.Z),yield(0,T.M6)(e)}catch(e){console.error(e)}}}))"
+    },
+    {
+      "product_id": 164,
+      "module": 21503,
+      "name": "DeviceInfo",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 146753,
+      "end": 147221,
+      "source": "{deviceName:_,productId:164,dongleId:164,vendorId:5426,masterGuideURL:\"https://dl.razerzone.com/master-guides/RazerSynapse3/MOUSEDOCKPRO-0000164-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/6228/kw/mouse%20dock\",WAVE_DIRECTION:\"CWCCW\",category:\"ACCESSORY\",claimInterface:0,latestFirmwareInfo:{version:\"2.0.1.0\",url:\"https://rzr.to/V0zxjI\",guide:\"https://rzr.to/XNt1KV\",releaseDate:new Date(\"2023-11-6\").valueOf(),size:4131680,severity:\"warning\"}}"
+    },
+    {
+      "product_id": 164,
+      "module": 20236,
+      "name": "f2",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2226985,
+      "end": 2227714,
+      "source": "(e,t=!1)=>{var n;console.log(\"[duallink] getRzDevice - Starting.\");let o=v.razerWindow.rzDevice;const{canPairMultipleDevices:i}=(0,R.N$)();if((null==i?void 0:i.yes)||o.productId===U.ZG.UMA){const{claimInterface:i,productId:r,containerId:a}=o,s={vendorId:5426,category:e,productId:r,deviceContainerId:a},l={sleepTimeOut:5*B.SLEEP_TIME_BETWEEN_OUT,sleepTimeOutIn:5*B.SLEEP_TIME_BETWEEN_OUT_IN,sleepTimeIn:5*B.SLEEP_TIME_BETWEEN_IN},c=null===(n={true:{[st.KEYBOARD]:V.default,[st.MOUSE]:z.default},false:{[st.MOUSE]:V.default,[st.KEYBOARD]:z.default}}[String(t)])||void 0===n?void 0:n[e];c&&(o=new c(s,i,\"\",l.sleepTimeOut,l.sleepTimeOutIn,l.sleepTimeIn))}return console.log(`[duallink] getRzDevice - Exiting with rzDevice: ${o}`),o}"
+    },
+    {
+      "product_id": 164,
+      "module": 57368,
+      "name": "default",
+      "path": ".ref/middleware/164/rzHardwareEventsProtocol25Parser.c8d81c4c0344ebf605bc.js",
+      "sha256": "128b39a3d3d4cc47893a97621533b993f31fbc622c957166f8bdde2a593a777c",
+      "offset": 644,
+      "end": 7668,
+      "source": "class{constructor(){this.parse=e=>{const a=Array.from(new Uint8Array(e.data.buffer)),t=a[0];t!==E.ZK.NOT_SUPPORTED&&console.log(\"rzHardwareEventsProtocol25Parser-parse\",e),this.productId=e.productId;let s={};switch(t){case E.ZK.MEDIA_KEYS:s=this.parseMediaKeys(a);break;case E.ZK.POWER_KEYS:s=this.parsePowerKeys(a);break;case E.ZK.RAZER_KEYS:case E.ZK.DONGLE_SECONDARY_DEVICE_RAZER_KEYS:s={razerKeys:a.slice(1)};break;case E.ZK.NOTIFICATION_EVENTS:case E.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS:s=this.parseNotificationEvents(a);break;case E.ZK.CALIBRATION_Z_Q_DATA_EVENT:s=this.parseZandQData(a);break;case E.ZK.CALIBRATION_MOUSE_REDIRECT:s=this.parseMouseRedirectData(a)}return{rawBuffer:a,containerId:e.containerId,typeId:E.Rc.PROTOCOL25,recordId:t,recordIdDesc:o.oW(E.ZK,t),data:Object.assign({},s)}},this.parseNotificationEvents=e=>{let a;const t=e[1],r=o.oW(E.J7,t);switch(t){case E.J7.DPI_CHANGE:a={x:o.U1(e[2],e[3]),y:o.U1(e[4],e[5]),z:o.U1(e[6],e[7])};break;case E.J7.PROFILE_CHANGE:case E.J7.BRIGHTNESS_CHANGE_EVENT:a={value:e[2]};break;case E.J7.MACRO_KEY_COVER_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.cp,e[2])};break;case E.J7.MOUSE_KEYPAD_MODULE_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.zv,e[2])};break;case E.J7.CALIBRATION_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.h7,e[2])};break;case E.J7.DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.FW,e[2])};break;case E.J7.DETACHMENT:case E.J7.ATTACHMENT:case E.J7.LIFTED_EVENT:case E.J7.DOWNED_EVENT:a={};break;case E.J7.DEVICE_HARDWARE_CHANGE_EVENT:a={value:[e[2],e[3],e[4],e[5]],device1:{value:e[2],valueDesc:o.oW(E.T$,e[2])},device2:{value:e[3],valueDesc:o.oW(E.T$,e[3])},device3:{value:e[4],valueDesc:o.oW(E.T$,e[4])},device4:{value:e[5],valueDesc:o.oW(E.T$,e[5])}};break;case E.J7.WIRELESS_CHANGE_EVENT:a={state:e[2],stateDesc:o.oW(E.E3,e[2]),type:e[3],typeDesc:o.oW(E.Vf,e[3])};break;case E.J7.BATTERY_CHANGE_EVENT:a={batteryLevel:Math.floor(e[2]/255*100),chargingStatus:e[3],chargingStatusDesc:o.oW(E.bn,e[3]),powerSourceStatus:e[4],powerSourceStatusDesc:o.oW(E.ZT,e[4]),deviceType:e[5],deviceTypeDesc:o.oW(E.Nu,e[5])};break;case E.J7.THX_SPATIAL_TOGGLE_EVENT:a={};break;case E.J7.FAN_FORCE_AUTO_EVENT:a={enabled:e[2]};break;case E.J7.POWER_SECURITY_EVENT:{const t=[];for(let a=7;a>=0;a--)t.push(e[4]>>a&1);a={shortCondition:e[2],abnormalVoltage:e[3],abnormalCurrent:e[4],glitterAbnormalCurrent:{port0:t[7],port1:t[6],port2:t[5],port3:t[4],port4:t[3],port5:t[2],global:t[0]}}}break;case E.J7.WIRELESS_CHANGE_EVENT_V2:a={state:e[2],stateDesc:o.oW(E.E3,e[2]),type:e[3],typeDesc:o.oW(E.Vf,e[3]),productId:o.U1(e[4],e[5])};break;case E.J7.PAIR_STATUS_UPDATE:a={status:e[2],statusEnum:o.oW(E.yi,e[2])};break;case E.J7.SCAN_STATUS_UPDATE:a={status:e[2],statusEnum:o.oW(E.jQ,e[2]),deviceCount:e[3],device_1_productId:o.U1(e[4],e[5]),device_1_editionId:e[7],device_1_keyboardLayout:e[6],device_1_keyboardLayoutEnum:o.oW(c.UM,e[6]),device_2_productId:o.U1(e[8],e[9]),device_2_editionId:e[11],device_2_keyboardLayout:e[10],device_2_keyboardLayoutEnum:o.oW(c.UM,e[10]),device_3_productId:o.U1(e[12],e[13]),device_3_editionId:e[15],device_3_keyboardLayout:e[14],device_3_keyboardLayoutEnum:o.oW(c.UM,e[14])};break;case E.J7.ACTIVE_CONNECTION_CHANGE_EVENT:a={type:e[2],typeEnum:o.oW(E.Rk,e[2]),connected:e[3]};break;case E.J7.SCROLL_FREE_OR_NOTCH_MODE_CHANGE_EVENT:a={mode:e[2],modeEnum:o.oW(E.Bm,e[2])};break;case E.J7.POWER_WATTAGE_EVENT:a={adapterWattageValue:e[2],adapterWattageValueEnum:o.oW(s.OG,e[2]),recommendedAdapterWattageValue:e[3],recommendedAdapterWattageValueEnum:o.oW(s.OG,e[3])};break;case E.J7.AUDIO_VOLUME_CHANGE:a={volume:{value:e[2]},bassBoost:{value:e[3]}};break;case E.J7.AUDIO_MIC_VOLUME_CHANGE:a={volume:e[2]};break;case E.J7.BUTTON_CHANGE:a={type:e[2],typeDesc:o.oW(E.JB,e[2]),mode:e[3],modeDesc:o.oW(E.Ef,e[3])};break;case E.J7.SENSOR_TEMPERATURE_CHANGE:a={temperature:e[2]};break;case E.J7.CHROMA_BUTTON_TAP:a={tapMode:e[2],tapModeDesc:o.oW(E.U_,e[2]),functionNumber:e[3]};break;case E.J7.AUDIO_MUTE_STATE_CHANGE:a={isMuted:1===e[2]};break;case E.J7.AUDIO_INPUT_SOURCE_CHANGE:a={inputSourceDesc:o.oW(E.tV,e[2]),inputSource:e[2]};break;case E.J7.AUDIO_IO_STATUS_CHANGE:a={headphoneStatus:e[2],usbStatus:e[3],auxInStatus:e[4],spdifInStatus:e[5],bluetoothStatus:e[6]};break;case E.J7.EQ_PRESET_CHANGE:a={eqPresetDesc:o.oW(E._s,e[2])};break;case E.J7.EQ_SETTING_CHANGE:if([1352].includes(this.productId))a={customBands:e.slice(2,12).map(((e,a)=>({index:a,level:e})))};else{const t=e.slice(2,10).map((e=>Math.round(18*e/100)-9)),E=[60,250,500,1e3,2e3,4e3,8e3,16e3];a={customBands:t.map(((e,a)=>({frequency:E[a],decibel:e})))}}break;case E.J7.DOLBY_STATE_CHANGE:a={isEnabled:1===e[2]};break;case E.J7.LED_EFFECT_COLOR_SETTING_CHANGED:{const t=e[5];a={effectId:e[2],flags:e[3],rate:e[4],colorNumber:t,colorArray:e.slice(6,6+3*t)}}break;case E.J7.THREE_D_MODE_CHANGED:a={mode:e[2],modeDesc:o.oW(E._8,e[2])};break;case E.J7.AUDIO_OUTPUT_SOURCE_CHANGED:a={state:e[2],stateDesc:o.oW(E.l8,e[2])};break;case E.J7.CAMERA_TRACKING_STATUS:a={lock:e[2],direction:o.sl([e[3],e[4],e[5],e[6]]),distance:o.sl([e[7],e[8],e[9],e[10]])};break;case E.J7.HW_DETECTION_DONE_EVENT:a={value:\"done\"};break;case E.J7.HAPTICORE_SCROLL_STAGE_CHANGED_EVENT:a={activeStage:e[2],activeStageIndex:e[3],activeStageIndexEnum:o.oW(E.D$,e[3])};break;case E.J7.DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT_V2:{const t=e[2];a={value:t,productId:o.U1(e[3],e[4]),editionId:o.U1(e[5],e[6]),valueDesc:o.oW(E.FW,t)}}break;case E.J7.FAN_CONNECTION_CHANGE_EVENT:a={fanNo:e[2],fan1:e[3],fan2:e[4],fan3:e[5],fan4:e[6],fan5:e[7],fan6:e[8],fan7:e[9],fan8:e[10]};break;case E.J7.BATTERY_FULLY_CHATED_EVENT:a={state:e[2]};break;case E.J7.ANALOG_KEY_ADJUSTMENT_MODE_CTRL_EVENT:a={actuationPointAdjustmentMode:e[2],rapidTriggerAdjustmentMode:e[3]};break;case E.J7.OLED_MODE:a={mode:e[2],modeEnum:o.oW(E.fW,e[2])};break;case E.J7.OLED_MENU:a={menu:e[2],menuEnum:o.oW(E.YA,e[2])};break;case E.J7.OLED_COMMAND_DIAL:a={dialFunction:e[2],dialFunctionEnum:o.oW(E.pn,e[2])};break;case E.J7.OLED_CHROMA_EFFECT:a={effectId:e[2],effectIdEnum:o.oW(E.ai,e[2])};break;case E.J7.OLED_LOW_POWER_MODE_CHANGE:a={status:e[2],statusEnum:o.oW(E.QD,e[2])};break;case E.J7.BATTERY_FULLY_CHARGED_EVENT:a={};break;case E.J7.DONGLE_CONNECTION_QUALITY_STATUS:a={dongleConnectionQualityData:e[2],dongleConnectionQualityStatus:o.oW(c.ce,e[2])};break;case E.J7.POLLING_RATE_CHANGE:a={value:e[2],valueEnum:o.oW(c.Gy,e[2])};break;case E.J7.KBD_MODE_SWITCH_SLIDER_CHANGE:a={currentMode:e[2],statusEnum:o.oW(E.Qo,e[2])};break;default:console.warn(\"parseNotificationEvents-unknown data\",e)}const _={eventId:t,eventIdDesc:r,eventValue:a};return console.debug(\"rzHardwareEventsProtocol25Parser.parseNotificationEvents.parse\",JSON.stringify(_)),_},this.parseMediaKeys=e=>{const a=o.U1(e[2],e[1]);return{key:a,keyDesc:o.oW(r.r2,a)}},this.parsePowerKeys=e=>({key:e[1],keyDesc:o.oW(E.QE,e[1])}),this.parseZandQData=e=>({z:e[1],q:e[2]}),this.parseMouseRedirectData=e=>({buttonId:e[1],buttonState:e[2]})}}"
+    },
+    {
+      "product_id": 164,
+      "module": 35284,
+      "name": "SLEEP_TIME_BETWEEN_OUT",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 116891,
+      "end": 116892,
+      "source": "5"
+    },
+    {
+      "product_id": 164,
+      "module": 35284,
+      "name": "SLEEP_TIME_BETWEEN_OUT_IN",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 116883,
+      "end": 116884,
+      "source": "5"
+    },
+    {
+      "product_id": 164,
+      "module": 35284,
+      "name": "SLEEP_TIME_BETWEEN_IN",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 116887,
+      "end": 116888,
+      "source": "5"
+    },
+    {
+      "product_id": 164,
+      "module": 35284,
+      "name": "MAX_RETRY_IN",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 116895,
+      "end": 116897,
+      "source": "10"
+    },
+    {
+      "product_id": 164,
+      "module": 35284,
+      "name": "MAX_RETRY_OUT",
+      "path": ".ref/middleware/164/main.62e270f8980e6cf490a5.js",
+      "sha256": "51cd498c2a9e993d6d572f2818f63bed9b92402ce04b268f3a9a8da87ad77ded",
+      "offset": 116900,
+      "end": 116902,
+      "source": "20"
+    },
+    {
+      "product_id": 164,
+      "module": 48320,
+      "name": "post metadata mouse class constructor timing",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 935881,
+      "end": 943663,
+      "source": "class f extends o.default{constructor(e,t,n=\"\",o=i.SLEEP_TIME_BETWEEN_OUT,r=i.SLEEP_TIME_BETWEEN_OUT_IN,l=i.SLEEP_TIME_BETWEEN_IN,c=i.MAX_RETRY_IN,d=i.MAX_RETRY_OUT){super(e,t,n,o,r,l,c,d),this.getPowerOnStatusFromHardwareEvent=e=>v(this,void 0,void 0,(function*(){var t,n,o,i,r,a;const l=\"getPowerOnStatusFromHardwareEvent()\";let c=!1;if((null==e?void 0:e.recordId)===s.ZK.NOTIFICATION_EVENTS&&(null===(t=null==e?void 0:e.data)||void 0===t?void 0:t.eventId)===s.J7.WIRELESS_CHANGE_EVENT||(null==e?void 0:e.recordId)===s.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS&&(null===(n=null==e?void 0:e.data)||void 0===n?void 0:n.eventId)===s.J7.WIRELESS_CHANGE_EVENT_V2){if(1===(null===(i=null===(o=null==e?void 0:e.data)||void 0===o?void 0:o.eventValue)||void 0===i?void 0:i.type))return c=3===(null===(a=null===(r=null==e?void 0:e.data)||void 0===r?void 0:r.eventValue)||void 0===a?void 0:a.state),console.log(`${this.name}.${l} isPowerOn:${c}`),c;console.log(`${this.name}.${l} power event not for mouse, return false as default`)}else console.log(`${this.name}.${l} not power event, return false as default`);return c})),this.queryDualLinkInfo=()=>v(this,void 0,void 0,(function*(){var e;const t=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${t} isDualLink = false, return`),!1;try{let n=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${t} getMultipleDeviceWirelessConnectionStatusV2 r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status!==i.STATUS_SUCCESS||!n.jsonData)return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,n),!1;{const o=n.jsonData.status;try{if(n=yield this.getMultipleDevicePrimaryDevice(),console.log(`${t} getMultipleDevicePrimaryDevice r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status===i.STATUS_SUCCESS&&n.jsonData){this.dualLinkPrimaryPId=n.jsonData.productId;const i=n.jsonData.type,r=o.filter((e=>e.productId!==this.dualLinkPrimaryPId));return this.dualLinkSecondaryPId=void 0!==(null===(e=r[0])||void 0===e?void 0:e.productId)?r[0].productId:65535,i===p.$X.Mouse?this.isDualLinkSlave=!1:this.isDualLinkSlave=!0,console.log(`${t} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}, type:${i}`,a.oW(p.$X,i),\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave:\",this.isDualLinkSlave),this.device.productId!==this.dualLinkPrimaryPId&&this.device.productId!==this.dualLinkSecondaryPId&&(this.dualLinkSecondaryPId=this.dualLinkPrimaryPId,this.dualLinkPrimaryPId=this.device.productId,this.isDualLinkSlave=!0,console.warn(`${t} usbDevice productId != dualLinkPrimaryPId && dualLinkSecondaryPId, force this device to paired device`,`final dualLinkPrimaryPId: ${this.dualLinkPrimaryPId}, dualLinkSecondaryPId: ${this.dualLinkSecondaryPId}, isDualLinkSlave:${this.isDualLinkSlave}`)),!0}return console.warn(`${t} getMultipleDevicePrimaryDevice failed, r:`,n),!1}catch(e){return console.warn(`${t} getMultipleDevicePrimaryDevice failed, err:`,e),!1}}}catch(e){return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,e),!1}})),this.name=\"rzDevice25DualLinkMouse\",this.lockName=`${this.baseClassName}-${this.containerId}`,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName),this.isDualLink=!0,this.ignoreSetDeviceModeTimeoutError=!1}_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),this.transactionId++}connectDevice(){var e;return v(this,void 0,void 0,(function*(){const t=\"connectDevice\";if(void 0===this.device)return{result:!1,error:i.ERROR_VALUE_UNDEFINED};const n={result:!1,error:\"\"};if(this.isElectron){const o=c.n5,i=new Uint8Array,r=this._createDataSend(o,i);for(let o=0;o<3;o++)try{const t=[a.uM()?this.claimInterface:this.reportId,...r],o=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:t});if(n.result=null==o?void 0:o.result,n.error=null!==(e=null==o?void 0:o.errorMsg)&&void 0!==e?e:\"\",null==o?void 0:o.result)break}catch(e){l.Z.error(`${this.name}.${t} i: ${o}, claimInterface:${this.claimInterface}`,e),n.result=!1,n.error=e}}else for(let e=0;e<3;e++)try{l.Z.log(`${this._getLoggerPrepend()} ${t}: claimInterface:${this.claimInterface}`),yield this.device.open(),yield this.device.selectConfiguration(1),yield this.device.claimInterface(this.claimInterface),console.log(`${this.name}.${t} claimInterface:${this.claimInterface} successfully`),n.result=!0;break}catch(o){l.Z.error(`${this.name}.${t} i: ${e}, claimInterface:${this.claimInterface}`,o),n.result=!1,n.error=o}return n}))}sendCommand(e,t,n=new Uint8Array([]),o=-1,s=!0){return v(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,o,s);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?l.Z.printData(`${u}: ${e[0]}(${a.Cf(e[0])}), ${e[1]}(${a.Cf(e[1])}), ${e[2]}(${a.Cf(e[2])}), ${t}, packetSizeSet:${o}`):l.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${o}`),l.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});const p=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.device.productId||this.productId});const f=this._createDataSend(e,n,o);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(f[1]|=128),p.dataSend=[...f],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:p.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>v(this,void 0,void 0,(function*(){try{for(let o=0;o<this.maxRetryOut;o++){const r=yield(0,d.NH)(n);if(r===this.reportLength){if(!s){p.status=i.STATUS_SUCCESS,p.error=\"\",p.dataHeader=f.slice(0,8),p.data=[...f.slice(8,8+f[5])];break}if(yield a._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,f,p,t),p.status===i.STATUS_SUCCESS||p.status===i.STATUS_FAIL&&!1===p.resendOutCommand){p.status===i.STATUS_FAIL&&!1===p.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${o} cmdDesc:${t}}, r:`,r);break}p.status===i.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${o} cmdDesc:${t}}, r:`,r),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else p.status=i.STATUS_FAIL,p.error=\"\"}}catch(t){p.status=i.STATUS_FAIL,t.message?p.error=t.message:p.error=t,console.warn(`${u} error: ${a.Cf(e[1])}, ${a.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(p.status===i.STATUS_FAIL)throw l.Z.warn(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(p)}`),new r.$1({error:p.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:f,extraInfo:\"productId: \"+this.productId,productId:this.device.productId||this.productId})}))))}return p}))}}"
+    },
+    {
+      "product_id": 164,
+      "module": 91818,
+      "name": "linker class and command-specific transaction",
+      "path": ".ref/middleware/164/rzDevice25Linker.0bcb0968b55a39c2a1ad.js",
+      "sha256": "9188e708ffd8638b13d14522fc6ddad6481e70994fac3c46dc074960b859cf50",
+      "offset": 973,
+      "end": 7022,
+      "source": "class h extends i.default{constructor(e,t,n=\"\",i=r.SLEEP_TIME_BETWEEN_OUT,a=r.SLEEP_TIME_BETWEEN_OUT_IN,o=r.SLEEP_TIME_BETWEEN_IN,d=r.MAX_RETRY_IN,c=r.MAX_RETRY_OUT){super(e,t,n,i,a,o,d,c),this.getPowerOnStatusFromHardwareEvent=e=>I(this,void 0,void 0,(function*(){var t,n,i,r;const a=\"getPowerOnStatusFromHardwareEvent()111\";let o=!1;return(null==e?void 0:e.recordId)===s.ZK.NOTIFICATION_EVENTS&&(null===(t=null==e?void 0:e.data)||void 0===t?void 0:t.eventId)===s.J7.WIRELESS_CHANGE_EVENT||(null==e?void 0:e.recordId)===s.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS&&(null===(n=null==e?void 0:e.data)||void 0===n?void 0:n.eventId)===s.J7.WIRELESS_CHANGE_EVENT_V2?(o=3===(null===(r=null===(i=null==e?void 0:e.data)||void 0===i?void 0:i.eventValue)||void 0===r?void 0:r.state),console.log(`${this.name}.${a} isPowerOn:${o}`)):console.log(`${this.name}.${a} not power event, return false as default`),o})),this.queryDualLinkInfo=()=>I(this,void 0,void 0,(function*(){const e=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${e} isDualLink = false, return`),!1;this.dualLinkPrimaryPId=this.device.productId,this.isDualLinkSlave=!1;try{const t=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${e} getMultipleDeviceWirelessConnectionStatusV2 r:`,t,`, jsonData: ${(null==t?void 0:t.jsonData)?JSON.stringify(t.jsonData):t}`),t.status===r.STATUS_SUCCESS&&t.jsonData){const n=t.jsonData.status.filter((e=>65535!==e.productId));return console.log(`${e} validProductStatusList: `,n),this.dualLinkSecondaryPId=n.length>0?n[0].productId:65535,console.log(`${e} dualLinkPrimaryPId: ${this.dualLinkPrimaryPId}, dualLinkSecondaryPId: ${this.dualLinkSecondaryPId}`),console.log(`${e} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}`,\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave\",this.isDualLinkSlave),!0}return console.warn(`${e} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,t),!1}catch(t){return console.warn(`${e} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,t),!1}})),this.name=\"rzDevice25Linker\",this.lockName=`${this.baseClassName}-${this.containerId}`,this.isDualLink=!0,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName)}_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),224|this.transactionId++}connectDevice(){var e;return I(this,void 0,void 0,(function*(){if(void 0===this.device)return{result:!1,error:r.ERROR_VALUE_UNDEFINED};const t={result:!1,error:\"\"},n=c.n5,i=new Uint8Array,a=this._createDataSend(n,i);for(let n=0;n<3;n++)try{const n=[o.uM()?this.claimInterface:this.reportId,...a],i=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:n});if(t.result=null==i?void 0:i.result,t.error=null!==(e=null==i?void 0:i.errorMsg)&&void 0!==e?e:\"\",null==i?void 0:i.result)break}catch(e){d.Z.error(`${this.name}.connectDevice i: ${n}, claimInterface:${this.claimInterface}`,e),t.result=!1,t.error=e}return t}))}sendCommand(e,t,n=new Uint8Array([]),i=-1,s=!0){return I(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,i,s);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?d.Z.printData(`${u}: ${e[0]}(${o.Cf(e[0])}), ${e[1]}(${o.Cf(e[1])}), ${e[2]}(${o.Cf(e[2])}), ${t}, packetSizeSet:${i}`):d.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${i}`),d.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new a.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new a.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.productId});const h=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new a.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.productId});const f=this._createDataSend(e,n,i);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(f[1]&=31),h.dataSend=[...f],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:h.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>I(this,void 0,void 0,(function*(){try{for(let i=0;i<this.maxRetryOut;i++){const a=yield(0,l.NH)(n);if(a===this.reportLength){if(!s){h.status=r.STATUS_SUCCESS,h.error=\"\",h.dataHeader=f.slice(0,8),h.data=[...f.slice(8,8+f[5])];break}if(yield o._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,f,h,t),h.status===r.STATUS_SUCCESS||h.status===r.STATUS_FAIL&&!1===h.resendOutCommand){h.status===r.STATUS_FAIL&&!1===h.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${i} cmdDesc:${t}}, r:`,a);break}h.status===r.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${i} cmdDesc:${t}}, r:`,a),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else h.status=r.STATUS_FAIL,h.error=\"\"}}catch(t){h.status=r.STATUS_FAIL,t.message?h.error=t.message:h.error=t,console.warn(`${u} error: ${o.Cf(e[1])}, ${o.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(h.status===r.STATUS_FAIL)throw d.Z.error(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(h)}`),new a.$1({error:h.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:f,extraInfo:\"productId: \"+this.productId,productId:this.productId})}))))}return h}))}}"
+    },
+    {
+      "product_id": 164,
+      "module": 48320,
+      "name": "postpair mouse-class ordinary prefix",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 935881,
+      "end": 943663,
+      "source": "class f extends o.default{constructor(e,t,n=\"\",o=i.SLEEP_TIME_BETWEEN_OUT,r=i.SLEEP_TIME_BETWEEN_OUT_IN,l=i.SLEEP_TIME_BETWEEN_IN,c=i.MAX_RETRY_IN,d=i.MAX_RETRY_OUT){super(e,t,n,o,r,l,c,d),this.getPowerOnStatusFromHardwareEvent=e=>v(this,void 0,void 0,(function*(){var t,n,o,i,r,a;const l=\"getPowerOnStatusFromHardwareEvent()\";let c=!1;if((null==e?void 0:e.recordId)===s.ZK.NOTIFICATION_EVENTS&&(null===(t=null==e?void 0:e.data)||void 0===t?void 0:t.eventId)===s.J7.WIRELESS_CHANGE_EVENT||(null==e?void 0:e.recordId)===s.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS&&(null===(n=null==e?void 0:e.data)||void 0===n?void 0:n.eventId)===s.J7.WIRELESS_CHANGE_EVENT_V2){if(1===(null===(i=null===(o=null==e?void 0:e.data)||void 0===o?void 0:o.eventValue)||void 0===i?void 0:i.type))return c=3===(null===(a=null===(r=null==e?void 0:e.data)||void 0===r?void 0:r.eventValue)||void 0===a?void 0:a.state),console.log(`${this.name}.${l} isPowerOn:${c}`),c;console.log(`${this.name}.${l} power event not for mouse, return false as default`)}else console.log(`${this.name}.${l} not power event, return false as default`);return c})),this.queryDualLinkInfo=()=>v(this,void 0,void 0,(function*(){var e;const t=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${t} isDualLink = false, return`),!1;try{let n=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${t} getMultipleDeviceWirelessConnectionStatusV2 r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status!==i.STATUS_SUCCESS||!n.jsonData)return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,n),!1;{const o=n.jsonData.status;try{if(n=yield this.getMultipleDevicePrimaryDevice(),console.log(`${t} getMultipleDevicePrimaryDevice r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status===i.STATUS_SUCCESS&&n.jsonData){this.dualLinkPrimaryPId=n.jsonData.productId;const i=n.jsonData.type,r=o.filter((e=>e.productId!==this.dualLinkPrimaryPId));return this.dualLinkSecondaryPId=void 0!==(null===(e=r[0])||void 0===e?void 0:e.productId)?r[0].productId:65535,i===p.$X.Mouse?this.isDualLinkSlave=!1:this.isDualLinkSlave=!0,console.log(`${t} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}, type:${i}`,a.oW(p.$X,i),\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave:\",this.isDualLinkSlave),this.device.productId!==this.dualLinkPrimaryPId&&this.device.productId!==this.dualLinkSecondaryPId&&(this.dualLinkSecondaryPId=this.dualLinkPrimaryPId,this.dualLinkPrimaryPId=this.device.productId,this.isDualLinkSlave=!0,console.warn(`${t} usbDevice productId != dualLinkPrimaryPId && dualLinkSecondaryPId, force this device to paired device`,`final dualLinkPrimaryPId: ${this.dualLinkPrimaryPId}, dualLinkSecondaryPId: ${this.dualLinkSecondaryPId}, isDualLinkSlave:${this.isDualLinkSlave}`)),!0}return console.warn(`${t} getMultipleDevicePrimaryDevice failed, r:`,n),!1}catch(e){return console.warn(`${t} getMultipleDevicePrimaryDevice failed, err:`,e),!1}}}catch(e){return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,e),!1}})),this.name=\"rzDevice25DualLinkMouse\",this.lockName=`${this.baseClassName}-${this.containerId}`,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName),this.isDualLink=!0,this.ignoreSetDeviceModeTimeoutError=!1}_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),this.transactionId++}connectDevice(){var e;return v(this,void 0,void 0,(function*(){const t=\"connectDevice\";if(void 0===this.device)return{result:!1,error:i.ERROR_VALUE_UNDEFINED};const n={result:!1,error:\"\"};if(this.isElectron){const o=c.n5,i=new Uint8Array,r=this._createDataSend(o,i);for(let o=0;o<3;o++)try{const t=[a.uM()?this.claimInterface:this.reportId,...r],o=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:t});if(n.result=null==o?void 0:o.result,n.error=null!==(e=null==o?void 0:o.errorMsg)&&void 0!==e?e:\"\",null==o?void 0:o.result)break}catch(e){l.Z.error(`${this.name}.${t} i: ${o}, claimInterface:${this.claimInterface}`,e),n.result=!1,n.error=e}}else for(let e=0;e<3;e++)try{l.Z.log(`${this._getLoggerPrepend()} ${t}: claimInterface:${this.claimInterface}`),yield this.device.open(),yield this.device.selectConfiguration(1),yield this.device.claimInterface(this.claimInterface),console.log(`${this.name}.${t} claimInterface:${this.claimInterface} successfully`),n.result=!0;break}catch(o){l.Z.error(`${this.name}.${t} i: ${e}, claimInterface:${this.claimInterface}`,o),n.result=!1,n.error=o}return n}))}sendCommand(e,t,n=new Uint8Array([]),o=-1,s=!0){return v(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,o,s);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?l.Z.printData(`${u}: ${e[0]}(${a.Cf(e[0])}), ${e[1]}(${a.Cf(e[1])}), ${e[2]}(${a.Cf(e[2])}), ${t}, packetSizeSet:${o}`):l.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${o}`),l.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});const p=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.device.productId||this.productId});const f=this._createDataSend(e,n,o);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(f[1]|=128),p.dataSend=[...f],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:p.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>v(this,void 0,void 0,(function*(){try{for(let o=0;o<this.maxRetryOut;o++){const r=yield(0,d.NH)(n);if(r===this.reportLength){if(!s){p.status=i.STATUS_SUCCESS,p.error=\"\",p.dataHeader=f.slice(0,8),p.data=[...f.slice(8,8+f[5])];break}if(yield a._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,f,p,t),p.status===i.STATUS_SUCCESS||p.status===i.STATUS_FAIL&&!1===p.resendOutCommand){p.status===i.STATUS_FAIL&&!1===p.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${o} cmdDesc:${t}}, r:`,r);break}p.status===i.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${o} cmdDesc:${t}}, r:`,r),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else p.status=i.STATUS_FAIL,p.error=\"\"}}catch(t){p.status=i.STATUS_FAIL,t.message?p.error=t.message:p.error=t,console.warn(`${u} error: ${a.Cf(e[1])}, ${a.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(p.status===i.STATUS_FAIL)throw l.Z.warn(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(p)}`),new r.$1({error:p.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:f,extraInfo:\"productId: \"+this.productId,productId:this.device.productId||this.productId})}))))}return p}))}}"
+    },
+    {
+      "product_id": 241,
+      "name": "current product feature",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 159451,
+      "end": 159587,
+      "source": "a.default.useFeature(\"rzDeviceType\",\"rzDevice25\",{isDualLinkDevice:!0,duallinkDeviceType:\"LINKERMULTIDEVICES\",brightness:{regionId:15}})"
+    },
+    {
+      "product_id": 241,
+      "name": "current product feature",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 159773,
+      "end": 159828,
+      "source": "a.default.useFeature(\"canPairMultipleDevices\",\"yes\",!0)"
+    },
+    {
+      "product_id": 241,
+      "name": "current main feature scope: original mapping_engine event producer",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "feature_names": [
+        "rzDeviceType",
+        "useMWManifest",
+        "isMouseDockDevice",
+        "canPairMultipleDevices"
+      ],
+      "useHidHwEvents": false
+    },
+    {
+      "product_id": 241,
+      "module": 30580,
+      "name": "fr",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 637043,
+      "end": 637067,
+      "source": "new Uint8Array([3,0,65])"
+    },
+    {
+      "product_id": 241,
+      "module": 30580,
+      "name": "jI",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 637100,
+      "end": 637124,
+      "source": "new Uint8Array([2,0,66])"
+    },
+    {
+      "product_id": 241,
+      "module": 30580,
+      "name": "pJ",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 637151,
+      "end": 637175,
+      "source": "new Uint8Array([1,0,70])"
+    },
+    {
+      "product_id": 241,
+      "module": 84816,
+      "name": "ox",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 627647,
+      "end": 627879,
+      "source": "(e,t,n)=>c(void 0,void 0,void 0,(function*(){const o=new Uint8Array(i.fr[0]);o[0]=t,o[1]=s.ft(n),o[2]=s.Zz(n);const a=yield e.sendCommand(i.fr,i.AL,o);return a.jsonData={mode:a.data[0],modeEnum:s.oW(r.rz,a.data[0]),productId:n},a}))"
+    },
+    {
+      "product_id": 241,
+      "module": 84816,
+      "name": "Mk",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 627882,
+      "end": 628060,
+      "source": "(e,t)=>c(void 0,void 0,void 0,(function*(){const n=new Uint8Array(i.jI[0]);n[0]=s.ft(t),n[1]=s.Zz(t);const o=yield e.sendCommand(i.jI,i.$L,n);return o.jsonData={productId:t},o}))"
+    },
+    {
+      "product_id": 241,
+      "module": 84816,
+      "name": "O7",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 628063,
+      "end": 628259,
+      "source": "(e,t)=>c(void 0,void 0,void 0,(function*(){const n=new Uint8Array(i.pJ[0]);n[0]=t;const o=yield e.sendCommand(i.pJ,i.x$,n);return o.jsonData={status:o.data[0],statusEnum:s.oW(r.Ob,o.data[0])},o}))"
+    },
+    {
+      "product_id": 241,
+      "module": 84816,
+      "name": "ki",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 619508,
+      "end": 619602,
+      "source": "e=>c(void 0,void 0,void 0,(function*(){const t=yield e.sendCommand(i.Se,i.ho);return y(t),t}))"
+    },
+    {
+      "product_id": 241,
+      "module": 84816,
+      "name": "q8",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 621873,
+      "end": 622024,
+      "source": "e=>c(void 0,void 0,void 0,(function*(){const t=yield e.sendCommand(i.cr,i.WM);return t.jsonData={status:t.data[0],statusEnum:s.oW(r.Dm,t.data[0])},t}))"
+    },
+    {
+      "product_id": 241,
+      "module": 84816,
+      "name": "edition response byte parser",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 619384,
+      "end": 619505,
+      "source": "e=>{e.jsonData={keyboardLayout:e.data[0],keyboardLayoutEnum:s.oW(r.UM,e.data[0]),edition:e.data[1],firmwareId:e.data[2]}}"
+    },
+    {
+      "product_id": 241,
+      "module": 30580,
+      "name": "Se",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 634833,
+      "end": 634858,
+      "source": "new Uint8Array([3,0,134])"
+    },
+    {
+      "product_id": 241,
+      "module": 30580,
+      "name": "cr",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 636558,
+      "end": 636583,
+      "source": "new Uint8Array([1,0,185])"
+    },
+    {
+      "product_id": 241,
+      "module": 96204,
+      "name": "v5",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2199443,
+      "end": 2200041,
+      "source": "(e=null)=>U(void 0,void 0,void 0,(function*(){var t;const n=e||o.razerWindow.rzDevice,i=d.default.getFeatures(\"isSidePanel\");if(null===(t=null==i?void 0:i.yes)||void 0===t?void 0:t.singleSidepadLayout)return{jsonData:{status:i.yes.singleSidepadLayout.status,statusEnum:i.yes.singleSidepadLayout.statusEnum}};try{return\"function\"==typeof(null==n?void 0:n.getHWModule)?yield n.getHWModule():(console.warn(\"[getHardwareModule] getHWModule function is not available on rzDevice.\"),{jsonData:{}})}catch(e){return console.error(\"[getHardwareModule] Error retrieving hardware module:\",e),{jsonData:{}}}}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "postpair factory",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1197403,
+      "end": 1197879,
+      "source": "function(e){let t;return function(o,i=Ve.MOUSE){return L(this,void 0,void 0,(function*(){if(!t)if(\"MOUSE\"!==e){const{default:e}=yield Promise.resolve().then(n.bind(n,48320));t=new e(o,i,\"\",5*h.SLEEP_TIME_BETWEEN_OUT,5*h.SLEEP_TIME_BETWEEN_OUT_IN,5*h.SLEEP_TIME_BETWEEN_IN)}else{const{default:e}=yield Promise.resolve().then(n.bind(n,14770));t=new e(o,i,\"\",5*h.SLEEP_TIME_BETWEEN_OUT,5*h.SLEEP_TIME_BETWEEN_OUT_IN,5*h.SLEEP_TIME_BETWEEN_IN)}return t}))}}(f.DeviceInfo.category)"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "mouse layout fallback",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1178673,
+      "end": 1179514,
+      "source": "(e,t,n)=>L(void 0,void 0,void 0,(function*(){try{if(!e)return console.warn(\"[getMouseLayoutId] No slaveDevice provided.\"),0;if(\"MOUSE\"!==e.category)return console.warn(\"[getMouseLayoutId] slaveDevice is not a mouse. slaveDevice = \",e),e.layoutId||0;let o=U?yield(0,T.oP)(U,t):null;if(null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(o=U?yield(0,T.oP)(U,n):null,null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(\"function\"==typeof e.getHWModule){const{jsonData:{status:t}}=yield(0,k.v5)(e);return t||e.layoutId||0}console.warn(\"[getMouseLayoutId] getHWModule function not available on slaveDevice.\"),console.warn(\"[getMouseLayoutId] sidepadLayout not available on slaveDevice = \",e)}catch(t){return console.error(\"[getMouseLayoutId] Error retrieving mouse layout ID:\",t,\"slaveDevice = \",e),e.layoutId||0}return e.layoutId||0}))"
+    },
+    {
+      "product_id": 241,
+      "module": 7755,
+      "name": "postpair getEdition",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 781643,
+      "end": 781854,
+      "source": "getEdition(){return ol(this,void 0,void 0,(function*(){let e;for(let t=0;t<3;t++)try{return e=yield s.ki(this),e}catch(e){if(!(t<2))throw new r.$1({error:e,productId:this.productId});yield a._v(100)}return e}))}"
+    },
+    {
+      "product_id": 241,
+      "module": 7755,
+      "name": "postpair getHWModule",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 789269,
+      "end": 789346,
+      "source": "getHWModule(){return ol(this,void 0,void 0,(function*(){return s.q8(this)}))}"
+    },
+    {
+      "product_id": 241,
+      "module": 50652,
+      "name": "ZK",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 949194,
+      "end": 949698,
+      "source": "{NOT_SUPPORTED:0,KEYS_EXTENDED_BUFFER:1,MEDIA_KEYS:2,POWER_KEYS:3,RAZER_KEYS:4,NOTIFICATION_EVENTS:5,ANALOG_KEYBOARD_NOTIFICATION_EVENTS_ADC_VALUE_DATA:6,ANALOG_KEYBOARD_NOTIFICATION_EVENTS_ADC_VALUE_KEY:7,DONGLE_SECONDARY_DEVICE_RAZER_KEYS:8,DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS:9,DONGLE_SECONDARY_DEVICE_MOUSE_EVENTS:10,CALIBRATION_MOUSE_REDIRECT:77,CALIBRATION_Z_Q_DATA_EVENT:90,AUDIO_HAPTIC_INTENSITY_STATUS_EVENTS:97,KEYMAP_CYCLE_BUTTON:103,PROFILE_CYCLE_BUTTON:104,CONTROLLER_SYNC_EVENT:240}"
+    },
+    {
+      "product_id": 241,
+      "module": 50652,
+      "name": "J7",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 950697,
+      "end": 952346,
+      "source": "{PROFILE_CHANGE:1,DPI_CHANGE:2,DETACHMENT:3,ATTACHMENT:4,LIFTED_EVENT:5,DOWNED_EVENT:6,GESTURE_DETECTED:7,BRIGHTNESS_CHANGE_EVENT:8,WIRELESS_CHANGE_EVENT:9,CALIBRATION_CHANGE_EVENT:10,MACRO_KEY_COVER_CHANGE_EVENT:11,DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT:12,DEVICE_HARDWARE_CHANGE_EVENT:13,MOUSE_KEYPAD_MODULE_CHANGE_EVENT:14,AUDIO_VOLUME_CHANGE:15,RESERVED:16,AUDIO_MUTE_STATE_CHANGE:17,AUDIO_INPUT_SOURCE_CHANGE:18,AUDIO_IO_STATUS_CHANGE:19,EQ_PRESET_CHANGE:20,EQ_SETTING_CHANGE:21,DOLBY_STATE_CHANGE:22,AUTO_SLEEP_MODE_CHANGE:23,LED_EFFECT_COLOR_SETTING_CHANGED:24,LAMP_ARRAY_EVENT:25,THREE_D_MODE_CHANGED:26,AUDIO_OUTPUT_SOURCE_CHANGED:28,CAMERA_TRACKING_STATUS:29,THX_SPATIAL_TOGGLE_EVENT:32,ANC_STATE_CHANGE:33,FAN_FORCE_AUTO_EVENT:48,BATTERY_CHANGE_EVENT:49,HW_DETECTION_DONE_EVENT:50,POWER_WATTAGE_EVENT:51,POWER_SECURITY_EVENT:52,WIRELESS_CHANGE_EVENT_V2:53,PAIR_STATUS_UPDATE:54,SCAN_STATUS_UPDATE:55,ACTIVE_CONNECTION_CHANGE_EVENT:56,SCROLL_FREE_OR_NOTCH_MODE_CHANGE_EVENT:57,HAPTICORE_SCROLL_STAGE_CHANGED_EVENT:58,DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT_V2:59,FAN_CONNECTION_CHANGE_EVENT:64,BATTERY_FULLY_CHARGED_EVENT:65,ANALOG_KEY_ADJUSTMENT_MODE_CTRL_EVENT:66,CHROMA_BUTTON_TAP:67,AUDIO_MIC_VOLUME_CHANGE:68,BUTTON_CHANGE:70,SENSOR_TEMPERATURE_CHANGE:71,OLED_MODE:81,OLED_MENU:82,OLED_COMMAND_DIAL:83,OLED_CHROMA_EFFECT:84,OLED_LOW_POWER_MODE_CHANGE:85,AUDIO_SIDETONE_LEVEL_CHANGE_ValkyrieT3_PC:85,DONGLE_CONNECTION_QUALITY_STATUS:86,AUDIO_SIDETONE_LEVEL_CHANGE:87,POLLING_RATE_CHANGE:88,KBD_MODE_SWITCH_SLIDER_CHANGE:89,HAPTIC_GAIN_CHANGE:32,HAPTIC_INTENSITY_LEVEL_CHANGE:112,HAPTIC_PROFILE_CHANGE:113,HAPTIC_SOURCE_CHANGE:114}"
+    },
+    {
+      "product_id": 241,
+      "module": 50652,
+      "name": "yi",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 953887,
+      "end": 953975,
+      "source": "{NotApplicable:0,ParingStart:1,PairingSuccessAndStop:2,PairingTimeout:3,PairingCancel:4}"
+    },
+    {
+      "product_id": 241,
+      "module": 50652,
+      "name": "jQ",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 954001,
+      "end": 954041,
+      "source": "{NotApplicable:0,Start:1,End:2,Cancel:4}"
+    },
+    {
+      "product_id": 241,
+      "module": 52975,
+      "name": "U1",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 121554,
+      "end": 121577,
+      "source": "(e,t)=>(255&e)<<8|255&t"
+    },
+    {
+      "product_id": 241,
+      "module": 52975,
+      "name": "ft",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 121591,
+      "end": 121602,
+      "source": "e=>e>>8&255"
+    },
+    {
+      "product_id": 241,
+      "module": 52975,
+      "name": "Zz",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 121580,
+      "end": 121588,
+      "source": "e=>255&e"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "q",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1169846,
+      "end": 1169931,
+      "source": "e=>e===o.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS||e===o.ZK.NOTIFICATION_EVENTS"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Se",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1183678,
+      "end": 1184102,
+      "source": "(e,{payload:t})=>L(void 0,void 0,void 0,(function*(){const{mode:n,device:o}=t||{},r=(0,T.f2)(o.category,!0),a=(0,l.lq)((t=>L(void 0,void 0,void 0,(function*(){return yield Ee(t,e,o)}))),-1,\"bind\");console.log(\"[duallink] 🎈 bindDevice\",n,o,o.dongleId);const s=yield r.setDevicePairingMode(n,o.dongleId).catch((t=>(i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,error:t}),(0,l.EW)(a),{})));console.log(\"[duallink] 🎈 binded\",s)}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Te",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1184106,
+      "end": 1186351,
+      "source": "(e,{payload:t})=>L(void 0,void 0,void 0,(function*(){const{productId:n,category:o}=t||{},r=(0,T.f2)(o,!0),a=yield Y(),s=ne(g.razerWindow.rzDevice.productId);if(s){const n=a.find((e=>e.dongleId===s.master.dongleId)),o=(0,y.Xs)(n.productId);return void i.Z.postBCMsg(v.PR.USER_COMMAND,{type:e,payload:t,timerTick:Date.now()},o)}const l=Ae(n),c=l&&a.find((e=>e.dongleId===l.dongleId)),d=c?(0,y.Xs)(c.productId,!0):null,u=t=>{const n=Object.assign(Object.assign({},t),{type:e});console.log(\"[duallink] unBindDevice sendToUi\",n),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,n),d&&i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,n,d)};console.log(\"[duallink] 🎈 unBindDevice\",t,n,s);const p=()=>L(void 0,void 0,void 0,(function*(){l&&(yield ge({vendorId:5426,productId:n,dongleId:l.dongleId,deviceContainerId:U})),setTimeout((()=>{s||(L(void 0,void 0,void 0,(function*(){var e;let t,n=1e3;for(let o=0;o<20;o++){console.log(`[duallink] trying to connect device ${o}/20`);try{t=null===(e=yield r.connectDevice())||void 0===e?void 0:e.result}catch(e){console.warn(`[duallink] try to connect current device ${r.productId} with error`)}if(t)break;if(20===o){console.warn(\"Reach maximum try for connecting device\"),n=0;break}yield(0,m._v)(n),n*=2}t?console.log(`[duallink] connect current device ${r.productId} successful`):console.warn(`[duallink] fail to connect current device ${r.productId}`)})),Me())}),500)})),f=yield r.setDeviceUnpair(n).catch((e=>L(void 0,void 0,void 0,(function*(){console.warn(\"[duallink] 🎈 unBindDevice failed\",e);const t=()=>{u({error:e})};yield(0,m._v)(2e3);const i=yield _e().catch((()=>(t(),null)));if(console.warn(\"[duallink] 🎈 unBindDevice failed, and query bindInfo again, result\",i),F())if(i&&i.length>0)if(i.find((e=>e.productId===n||l&&e.productId===l.dongleId)))t(),console.warn(`[duallink] unBindDevice fail for dongleid ${null==l?void 0:l.dongleId}, res: `,f);else{const e={productId:null==l?void 0:l.dongleId};console.log(\"[duallink] unBindDevice\",null==l?void 0:l.dongleId),u({payload:e}),p(),we&&we(o)}else u({payload:{}}),p();else i&&i[0]?t():(u({payload:{}}),p())}))));(null==f?void 0:f.jsonData)?(console.log(\"[duallink] unBindDevice\",f),u({payload:f.jsonData}),p(),we&&we(o)):console.warn(\"[duallink] unBindDevice fail, res: \",f)}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Ee",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1181275,
+      "end": 1183347,
+      "source": "(e,t,n,r=!0)=>L(void 0,void 0,void 0,(function*(){var a,s;const c=g.razerWindow.rzDevice;let d;!function(e){e[e.START=1]=\"START\",e[e.SUCCESS=2]=\"SUCCESS\",e[e.TIMEOUT=3]=\"TIMEOUT\"}(d||(d={}));const{data:u,recordId:p}=e,{eventId:y,eventValue:m}=u;if(console.log(\"[duallink] handleHardwareEvent\",p,y,m,e),q(p)&&y===o.J7.PAIR_STATUS_UPDATE&&m){if(console.warn(\"[duallink] pairingStatus \",m,\" bind device current state \",null==m?void 0:m.statusEnum),m.status===d.TIMEOUT)return i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:t,error:m.statusEnum}),Le=!1,void(0,l.EW)(e.registerId);if(m.status!==d.SUCCESS)return;const o=yield Y(),u=yield Z(),p=JSON.parse(null!==(a=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==a?a:\"[]\")||[],y=o.find((e=>e.dongleId===n.dongleId)),g=u.Devices.find((e=>e.DeviceDonglePid===n.dongleId)),h=g&&(g.ProductInfo||[]),_=h.find((e=>e.EID===n.editionId))||h.find((e=>0===e.EID))||{},E={en:_.Name||\"unknown-\"+n.dongleId,\"zh-cn\":_.CHSName||\"未知设备-\"+n.dongleId};let I;I=F()?(0,T.f2)(n.category):yield $e({vendorId:5426,category:me(),productId:c.productId,deviceContainerId:U},f.DeviceInfo.claimInterface),I.productId=n.dongleId,I.device.dongleId=n.dongleId,I.category=I.device.category;const S=yield I.getEdition().catch((()=>({jsonData:{edition:0,keyboardLayout:0}}))),{edition:D,keyboardLayout:A}=S&&S.jsonData||{};if(m.device={productId:y&&y.productId||0,category:m.typeDesc||I.category,name:E,productName:E,editionName:E,editionId:D||0,layoutId:A||0,dongleId:n.dongleId},y){let e=p.find((e=>e.productId===y.productId));F()&&(e=Ie(y.productId)),e&&(m.device=Object.assign(Object.assign({},e),{dongleId:n.dongleId}))}if(\"MOUSE\"===(null===(s=null==m?void 0:m.device)||void 0===s?void 0:s.category)&&0===m.device.layoutId){const e=yield he(I,n.productId,n.dongleId);m.device.layoutId=e||m.device.layoutId}i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:t,payload:m}),r&&(0,l.EW)(e.registerId),yield ye({vendorId:5426,category:m.typeDesc||I.category,productId:n.productId,deviceContainerId:U,dongleId:n.dongleId}),Ce(n.dongleId),Le=!1,Re&&Re(n.category)}return!1}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Ke",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1192609,
+      "end": 1196387,
+      "source": "{DUALLINK_CONNECT_TYPE:e=>L(void 0,void 0,void 0,(function*(){const t=g.razerWindow.rzDevice;let n=1;if(f.DeviceInfo.dongleId===t.productId)if(yield ie({productId:t.productId,containerId:U}))n=2;else{n=3;const{master:{productId:e}}=Oe(t.productId);[B.UMA,B.ZIA,B.ZIA_REFRESH].includes(e)&&(n=5)}i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:n})})),DUALLINK_BIND_INFO:e=>L(void 0,void 0,void 0,(function*(){let t=!0;const n=yield _e().catch((n=>(t=!1,console.warn(`[duallink] response ${e} get error`,n),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:[],error:n}),[])));t&&i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:n})})),DUALLINK_SCAN_DEVICE:(e,{payload:{status:t,category:n}})=>L(void 0,void 0,void 0,(function*(){var r,a;Le=!0;const s=(0,T.f2)(n,!0),c={1:\"start scan\",4:\"cancel scan\"}[t];if(!c)return void console.warn(\"[duallink] 🎈scan devices,ui request is invalid\");console.warn(\"[duallink] 🎈scan devices,ui request is ====> \",c);const d=(0,l.lq)((t=>L(void 0,void 0,void 0,(function*(){const{data:n,recordId:r}=t,{eventId:a,eventValue:c}=n;if(console.log(\"[duallink] scanDevice onHardwareEvent\",a,c,t),q(r)&&a===o.J7.SCAN_STATUS_UPDATE&&c){const{statusEnum:n}=c;if(\"End\"===n){console.log(\"[duallink] 🎈scan devices after scan ====> \",c);const n=yield(e=>L(void 0,void 0,void 0,(function*(){var t,n,o,i,r;const a=yield Y(),l=JSON.parse(null!==(t=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==t?t:\"[]\")||[],c=yield Z(),d=s.productId,u=[],{deviceCount:p}=e;if(p>0)for(let t=1;t<=p;t++){const s=e[`device_${t}_editionId`],p=e[`device_${t}_productId`],v=c.Devices.find((e=>e.DeviceDonglePid===p)),f=c.Devices.find((e=>e.DeviceDonglePid===d));if(void 0===v&&(\"LINKER\"===(null===(o=null===(n=(0,D.N$)().rzDeviceType)||void 0===n?void 0:n.rzDevice25)||void 0===o?void 0:o.duallinkDeviceType)||\"LINKERMULTIDEVICES\"===(null===(r=null===(i=(0,D.N$)().rzDeviceType)||void 0===i?void 0:i.rzDevice25)||void 0===r?void 0:r.duallinkDeviceType)))continue;if(!f.DevicePairingBuddies.includes(p))continue;const y=v&&v.ProductInfo||[],g=y.find((e=>e.EID===s))||y.find((e=>0===e.EID))||{},m={en:g.Name||\"unknown-\"+p,\"zh-cn\":g.CHSName||\"未知设备-\"+p},h={name:m,productName:m,editionName:m,category:v&&v.DeviceType||\"\",editionId:s,dongleId:p,productId:v&&v.DeviceSiblings&&v.DeviceSiblings[0]||0},_=a.find((e=>e.dongleId===h.dongleId));if(_){let e=l.find((e=>e.productId===_.productId));F()&&(e=Ie(_.productId)),h.productId=_.productId,u.push(Object.assign(Object.assign({},h),e||{}))}else u.push(Object.assign(Object.assign({},h),{name:{en:\"unknown-\"+h.dongleId},productName:{en:\"unknown-\"+h.dongleId},editionName:{en:\"unknown-\"+h.dongleId},category:me(),editionId:0,layoutId:0}))}return console.log(\"[duallink] 🎈 handleScanDevices\",e,\"==>\",u),u})))(c);i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:n}),(0,l.EW)(t.registerId)}}return!1}))),-1,\"scan\"),u=yield s.deviceScan(t).catch((t=>(console.error(\"[duallink] 🎈scan devices failed\",t),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,error:t}),(0,l.EW)(d),{})));console.log(\"[duallink] 🎈scan devices r ====>\",null===(r=null==u?void 0:u.jsonData)||void 0===r?void 0:r.status,null===(a=null==u?void 0:u.jsonData)||void 0===a?void 0:a.statusEnum)})),DUALLINK_BIND_DEVICE:Se,DUALLINK_UNBIND_DEVICE:Te,DUALLINK_CANCEL:()=>L(void 0,void 0,void 0,(function*(){const e=g.razerWindow.rzDevice;console.log(\"[duallink] dual link canceled\"),Le=!1,yield e.deviceScan(4).catch((e=>{console.error(\"[duallink] 🎈cancel scan devices failed\",e)}))})),DUALLINK_DEVICE_INFO:e=>L(void 0,void 0,void 0,(function*(){const t=yield ze().catch((t=>{console.warn(`[duallink.DUALLINK_DEVICE_INFO] response ${e} get error`,t),i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:[],error:t})}));i.Z.postBCMsg(v.PR.MW_RESPONSE_UI,{type:e,payload:t})}))}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "j",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1169194,
+      "end": 1169462,
+      "source": "(e=\"AvailableDevices\")=>L(void 0,void 0,void 0,(function*(){const t=`${G}/dashboard/${e}.json`;try{const e=yield fetch(t,{method:\"GET\",headers:{\"Cache-Control\":\"no-cache\"}});return yield e.json()}catch(e){console.error(\"[duallink] request\",t,\"failed\",e)}return null}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Y",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1169465,
+      "end": 1169555,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){return V||(V=yield j(\"AvailableDevices\"),V||[])}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Z",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1169558,
+      "end": 1169669,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){return $||($=yield j(\"DualDongleCompatibleDevices\"),$||{Devices:[]})}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "me",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1178615,
+      "end": 1178669,
+      "source": "()=>\"MOUSE\"===f.DeviceInfo.category?\"KEYBOARD\":\"MOUSE\""
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Ie",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1183351,
+      "end": 1183674,
+      "source": "e=>{var t;const n=JSON.parse(null!==(t=localStorage.getItem(\"connectedDeviceInfo\"))&&void 0!==t?t:\"[]\")||[];let o;const i=De();if(i&&i.length>0){const t=i.find((t=>t.productId===e));if(t){const e=X(t);if(e&&Ue.exists(e)){const i=Ue.getSerialNumber(e);o=n.find((e=>e.productId===t.productId&&e.serialNumber===i))}}}return o}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "ye",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1177173,
+      "end": 1178305,
+      "source": "(e,t=!0)=>L(void 0,void 0,void 0,(function*(){var n;const o=(yield ee(Q))||{},i=X(e);console.log(`[duallink] 🎈 addDevice ${i}`,o,e,\"saveToLocalStorage=\",t),void 0===o[i]&&(e.master={productId:f.DeviceInfo.productId,dongleId:f.DeviceInfo.dongleId||0,bleId:f.DeviceInfo.bleId||0,claimInterface:f.DeviceInfo.claimInterface,supports8KHzPollingRate:f.DeviceInfo.supports8KHzPollingRate},o[i]=e,t&&localStorage.setItem(Q,JSON.stringify(o)));const r=yield a.Z.getWindowStorageItem(I.rt.DEVICE_RUNTIME_DATA),s=(r?JSON.parse(r):[]).reduce(((t,{value:n})=>{const o=JSON.parse(n);if(o.deviceContainerId===U&&o.productId===e.productId)return o}));console.warn(\"slave runtime data:\",s),(null===(n=null==s?void 0:s.serialNumber)||void 0===n?void 0:n.length)>0?(console.warn(`Found slave's serial number ${s.serialNumber}`),F()?(null==e?void 0:e.productId)?Ue.add(i,s.serialNumber):console.warn(\"[duallink.addDevice] device.productId is undefined\"):W=s.serialNumber):(S.Z.onEvent(Ye(Ze)),console.warn(\"attached windowstorage listener to get slave runtime data\")),console.log(\"[duallink] 🌳 addDevice\",e,o),F()?void 0===fe[i]&&(fe[i]=o[i]):fe=o}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "X",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1169955,
+      "end": 1170010,
+      "source": "e=>`${e.vendorId}/${e.dongleId}/${e.deviceContainerId}`"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "ee",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1170014,
+      "end": 1170111,
+      "source": "e=>{var t;const n=null!==(t=localStorage.getItem(e))&&void 0!==t?t:\"{}\";return JSON.parse(n)||{}}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Q",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1169934,
+      "end": 1169952,
+      "source": "\"duallink-devices\""
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Ne",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1187104,
+      "end": 1187859,
+      "source": "()=>L(void 0,void 0,void 0,(function*(){var e,t;const n=yield _e().catch((e=>{console.warn(\"[duallink] queryBindInfo failed\",e),setTimeout(Ne,1e3)}));if(n&&(0===(null===(e=n[0])||void 0===e?void 0:e.status)||\"\"===(null===(t=n[0])||void 0===t?void 0:t.serialNumber))&&be<5)return console.log(\"Recheck slave status ====>\",n[0].status),be++,void setTimeout((()=>L(void 0,void 0,void 0,(function*(){return yield Ne().catch((e=>{console.warn(\"[duallink] initMasterDevice failed\",e)}))}))),200*(be+1));if(console.log(\"[duallink] initMasterDevice bindedInfo ===>\",n),n&&n.length)for(const e of n){const t=e.status===x.connected;yield ye({vendorId:5426,productId:e.productId,deviceContainerId:U,dongleId:e.dongleId||e.productId},t),Ce(e.dongleId||e.productId)}}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Ce",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1186863,
+      "end": 1186993,
+      "source": "e=>L(void 0,void 0,void 0,(function*(){const t=g.razerWindow.rzDevice;t.dualLinkPrimaryPId=t.productId,t.dualLinkSecondaryPId=e}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "De",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1186355,
+      "end": 1186567,
+      "source": "()=>{const e=g.razerWindow.rzDevice,t=Object.values(fe).filter((t=>t.master.dongleId===e.productId&&t.deviceContainerId===U));return console.log(\"[duallink] getSlaves pairedDevices=\",fe,e.productId,\"slave=\",t),t}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "ge",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1178309,
+      "end": 1178611,
+      "source": "e=>L(void 0,void 0,void 0,(function*(){const t=(yield ee(Q))||{},n=X(e);console.log(`[duallink] 🎈 removeDevice ${n}`,t,e,t[n]),void 0!==t[n]&&(delete t[n],localStorage.setItem(Q,JSON.stringify(t))),F()?Ue.remove(n):W=void 0,console.log(\"[duallink] 🌳 removeDevice\",e,t),F()?fe[n]&&delete fe[n]:fe=t}))"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Me",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1186997,
+      "end": 1187085,
+      "source": "()=>{const e=g.razerWindow.rzDevice;e.dualLinkPrimaryPId=0,e.dualLinkSecondaryPId=65535}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "N",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1167022,
+      "end": 1168021,
+      "source": "class N{constructor(){this.slaveSerialNumbers=new Map}add(e,t){e?(this.slaveSerialNumbers.has(e)?(console.log(`[SlaveSerialNumberManager.add] Updating serial number for key: ${e}, old serial number: ${this.slaveSerialNumbers.get(e)}, new serial number: ${t}`),this.slaveSerialNumbers[e]=t):console.log(`[SlaveSerialNumberManager.add] Adding new serial number for key: ${e}, serial number: ${t} `),this.slaveSerialNumbers.set(e,t)):console.error(\"[SlaveSerialNumberManager.add] deviceKey: \",e,\"serial number: \",t)}remove(e){return e&&this.slaveSerialNumbers.has(e)?(this.slaveSerialNumbers.delete(e),!0):(console.warn(\"[SlaveSerialNumberManager.remove] deviceKey not found in the slaveSerialNumber map, deviceKey:\",e),!1)}exists(e){return!(!e||!this.slaveSerialNumbers.has(e))}getSerialNumber(e){return e&&this.slaveSerialNumbers.has(e)?this.slaveSerialNumbers.get(e)||\"\":(console.warn(\"[SlaveSerialNumberManager.getSerialNumber] deviceKey not found in the slaveSerialNumber map, deviceKey:\",e),\"\")}}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Ye",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1198292,
+      "end": 1199164,
+      "source": "e=>{const t=n=>{const o={[I.rt.DEVICE_RUNTIME_DATA]:({newValue:n,keyState:o,srcURL:i})=>{if(!decodeURI(i).includes(U))return;const r=n?JSON.parse(n):null;if(r.serialNumber){if(console.warn(`Found slave's serial number ${r.serialNumber}, remove slave windowstorage listener`),F())if(null==r?void 0:r.productId){const e=De();if(e&&e.length>0){const t=e.find((e=>e.productId===r.productId)),n=X(t);if(Ue.exists(n))return void console.warn(\"[duallink.addSerialNumberListenerForSlave] Skipping as the SerialNumber has already been added for the slave!\",r);Ue.add(n,r.serialNumber)}else console.warn(\"[duallink.addSerialNumberListenerForSlave] No slaves found in the paired devices!\")}else console.warn(\"[duallink.addSerialNumberListenerForSlave] device.productId is undefined\");else W=r.serialNumber;e&&e(),S.Z.offEvent(t)}}};\"function\"==typeof o[n.key]&&o[n.key](n)};return t}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Ze",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1199168,
+      "end": 1199254,
+      "source": "()=>{const e=De();if(e)for(const t of e)Be(t,`synapse_${null==t?void 0:t.productId}`)}"
+    },
+    {
+      "product_id": 241,
+      "module": 34340,
+      "name": "Be",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 1190275,
+      "end": 1190752,
+      "source": "(e,t)=>L(void 0,void 0,void 0,(function*(){if(F())yield ke.combineSlaveToMaster(e,t);else if(e&&`synapse_${e.productId}`===t){const t=localStorage.getItem(`synapse_${e.master.productId}`);if(!t){let t=yield ae(e);return void(t&&(t=yield(0,u.N7)(t,a.Z),yield(0,T.M6)(t),console.warn(\"There are no master exist in localstorage, set slave mapping data directly.\")))}const n=JSON.parse(t);try{let e=yield se(n);e=yield(0,u.N7)(e,a.Z),yield(0,T.M6)(e)}catch(e){console.error(e)}}}))"
+    },
+    {
+      "product_id": 241,
+      "module": 21503,
+      "name": "DeviceInfo",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 145488,
+      "end": 145967,
+      "source": "{deviceName:_,productId:241,dongleId:241,vendorId:5426,masterGuideURL:\"https://dl.razer.com/master-guides/RazerSynapse4/MOUSEDOCKV2PRO-00000241-\",supportPage:\"https://mysupport.razer.com/app/answers/detail/a_id/21069\",WAVE_DIRECTION:\"CWCCW\",category:\"ACCESSORY\",claimInterface:3,latestFirmwareInfo:{version:\"1.0.6.0\",url:\"https://rzr.to/V0zxjI\",guide:\"https://rzr.to/XNt1KV\",releaseDate:new Date(\"2023-11-6\").valueOf(),size:4131680,severity:\"warning\"},supports8KHzPollingRate:!0}"
+    },
+    {
+      "product_id": 241,
+      "module": 20236,
+      "name": "f2",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2167492,
+      "end": 2168221,
+      "source": "(e,t=!1)=>{var n;console.log(\"[duallink] getRzDevice - Starting.\");let o=v.razerWindow.rzDevice;const{canPairMultipleDevices:i}=(0,R.N$)();if((null==i?void 0:i.yes)||o.productId===U.ZG.UMA){const{claimInterface:i,productId:r,containerId:a}=o,s={vendorId:5426,category:e,productId:r,deviceContainerId:a},l={sleepTimeOut:5*B.SLEEP_TIME_BETWEEN_OUT,sleepTimeOutIn:5*B.SLEEP_TIME_BETWEEN_OUT_IN,sleepTimeIn:5*B.SLEEP_TIME_BETWEEN_IN},c=null===(n={true:{[ot.KEYBOARD]:F.default,[ot.MOUSE]:V.default},false:{[ot.MOUSE]:F.default,[ot.KEYBOARD]:V.default}}[String(t)])||void 0===n?void 0:n[e];c&&(o=new c(s,i,\"\",l.sleepTimeOut,l.sleepTimeOutIn,l.sleepTimeIn))}return console.log(`[duallink] getRzDevice - Exiting with rzDevice: ${o}`),o}"
+    },
+    {
+      "product_id": 241,
+      "module": 57368,
+      "name": "default",
+      "path": ".ref/middleware/241/rzHardwareEventsProtocol25Parser.114b9e189c4944d1f17a.js",
+      "sha256": "39d562328016b8cd2015dad9abbb95e6e35560ddbe5213fc0683820735ffb6dc",
+      "offset": 658,
+      "end": 7682,
+      "source": "class{constructor(){this.parse=e=>{const a=Array.from(new Uint8Array(e.data.buffer)),t=a[0];t!==E.ZK.NOT_SUPPORTED&&console.log(\"rzHardwareEventsProtocol25Parser-parse\",e),this.productId=e.productId;let s={};switch(t){case E.ZK.MEDIA_KEYS:s=this.parseMediaKeys(a);break;case E.ZK.POWER_KEYS:s=this.parsePowerKeys(a);break;case E.ZK.RAZER_KEYS:case E.ZK.DONGLE_SECONDARY_DEVICE_RAZER_KEYS:s={razerKeys:a.slice(1)};break;case E.ZK.NOTIFICATION_EVENTS:case E.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS:s=this.parseNotificationEvents(a);break;case E.ZK.CALIBRATION_Z_Q_DATA_EVENT:s=this.parseZandQData(a);break;case E.ZK.CALIBRATION_MOUSE_REDIRECT:s=this.parseMouseRedirectData(a)}return{rawBuffer:a,containerId:e.containerId,typeId:E.Rc.PROTOCOL25,recordId:t,recordIdDesc:o.oW(E.ZK,t),data:Object.assign({},s)}},this.parseNotificationEvents=e=>{let a;const t=e[1],r=o.oW(E.J7,t);switch(t){case E.J7.DPI_CHANGE:a={x:o.U1(e[2],e[3]),y:o.U1(e[4],e[5]),z:o.U1(e[6],e[7])};break;case E.J7.PROFILE_CHANGE:case E.J7.BRIGHTNESS_CHANGE_EVENT:a={value:e[2]};break;case E.J7.MACRO_KEY_COVER_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.cp,e[2])};break;case E.J7.MOUSE_KEYPAD_MODULE_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.zv,e[2])};break;case E.J7.CALIBRATION_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.h7,e[2])};break;case E.J7.DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT:a={value:e[2],valueDesc:o.oW(E.FW,e[2])};break;case E.J7.DETACHMENT:case E.J7.ATTACHMENT:case E.J7.LIFTED_EVENT:case E.J7.DOWNED_EVENT:a={};break;case E.J7.DEVICE_HARDWARE_CHANGE_EVENT:a={value:[e[2],e[3],e[4],e[5]],device1:{value:e[2],valueDesc:o.oW(E.T$,e[2])},device2:{value:e[3],valueDesc:o.oW(E.T$,e[3])},device3:{value:e[4],valueDesc:o.oW(E.T$,e[4])},device4:{value:e[5],valueDesc:o.oW(E.T$,e[5])}};break;case E.J7.WIRELESS_CHANGE_EVENT:a={state:e[2],stateDesc:o.oW(E.E3,e[2]),type:e[3],typeDesc:o.oW(E.Vf,e[3])};break;case E.J7.BATTERY_CHANGE_EVENT:a={batteryLevel:Math.floor(e[2]/255*100),chargingStatus:e[3],chargingStatusDesc:o.oW(E.bn,e[3]),powerSourceStatus:e[4],powerSourceStatusDesc:o.oW(E.ZT,e[4]),deviceType:e[5],deviceTypeDesc:o.oW(E.Nu,e[5])};break;case E.J7.THX_SPATIAL_TOGGLE_EVENT:a={};break;case E.J7.FAN_FORCE_AUTO_EVENT:a={enabled:e[2]};break;case E.J7.POWER_SECURITY_EVENT:{const t=[];for(let a=7;a>=0;a--)t.push(e[4]>>a&1);a={shortCondition:e[2],abnormalVoltage:e[3],abnormalCurrent:e[4],glitterAbnormalCurrent:{port0:t[7],port1:t[6],port2:t[5],port3:t[4],port4:t[3],port5:t[2],global:t[0]}}}break;case E.J7.WIRELESS_CHANGE_EVENT_V2:a={state:e[2],stateDesc:o.oW(E.E3,e[2]),type:e[3],typeDesc:o.oW(E.Vf,e[3]),productId:o.U1(e[4],e[5])};break;case E.J7.PAIR_STATUS_UPDATE:a={status:e[2],statusEnum:o.oW(E.yi,e[2])};break;case E.J7.SCAN_STATUS_UPDATE:a={status:e[2],statusEnum:o.oW(E.jQ,e[2]),deviceCount:e[3],device_1_productId:o.U1(e[4],e[5]),device_1_editionId:e[7],device_1_keyboardLayout:e[6],device_1_keyboardLayoutEnum:o.oW(c.UM,e[6]),device_2_productId:o.U1(e[8],e[9]),device_2_editionId:e[11],device_2_keyboardLayout:e[10],device_2_keyboardLayoutEnum:o.oW(c.UM,e[10]),device_3_productId:o.U1(e[12],e[13]),device_3_editionId:e[15],device_3_keyboardLayout:e[14],device_3_keyboardLayoutEnum:o.oW(c.UM,e[14])};break;case E.J7.ACTIVE_CONNECTION_CHANGE_EVENT:a={type:e[2],typeEnum:o.oW(E.Rk,e[2]),connected:e[3]};break;case E.J7.SCROLL_FREE_OR_NOTCH_MODE_CHANGE_EVENT:a={mode:e[2],modeEnum:o.oW(E.Bm,e[2])};break;case E.J7.POWER_WATTAGE_EVENT:a={adapterWattageValue:e[2],adapterWattageValueEnum:o.oW(s.OG,e[2]),recommendedAdapterWattageValue:e[3],recommendedAdapterWattageValueEnum:o.oW(s.OG,e[3])};break;case E.J7.AUDIO_VOLUME_CHANGE:a={volume:{value:e[2]},bassBoost:{value:e[3]}};break;case E.J7.AUDIO_MIC_VOLUME_CHANGE:a={volume:e[2]};break;case E.J7.BUTTON_CHANGE:a={type:e[2],typeDesc:o.oW(E.JB,e[2]),mode:e[3],modeDesc:o.oW(E.Ef,e[3])};break;case E.J7.SENSOR_TEMPERATURE_CHANGE:a={temperature:e[2]};break;case E.J7.CHROMA_BUTTON_TAP:a={tapMode:e[2],tapModeDesc:o.oW(E.U_,e[2]),functionNumber:e[3]};break;case E.J7.AUDIO_MUTE_STATE_CHANGE:a={isMuted:1===e[2]};break;case E.J7.AUDIO_INPUT_SOURCE_CHANGE:a={inputSourceDesc:o.oW(E.tV,e[2]),inputSource:e[2]};break;case E.J7.AUDIO_IO_STATUS_CHANGE:a={headphoneStatus:e[2],usbStatus:e[3],auxInStatus:e[4],spdifInStatus:e[5],bluetoothStatus:e[6]};break;case E.J7.EQ_PRESET_CHANGE:a={eqPresetDesc:o.oW(E._s,e[2])};break;case E.J7.EQ_SETTING_CHANGE:if([1352].includes(this.productId))a={customBands:e.slice(2,12).map(((e,a)=>({index:a,level:e})))};else{const t=e.slice(2,10).map((e=>Math.round(18*e/100)-9)),E=[60,250,500,1e3,2e3,4e3,8e3,16e3];a={customBands:t.map(((e,a)=>({frequency:E[a],decibel:e})))}}break;case E.J7.DOLBY_STATE_CHANGE:a={isEnabled:1===e[2]};break;case E.J7.LED_EFFECT_COLOR_SETTING_CHANGED:{const t=e[5];a={effectId:e[2],flags:e[3],rate:e[4],colorNumber:t,colorArray:e.slice(6,6+3*t)}}break;case E.J7.THREE_D_MODE_CHANGED:a={mode:e[2],modeDesc:o.oW(E._8,e[2])};break;case E.J7.AUDIO_OUTPUT_SOURCE_CHANGED:a={state:e[2],stateDesc:o.oW(E.l8,e[2])};break;case E.J7.CAMERA_TRACKING_STATUS:a={lock:e[2],direction:o.sl([e[3],e[4],e[5],e[6]]),distance:o.sl([e[7],e[8],e[9],e[10]])};break;case E.J7.HW_DETECTION_DONE_EVENT:a={value:\"done\"};break;case E.J7.HAPTICORE_SCROLL_STAGE_CHANGED_EVENT:a={activeStage:e[2],activeStageIndex:e[3],activeStageIndexEnum:o.oW(E.D$,e[3])};break;case E.J7.DEVICE_EXTERNAL_POWER_SOURCE_CHANGE_EVENT_V2:{const t=e[2];a={value:t,productId:o.U1(e[3],e[4]),editionId:o.U1(e[5],e[6]),valueDesc:o.oW(E.FW,t)}}break;case E.J7.FAN_CONNECTION_CHANGE_EVENT:a={fanNo:e[2],fan1:e[3],fan2:e[4],fan3:e[5],fan4:e[6],fan5:e[7],fan6:e[8],fan7:e[9],fan8:e[10]};break;case E.J7.BATTERY_FULLY_CHATED_EVENT:a={state:e[2]};break;case E.J7.ANALOG_KEY_ADJUSTMENT_MODE_CTRL_EVENT:a={actuationPointAdjustmentMode:e[2],rapidTriggerAdjustmentMode:e[3]};break;case E.J7.OLED_MODE:a={mode:e[2],modeEnum:o.oW(E.fW,e[2])};break;case E.J7.OLED_MENU:a={menu:e[2],menuEnum:o.oW(E.YA,e[2])};break;case E.J7.OLED_COMMAND_DIAL:a={dialFunction:e[2],dialFunctionEnum:o.oW(E.pn,e[2])};break;case E.J7.OLED_CHROMA_EFFECT:a={effectId:e[2],effectIdEnum:o.oW(E.ai,e[2])};break;case E.J7.OLED_LOW_POWER_MODE_CHANGE:a={status:e[2],statusEnum:o.oW(E.QD,e[2])};break;case E.J7.BATTERY_FULLY_CHARGED_EVENT:a={};break;case E.J7.DONGLE_CONNECTION_QUALITY_STATUS:a={dongleConnectionQualityData:e[2],dongleConnectionQualityStatus:o.oW(c.ce,e[2])};break;case E.J7.POLLING_RATE_CHANGE:a={value:e[2],valueEnum:o.oW(c.Gy,e[2])};break;case E.J7.KBD_MODE_SWITCH_SLIDER_CHANGE:a={currentMode:e[2],statusEnum:o.oW(E.Qo,e[2])};break;default:console.warn(\"parseNotificationEvents-unknown data\",e)}const _={eventId:t,eventIdDesc:r,eventValue:a};return console.debug(\"rzHardwareEventsProtocol25Parser.parseNotificationEvents.parse\",JSON.stringify(_)),_},this.parseMediaKeys=e=>{const a=o.U1(e[2],e[1]);return{key:a,keyDesc:o.oW(r.r2,a)}},this.parsePowerKeys=e=>({key:e[1],keyDesc:o.oW(E.QE,e[1])}),this.parseZandQData=e=>({z:e[1],q:e[2]}),this.parseMouseRedirectData=e=>({buttonId:e[1],buttonState:e[2]})}}"
+    },
+    {
+      "product_id": 241,
+      "module": 35284,
+      "name": "SLEEP_TIME_BETWEEN_OUT",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 115847,
+      "end": 115848,
+      "source": "5"
+    },
+    {
+      "product_id": 241,
+      "module": 35284,
+      "name": "SLEEP_TIME_BETWEEN_OUT_IN",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 115839,
+      "end": 115840,
+      "source": "5"
+    },
+    {
+      "product_id": 241,
+      "module": 35284,
+      "name": "SLEEP_TIME_BETWEEN_IN",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 115843,
+      "end": 115844,
+      "source": "5"
+    },
+    {
+      "product_id": 241,
+      "module": 35284,
+      "name": "MAX_RETRY_IN",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 115851,
+      "end": 115853,
+      "source": "10"
+    },
+    {
+      "product_id": 241,
+      "module": 35284,
+      "name": "MAX_RETRY_OUT",
+      "path": ".ref/middleware/241/main.4445be281299656d7986.js",
+      "sha256": "e92a8d4a4de01a5a2d02d023e34edc93022b3285ac55bd2888fd761d87e67a24",
+      "offset": 115856,
+      "end": 115858,
+      "source": "20"
+    },
+    {
+      "product_id": 241,
+      "module": 48320,
+      "name": "post metadata mouse class constructor timing",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 925288,
+      "end": 933070,
+      "source": "class f extends o.default{constructor(e,t,n=\"\",o=i.SLEEP_TIME_BETWEEN_OUT,r=i.SLEEP_TIME_BETWEEN_OUT_IN,l=i.SLEEP_TIME_BETWEEN_IN,c=i.MAX_RETRY_IN,d=i.MAX_RETRY_OUT){super(e,t,n,o,r,l,c,d),this.getPowerOnStatusFromHardwareEvent=e=>v(this,void 0,void 0,(function*(){var t,n,o,i,r,a;const l=\"getPowerOnStatusFromHardwareEvent()\";let c=!1;if((null==e?void 0:e.recordId)===s.ZK.NOTIFICATION_EVENTS&&(null===(t=null==e?void 0:e.data)||void 0===t?void 0:t.eventId)===s.J7.WIRELESS_CHANGE_EVENT||(null==e?void 0:e.recordId)===s.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS&&(null===(n=null==e?void 0:e.data)||void 0===n?void 0:n.eventId)===s.J7.WIRELESS_CHANGE_EVENT_V2){if(1===(null===(i=null===(o=null==e?void 0:e.data)||void 0===o?void 0:o.eventValue)||void 0===i?void 0:i.type))return c=3===(null===(a=null===(r=null==e?void 0:e.data)||void 0===r?void 0:r.eventValue)||void 0===a?void 0:a.state),console.log(`${this.name}.${l} isPowerOn:${c}`),c;console.log(`${this.name}.${l} power event not for mouse, return false as default`)}else console.log(`${this.name}.${l} not power event, return false as default`);return c})),this.queryDualLinkInfo=()=>v(this,void 0,void 0,(function*(){var e;const t=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${t} isDualLink = false, return`),!1;try{let n=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${t} getMultipleDeviceWirelessConnectionStatusV2 r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status!==i.STATUS_SUCCESS||!n.jsonData)return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,n),!1;{const o=n.jsonData.status;try{if(n=yield this.getMultipleDevicePrimaryDevice(),console.log(`${t} getMultipleDevicePrimaryDevice r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status===i.STATUS_SUCCESS&&n.jsonData){this.dualLinkPrimaryPId=n.jsonData.productId;const i=n.jsonData.type,r=o.filter((e=>e.productId!==this.dualLinkPrimaryPId));return this.dualLinkSecondaryPId=void 0!==(null===(e=r[0])||void 0===e?void 0:e.productId)?r[0].productId:65535,i===p.$X.Mouse?this.isDualLinkSlave=!1:this.isDualLinkSlave=!0,console.log(`${t} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}, type:${i}`,a.oW(p.$X,i),\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave:\",this.isDualLinkSlave),this.device.productId!==this.dualLinkPrimaryPId&&this.device.productId!==this.dualLinkSecondaryPId&&(this.dualLinkSecondaryPId=this.dualLinkPrimaryPId,this.dualLinkPrimaryPId=this.device.productId,this.isDualLinkSlave=!0,console.warn(`${t} usbDevice productId != dualLinkPrimaryPId && dualLinkSecondaryPId, force this device to paired device`,`final dualLinkPrimaryPId: ${this.dualLinkPrimaryPId}, dualLinkSecondaryPId: ${this.dualLinkSecondaryPId}, isDualLinkSlave:${this.isDualLinkSlave}`)),!0}return console.warn(`${t} getMultipleDevicePrimaryDevice failed, r:`,n),!1}catch(e){return console.warn(`${t} getMultipleDevicePrimaryDevice failed, err:`,e),!1}}}catch(e){return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,e),!1}})),this.name=\"rzDevice25DualLinkMouse\",this.lockName=`${this.baseClassName}-${this.containerId}`,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName),this.isDualLink=!0,this.ignoreSetDeviceModeTimeoutError=!1}_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),this.transactionId++}connectDevice(){var e;return v(this,void 0,void 0,(function*(){const t=\"connectDevice\";if(void 0===this.device)return{result:!1,error:i.ERROR_VALUE_UNDEFINED};const n={result:!1,error:\"\"};if(this.isElectron){const o=c.n5,i=new Uint8Array,r=this._createDataSend(o,i);for(let o=0;o<3;o++)try{const t=[a.uM()?this.claimInterface:this.reportId,...r],o=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:t});if(n.result=null==o?void 0:o.result,n.error=null!==(e=null==o?void 0:o.errorMsg)&&void 0!==e?e:\"\",null==o?void 0:o.result)break}catch(e){l.Z.error(`${this.name}.${t} i: ${o}, claimInterface:${this.claimInterface}`,e),n.result=!1,n.error=e}}else for(let e=0;e<3;e++)try{l.Z.log(`${this._getLoggerPrepend()} ${t}: claimInterface:${this.claimInterface}`),yield this.device.open(),yield this.device.selectConfiguration(1),yield this.device.claimInterface(this.claimInterface),console.log(`${this.name}.${t} claimInterface:${this.claimInterface} successfully`),n.result=!0;break}catch(o){l.Z.error(`${this.name}.${t} i: ${e}, claimInterface:${this.claimInterface}`,o),n.result=!1,n.error=o}return n}))}sendCommand(e,t,n=new Uint8Array([]),o=-1,s=!0){return v(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,o,s);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?l.Z.printData(`${u}: ${e[0]}(${a.Cf(e[0])}), ${e[1]}(${a.Cf(e[1])}), ${e[2]}(${a.Cf(e[2])}), ${t}, packetSizeSet:${o}`):l.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${o}`),l.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});const p=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.device.productId||this.productId});const f=this._createDataSend(e,n,o);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(f[1]|=128),p.dataSend=[...f],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:p.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>v(this,void 0,void 0,(function*(){try{for(let o=0;o<this.maxRetryOut;o++){const r=yield(0,d.NH)(n);if(r===this.reportLength){if(!s){p.status=i.STATUS_SUCCESS,p.error=\"\",p.dataHeader=f.slice(0,8),p.data=[...f.slice(8,8+f[5])];break}if(yield a._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,f,p,t),p.status===i.STATUS_SUCCESS||p.status===i.STATUS_FAIL&&!1===p.resendOutCommand){p.status===i.STATUS_FAIL&&!1===p.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${o} cmdDesc:${t}}, r:`,r);break}p.status===i.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${o} cmdDesc:${t}}, r:`,r),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else p.status=i.STATUS_FAIL,p.error=\"\"}}catch(t){p.status=i.STATUS_FAIL,t.message?p.error=t.message:p.error=t,console.warn(`${u} error: ${a.Cf(e[1])}, ${a.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(p.status===i.STATUS_FAIL)throw l.Z.warn(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(p)}`),new r.$1({error:p.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:f,extraInfo:\"productId: \"+this.productId,productId:this.device.productId||this.productId})}))))}return p}))}}"
+    },
+    {
+      "product_id": 241,
+      "module": 48320,
+      "name": "category transport class",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 925288,
+      "end": 933070,
+      "source": "class f extends o.default{constructor(e,t,n=\"\",o=i.SLEEP_TIME_BETWEEN_OUT,r=i.SLEEP_TIME_BETWEEN_OUT_IN,l=i.SLEEP_TIME_BETWEEN_IN,c=i.MAX_RETRY_IN,d=i.MAX_RETRY_OUT){super(e,t,n,o,r,l,c,d),this.getPowerOnStatusFromHardwareEvent=e=>v(this,void 0,void 0,(function*(){var t,n,o,i,r,a;const l=\"getPowerOnStatusFromHardwareEvent()\";let c=!1;if((null==e?void 0:e.recordId)===s.ZK.NOTIFICATION_EVENTS&&(null===(t=null==e?void 0:e.data)||void 0===t?void 0:t.eventId)===s.J7.WIRELESS_CHANGE_EVENT||(null==e?void 0:e.recordId)===s.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS&&(null===(n=null==e?void 0:e.data)||void 0===n?void 0:n.eventId)===s.J7.WIRELESS_CHANGE_EVENT_V2){if(1===(null===(i=null===(o=null==e?void 0:e.data)||void 0===o?void 0:o.eventValue)||void 0===i?void 0:i.type))return c=3===(null===(a=null===(r=null==e?void 0:e.data)||void 0===r?void 0:r.eventValue)||void 0===a?void 0:a.state),console.log(`${this.name}.${l} isPowerOn:${c}`),c;console.log(`${this.name}.${l} power event not for mouse, return false as default`)}else console.log(`${this.name}.${l} not power event, return false as default`);return c})),this.queryDualLinkInfo=()=>v(this,void 0,void 0,(function*(){var e;const t=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${t} isDualLink = false, return`),!1;try{let n=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${t} getMultipleDeviceWirelessConnectionStatusV2 r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status!==i.STATUS_SUCCESS||!n.jsonData)return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,n),!1;{const o=n.jsonData.status;try{if(n=yield this.getMultipleDevicePrimaryDevice(),console.log(`${t} getMultipleDevicePrimaryDevice r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status===i.STATUS_SUCCESS&&n.jsonData){this.dualLinkPrimaryPId=n.jsonData.productId;const i=n.jsonData.type,r=o.filter((e=>e.productId!==this.dualLinkPrimaryPId));return this.dualLinkSecondaryPId=void 0!==(null===(e=r[0])||void 0===e?void 0:e.productId)?r[0].productId:65535,i===p.$X.Mouse?this.isDualLinkSlave=!1:this.isDualLinkSlave=!0,console.log(`${t} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}, type:${i}`,a.oW(p.$X,i),\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave:\",this.isDualLinkSlave),this.device.productId!==this.dualLinkPrimaryPId&&this.device.productId!==this.dualLinkSecondaryPId&&(this.dualLinkSecondaryPId=this.dualLinkPrimaryPId,this.dualLinkPrimaryPId=this.device.productId,this.isDualLinkSlave=!0,console.warn(`${t} usbDevice productId != dualLinkPrimaryPId && dualLinkSecondaryPId, force this device to paired device`,`final dualLinkPrimaryPId: ${this.dualLinkPrimaryPId}, dualLinkSecondaryPId: ${this.dualLinkSecondaryPId}, isDualLinkSlave:${this.isDualLinkSlave}`)),!0}return console.warn(`${t} getMultipleDevicePrimaryDevice failed, r:`,n),!1}catch(e){return console.warn(`${t} getMultipleDevicePrimaryDevice failed, err:`,e),!1}}}catch(e){return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,e),!1}})),this.name=\"rzDevice25DualLinkMouse\",this.lockName=`${this.baseClassName}-${this.containerId}`,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName),this.isDualLink=!0,this.ignoreSetDeviceModeTimeoutError=!1}_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),this.transactionId++}connectDevice(){var e;return v(this,void 0,void 0,(function*(){const t=\"connectDevice\";if(void 0===this.device)return{result:!1,error:i.ERROR_VALUE_UNDEFINED};const n={result:!1,error:\"\"};if(this.isElectron){const o=c.n5,i=new Uint8Array,r=this._createDataSend(o,i);for(let o=0;o<3;o++)try{const t=[a.uM()?this.claimInterface:this.reportId,...r],o=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:t});if(n.result=null==o?void 0:o.result,n.error=null!==(e=null==o?void 0:o.errorMsg)&&void 0!==e?e:\"\",null==o?void 0:o.result)break}catch(e){l.Z.error(`${this.name}.${t} i: ${o}, claimInterface:${this.claimInterface}`,e),n.result=!1,n.error=e}}else for(let e=0;e<3;e++)try{l.Z.log(`${this._getLoggerPrepend()} ${t}: claimInterface:${this.claimInterface}`),yield this.device.open(),yield this.device.selectConfiguration(1),yield this.device.claimInterface(this.claimInterface),console.log(`${this.name}.${t} claimInterface:${this.claimInterface} successfully`),n.result=!0;break}catch(o){l.Z.error(`${this.name}.${t} i: ${e}, claimInterface:${this.claimInterface}`,o),n.result=!1,n.error=o}return n}))}sendCommand(e,t,n=new Uint8Array([]),o=-1,s=!0){return v(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,o,s);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?l.Z.printData(`${u}: ${e[0]}(${a.Cf(e[0])}), ${e[1]}(${a.Cf(e[1])}), ${e[2]}(${a.Cf(e[2])}), ${t}, packetSizeSet:${o}`):l.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${o}`),l.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});const p=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.device.productId||this.productId});const f=this._createDataSend(e,n,o);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(f[1]|=128),p.dataSend=[...f],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:p.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>v(this,void 0,void 0,(function*(){try{for(let o=0;o<this.maxRetryOut;o++){const r=yield(0,d.NH)(n);if(r===this.reportLength){if(!s){p.status=i.STATUS_SUCCESS,p.error=\"\",p.dataHeader=f.slice(0,8),p.data=[...f.slice(8,8+f[5])];break}if(yield a._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,f,p,t),p.status===i.STATUS_SUCCESS||p.status===i.STATUS_FAIL&&!1===p.resendOutCommand){p.status===i.STATUS_FAIL&&!1===p.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${o} cmdDesc:${t}}, r:`,r);break}p.status===i.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${o} cmdDesc:${t}}, r:`,r),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else p.status=i.STATUS_FAIL,p.error=\"\"}}catch(t){p.status=i.STATUS_FAIL,t.message?p.error=t.message:p.error=t,console.warn(`${u} error: ${a.Cf(e[1])}, ${a.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(p.status===i.STATUS_FAIL)throw l.Z.warn(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(p)}`),new r.$1({error:p.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:f,extraInfo:\"productId: \"+this.productId,productId:this.device.productId||this.productId})}))))}return p}))}}"
+    },
+    {
+      "product_id": 241,
+      "module": 14770,
+      "name": "category transport class",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 917553,
+      "end": 924811,
+      "source": "class f extends o.default{constructor(e,t,n=\"\",o=i.SLEEP_TIME_BETWEEN_OUT,r=i.SLEEP_TIME_BETWEEN_OUT_IN,l=i.SLEEP_TIME_BETWEEN_IN,c=i.MAX_RETRY_IN,d=i.MAX_RETRY_OUT){super(e,t,n,o,r,l,c,d),this.getPowerOnStatusFromHardwareEvent=e=>v(this,void 0,void 0,(function*(){var t,n,o,i,r,a;const l=\"getPowerOnStatusFromHardwareEvent()\";let c=!1;if((null==e?void 0:e.recordId)===s.ZK.NOTIFICATION_EVENTS&&(null===(t=null==e?void 0:e.data)||void 0===t?void 0:t.eventId)===s.J7.WIRELESS_CHANGE_EVENT||(null==e?void 0:e.recordId)===s.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS&&(null===(n=null==e?void 0:e.data)||void 0===n?void 0:n.eventId)===s.J7.WIRELESS_CHANGE_EVENT_V2){if(2===(null===(i=null===(o=null==e?void 0:e.data)||void 0===o?void 0:o.eventValue)||void 0===i?void 0:i.type))return c=3===(null===(a=null===(r=null==e?void 0:e.data)||void 0===r?void 0:r.eventValue)||void 0===a?void 0:a.state),console.log(`${this.name}.${l} isPowerOn:${c}`),c;console.log(`${this.name}.${l} power event not for mouse, return false as default`)}else console.log(`${this.name}.${l} not power event, return false as default`);return c})),this.queryDualLinkInfo=()=>v(this,void 0,void 0,(function*(){var e;const t=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${t} isDualLink = false, return`),!1;try{let n=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${t} getMultipleDeviceWirelessConnectionStatusV2 r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status!==i.STATUS_SUCCESS||!n.jsonData)return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,n),!1;{const o=n.jsonData.status;try{if(n=yield this.getMultipleDevicePrimaryDevice(),console.log(`${t} getMultipleDevicePrimaryDevice r:`,n,`, jsonData: ${(null==n?void 0:n.jsonData)?JSON.stringify(n.jsonData):n}`),n.status===i.STATUS_SUCCESS&&n.jsonData){this.dualLinkPrimaryPId=n.jsonData.productId;const i=n.jsonData.type,r=o.filter((e=>e.productId!==this.dualLinkPrimaryPId));return this.dualLinkSecondaryPId=void 0!==(null===(e=r[0])||void 0===e?void 0:e.productId)?r[0].productId:65535,i===p.$X.Keyboard?this.isDualLinkSlave=!1:this.isDualLinkSlave=!0,console.log(`${t} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}, type:${i}`,a.oW(p.$X,i),\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave\",this.isDualLinkSlave),!0}return console.warn(`${t} getMultipleDevicePrimaryDevice failed, r:`,n),!1}catch(e){return console.warn(`${t} getMultipleDevicePrimaryDevice failed, err:`,e),!1}}}catch(e){return console.warn(`${t} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,e),!1}})),this.name=\"rzDevice25DualLinkKeyboard\",this.lockName=`${this.baseClassName}-${this.containerId}`,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName),this.isDualLink=!0}_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),128|this.transactionId++}connectDevice(){var e;return v(this,void 0,void 0,(function*(){const t=\"connectDevice\";if(void 0===this.device)return{result:!1,error:i.ERROR_VALUE_UNDEFINED};const n={result:!1,error:\"\"};if(this.isElectron){const o=c.n5,i=new Uint8Array,r=this._createDataSend(o,i);for(let o=0;o<3;o++)try{const t=[a.uM()?this.claimInterface:this.reportId,...r],o=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:t});if(n.result=null==o?void 0:o.result,n.error=null!==(e=null==o?void 0:o.errorMsg)&&void 0!==e?e:\"\",null==o?void 0:o.result)break}catch(e){l.Z.error(`${this.name}.${t} i: ${o}, claimInterface:${this.claimInterface}`,e),n.result=!1,n.error=e}}else for(let e=0;e<3;e++)try{l.Z.log(`${this._getLoggerPrepend()} ${t}: claimInterface:${this.claimInterface}`),yield this.device.open(),yield this.device.selectConfiguration(1),yield this.device.claimInterface(this.claimInterface),console.log(`${this.name}.${t} claimInterface:${this.claimInterface} successfully`),n.result=!0;break}catch(o){l.Z.error(`${this.name}.${t} i: ${e}, claimInterface:${this.claimInterface}`,o),n.result=!1,n.error=o}return n}))}sendCommand(e,t,n=new Uint8Array([]),o=-1,s=!0){return v(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,o,s);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?l.Z.printData(`${u}: ${e[0]}(${a.Cf(e[0])}), ${e[1]}(${a.Cf(e[1])}), ${e[2]}(${a.Cf(e[2])}), ${t}, packetSizeSet:${o}`):l.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${o}`),l.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.device.productId||this.productId});const p=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new r.$1({error:i.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.device.productId||this.productId});const f=this._createDataSend(e,n,o);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(f[1]&=31),p.dataSend=[...f],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:p.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>v(this,void 0,void 0,(function*(){try{for(let o=0;o<this.maxRetryOut;o++){const r=yield(0,d.NH)(n);if(r===this.reportLength){if(!s){p.status=i.STATUS_SUCCESS,p.error=\"\",p.dataHeader=f.slice(0,8),p.data=[...f.slice(8,8+f[5])];break}if(yield a._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,f,p,t),p.status===i.STATUS_SUCCESS||p.status===i.STATUS_FAIL&&!1===p.resendOutCommand){p.status===i.STATUS_FAIL&&!1===p.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${o} cmdDesc:${t}}, r:`,r);break}p.status===i.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${o} cmdDesc:${t}}, r:`,r),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else p.status=i.STATUS_FAIL,p.error=\"\"}}catch(t){p.status=i.STATUS_FAIL,t.message?p.error=t.message:p.error=t,console.warn(`${u} error: ${a.Cf(e[1])}, ${a.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(p.status===i.STATUS_FAIL)throw l.Z.error(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(p)}`),new r.$1({error:p.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:f,extraInfo:\"productId: \"+this.productId,productId:this.device.productId||this.productId})}))))}return p}))}}"
+    },
+    {
+      "product_id": 241,
+      "module": 91818,
+      "name": "primary linker cancel command prefix",
+      "path": ".ref/middleware/241/rzDevice25LinkerMultiDevices.7793a42e78aa59a9cde3.js",
+      "sha256": "6ddd5fd3b19b13551b74cf4de260f6a8e538ffb7d21401dc1aae87656c5b3e9f",
+      "offset": 992,
+      "end": 7041,
+      "source": "class h extends i.default{constructor(e,t,n=\"\",i=r.SLEEP_TIME_BETWEEN_OUT,s=r.SLEEP_TIME_BETWEEN_OUT_IN,o=r.SLEEP_TIME_BETWEEN_IN,d=r.MAX_RETRY_IN,c=r.MAX_RETRY_OUT){super(e,t,n,i,s,o,d,c),this.getPowerOnStatusFromHardwareEvent=e=>I(this,void 0,void 0,(function*(){var t,n,i,r;const s=\"getPowerOnStatusFromHardwareEvent()111\";let o=!1;return(null==e?void 0:e.recordId)===a.ZK.NOTIFICATION_EVENTS&&(null===(t=null==e?void 0:e.data)||void 0===t?void 0:t.eventId)===a.J7.WIRELESS_CHANGE_EVENT||(null==e?void 0:e.recordId)===a.ZK.DONGLE_SECONDARY_DEVICE_NOTIFICATION_EVENTS&&(null===(n=null==e?void 0:e.data)||void 0===n?void 0:n.eventId)===a.J7.WIRELESS_CHANGE_EVENT_V2?(o=3===(null===(r=null===(i=null==e?void 0:e.data)||void 0===i?void 0:i.eventValue)||void 0===r?void 0:r.state),console.log(`${this.name}.${s} isPowerOn:${o}`)):console.log(`${this.name}.${s} not power event, return false as default`),o})),this.queryDualLinkInfo=()=>I(this,void 0,void 0,(function*(){const e=`${this.name}.queryDualLinkInfo()`;if(!this.isDualLink)return console.log(`${e} isDualLink = false, return`),!1;this.dualLinkPrimaryPId=this.device.productId,this.isDualLinkSlave=!1;try{const t=yield this.getMultipleDeviceWirelessConnectionStatusV2();if(console.log(`${e} getMultipleDeviceWirelessConnectionStatusV2 r:`,t,`, jsonData: ${(null==t?void 0:t.jsonData)?JSON.stringify(t.jsonData):t}`),t.status===r.STATUS_SUCCESS&&t.jsonData){const n=t.jsonData.status.filter((e=>65535!==e.productId));return console.log(`${e} validProductStatusList: `,n),this.dualLinkSecondaryPId=n.length>0?n[0].productId:65535,console.log(`${e} dualLinkPrimaryPId: ${this.dualLinkPrimaryPId}, dualLinkSecondaryPId: ${this.dualLinkSecondaryPId}`),console.log(`${e} productId:${this.productId} device.productId:${this.device.productId} dualLinkPrimaryPId:${this.dualLinkPrimaryPId}`,\", dualLinkSecondaryPId:\",this.dualLinkSecondaryPId,\", isDualLinkSlave\",this.isDualLinkSlave),!0}return console.warn(`${e} getMultipleDeviceWirelessConnectionStatusV2 failed, r:`,t),!1}catch(t){return console.warn(`${e} getMultipleDeviceWirelessConnectionStatusV2 failed, err:`,t),!1}})),this.name=\"rzDevice25Linker\",this.lockName=`${this.baseClassName}-${this.containerId}`,this.isDualLink=!0,console.log(\"rzDevice name\",this.name,\"lockName\",this.lockName)}_getTransactionId(){return 31===this.transactionId&&(this.transactionId=0),224|this.transactionId++}connectDevice(){var e;return I(this,void 0,void 0,(function*(){if(void 0===this.device)return{result:!1,error:r.ERROR_VALUE_UNDEFINED};const t={result:!1,error:\"\"},n=c.n5,i=new Uint8Array,s=this._createDataSend(n,i);for(let n=0;n<3;n++)try{const n=[o.uM()?this.claimInterface:this.reportId,...s],i=yield u.Z.connectHidDevice({productId:this.device.productId||this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,queryData:n});if(t.result=null==i?void 0:i.result,t.error=null!==(e=null==i?void 0:i.errorMsg)&&void 0!==e?e:\"\",null==i?void 0:i.result)break}catch(e){d.Z.error(`${this.name}.connectDevice i: ${n}, claimInterface:${this.claimInterface}`,e),t.result=!1,t.error=e}return t}))}sendCommand(e,t,n=new Uint8Array([]),i=-1,a=!0){return I(this,void 0,void 0,(function*(){if(this.useSendCommandEx&&!this.isElectron)return this.sendCommandEx(e,t,n,i,a);const u=\"sendCommand\";if(void 0!==e&&e instanceof Uint8Array?d.Z.printData(`${u}: ${e[0]}(${o.Cf(e[0])}), ${e[1]}(${o.Cf(e[1])}), ${e[2]}(${o.Cf(e[2])}), ${t}, packetSizeSet:${i}`):d.Z.printData(`${u}: ${e}, ${t}, packetSizeSet:${i}`),d.Z.printData(`${u}: dataArrayIn:${n}, length:${n.length}`),void 0===e)throw new s.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.productId});if(!(e instanceof Uint8Array)&&3!==e.length)throw new s.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_COMMAND_HEADER,commandClass:-1,commandId:-1,commandDesc:t,productId:this.productId});const h=this.generateDefaultResult(e,t);if(!(n instanceof Uint8Array))throw new s.$1({error:r.ERROR_INVALID_INPUT_VALUE_NOT_UINT8ARRAY,commandClass:e[1],commandId:e[2],commandDesc:t,productId:this.productId});const v=this._createDataSend(e,n,i);if(e[2]!==c.pJ[2]&&e[2]!==c.fr[2]||(v[1]&=31),h.dataSend=[...v],this.isElectron){const n={action:this.supportHIDMutex?\"hid.sendFeatureReportMutex\":\"hid.sendFeatureReport\",payload:{productId:this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,dataSend:h.dataSend,reportLength:this.reportLength,protocol:\"25\",sleepTimeBetweenOut:this.sleepTimeBetweenOut,sleepTimeBetweenOutIn:this.sleepTimeBetweenOutIn,sleepTimeBetweenIn:this.sleepTimeBetweenIn}};yield navigator.locks.request(this.lockName,(()=>I(this,void 0,void 0,(function*(){try{for(let i=0;i<this.maxRetryOut;i++){const s=yield(0,l.NH)(n);if(s===this.reportLength){if(!a){h.status=r.STATUS_SUCCESS,h.error=\"\",h.dataHeader=v.slice(0,8),h.data=[...v.slice(8,8+v[5])];break}if(yield o._v(this.sleepTimeBetweenOutIn),yield this._getUSBTransferInResult(e,v,h,t),h.status===r.STATUS_SUCCESS||h.status===r.STATUS_FAIL&&!1===h.resendOutCommand){h.status===r.STATUS_FAIL&&!1===h.resendOutCommand&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, sendData i:${i} cmdDesc:${t}}, r:`,s);break}h.status===r.STATUS_FAIL&&console.warn(`${this.name}.${u} Pid:${this.productId} command failed, retry, sendData i:${i} cmdDesc:${t}}, r:`,s),this.supportHIDMutex&&(yield this.releaseHIDMutex())}else h.status=r.STATUS_FAIL,h.error=\"\"}}catch(t){h.status=r.STATUS_FAIL,t.message?h.error=t.message:h.error=t,console.warn(`${u} error: ${o.Cf(e[1])}, ${o.Cf(e[2])}, ${JSON.stringify(t)}`)}finally{this.supportHIDMutex&&(yield this.releaseHIDMutex())}if(h.status===r.STATUS_FAIL)throw d.Z.error(`${this.name}.${u} productId:${this.productId}, error: ${JSON.stringify(h)}`),new s.$1({error:h.error,commandClass:e[1],commandId:e[2],commandDesc:t,command:e,dataSend:v,extraInfo:\"productId: \"+this.productId,productId:this.productId})}))))}return h}))}}"
+    },
+    {
+      "product_id": 241,
+      "module": 3746,
+      "name": "Current UI start pairing mode",
+      "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+      "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+      "offset": 9225,
+      "end": 9226,
+      "source": "1"
+    },
+    {
+      "product_id": 241,
+      "module": 3746,
+      "name": "UI caller and dongle-first unpair argument ds",
+      "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+      "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+      "offset": 38810,
+      "end": 44775,
+      "source": "(0,c.connect)(e=>({globallang:e.languageReducer.lang,pairedInfo:e.deviceReducer.pairedInfo}),null)(e=>{let{deviceInfo:s,pairedInfo:t,closeDialog:n,globallang:i}=e;const[o,d]=a().useReducer(Ze,{...Je,deviceInfo:s,bindInfo:t}),l=(0,c.useSelector)(e=>e.deviceReducer.cancelPairing),r=(0,c.useSelector)(e=>e.deviceReducer.continuePairing),u=(0,c.useDispatch)(),{status:p,status2:I,bindInfo:v,scanedInfo:D,lang:N}=o;p!==Ge.LOADED&&p!==Ge.PAIRED||I!==Ge.LOADED&&I!==Ge.PAIRED||$e();const m=a().useCallback(function(e){let s=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"status\";d({type:\"SET_STATUS\",payload:{[s]:e}})},[]),g=a().useCallback(e=>{d({type:\"SET_LANG\",payload:{lang:e}})},[]),E=a().useCallback(e=>{d(e)},[]),h=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),$e(),d({type:\"SET_STATUS\",payload:{[e]:Ge.SCANNING}}),Qe(\"DUALLINK_SCAN_DEVICE\",{status:Fe,category:s.canPairTwoDevices?\"status\"===e?\"KEYBOARD\":\"MOUSE\":null})},f=function(e){let t=arguments.length>1&&void 0!==arguments[1]?arguments[1]:\"status\";v.map(s=>(s.productId===e&&(s.connected=We),s)),u((0,Le.AC)(!1)),d({type:\"SET_STATUS\",payload:{[t]:Ge.JUSTUNPAIR}}),Qe(\"DUALLINK_UNBIND_DEVICE\",{productId:e,category:s.canPairTwoDevices?\"status\"===t?\"KEYBOARD\":\"MOUSE\":null})},x=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),d({type:\"SET_STATUS\",payload:{[e]:Ge.UNPAIRING}})},y=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"status\";\"string\"!==typeof e&&(e=\"status\"),d({type:\"SET_STATUS\",payload:{[e]:Ge.PAIRED}})};return a().useEffect(()=>{l&&(Qe(\"DUALLINK_CANCEL\",{}),Qe(\"DUALLINK_BIND_INFO\",{}),n(l))},[l]),a().useEffect(()=>{if(r){const e=D&&D.filter(e=>e.dongleId===Ve);Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:e[0]})}u((0,Le.AC)(!1))},[r]),a().useEffect(()=>{g(i)},[i]),a().useEffect(()=>{m(Ge.LOADING),s.canPairTwoDevices&&m(Ge.LOADING,\"status2\"),Qe(\"DUALLINK_BIND_INFO\",{})},[]),a().useEffect(()=>{M.A.onBCEvent(se.qg.MW_RESPONSE_UI,e=>{let{msgData:a}=e;const{type:i,payload:c,error:d}=a;if(console.log(\"⛲ DEVICE_BC_EVENT.MW_RESPONSE_UI %c %s\",\"background-color: green;color:white;font-weight:bold;\",i,c,d),d){let e=\"\";return\"DUALLINK_BIND_INFO\"===i?(e=\"Fail to get bind Info\",E({type:\"SET_ERROR\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}})):\"DUALLINK_SCAN_DEVICE\"===i?(e=\"Fail to scan other devices\",p===Ge.SCANNING?E({type:\"SET_ERROR\",payload:{status:Ge.SCANDED,scanedInfo:[]}}):I===Ge.SCANNING&&E({type:\"SET_ERROR\",payload:{status2:Ge.SCANDED,scanedInfo:[]}})):\"DUALLINK_BIND_DEVICE\"===i?(e=\"Fail to bind salve device\",p===Ge.PAIRING?E({type:\"SET_ERROR\",payload:{status:Ge.PAIR_FAILED}}):I===Ge.PAIRING&&E({type:\"SET_ERROR\",payload:{status2:Ge.PAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_BINDINFO\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}})},4e3)):\"DUALLINK_UNBIND_DEVICE\"===i&&(e=\"Fail to unbind slave device\",p===Ge.JUSTUNPAIR?(E({type:\"SET_ERROR\",payload:{status:Ge.UNPAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_STATUS\",payload:{status:Ge.PAIRED}})},4e3)):I===Ge.JUSTUNPAIR&&(E({type:\"SET_ERROR\",payload:{status2:Ge.UNPAIR_FAILED}}),qe=setTimeout(()=>{E({type:\"SET_STATUS\",payload:{status2:Ge.PAIRED}})},4e3))),void console.error(`errMsg ${e}`)}switch(i){case\"DUALLINK_BIND_INFO\":if(0===c.length)E({type:\"SET_BINDINFO\",payload:{status:Ge.LOADED,status2:Ge.LOADED,bindInfo:[],scanedInfo:[]}});else if(s.canPairTwoDevices){const e=c.some(e=>\"KEYBOARD\"===e.category)?Ge.PAIRED:Ge.LOADED,s=c.some(e=>\"MOUSE\"===e.category)?Ge.PAIRED:Ge.LOADED;E({type:\"SET_BINDINFO\",payload:{status:e,status2:s,bindInfo:c,scanedInfo:[]}}),u((0,Le.ss)(c))}else E({type:\"SET_BINDINFO\",payload:{status:Ge.PAIRED,bindInfo:c,scanedInfo:[]}});break;case\"DUALLINK_SCAN_DEVICE\":s.canPairTwoDevices?1===c.length&&p===Ge.SCANNING&&\"KEYBOARD\"===c[0].category?(E({type:\"SET_SCANED_INFO\",payload:{status:Ge.PAIRING,scanedInfo:c}}),c[0].dongleId!==Ve?(u((0,Le.xt)(!1)),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):u((0,Le.xt)(!0))):1===c.length&&I===Ge.SCANNING&&\"MOUSE\"===c[0].category?(E({type:\"SET_SCANED_INFO\",payload:{status2:Ge.PAIRING,scanedInfo:c}}),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):E({type:\"SET_SCANED_INFO\",payload:{status:p===Ge.SCANNING?Ge.SCANDED:o.status,status2:I===Ge.SCANNING?Ge.SCANDED:o.status2,scanedInfo:c}}):1===c.length?(E({type:\"SET_SCANED_INFO\",payload:{status:Ge.PAIRING,scanedInfo:c}}),c[0].dongleId!==Ve?(u((0,Le.xt)(!1)),Qe(\"DUALLINK_BIND_DEVICE\",{mode:He,device:c[0]})):u((0,Le.xt)(!0))):E({type:\"SET_SCANED_INFO\",payload:{status:Ge.SCANDED,scanedInfo:c}});break;case\"DUALLINK_BIND_DEVICE\":{const e=[...t].filter(e=>e.category!==c.device.category);e.push(c.device);const a=s.canPairTwoDevices&&\"KEYBOARD\"===c.device.category||!s.canPairTwoDevices;E({type:\"SET_BINDINFO\",payload:{status:a?Ge.JUST_PAIRED:o.status,status2:a?o.status2:Ge.JUST_PAIRED,bindInfo:e,selectedIndex:0}}),u((0,Le.ss)(e)),s.canPairTwoDevices&&(p!==Ge.PAIRED&&p!==Ge.JUST_PAIRED||I!==Ge.PAIRED&&I!==Ge.JUST_PAIRED)||n();break}case\"DUALLINK_UNBIND_DEVICE\":{let e={};p===Ge.JUSTUNPAIR?e={status:Ge.UNPAIRED}:I===Ge.JUSTUNPAIR&&(e={status2:Ge.UNPAIRED});const s=[...t.filter(e=>e.dongleId!==c.productId)];E({type:\"SET_BINDINFO\",payload:{bindInfo:s,selectedIndex:0,...e}}),u((0,Le.ss)(s));break}}})},[p,I]),p===Ge.LOADING?(0,A.jsx)(\"div\",{className:ie,children:\"loading\"}):p===Ge.LOADED||p===Ge.SCANNING||p===Ge.SCANDED||p===Ge.PAIRING||p===Ge.PAIRED||p===Ge.JUSTUNPAIR||p===Ge.UNPAIRING||p===Ge.UNPAIRED||p===Ge.PAIR_FAILED||p===Ge.UNPAIR_FAILED||p===Ge.JUST_PAIRED?(0,A.jsx)(Be.Provider,{value:{state:o,callAction:E},children:(0,A.jsx)(ts,{status:p,status2:I,bindInfo:v,deviceInfo:s,scanedInfo:D,scan:h,unPair:f,setStatus:m,confirmUnpair:x,cancelUnpair:y,lang:N})}):(0,A.jsxs)(\"div\",{children:[\"staus:\",p,\" bindInfo:\",JSON.stringify(v),\" deviceInfo:\",JSON.stringify(s)]})})"
+    },
+    {
+      "product_id": 241,
+      "module": 3746,
+      "name": "UI caller and dongle-first unpair argument as",
+      "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+      "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+      "offset": 14543,
+      "end": 32045,
+      "source": "e=>{let{status:s,status2:t,scan:n,unPair:a,cancelSelect:i,bindDevice:o,master:c,slave:d,slave2:u,scandevices:p,lang:I,cancelUnpair:v,confirmUnpair:D,isProductivity:N,newHyperspeedDongleImg:m,canPairTwoDevices:g,isPairingDock:E=!1,showBothDevicesConnectedWarning:h}=e,f=[];g?(d||(d={name:{en:\"\"},productName:\"\",category:\"KEYBOARD\",productId:0,editionId:0,layoutId:0,valid:!1,connected:We}),u||(u={name:{en:\"\"},productName:\"\",category:{MOUSE:\"KEYBOARD\",KEYBOARD:\"MOUSE\"}[d.category]||\"\",productId:0,editionId:0,layoutId:0,valid:!1,connected:We})):d||(d={name:{en:\"\"},productName:\"\",category:{MOUSE:\"KEYBOARD\",KEYBOARD:\"MOUSE\"}[c.category]||\"\",productId:0,editionId:0,layoutId:0,valid:!1,connected:We}),(s===Ge.SCANNING||s===Ge.SCANDED&&(g?p.filter(e=>\"KEYBOARD\"===e.category).length>1:p.length>1)||s===Ge.PAIRING)&&d.connected!==Ye&&(d.connected=Ke),(t===Ge.SCANNING||t===Ge.SCANDED&&p.filter(e=>\"MOUSE\"===e.category).length>1||t===Ge.PAIRING)&&u.connected!==Ye&&(u.connected=Ke),f=g?\"KEYBOARD\"===d.category?[d,u]:[u,d]:\"KEYBOARD\"===c.category?[c,d]:[d,c];const x=()=>(0,A.jsxs)(\"div\",{className:\"display-block info-text\",children:[\"(\",c.productName[I]?c.productName[I]:c.productName.en,\")\"]}),y=N?\"data:image/png;base64,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\":m?\"data:image/png;base64,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\":\"data:image/png;base64,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\",S=N?ke:m?Te:be,C=g?cs(c):y,R=g?cs(c):S;return(0,A.jsxs)(\"div\",{className:\"duallink-device-content\",children:[(0,A.jsxs)(\"div\",{className:\"duallink-device-dongle\",children:[g?(0,A.jsxs)(\"div\",{className:\"duallink-master-dongle\",children:[(0,A.jsx)(\"img\",{className:\"dongle-img-box\",src:C,srcSet:`${C} 1x, ${R} 3x`}),(0,A.jsx)(\"div\",{className:\"dongle-info\",children:(0,A.jsx)(\"div\",{className:\"display-block info-text\",children:c.productName[I]?c.productName[I]:c.productName.en})})]}):null,\"KEYBOARD\"===c.category?(0,A.jsxs)(\"div\",{className:\"duallink-keyboard-dongle\",children:[(0,A.jsx)(\"img\",{className:\"dongle-img-box\",src:C,srcSet:`${C} 1x, ${R} 3x`}),(0,A.jsxs)(\"div\",{className:\"dongle-info\",children:[(0,A.jsx)(\"div\",{className:\"display-block info-text\",children:(0,A.jsx)(l.A,{text:N?r.LQd:r.G0o})}),x()]})]}):g?null:(0,A.jsx)(\"div\",{className:\"duallink-keyboard-dongle\"}),\"MOUSE\"===c.category?(0,A.jsxs)(\"div\",{className:\"duallink-mouse-dongle\",children:[(0,A.jsx)(\"img\",{className:\"dongle-img-box\",src:C,srcSet:`${C} 1x, ${R} 3x`}),(0,A.jsxs)(\"div\",{className:\"dongle-info\",children:[(0,A.jsx)(\"div\",{className:\"display-block info-text\",children:(0,A.jsx)(l.A,{text:N?r.LQd:r.G0o})}),x()]})]}):g?null:(0,A.jsx)(\"div\",{className:\"duallink-mouse-dongle\"})]}),g?(0,A.jsxs)(\"div\",{className:\"contect-animated-dot master-mousemat\",children:[(0,A.jsx)(\"div\",{className:\"master-mousemat slave-keyboard-dot \"+(\"2\"==f[0].connected?\"right_to_left_connected\":\"1\"==f[0].connected?\"right_to_left_connecting\":\"free-state\")}),(0,A.jsx)(\"div\",{className:\"master-mousemat-dot\"}),(0,A.jsx)(\"div\",{className:\"master-mousemat slave-mouse-dot \"+(\"2\"==f[1].connected?\"left_to_right_connected\":\"1\"==f[1].connected?\"left_to_right_connecting\":\"free-state\")})]}):(0,A.jsxs)(\"div\",{className:\"contect-animated-dot\",children:[(0,A.jsx)(\"div\",{className:`${\"KEYBOARD\"===c.category?\"master-keyboard-dot\":\"slave-keyboard-dot\"} ${\"2\"==f[0].connected?\"right_to_left_connected\":\"1\"==f[0].connected?\"right_to_left_connecting\":\"free-state\"}`}),(0,A.jsx)(\"div\",{className:`${\"MOUSE\"===c.category?\"master-mouse-dot\":\"slave-mouse-dot\"} ${\"2\"==f[1].connected?\"left_to_right_connected\":\"1\"==f[1].connected?\"left_to_right_connecting\":\"free-state\"}`})]}),(0,A.jsxs)(\"div\",{className:\"duallink-device-box\",children:[(0,A.jsx)(\"div\",{className:\"duallink-keyboard-state\",children:(0,A.jsx)(is,{status:s,canModify:!g||(t!==Ge.PAIRING&&t!==Ge.SCANNING&&t!==Ge.JUSTUNPAIR&&t!==Ge.SCANDED||t===Ge.SCANDED&&0===p.filter(e=>\"MOUSE\"===e.category).length),scan:n,unPair:a,cancelSelect:i,bindDevice:o,master:c,dev:f[0],scandevices:p.filter(e=>\"KEYBOARD\"===e.category),lang:I,isPairingDock:E,cancelUnpair:v,confirmUnpair:D})}),(0,A.jsx)(\"div\",{className:\"duallink-mouse-state\",children:g?(0,A.jsx)(is,{status:t,canModify:s!==Ge.PAIRING&&s!==Ge.SCANNING&&s!==Ge.JUSTUNPAIR&&s!==Ge.SCANDED||s===Ge.SCANDED&&0===p.filter(e=>\"KEYBOARD\"===e.category).length,scan:()=>n(\"status2\"),unPair:()=>a(f[1].dongleId||f[1].productId,\"status2\"),cancelSelect:()=>i(\"status2\"),bindDevice:()=>o(\"status2\"),master:c,dev:f[1],scandevices:p.filter(e=>\"MOUSE\"===e.category),lang:I,isPairingDock:E,cancelUnpair:()=>v(\"status2\"),confirmUnpair:()=>D(\"status2\")}):(0,A.jsx)(is,{status:s,scan:n,unPair:a,cancelSelect:i,bindDevice:o,master:c,dev:f[1],scandevices:p,lang:I,isPairingDock:E,cancelUnpair:v,confirmUnpair:D})})]}),h?(0,A.jsxs)(\"div\",{className:`img-text flex ${re}`,children:[(0,A.jsx)(\"span\",{className:ue,\"aria-hidden\":\"true\"}),(0,A.jsx)(\"span\",{className:Ae,children:(0,A.jsx)(l.A,{text:r.h5W})})]}):null]})}"
+    },
+    {
+      "product_id": 241,
+      "module": 3746,
+      "name": "UI caller and dongle-first unpair argument is",
+      "path": ".ref/devices/241/static/js/914.4c13bdac.chunk.js",
+      "sha256": "1320d5e2c7ee42497e590f2dbd979b9d10614573746003b3b87b6695dfc6a9d2",
+      "offset": 32049,
+      "end": 35841,
+      "source": "e=>{let{status:s,scan:t,unPair:n,cancelSelect:a,bindDevice:i,master:o,dev:c,scandevices:d,lang:u,isPairingDock:p=!1,cancelUnpair:I,confirmUnpair:v,canModify:D=!0}=e;return(0,A.jsx)(\"div\",{className:`box-item ${c.connected===Ye?\"showborderline\":\"\"} ${c.productId===o.productId?\"master-box\":\"\"}`,style:{paddingLeft:\"10px\",paddingRight:\"10px\"},children:(0,A.jsxs)(\"div\",{className:\"box-inner\",children:[s===Ge.UNPAIRING&&c.productId!==o.productId?(0,A.jsxs)(\"div\",{className:\"confirm-unpairing\",children:[(0,A.jsx)(\"div\",{className:\"confirm-unpairing-content\",children:p?(0,A.jsx)(l.A,{text:r.hj7,data:{deviceName:o.productName[u]||o.productName.en}}):(0,A.jsx)(l.A,{text:r.NER})}),(0,A.jsxs)(\"div\",{className:\"box-unpairselect-tag\",children:[(0,A.jsx)(\"div\",{className:\"box-unpairselect-button box-unpairselect-cancel\",onClick:I,children:(0,A.jsx)(l.A,{text:r.bOp})}),(0,A.jsx)(\"div\",{className:\"box-unpairselect-button box-unpairselect-confirm\",onClick:()=>n(c.dongleId||c.productId),children:(0,A.jsx)(l.A,{text:r.Mh0})})]})]}):null,(0,A.jsx)(\"div\",{className:\"box-category\",children:\"KEYBOARD\"===c.category?(0,A.jsx)(l.A,{text:r.WQi}):\"MOUSE\"===c.category?(0,A.jsx)(l.A,{text:r.kBv}):\"\"}),s===Ge.SCANDED&&d.length>1&&c.productId!=o.productId?(0,A.jsx)(es,{scandevices:d,lang:u}):(0,A.jsx)(os,{status:s,dev:c,master:o,add:t,canModify:D,rescan:t,canUnpair:(s===Ge.PAIRED||s===Ge.JUST_PAIRED)&&o.productId!=c.productId,scandevices:d,onClick:()=>{v()}}),s===Ge.SCANNING&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-scanningdevice-tag\",children:(0,A.jsx)(l.A,{text:r.kiV})}):s===Ge.SCANDED&&0===d.length&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-selectnodevice-tag\",children:(0,A.jsx)(l.A,{text:r.kEL})}):s===Ge.SCANDED&&d.length>1&&c.productId!=o.productId?(0,A.jsxs)(\"div\",{className:\"box-scanselect-tag\",children:[(0,A.jsx)(\"div\",{className:\"box-scanselect-button box-scanselect-cancel\",onClick:a,children:(0,A.jsx)(l.A,{text:r.bOp})}),(0,A.jsx)(\"div\",{className:\"box-scanselect-button box-scanselect-pair\",onClick:i,children:(0,A.jsx)(l.A,{text:r.BuT})})]}):s===Ge.PAIRING&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-bindingdevice-tag\",children:(0,A.jsx)(l.A,{text:r.rQd})}):s===Ge.PAIR_FAILED&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-bindfail-tag\",children:(0,A.jsx)(l.A,{text:r.lwW})}):s===Ge.JUSTUNPAIR&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-unbindingdevice-tag\",children:(0,A.jsx)(l.A,{text:r.ca6})}):c.valid?(0,A.jsxs)(\"div\",{className:\"box-device-tag\",children:[c.productName[u]||c.productName.en,s===Ge.UNPAIR_FAILED&&c.productId!=o.productId?(0,A.jsx)(\"div\",{className:\"box-device-extrainfo\",children:(0,A.jsx)(l.A,{text:r.evT})}):null]}):(0,A.jsxs)(\"a\",{className:\"box-tips-tag\",onClick:ns,children:[(0,A.jsx)(l.A,{text:r.RFv}),(0,A.jsx)(\"svg\",{width:\"24\",height:\"24\",viewBox:\"0 0 24 24\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",children:(0,A.jsx)(\"path\",{d:\"M13 4L15.79 6.79L11.29 11.29C11.1017 11.4783 10.9959 11.7337 10.9959 12C10.9959 12.2663 11.1017 12.5217 11.29 12.71C11.4783 12.8983 11.7337 13.0041 12 13.0041C12.2663 13.0041 12.5217 12.8983 12.71 12.71L17.21 8.21L20 11V4H13ZM16 13V18H6V8H11C11.2652 8 11.5196 7.89464 11.7071 7.70711C11.8946 7.51957 12 7.26522 12 7C12 6.73478 11.8946 6.48043 11.7071 6.29289C11.5196 6.10536 11.2652 6 11 6H5C4.73478 6 4.48043 6.10536 4.29289 6.29289C4.10536 6.48043 4 6.73478 4 7V19C4 19.2652 4.10536 19.5196 4.29289 19.7071C4.48043 19.8946 4.73478 20 5 20H17C17.2652 20 17.5196 19.8946 17.7071 19.7071C17.8946 19.5196 18 19.2652 18 19V13C18 12.7348 17.8946 12.4804 17.7071 12.2929C17.5196 12.1054 17.2652 12 17 12C16.7348 12 16.4804 12.1054 16.2929 12.2929C16.1054 12.4804 16 12.7348 16 13Z\",fill:\"#CCCCCC\"})})]})]})},c.productName[u]||c.productName.en)}"
+    },
+    {
+      "name": "Current AvailableDevices catalog",
+      "path": ".ref/applications/synapse/dashboard/AvailableDevices.json",
+      "sha256": "428b43ac965095a26d3033e7e4043966eebe05138a3fcd7087e7fe00281be511",
+      "bytes": 10807,
+      "acquisition": {
+        "source_url": "https://apps.razer.com/synapse/dashboard/AvailableDevices.json",
+        "final_url": "https://apps.razer.com/synapse/dashboard/AvailableDevices.json",
+        "http_status": 200,
+        "fetched_at_utc": "2026-10-07T03:17:15.848300+00:00",
+        "content_type": "application/json",
+        "last_modified": "Mon, 05 Oct 2026 05:42:00 GMT",
+        "etag": "\"bec63dbb4a6889b1112069a2a8a0e94d\"",
+        "sha256": "428b43ac965095a26d3033e7e4043966eebe05138a3fcd7087e7fe00281be511",
+        "bytes": 10807
+      }
+    },
+    {
+      "name": "Current DualDongleCompatibleDevices catalog",
+      "path": ".ref/applications/synapse/dashboard/DualDongleCompatibleDevices.json",
+      "sha256": "ad095ba5df1df779c35ec2dc8aeba658b2d359f4c25efa8da4621934a1ba663a",
+      "bytes": 37268,
+      "acquisition": {
+        "source_url": "https://apps.razer.com/synapse/dashboard/DualDongleCompatibleDevices.json",
+        "final_url": "https://apps.razer.com/synapse/dashboard/DualDongleCompatibleDevices.json",
+        "http_status": 200,
+        "fetched_at_utc": "2026-10-07T03:17:16.788430+00:00",
+        "content_type": "application/json",
+        "last_modified": "Mon, 05 Oct 2026 05:42:00 GMT",
+        "etag": "\"a2221c3f9ab0c5fb9ec62507a75e947e\"",
+        "sha256": "ad095ba5df1df779c35ec2dc8aeba658b2d359f4c25efa8da4621934a1ba663a",
+        "bytes": 37268
+      }
+    },
+    {
+      "name": "createDeviceKey",
+      "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+      "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+      "offset": 4233,
+      "end": 4278,
+      "source": "createDeviceKey=(e,t,s=\"\")=>`${e}-${t}-${s}`;"
+    },
+    {
+      "name": "createAPIData",
+      "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+      "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+      "offset": 4278,
+      "end": 4666,
+      "source": "createAPIData=e=>{const t=this.createDeviceKey(e.productId,e.deviceContainerId,e.usbInstanceId),s=this.getUSBDeviceInfoFromDeviceMap(t,e.productId,e.deviceContainerId,e.usbInstanceId);return null==s&&console.warn(\"createAPIData d == null\"),{vendorId:e.vendorId,containerId:e.deviceContainerId,productId:e.productId,usbInstanceId:e.usbInstanceId,guid:s?.guid,driverStatus:e.driverStatus}};"
+    },
+    {
+      "name": "registerHardwareEvent",
+      "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+      "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+      "offset": 34591,
+      "end": 36541,
+      "source": "registerHardwareEvent=async(t,n)=>{const i=\"registerHardwareEvent\";console.log(`${this.name}.${i} senderURL:${t?.sender?.getURL()}, arg:`,n,\"==>\");let o={result:!1,reason:\"\"};if(!this.isInit)return o={result:!1,reason:l},console.log(`${this.name}.${i} not init r:`,o,\" ==><==\"),o;if(!this.isArgUsbDeviceValid(i,n))return o={result:!1,reason:d},console.log(`${this.name}.${i} arg:`,n,\", r:\",\" ==><==\"),o;const r=n.payload.usbDevice,a=t?.sender?.getURL(),u=this.createDeviceKey(r.productId,r.deviceContainerId,r.usbInstanceId),g=this.getUSBDeviceInfoFromDeviceMap(u,r.productId,r.deviceContainerId,r.usbInstanceId);if(!g)return o={result:!1,reason:c},console.log(`${this.name}.${i} usbDevice not found:`,r,\", r:\",o,\" ==><==\"),o;if(0===g.hardwareEventList.length){const c=this.createAPIData(r),l=s.randomUUID(),d=await new Promise(t=>{const s=e.Callback(\"void\",[\"bool\",\"string\",\"string\"],function(e,s,n){return console.debug(`${i} callback received guid:${l}, result:${e}, reason:${s}, deviceInfo:${n}`),t({result:e,reason:s,deviceInfo:n})});this.cbMap.set(l,s);try{this.libFFI[n.action](JSON.stringify(c),s)}catch(e){console.warn(`${this.name}.${i} e:`,e),t({result:!1,reason:e.message})}});if(this.cbMap.delete(l),this.cbMap.size>0&&console.log(`${i} cbMap (after delete):`,Array.from(this.cbMap.keys())),o=d,o?.result){g.hardwareEventList.push(a),g.hardwareEventInterval=0;const e={action:\"setHardwareEventCallback\",payload:{usbDevice:r}};await this.setHardwareEventCallback(t,e)}}else 0===g.hardwareEventInterval?(console.log(`${this.name}.${i} already registered`),g.hardwareEventList.includes(a)||g.hardwareEventList.push(a),o.result=!0):(console.warn(`${this.name}.${i} already registered with registerIntervaledHardwareEvent, return error`),o={result:!1,reason:\"already registered with registerIntervaledHardwareEvent\"});return console.debug(`${this.name}.${i} usbDeviceMap:`,this.usbDeviceMap),console.log(`${this.name}.${i} r:`,o,\"==><==\"),o};"
+    },
+    {
+      "name": "unregisterHardwareEvent",
+      "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+      "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+      "offset": 36541,
+      "end": 38043,
+      "source": "unregisterHardwareEvent=async(t,n)=>{const i=\"unregisterHardwareEvent\";console.log(`${this.name}.${i} senderURL:${t?.sender?.getURL()}, arg:`,n,\"==>\");let o={result:!1,reason:\"\"};if(!this.isInit)return o={result:!1,reason:l},console.log(`${this.name}.${i} not init r:`,o,\" ==><==\"),o;if(!this.isArgUsbDeviceValid(i,n))return o={result:!1,reason:d},console.log(`${this.name}.${i} arg:`,n,\", r:\",\" ==><==\"),o;const r=n.payload.usbDevice,a=t?.sender?.getURL(),u=this.createDeviceKey(r.productId,r.deviceContainerId,r.usbInstanceId),g=this.getUSBDeviceInfoFromDeviceMap(u,r.productId,r.deviceContainerId,r.usbInstanceId);if(!g)return o={result:!1,reason:c},console.log(`${this.name}.${i} usbDevice not found:`,r,\", r:\",o,\" ==><==\"),o;if(g.hardwareEventList=g.hardwareEventList.filter(e=>e!==a),o.result=!0,0===g.hardwareEventList.length){const t=this.createAPIData(r),a=s.randomUUID(),c=await new Promise(s=>{const o=e.Callback(\"void\",[\"bool\",\"string\",\"string\"],function(e,t,n){return console.debug(`${i} callback received guid:${a}, result:${e}, reason:${t}, deviceInfo:${n}`),s({result:e,reason:t,deviceInfo:n})});this.cbMap.set(a,o);try{this.libFFI[n.action](JSON.stringify(t),o)}catch(e){console.warn(`${this.name}.${i} e:`,e),s({result:!1,reason:e.message})}});this.cbMap.delete(a),this.cbMap.size>0&&console.log(`${i} cbMap (after delete):`,Array.from(this.cbMap.keys())),o=c}return console.debug(`${this.name}.${i} usbDeviceMap:`,this.usbDeviceMap),console.log(`${this.name}.${i} r:`,o,\"==><==\"),o};"
+    },
+    {
+      "name": "createCbHardwareEvent",
+      "path": ".ref/host-4.0.827/electron/modules/mapping_engine/win/index.js",
+      "sha256": "32b0dab3a1a83a970b2501608d53c6544cab0c9a2b47054d7bd9a660fe4133c0",
+      "offset": 94885,
+      "end": 95803,
+      "source": "createCbHardwareEvent=()=>{const s=function(e,t,s,n){if(o?.ffiMappingEngine&&0===+t){let t;try{t=JSON.parse(e)}catch(e){console.log(`createCbHardwareEvent() parse Error, e:${e.message}, e:`,e)}if(!t)return;for(const e of i.getAllWebContents?i.getAllWebContents():[]){const i=o.ffiMappingEngine.createDeviceKey(t.productId,t.containerId,t.usbInstanceId),r=o.ffiMappingEngine.getUSBDeviceInfoFromDeviceMap(i,t.productId,t.containerId,t.usbInstanceId);if(r?.hardwareEventList.includes(e.getURL())&&!e.isDestroyed()&&!e.isCrashed()&&!g(e))try{e.send(\"hardwareevent\",{containerId:t?.containerId,productId:t?.productId,vendorId:t?.vendorId,usbInstanceId:t?.usbInstanceId,data:{buffer:JSON.parse(s)},timeTick:n})}catch(e){console.log(\"wc.send(hardwareevent) error:\",e.message)}}}};this.cbHardwareEvent=t?e.Callback(\"void\",[\"string\",\"int\",\"string\",\"ulonglong\"],t,s):e.Callback(\"void\",[\"string\",\"int\",\"string\",\"ulonglong\"],s)};"
+    }
+  ],
+  "products": [
+    {
+      "product_id": 164,
+      "category": "MOUSE",
+      "scan_pair_prefix": 0,
+      "unpair_prefix": 224,
+      "cancel_prefix": 0,
+      "metadata_prefix": 0,
+      "transport": {
+        "source_product_id": 164,
+        "vendor_id": 5426,
+        "product_id": 164,
+        "claim_interface": 0,
+        "report_bytes": 91,
+        "report_id": 0,
+        "protocol": "razer_device25_wireless_status_v2",
+        "command": [
+          80,
+          0,
+          191
+        ],
+        "transaction_prefix": 224,
+        "transaction_modulus": 31,
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25,
+        "peer_match_product_id": false,
+        "source_class": "rzDevice25Linker",
+        "evidence_path": "docs/re/receiver-catalog-current-evidence.json"
+      }
+    },
+    {
+      "product_id": 164,
+      "category": "KEYBOARD",
+      "scan_pair_prefix": 0,
+      "unpair_prefix": 224,
+      "cancel_prefix": 0,
+      "metadata_prefix": 0,
+      "transport": {
+        "source_product_id": 164,
+        "vendor_id": 5426,
+        "product_id": 164,
+        "claim_interface": 0,
+        "report_bytes": 91,
+        "report_id": 0,
+        "protocol": "razer_device25_wireless_status_v2",
+        "command": [
+          80,
+          0,
+          191
+        ],
+        "transaction_prefix": 224,
+        "transaction_modulus": 31,
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25,
+        "peer_match_product_id": false,
+        "source_class": "rzDevice25Linker",
+        "evidence_path": "docs/re/receiver-catalog-current-evidence.json"
+      }
+    },
+    {
+      "product_id": 241,
+      "category": "KEYBOARD",
+      "scan_pair_prefix": 128,
+      "unpair_prefix": 0,
+      "cancel_prefix": 0,
+      "metadata_prefix": 128,
+      "transport": {
+        "source_product_id": 241,
+        "vendor_id": 5426,
+        "product_id": 241,
+        "claim_interface": 3,
+        "report_bytes": 91,
+        "report_id": 0,
+        "protocol": "razer_device25_wireless_status_v2",
+        "command": [
+          80,
+          0,
+          191
+        ],
+        "transaction_prefix": 224,
+        "transaction_modulus": 31,
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25,
+        "peer_match_product_id": false,
+        "source_class": "rzDevice25LinkerMultiDevices",
+        "evidence_path": "docs/re/receiver-catalog-current-evidence.json"
+      }
+    },
+    {
+      "product_id": 241,
+      "category": "MOUSE",
+      "scan_pair_prefix": 0,
+      "unpair_prefix": 128,
+      "cancel_prefix": 0,
+      "metadata_prefix": 0,
+      "transport": {
+        "source_product_id": 241,
+        "vendor_id": 5426,
+        "product_id": 241,
+        "claim_interface": 3,
+        "report_bytes": 91,
+        "report_id": 0,
+        "protocol": "razer_device25_wireless_status_v2",
+        "command": [
+          80,
+          0,
+          191
+        ],
+        "transaction_prefix": 224,
+        "transaction_modulus": 31,
+        "max_retry_in": 10,
+        "max_retry_out": 20,
+        "sleep_between_out_ms": 25,
+        "sleep_between_out_in_ms": 25,
+        "sleep_between_in_ms": 25,
+        "peer_match_product_id": false,
+        "source_class": "rzDevice25LinkerMultiDevices",
+        "evidence_path": "docs/re/receiver-catalog-current-evidence.json"
+      }
+    }
+  ],
+  "native_transport": {
+    "path": ".ref/host-4.0.827/native-evidence/CommonDLL/mapping_engine.dll",
+    "sha256": "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a",
+    "analysis": {
+      "path": "docs/re/evidence/ida-native/6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a.json.gz",
+      "sha256": "0de0a733a231dd3a40a1e399ee48220cfac07226cd7dc38bcf38e48c34de0d61"
+    },
+    "followup": {
+      "path": "docs/re/evidence/ida-native/receiver-pairing-mapping-engine-current.json",
+      "sha256": "1b25ed3ae87352ca01e6888b774c9ca32d93d5dad5f05ba973626ca91ddb8b85"
+    },
+    "selected_exports": {
+      "registerHardwareEvent_rva": "0x29f30",
+      "setHardwareEventCallback_rva": "0x2ba40",
+      "unregisterHardwareEvent_rva": "0x2af60"
+    },
+    "endpoint": {
+      "constructor_rva": "0x122fd8",
+      "hardware_thread_rva": "0x123720",
+      "on_input_report_rva": "0x1244e0",
+      "open": "CreateFileA(GENERIC_READ, FILE_SHARE_READ|FILE_SHARE_WRITE, OPEN_EXISTING, FILE_FLAG_OVERLAPPED)"
+    },
+    "callback_abi": "void callback(device_info_json:string, event_type:int, event_json:string, timestamp:uint64); callback is forwarded only for event_type==0 and event_json is parsed as a JSON byte array",
+    "identity": "native mapping_engine key is productId-containerId-usbInstanceId; registration and callback require the exact retained USB device record",
+    "selector": {
+      "rva": "0x119de6",
+      "forwarder_rva": "0x11a702",
+      "property_key_data_rva": "0x2e9a38",
+      "property_key_guid": "8c7ed206-3f8a-4827-b3ab-ae9e1faefc6c",
+      "property_key_pid": 2,
+      "algorithm": "Enumerate present HID device interfaces; compare lowercase DEVPKEY_Device_ContainerId and PID parsed from each path; return all matching collections, without usage/page or USB-interface selection."
+    },
+    "input_read": {
+      "rva": "0x1232f8",
+      "capacity_bytes": 100,
+      "algorithm": "Overlapped ReadFile into a 100-byte capacity; OnInputReport forwards only the actual completion byte count; callback serializer 0x2b770 emits each actual byte, without a synthetic report prefix."
+    },
+    "lifecycle": "registerHardwareEvent creates the endpoint/thread; unregisterHardwareEvent shuts down after IO-thread cleanup; failed endpoint reconnects before callback delivery"
+  },
+  "gaps": [
+    "Runtime acceptance is unverified: actual collections are re-observed and retained by direct interrupt provider; unsupported descriptor/identity or offline endpoints fail instead of returning fabricated events.",
+    "Post-pair edition/[1,0,185] sidepad queries and source-explicit fallback are implemented; source runtime sidepad precedence needs actual scoped DEVICE_RUNTIME_DATA and serial/profile merge inputs.",
+    "Local duallink-devices add/remove persistence is implemented and connected after hardware evidence; binding readback/connection publication is distinct from full original runtime/profile merge, routing reconnect and window-storage serial listener behavior, which remain gaps.",
+    "Failed-unpair 2000ms V2 query recovery is implemented; category-specific mapping/profile recombination and native reconnect semantics remain incomplete.",
+    "Protocol25 scan parser exposes three records; unsupported counts fail rather than fabricate device identity."
+  ],
+  "implementation": [
+    "crates/razer-device/src/receiver_pairing.rs",
+    "crates/razer-service/src/runtime/windows/receiver_events.rs",
+    "crates/razer-service/src/runtime/windows/receiver_pairing.rs",
+    "crates/razer-discovery/src/receiver_pairing.rs",
+    "crates/razer-storage/src/receiver_pairing.rs",
+    "crates/razer-shell/src/shell/receiver_pairing.rs",
+    "crates/razer-shell/src/shell/receiver_pairing/route.rs",
+    "crates/razer-shell/src/shell/receiver_pairing/route/windows.rs",
+    "crates/razer-pages/src/features/dock_pairing/observation.rs",
+    "crates/razer-pages/src/features/dock_pairing/state.rs"
+  ],
+  "implementation_receipts": [
+    {
+      "path": "crates/razer-device/src/receiver_pairing.rs",
+      "sha256": "2fbdb14c73e14e5fe75ecc7c926c1551ab99f783ccaac71f53619971d7338782",
+      "bytes": 26479,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-service/src/runtime/windows/receiver_events.rs",
+      "sha256": "04b82e2c77a2efa7641a7579a9341d36a69b15363129f0222f274b76d5051557",
+      "bytes": 6659,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-service/src/runtime/windows/receiver_pairing.rs",
+      "sha256": "17565bdff9403fc004060911231d11811198993e7e57e7e958ebdbc59d4027a9",
+      "bytes": 11099,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-discovery/src/receiver_pairing.rs",
+      "sha256": "c0f993d71d28279a7d00724151e108bd5c55e6982d52716a80f6129c1ee05546",
+      "bytes": 5279,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-storage/src/receiver_pairing.rs",
+      "sha256": "a8253fd4798f937803e7b42108131dbfb574490e4471778e3887676870bc7e9b",
+      "bytes": 8071,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-shell/src/shell/receiver_pairing.rs",
+      "sha256": "2dad1b303a9dd5ef5e99d0297710ae812051b7afb144110c479b931d9cb74d2a",
+      "bytes": 25805,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-shell/src/shell/receiver_pairing/route.rs",
+      "sha256": "25bcb862b8789a07f583275b6b6d26b70016e7b782c0d16a4fe258a7a1e9959a",
+      "bytes": 499,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-shell/src/shell/receiver_pairing/route/windows.rs",
+      "sha256": "cc35fddd2435ea1493397d81df8526992c45ab838e3649d251226cb5f96dc0ec",
+      "bytes": 1686,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-pages/src/features/dock_pairing/observation.rs",
+      "sha256": "a237e0de1561b0a38505e2769968a8f2547ef2629ec018750dd9c60f512e691a",
+      "bytes": 13507,
+      "runtime_acceptance": false
+    },
+    {
+      "path": "crates/razer-pages/src/features/dock_pairing/state.rs",
+      "sha256": "054ed2d46f1ccdd88297e25953edaa00bbbfcccb7c752126893da48f0dac38a5",
+      "bytes": 3405,
+      "runtime_acceptance": false
+    }
+  ],
+  "metadata_transport": {
+    "factory_sleep_multiplier": 5,
+    "base_sleep_ms": 5,
+    "actual_sleep_ms": 25,
+    "max_retry_in": 10,
+    "max_retry_out": 20,
+    "edition_command": [
+      3,
+      0,
+      134
+    ],
+    "edition_parser": "data[0]=keyboardLayout, data[1]=edition, data[2]=firmwareId",
+    "edition_helper_retries": 3,
+    "edition_helper_retry_delay_ms": 100,
+    "mouse_layout_command": [
+      1,
+      0,
+      185
+    ],
+    "mouse_layout_parser": "data[0]=status; actual scoped runtime sidepadLayout has precedence in the original caller"
+  },
+  "scan_catalog": {
+    "asset": "assets/data/receiver-pairing-catalog.json",
+    "devices": 28,
+    "available": 29,
+    "raw_dongle_is_not_product_id": true
+  },
+  "worker_actions": [
+    "ReceiverPairingStart",
+    "ReceiverPairingPoll",
+    "ReceiverPairingCancel"
+  ]
+}

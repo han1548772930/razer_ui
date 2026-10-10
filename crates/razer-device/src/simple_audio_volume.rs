@@ -43,3 +43,22 @@ pub fn scalar_to_volume(scalar: f32) -> u8 {
 pub fn volume_to_scalar(volume: u8) -> f32 {
     f32::from(volume) / 100.0_f32
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_quantization_round_trips_valid_core_audio_values() {
+        for (scalar, expected) in [(0.0, 0), (0.005, 1), (0.5, 50), (0.995, 100), (1.0, 100)] {
+            assert_eq!(scalar_to_volume(scalar), expected);
+            assert!((volume_to_scalar(expected) - expected as f32 / 100.0).abs() < f32::EPSILON);
+        }
+    }
+
+    #[test]
+    fn source_setter_does_not_change_the_wire_quantization_rule() {
+        assert_eq!(volume_to_scalar(37), 0.37);
+        assert_eq!(scalar_to_volume(volume_to_scalar(37)), 37);
+    }
+}

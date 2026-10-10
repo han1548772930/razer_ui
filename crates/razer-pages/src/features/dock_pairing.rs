@@ -130,7 +130,11 @@ impl DockPairing {
         self.alert = None;
         cx.notify();
     }
-    pub fn observe_pairing(&mut self, observation: DockPairingObservation, cx: &mut Context<Self>) {
+    pub fn observe_pairing(
+        &mut self,
+        observation: DockPairingObservation,
+        cx: &mut Context<Self>,
+    ) -> bool {
         if let Some(modal) = &self.modal {
             let observed = modal.update(cx, |view, cx| {
                 view.observe_pairing(observation, cx)
@@ -142,8 +146,10 @@ impl DockPairing {
                 state.active = None;
                 self.state = state;
                 cx.notify();
+                return true;
             }
         }
+        false
     }
     fn open(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.multi_pairing {

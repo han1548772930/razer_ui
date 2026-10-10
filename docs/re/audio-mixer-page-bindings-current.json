@@ -1,0 +1,140 @@
+{
+  "product_id": 1342,
+  "source": ".ref/middleware/1342/AudioMixer.cde922aae2f0fea23404.js",
+  "runtime_executed": false,
+  "hid_dsp_bindings": {
+    "/device/noiseGate/isEnabled": "RazerT2NoiseGateEnable",
+    "/device/noiseGate/basic/value": "RazerT2NoiseGateThresholdControl (useMode 0)",
+    "/device/noiseGate/threshold/value": "RazerT2NoiseGateThresholdControl",
+    "/device/noiseGate/targetGain/value": "RazerT2NoiseGateTargetGainControl",
+    "/device/noiseGate/attackTime/value": "RazerT2NoiseGateAttackTimeControl",
+    "/device/noiseGate/releaseTime/value": "RazerT2NoiseGateReleaseTimeControl",
+    "/device/compressor/isEnabled": "RazerT2CompressorEnable",
+    "/device/compressor/basic/value": "RazerT2CompressorThresholdControl (useMode 0)",
+    "/device/compressor/threshold/value": "RazerT2CompressorThresholdControl",
+    "/device/compressor/softKneeWidth/value": "RazerT2CompressorSoftKneeWidthControl",
+    "/device/compressor/ratio/value": "RazerT2CompressorRatioControl",
+    "/device/compressor/makeUpGain/value": "RazerT2CompressorMakeUpGainControl",
+    "/device/compressor/attackTime/value": "RazerT2CompressorAttackTimeControl",
+    "/device/compressor/releaseTime/value": "RazerT2CompressorReleaseTimeControl",
+    "/device/vocalFading/isEnabled": "RazerT2VocalFadingEnable",
+    "/device/vocalFading/value": "RazerT2VocalFadingLevelControl",
+    "/device/keyShifter/value": "RazerT2KeyShifterLevelControl",
+    "/equalizers/mic/bands/{0..9}": "RazerT2DSPEQBandControl",
+    "/device/voiceChanger/isEnabled": "RazerT2MagicVoiceEnable",
+    "/device/voiceChanger/value": "RazerT2MagicVoiceControl; current fixed JS template codec"
+  },
+  "unmapped_virtual_audio_paths": [
+    "/device/outputMixerReducer/*",
+    "/device/playbackMixReducer/*",
+    "/device/streamMixReducer/*",
+    "/device/lineOutReducer/*",
+    "/device/voiceChatReducer/*"
+  ],
+  "unmapped_reason": "Current source routes these reducers through RzNativeAudioCamy SetDeviceVolume/SetDeviceMute/SetMixLevel/SetMixEnable with virtual DeviceId values. Existing HidNodeMixer controls are CmMixerLib DSP endpoint properties and no source evidence equates the two namespaces.",
+  "implementation": "crates/razer-pages/src/features/audio_mixer.rs",
+  "shell_consumer": "crates/razer-shell/src/shell/audio_mixer.rs",
+  "platform_route": {
+    "portable": "Retained actual HidNode, fresh enumeration and source descriptor recipe checks",
+    "windows": "Same ContainerId actual HidDevices metadata joined to actual HidNodes by case-folded path plus VID/PID/usage/release and observed MI metadata; require unique source-compatible descriptor collection and reobserve before write/after reply",
+    "implementation": "crates/razer-shell/src/shell/audio_mixer/route/windows.rs",
+    "identity_policy_difference": "Original CmMixerOpenHID takes first VID/PID match; ContainerId filtering and unique source-compatible collection selection are application identity policy, not an original DLL selection claim"
+  },
+  "visible_state": "Current profile caller restores local fields and submits ON_SET_* from localStorage. Visible draft remains local; actual device receipts remain independent and failures use existing notifications without new debug layout rows.",
+  "runtime_acceptance": "not_performed",
+  "mic_eq_submission": {
+    "entry": "LM.changeTab / LM.onDrag / LM.reset -> complete frequencyBands array",
+    "reset": "Custom plus source Default zero array; named presets are retained",
+    "advanced_display_frequencies": [
+      31,
+      63,
+      125,
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000
+    ],
+    "source_template_data": [
+      30,
+      60,
+      120,
+      250,
+      500,
+      1000,
+      2000,
+      4000,
+      8000,
+      16000
+    ],
+    "basic_expansion": [
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2
+    ],
+    "basic_mode_source_gap": "ON_SET_MIC_EQ_MODE persists micEqualizerMode then reads misspelled micBaicEqualizer, which current source does not create; automatic Basic write is not fabricated",
+    "order": [
+      "setMicEQ(true)",
+      "setMicEQBand(0)",
+      "setMicEQBand(1)",
+      "setMicEQBand(2)",
+      "setMicEQBand(3)",
+      "setMicEQBand(4)",
+      "setMicEQBand(5)",
+      "setMicEQBand(6)",
+      "setMicEQBand(7)",
+      "setMicEQBand(8)",
+      "setMicEQBand(9)"
+    ],
+    "ipc": "HidNodeMixerEqWrite",
+    "transport": "one retained actual collection handle and lock; exact-node/deadline checks before and after each report",
+    "confirmation": "eleven real native-codec readback receipts, source parameters and ordering validated by Shell",
+    "failure": "stop later bands, report confirmed prefix, no rollback or fabricated save",
+    "cancellation": "before submission only; once submitted, epoch/revision rejection prevents stale publication and does not claim device cancellation",
+    "coalescing": "latest complete array replaces queued EQ request",
+    "local_state": "separate retained Basic/Advanced Custom arrays; visible drafts are local profile state",
+    "remaining": [
+      "exact mounted EQ visual details"
+    ]
+  },
+  "shared_device_eq_confirmation": {
+    "source_gate": "rzDevice.name === \"AudioAWKittyBLE\"",
+    "source_call": "sole Qs() call obtains both audio and microphone arrays before tl profile restoration",
+    "audio_mixer_applies": false,
+    "confirm": "import observed arrays, choose exact matching preset else Custom, increment local profile version, persist local profile and memoryStorage receipts",
+    "cancel": "el() restores and submits local microphone profile EQ; not merely closing a modal",
+    "scope": "actual Kitty caller and persistence chain remain a full-program gap; do not add nonexistent AudioMixer UI"
+  },
+  "voice_changer_submission": {
+    "caller": "ON_SET_VOICE_CHANGER -> taskMakerSetVoiceChanger -> f2B/Ti -> getMagicVoiceState / changed setMagicVoiceState / setMagicVoiceMode",
+    "modes": {
+      "0": "MONSTER",
+      "1": "CARTOON",
+      "2": "LOW_PITCH",
+      "3": "HIGH_PITCH"
+    },
+    "disable": "read switch, change only if needed, retain selected local mode; no mode write",
+    "enable_or_mode": "source switch gate then retained mode 0..3",
+    "native_difference": "PageMagicVoice fixed 0x80000000 template plus original mode code and observed EQ/Magic/Echo masks 1/2/12; native MagicVoice retains separately recovered 0x3f00000f codec",
+    "queued_updates": "new full object supersedes unsent same-family fields; old epoch/revision receipts rejected",
+    "failure": "switch error aborts queued mode; actual readback required; local draft never converted into a device receipt",
+    "runtime_acceptance": "not_performed",
+    "switch_codec": "PageMagicVoiceEnabled uses fixed 0xc0000000 high byte plus query low24, then bit1; native MagicVoiceEnabled remains original DLL codec"
+  },
+  "dsp_mode_mount": {
+    "source": "LU/pU current1342 wrappers",
+    "mode0": "Basic slider only",
+    "mode1": "detailed threshold/timing fields only",
+    "disabled": "source switch off disables settings, Show More/Less remains available",
+    "persistence": "mode is retained local draft; mode toggle sends no native setting"
+  }
+}

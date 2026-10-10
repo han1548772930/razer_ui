@@ -1,0 +1,247 @@
+{
+  "method": "Current native bytes checked against IDA/Hex-Rays and current JS source; no DLL, application, test or device execution",
+  "binary": {
+    "path": ".ref/host-4.0.827/native-evidence/CommonDLL/SysUtilsNative.dll",
+    "sha256": "01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318"
+  },
+  "ida_evidence": {
+    "path": "docs/re/evidence/ida-native/01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318.json.gz",
+    "sha256": "b7d866bb2cd3568acd0f6168fbcfbf2c44aea90a76ad80aa91d2d292a545e995"
+  },
+  "functions": [
+    {
+      "rva": 461584,
+      "end_rva": 461627,
+      "name": "keyboardLayout",
+      "code_sha256": "0b3f024ab8efae8593ccaa43b3e9b6d526392d70d04c36142aa459efeede433a",
+      "pseudocode": "__int64 keyboardLayout()\n{\n  __int64 v0; // rbx\n\n  v0 = (unsigned int)sub_180070AA0();\n  sub_18000CF70(\"%s keyboardLayout:%d\", \"sysutilsnative::keyboardLayout\", v0);\n  return (unsigned int)v0;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 1029816,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1095956,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 461584,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 461586,
+          "text": "sub     rsp, 20h"
+        },
+        {
+          "rva": 461590,
+          "text": "call    sub_180070AA0"
+        },
+        {
+          "rva": 461595,
+          "text": "mov     r8d, eax"
+        },
+        {
+          "rva": 461598,
+          "text": "lea     rdx, aSysutilsnative_11; \"sysutilsnative::keyboardLayout\""
+        },
+        {
+          "rva": 461605,
+          "text": "lea     rcx, aSKeyboardlayou; \"%s keyboardLayout:%d\""
+        },
+        {
+          "rva": 461612,
+          "text": "mov     ebx, eax"
+        },
+        {
+          "rva": 461614,
+          "text": "call    sub_18000CF70"
+        },
+        {
+          "rva": 461619,
+          "text": "mov     eax, ebx"
+        },
+        {
+          "rva": 461621,
+          "text": "add     rsp, 20h"
+        },
+        {
+          "rva": 461625,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 461626,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 461472,
+      "end_rva": 461583,
+      "name": "sub_180070AA0",
+      "code_sha256": "acbb5d57adaadcfa41484ab1833ae544e419a966473c61ab9c7189f7311d8794",
+      "pseudocode": "__int64 sub_180070AA0()\n{\n  unsigned int v1[4]; // [rsp+20h] [rbp-68h] BYREF\n  CHAR pwszKLID[16]; // [rsp+30h] [rbp-58h] BYREF\n  __int128 v3; // [rsp+40h] [rbp-48h]\n  __int128 v4; // [rsp+50h] [rbp-38h]\n  __int128 v5; // [rsp+60h] [rbp-28h]\n\n  v1[0] = 0;\n  *(_OWORD *)pwszKLID = 0i64;\n  v3 = 0i64;\n  v4 = 0i64;\n  v5 = 0i64;\n  GetKeyboardLayoutNameA(pwszKLID);\n  sub_1800870B0(pwszKLID, \"%x\", v1);\n  return v1[0];\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 461590,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 487444,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 487528,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 1095944,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 461472,
+          "text": "sub     rsp, 88h"
+        },
+        {
+          "rva": 461479,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 461486,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 461489,
+          "text": "mov     [rsp+88h+var_18], rax"
+        },
+        {
+          "rva": 461494,
+          "text": "xorps   xmm0, xmm0"
+        },
+        {
+          "rva": 461497,
+          "text": "mov     [rsp+88h+var_68], 0"
+        },
+        {
+          "rva": 461505,
+          "text": "lea     rcx, [rsp+88h+pwszKLID]; pwszKLID"
+        },
+        {
+          "rva": 461510,
+          "text": "movups  xmmword ptr [rsp+88h+pwszKLID], xmm0"
+        },
+        {
+          "rva": 461515,
+          "text": "movups  [rsp+88h+var_48], xmm0"
+        },
+        {
+          "rva": 461520,
+          "text": "movups  [rsp+88h+var_38], xmm0"
+        },
+        {
+          "rva": 461525,
+          "text": "movups  [rsp+88h+var_28], xmm0"
+        },
+        {
+          "rva": 461530,
+          "text": "call    cs:GetKeyboardLayoutNameA"
+        },
+        {
+          "rva": 461536,
+          "text": "lea     r8, [rsp+88h+var_68]"
+        },
+        {
+          "rva": 461541,
+          "text": "lea     rdx, asc_1800E08D8; \"%x\""
+        },
+        {
+          "rva": 461548,
+          "text": "lea     rcx, [rsp+88h+pwszKLID]"
+        },
+        {
+          "rva": 461553,
+          "text": "call    sub_1800870B0"
+        },
+        {
+          "rva": 461558,
+          "text": "mov     eax, [rsp+88h+var_68]"
+        },
+        {
+          "rva": 461562,
+          "text": "mov     rcx, [rsp+88h+var_18]"
+        },
+        {
+          "rva": 461567,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 461570,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 461575,
+          "text": "add     rsp, 88h"
+        },
+        {
+          "rva": 461582,
+          "text": "retn"
+        }
+      ]
+    }
+  ],
+  "source": [
+    {
+      "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+      "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+      "start_utf16": 1274,
+      "end_utf16": 1299,
+      "text": "keyboardLayout:[\"int\",[]]"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/main.js",
+      "sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e",
+      "start_utf16": 51941,
+      "end_utf16": 51964,
+      "text": "case\"keyboardLayout\":ca"
+    },
+    {
+      "path": ".ref/middleware/182/main.7d7bac778fbfcdb02c10.js",
+      "sha256": "6350402b2a4743363838628b6e74a42131517e0859908ea8ce04fbb666428cab",
+      "start_utf16": 63209,
+      "end_utf16": 63374,
+      "text": "get keyboardLayout(){return this.isElectron?this.callElectronAction({action:\"keyboardLayout\"}):this.isRzAppEngine?window.keyboardlayout:void 0}get isOnBatteryPower()"
+    }
+  ],
+  "semantics": {
+    "query": "Zeroed 64-byte ANSI buffer and UINT result; GetKeyboardLayoutNameA BOOL ignored; sscanf %x; UINT returned with original int FFI bit pattern",
+    "identity": "Calling-thread Windows KLID; no foreground-thread substitution, profile default or saved layout",
+    "ownership": "Stack-only getter; no allocated string, callback registration, initialization or FreeMalloc"
+  },
+  "implementation": [
+    {
+      "path": "crates/razer-platform/src/keyboard_layout.rs",
+      "sha256": "1f4c166cb6e33b882e32932b57fca2c853b46ddd52248988cad5fe9f033e37e2"
+    },
+    {
+      "path": "crates/razer-platform/src/platform/windows/keyboard_layout.rs",
+      "sha256": "93f7b210b5607d178210c4253b90028aa47f57b7ea1b91330028338238818d38"
+    }
+  ],
+  "connection": {
+    "ipc": "ServiceRequest::KeyboardLayoutRead -> keyboard_layout::get -> {layout:i32}",
+    "gap": "Page/macro consumers and Start/StopMonitorKeyboardLayout timer/event chain are separate and not yet reproduced"
+  },
+  "unsupported_platform": "Explicit unsupported Windows KLID capability; no invented macOS/Linux mapping",
+  "runtime_acceptance": "not_run"
+}

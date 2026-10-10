@@ -103,32 +103,34 @@ pub(crate) fn open_character_map() -> anyhow::Result<()> {
 }
 
 pub(crate) fn open_display_settings() -> anyhow::Result<()> {
-    std::process::Command::new("cmd")
-        .args(["/c", "start", "ms-settings:display"])
-        .spawn()?;
-    Ok(())
+    // msSettings RVA 0x70a30 formats this ANSI command and uses SW_SHOW.
+    source_win_exec(c"explorer ms-settings:display")
 }
 
 pub(crate) fn open(properties: Properties) -> anyhow::Result<()> {
-    let mut command = match properties {
-        Properties::Volume => std::process::Command::new("sndvol.exe"),
-        _ => {
-            let mut command = std::process::Command::new("control.exe");
-            match properties {
-                Properties::Mouse => {
-                    command.arg("main.cpl");
-                }
-                Properties::Keyboard => {
-                    command.args(["main.cpl", ",@1"]);
-                }
-                Properties::Sound => {
-                    command.arg("mmsys.cpl");
-                }
-                Properties::Volume => unreachable!(),
-            }
-            command
-        }
+    // Current SysUtilsNative 0x70b40/60/80/a0 pass these exact command lines.
+    // In particular "sounds" selects the source Sound tab and "keyboard"
+    // is the original Keyboard control-panel dispatch.
+    let command = match properties {
+        Properties::Mouse => c"control main.cpl",
+        Properties::Keyboard => c"control keyboard",
+        Properties::Sound => c"control mmsys.cpl sounds",
+        Properties::Volume => c"sndvol.exe",
     };
-    command.spawn()?;
+    source_win_exec(command)
+}
+
+fn source_win_exec(command: &std::ffi::CStr) -> anyhow::Result<()> {
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn WinExec(command: *const std::ffi::c_char, show: u32) -> u32;
+    }
+    // Source uses 5 (SW_SHOW), not a shell's cmd/start process. Host declares
+    // these native commands void; the Rust caller separately surfaces failure.
+    let result = unsafe { WinExec(command.as_ptr(), 5) };
+    anyhow::ensure!(
+        result > 31,
+        "Windows utility launch failed (WinExec {result})"
+    );
     Ok(())
 }

@@ -51,6 +51,34 @@ pub enum ServiceRequest {
     AudioEndpoints {
         flow: razer_device::audio_util::AudioFlow,
     },
+    /// Worker-owned RzAudioUtil local OS listener. No DLL callback is loaded.
+    AudioNotificationsEnable {
+        enable: bool,
+    },
+    /// Actual queued source events, including repeated-enable multiplicity.
+    AudioNotificationsDrain,
+    /// Source AudioRouter enabled value is a signed JSON integer; no DLL call.
+    AudioRoutingEnable {
+        enable: i32,
+    },
+    /// Empty routed name removes the old stream; identity is the primary name.
+    AudioRouteDevice {
+        primary_device: String,
+        routed_device: String,
+        #[serde(default)]
+        primary_device_id: u32,
+    },
+    AudioRouterEvents,
+    ForegroundMonitorStart {
+        view_url: String,
+    },
+    KeyboardLayoutRead,
+    ForegroundMonitorStop {
+        view_url: String,
+    },
+    ForegroundMonitorEvents {
+        view_url: String,
+    },
     HidDevices,
     /// Portable OS collections. Paths are opaque bytes; no Windows GUID or
     /// logical receiver peer is fabricated from these nodes.
@@ -105,6 +133,12 @@ pub enum ServiceRequest {
         product_id: u32,
         target: razer_device::audio_mixer::MixerTarget,
         value: razer_device::audio_mixer::MixerValue,
+    },
+    /// Original microphone EQ caller enables and submits all ten bands.
+    HidNodeMixerEqWrite {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        bands: [i32; 10],
     },
     HidNodeMixerRouteRead {
         node: razer_device::backend::HidNode,
@@ -180,6 +214,19 @@ pub enum ServiceRequest {
     ReceiverWirelessStatus {
         path: String,
         device_container_id: String,
+    },
+    ReceiverPairingStart {
+        operation_id: String,
+        path: String,
+        device_container_id: String,
+        category: String,
+        action: razer_device::receiver_pairing::PairingAction,
+    },
+    ReceiverPairingPoll {
+        operation_id: String,
+    },
+    ReceiverPairingCancel {
+        operation_id: String,
     },
     GlobalMode,
     WheelScrollLinesRead,
@@ -371,22 +418,31 @@ impl ServiceClient {
         let writing_device = matches!(
             request,
             ServiceRequest::DeviceWrite { .. }
+                | ServiceRequest::AudioRouteDevice { .. }
+                | ServiceRequest::AudioRoutingEnable { .. }
                 | ServiceRequest::AudioVolumeWrite { .. }
                 | ServiceRequest::HidNodeDpiStagesWrite { .. }
                 | ServiceRequest::DeviceDpiStagesWrite { .. }
                 | ServiceRequest::HidNodeWrite { .. }
                 | ServiceRequest::HidNodeMixerWrite { .. }
+                | ServiceRequest::HidNodeMixerEqWrite { .. }
                 | ServiceRequest::HidNodeMixerRouteWrite { .. }
                 | ServiceRequest::HidNodeMixerRestartStreams { .. }
         );
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
+                | ServiceRequest::AudioRouterEvents
                 | ServiceRequest::AudioVolumeRead { .. }
                 | ServiceRequest::HidNodeDpiStagesRead { .. }
                 | ServiceRequest::DeviceDpiStagesRead { .. }
                 | ServiceRequest::NativeLibrarySnapshot { .. }
                 | ServiceRequest::AudioEndpoints { .. }
+                | ServiceRequest::AudioNotificationsEnable { .. }
+                | ServiceRequest::AudioNotificationsDrain
+                | ServiceRequest::ForegroundMonitorStart { .. }
+                | ServiceRequest::ForegroundMonitorStop { .. }
+                | ServiceRequest::ForegroundMonitorEvents { .. }
                 | ServiceRequest::HidNodeRead { .. }
                 | ServiceRequest::HidNodeMixerRead { .. }
                 | ServiceRequest::HidNodeMixerRouteRead { .. }

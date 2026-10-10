@@ -132,6 +132,45 @@ impl SourceProductWorkspace {
             });
         }
     }
+    pub fn mixer_request_matches(
+        &self,
+        request: &super::audio_products::AudioMixerRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Audio(body) if body.read(cx).mixer_request_matches(request))
+    }
+    pub fn mixer_cancellation(
+        &self,
+        request: &super::audio_products::AudioMixerRequest,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::sync::atomic::AtomicBool>> {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.read(cx).mixer_request_cancellation(request)
+        } else {
+            None
+        }
+    }
+    pub fn mixer_request_current(
+        &self,
+        request: &super::audio_products::AudioMixerRequest,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Audio(body) if body.read(cx).mixer_request_current(request))
+    }
+    pub fn finish_mixer(
+        &mut self,
+        request: super::audio_products::AudioMixerRequest,
+        result: Result<super::audio_products::AudioMixerCompletion, String>,
+        scope_current: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_mixer(request, result, scope_current, window, cx)
+            });
+        }
+    }
     pub fn keyboard_brightness_read_matches(&self, generation: u64, cx: &App) -> bool {
         matches!(&self.body,FamilyBody::Keyboard(body) if body.read(cx).brightness_read_matches(generation))
     }
@@ -204,13 +243,17 @@ impl SourceProductWorkspace {
         if self.device.dashboard.connection_observation != observation {
             self.cancel_keyboard_brightness_connection(cx);
             if let FamilyBody::Audio(body) = &self.body {
-                body.update(cx, |body, _| body.invalidate_volume());
+                body.update(cx, |body, _| {
+                    body.invalidate_volume();
+                    body.invalidate_mixer();
+                });
             }
         }
         self.device.observe_connection(observation.clone());
         self.saved.observe_connection(observation);
         self.sync_keyboard_read_activity(cx);
         self.sync_audio_volume_activity(cx);
+        self.sync_audio_mixer_activity(cx);
         self.sync_receiver_read_activity(cx);
         cx.notify();
     }
@@ -250,10 +293,11 @@ impl SourceProductWorkspace {
         &mut self,
         observation: super::DockPairingObservation,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
         if let Some(dock) = &self.dock_pairing {
-            dock.update(cx, |dock, cx| dock.observe_pairing(observation, cx));
+            return dock.update(cx, |dock, cx| dock.observe_pairing(observation, cx));
         }
+        false
     }
     pub fn set_active(&mut self, active: bool, window: &mut Window, cx: &mut Context<Self>) {
         self.active = active;
@@ -261,6 +305,7 @@ impl SourceProductWorkspace {
         self.sync_mouse_active(window, cx);
         self.sync_keyboard_read_activity(cx);
         self.sync_audio_volume_activity(cx);
+        self.sync_audio_mixer_activity(cx);
         if !active {
             if let FamilyBody::Gamepad(body) = &self.body {
                 body.update(cx, |body, cx| {
@@ -285,6 +330,24 @@ impl SourceProductWorkspace {
                     )
                 );
             body.update(cx, |body, cx| body.set_volume_active(active, cx));
+        }
+    }
+
+    fn sync_audio_mixer_activity(&self, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            let active = self.active
+                && self.device.product_id == 1342
+                && self
+                    .current_page()
+                    .is_some_and(|page| matches!(page.kind().key(), "TAB_MIC" | "EFFECTS"))
+                && matches!(
+                    self.device.dashboard.connection_observation,
+                    Some(
+                        razer_model::model::DeviceConnectionObservation::UsbPresent
+                            | razer_model::model::DeviceConnectionObservation::HidPresent
+                    )
+                );
+            body.update(cx, |body, cx| body.set_mixer_active(active, cx));
         }
     }
     fn sync_keyboard_read_activity(&self, cx: &mut Context<Self>) {
@@ -888,6 +951,14 @@ impl SourceProductWorkspace {
                 &body,
                 |_: &mut Self, _, request: &super::audio_products::AudioVolumeRequest, cx| {
                     cx.emit(WorkspaceEvent::AudioVolumeRequested { request: *request })
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, request: &super::audio_products::AudioMixerRequest, cx| {
+                    cx.emit(WorkspaceEvent::AudioMixerRequested {
+                        request: request.clone(),
+                    })
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -1503,6 +1574,7 @@ impl SourceProductWorkspace {
     fn select_body_page(&self, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_keyboard_read_activity(cx);
         self.sync_audio_volume_activity(cx);
+        self.sync_audio_mixer_activity(cx);
         self.sync_receiver_read_activity(cx);
         self.sync_mouse_active(window, cx);
         if let Some(view) = &self.accessory {

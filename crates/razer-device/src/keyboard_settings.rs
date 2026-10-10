@@ -238,3 +238,312 @@ pub fn apply(
         verified: true,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    // Current middleware/600 receipts in keyboard-settings-current-evidence.json:
+    // getBrightness resolves AllRegion through the first stride-5 region record,
+    // catches a rejected query with region 1, and retains region 0 for no records.
+    // The setter floors percent/100*255; its parser ceils raw/255*100.
+    // Strict identity/length validation and setter readback are application policy.
+    use super::*;
+    use serde_json::json;
+    use std::{cell::Cell, collections::VecDeque, sync::Mutex};
+
+    struct Reply {
+        status: u8,
+        data: Vec<u8>,
+        count: usize,
+        report_id: u8,
+        declared_len: Option<u8>,
+        wrong_transaction: bool,
+    }
+
+    fn reply(data: &[u8]) -> Reply {
+        Reply {
+            status: 2,
+            data: data.to_vec(),
+            count: 91,
+            report_id: 0,
+            declared_len: None,
+            wrong_transaction: false,
+        }
+    }
+
+    fn rejected() -> Reply {
+        Reply {
+            status: 3,
+            ..reply(&[])
+        }
+    }
+
+    struct MockTransport {
+        sent: Mutex<Vec<Vec<u8>>>,
+        replies: Mutex<VecDeque<Reply>>,
+    }
+
+    impl MockTransport {
+        fn new(replies: impl IntoIterator<Item = Reply>) -> Self {
+            Self {
+                sent: Mutex::new(Vec::new()),
+                replies: Mutex::new(replies.into_iter().collect()),
+            }
+        }
+
+        fn sent(&self) -> Vec<Vec<u8>> {
+            self.sent.lock().unwrap().clone()
+        }
+    }
+
+    impl FeatureTransport for MockTransport {
+        fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+            self.sent.lock().unwrap().push(report.to_vec());
+            Ok(())
+        }
+
+        fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            let reply = self
+                .replies
+                .lock()
+                .unwrap()
+                .pop_front()
+                .context("mock reply exhausted")?;
+            let sent = self
+                .sent
+                .lock()
+                .unwrap()
+                .last()
+                .context("mock has no sent report")?
+                .clone();
+            report.fill(0);
+            report[0] = reply.report_id;
+            report[1] = reply.status;
+            report[2] = sent[2] ^ u8::from(reply.wrong_transaction);
+            report[6] = reply.declared_len.unwrap_or(reply.data.len() as u8);
+            report[7..9].copy_from_slice(&sent[7..9]);
+            report[9..9 + reply.data.len()].copy_from_slice(&reply.data);
+            Ok(reply.count)
+        }
+
+        fn metadata(&self) -> serde_json::Value {
+            json!({"mock": true})
+        }
+    }
+
+    fn cap() -> KeyboardSettingsCapability {
+        let catalog: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../assets/data/keyboard-settings-capabilities.json"
+        ))
+        .unwrap();
+        let mut cap: KeyboardSettingsCapability =
+            serde_json::from_value(catalog["products"][0].clone()).unwrap();
+        // No transport sleeps in unit tests. One retry makes error scripts exact.
+        cap.transport.max_retry_in = 1;
+        cap.transport.max_retry_out = 1;
+        cap.transport.sleep_between_out_ms = 0;
+        cap.transport.sleep_between_out_in_ms = 0;
+        cap.transport.sleep_between_in_ms = 0;
+        cap
+    }
+
+    fn transactions(cap: &KeyboardSettingsCapability) -> impl FnMut() -> anyhow::Result<u8> {
+        let prefix = cap.transport.transaction_prefix;
+        let modulus = cap.transport.transaction_modulus;
+        let mut sequence = 0;
+        move || {
+            let transaction = prefix | sequence;
+            sequence = (sequence + 1) % modulus;
+            Ok(transaction)
+        }
+    }
+
+    #[test]
+    fn source_floor_and_ceil_round_trip_every_ui_percentage() {
+        for percent in 0..=100 {
+            let raw = encode_percent(percent).unwrap();
+            assert_eq!(raw, (u16::from(percent) * 255 / 100) as u8);
+            let parsed = parse_brightness(&[1, 0, raw], 1, 0).unwrap();
+            assert_eq!(parsed.percent, percent);
+        }
+        assert_eq!(encode_percent(1).unwrap(), 2);
+        assert_eq!(parse_brightness(&[1, 0, 1], 1, 0).unwrap().percent, 1);
+        assert_eq!(parse_brightness(&[1, 0, 254], 1, 0).unwrap().percent, 100);
+        assert!(encode_percent(101).is_err());
+    }
+
+    #[test]
+    fn all_region_read_uses_first_region_record_in_device_order() {
+        let cap = cap();
+        let device = MockTransport::new([
+            reply(&[5, 60, 1, 20, 6, 1, 30, 2, 1, 1]),
+            reply(&[1, 5, 127]),
+        ]);
+        let result = read(&device, &cap, transactions(&cap), || Ok(())).unwrap();
+        assert_eq!(
+            (result.region_id, result.raw_value, result.percent),
+            (5, 127, 50)
+        );
+        let sent = device.sent();
+        assert_eq!(&sent[0][6..9], &cap.regions_command);
+        assert!(sent[0][9..89].iter().all(|byte| *byte == 0));
+        assert_eq!(&sent[1][6..9], &cap.get_command);
+        assert_eq!(&sent[1][9..12], &[1, 5, 0]);
+        assert_eq!(sent[1][2], sent[0][2] + 1);
+    }
+
+    #[test]
+    fn empty_region_list_keeps_all_region_but_rejected_query_falls_back_to_one() {
+        let cap = cap();
+        for (regions, region) in [(reply(&[]), 0), (rejected(), 1)] {
+            let device = MockTransport::new([regions, reply(&[1, region, 255])]);
+            let result = read(&device, &cap, transactions(&cap), || Ok(())).unwrap();
+            assert_eq!((result.region_id, result.percent), (region, 100));
+            assert_eq!(&device.sent()[1][9..11], &[1, region]);
+        }
+    }
+
+    #[test]
+    fn setter_sends_source_bytes_and_only_verifies_after_successful_readback() {
+        let cap = cap();
+        let device = MockTransport::new([
+            reply(&[1, 0, 127]),
+            reply(&[5, 60, 1, 20, 6]),
+            reply(&[1, 5, 127]),
+        ]);
+        let result = apply(&device, &cap, 50, transactions(&cap), || Ok(())).unwrap();
+        assert!(result.verified);
+        assert_eq!(result.requested_percent, 50);
+        assert_eq!(result.acknowledged.region_id, 0);
+        assert_eq!(result.observed.region_id, 5);
+        let sent = device.sent();
+        assert_eq!(sent.len(), 3);
+        assert_eq!(&sent[0][6..9], &[3, 15, 4]);
+        assert_eq!(&sent[0][9..12], &[1, 0, 127]);
+        assert_eq!(&sent[1][6..9], &[80, 15, 128]);
+        assert_eq!(&sent[2][6..9], &[3, 15, 132]);
+        for report in sent {
+            assert_eq!(report.len(), 91);
+            assert_eq!(report[0], 0);
+            assert_eq!(
+                report[89],
+                report[3..89].iter().fold(0, |sum, byte| sum ^ byte)
+            );
+            assert_eq!(report[90], 0);
+        }
+    }
+
+    #[test]
+    fn rejected_truncated_or_wrong_identity_setter_never_starts_readback() {
+        let cap = cap();
+        for setter in [
+            rejected(),
+            reply(&[1, 0]),
+            reply(&[2, 0, 127]),
+            reply(&[1, 5, 127]),
+        ] {
+            let device = MockTransport::new([setter]);
+            assert!(apply(&device, &cap, 50, transactions(&cap), || Ok(())).is_err());
+            assert_eq!(device.sent().len(), 1);
+        }
+    }
+
+    #[test]
+    fn failed_partial_or_different_readback_never_returns_verified() {
+        let cap = cap();
+        for getter in [
+            rejected(),
+            reply(&[1, 5]),
+            reply(&[1, 5, 124]),
+            reply(&[1, 1, 127]),
+        ] {
+            let device =
+                MockTransport::new([reply(&[1, 0, 127]), reply(&[5, 60, 1, 20, 6]), getter]);
+            assert!(apply(&device, &cap, 50, transactions(&cap), || Ok(())).is_err());
+            assert_eq!(device.sent().len(), 3);
+        }
+    }
+
+    #[test]
+    fn getter_rejects_short_report_invalid_id_and_oversized_payload() {
+        let cap = cap();
+        for getter in [
+            Reply {
+                count: 90,
+                ..reply(&[1, 5, 127])
+            },
+            Reply {
+                report_id: 1,
+                ..reply(&[1, 5, 127])
+            },
+            Reply {
+                declared_len: Some(81),
+                ..reply(&[1, 5, 127])
+            },
+            Reply {
+                wrong_transaction: true,
+                ..reply(&[1, 5, 127])
+            },
+        ] {
+            let device = MockTransport::new([reply(&[5, 60, 1, 20, 6]), getter]);
+            assert!(read(&device, &cap, transactions(&cap), || Ok(())).is_err());
+            assert_eq!(device.sent().len(), 2);
+        }
+    }
+
+    #[test]
+    fn invalid_percentage_payload_or_transaction_is_rejected_before_send() {
+        let cap = cap();
+        let device = MockTransport::new([]);
+        assert!(apply(&device, &cap, 101, transactions(&cap), || Ok(())).is_err());
+        assert!(
+            exchange(
+                &device,
+                &cap,
+                cap.set_command,
+                &[1, 0, 127, 0],
+                cap.transport.transaction_prefix,
+                &|| Ok(())
+            )
+            .is_err()
+        );
+        assert!(
+            exchange(
+                &device,
+                &cap,
+                cap.set_command,
+                &[1, 0, 127],
+                cap.transport.transaction_prefix | cap.transport.transaction_modulus,
+                &|| Ok(())
+            )
+            .is_err()
+        );
+        assert!(
+            exchange(
+                &device,
+                &cap,
+                [81, 15, 4],
+                &[],
+                cap.transport.transaction_prefix,
+                &|| Ok(())
+            )
+            .is_err()
+        );
+        assert!(device.sent().is_empty());
+    }
+
+    #[test]
+    fn canceled_region_query_never_sends_fallback() {
+        let cap = cap();
+        let device = MockTransport::new([rejected()]);
+        let validations = Cell::new(0);
+        let result = read(&device, &cap, transactions(&cap), || {
+            let count = validations.get() + 1;
+            validations.set(count);
+            // Cancel at the explicit post-region-query check, after its error.
+            ensure!(count < 6, "mock cancellation");
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert_eq!(device.sent().len(), 1);
+    }
+}

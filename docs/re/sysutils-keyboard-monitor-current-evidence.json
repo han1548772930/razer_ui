@@ -1,0 +1,128 @@
+{
+  "scope": "Native calling-thread keyboard layout timer, change formatter and host subscription bug; application routing remains a gap",
+  "binary": {
+    "path": ".ref/host-4.0.827/native-evidence/CommonDLL/SysUtilsNative.dll",
+    "sha256": "01223bfabf0355f42705836974e343a1f16f837d692999020d218b2615b8e318",
+    "bytes": 1548488
+  },
+  "ida": {
+    "path": "docs/re/evidence/sysutils-keyboard-monitor-ida.json",
+    "sha256": "2d65f072af861df3374a00c65b00796496e779b851256731f0b830c0e1798e1e",
+    "version": "8.3",
+    "functions": [
+      {
+        "rva": 442352,
+        "end_rva": 442985,
+        "code_sha256": "a122dbba1d0468daaa12079f7b272aed11cb2e78ba99f4702d968601e2351406"
+      },
+      {
+        "rva": 461472,
+        "end_rva": 461583,
+        "code_sha256": "acbb5d57adaadcfa41484ab1833ae544e419a966473c61ab9c7189f7311d8794"
+      },
+      {
+        "rva": 487440,
+        "end_rva": 487477,
+        "code_sha256": "e83ad23bb3469e1d86bf20757a7bcf6dc1c546ed8eefa73e132a833559973a3f"
+      },
+      {
+        "rva": 487488,
+        "end_rva": 487596,
+        "code_sha256": "60d5ab1d67cb99bec08dd85f4c9214a2e452064f430ef3d829525a1f282ca86c"
+      },
+      {
+        "rva": 487600,
+        "end_rva": 487654,
+        "code_sha256": "587398ccc24704f5e8b23dd84fed4e221b188bcb6a722912963ce746cb5fa765"
+      }
+    ]
+  },
+  "current_consumers": [
+    {
+      "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+      "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+      "offset_unit": "Python Unicode code points",
+      "offset": 2287,
+      "token": "StartMonitorKeyboardLayout:[\"void\",[]]",
+      "snippet": "ol\",[]]},{GetDriverInfo:[\"pointer\",[\"string\"]],GetSystemLanguage:[\"pointer\",[]]},{systemFamily:[\"pointer\",[]]},{MigrateRzAppEngineRegistry:[\"void\",[\"string\"]]},{GetSystemSerialNumber:[\"pointer\",[]]},{StartMonitorKeyboardLayout:[\"void\",[]],StopMonitorKeyboardLayout:[\"void\",[]]},{getTouchPadEnableStatus:[\"int\",[]],toggleTouchPadEnableStatus:[\"void\",[]]},{registerDiscord:[\"bool\",[\"string\"]]},{getWheelScrollLines:[\"int\",[]],setWheelScrollLines:[\"bool\",[\"int\"]]},{GetURLFromInternetShortcut:[\"pointer\",[\"string\"]],OpenGameController:[\"void\",[]]},{GetRazerMonitorList:[\"pointer\",[]]},{GetModuleInfo:[\"pointer\",[\"string\"]]},{SetProcessPowerThrottling:[\"bool\",[\"bool\"]]},{GetInstalledRazerAppEngineProduct:[\"pointer\",[]]},{GetMachineId:[\"poin"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+      "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+      "offset_unit": "Python Unicode code points",
+      "offset": 2326,
+      "token": "StopMonitorKeyboardLayout:[\"void\",[]]",
+      "snippet": "ring\"]],GetSystemLanguage:[\"pointer\",[]]},{systemFamily:[\"pointer\",[]]},{MigrateRzAppEngineRegistry:[\"void\",[\"string\"]]},{GetSystemSerialNumber:[\"pointer\",[]]},{StartMonitorKeyboardLayout:[\"void\",[]],StopMonitorKeyboardLayout:[\"void\",[]]},{getTouchPadEnableStatus:[\"int\",[]],toggleTouchPadEnableStatus:[\"void\",[]]},{registerDiscord:[\"bool\",[\"string\"]]},{getWheelScrollLines:[\"int\",[]],setWheelScrollLines:[\"bool\",[\"int\"]]},{GetURLFromInternetShortcut:[\"pointer\",[\"string\"]],OpenGameController:[\"void\",[]]},{GetRazerMonitorList:[\"pointer\",[]]},{GetModuleInfo:[\"pointer\",[\"string\"]]},{SetProcessPowerThrottling:[\"bool\",[\"bool\"]]},{GetInstalledRazerAppEngineProduct:[\"pointer\",[]]},{GetMachineId:[\"pointer\",[]]},{GetPathFromShortcutLnk:[\"po"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+      "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+      "offset_unit": "Python Unicode code points",
+      "offset": 5581,
+      "token": "this.keyboardLayoutChangeEventList=this.foregroundEventList.filter(e=>e!==t)",
+      "snippet": ")),console.log(`${this.name}.StartMonitorKeyboardLayout(), keyboardLayoutChangeEventList:`,this.keyboardLayoutChangeEventList)}break;case\"StopMonitorKeyboardLayout\":{const t=e?.sender.getURL();if(t&&(this.keyboardLayoutChangeEventList=this.foregroundEventList.filter(e=>e!==t)),console.log(`${this.name}.StopMonitorKeyboardLayout(), keyboardLayoutChangeEventList:`,this.keyboardLayoutChangeEventList),this.foregroundEventList.length>0)return!0}}return this.ffi?.callDLLMain(s,t,e)};callDLLSync=(e,t)=>this.ffi?.callDLLMain(s,t,e);callDLLAsync=async(e,t)=>await(this.ffi?.callDLLMainAsync(s,t,e));handleFFIEvent=async e=>{const t=\"handleFFIEvent()\";if(e)try{const s=JSON.parse(e);if(void 0===s?.event)return;\"networkStatus\"===s?.event&&(console.log(`${t} event:`,e),n.events.em"
+    },
+    {
+      "path": ".ref/host-4.0.827/electron/modules/sysutil/win/index.js",
+      "sha256": "f6bf22581ac7fce6e32ec1e8ff23bc66aec4a3c6b8e8d14a4a0d57fcbb4a3a0a",
+      "offset_unit": "Python Unicode code points",
+      "offset": 7088,
+      "token": "case\"keyboardlayoutchange\":this.keyboardLayoutChangeEventList.includes(e.getURL())",
+      "snippet": "(const e of o.getAllWebContents())try{if(e&&!e.isDestroyed()&&!e.isCrashed()&&!i(e))switch(s.event){case\"foregroundWindow\":this.foregroundEventList.includes(e.getURL())&&e?.send(s.event,{...s});break;case\"keyboardlayoutchange\":this.keyboardLayoutChangeEventList.includes(e.getURL())&&e?.send(s.event,{...s});break;default:e?.send(s.event,{...s})}}catch(o){console.log(`${t} wc.id:${e?.id}, url:${e?.getURL()}, e:`,o)}}catch(e){console.log(`${t} err:${e.message}, `,e)}}}};\n//# sourceMappingURL=index.js.map"
+    },
+    {
+      "path": ".ref/middleware/182/main.7d7bac778fbfcdb02c10.js",
+      "sha256": "6350402b2a4743363838628b6e74a42131517e0859908ea8ce04fbb666428cab",
+      "offset_unit": "Python Unicode code points",
+      "offset": 45823,
+      "token": "action:\"StartMonitorKeyboardLayout\"",
+      "snippet": "s.callElectronAction(t),console.log(`${this.name}.getSystemSerialNumber() r:${e}`)}return e})),this.startMonitorKeyboardLayout=()=>c(this,void 0,void 0,(function*(){let e;if(this.isElectron){const t={action:\"StartMonitorKeyboardLayout\"};e=yield this.callElectronAction(t)}return e})),this.stopMonitorKeyboardLayout=()=>c(this,void 0,void 0,(function*(){let e;if(this.isElectron){const t={action:\"StopMonitorKeyboardLayout\"};e=yield this.callElectronAction(t)}return e})),this.getTouchPadEnableStatus=()=>c(this,void 0,void 0,(function*(){let e;if(this.isElectron){const t={action:\"getTouchPadEnableStatus\"};e=yield this.callElectronAction(t),console.log(`${this.name}.getTouchPadEnableStatus() r:${e}`)}return e})),this.toggleTouchPadE"
+    },
+    {
+      "path": ".ref/middleware/182/main.7d7bac778fbfcdb02c10.js",
+      "sha256": "6350402b2a4743363838628b6e74a42131517e0859908ea8ce04fbb666428cab",
+      "offset_unit": "Python Unicode code points",
+      "offset": 46011,
+      "token": "action:\"StopMonitorKeyboardLayout\"",
+      "snippet": "n){const t={action:\"StartMonitorKeyboardLayout\"};e=yield this.callElectronAction(t)}return e})),this.stopMonitorKeyboardLayout=()=>c(this,void 0,void 0,(function*(){let e;if(this.isElectron){const t={action:\"StopMonitorKeyboardLayout\"};e=yield this.callElectronAction(t)}return e})),this.getTouchPadEnableStatus=()=>c(this,void 0,void 0,(function*(){let e;if(this.isElectron){const t={action:\"getTouchPadEnableStatus\"};e=yield this.callElectronAction(t),console.log(`${this.name}.getTouchPadEnableStatus() r:${e}`)}return e})),this.toggleTouchPadEnableStatus=()=>c(this,void 0,void 0,(function*(){let e;if(this.isElectron){const t={action:\"toggleTouchPadEnableStatus\"};e=yield this.callElectronAction(t),console.log(`${this.name}.togg"
+    },
+    {
+      "path": ".ref/middleware/182/main.7d7bac778fbfcdb02c10.js",
+      "sha256": "6350402b2a4743363838628b6e74a42131517e0859908ea8ce04fbb666428cab",
+      "offset_unit": "Python Unicode code points",
+      "offset": 60013,
+      "token": "this.emit(\"keyboardlayoutchange\",e.data)",
+      "snippet": "JSON.stringify(e)}`),e&&this.emit(\"system_language_change\",e.data)})),l.response(\"keyboardlayoutchange\",(e=>{console.log(`apiElectron.response('keyboardlayoutchange'), event:${JSON.stringify(e)}`),e&&this.emit(\"keyboardlayoutchange\",e.data)})),l.response(\"notification-uri\",(e=>{console.log(`apiElectron.response('notification-uri'), event:${JSON.stringify(e)}`),e&&this.emit(\"notification-uri\",e)})),l.response(\"appLaunchedChanged\",(e=>{console.log(`apiElectron.response('appLaunchedChanged'), event:${JSON.stringify(e)}`),e&&this.emit(\"appLaunchedChanged\",e)})),l.response(\"change-profile-device\",(e=>{this.emit(\"change-profile-device\",e)}))):this.isRzAppEngine&&(window.onsystempowerstatechange=e=>{console.log(\"systempowerstatechange ev"
+    }
+  ],
+  "semantics": {
+    "baseline": "Query GetKeyboardLayoutNameA on creating thread and parse zero-initialized ANSI string with %x",
+    "timer": {
+      "hwnd": null,
+      "requested_id": 0,
+      "interval_ms": 2000,
+      "callback_rva": 487440
+    },
+    "thread_contract": "HWND-less timer callbacks require the creating thread to dispatch messages; HKL is that same thread, not foreground thread",
+    "change": "No initial event; compare full 32-bit layout, update cache before formatter, skip equal value",
+    "event": {
+      "event": "keyboardlayoutchange",
+      "data": {
+        "langId": "signed int32 promoted to JSON signed integer"
+      }
+    },
+    "native_stop": "KillTimer(NULL,id) then clear id regardless of BOOL; wrapper exposes void",
+    "host_stop_bug": "Replace keyboard URL list with foreground URL list excluding sender; skip native stop whenever original foreground list is nonempty"
+  },
+  "implementation": {
+    "shared": "crates/razer-platform/src/keyboard_layout_monitor.rs",
+    "windows": "crates/razer-platform/src/platform/windows/keyboard_layout_monitor.rs",
+    "owner": "Thread-bound !Send UI/message-pumped owner; no background thread replacement",
+    "runtime_acceptance": "not_run"
+  },
+  "remaining_gaps": [
+    "Actual feature/product startup and UI message-pumped owner not yet routed to platform timer",
+    "Blocking stdin IPC worker has no message pump; no false equivalent IPC start/poll is exposed",
+    "Complete SysUtils initialization/termination and other capabilities remain incomplete"
+  ]
+}

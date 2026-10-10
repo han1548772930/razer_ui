@@ -1,0 +1,854 @@
+{
+  "schema_version": 2,
+  "scope": "Both manifest-bound RzAudioUtil GetDLLVersion functions only",
+  "method": "Static IDA/Hex-Rays body + original PE hashes + current wrapper/host receipts",
+  "variants": [
+    {
+      "version": "1.0.1.1",
+      "path": ".ref/native-libraries/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11/RzAudioUtil_v1.0.1.1.dll",
+      "sha256": "012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11",
+      "bytes": 706248,
+      "ida_version": "8.3",
+      "corpus_path": "docs/re/evidence/ida-native/012b86a320f2f9a1266cd7a0165da7b5e02e0ea2abe2aa065038089020a7bf11.json.gz",
+      "functions": [
+        {
+          "rva": 20528,
+          "end_rva": 20870,
+          "name": "GetDLLVersion",
+          "code_sha256": "580add0f6da0a4b3fdd51a7d13e3fc608bfd8fdf03097c6a850c6c863e00448d",
+          "pseudocode": "__int64 GetDLLVersion()\n{\n  __int64 v0; // rcx\n  int v1; // r8d\n  __int64 v2; // rax\n  __int64 v4; // rdi\n  __int64 result; // rax\n  __int64 v6; // rbx\n  int v7; // [rsp+28h] [rbp-190h]\n  int v8; // [rsp+30h] [rbp-188h]\n  __int128 v9; // [rsp+40h] [rbp-178h]\n  __int64 v10[2]; // [rsp+60h] [rbp-158h] BYREF\n  __int128 v11; // [rsp+70h] [rbp-148h] BYREF\n  const char *v12; // [rsp+80h] [rbp-138h]\n  char v13[272]; // [rsp+90h] [rbp-128h] BYREF\n\n  sub_180076440(v13, 0i64, 260i64);\n  v8 = 1;\n  v7 = 1;\n  sub_1800012F0((int)v13, 260, (int)\"%d.%d.%d.%d\", 1i64, 0i64, v7, v8);\n  DWORD2(v9) = 59;\n  *(_QWORD *)&v9 = \"C:\\\\Projects\\\\THX V4\\\\rzaudioutil\\\\RzAudioUtil\\\\dispatch.cpp\";\n  HIDWORD(v9) = HIDWORD(v11);\n  v10[0] = (__int64)\"GetDLLVersion Version: {}\";\n  v0 = *((_QWORD *)sub_1800041F0() + 59);\n  v10[1] = 25i64;\n  v11 = v9;\n  v12 = \"GetDLLVersion\";\n  sub_180018110(v0, (unsigned int)&v11, v1, (unsigned int)v10, (__int64)v13);\n  v2 = -1i64;\n  while ( v13[++v2] != 0 )\n    ;\n  v4 = v2 + 1;\n  result = sub_18005C680(v2 + 1);\n  v6 = result;\n  if ( result )\n  {\n    sub_18005BF80(result, v4, v13);\n    return v6;\n  }\n  return result;\n}\n",
+          "decompiler_error": null,
+          "incoming_references": [
+            {
+              "from_rva": 641320,
+              "type": 1,
+              "is_code": false
+            },
+            {
+              "from_rva": 681016,
+              "type": 1,
+              "is_code": false
+            }
+          ],
+          "instructions": [
+            {
+              "rva": 20528,
+              "text": "mov     [rsp+arg_0], rbx"
+            },
+            {
+              "rva": 20533,
+              "text": "push    rdi"
+            },
+            {
+              "rva": 20534,
+              "text": "sub     rsp, 1B0h"
+            },
+            {
+              "rva": 20541,
+              "text": "mov     rax, cs:__security_cookie"
+            },
+            {
+              "rva": 20548,
+              "text": "xor     rax, rsp"
+            },
+            {
+              "rva": 20551,
+              "text": "mov     [rsp+1B8h+var_18], rax"
+            },
+            {
+              "rva": 20559,
+              "text": "xor     edx, edx"
+            },
+            {
+              "rva": 20561,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 20569,
+              "text": "mov     r8d, 104h"
+            },
+            {
+              "rva": 20575,
+              "text": "call    sub_180076440"
+            },
+            {
+              "rva": 20580,
+              "text": "mov     [rsp+1B8h+var_188], 1"
+            },
+            {
+              "rva": 20588,
+              "text": "lea     r8, aDDDD; \"%d.%d.%d.%d\""
+            },
+            {
+              "rva": 20595,
+              "text": "mov     [rsp+1B8h+var_190], 1"
+            },
+            {
+              "rva": 20603,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 20611,
+              "text": "mov     r9d, 1"
+            },
+            {
+              "rva": 20617,
+              "text": "mov     [rsp+1B8h+var_198], 0"
+            },
+            {
+              "rva": 20626,
+              "text": "mov     edx, 104h"
+            },
+            {
+              "rva": 20631,
+              "text": "call    sub_1800012F0"
+            },
+            {
+              "rva": 20636,
+              "text": "call    sub_1800041F0"
+            },
+            {
+              "rva": 20641,
+              "text": "lea     rcx, aCProjectsThxV4; \"C:\\\\Projects\\\\THX V4\\\\rzaudioutil\\\\RzAu\"..."
+            },
+            {
+              "rva": 20648,
+              "text": "mov     dword ptr [rsp+1B8h+var_178+8], 3Bh ; ';'"
+            },
+            {
+              "rva": 20656,
+              "text": "mov     qword ptr [rsp+1B8h+var_178], rcx"
+            },
+            {
+              "rva": 20661,
+              "text": "lea     r9, [rsp+1B8h+var_158]"
+            },
+            {
+              "rva": 20666,
+              "text": "mov     ecx, dword ptr [rsp+1B8h+var_148+0Ch]"
+            },
+            {
+              "rva": 20670,
+              "text": "lea     rdx, [rsp+1B8h+var_148]"
+            },
+            {
+              "rva": 20675,
+              "text": "mov     dword ptr [rsp+1B8h+var_178+0Ch], ecx"
+            },
+            {
+              "rva": 20679,
+              "text": "lea     rcx, aGetdllversion_0; \"GetDLLVersion\""
+            },
+            {
+              "rva": 20686,
+              "text": "movups  xmm0, [rsp+1B8h+var_178]"
+            },
+            {
+              "rva": 20691,
+              "text": "mov     [rsp+1B8h+var_168], rcx"
+            },
+            {
+              "rva": 20696,
+              "text": "lea     rcx, aGetdllversionV; \"GetDLLVersion Version: {}\""
+            },
+            {
+              "rva": 20703,
+              "text": "movsd   xmm1, [rsp+1B8h+var_168]"
+            },
+            {
+              "rva": 20709,
+              "text": "mov     [rsp+1B8h+var_158], rcx"
+            },
+            {
+              "rva": 20714,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 20722,
+              "text": "mov     [rsp+1B8h+var_198], rcx"
+            },
+            {
+              "rva": 20727,
+              "text": "mov     rcx, [rax+1D8h]"
+            },
+            {
+              "rva": 20734,
+              "text": "mov     [rsp+1B8h+var_150], 19h"
+            },
+            {
+              "rva": 20743,
+              "text": "movaps  [rsp+1B8h+var_148], xmm0"
+            },
+            {
+              "rva": 20748,
+              "text": "movsd   [rsp+1B8h+var_138], xmm1"
+            },
+            {
+              "rva": 20757,
+              "text": "call    sub_180018110"
+            },
+            {
+              "rva": 20762,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 20770,
+              "text": "mov     rax, 0FFFFFFFFFFFFFFFFh"
+            },
+            {
+              "rva": 20777,
+              "text": "nop     dword ptr [rax+00000000h]"
+            },
+            {
+              "rva": 20784,
+              "text": "cmp     byte ptr [rcx+rax+1], 0"
+            },
+            {
+              "rva": 20789,
+              "text": "lea     rax, [rax+1]"
+            },
+            {
+              "rva": 20793,
+              "text": "jnz     short loc_180005130"
+            },
+            {
+              "rva": 20795,
+              "text": "lea     rdi, [rax+1]"
+            },
+            {
+              "rva": 20799,
+              "text": "mov     rcx, rdi"
+            },
+            {
+              "rva": 20802,
+              "text": "call    sub_18005C680"
+            },
+            {
+              "rva": 20807,
+              "text": "mov     rbx, rax"
+            },
+            {
+              "rva": 20810,
+              "text": "test    rax, rax"
+            },
+            {
+              "rva": 20813,
+              "text": "jz      short loc_180005165"
+            },
+            {
+              "rva": 20815,
+              "text": "lea     r8, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 20823,
+              "text": "mov     rdx, rdi"
+            },
+            {
+              "rva": 20826,
+              "text": "mov     rcx, rax"
+            },
+            {
+              "rva": 20829,
+              "text": "call    sub_18005BF80"
+            },
+            {
+              "rva": 20834,
+              "text": "mov     rax, rbx"
+            },
+            {
+              "rva": 20837,
+              "text": "mov     rcx, [rsp+1B8h+var_18]"
+            },
+            {
+              "rva": 20845,
+              "text": "xor     rcx, rsp; StackCookie"
+            },
+            {
+              "rva": 20848,
+              "text": "call    __security_check_cookie"
+            },
+            {
+              "rva": 20853,
+              "text": "mov     rbx, [rsp+1B8h+arg_0]"
+            },
+            {
+              "rva": 20861,
+              "text": "add     rsp, 1B0h"
+            },
+            {
+              "rva": 20868,
+              "text": "pop     rdi"
+            },
+            {
+              "rva": 20869,
+              "text": "retn"
+            }
+          ]
+        },
+        {
+          "rva": 20096,
+          "end_rva": 20106,
+          "name": "FreeMalloc",
+          "code_sha256": "b1e74d1a1076125c2112bc02045a80945afe3e64a056266115cebe26d641a4b5",
+          "pseudocode": "__int64 __fastcall FreeMalloc(void *a1)\n{\n  __int64 result; // rax\n\n  if ( a1 )\n    return sub_18005C1A0(a1);\n  return result;\n}\n",
+          "decompiler_error": null,
+          "incoming_references": [
+            {
+              "from_rva": 641320,
+              "type": 1,
+              "is_code": false
+            }
+          ],
+          "instructions": [
+            {
+              "rva": 20096,
+              "text": "test    rcx, rcx"
+            },
+            {
+              "rva": 20099,
+              "text": "jnz     sub_18005C1A0"
+            },
+            {
+              "rva": 20105,
+              "text": "retn"
+            }
+          ]
+        }
+      ],
+      "current_consumers": [
+        {
+          "product_id": 1401,
+          "manifest": {
+            "product_id": 1401,
+            "resource_name": "RzAudioUtil",
+            "resource_version": "1.0.1.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.1.1.dll",
+            "source": ".ref/middleware/1401/manifest.json",
+            "source_sha256": "1448bf7fae8da90d02d33664eb1e40c98b17cf492c11bd9b2ffff86f9f0ff037"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/1401/main.2d3cd7ccd88e675efbf2.js",
+              "sha256": "cf45f6eaea1af6e1ae39ef01d1b0b88d89a76c711f6f1bd83835081814a7b84c",
+              "bytes": 2061895,
+              "start_utf16": 679612,
+              "end_utf16": 681962,
+              "text": "(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i((function(e){e(t)}))).then(a,s)}l((n=n.apply(e,t||[])).next())}))};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,(function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)})),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,(function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}}))}dispatch(e,t,i={},o){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){r"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "1.0.3.1",
+      "path": ".ref/native-libraries/9134a79a2aac0d3ca48087fe2ad62ab29b44ad334c9d85edf36171c7ea79caaf/RzAudioUtil_v1.0.3.1.dll",
+      "sha256": "9134a79a2aac0d3ca48087fe2ad62ab29b44ad334c9d85edf36171c7ea79caaf",
+      "bytes": 799432,
+      "ida_version": "8.3",
+      "corpus_path": "docs/re/evidence/ida-native/9134a79a2aac0d3ca48087fe2ad62ab29b44ad334c9d85edf36171c7ea79caaf.json.gz",
+      "functions": [
+        {
+          "rva": 110096,
+          "end_rva": 110438,
+          "name": "GetDLLVersion",
+          "code_sha256": "832a7962698a08aafc7d72140e18dfa5945fd65f8c42b257ad94a8eefab8348e",
+          "pseudocode": "__int64 GetDLLVersion()\n{\n  __int64 v0; // rcx\n  int v1; // r8d\n  __int64 v2; // rax\n  __int64 v4; // rdi\n  __int64 result; // rax\n  __int64 v6; // rbx\n  int v7; // [rsp+28h] [rbp-190h]\n  int v8; // [rsp+30h] [rbp-188h]\n  __int128 v9; // [rsp+40h] [rbp-178h]\n  __int64 v10[2]; // [rsp+60h] [rbp-158h] BYREF\n  __int128 v11; // [rsp+70h] [rbp-148h] BYREF\n  const char *v12; // [rsp+80h] [rbp-138h]\n  char v13[272]; // [rsp+90h] [rbp-128h] BYREF\n\n  sub_1800821E0(v13, 0i64, 260i64);\n  v8 = 1;\n  v7 = 3;\n  sub_18001A030((int)v13, 260, (int)\"%d.%d.%d.%d\", 1i64, 0i64, v7, v8);\n  DWORD2(v9) = 69;\n  *(_QWORD *)&v9 = \"C:\\\\Projects\\\\THX_V4\\\\rzaudioutil\\\\RzAudioUtil\\\\dispatch.cpp\";\n  HIDWORD(v9) = HIDWORD(v11);\n  v10[0] = (__int64)\"GetDLLVersion Version: {}\";\n  v0 = *((_QWORD *)sub_18000ACD0() + 59);\n  v10[1] = 25i64;\n  v11 = v9;\n  v12 = \"GetDLLVersion\";\n  sub_18001C4D0(v0, (unsigned int)&v11, v1, (unsigned int)v10, (__int64)v13);\n  v2 = -1i64;\n  while ( v13[++v2] != 0 )\n    ;\n  v4 = v2 + 1;\n  result = sub_180068020(v2 + 1);\n  v6 = result;\n  if ( result )\n  {\n    sub_180067F60(result, v4, v13);\n    return v6;\n  }\n  return result;\n}\n",
+          "decompiler_error": null,
+          "incoming_references": [
+            {
+              "from_rva": 723656,
+              "type": 1,
+              "is_code": false
+            },
+            {
+              "from_rva": 775724,
+              "type": 1,
+              "is_code": false
+            }
+          ],
+          "instructions": [
+            {
+              "rva": 110096,
+              "text": "mov     [rsp+arg_0], rbx"
+            },
+            {
+              "rva": 110101,
+              "text": "push    rdi"
+            },
+            {
+              "rva": 110102,
+              "text": "sub     rsp, 1B0h"
+            },
+            {
+              "rva": 110109,
+              "text": "mov     rax, cs:__security_cookie"
+            },
+            {
+              "rva": 110116,
+              "text": "xor     rax, rsp"
+            },
+            {
+              "rva": 110119,
+              "text": "mov     [rsp+1B8h+var_18], rax"
+            },
+            {
+              "rva": 110127,
+              "text": "xor     edx, edx"
+            },
+            {
+              "rva": 110129,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 110137,
+              "text": "mov     r8d, 104h"
+            },
+            {
+              "rva": 110143,
+              "text": "call    sub_1800821E0"
+            },
+            {
+              "rva": 110148,
+              "text": "mov     [rsp+1B8h+var_188], 1"
+            },
+            {
+              "rva": 110156,
+              "text": "lea     r8, aDDDD; \"%d.%d.%d.%d\""
+            },
+            {
+              "rva": 110163,
+              "text": "mov     [rsp+1B8h+var_190], 3"
+            },
+            {
+              "rva": 110171,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 110179,
+              "text": "mov     r9d, 1"
+            },
+            {
+              "rva": 110185,
+              "text": "mov     [rsp+1B8h+var_198], 0"
+            },
+            {
+              "rva": 110194,
+              "text": "mov     edx, 104h"
+            },
+            {
+              "rva": 110199,
+              "text": "call    sub_18001A030"
+            },
+            {
+              "rva": 110204,
+              "text": "call    sub_18000ACD0"
+            },
+            {
+              "rva": 110209,
+              "text": "lea     rcx, aCProjectsThxV4_0; \"C:\\\\Projects\\\\THX_V4\\\\rzaudioutil\\\\RzAu\"..."
+            },
+            {
+              "rva": 110216,
+              "text": "mov     dword ptr [rsp+1B8h+var_178+8], 45h ; 'E'"
+            },
+            {
+              "rva": 110224,
+              "text": "mov     qword ptr [rsp+1B8h+var_178], rcx"
+            },
+            {
+              "rva": 110229,
+              "text": "lea     r9, [rsp+1B8h+var_158]"
+            },
+            {
+              "rva": 110234,
+              "text": "mov     ecx, dword ptr [rsp+1B8h+var_148+0Ch]"
+            },
+            {
+              "rva": 110238,
+              "text": "lea     rdx, [rsp+1B8h+var_148]"
+            },
+            {
+              "rva": 110243,
+              "text": "mov     dword ptr [rsp+1B8h+var_178+0Ch], ecx"
+            },
+            {
+              "rva": 110247,
+              "text": "lea     rcx, aGetdllversion_0; \"GetDLLVersion\""
+            },
+            {
+              "rva": 110254,
+              "text": "movups  xmm0, [rsp+1B8h+var_178]"
+            },
+            {
+              "rva": 110259,
+              "text": "mov     [rsp+1B8h+var_168], rcx"
+            },
+            {
+              "rva": 110264,
+              "text": "lea     rcx, aGetdllversionV; \"GetDLLVersion Version: {}\""
+            },
+            {
+              "rva": 110271,
+              "text": "movsd   xmm1, [rsp+1B8h+var_168]"
+            },
+            {
+              "rva": 110277,
+              "text": "mov     [rsp+1B8h+var_158], rcx"
+            },
+            {
+              "rva": 110282,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 110290,
+              "text": "mov     [rsp+1B8h+var_198], rcx"
+            },
+            {
+              "rva": 110295,
+              "text": "mov     rcx, [rax+1D8h]"
+            },
+            {
+              "rva": 110302,
+              "text": "mov     [rsp+1B8h+var_150], 19h"
+            },
+            {
+              "rva": 110311,
+              "text": "movaps  [rsp+1B8h+var_148], xmm0"
+            },
+            {
+              "rva": 110316,
+              "text": "movsd   [rsp+1B8h+var_138], xmm1"
+            },
+            {
+              "rva": 110325,
+              "text": "call    sub_18001C4D0"
+            },
+            {
+              "rva": 110330,
+              "text": "lea     rcx, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 110338,
+              "text": "mov     rax, 0FFFFFFFFFFFFFFFFh"
+            },
+            {
+              "rva": 110345,
+              "text": "nop     dword ptr [rax+00000000h]"
+            },
+            {
+              "rva": 110352,
+              "text": "cmp     byte ptr [rcx+rax+1], 0"
+            },
+            {
+              "rva": 110357,
+              "text": "lea     rax, [rax+1]"
+            },
+            {
+              "rva": 110361,
+              "text": "jnz     short loc_18001AF10"
+            },
+            {
+              "rva": 110363,
+              "text": "lea     rdi, [rax+1]"
+            },
+            {
+              "rva": 110367,
+              "text": "mov     rcx, rdi"
+            },
+            {
+              "rva": 110370,
+              "text": "call    sub_180068020"
+            },
+            {
+              "rva": 110375,
+              "text": "mov     rbx, rax"
+            },
+            {
+              "rva": 110378,
+              "text": "test    rax, rax"
+            },
+            {
+              "rva": 110381,
+              "text": "jz      short loc_18001AF45"
+            },
+            {
+              "rva": 110383,
+              "text": "lea     r8, [rsp+1B8h+var_128]"
+            },
+            {
+              "rva": 110391,
+              "text": "mov     rdx, rdi"
+            },
+            {
+              "rva": 110394,
+              "text": "mov     rcx, rax"
+            },
+            {
+              "rva": 110397,
+              "text": "call    sub_180067F60"
+            },
+            {
+              "rva": 110402,
+              "text": "mov     rax, rbx"
+            },
+            {
+              "rva": 110405,
+              "text": "mov     rcx, [rsp+1B8h+var_18]"
+            },
+            {
+              "rva": 110413,
+              "text": "xor     rcx, rsp; StackCookie"
+            },
+            {
+              "rva": 110416,
+              "text": "call    __security_check_cookie"
+            },
+            {
+              "rva": 110421,
+              "text": "mov     rbx, [rsp+1B8h+arg_0]"
+            },
+            {
+              "rva": 110429,
+              "text": "add     rsp, 1B0h"
+            },
+            {
+              "rva": 110436,
+              "text": "pop     rdi"
+            },
+            {
+              "rva": 110437,
+              "text": "retn"
+            }
+          ]
+        },
+        {
+          "rva": 109232,
+          "end_rva": 109242,
+          "name": "FreeMalloc",
+          "code_sha256": "a7de62c2c3eca4b1efbe56abdf3be8da0f10352f976e55e8578d36600d04195a",
+          "pseudocode": "__int64 __fastcall FreeMalloc(void *a1)\n{\n  __int64 result; // rax\n\n  if ( a1 )\n    return sub_18005FB60(a1);\n  return result;\n}\n",
+          "decompiler_error": null,
+          "incoming_references": [
+            {
+              "from_rva": 723656,
+              "type": 1,
+              "is_code": false
+            }
+          ],
+          "instructions": [
+            {
+              "rva": 109232,
+              "text": "test    rcx, rcx"
+            },
+            {
+              "rva": 109235,
+              "text": "jnz     sub_18005FB60"
+            },
+            {
+              "rva": 109241,
+              "text": "retn"
+            }
+          ]
+        }
+      ],
+      "current_consumers": [
+        {
+          "product_id": 1398,
+          "manifest": {
+            "product_id": 1398,
+            "resource_name": "RzAudioUtil",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/1398/manifest.json",
+            "source_sha256": "f51de543ccf0137dfce6e87df73949d68e9b2da3bd1877ed16f2edfd01bc9998"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/1398/main.11fdb3ee2d36c7e8efa4.js",
+              "sha256": "bcaa5c81648c67799f276f84cd8bd4a347c08c5ceacfcb73d4238a66f633c3e4",
+              "bytes": 2037355,
+              "start_utf16": 666620,
+              "end_utf16": 668970,
+              "text": "(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i((function(e){e(t)}))).then(a,s)}l((n=n.apply(e,t||[])).next())}))};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,(function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)})),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,(function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}}))}dispatch(e,t,i={},o){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){r"
+            }
+          ]
+        },
+        {
+          "product_id": 1422,
+          "manifest": {
+            "product_id": 1422,
+            "resource_name": "RzAudioUtil_PID058E",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/1422/manifest.json",
+            "source_sha256": "a91c9c6d8dca641a0d524dc3d9d5ce2e13e61ea2e82184398fcbb4e1627f08c0"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/1422/8539.79323eca355460a8ff0d.js",
+              "sha256": "893bc2b1260b2389887d17bf23a56ae1f8af948b4e6879f4a9c51479a15d2734",
+              "bytes": 1840896,
+              "start_utf16": 187822,
+              "end_utf16": 190172,
+              "text": "{try{l(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i(function(e){e(t)})).then(a,s)}l((n=n.apply(e,t||[])).next())})};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)}),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))}),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1})}getDLLVersion(){return a(this,void 0,void 0,function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}})}dispatch(e,t,i={},o){return a(this,void 0,void 0,function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){return "
+            }
+          ]
+        },
+        {
+          "product_id": 1427,
+          "manifest": {
+            "product_id": 1427,
+            "resource_name": "RzAudioUtil",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/1427/manifest.json",
+            "source_sha256": "b4ba1f43c2378a81f969c22f4f9f55e8c68cc68dcf9c1a9a81790fc708ee3386"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/1427/2498.88cfef4cd055553edbe3.js",
+              "sha256": "a42f789333ecfb696dcbec56c4f26442fead93ca81e5b090ac4b6df397ed3347",
+              "bytes": 231467,
+              "start_utf16": 835,
+              "end_utf16": 3185,
+              "text": "(i.throw(e))}catch(e){o(e)}}function u(e){var t;e.done?a(e.value):(t=e.value,t instanceof n?t:new n((function(e){e(t)}))).then(r,s)}u((i=i.apply(e,t||[])).next())}))};const{apiElectron:s}=window.top,u=\"RzAudioUtil_Channel\";class l extends o.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>r(this,void 0,void 0,(function*(){const e=yield(0,i.yL)(u,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)})),this.name=\"RzAudioUtil\",this.isElectron=(0,i.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=a.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return r(this,void 0,void 0,(function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,i.yL)(u,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return r(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,i.yL)(u,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}}))}dispatch(e,t,n={},a){return r(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const o={cmdClass:e,command:t,cmdData:n},r={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(o)]}},s=yield(0,i.yL)(u,r);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return a&&Object.assign(a,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(a,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){r"
+            },
+            {
+              "path": ".ref/middleware/1427/9915.0ab5e4e27380944234c4.js",
+              "sha256": "0425c9e25a360f9653d312127af2fb79f57ef5e422b36a01d017dff95f84626d",
+              "bytes": 5082,
+              "start_utf16": 752,
+              "end_utf16": 3102,
+              "text": "(n.throw(t))}catch(t){s(t)}}function l(t){var e;t.done?o(t.value):(e=t.value,e instanceof i?e:new i((function(t){t(e)}))).then(r,a)}l((n=n.apply(t,e||[])).next())}))};const{apiElectron:a}=window.top,l=\"RzAudioUtil_Channel\";class d extends s.EventEmitter{constructor(t){super(),this.setNodeFFIEvent=()=>r(this,void 0,void 0,(function*(){const t=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${t}, `,t)})),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=t,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return r(this,void 0,void 0,(function*(){try{const t={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},e=yield(0,n.yL)(l,t);if(null==e?void 0:e.result){this.isInit=!0;const t=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${t}`),yield this.setNodeFFIEvent(),a.response(\"RzAudioUtilEvent\",(t=>{void 0!==(null==t?void 0:t.eventType)&&(console.log(`${this.name} emitting event: ${t.eventType}`,t),this.emit(t.eventType,t))})),!0}}catch(t){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${t.message}`),!1}return!1}))}getDLLVersion(){return r(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const t={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,t)}catch(t){return console.warn(`${this.name} exception - unable to get DLL version: ${t.message}`),null}}))}dispatch(t,e,i={},o){return r(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const s={cmdClass:t,command:e,cmdData:i},r={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(s)]}},a=yield(0,n.yL)(l,r);if(\"string\"==typeof a){const t=JSON.parse(a);if(\"success\"===(null==t?void 0:t.status))return o&&Object.assign(o,t.response),!0;if(\"error\"===(null==t?void 0:t.status))return(null==t?void 0:t.error)&&Object.assign(o,t.error),console.warn(`${this.name}.dispatch error:`,(null==t?void 0:t.error)||\"Unknown error\"),!1}}catch(t){r"
+            }
+          ]
+        },
+        {
+          "product_id": 1446,
+          "manifest": {
+            "product_id": 1446,
+            "resource_name": "RzAudioUtil_PID05A6",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/1446/manifest.json",
+            "source_sha256": "eeda36df46ee3a7fb3201ba451fd53ef4b95afff2266b47528e19c36e6c135b8"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/1446/8539.84676161aef6933093a6.js",
+              "sha256": "d0bcdbed3aecd9814a0dbd030340462f94e905882e2b307073579fba1f21ed6c",
+              "bytes": 1789221,
+              "start_utf16": 194455,
+              "end_utf16": 196805,
+              "text": "{try{l(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i(function(e){e(t)})).then(a,s)}l((n=n.apply(e,t||[])).next())})};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)}),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))}),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1})}getDLLVersion(){return a(this,void 0,void 0,function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}})}dispatch(e,t,i={},o){return a(this,void 0,void 0,function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){return "
+            }
+          ]
+        },
+        {
+          "product_id": 2638,
+          "manifest": {
+            "product_id": 2638,
+            "resource_name": "RzAudioUtil",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/2638/manifest.json",
+            "source_sha256": "980f14fe5865bbba3c0a9771c3913b1cfad134b1cbcec108f06fbe33cdfa8b19"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/2638/main.ce290ea3a2c8cf6a1d88.js",
+              "sha256": "f14a73d14be17df6e46397e0baa4c7bc6e6570b4ecb24590159ae2aa971216c1",
+              "bytes": 2058498,
+              "start_utf16": 677774,
+              "end_utf16": 680124,
+              "text": "(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i((function(e){e(t)}))).then(a,s)}l((n=n.apply(e,t||[])).next())}))};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,(function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)})),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,(function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}}))}dispatch(e,t,i={},o){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){r"
+            }
+          ]
+        },
+        {
+          "product_id": 2641,
+          "manifest": {
+            "product_id": 2641,
+            "resource_name": "RzAudioUtil",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/2641/manifest.json",
+            "source_sha256": "5e2c648c855b91a4881075cd3a8ccf78c81c1d79b3782e552af79b0e6e546c2f"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/2641/main.c5d4890695071a363997.js",
+              "sha256": "7136737901785839f62b0aa6001156425bb9b6094f382aeffe0e8a8239c8099e",
+              "bytes": 2061747,
+              "start_utf16": 679612,
+              "end_utf16": 681962,
+              "text": "(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i((function(e){e(t)}))).then(a,s)}l((n=n.apply(e,t||[])).next())}))};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,(function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)})),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,(function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}}))}dispatch(e,t,i={},o){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){r"
+            }
+          ]
+        },
+        {
+          "product_id": 4124,
+          "manifest": {
+            "product_id": 4124,
+            "resource_name": "RzAudioUtil",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/4124/manifest.json",
+            "source_sha256": "3859109b47e92a07c5eb334300f9cc5f86784f0101a9dd9df2cda167e2292a8a"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/4124/main.3677f1798f75ba44ad39.js",
+              "sha256": "36887be305e355271469451ec7708c7e6275320b956a753e23043b0bff7e1d09",
+              "bytes": 2035693,
+              "start_utf16": 666620,
+              "end_utf16": 668970,
+              "text": "(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i((function(e){e(t)}))).then(a,s)}l((n=n.apply(e,t||[])).next())}))};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,(function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)})),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,(function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}}))}dispatch(e,t,i={},o){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){r"
+            }
+          ]
+        },
+        {
+          "product_id": 4126,
+          "manifest": {
+            "product_id": 4126,
+            "resource_name": "RzAudioUtil",
+            "resource_version": "1.0.3.1",
+            "install_relative_path": "common/rzaudioutil/RzAudioUtil_v1.0.3.1.dll",
+            "source": ".ref/middleware/4126/manifest.json",
+            "source_sha256": "2c5e8ebfe61aae2818ef74e79e94ec275594e3bad8592fc717f325fd3dfe1507"
+          },
+          "wrappers": [
+            {
+              "path": ".ref/middleware/4126/main.460063859626cc3aa87e.js",
+              "sha256": "b9e9134ad83872aff9b4c09a783f699003c6cafcefaf948393a1533cd0949f5b",
+              "bytes": 2059592,
+              "start_utf16": 679612,
+              "end_utf16": 681962,
+              "text": "(n.throw(e))}catch(e){r(e)}}function l(e){var t;e.done?o(e.value):(t=e.value,t instanceof i?t:new i((function(e){e(t)}))).then(a,s)}l((n=n.apply(e,t||[])).next())}))};const{apiElectron:s}=window.top,l=\"RzAudioUtil_Channel\";class c extends r.EventEmitter{constructor(e){super(),this.setNodeFFIEvent=()=>a(this,void 0,void 0,(function*(){const e=yield(0,n.yL)(l,{action:\"SetNodeFFIEvent\"});console.log(`${this.name}.setNodeFFIEvent() SetNodeFFIEvents:${e}, `,e)})),this.name=\"RzAudioUtil\",this.isElectron=(0,n.I4)(),this.dllName=e,this.isInit=!1,console.log(`${this.name} constructor`),this.dllName||(this.dllName=o.A.userDataDir+\"\\\\Apps\\\\Common\\\\RzAudioUtil\\\\RzAudioUtil.dll\",console.log(`${this.name} dllName: ${this.dllName}`))}init(){return a(this,void 0,void 0,(function*(){try{const e={action:\"ConfigureFFI\",payload:{dllPath:this.dllName,apiObj:{GetDLLVersion:[\"pointer\",[]],FreeMalloc:[\"void\",[\"pointer\"]],SetNodeFFIEvent:[\"bool\",[\"pointer\"]],Dispatch:[\"pointer\",[\"string\"]]}}},t=yield(0,n.yL)(l,e);if(null==t?void 0:t.result){this.isInit=!0;const e=yield this.getDLLVersion();return console.log(`${this.name} initialized with DLL version: ${e}`),yield this.setNodeFFIEvent(),s.response(\"RzAudioUtilEvent\",(e=>{void 0!==(null==e?void 0:e.eventType)&&(console.log(`${this.name} emitting event: ${e.eventType}`,e),this.emit(e.eventType,e))})),!0}}catch(e){return console.warn(`${this.name} exception - unable to load dll from path: ${this.dllName} e:${e.message}`),!1}return!1}))}getDLLVersion(){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const e={action:\"GetDLLVersion\"};return yield(0,n.yL)(l,e)}catch(e){return console.warn(`${this.name} exception - unable to get DLL version: ${e.message}`),null}}))}dispatch(e,t,i={},o){return a(this,void 0,void 0,(function*(){try{if(!this.isInit)throw new Error(\"RzAudioUtil not initialized\");const r={cmdClass:e,command:t,cmdData:i},a={action:\"Dispatch\",payload:{actionArgs:[JSON.stringify(r)]}},s=yield(0,n.yL)(l,a);if(\"string\"==typeof s){const e=JSON.parse(s);if(\"success\"===(null==e?void 0:e.status))return o&&Object.assign(o,e.response),!0;if(\"error\"===(null==e?void 0:e.status))return(null==e?void 0:e.error)&&Object.assign(o,e.error),console.warn(`${this.name}.dispatch error:`,(null==e?void 0:e.error)||\"Unknown error\"),!1}}catch(e){r"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "host_return_ownership": {
+    "path": ".ref/host-4.0.827/electron/modules/ffi/FFIPreloadMain.js",
+    "sha256": "64b1dbe3dead30176b3da92a427938eb24c264df8d5e7fff7930eedb75bb345a",
+    "bytes": 16127,
+    "start_utf16": 7758,
+    "end_utf16": 9058,
+    "text": "_handleAction_Default=(e,n,a,t)=>{const i=\"_handleAction_Default()\";let o;try{let s,r=!1;try{const n=Date.now();s=void 0!==t?.payload?.actionArgs?Array.isArray(t.payload.actionArgs)?e[t.action](...t.payload.actionArgs):e[t.action](t.payload.actionArgs):e[t.action]();const i=Date.now();i-n>l&&console.warn(`[Overtime][${this.name}][${a}] action: ${t.action} time: ${i-n}`),s&&\"function\"==typeof s.readCString?(o=s.readCString(),r=!0):o=s}catch(e){console.warn(`${this.name}.${i} url:${n}, channel:${a}`,\", arg:\",t,\", r:\",s,\"e:\",e.message)}finally{r&&(s&&e.FreeMalloc?e.FreeMalloc(s):console.warn(`${this.name}.${i} url:${n}, channel:${a}, arg:${JSON.stringify(t)}, missing freeMalloc`))}}catch(e){console.warn(`${this.name}.${i} url:${n}, channel:${a}, arg:${JSON.stringify(t)}, e:${e.message}`)}return o};callDLL=async(e,n,a)=>{const t=\"callDLL()\",l=e?.sender.getURL(),s=!this.skipLoggingApi.includes(a?.action);s&&console.log(`${this.name}.${t} channel:${n}`,\", arg.action:\",a?.action,\", url:\",l,\", ==>\"),this.ffiMutexMap.has(n)||this.ffiMutexMap.set(n,new i);const r=await this.ffiMutexMap.get(n).acquire();let c;try{switch(a?.action){case\"ConfigureFFI\":c=this._handleAction_ConfigureFFI(l,n,a);break;case\"ConfigureFFI_APIToCallWhenExit\":c=this._handleAction_ConfigureFFI_APIToCallWhenExit(l,n,a);"
+  },
+  "semantics": "Format four constants; strlen+1 allocation and NUL-inclusive copy; null on allocation failure; FreeMalloc only frees non-null pointers",
+  "rust": {
+    "path": "crates/razer-service/src/native_query.rs",
+    "sha256": "f02b3cebd50c7eb00237b545d508395615257ec616db81de58b213dd0262cdc2",
+    "request": "NativeLibraryVersion",
+    "product_id_required": true,
+    "transport": "source-derived",
+    "vendor_dll_loaded": false,
+    "observation_limit": "Source semantic version, not a claim that an installed DLL was loaded or queried"
+  },
+  "runtime_acceptance": "not_run",
+  "whole_library_complete": false
+}

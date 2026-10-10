@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "products": [
+    {
+      "product_id": 164,
+      "edition_id": 0,
+      "default_profile": {
+        "guid": "",
+        "name": " ",
+        "brightness": {
+          "isEnabled": true,
+          "value": 100
+        },
+        "switchOffLighting": {
+          "isDisplayOn": false,
+          "isIdleEnabled": false,
+          "idleMinutes": 1
+        },
+        "quickEffects": {
+          "selectedEffectId": 3
+        },
+        "mappings": []
+      },
+      "default_global": {
+        "version": 1,
+        "vendorId": 5426,
+        "productId": 164,
+        "category": "ACCESSORY",
+        "reportIDs": {
+          "4": "razerKeyReportID",
+          "5": "hardwareEventReportID"
+        }
+      },
+      "actual_task": "taskMakerResetOBM",
+      "factory_reset_command_reachable": false,
+      "preserves_existing_profiles": true,
+      "refresh_events": [
+        "ON_INIT_BRIGHTNESS",
+        "ON_SET_EFFECTS",
+        "ON_SET_KEYMAPPING"
+      ]
+    },
+    {
+      "product_id": 241,
+      "edition_id": 0,
+      "default_profile": {
+        "guid": "",
+        "name": " ",
+        "brightness": {
+          "isEnabled": true,
+          "value": 100
+        },
+        "switchOffLighting": {
+          "isDisplayOn": false,
+          "isIdleEnabled": false,
+          "idleMinutes": 1
+        },
+        "quickEffects": {
+          "selectedEffectId": 3
+        },
+        "mappings": [],
+        "canPairTwoDevices": true
+      },
+      "default_global": {
+        "version": 1,
+        "vendorId": 5426,
+        "productId": 241,
+        "category": "ACCESSORY",
+        "reportIDs": {
+          "4": "razerKeyReportID",
+          "5": "hardwareEventReportID"
+        },
+        "canPairTwoDevices": true
+      },
+      "actual_task": "taskMakerResetOBM",
+      "factory_reset_command_reachable": false,
+      "preserves_existing_profiles": true,
+      "refresh_events": [
+        "ON_INIT_BRIGHTNESS",
+        "ON_SET_EFFECTS",
+        "ON_SET_KEYMAPPING"
+      ]
+    }
+  ]
+}

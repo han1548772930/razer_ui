@@ -290,7 +290,7 @@ pub fn decode_report(
 mod tests {
     use super::*;
 
-    // Compile-only protocol fixtures. No native transport or hardware is used.
+    // Pure protocol fixtures. No native transport or hardware is used.
     fn reply(kind: DeviceReadKind, data: &[u8]) -> (Vec<u8>, &'static ReadCommand) {
         let cap = capability(182).unwrap();
         let command = cap.queries.iter().find(|item| item.name == kind).unwrap();
@@ -376,5 +376,25 @@ mod tests {
         assert_eq!(&report[..10], &[0, 0, 7, 0, 0, 0, 7, 4, 133, 0]);
         assert_eq!(report[89], 7 ^ 4 ^ 133);
         assert_eq!(cap.transaction_prefix, 0);
+    }
+
+    #[test]
+    fn claim_interface_selection_preserves_source_pid_map() {
+        let cap = capability(664).expect("source catalog contains product 664");
+        assert_eq!(cap.claim_interface, 3);
+        assert_eq!(cap.claim_interfaces_by_pid.get("662"), Some(&2));
+        assert_eq!(cap.claim_interfaces_by_pid.get("663"), Some(&3));
+        assert_eq!(cap.claim_interfaces_by_pid.get("664"), Some(&3));
+        assert_eq!(cap.claim_interface_for(662).unwrap(), 2);
+        assert_eq!(cap.claim_interface_for(663).unwrap(), 3);
+        assert_eq!(cap.claim_interface_for(664).unwrap(), 3);
+        assert!(cap.claim_interface_for(9999).is_err());
+
+        let scalar = capability(182).expect("source catalog contains product 182");
+        assert!(scalar.claim_interfaces_by_pid.is_empty());
+        assert_eq!(
+            scalar.claim_interface_for(182).unwrap(),
+            scalar.claim_interface
+        );
     }
 }

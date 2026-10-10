@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 /// Descriptor-observed byte lengths, including the API's Report ID byte.
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub struct ReportLengths {
     pub input: BTreeMap<u8, usize>,
     pub output: BTreeMap<u8, usize>,
@@ -46,6 +46,13 @@ pub trait FeatureTransport {
     }
     fn get_input(&self, _report: &mut [u8]) -> anyhow::Result<usize> {
         anyhow::bail!("此后端未实现控制 Input Report")
+    }
+    /// Interrupt IN bytes, distinct from a control GET_REPORT. Numbered reports
+    /// retain their actual ID; unnumbered reports have no synthetic zero prefix.
+    /// Returns zero on timeout, never a fabricated empty hardware event. A finite
+    /// timeout lets the caller check cancellation and retained device identity.
+    fn read_interrupt(&self, _report: &mut [u8], _timeout_ms: u32) -> anyhow::Result<usize> {
+        anyhow::bail!("此后端未实现 Interrupt Input Report")
     }
     fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
         anyhow::bail!("此后端没有 descriptor 观察的报告长度")

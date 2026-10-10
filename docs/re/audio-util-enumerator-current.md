@@ -53,4 +53,4 @@ Rust 单次调用拥有 apartment，`CoInitializeEx(MTA)` 成功和 `S_FALSE` �
 
 来源取得、两条机器实现语义、共享 Rust、Windows 后端和 IPC 消费分别有证据；当前 UI 尚未消费 `AudioEndpoints`，没有执行应用或 COM 查询，因此运行验收仍未完成。最终工作区统一执行允许的 cargo check 与静态验证；编译通过不替代运行验收。
 
-RzAudioUtil 的 EnableNotification、AudioRouter EnableRouting/RouteDevice 写回与清理、MediaPlayer 命令/播放状态/事件、GetDLLVersion、旧 `1.0.1.1` 分支仍未全部闭合或实现。它们继续属于全量逆向和实现范围，不能把这两个查询或八个产品资源绑定当成整个库已完成。Mixer endpoint-ID/jack/flow 关联也没有由这里的系统端点枚举证明。
+RzAudioUtil 的 EnableNotification 共享队列、Windows 注册/注销、IPC 和八产品 Shell 生命周期已按[独立 IDA 证据](audio-util-notifications-current.md)实现，运行验收仍未执行。AudioRouter EnableRouting/RouteDevice 写回与清理、MediaPlayer 命令/播放状态/事件仍未全部闭合或实现。两个当前 GetDLLVersion 版本分支（1.0.1.1 与 1.0.3.1）已按独立 IDA 证据接入源语义，但不能把单项或九个产品资源绑定当成整个库已完成。Mixer endpoint-ID/jack/flow 关联也没有由这里的系统端点枚举证明。

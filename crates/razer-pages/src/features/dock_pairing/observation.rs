@@ -150,12 +150,14 @@ impl PairingState {
             Err(error) => {
                 match active.kind.as_str() {
                     "DUALLINK_BIND_INFO" => {
+                        self.scanned.clear();
                         self.channels = Default::default();
                         for channel in &mut self.channels {
                             channel.status = Status::Ready;
                         }
                     }
                     "DUALLINK_SCAN_DEVICE" => {
+                        self.scanned.clear();
                         let channel = self.channel_mut(lane);
                         channel.status = Status::Scanned;
                         channel.candidates.clear();
@@ -195,6 +197,7 @@ impl PairingState {
                         return Err("配对结果包含重复或过多设备。".into());
                     }
                     self.channels = Default::default();
+                    self.scanned.clear();
                     for channel in &mut self.channels {
                         channel.status = Status::Ready;
                     }
@@ -204,14 +207,25 @@ impl PairingState {
                         channel.peer = Some(peer);
                     }
                 } else {
-                    if peers.iter().any(|peer| peer.lane != lane) {
-                        return Err("扫描结果的设备类别与请求不符。".into());
+                    // Current 241 ds retains all scanedInfo; as filters it for
+                    // each column. Auto-bind requires the FULL response to have
+                    // one candidate, as well as matching the active category.
+                    let auto_bind = peers.len() == 1 && (!dual || peers[0].lane == lane);
+                    self.scanned = peers;
+                    for candidate_lane in [Lane::Keyboard, Lane::Mouse] {
+                        let candidates: Vec<_> = self
+                            .scanned
+                            .iter()
+                            .filter(|peer| !dual || peer.lane == candidate_lane)
+                            .cloned()
+                            .collect();
+                        let channel = self.channel_mut(candidate_lane);
+                        channel.selected = candidates.first().map(|peer| peer.id.clone());
+                        channel.candidates = candidates;
                     }
                     let channel = self.channel_mut(lane);
                     channel.status = Status::Scanned;
-                    channel.selected = peers.first().map(|peer| peer.id.clone());
-                    channel.candidates = peers;
-                    if channel.candidates.len() == 1 {
+                    if auto_bind {
                         let payload = channel.candidates[0]
                             .payload
                             .clone()
@@ -252,5 +266,97 @@ impl PairingState {
             _ => return Err("未知配对响应。".into()),
         }
         Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    // Current 241 module3746 ds/as: full scan length gates auto-bind;
+    // per-column lists are filtered afterward. Fixtures exercise mixed scans.
+    fn keyboard() -> serde_json::Value {
+        json!({"productId":716,"dongleId":713,"category":"KEYBOARD","editionId":128,"productName":{"en":"Keyboard"}})
+    }
+    fn mouse() -> serde_json::Value {
+        json!({"productId":182,"dongleId":183,"category":"MOUSE","editionId":0,"productName":{"en":"Mouse"}})
+    }
+    #[test]
+    fn mixed_scan_does_not_auto_pair_a_filtered_singleton() {
+        let mut state = PairingState::default();
+        let request = state.request(
+            "DUALLINK_SCAN_DEVICE",
+            PairingState::scan_payload(Lane::Keyboard, true),
+        );
+        let (accepted, next, error) = state.observe(
+            DockPairingObservation::result(
+                request.session(),
+                request.kind(),
+                Ok(json!([keyboard(), mouse()])),
+            ),
+            true,
+        );
+        assert!(accepted);
+        assert!(error.is_none());
+        assert!(next.is_none());
+        assert_eq!(state.scanned.len(), 2);
+        assert_eq!(
+            state.channel(Lane::Keyboard).candidates[0].dongle_id,
+            Some(713)
+        );
+        assert_eq!(
+            state.channel(Lane::Mouse).candidates[0].dongle_id,
+            Some(183)
+        );
+    }
+    #[test]
+    fn opposite_category_is_an_empty_lane_not_a_failed_scan() {
+        let mut state = PairingState::default();
+        let request = state.request(
+            "DUALLINK_SCAN_DEVICE",
+            PairingState::scan_payload(Lane::Keyboard, true),
+        );
+        let (_, next, error) = state.observe(
+            DockPairingObservation::result(request.session(), request.kind(), Ok(json!([mouse()]))),
+            true,
+        );
+        assert!(next.is_none());
+        assert!(error.is_none());
+        assert!(state.channel(Lane::Keyboard).candidates.is_empty());
+        assert_eq!(state.channel(Lane::Keyboard).status, Status::Scanned);
+        assert_eq!(state.scanned.len(), 1);
+    }
+    #[test]
+    fn one_matching_candidate_submits_its_raw_dongle_and_canceled_reply_is_ignored() {
+        let mut state = PairingState::default();
+        let request = state.request(
+            "DUALLINK_SCAN_DEVICE",
+            PairingState::scan_payload(Lane::Keyboard, true),
+        );
+        let (_, next, error) = state.observe(
+            DockPairingObservation::result(
+                request.session(),
+                request.kind(),
+                Ok(json!([keyboard()])),
+            ),
+            true,
+        );
+        assert!(error.is_none());
+        let pair = next.expect("source singleton creates bind intent");
+        assert_eq!(pair.kind(), "DUALLINK_BIND_DEVICE");
+        assert_eq!(pair.payload()["device"]["dongleId"], 713);
+        assert_eq!(pair.payload()["device"]["productId"], 716);
+        state.cancel();
+        let (accepted, _, _) = state.observe(
+            DockPairingObservation::result(
+                pair.session(),
+                pair.kind(),
+                Ok(json!({"device":keyboard()})),
+            ),
+            true,
+        );
+        assert!(!accepted);
+        assert!(state.channel(Lane::Keyboard).peer.is_none());
     }
 }

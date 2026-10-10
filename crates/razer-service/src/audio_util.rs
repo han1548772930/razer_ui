@@ -144,7 +144,7 @@ pub(crate) mod windows {
             unsafe { PropVariantClear(&mut self.0) };
         }
     }
-    fn property(device: &Com, pid: u32) -> Result<String> {
+    pub(crate) fn property(device: &Com, pid: u32) -> Result<String> {
         type OpenStore = unsafe extern "system" fn(*mut c_void, u32, *mut *mut c_void) -> i32;
         type GetValue =
             unsafe extern "system" fn(*mut c_void, *const PropertyKey, *mut PROPVARIANT) -> i32;

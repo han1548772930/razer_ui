@@ -143,9 +143,9 @@ def main():
         'implementation': {'shared': 'crates/razer-device/src/audio_util.rs',
                            'windows': 'crates/razer-service/src/audio_util.rs',
                            'runtime_acceptance': 'not executed; current development execution prohibition'},
-        'remaining_library_gaps': ['EnableNotification callbacks/cleanup', 'AudioRouter routing/mutation/lifecycle',
-                                  'MediaPlayer commands/output/state/events', 'GetDLLVersion semantics',
-                                  'RzAudioUtil 1.0.1.1 distinct implementation'],
+        'remaining_library_gaps': ['RzAudioUtil EnableNotification runtime acceptance (shared/Windows/IPC/Shell implementation separately audited)',
+                                   'RzAudioUtil AudioRouter EnableRouting/RouteDevice write-back/lifecycle',
+                                   'RzAudioUtil MediaPlayer commands/output/state/events'],
     }
     output = (json.dumps(result, ensure_ascii=False, indent=2)+'\n').encode('utf-8')
     target = ROOT / OUTPUT

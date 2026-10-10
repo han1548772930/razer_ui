@@ -15,7 +15,7 @@
 | IDA/Hex-Rays 当前取证 | 85 个输入，84 个已取证，320,630 个 native 函数索引、10,630 个选定函数正文；3 个 mixed CLR 库保留独立托管索引及 native 正文 | 1 个 ARM64 插件尚无受支持分析后端；未选定函数、间接调用及 managed IL 桥接仍缺，正文数量不代表整库语义闭合 |
 | 宿主原生依赖 | corpus 中 64 个 native_binary 条目，包含 4 DLL 和 60 `.node` 路径 | 不止此前内部图的 19 个 Windows 插件，还包含 macOS/Linux/Android 预编译插件、不同架构及 Node ABI；路径数量不代表唯一二进制数量 |
 | helper/system 程序引用 | 第一方宿主 JS 中 9 个 `.exe` 名称引用；当前官方包静态取得 4 个 CommonDLL helper PE（Power/Security/EngineMon/Handle） | 4 个本体和 CLI 字符串已留证，但分支语义、进程结果、注册表/服务副作用和 Rust 替代消费者仍未闭合 |
-| 宿主非产品链 | 本记录核对 17 个域 | 本地草稿、请求事件、生命周期片段分别记录；没有全程序等价验收结论 |
+| 宿主及共享原生链 | 本记录核对 24 个域 | 本地草稿、请求事件、生命周期片段分别记录；没有全程序等价验收结论 |
 
 `IoTNative`、`lighting_driver`、`NanoleafNative`、`PhilipsHueNative`、`RzNative_0518` 在当前库 inventory 中没有已获取并归属的资源。这里描述的是该清单的资源证据缺口，不据此推定其他位置不存在同名文件，也不推定库没有功能。动态归属和签名冲突保持未知，不能用其他产品补齐。
 
@@ -51,7 +51,13 @@ simple_service 的 speaker/microphone 音量 getter/setter 已进一步追到共
 
 ## 原库接入不能记作不依赖原库
 
-`native_query.rs::version` 使用原导出和原 allocator。`native_read.rs::getter` 要求源声明、ContainerId 调用、init/terminate、FreeMalloc 和匹配资源；随后通过 `EngineLibrary::load` 载入原 DLL，并用 `ManuallyDrop` 保留模块至隔离 worker 退出。这是源码门控的原库查询，不是这些函数内部的 Rust 实现。`SysUtilsNative` 还有明确的加载限制；无参版本候选也不能绕过资源、生命周期和返回所有权门控。
+`native_query.rs::version` 的 RzAudioUtil 分支已按两个当前资源的 IDA 正文返回各自版本语义，不加载原 DLL：八产品为 1.0.3.1，1401 为 1.0.1.1，未知/缺产品拒绝。其他库的版本分支仍使用原导出和原 allocator。`native_read.rs::getter` 要求源声明、ContainerId 调用、init/terminate、FreeMalloc 和匹配资源；随后通过 `EngineLibrary::load` 载入原 DLL，并用 `ManuallyDrop` 保留模块至隔离 worker 退出。这是源码门控的原库查询，不是这些函数内部的 Rust 实现。`SysUtilsNative` 还有明确的加载限制；无参版本候选也不能绕过资源、生命周期和返回所有权门控。
+
+当前 RzAudioUtil 的端点通知已恢复 callback 过滤、payload、重复 enable、整类 disable 与 Core Audio 注册/注销，接共享 worker IPC。八产品 Shell 已连接真实观察作用域的启动 enable、retained worker drain、失连/退出 disable 与 Shutdown；1401 的独立版本未套用这份通知证据。原产品监听事件的大小写不匹配和仅日志行为也已保留，不能声称已替代 simple_service 的持续设备缓存，详见 [端点通知](audio-util-notifications-current.md)。
+
+SysUtilsNative 前台监控已按 IDA 恢复独立线程、Windows hook、300ms debounce、Explorer 重查、UWP child path 与事件格式，接 URL 订阅和 worker IPC；产品激活条件及实际 profile/滚轮/haptic 消费链仍需取证后接入。182 middleware 公共 task 的存在不证明 DeathAdder 支持或启用了该功能。独立键盘布局 getter 已按原调用线程 KLID、十六进制转换和 signed int 位模式接 IPC；两秒变化timer、线程归属及原host Stop错误分支已有独立实现，实际产品caller/UI消息线程接入仍有缺口。系统属性/显示设置五入口已按IDA WinExec命令连接现有页面。分别见 [前台监控](sysutils-foreground-current.md)、[键盘布局](sysutils-keyboard-layout-current.md)、[布局监控](sysutils-keyboard-monitor-current.md)与[系统启动](sysutils-system-launch-current.md)。
+
+164/241 的 Scan/Pair/Unpair 已按实际 category factory 恢复事务位、报文与事件完成条件；命令 ACK 与硬件成功分开。独立 [中断读取](hid-interrupt-current.md) 已实现，配对 Session 要求先有真实事件订阅，失败/取消走 Scan4 和清理。mapping_engine 的准确全部collection selector、真实中断provider、异步服务及Dock消费者已接，配对后真实edition/layout、V2连接刷新和本地物理键缓存也已实现。原runtime/serial发布、profile合并及mapping重连和其他平台等价物理分组仍是缺口，不能将这些子链当完整接收器功能。详见 [接收器契约](receiver-ui-current.md)。
 
 机器矩阵的 `literal_rust_locators_not_consumer_proof` 仅供找文件。字符串出现在 diagnostics/catalog/路径列表中，不能计入函数实现；矩阵不会从这些定位自动生成“完成”状态。
 

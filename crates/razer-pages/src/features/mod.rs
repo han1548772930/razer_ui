@@ -46,7 +46,11 @@ pub fn has_product_workspace(pid: u32) -> bool {
 }
 
 mod armory_product;
+pub mod audio_mixer;
 mod audio_products;
+pub use audio_products::{
+    AudioMixerCompletion, AudioMixerOperation, AudioMixerReply, AudioMixerRequest,
+};
 pub use audio_products::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,
 };

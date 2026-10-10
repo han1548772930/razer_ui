@@ -28,6 +28,8 @@ pub fn run_worker() -> i32 {
         };
         let shutdown = matches!(envelope.request, ServiceRequest::Shutdown);
         let result = match envelope.request {
+            ServiceRequest::KeyboardLayoutRead => razer_platform::keyboard_layout::get()
+                .map(|layout| serde_json::json!({"layout":layout})),
             ServiceRequest::WindowsServiceStart { name } => {
                 razer_platform::windows_service_status::start(&name)
                     .map(|exit_code| serde_json::json!({"name":name,"exit_code":exit_code}))
@@ -65,6 +67,14 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::AudioVolumeRead { .. }
             | ServiceRequest::AudioVolumeWrite { .. }
             | ServiceRequest::AudioEndpoints { .. }
+            | ServiceRequest::AudioNotificationsEnable { .. }
+            | ServiceRequest::AudioNotificationsDrain
+            | ServiceRequest::AudioRoutingEnable { .. }
+            | ServiceRequest::AudioRouteDevice { .. }
+            | ServiceRequest::AudioRouterEvents
+            | ServiceRequest::ForegroundMonitorStart { .. }
+            | ServiceRequest::ForegroundMonitorStop { .. }
+            | ServiceRequest::ForegroundMonitorEvents { .. }
             | ServiceRequest::HidNodes
             | ServiceRequest::HidNodeReports { .. }
             | ServiceRequest::HidNodeDpiStagesRead { .. }
@@ -75,6 +85,7 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeKeyboardBrightnessWrite { .. }
             | ServiceRequest::HidNodeMixerRead { .. }
             | ServiceRequest::HidNodeMixerWrite { .. }
+            | ServiceRequest::HidNodeMixerEqWrite { .. }
             | ServiceRequest::HidNodeMixerRouteRead { .. }
             | ServiceRequest::HidNodeMixerRouteWrite { .. }
             | ServiceRequest::HidNodeMixerRestartStreams { .. }

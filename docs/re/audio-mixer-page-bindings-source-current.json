@@ -1,0 +1,600 @@
+{
+  "product_id": 1342,
+  "runtime_executed": false,
+  "sources": [
+    {
+      "path": ".ref/middleware/1342/AudioMixer.cde922aae2f0fea23404.js",
+      "sha256": "c488e3fbd71abc73085cd7fc3040dbf5652dec1ec186421e36879347c00427bf",
+      "receipts": [
+        {
+          "token": "RazerT2NoiseGateEnable",
+          "start_utf16": 26871,
+          "end_utf16": 27513,
+          "original": "acketSizeReturned:0,jsonData:{}};const n=yield sn(e,z,0,le,de,t);return n.jsonData.EQ16KSlider=t,console.log(`${an}.setEQ16KSlider(${t}) return: ${n}`),n}),fn=e=>rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2NoiseGateEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnValue)>0,console.log(`${an}.getNoiseGateState() return: ${t}`),t}),Sn=e=>rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnValue)>0,console.log(`${an}.getCompressorState() return: ${t}`),t});var Mn=n(65574),_n=function(e,t,n,o){return new(n|"
+        },
+        {
+          "token": "RazerT2NoiseGateThresholdControl",
+          "start_utf16": 76250,
+          "end_utf16": 76902,
+          "original": "ole.log(`${an}.setNoiseGateThresholdValue(${t}) return: ${l}`),l}))(this,e)}),this.getNoiseGateThresholdValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2NoiseGateThresholdControl\",0);return t.jsonData.NoiseGateThreshold=Number.parseFloat(t.jsonData.returnValue),console.log(`${an}.getNoiseGateThresholdValue() return: ${t}`),t});var e}),this.setNoiseGateTargetGainValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,r=(yield nn(e)).jsonData.returnValue>"
+        },
+        {
+          "token": "RazerT2NoiseGateTargetGainControl",
+          "start_utf16": 77171,
+          "end_utf16": 77824,
+          "original": "e.log(`${an}.setNoiseGateTargetGainValue(${t}) return: ${l}`),l}))(this,e)}),this.getNoiseGateTargetGainValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2NoiseGateTargetGainControl\",0);return t.jsonData.NoiseGateTargetGain=Number.parseFloat(t.jsonData.returnValue),console.log(`${an}.getNoiseGateTargetGainValue() return: ${t}`),t});var e}),this.setNoiseGateAttackTimeValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,i=(yield nn(e)).jsonData.returnValu"
+        },
+        {
+          "token": "RazerT2NoiseGateAttackTimeControl",
+          "start_utf16": 78170,
+          "end_utf16": 78823,
+          "original": "e.log(`${an}.setNoiseGateAttackTimeValue(${t}) return: ${a}`),a}))(this,e)}),this.getNoiseGateAttackTimeValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2NoiseGateAttackTimeControl\",0);return t.jsonData.NoiseGateAttackTime=Number.parseInt(t.jsonData.returnValue),console.log(`${an}.getNoiseGateAttackTimeValue() return: ${t}`),t});var e}),this.setNoiseGateReleaseTimeValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,i=(yield nn(e)).jsonData.returnValue"
+        },
+        {
+          "token": "RazerT2NoiseGateReleaseTimeControl",
+          "start_utf16": 79172,
+          "end_utf16": 79826,
+          "original": "log(`${an}.setNoiseGateReleaseTimeValue(${t}) return: ${a}`),a}))(this,e)}),this.getNoiseGateReleaseTimeValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2NoiseGateReleaseTimeControl\",0);return t.jsonData.NoiseGateReleaseTime=Number.parseInt(t.jsonData.returnValue),console.log(`${an}.getNoiseGateReleaseTimeValue() return: ${t}`),t});var e}),this.setCompressorState=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){let n=yield e.sendCommand(Le,ke,null,new Uint8Array([]),-1,!0,!1);if(n.jsonData={enabled:t},n.status===r.em)return n;const o=[ne"
+        },
+        {
+          "token": "RazerT2CompressorEnable",
+          "start_utf16": 27088,
+          "end_utf16": 27731,
+          "original": "0,\"RazerT2NoiseGateEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnValue)>0,console.log(`${an}.getNoiseGateState() return: ${t}`),t}),Sn=e=>rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnValue)>0,console.log(`${an}.getCompressorState() return: ${t}`),t});var Mn=n(65574),_n=function(e,t,n,o){return new(n||(n=Promise))(function(r,i){function a(e){try{u(o.next(e))}catch(e){i(e)}}function s(e){try{u(o.throw(e))}catch(e){i(e)}}function u(e){var t;e.done?r(e.value):(t=e.value,t instanceof n?t:new n(function(e){e(t)})).then("
+        },
+        {
+          "token": "RazerT2CompressorThresholdControl",
+          "start_utf16": 80566,
+          "end_utf16": 81219,
+          "original": "e.log(`${an}.setCompressorThresholdValue(${t}) return: ${i}`),i}))(this,e)}),this.getCompressorThresholdValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorThresholdControl\",0);return t.jsonData.CompressorThreshold=Number.parseInt(t.jsonData.returnValue),console.log(`${an}.getCompressorThresholdValue() return: ${t}`),t});var e}),this.setCompressorSoftKneeWidthValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield fn(e)).jsonData.returnValue>0,o=(yield Sn(e)).jsonData.returnValue>0,r=[new Uint8Array(Pe[0])];n&&(r[0"
+        },
+        {
+          "token": "RazerT2CompressorSoftKneeWidthControl",
+          "start_utf16": 81394,
+          "end_utf16": 82051,
+          "original": "{an}.setCompressorSoftKneeWidthValue(${t}) return: ${i}`),i}))(this,e)}),this.getCompressorSoftKneeWidthValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorSoftKneeWidthControl\",0);return t.jsonData.CompressorSoftKneeWidth=Number.parseInt(t.jsonData.returnValue),console.log(`${an}.getCompressorSoftKneeWidthValue() return: ${t}`),t});var e}),this.setCompressorRatioValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield fn(e)).jsonData.returnValue>0,o=(yield Sn(e)).jsonData.returnValue>0,r=[new Uint8Array(Ke[0])];n&&(r[0"
+        },
+        {
+          "token": "RazerT2CompressorRatioControl",
+          "start_utf16": 82243,
+          "end_utf16": 82892,
+          "original": "},console.log(`${an}.setCompressorRatioValue(${t}) return: ${s}`),s}))(this,e)}),this.getCompressorRatioValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorRatioControl\",0);return t.jsonData.CompressorRatio=Number.parseFloat(t.jsonData.returnValue),console.log(`${an}.getCompressorRatioValue() return: ${t}`),t});var e}),this.setCompressorMakeUpGainValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield fn(e)).jsonData.returnValue>0,o=(yield Sn(e)).jsonData.returnValue>0,r=[new Uint8Array(Qe[0])];n&&(r[0][8]+=1),"
+        },
+        {
+          "token": "RazerT2CompressorMakeUpGainControl",
+          "start_utf16": 83049,
+          "end_utf16": 83703,
+          "original": "log(`${an}.setCompressorMakeUpGainValue(${t}) return: ${i}`),i}))(this,e)}),this.getCompressorMakeUpGainValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorMakeUpGainControl\",0);return t.jsonData.CompressorMakeUpGain=Number.parseInt(t.jsonData.returnValue),console.log(`${an}.getCompressorMakeUpGainValue() return: ${t}`),t});var e}),this.setCompressorAttackTimeValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield fn(e)).jsonData.returnValue>0,o=(yield Sn(e)).jsonData.returnValue>0;let i=yield e.sendCommand(Je,ze,nu"
+        },
+        {
+          "token": "RazerT2CompressorAttackTimeControl",
+          "start_utf16": 83998,
+          "end_utf16": 84652,
+          "original": "log(`${an}.setCompressorAttackTimeValue(${t}) return: ${i}`),i}))(this,e)}),this.getCompressorAttackTimeValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorAttackTimeControl\",0);return t.jsonData.CompressorAttackTime=Number.parseInt(t.jsonData.returnValue),console.log(`${an}.getCompressorAttackTimeValue() return: ${t}`),t});var e}),this.setCompressorReleaseTimeValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){const n=(yield fn(e)).jsonData.returnValue>0,o=(yield Sn(e)).jsonData.returnValue>0,r=[new Uint8Array(We[0])];n&&(r[0"
+        },
+        {
+          "token": "RazerT2CompressorReleaseTimeControl",
+          "start_utf16": 84824,
+          "end_utf16": 85479,
+          "original": "g(`${an}.setCompressorReleaseTimeValue(${t}) return: ${i}`),i}))(this,e)}),this.getCompressorReleaseTimeValue=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2CompressorReleaseTimeControl\",0);return t.jsonData.CompressorReleaseTime=Number.parseInt(t.jsonData.returnValue),console.log(`${an}.getCompressorReleaseTimeValue() return: ${t}`),t});var e}),this.set48VPowerState=e=>jn(this,void 0,void 0,function*(){return((e,t)=>rn(void 0,void 0,void 0,function*(){let n=[];n=t?[new Uint8Array(vt[0])]:[new Uint8Array(ht[0])];const o=yield e.sendCommand(n,\"48V State\",null,new Uint8Array([]),-"
+        },
+        {
+          "token": "RazerT2VocalFadingEnable",
+          "start_utf16": 93219,
+          "end_utf16": 93863,
+          "original": "e.log(`${en}.setVocalFadingState(${t}) return: ${JSON.stringify(n)}`),n}))(this,e)}),this.getVocalFadingState=()=>jn(this,void 0,void 0,function*(){return e=this,Yt(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2VocalFadingEnable\",0);return t.jsonData.enabled=Number.parseInt(t.jsonData.returnValue)>0,console.log(`${en}.getVocalFadingState() return: ${t}`),t});var e}),this.setVocalFadingLevelValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,r=(yield nn(e)).jsonData.returnValue>0,i=[new Uint8Array(n"
+        },
+        {
+          "token": "RazerT2VocalFadingLevelControl",
+          "start_utf16": 94067,
+          "end_utf16": 94717,
+          "original": "n}.setVocalFadingLevelValue(${t}) return: ${JSON.stringify(a)}`),a}))(this,e)}),this.getVocalFadingLevelValue=()=>jn(this,void 0,void 0,function*(){return e=this,Yt(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2VocalFadingLevelControl\",0);return t.jsonData.VocalFadingLevel=Number.parseInt(t.jsonData.returnValue),console.log(`${en}.getVocalFadingLevelValue() return: ${t}`),t});var e}),this.getChannel1PeakValue=e=>jn(this,void 0,void 0,function*(){return t=this,n=e,_n(void 0,void 0,void 0,function*(){return Wt(t,n)});var t,n}),this.getChannel2PeakValue=e=>jn(this,void 0,void 0,function*(){return t=this,n=e,_n(void 0,void 0,void "
+        },
+        {
+          "token": "RazerT2KeyShifterLevelControl",
+          "start_utf16": 92382,
+          "end_utf16": 93031,
+          "original": "setKeyShifterLevelValue=e=>jn(this,void 0,void 0,function*(){return on(this,e)}),this.getKeyShifterLevelValue=()=>jn(this,void 0,void 0,function*(){return e=this,Yt(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2KeyShifterLevelControl\",0);return t.jsonData.KeyShifterLevel=Number.parseInt(t.jsonData.returnValue),console.log(`${en}.getKeyShifterLevelValue() return: ${t}`),t});var e}),this.setVocalFadingState=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){let n=yield e.sendCommand(Ye,Ze,null,new Uint8Array([]),-1,!0,!1);if(n.jsonData={eanbled:t},n.status===r.em)return n;const o=[new Uint8Ar"
+        },
+        {
+          "token": "RazerT2DSPEQBandControl",
+          "start_utf16": 70155,
+          "end_utf16": 70798,
+          "original": "Desc:\"Get EQ Slider Min\"}};return console.log(`${an}.getEQSliderMin() return: ${e}`),e})}),this.getEQ30Slider=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2DSPEQBandControl\",0,0,!1);return t.jsonData.EQ30Slider=0,t.data.length>=4&&(t.jsonData.EQ30Slider=a.cr(t.data,5)),console.log(`${an}.getEQ30Slider() return: ${t}`),t});var e}),this.setEQ60Slider=e=>jn(this,void 0,void 0,function*(){return ln(this,e)}),this.getEQ60Slider=()=>jn(this,void 0,void 0,function*(){return e=this,rn(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2DSPEQBandControl\",0,1,!1);re"
+        },
+        {
+          "token": "this.setMagicVoiceState=",
+          "start_utf16": 85370,
+          "end_utf16": 86014,
+          "original": "int8Array(vt[0])]:[new Uint8Array(ht[0])];const o=yield e.sendCommand(n,\"48V State\",null,new Uint8Array([]),-1,!0,!1);return o.jsonData={enabled:t},console.log(`${an}.set48VPowerState(${t}) return: ${o}`),o}))(this,e)}),this.setMagicVoiceState=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){let n=yield e.sendCommand(ve,ce,null,new Uint8Array([]),-1,!0,!1);if(n.jsonData={enabled:t},n.status===r.em)return n;const o=[new Uint8Array(he[0])];return o[0][8]=n.data[0],o[0][7]=n.data[1],o[0][6]=n.data[2],t?o[0][8]|=2:o[0][8]&=-3,n=yield e.sendCommand(o,ce,null,new Uint8Array([]),-1,!1,!1),n.jsonData={enabl"
+        },
+        {
+          "token": "this.setMagicVoiceMode=",
+          "start_utf16": 85970,
+          "end_utf16": 86613,
+          "original": "w Uint8Array([]),-1,!1,!1),n.jsonData={enabled:t},console.log(`${en}.setMagicVoiceState(${t}) return: ${JSON.stringify(n)}`),n}))(this,e)}),this.getMagicVoiceState=()=>jn(this,void 0,void 0,function*(){return tn(this)}),this.setMagicVoiceMode=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){\"string\"==typeof t&&(t=Number.parseInt(t));const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,i=(yield nn(e)).jsonData.returnValue>0;let a=yield e.sendCommand(pe,me,null,new Uint8Array([]),-1,!0,!1);if(a.jsonData={mode:t},a.status===r.em)return a;let s=null;return t===c.Mixer_Mag"
+        },
+        {
+          "token": "this.setEchoOrReverbState=",
+          "start_utf16": 87135,
+          "end_utf16": 87781,
+          "original": "his,Yt(void 0,void 0,void 0,function*(){const t=yield Ht(e,0,\"RazerT2MagicVoiceControl\",0);return t.jsonData.mode=Number.parseInt(t.jsonData.returnValue),console.log(`${en}.getMagicVoiceMode() return: ${t}`),t});var e}),this.setEchoOrReverbState=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){let n=yield e.sendCommand(_e,Me,null,new Uint8Array([]),-1,!0,!1);if(n.jsonData={enabled:t},n.status===r.em)return n;const o=[new Uint8Array(De[0])];return o[0][8]=n.data[0],o[0][7]=n.data[1],o[0][6]=n.data[2],t?o[0][8]|=$e:o[0][8]&=-13,n=yield e.sendCommand(o,Me,null,new Uint8Array([]),-1,!1,!1),n.jsonData={ena"
+        },
+        {
+          "token": "this.setEchoOrReverbRoomValue=",
+          "start_utf16": 87743,
+          "end_utf16": 88393,
+          "original": "nt8Array([]),-1,!1,!1),n.jsonData={enabled:t},console.log(`${en}.setEchoOrReverbState(${t}) return: ${JSON.stringify(n)}`),n}))(this,e)}),this.getEchoOrReverbState=()=>jn(this,void 0,void 0,function*(){return nn(this)}),this.setEchoOrReverbRoomValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,r=(yield nn(e)).jsonData.returnValue>0;let i=null;const s=[new Uint8Array(Ce[0])];n&&(s[0][8]+=1),o&&(s[0][8]+=2),r&&(s[0][8]+=$e);let u=new Uint8Array([s[0][7],s[0][6]]),l=a.sD(u);return l+=t=100*(t- -43),u=a.kO(2,l),s[0][6]=u[1"
+        },
+        {
+          "token": "this.setEchoOrReverbDecayTimeValue=",
+          "start_utf16": 88700,
+          "end_utf16": 89355,
+          "original": " 0,function*(){const t=yield Ht(e,0,\"RazerT2EchoReverbRoomControl\",0);return t.jsonData.EchoOrReverbRoom=Number.parseFloat(t.jsonData.returnValue),console.log(`${en}.getEchoOrReverbRoomValue() return: ${t}`),t});var e}),this.setEchoOrReverbDecayTimeValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,r=(yield nn(e)).jsonData.returnValue>0,i=[new Uint8Array(we[0])];n&&(i[0][8]+=1),o&&(i[0][8]+=2),r&&(i[0][8]+=$e),t*=100;const s=a.kO(2,t);i[0][6]=s[1],i[0][7]=s[0];const u=yield e.sendCommand(i,Ve,null,new Uint8Array([]),-1,!1,!"
+        },
+        {
+          "token": "this.setEchoOrReverbEchoGainValue=",
+          "start_utf16": 89626,
+          "end_utf16": 90280,
+          "original": "const t=yield Ht(e,0,\"RazerT2EchoReverbDecayTimeControl\",0);return t.jsonData.EchoOrReverbDecayTime=Number.parseFloat(t.jsonData.returnValue),console.log(`${en}.getEchoOrReverbDecayTimeValue() return: ${t}`),t});var e}),this.setEchoOrReverbEchoGainValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){const n=(yield Xt(e)).jsonData.returnValue>0,o=(yield tn(e)).jsonData.returnValue>0,r=(yield nn(e)).jsonData.returnValue>0,i=[new Uint8Array(Ae[0])];if(n&&(i[0][8]+=1),o&&(i[0][8]+=2),r&&(i[0][8]+=$e),t*=10,(t=Math.trunc(t))>10)return\"Error\";const s=je[t],u=a.kO(2,s);i[0][6]=u[1],i[0][7]=u[0];const l=yield e.sen"
+        },
+        {
+          "token": "this.setEchoOrReverbEchoDelayValue=",
+          "start_utf16": 90587,
+          "end_utf16": 91242,
+          "original": "(){const t=yield Ht(e,0,\"RazerT2EchoReverbEchoGainControl\",0);return t.jsonData.EchoOrReverbEchoGain=Number.parseFloat(t.jsonData.returnValue),console.log(`${en}.getEchoOrReverbEchoGainValue() return: ${t}`),t});var e}),this.setEchoOrReverbEchoDelayValue=e=>jn(this,void 0,void 0,function*(){return((e,t)=>Yt(void 0,void 0,void 0,function*(){const n=\"setEchoOrReverbEchoDelayValue\",o=(yield Xt(e)).jsonData.returnValue>0,i=(yield tn(e)).jsonData.returnValue>0,a=(yield nn(e)).jsonData.returnValue>0,s=[new Uint8Array(be[0])];o&&(s[0][8]+=1),i&&(s[0][8]+=2),a&&(s[0][8]+=$e),t=Math.trunc(t),s[0][7]=t;const u=yield e.sendCommand(s,Ve,null,new Uint8Array([]"
+        },
+        {
+          "token": "ge=[new Uint8Array([19,95,252,0,52,128,83,51,0])]",
+          "start_utf16": 10229,
+          "end_utf16": 10898,
+          "original": "nable Magic Voice State\",ve=[new Uint8Array([4,95,252,0,52])],he=[new Uint8Array([19,95,252,0,52,192,0,0,0])],me=(new Uint8Array([19,95,252,0,52,192,0,0,0]),\"Magic Voice Mode State\"),pe=[new Uint8Array([4,95,252,0,52])],ge=[new Uint8Array([19,95,252,0,52,128,83,51,0])],ye=[new Uint8Array([19,95,252,0,52,128,226,143,0])],fe=[new Uint8Array([19,95,252,0,52,128,97,71,0])],Se=[new Uint8Array([19,95,252,0,52,128,171,133,0])],Me=\"Enable Echo Reverb State\",_e=[new Uint8Array([4,95,252,0,52])],De=[new Uint8Array([19,95,252,0,52,128,0,0,0])],$e=(new Uint8Array([19,95,252,0,52,128,171,133,2]),12),Ve=\"Set Echo Reverb Value\",Ie=[new Uint8Array([4,95,252,0,52])],Ce=[new Uin"
+        },
+        {
+          "token": "ye=[new Uint8Array([19,95,252,0,52,128,226,143,0])]",
+          "start_utf16": 10279,
+          "end_utf16": 10950,
+          "original": "252,0,52])],he=[new Uint8Array([19,95,252,0,52,192,0,0,0])],me=(new Uint8Array([19,95,252,0,52,192,0,0,0]),\"Magic Voice Mode State\"),pe=[new Uint8Array([4,95,252,0,52])],ge=[new Uint8Array([19,95,252,0,52,128,83,51,0])],ye=[new Uint8Array([19,95,252,0,52,128,226,143,0])],fe=[new Uint8Array([19,95,252,0,52,128,97,71,0])],Se=[new Uint8Array([19,95,252,0,52,128,171,133,0])],Me=\"Enable Echo Reverb State\",_e=[new Uint8Array([4,95,252,0,52])],De=[new Uint8Array([19,95,252,0,52,128,0,0,0])],$e=(new Uint8Array([19,95,252,0,52,128,171,133,2]),12),Ve=\"Set Echo Reverb Value\",Ie=[new Uint8Array([4,95,252,0,52])],Ce=[new Uint8Array([19,95,252,0,52,128,239,52,80])],we=(new Uin"
+        },
+        {
+          "token": "fe=[new Uint8Array([19,95,252,0,52,128,97,71,0])]",
+          "start_utf16": 10331,
+          "end_utf16": 11000,
+          "original": ",0,0])],me=(new Uint8Array([19,95,252,0,52,192,0,0,0]),\"Magic Voice Mode State\"),pe=[new Uint8Array([4,95,252,0,52])],ge=[new Uint8Array([19,95,252,0,52,128,83,51,0])],ye=[new Uint8Array([19,95,252,0,52,128,226,143,0])],fe=[new Uint8Array([19,95,252,0,52,128,97,71,0])],Se=[new Uint8Array([19,95,252,0,52,128,171,133,0])],Me=\"Enable Echo Reverb State\",_e=[new Uint8Array([4,95,252,0,52])],De=[new Uint8Array([19,95,252,0,52,128,0,0,0])],$e=(new Uint8Array([19,95,252,0,52,128,171,133,2]),12),Ve=\"Set Echo Reverb Value\",Ie=[new Uint8Array([4,95,252,0,52])],Ce=[new Uint8Array([19,95,252,0,52,128,239,52,80])],we=(new Uint8Array([19,95,252,0,52,192,0,0,0]),[new Uint8Arra"
+        },
+        {
+          "token": "Se=[new Uint8Array([19,95,252,0,52,128,171,133,0])]",
+          "start_utf16": 10381,
+          "end_utf16": 11052,
+          "original": ",0]),\"Magic Voice Mode State\"),pe=[new Uint8Array([4,95,252,0,52])],ge=[new Uint8Array([19,95,252,0,52,128,83,51,0])],ye=[new Uint8Array([19,95,252,0,52,128,226,143,0])],fe=[new Uint8Array([19,95,252,0,52,128,97,71,0])],Se=[new Uint8Array([19,95,252,0,52,128,171,133,0])],Me=\"Enable Echo Reverb State\",_e=[new Uint8Array([4,95,252,0,52])],De=[new Uint8Array([19,95,252,0,52,128,0,0,0])],$e=(new Uint8Array([19,95,252,0,52,128,171,133,2]),12),Ve=\"Set Echo Reverb Value\",Ie=[new Uint8Array([4,95,252,0,52])],Ce=[new Uint8Array([19,95,252,0,52,128,239,52,80])],we=(new Uint8Array([19,95,252,0,52,192,0,0,0]),[new Uint8Array([19,95,252,0,52,128,0,0,96])]),Ae=[new Uint8Array("
+        },
+        {
+          "token": "this.setMicEQLevel_MultiBand=",
+          "start_utf16": 73850,
+          "end_utf16": 74499,
+          "original": "function*(){const t=yield Ht(e,0,\"RazerT2DSPEQBandControl\",0,9,!1);return t.jsonData.EQ16KSlider=0,t.data.length>=4&&(t.jsonData.EQ16KSlider=a.cr(t.data,5)),console.log(`${an}.setEQ16KSlider() return: ${t}`),t});var e}),this.setMicEQLevel_MultiBand=({bandNum:e,bandInfo:t})=>jn(this,void 0,void 0,function*(){return e=this,n=t,rn(void 0,void 0,void 0,function*(){if(10!==n.length)return{status:r.$g,command:[],commandDesc:z,data:[],dataHeader:[],dataSend:[],error:\"Error! Wrong input array length, it must be 10\",packetSizeReturned:0,jsonData:{}};let t=yield un(e,n[0].level);return t.status!==r.$g||(t=yield ln(e,n[1].level),t.status!==r.$g||(t=yie"
+        },
+        {
+          "token": "const an=\"MixerMic\",sn=",
+          "start_utf16": 23074,
+          "end_utf16": 23717,
+          "original": "a(e){try{u(o.next(e))}catch(e){i(e)}}function s(e){try{u(o.throw(e))}catch(e){i(e)}}function u(e){var t;e.done?r(e.value):(t=e.value,t instanceof n?t:new n(function(e){e(t)})).then(a,s)}u((o=o.apply(e,t||[])).next())})};const an=\"MixerMic\",sn=(e,t,n,o,r,i)=>rn(void 0,void 0,void 0,function*(){let n=i;n<0&&(n=63+i+1),n=Math.trunc(n);let a=null;a=0===n?r:o,a[0][6]=n;const s=yield e.sendCommand(a,t,null,new Uint8Array([]),-1,!1);return s.jsonData={returnValue:i},console.log(`${an}.setEQSliderValue(${i}) return: ${s}`),s}),un=(e,t)=>rn(void 0,void 0,void 0,function*(){if(t>12||t<-12)return{status:r.$g,command:[],commandDesc:z,data:[],dataH"
+        }
+      ]
+    },
+    {
+      "path": ".ref/middleware/1342/5736.fdd55044a41484df28aa.js",
+      "sha256": "a8f3cdb0a326106c89a679a297d7184c29fd9b6e7d8257211d36debd6a102808",
+      "receipts": [
+        {
+          "token": "setNoiseGateThresholdValue(Number(r.value))",
+          "start_utf16": 1764311,
+          "end_utf16": 1764974,
+          "original": "le.log(\"**********************setNoiseGate:\"+i,n,e),i){case\"useMode\":break;case\"isEnabled\":{const{jsonData:e}=yield t.getNoiseGateState();e&&e.enabled!==o&&(yield t.setNoiseGateState(o))}break;case\"basic\":0==n&&(yield t.setNoiseGateThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setNoiseGateThresholdValue(Number(a.value)));break;case\"targetGain\":1==n&&(yield t.setNoiseGateTargetGainValue(Number(s.value)));break;case\"attackTime\":1==n&&(yield t.setNoiseGateAttackTimeValue(Number(l.value)));break;case\"releaseTime\":1==n&&(yield t.setNoiseGateReleaseTimeValue(Number(c.value)))}}catch(e){console.error(\"setNoiseGate\",e.message)}}),wi=e=>Be("
+        },
+        {
+          "token": "setNoiseGateThresholdValue(Number(a.value))",
+          "start_utf16": 1764393,
+          "end_utf16": 1765056,
+          "original": "Enabled\":{const{jsonData:e}=yield t.getNoiseGateState();e&&e.enabled!==o&&(yield t.setNoiseGateState(o))}break;case\"basic\":0==n&&(yield t.setNoiseGateThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setNoiseGateThresholdValue(Number(a.value)));break;case\"targetGain\":1==n&&(yield t.setNoiseGateTargetGainValue(Number(s.value)));break;case\"attackTime\":1==n&&(yield t.setNoiseGateAttackTimeValue(Number(l.value)));break;case\"releaseTime\":1==n&&(yield t.setNoiseGateReleaseTimeValue(Number(c.value)))}}catch(e){console.error(\"setNoiseGate\",e.message)}}),wi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{changeKey:i,useMo"
+        },
+        {
+          "token": "setCompressorThresholdValue(Number(r.value))",
+          "start_utf16": 1765175,
+          "end_utf16": 1765839,
+          "original": "log(\"**********************setCompressor:\"+i,n,e),i){case\"useMode\":break;case\"isEnabled\":{const{jsonData:e}=yield t.getCompressorState();e&&e.enabled!==o&&(yield t.setCompressorState(o))}break;case\"basic\":0==n&&(yield t.setCompressorThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setCompressorThresholdValue(Number(a.value)));break;case\"softKneeWidth\":1==n&&(yield t.setCompressorSoftKneeWidthValue(Number(s.value)));break;case\"ratio\":1==n&&(yield t.setCompressorRatioValue(Number(l.value)));break;case\"makeUpGain\":1==n&&(yield t.setCompressorMakeUpGainValue(Number(c.value)));break;case\"attackTime\":1==n&&(yield t.setCompressorAttackTimeVal"
+        },
+        {
+          "token": "setCompressorThresholdValue(Number(a.value))",
+          "start_utf16": 1765258,
+          "end_utf16": 1765922,
+          "original": "bled\":{const{jsonData:e}=yield t.getCompressorState();e&&e.enabled!==o&&(yield t.setCompressorState(o))}break;case\"basic\":0==n&&(yield t.setCompressorThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setCompressorThresholdValue(Number(a.value)));break;case\"softKneeWidth\":1==n&&(yield t.setCompressorSoftKneeWidthValue(Number(s.value)));break;case\"ratio\":1==n&&(yield t.setCompressorRatioValue(Number(l.value)));break;case\"makeUpGain\":1==n&&(yield t.setCompressorMakeUpGainValue(Number(c.value)));break;case\"attackTime\":1==n&&(yield t.setCompressorAttackTimeValue(Number(u.value)));break;case\"releaseTime\":1==n&&(yield t.setCompressorReleaseTim"
+        },
+        {
+          "token": "case\"basic\":0==n",
+          "start_utf16": 1764284,
+          "end_utf16": 1764920,
+          "original": "leaseTime:c}=e;switch(console.log(\"**********************setNoiseGate:\"+i,n,e),i){case\"useMode\":break;case\"isEnabled\":{const{jsonData:e}=yield t.getNoiseGateState();e&&e.enabled!==o&&(yield t.setNoiseGateState(o))}break;case\"basic\":0==n&&(yield t.setNoiseGateThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setNoiseGateThresholdValue(Number(a.value)));break;case\"targetGain\":1==n&&(yield t.setNoiseGateTargetGainValue(Number(s.value)));break;case\"attackTime\":1==n&&(yield t.setNoiseGateAttackTimeValue(Number(l.value)));break;case\"releaseTime\":1==n&&(yield t.setNoiseGateReleaseTimeValue(Number(c.value)))}}catch(e"
+        },
+        {
+          "token": "case\"threshold\":1==n",
+          "start_utf16": 1764362,
+          "end_utf16": 1765002,
+          "original": ",i){case\"useMode\":break;case\"isEnabled\":{const{jsonData:e}=yield t.getNoiseGateState();e&&e.enabled!==o&&(yield t.setNoiseGateState(o))}break;case\"basic\":0==n&&(yield t.setNoiseGateThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setNoiseGateThresholdValue(Number(a.value)));break;case\"targetGain\":1==n&&(yield t.setNoiseGateTargetGainValue(Number(s.value)));break;case\"attackTime\":1==n&&(yield t.setNoiseGateAttackTimeValue(Number(l.value)));break;case\"releaseTime\":1==n&&(yield t.setNoiseGateReleaseTimeValue(Number(c.value)))}}catch(e){console.error(\"setNoiseGate\",e.message)}}),wi=e=>Be(void 0,void 0,void 0,functio"
+        },
+        {
+          "token": "setNoiseGateTargetGainValue(Number(s.value))",
+          "start_utf16": 1764476,
+          "end_utf16": 1765140,
+          "original": "setNoiseGateState(o))}break;case\"basic\":0==n&&(yield t.setNoiseGateThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setNoiseGateThresholdValue(Number(a.value)));break;case\"targetGain\":1==n&&(yield t.setNoiseGateTargetGainValue(Number(s.value)));break;case\"attackTime\":1==n&&(yield t.setNoiseGateAttackTimeValue(Number(l.value)));break;case\"releaseTime\":1==n&&(yield t.setNoiseGateReleaseTimeValue(Number(c.value)))}}catch(e){console.error(\"setNoiseGate\",e.message)}}),wi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{changeKey:i,useMode:n,isEnabled:o,basic:r,threshold:a,softKneeWidth:s,ratio:l,makeUpGain:c,attackTime"
+        },
+        {
+          "token": "setNoiseGateAttackTimeValue(Number(l.value))",
+          "start_utf16": 1764560,
+          "end_utf16": 1765224,
+          "original": "mber(r.value)));break;case\"threshold\":1==n&&(yield t.setNoiseGateThresholdValue(Number(a.value)));break;case\"targetGain\":1==n&&(yield t.setNoiseGateTargetGainValue(Number(s.value)));break;case\"attackTime\":1==n&&(yield t.setNoiseGateAttackTimeValue(Number(l.value)));break;case\"releaseTime\":1==n&&(yield t.setNoiseGateReleaseTimeValue(Number(c.value)))}}catch(e){console.error(\"setNoiseGate\",e.message)}}),wi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{changeKey:i,useMode:n,isEnabled:o,basic:r,threshold:a,softKneeWidth:s,ratio:l,makeUpGain:c,attackTime:u,releaseTime:d}=e;switch(console.log(\"**********************setCompressor:\"+i,n,e)"
+        },
+        {
+          "token": "setNoiseGateReleaseTimeValue(Number(c.value))",
+          "start_utf16": 1764645,
+          "end_utf16": 1765310,
+          "original": "r(a.value)));break;case\"targetGain\":1==n&&(yield t.setNoiseGateTargetGainValue(Number(s.value)));break;case\"attackTime\":1==n&&(yield t.setNoiseGateAttackTimeValue(Number(l.value)));break;case\"releaseTime\":1==n&&(yield t.setNoiseGateReleaseTimeValue(Number(c.value)))}}catch(e){console.error(\"setNoiseGate\",e.message)}}),wi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{changeKey:i,useMode:n,isEnabled:o,basic:r,threshold:a,softKneeWidth:s,ratio:l,makeUpGain:c,attackTime:u,releaseTime:d}=e;switch(console.log(\"**********************setCompressor:\"+i,n,e),i){case\"useMode\":break;case\"isEnabled\":{const{jsonData:e}=yield t.getCompressorState("
+        },
+        {
+          "token": "setCompressorSoftKneeWidthValue(Number(s.value))",
+          "start_utf16": 1765345,
+          "end_utf16": 1766013,
+          "original": "pressorState(o))}break;case\"basic\":0==n&&(yield t.setCompressorThresholdValue(Number(r.value)));break;case\"threshold\":1==n&&(yield t.setCompressorThresholdValue(Number(a.value)));break;case\"softKneeWidth\":1==n&&(yield t.setCompressorSoftKneeWidthValue(Number(s.value)));break;case\"ratio\":1==n&&(yield t.setCompressorRatioValue(Number(l.value)));break;case\"makeUpGain\":1==n&&(yield t.setCompressorMakeUpGainValue(Number(c.value)));break;case\"attackTime\":1==n&&(yield t.setCompressorAttackTimeValue(Number(u.value)));break;case\"releaseTime\":1==n&&(yield t.setCompressorReleaseTimeValue(Number(d.value)))}}catch(e){console.error(\"setCompressor\",e.message)}}),Pi=e=>Be(voi"
+        },
+        {
+          "token": "setCompressorRatioValue(Number(l.value))",
+          "start_utf16": 1765428,
+          "end_utf16": 1766088,
+          "original": "r(r.value)));break;case\"threshold\":1==n&&(yield t.setCompressorThresholdValue(Number(a.value)));break;case\"softKneeWidth\":1==n&&(yield t.setCompressorSoftKneeWidthValue(Number(s.value)));break;case\"ratio\":1==n&&(yield t.setCompressorRatioValue(Number(l.value)));break;case\"makeUpGain\":1==n&&(yield t.setCompressorMakeUpGainValue(Number(c.value)));break;case\"attackTime\":1==n&&(yield t.setCompressorAttackTimeValue(Number(u.value)));break;case\"releaseTime\":1==n&&(yield t.setCompressorReleaseTimeValue(Number(d.value)))}}catch(e){console.error(\"setCompressor\",e.message)}}),Pi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,min:n"
+        },
+        {
+          "token": "setCompressorMakeUpGainValue(Number(c.value))",
+          "start_utf16": 1765508,
+          "end_utf16": 1766173,
+          "original": "mber(a.value)));break;case\"softKneeWidth\":1==n&&(yield t.setCompressorSoftKneeWidthValue(Number(s.value)));break;case\"ratio\":1==n&&(yield t.setCompressorRatioValue(Number(l.value)));break;case\"makeUpGain\":1==n&&(yield t.setCompressorMakeUpGainValue(Number(c.value)));break;case\"attackTime\":1==n&&(yield t.setCompressorAttackTimeValue(Number(u.value)));break;case\"releaseTime\":1==n&&(yield t.setCompressorReleaseTimeValue(Number(d.value)))}}catch(e){console.error(\"setCompressor\",e.message)}}),Pi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,min:n,max:o}=e,r=function(e,t,i){return Number(((e-t)/(i-t)*40+0).toFixed(2))}(Number(i),n"
+        },
+        {
+          "token": "setCompressorAttackTimeValue(Number(u.value))",
+          "start_utf16": 1765593,
+          "end_utf16": 1766258,
+          "original": "lue(Number(s.value)));break;case\"ratio\":1==n&&(yield t.setCompressorRatioValue(Number(l.value)));break;case\"makeUpGain\":1==n&&(yield t.setCompressorMakeUpGainValue(Number(c.value)));break;case\"attackTime\":1==n&&(yield t.setCompressorAttackTimeValue(Number(u.value)));break;case\"releaseTime\":1==n&&(yield t.setCompressorReleaseTimeValue(Number(d.value)))}}catch(e){console.error(\"setCompressor\",e.message)}}),Pi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,min:n,max:o}=e,r=function(e,t,i){return Number(((e-t)/(i-t)*40+0).toFixed(2))}(Number(i),n,o);console.log(\"**********************setOutputMixerXlr:\"+i,n,o,\"afterMap \",r);const"
+        },
+        {
+          "token": "setCompressorReleaseTimeValue(Number(d.value))",
+          "start_utf16": 1765679,
+          "end_utf16": 1766345,
+          "original": "l.value)));break;case\"makeUpGain\":1==n&&(yield t.setCompressorMakeUpGainValue(Number(c.value)));break;case\"attackTime\":1==n&&(yield t.setCompressorAttackTimeValue(Number(u.value)));break;case\"releaseTime\":1==n&&(yield t.setCompressorReleaseTimeValue(Number(d.value)))}}catch(e){console.error(\"setCompressor\",e.message)}}),Pi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,min:n,max:o}=e,r=function(e,t,i){return Number(((e-t)/(i-t)*40+0).toFixed(2))}(Number(i),n,o);console.log(\"**********************setOutputMixerXlr:\"+i,n,o,\"afterMap \",r);const a=Number(i);a>=n&&a<=o&&(a===n?(yield t.setInputVolumeMicMuteState(!0),yield Yi(\"mic\","
+        },
+        {
+          "token": "const o=n?Number(i):0;o>=-12&&o<=12",
+          "start_utf16": 1759356,
+          "end_utf16": 1760011,
+          "original": "d);O.A.runtimeData.deviceNamePrefix=i.length>1?`${i.length}-`:\"\"}),Ai=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setKeyShifter:\"+i,n);const o=n?Number(i):0;o>=-12&&o<=12&&(yield t.setKeyShifterLevelValue(o))}catch(e){console.error(\"setKeyShifter\",e.message)}}),Si=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setVocalFading:\"+i,n);const o=Number(i),{jsonData:r}=yield t.getVocalFadingState();if(r&&r.enabled!==n&&(yield t.setVocalFadingState(n)),!n)return;o>=0&&o<=100&&(yield t.setVoc"
+        },
+        {
+          "token": "r&&r.enabled!==n&&(yield t.setVocalFadingState(n)),!n",
+          "start_utf16": 1759701,
+          "end_utf16": 1760374,
+          "original": "),Si=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setVocalFading:\"+i,n);const o=Number(i),{jsonData:r}=yield t.getVocalFadingState();if(r&&r.enabled!==n&&(yield t.setVocalFadingState(n)),!n)return;o>=0&&o<=100&&(yield t.setVocalFadingLevelValue(o))}catch(e){console.error(\"setVocalFading\",e.message)}}),Ti=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setVoiceChanger:\"+i,n);const o=Number(i),{jsonData:r}=yield t.getMagicVoiceState();if(r&&r.enabled!==n&&(yield t.setMagicVoiceState(n)),!n)return;[0,1,2,3"
+        },
+        {
+          "token": "o>=0&&o<=100&&(yield t.setVocalFadingLevelValue(o))",
+          "start_utf16": 1759762,
+          "end_utf16": 1760433,
+          "original": "vice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setVocalFading:\"+i,n);const o=Number(i),{jsonData:r}=yield t.getVocalFadingState();if(r&&r.enabled!==n&&(yield t.setVocalFadingState(n)),!n)return;o>=0&&o<=100&&(yield t.setVocalFadingLevelValue(o))}catch(e){console.error(\"setVocalFading\",e.message)}}),Ti=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setVoiceChanger:\"+i,n);const o=Number(i),{jsonData:r}=yield t.getMagicVoiceState();if(r&&r.enabled!==n&&(yield t.setMagicVoiceState(n)),!n)return;[0,1,2,3].includes(o)&&(yield t.setMagicVoiceMode(o))}catch(e){cons"
+        },
+        {
+          "token": "yield t.setMicEQ(!0),yield t.setMicEQLevel_MultiBand",
+          "start_utf16": 1077286,
+          "end_utf16": 1077958,
+          "original": "ands:o}},null==l?void 0:l.signal.aborted)throw c.error=new Error(\"canceled\"),c.value.status=\"error\",c.error;const{rzDeviceType:e}=C.A.injector.featuresList;if(e.AudioMixer){const e=(0,g.TL)(o);try{const t=_.jf.thxDevice;yield t.setMicEQ(!0),yield t.setMicEQLevel_MultiBand({NumBands:e.length,bandInfo:e}),console.log(\"%c taskRunnerSetMicEqualizerFrequencyBands SUCCESS\",\"background: green; color: white\"),c.result=!0,c.error=null}catch(e){return console.log(\"%c taskRunnerSetMicEqualizerFrequencyBands FAILED\",\"background: red; color: white\"),c.result=!1,c.value=null,c.error=e,Promise.reject(c)}}else{let e;try{e=(0,s.ml5)(o,n)}catch(e){console.log(\"taskRunnerSetMicEqual"
+        },
+        {
+          "token": "yield(0,s.f2B)(f)",
+          "start_utf16": 1336618,
+          "end_utf16": 1337255,
+          "original": "oiceChanger:f}},null==i?void 0:i.signal.aborted)throw n.error=new Error(\"canceled\"),n.value.status=\"error\",n.error;if(null==i?void 0:i.signal.aborted)throw n.error=new Error(\"canceled\"),n.value.status=\"error\",n.error;if(yield(0,s.f2B)(f),null==i?void 0:i.signal.aborted)throw n.error=new Error(\"canceled\"),n.value.status=\"error\",n.error;n.value.status=\"completed\",T.A.setMemoryStorageItem&&(gt.currValue=Object.assign({},f),gt.lastModifiedDate=_.jf.currentTimerTick?_.jf.currentTimerTick:Date.now(),gt.setting=Object.assign({},f),gt.setting.version=E,yield T.A.setMemoryStorageItem(_.wI.TASK_MEMORY_STORAGE_KEY,JSON.stringify(_.jf.memory"
+        },
+        {
+          "token": "r&&r.enabled!==n&&(yield t.setMagicVoiceState(n)),!n",
+          "start_utf16": 1760086,
+          "end_utf16": 1760758,
+          "original": "),Ti=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setVoiceChanger:\"+i,n);const o=Number(i),{jsonData:r}=yield t.getMagicVoiceState();if(r&&r.enabled!==n&&(yield t.setMagicVoiceState(n)),!n)return;[0,1,2,3].includes(o)&&(yield t.setMagicVoiceMode(o))}catch(e){console.error(\"setVoiceChanger\",e.message)}}),Di=(e,t,i,n,o)=>{const r=(e-t)*(o-n)/(i-t)+n;return Math.floor(r)},Ci=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{isEnabled:i,activeMode:n,modeValues:o}=e;o[0]=Di(Number(o[0]),0,100,-43,-19),console.log(\"**********************setEchoReverb:\"+n+\",modeValues"
+        },
+        {
+          "token": "[0,1,2,3].includes(o)&&(yield t.setMagicVoiceMode(o))",
+          "start_utf16": 1760146,
+          "end_utf16": 1760819,
+          "original": "evice;try{const{value:i,isEnabled:n}=e;console.log(\"**********************setVoiceChanger:\"+i,n);const o=Number(i),{jsonData:r}=yield t.getMagicVoiceState();if(r&&r.enabled!==n&&(yield t.setMagicVoiceState(n)),!n)return;[0,1,2,3].includes(o)&&(yield t.setMagicVoiceMode(o))}catch(e){console.error(\"setVoiceChanger\",e.message)}}),Di=(e,t,i,n,o)=>{const r=(e-t)*(o-n)/(i-t)+n;return Math.floor(r)},Ci=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{isEnabled:i,activeMode:n,modeValues:o}=e;o[0]=Di(Number(o[0]),0,100,-43,-19),console.log(\"**********************setEchoReverb:\"+n+\",modeValues:\"+o,i);const{jsonData:r}=yield t.getEchoOrReverbState();if(r"
+        },
+        {
+          "token": "o[0]=Di(Number(o[0]),0,100,-43,-19)",
+          "start_utf16": 1760437,
+          "end_utf16": 1761092,
+          "original": "error(\"setVoiceChanger\",e.message)}}),Di=(e,t,i,n,o)=>{const r=(e-t)*(o-n)/(i-t)+n;return Math.floor(r)},Ci=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{isEnabled:i,activeMode:n,modeValues:o}=e;o[0]=Di(Number(o[0]),0,100,-43,-19),console.log(\"**********************setEchoReverb:\"+n+\",modeValues:\"+o,i);const{jsonData:r}=yield t.getEchoOrReverbState();if(r&&r.enabled!==i&&(yield t.setEchoOrReverbState(i)),!i)return;o[0]&&o[0]>=-43&&o[0]<=-19&&(yield t.setEchoOrReverbRoomValue(Number(o[0]))),o[1]&&o[1]>=.6&&o[1]<=2.7&&(yield t.setEchoOrReverbDecayTimeValue(Number(o[1]))),o[2]&&o[2]>=0&&o[2]<=1&&(yield t.setEchoOrReverbEchoGa"
+        },
+        {
+          "token": "r&&r.enabled!==i&&(yield t.setEchoOrReverbState(i)),!i",
+          "start_utf16": 1760598,
+          "end_utf16": 1761272,
+          "original": "zDevice;try{const{isEnabled:i,activeMode:n,modeValues:o}=e;o[0]=Di(Number(o[0]),0,100,-43,-19),console.log(\"**********************setEchoReverb:\"+n+\",modeValues:\"+o,i);const{jsonData:r}=yield t.getEchoOrReverbState();if(r&&r.enabled!==i&&(yield t.setEchoOrReverbState(i)),!i)return;o[0]&&o[0]>=-43&&o[0]<=-19&&(yield t.setEchoOrReverbRoomValue(Number(o[0]))),o[1]&&o[1]>=.6&&o[1]<=2.7&&(yield t.setEchoOrReverbDecayTimeValue(Number(o[1]))),o[2]&&o[2]>=0&&o[2]<=1&&(yield t.setEchoOrReverbEchoGainValue(Number(o[2]))),o[3]&&o[3]>=110&&o[3]<=200&&(yield t.setEchoOrReverbEchoDelayValue(Number(o[3])))}catch(e){console.error(\"setEchoReverb\",e.message)}}),Mi=e=>Be(void 0,void 0"
+        },
+        {
+          "token": "o[2]&&o[2]>=0&&o[2]<=1",
+          "start_utf16": 1760818,
+          "end_utf16": 1761460,
+          "original": "r&&r.enabled!==i&&(yield t.setEchoOrReverbState(i)),!i)return;o[0]&&o[0]>=-43&&o[0]<=-19&&(yield t.setEchoOrReverbRoomValue(Number(o[0]))),o[1]&&o[1]>=.6&&o[1]<=2.7&&(yield t.setEchoOrReverbDecayTimeValue(Number(o[1]))),o[2]&&o[2]>=0&&o[2]<=1&&(yield t.setEchoOrReverbEchoGainValue(Number(o[2]))),o[3]&&o[3]>=110&&o[3]<=200&&(yield t.setEchoOrReverbEchoDelayValue(Number(o[3])))}catch(e){console.error(\"setEchoReverb\",e.message)}}),Mi=e=>Be(void 0,void 0,void 0,function*(){const t=p.jf.rzDevice;try{const{value:i}=e,n=Di(Number(i),0,100,-45,0);console.log(\"**********************setMicMonitor:\"+i,n),n>=-45&&n<=0&&(yield t.setVolumeMicSlider"
+        },
+        {
+          "token": "case\"noiseGate\":{(0,D.QY)({type:n.faB,payload:Object.assign({},E[t])})",
+          "start_utf16": 1461897,
+          "end_utf16": 1462587,
+          "original": "});d.c.enqueueEvent(i);break}case\"micSetup\":{(0,D.QY)({type:n.cce,payload:E[t]});const i=new v.V(_.pF.ON_SET_MIC_SETUP,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{micSetup:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"noiseGate\":{(0,D.QY)({type:n.faB,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_NOISE_GATE,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{noiseGate:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"compressor\":{(0,D.QY)({type:n.swF,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_COMPRESSOR,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{compressor:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"fader\":{(0,D.QY)({type:n.zSD,payload:Ob"
+        },
+        {
+          "token": "case\"compressor\":{(0,D.QY)({type:n.swF,payload:Object.assign({},E[t])})",
+          "start_utf16": 1462109,
+          "end_utf16": 1462800,
+          "original": ");break}case\"noiseGate\":{(0,D.QY)({type:n.faB,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_NOISE_GATE,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{noiseGate:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"compressor\":{(0,D.QY)({type:n.swF,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_COMPRESSOR,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{compressor:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"fader\":{(0,D.QY)({type:n.zSD,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_FADER,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{fader:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"outputMixer\":for(const[i,n]of Object.entries(E[t])){i"
+        },
+        {
+          "token": "_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{noiseGate:E[t]",
+          "start_utf16": 1462007,
+          "end_utf16": 1462682,
+          "original": "IC_SETUP,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{micSetup:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"noiseGate\":{(0,D.QY)({type:n.faB,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_NOISE_GATE,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{noiseGate:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"compressor\":{(0,D.QY)({type:n.swF,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_COMPRESSOR,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{compressor:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"fader\":{(0,D.QY)({type:n.zSD,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_FADER,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void "
+        },
+        {
+          "token": "_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{compressor:E[t]",
+          "start_utf16": 1462220,
+          "end_utf16": 1462896,
+          "original": "E_GATE,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{noiseGate:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"compressor\":{(0,D.QY)({type:n.swF,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_COMPRESSOR,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{compressor:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"fader\":{(0,D.QY)({type:n.zSD,payload:Object.assign({},E[t])});const i=new v.V(_.pF.ON_SET_FADER,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{fader:E[t],version:e.version});d.c.enqueueEvent(i);break}case\"outputMixer\":for(const[i,n]of Object.entries(E[t])){if(\"mic\"===i){if((null===(r=E.micSetup)||void 0===r?void 0:r.useMode)!==_.Ko.ADVANCED)continue}el"
+        },
+        {
+          "token": "getEQLevel_MultiBand(),i=yield e.getMicEQLevel_MultiBand()",
+          "start_utf16": 1458610,
+          "end_utf16": 1459288,
+          "original": "eld tl(Os,e,void 0,M.A.deviceEQData)):(yield tl(Os,e),yield nl(Os))}else console.warn(\"getLocalStorageDeviceCache failed\",Os)})}const Qs=()=>gs(void 0,void 0,void 0,function*(){const e=_.jf.thxDevice;try{const t=yield e.getEQLevel_MultiBand(),i=yield e.getMicEQLevel_MultiBand();return{audio:Js(t.jsonData.bandInfo,f.audioBandFrequency),mic:Js(i.jsonData.bandInfo,f.micBandFrequency)}}catch(e){console.error(e)}}),qs=(e=[],t=[])=>{if((null==e?void 0:e.length)!=(null==t?void 0:t.length))return!1;for(let i=0,n=e.length;i<n;i++)if(e[i].frequency!=t[i].frequency||e[i].decibel!=t[i].decibel)return!1;return!0},Js=(e,t)=>{let i=[];for(let n=0,o=Math.min(e.length,t.length);n<o;n++)"
+        },
+        {
+          "token": "deviceEQData.audio",
+          "start_utf16": 1223499,
+          "end_utf16": 1224137,
+          "original": "return ko(this,void 0,void 0,function*(){const t=a;let r=n.Q5I,s=n.OSd;try{if(i&&M.A.deviceEQData){if(o){const t=(0,u.vc)(_.wI.LOCALSTORAGE_KEY),i=t.profiles.find(e=>e.guid===t.activeProfile);i.equalizer.customBands=M.A.deviceEQData.audio,i.equalizer.mode=Xs(M.A.deviceEQData.audio,f.audioBandPreset),i.micEqualizer.customBands=M.A.deviceEQData.mic,i.micEqualizer.mode=Xs(M.A.deviceEQData.mic,f.micBandPreset),t.version=void 0===(null==t?void 0:t.version)?1:p.l9.nextVersion(t.version),(0,u.Pf)(t),Zs(!0),(0,D.QY)({type:n.F4g,payload:i.equalizer}),(0,D.QY)({type:n.scO,payload:i.micEqualizer}),(0,D.QY)({type:s,payload:{timertick:e}})}}el"
+        },
+        {
+          "token": "deviceEQData.mic",
+          "start_utf16": 1223611,
+          "end_utf16": 1224247,
+          "original": "=(0,u.vc)(_.wI.LOCALSTORAGE_KEY),i=t.profiles.find(e=>e.guid===t.activeProfile);i.equalizer.customBands=M.A.deviceEQData.audio,i.equalizer.mode=Xs(M.A.deviceEQData.audio,f.audioBandPreset),i.micEqualizer.customBands=M.A.deviceEQData.mic,i.micEqualizer.mode=Xs(M.A.deviceEQData.mic,f.micBandPreset),t.version=void 0===(null==t?void 0:t.version)?1:p.l9.nextVersion(t.version),(0,u.Pf)(t),Zs(!0),(0,D.QY)({type:n.F4g,payload:i.equalizer}),(0,D.QY)({type:n.scO,payload:i.micEqualizer}),(0,D.QY)({type:s,payload:{timertick:e}})}}else el();(0,D.QY)({type:r,payload:{timertick:e,actionType:\"taskMakerSetSaveDeviceEqualizer\",status:\"completed\","
+        },
+        {
+          "token": "ON_SET_SAVE_DEVICE_EQ",
+          "start_utf16": 1223112,
+          "end_utf16": 1223753,
+          "original": "MakerSetMicEqMode\",status:\"error\",message:t.message,value:{oldValue:l,newValue:i}}}),(0,D.QY)({type:E,payload:{timertick:e}})}})}(e.timerTick,t.from,i,L,R,o)}));break}}break;case _.n3.deviceEqualizer:switch(S){case _.pF.ON_SET_SAVE_DEVICE_EQ:{const t=d.c.getCurrentEvent(),{isSave:i}=t.payload;d.c.executeEventTask(g,L,()=>Zr(this,void 0,void 0,function*(){yield function(e,t,i,o,r,a=0){return ko(this,void 0,void 0,function*(){const t=a;let r=n.Q5I,s=n.OSd;try{if(i&&M.A.deviceEQData){if(o){const t=(0,u.vc)(_.wI.LOCALSTORAGE_KEY),i=t.profiles.find(e=>e.guid===t.activeProfile);i.equalizer.customBands=M.A.deviceEQData.audio,i.equalizer.mod"
+        },
+        {
+          "token": "\"AudioAWKittyBLE\"===_.jf.rzDevice.name?(M.A.deviceEQData=yield Qs()",
+          "start_utf16": 1458320,
+          "end_utf16": 1459007,
+          "original": "SCREENSAVER_TO_UI,payload:{oledScreensaver:e}});const t=new v.V(_.pF.ON_SET_OLED_SCREENSAVER,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{oledScreensaver:e,version:Os.version});d.c.enqueueEvent(t);break}}break}}(0,u.Pf)(Os),\"AudioAWKittyBLE\"===_.jf.rzDevice.name?(M.A.deviceEQData=yield Qs(),yield tl(Os,e,void 0,M.A.deviceEQData)):(yield tl(Os,e),yield nl(Os))}else console.warn(\"getLocalStorageDeviceCache failed\",Os)})}const Qs=()=>gs(void 0,void 0,void 0,function*(){const e=_.jf.thxDevice;try{const t=yield e.getEQLevel_MultiBand(),i=yield e.getMicEQLevel_MultiBand();return{audio:Js(t.jsonData.bandInfo,f.audioBandFrequency),mic:Js(i.jsonData.bandInfo,f.micBandFrequency)}}catch(e){con"
+        },
+        {
+          "token": "f.micBandFrequency[4*i+3]",
+          "start_utf16": 1220377,
+          "end_utf16": 1221022,
+          "original": ",t,i)=>i<2?(e.push({frequency:f.micBandFrequency[4*i],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+1],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+2],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+3],decibel:t.decibel}),e):2==i?(e.push({frequency:f.micBandFrequency[4*i],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+1],decibel:t.decibel}),e):void 0,[]);p.T_.enqueueTask(p.SS.NORMAL_SKIPPABLE,Dt.micEqualizer,Si.bind(null,Ct.setting,n,E,i,a),Ti.bind(null,e,t,E))}else(0,D.QY)({type:v,payload:{timertick:e}});T.A.setMemoryStorageItem&&(X.setMicEqualizerFrequencyBands.timerTick=e,X.set"
+        },
+        {
+          "token": "f.micBandFrequency[4*i+1]",
+          "start_utf16": 1220249,
+          "end_utf16": 1220894,
+          "original": "e:{oldMicEqualizerBasic:l,newMicEqualizerBasic:c,version:E}}}),a){const r=f.micBandBasicPreset,a=(\"custom\"!==i?r[i]:o).reduce((e,t,i)=>i<2?(e.push({frequency:f.micBandFrequency[4*i],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+1],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+2],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+3],decibel:t.decibel}),e):2==i?(e.push({frequency:f.micBandFrequency[4*i],decibel:t.decibel}),e.push({frequency:f.micBandFrequency[4*i+1],decibel:t.decibel}),e):void 0,[]);p.T_.enqueueTask(p.SS.NORMAL_SKIPPABLE,Dt.micEqualizer,Si.bind(null,Ct.setting,n,E,i,a),Ti.bind(null,e"
+        },
+        {
+          "token": "t.micBaicEqualizer.mode",
+          "start_utf16": 1221838,
+          "end_utf16": 1222481,
+          "original": " 0!==s?s:_.Ko.BASIC,t.micEqualizerMode=i,e.version=void 0===(null==e?void 0:e.version)?1:p.l9.nextVersion(e.version),y=e.version,(0,u.lR)(_.wI.LOCALSTORAGE_KEY,e),i==_.Ko.BASIC){const e=f.micBandBasicPreset,i=\"custom\"!==t.micBaicEqualizer.mode?e[t.micBaicEqualizer.mode]:t.micBaicEqualizer.customBands;(0,D.QY)({type:n.uDP,payload:t.micBaicEqualizer});const o=new v.V(_.pF.ON_SET_MIC_BASIC_EQ,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{activePresetMode:t.micBaicEqualizer.mode,frequencyBands:i});d.c.enqueueEvent(o)}else if(i==_.Ko.ADVANCED){const e=f.micBandPreset,i=\"custom\"!==t.micEqualizer.mode?e[t.micEqualizer.mode]:t.micEqualizer.customBa"
+        },
+        {
+          "token": "t.micEqualizerMode=i",
+          "start_utf16": 1221638,
+          "end_utf16": 1222278,
+          "original": ";t===_.wI.MW_ACTION_FROM_UI?(c=n.I5r,E=n.vZv):(c=n.mG,E=n.WQT);try{if(o){const e=(0,u.vc)(_.wI.LOCALSTORAGE_KEY),t=e.profiles.find(t=>t.guid===e.activeProfile);if(l=null!==(s=t.micEqualizerMode)&&void 0!==s?s:_.Ko.BASIC,t.micEqualizerMode=i,e.version=void 0===(null==e?void 0:e.version)?1:p.l9.nextVersion(e.version),y=e.version,(0,u.lR)(_.wI.LOCALSTORAGE_KEY,e),i==_.Ko.BASIC){const e=f.micBandBasicPreset,i=\"custom\"!==t.micBaicEqualizer.mode?e[t.micBaicEqualizer.mode]:t.micBaicEqualizer.customBands;(0,D.QY)({type:n.uDP,payload:t.micBaicEqualizer});const o=new v.V(_.pF.ON_SET_MIC_BASIC_EQ,_.wI.MW_ACTION_FROM_LOCALSTORAGE,void 0,{active"
+        }
+      ]
+    },
+    {
+      "path": ".ref/middleware/1342/8793.8b70f445ce1f22fe05df.js",
+      "sha256": "1a7b74806c3748a22aa4bb7f731060f6813bded47b2ed882b2c20809f5716ef6",
+      "receipts": [
+        {
+          "token": "DeviceId_PlaybackMix:131074",
+          "start_utf16": 657,
+          "end_utf16": 1304,
+          "original": "usic:65538,DeviceId_Game:65539,DeviceId_VoiceChat:65540,DeviceId_Browser:65541,DeviceId_SoundEffects:65542,DeviceId_Aux1:65553,DeviceId_Aux2:65554,DeviceId_Aux3:65555,DeviceId_Microphone:131072,DeviceId_StreamMix:131073,DeviceId_PlaybackMix:131074,DeviceId_CamyMic:262145,DeviceId_CamyHP:524289},s={Headphones:0,System:1,Music:2,Game:3,VoiceChat:4,Browser:5,SoundEffects:6,Microphone:7,Aux1:8,Aux2:9,Aux3:10};var l=t(80995),a=t(91902),c=t(76512),d=t(97829),r=function(e,i,t,o){return new(t||(t=Promise))(function(n,s){function l(e){try{c(o.next(e))}catch(e){s(e)}}function a(e){try{c(o.throw(e))}catch(e){s(e)}}function c(e){var i;e.done?n(e.value"
+        },
+        {
+          "token": "DeviceId_StreamMix:131073",
+          "start_utf16": 631,
+          "end_utf16": 1276,
+          "original": "Id_System:65537,DeviceId_Music:65538,DeviceId_Game:65539,DeviceId_VoiceChat:65540,DeviceId_Browser:65541,DeviceId_SoundEffects:65542,DeviceId_Aux1:65553,DeviceId_Aux2:65554,DeviceId_Aux3:65555,DeviceId_Microphone:131072,DeviceId_StreamMix:131073,DeviceId_PlaybackMix:131074,DeviceId_CamyMic:262145,DeviceId_CamyHP:524289},s={Headphones:0,System:1,Music:2,Game:3,VoiceChat:4,Browser:5,SoundEffects:6,Microphone:7,Aux1:8,Aux2:9,Aux3:10};var l=t(80995),a=t(91902),c=t(76512),d=t(97829),r=function(e,i,t,o){return new(t||(t=Promise))(function(n,s){function l(e){try{c(o.next(e))}catch(e){s(e)}}function a(e){try{c(o.throw(e))}catch(e){s(e)}}function"
+        },
+        {
+          "token": "SetDeviceVolume",
+          "start_utf16": 8051,
+          "end_utf16": 8686,
+          "original": "eContainerId,e,i]}};t=yield this.callDLLApi(o)}return console.log(`${this.name}.setRouteExternalDevice(), r:`,t),t}),this.setDeviceVolume=(e,i)=>r(this,void 0,void 0,function*(){let t=!1;if(this.isInit){const o={action:\"SetDeviceVolume\",payload:{actionArgs:[this.deviceContainerId,e,i]}};t=yield this.callDLLApi(o)}return console.log(`${this.name}.setDeviceVolume(), r:`,t),t}),this.setDeviceMute=(e,i)=>r(this,void 0,void 0,function*(){let t=!1;if(this.isInit){const o={action:\"SetDeviceMute\",payload:{actionArgs:[this.deviceContainerId,e,i]}};t=yield this.callDLLApi(o)}return console.log(`${this.name}.setDeviceMute(), r:`,t),t}),th"
+        },
+        {
+          "token": "SetDeviceMute",
+          "start_utf16": 8310,
+          "end_utf16": 8943,
+          "original": "his.deviceContainerId,e,i]}};t=yield this.callDLLApi(o)}return console.log(`${this.name}.setDeviceVolume(), r:`,t),t}),this.setDeviceMute=(e,i)=>r(this,void 0,void 0,function*(){let t=!1;if(this.isInit){const o={action:\"SetDeviceMute\",payload:{actionArgs:[this.deviceContainerId,e,i]}};t=yield this.callDLLApi(o)}return console.log(`${this.name}.setDeviceMute(), r:`,t),t}),this.setMixEnable=(e,i,t)=>r(this,void 0,void 0,function*(){let o=!1;if(this.isInit){const n={action:\"SetMixEnable\",payload:{actionArgs:[this.deviceContainerId,e,i,t]}};o=yield this.callDLLApi(n)}return console.log(`${this.name}.setMixEnable(), r:`,o),o}),thi"
+        },
+        {
+          "token": "SetMixLevel",
+          "start_utf16": 8821,
+          "end_utf16": 9452,
+          "original": "this.deviceContainerId,e,i,t]}};o=yield this.callDLLApi(n)}return console.log(`${this.name}.setMixEnable(), r:`,o),o}),this.setMixLevel=(e,i,t)=>r(this,void 0,void 0,function*(){let o=!1;if(this.isInit){const n={action:\"SetMixLevel\",payload:{actionArgs:[this.deviceContainerId,e,i,t]}};o=yield this.callDLLApi(n)}return console.log(`${this.name}.setMixLevel(), r:`,o),o}),this.setMicrophoneVolume=e=>r(this,void 0,void 0,function*(){let i=yield this.setDeviceVolume(n.DeviceId_CamyMic,e);return console.log(`${this.name}.setMicrophoneVolume(), r:`,i),i}),this.setMicrophoneMute=e=>r(this,void 0,void 0,function*(){let i=yield this."
+        },
+        {
+          "token": "SetMixEnable",
+          "start_utf16": 8566,
+          "end_utf16": 9198,
+          "original": "this.deviceContainerId,e,i]}};t=yield this.callDLLApi(o)}return console.log(`${this.name}.setDeviceMute(), r:`,t),t}),this.setMixEnable=(e,i,t)=>r(this,void 0,void 0,function*(){let o=!1;if(this.isInit){const n={action:\"SetMixEnable\",payload:{actionArgs:[this.deviceContainerId,e,i,t]}};o=yield this.callDLLApi(n)}return console.log(`${this.name}.setMixEnable(), r:`,o),o}),this.setMixLevel=(e,i,t)=>r(this,void 0,void 0,function*(){let o=!1;if(this.isInit){const n={action:\"SetMixLevel\",payload:{actionArgs:[this.deviceContainerId,e,i,t]}};o=yield this.callDLLApi(n)}return console.log(`${this.name}.setMixLevel(), r:`,o),o}),this."
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1342/static/js/main.2623357c.js",
+      "sha256": "7135bf1ec237047bc3c0ca25710aa39b02c6fa9516b7aa1425f743e0c57010e9",
+      "receipts": [
+        {
+          "token": "noiseGateReducer",
+          "start_utf16": 6030310,
+          "end_utf16": 6030946,
+          "original": "o.stateMachineEvent.payload}),n}case qc:return Ce(e,t.payload);case Kc:return Le(e,t);case kc:return me(e,t);case xc:return pe(e,t);case jc:return Pe(e,t);case Xc:return Me(e,t);case Zc:return he(e,t);default:return e}},noiseGateReducer:function(e,t){if(\"undefined\"===typeof e)return cd;switch(t.type){case $c:return(0,h.A)((0,h.A)({},e),{},{noiseGate:(0,h.A)((0,h.A)({},e.noiseGate),t.payload)});case Qc:{var a;let n=(0,h.A)((0,h.A)({},e),{},{noiseGate:(0,h.A)((0,h.A)({},e.noiseGate),t.payload)});const o=new xe(\"ON_SET_NOISE_GATE\",void 0,{noiseGate:n.noiseGate});window.dispatchEvent(o),null===(a=window.mwBroadcastChannel)||void 0=="
+        },
+        {
+          "token": "ON_SET_NOISE_GATE",
+          "start_utf16": 367784,
+          "end_utf16": 368421,
+          "original": "\"SET_CALIBRATION_DATA\",ot=\"SET_SPATIAL_DISTANCE\",it=\"UPDATE_SPATIAL_DISTANCE\",rt=\"SET_COMPETITIVE_MODE\",st=\"MW_SET_CALIBRATION_DATA_TO_UI\",Et=\"MW_SET_SPATIAL_DISTANCE_TO_UI\",_t=\"MW_UPDATE_THX_COMPETITIVE_MODE_TO_UI\",Tt=\"ON_SET_NOISE_GATE\",ct=\"ON_SET_HIGH_PASS_FILTER\",It=\"MW_SET_MIC_VOLUME_TO_UI\",At=\"MW_SET_POWER_SAVING_TO_UI\",lt=\"MW_ADD_NEW_POWER_SAVING_UI_ACTION\",Ot=\"MW_UPDATE_POWER_SAVING_UI_ACTION_LOCAL_STORAGE\",dt=\"MW_UPDATE_POWER_SAVING_UI_ACTION_DEVICE\",St=\"MW_POST_PROCESS_COMPLETED_POWER_SAVING_UI_ACTION\",ut=\"MW_ADD_NEW_POWER_SAVING_LOCALSTORAGE_ACTION\",Rt=\"MW_UPDATE_POWER_SAVING_LOCALSTORAGE_ACTION_DEVICE\",Nt=\"MW_POST_PRO"
+        },
+        {
+          "token": "compressorReducer",
+          "start_utf16": 6031140,
+          "end_utf16": 6031777,
+          "original": "o.stateMachineEvent.payload}),n}case rI:return Ce(e,t.payload);case tI:return Le(e,t);case eI:return me(e,t);case aI:return pe(e,t);case nI:return Pe(e,t);case oI:return Me(e,t);case iI:return he(e,t);default:return e}},compressorReducer:function(e,t){if(\"undefined\"===typeof e)return Id;switch(t.type){case pI:return(0,h.A)((0,h.A)({},e),{},{compressor:(0,h.A)((0,h.A)({},e.compressor),t.payload)});case LI:{var a;let n=(0,h.A)((0,h.A)({},e),{},{compressor:(0,h.A)((0,h.A)({},e.compressor),t.payload)});const o=new xe(\"ON_SET_COMPRESSOR\",void 0,{compressor:n.compressor});window.dispatchEvent(o),null===(a=window.mwBroadcastChannel)||vo"
+        },
+        {
+          "token": "ON_SET_COMPRESSOR",
+          "start_utf16": 6031440,
+          "end_utf16": 6032077,
+          "original": "e){case pI:return(0,h.A)((0,h.A)({},e),{},{compressor:(0,h.A)((0,h.A)({},e.compressor),t.payload)});case LI:{var a;let n=(0,h.A)((0,h.A)({},e),{},{compressor:(0,h.A)((0,h.A)({},e.compressor),t.payload)});const o=new xe(\"ON_SET_COMPRESSOR\",void 0,{compressor:n.compressor});window.dispatchEvent(o),null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:\"ON_SET_COMPRESSOR\",timerTick:void 0,payload:{compressor:n.compressor}});return n=Ce(n,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload}),n}case GI:return Ce(e,t.payload);case MI:return Le(e,t);case PI:retu"
+        },
+        {
+          "token": "this.reset=()=>{const e={mode:\"custom\",frequencyBands:this.props.presetData.default}",
+          "start_utf16": 6445347,
+          "end_utf16": 6446051,
+          "original": ";if(\"custom\"===t){a=this.props.customBands&&this.props.customBands.length>0?this.props.customBands:this.props.presetData.default}else a=this.props.presetData[t]||Lt;const n={mode:t,frequencyBands:a};this.props.setEQ(n)},this.reset=()=>{const e={mode:\"custom\",frequencyBands:this.props.presetData.default};this.props.setEQ(e)},this.renderTabs=()=>this.props.tabs.map((e,t)=>(0,Qe.jsx)(CM,{name:e.name,id:e.id,active:e.id===this.props.activePresetMode.toLocaleLowerCase(),changeTab:this.changeTab,isScale:this.props.layoutOptions.tabScale},e.name)),this.saveDeviceEq=e=>(this.props.setSaveDeviceEQ(e),!0),this.bodyWidgetRef=g().createRef()}componentDidUpdate(e){const t=this.props,a=t.activePresetMode,n=t."
+        },
+        {
+          "token": "this.changeTab=e=>",
+          "start_utf16": 6445062,
+          "end_utf16": 6445700,
+          "original": "Case(),frequencyBands:t};this.props.setEQ(a)},this.cloneBands=(e,t)=>{let a=[];return 0===e.length||(a=e.map((e,a)=>{const n=t&&t.frequency===e.frequency?t.decibel:e.decibel;return{frequency:e.frequency,decibel:n}})),a},this.changeTab=e=>{const t=e?e.toLocaleLowerCase():\"custom\";let a;if(\"custom\"===t){a=this.props.customBands&&this.props.customBands.length>0?this.props.customBands:this.props.presetData.default}else a=this.props.presetData[t]||Lt;const n={mode:t,frequencyBands:a};this.props.setEQ(n)},this.reset=()=>{const e={mode:\"custom\",frequencyBands:this.props.presetData.default};this.props.setEQ(e)},this.renderTabs=()=>this.pr"
+        },
+        {
+          "token": "Y=Object.entries({default:[0,0,0,0,0,0,0,0,0,0]",
+          "start_utf16": 4838345,
+          "end_utf16": 4839012,
+          "original": "5,150],chapel:[60,2.2,.3,150],arena:[100,2.7,.6,190],marbleroom:[30,.8,.2,140],smallconcerthall:[50,1.2,.2,110]},b=[30,60,120,250,500,1e3,2e3,4e3,8e3,16e3],V=[30,500,8e3],W=[31,63,125,250,500,1e3,2e3,4e3,8e3,16e3];const Y=Object.entries({default:[0,0,0,0,0,0,0,0,0,0],radiovoice:[-5,-2,0,1,1,2,3,3,1,-2],balanced:[3,3,2,1,1,1,2,2,3,0],midfocused:[-8,-6,-3,1,2,2,2,2,0,-4]}).reduce((e,t)=>{let a=(0,n.A)(t,2),o=a[0],i=a[1];return e[o]=i.map((e,t)=>({frequency:W[t],decibel:e})),e},{}),z=Object.entries({default:[0,0,0],radiovoice:[2,0,1],balanced:[-1,0,1],midfocused:[1,1,0]}).reduce((e,t)=>{let a=(0,n.A)(t,2),o=a[0],i=a[1];return e[o]=i.map((e,t)=>({frequency:V[t],d"
+        },
+        {
+          "token": "deviceEqDifferent",
+          "start_utf16": 6009994,
+          "end_utf16": 6010631,
+          "original": "0,min:1,max:200,step:1}},actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]};const Ad={activePresetMode:\"default\",frequencyBands:null,customBands:null,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],deviceEqDifferent:!1},ld=function(e,t){if(\"undefined\"===typeof e)return Ad;switch(t.type){case ne.IkZ:return wE((0,h.A)((0,h.A)({},t),{},{type:UE})),((e,t)=>{var a;const n=t.mode,o=t.frequencyBands;let i={activePresetMode:n,frequencyBands:o};\"custom\"===n&&(i.customBands=JSON.parse(JSON.stringify(o)));let r=Object.assign({},e,(0,h.A)({},i));return null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({typ"
+        },
+        {
+          "token": "saveDeviceEq",
+          "start_utf16": 6445679,
+          "end_utf16": 6446311,
+          "original": "enderTabs=()=>this.props.tabs.map((e,t)=>(0,Qe.jsx)(CM,{name:e.name,id:e.id,active:e.id===this.props.activePresetMode.toLocaleLowerCase(),changeTab:this.changeTab,isScale:this.props.layoutOptions.tabScale},e.name)),this.saveDeviceEq=e=>(this.props.setSaveDeviceEQ(e),!0),this.bodyWidgetRef=g().createRef()}componentDidUpdate(e){const t=this.props,a=t.activePresetMode,n=t.frequencyBands,o=t.presetData;e.frequencyBands===n&&a===e.activePresetMode||(\"custom\"===this.props.activePresetMode?this.setState({frequencyBands:n}):this.setState({frequencyBands:o[a]}))}componentDidMount(){this.props.deviceEqDifferent&&(e=>{const t=e.contain"
+        },
+        {
+          "token": "voiceChangerReducer",
+          "start_utf16": 6025927,
+          "end_utf16": 6026566,
+          "original": "o.stateMachineEvent.payload}),n}case rc:return Ce(e,t.payload);case tc:return Le(e,t);case ec:return me(e,t);case ac:return pe(e,t);case nc:return Pe(e,t);case oc:return Me(e,t);case ic:return he(e,t);default:return e}},voiceChangerReducer:function(e,t){if(\"undefined\"===typeof e)return sd;switch(t.type){case _c:return(0,h.A)((0,h.A)({},e),{},{voiceChanger:(0,h.A)((0,h.A)({},e.voiceChanger),t.payload.voiceChanger)});case sc:{var a;let n=(0,h.A)((0,h.A)({},e),{},{voiceChanger:t.payload});const o=new xe(\"ON_SET_VOICE_CHANGER\",void 0,{voiceChanger:t.payload});null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:\"ON_SET"
+        },
+        {
+          "token": "type:\"ON_SET_VOICE_CHANGER\"",
+          "start_utf16": 6026334,
+          "end_utf16": 6026981,
+          "original": "eChanger)});case sc:{var a;let n=(0,h.A)((0,h.A)({},e),{},{voiceChanger:t.payload});const o=new xe(\"ON_SET_VOICE_CHANGER\",void 0,{voiceChanger:t.payload});null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:\"ON_SET_VOICE_CHANGER\",timerTick:void 0,payload:{voiceChanger:t.payload}});return n=Ce(n,{timertick:o.stateMachineEvent.timerTick,actionType:o.stateMachineEvent.type,payload:o.stateMachineEvent.payload}),n}case dc:return Ce(e,t.payload);case cc:return Le(e,t);case Tc:return me(e,t);case Ic:return pe(e,t);case Ac:return Pe(e,t);case lc:return Me(e,t);case Oc:return he(e,t);default:return e}},echoReverbReducer:function(e"
+        },
+        {
+          "token": "className:\"wrapper-noiseGate\"",
+          "start_utf16": 6471395,
+          "end_utf16": 6472044,
+          "original": "x)(Ze.A,{text:qe.J_$}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.Wp8})]}),(0,Qe.jsxs)(\"li\",{children:[(0,Qe.jsx)(Ze.A,{text:qe.g2r}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.h7j})]})]})]});return(0,Qe.jsx)(\"div\",{className:\"wrapper-noiseGate\",children:(0,Qe.jsxs)(pm,{title:t,hasSwitch:!0,toggleSwitch:()=>{T(QP({isEnabled:!o}))},active:o,tips:D,children:[(0,Qe.jsxs)(\"div\",{className:!o&&\"noClick\",children:[0==n&&(0,Qe.jsx)(cP,{min:i.min,max:i.max,step:i.step,value:i.value,active:o,changeValue:e=>N(\"basic\",e)}),1==n&&(0,Qe.jsxs)(Qe.Fragment,{children:[(0,Qe.jsxs)(\"div\",{className:\"noiseGate_box\",children:[(0,Qe.jsxs)(\"div\",{className:\"b"
+        },
+        {
+          "token": "T(QP({useMode:0==n?1:0}))",
+          "start_utf16": 6473930,
+          "end_utf16": 6474575,
+          "original": "ime.value,activeI:ua(!0,l.releaseTime.value,l.releaseTime.min,l.releaseTime.max),name:(0,Qe.jsx)(Ze.A,{text:qe.qnZ}),unit:\"ms\",onChange:e=>N(\"releaseTime\",e)})]})]})]}),(0,Qe.jsx)(\"p\",{className:\"show-more\",onClick:()=>{T(QP({useMode:0==n?1:0}))},children:0==n?(0,Qe.jsx)(Ze.A,{text:qe.eiB}):(0,Qe.jsx)(Ze.A,{text:qe.Q$d})})]})})},mU=(0,U.memo)(LU),pU=e=>{let t=e.title;const a=(0,v.useSelector)(e=>e.compressorReducer.compressor),n=a.useMode,o=a.isEnabled,i=a.basic,r=a.threshold,s=a.softKneeWidth,E=a.ratio,_=a.makeUpGain,T=a.attackTime,c=a.releaseTime,I=(0,v.useDispatch)(),A=(0,U.useRef)(null),l=(0,U.useState)({ratio:E,makeUpGain:_,attackTi"
+        },
+        {
+          "token": "className:\"wrapper-compressor\"",
+          "start_utf16": 6475576,
+          "end_utf16": 6476226,
+          "original": "x)(Ze.A,{text:qe.J_$}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.xcu})]}),(0,Qe.jsxs)(\"li\",{children:[(0,Qe.jsx)(Ze.A,{text:qe.g2r}),(0,Qe.jsx)(\"br\",{}),(0,Qe.jsx)(Ze.A,{text:qe.e5z})]})]})]});return(0,Qe.jsx)(\"div\",{className:\"wrapper-compressor\",children:(0,Qe.jsxs)(pm,{title:t,hasSwitch:!0,toggleSwitch:()=>{I(JP({isEnabled:!o}))},active:o,tips:L,children:[(0,Qe.jsxs)(\"div\",{className:!o&&\"noClick\",children:[0==n&&(0,Qe.jsx)(cP,{min:i.min,max:i.max,step:i.step,value:i.value,active:o,changeValue:e=>C(\"basic\",e)}),1==n&&(0,Qe.jsxs)(Qe.Fragment,{children:[(0,Qe.jsxs)(\"div\",{className:\"compressor_box\",children:[(0,Qe.jsxs)(\"div\",{className:\""
+        },
+        {
+          "token": "I(JP({useMode:0==n?1:0}))",
+          "start_utf16": 6478620,
+          "end_utf16": 6479265,
+          "original": "ime.value,activeI:ua(!0,d.releaseTime.value,d.releaseTime.min,d.releaseTime.max),name:(0,Qe.jsx)(Ze.A,{text:qe.qnZ}),unit:\"ms\",onChange:e=>C(\"releaseTime\",e)})]})]})]}),(0,Qe.jsx)(\"p\",{className:\"show-more\",onClick:()=>{I(JP({useMode:0==n?1:0}))},children:0==n?(0,Qe.jsx)(Ze.A,{text:qe.eiB}):(0,Qe.jsx)(Ze.A,{text:qe.Q$d})})]})})},PU=(0,U.memo)(pU),MU=()=>(0,Qe.jsxs)(um,{children:[(0,Qe.jsx)(Nm,{direction:\"left\",children:(0,Qe.jsxs)(\"div\",{style:{display:\"flex\",flexDirection:\"column\"},children:[(0,Qe.jsx)(uU,{}),(0,Qe.jsx)(AM,{title:qe.Z4S}),(0,Qe.jsx)(mU,{title:qe.fVe})]})}),(0,Qe.jsx)(Nm,{direction:\"right\",children:(0,Qe.jsxs)(\"div\",{sty"
+        }
+      ]
+    },
+    {
+      "path": ".ref/devices/1342/static/css/main.07a2c4ed.css",
+      "sha256": "23582a2533f63335b3a2b40f0849f860e1f728bab81f87cc1546ed9c56703752",
+      "receipts": [
+        {
+          "token": ".sliderChart__yAxisTitle{",
+          "start_utf16": 212186,
+          "end_utf16": 212831,
+          "original": "background-image:url(../../static/media/icon_audio_profile_new_default.b985e049.svg)}.sliderChart__preset-list div.preset-tab2.flat:before{background-image:url(../../static/media/icon_audio_profile_default.00547e31.svg)}.sliderChart__yAxisTitle{align-items:flex-start;color:#ccc;display:flex;flex:1 1;flex-direction:column-reverse;font-size:12px;height:300px;justify-content:space-between;line-height:12px;width:45px}.sliderChart__yAxisTitle p{margin:0}.sliderChart__reset-button{background:url(../../static/media/eq_reset.e0c3c09c.svg) no-repeat 50%;background-size:20px 20px;height:300px;min-width:20px;opacity:.85;right:40px;transition:backgr"
+        },
+        {
+          "token": ".vertical-slider__inputCustom{-webkit-appearance:none;background:#204d19",
+          "start_utf16": 430391,
+          "end_utf16": 431083,
+          "original": "wrapper-micEqualizer .box-slider{display:flex;text-align:center}.wrapper-micEqualizer .vertical-slider__wrapper{display:flex;flex-direction:column;max-width:60px;padding-top:200px;position:relative}.wrapper-micEqualizer .vertical-slider__inputCustom{-webkit-appearance:none;background:#204d19;border-radius:8px;height:6px;left:-72%;max-width:140px;outline:none;position:absolute;top:80px;transform:rotate(-90deg);width:140px}.wrapper-micEqualizer .vertical-slider__inputCustom::-webkit-slider-thumb{-webkit-appearance:none;background:#44d62c;border-radius:50%;height:16px;width:16px}.wrapper-micEqualizer .vertical-slider__titleCustom{color:#ccc;font-size:14px;text-align:center;text-transfor"
+        },
+        {
+          "token": "transform:rotate(-90deg);width:140px",
+          "start_utf16": 430559,
+          "end_utf16": 431215,
+          "original": "g-top:200px;position:relative}.wrapper-micEqualizer .vertical-slider__inputCustom{-webkit-appearance:none;background:#204d19;border-radius:8px;height:6px;left:-72%;max-width:140px;outline:none;position:absolute;top:80px;transform:rotate(-90deg);width:140px}.wrapper-micEqualizer .vertical-slider__inputCustom::-webkit-slider-thumb{-webkit-appearance:none;background:#44d62c;border-radius:50%;height:16px;width:16px}.wrapper-micEqualizer .vertical-slider__titleCustom{color:#ccc;font-size:14px;text-align:center;text-transform:uppercase}.wrapper-micEqualizer .vertical-slider__bubbleCustom,.wrapper-micEqualizer .vertical-slider__tagCustom{align-items:cente"
+        },
+        {
+          "token": ".wrapper-micEqualizer #eqBox{max-width:600px",
+          "start_utf16": 429419,
+          "end_utf16": 430083,
+          "original": "rder-radius:8px;content:\"\";height:100%;left:0;position:absolute;top:0;width:var(--width)}.vertical-wrapper .vertical-slider__title{position:relative}.sliderChart__reset-button{right:15px}.wrapper-micEqualizer{width:100%}.wrapper-micEqualizer #eqBox{max-width:600px;min-height:auto;min-width:600px;width:auto}.wrapper-micEqualizer #eqBox .vertical-slider__container--wide{padding:0 15px}.wrapper-micEqualizer .sliderChart__preset-list{z-index:0}.wrapper-micEqualizer .box-showLess .sliderChart__reset-button,.wrapper-micEqualizer .box-showLess .sliderChart__yAxisTitle p,.wrapper-micEqualizer .box-showLess .vertical-slider__bubble,.wrapper-micEqualizer .box-showLe"
+        },
+        {
+          "token": ".wrapper-micEqualizer .box-showLess .sliderChart__reset-button",
+          "start_utf16": 429643,
+          "end_utf16": 430325,
+          "original": "pper-micEqualizer #eqBox{max-width:600px;min-height:auto;min-width:600px;width:auto}.wrapper-micEqualizer #eqBox .vertical-slider__container--wide{padding:0 15px}.wrapper-micEqualizer .sliderChart__preset-list{z-index:0}.wrapper-micEqualizer .box-showLess .sliderChart__reset-button,.wrapper-micEqualizer .box-showLess .sliderChart__yAxisTitle p,.wrapper-micEqualizer .box-showLess .vertical-slider__bubble,.wrapper-micEqualizer .box-showLess .vertical-slider__title{display:none}.wrapper-micEqualizer .show-more{color:#ccc;cursor:pointer;font-size:14px;margin-bottom:0;margin-top:25px;text-decoration:underline;text-transform:capitalize;width:-webkit-fit-content;width:fit-content}"
+        },
+        {
+          "token": ".vertical-slider__titleCustom{",
+          "start_utf16": 430776,
+          "end_utf16": 431426,
+          "original": "px;transform:rotate(-90deg);width:140px}.wrapper-micEqualizer .vertical-slider__inputCustom::-webkit-slider-thumb{-webkit-appearance:none;background:#44d62c;border-radius:50%;height:16px;width:16px}.wrapper-micEqualizer .vertical-slider__titleCustom{color:#ccc;font-size:14px;text-align:center;text-transform:uppercase}.wrapper-micEqualizer .vertical-slider__bubbleCustom,.wrapper-micEqualizer .vertical-slider__tagCustom{align-items:center;display:flex;height:27px;justify-content:center;margin:0;width:60px}.wrapper-micEqualizer .vertical-slider__bubbleCustom{border:1px solid #5d5d5d}.audioLevel_wrapper .box_audioLevel{display:flex;margin-bottom:"
+        },
+        {
+          "token": ".wrapper-micEqualizer .vertical-slider__tagCustom{",
+          "start_utf16": 430928,
+          "end_utf16": 431598,
+          "original": "d62c;border-radius:50%;height:16px;width:16px}.wrapper-micEqualizer .vertical-slider__titleCustom{color:#ccc;font-size:14px;text-align:center;text-transform:uppercase}.wrapper-micEqualizer .vertical-slider__bubbleCustom,.wrapper-micEqualizer .vertical-slider__tagCustom{align-items:center;display:flex;height:27px;justify-content:center;margin:0;width:60px}.wrapper-micEqualizer .vertical-slider__bubbleCustom{border:1px solid #5d5d5d}.audioLevel_wrapper .box_audioLevel{display:flex;margin-bottom:3px;position:relative}.audioLevel_wrapper .box_audioLevel:before{background:#111;content:\"\";height:100%;opacity:.8;position:absolute;right:0;top:0;width:var(--width);z-inde"
+        }
+      ]
+    }
+  ]
+}

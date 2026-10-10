@@ -677,7 +677,7 @@
     "consumer_fingerprints": [
       {
         "path": "crates/razer-service/src/runtime/portable.rs",
-        "sha256": "2dcce29bb62d879ac7153a68099f234e8103c217c463f3ec4f82bc57ee7c00e5"
+        "sha256": "63ecf7b8fadd6dc27bfdd3a83a79832f2c03156181fdd57f8a238c17402730c7"
       },
       {
         "path": "crates/razer-service/src/runtime/windows/device_reads.rs",
@@ -685,7 +685,7 @@
       },
       {
         "path": "crates/razer-service/src/runtime/windows/native.rs",
-        "sha256": "9fadf444cf1b806719ec2819b751cf81fea156bb2eda907f1a9a767d2adce775"
+        "sha256": "e703fa482c0dcde69b8a50bf5372e694603f3dc8efd601426127930b21faa803"
       },
       {
         "path": "crates/razer-discovery/src/direct/mod.rs",
@@ -709,11 +709,11 @@
       },
       {
         "path": "crates/razer-pages/src/features/product_workspace.rs",
-        "sha256": "201aa6e17c904a1ed402002815b4d3c4aa0d87bd13dd36ad33e85f2a8cc2233c"
+        "sha256": "cda5dc46b580144d5e36d238c502f62b1097223eafc8869a2b7c476a2692fba0"
       },
       {
         "path": "crates/razer-pages/src/features/workspace.rs",
-        "sha256": "18758ab384a93bf69ab0b5e6bc519ebe28d4a5565f86212811efc926b9d1b994"
+        "sha256": "cb9351ee9ac160731cb457612a0fb6ad1977bcebe0e5b0d07d6828b45369d678"
       },
       {
         "path": "crates/razer-shell/src/shell/mouse_dpi_stages.rs",
@@ -725,7 +725,7 @@
       },
       {
         "path": "crates/razer-shell/src/shell.rs",
-        "sha256": "e7259d72a9cceed6c5612dd69a5e4180159172363ecb456abb2b3cd3843800d0"
+        "sha256": "cc7999bb1dd335c21935d0122c5b8c38d49aa8b786d5ab8bc0f0000ea29649b7"
       }
     ],
     "ui_submission": {

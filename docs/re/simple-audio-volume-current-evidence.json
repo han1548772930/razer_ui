@@ -16305,7 +16305,7 @@
   "rust": [
     {
       "path": "crates/razer-device/src/simple_audio_volume.rs",
-      "sha256": "15e3bb6eeae279f58678616c77f29981fd5fb09247887f092dd6779aa1e47b18"
+      "sha256": "59b79dff5c37d45052c723e08a5efaf694f2d7b49f0174d6249c26c51bfe29a3"
     },
     {
       "path": "crates/razer-service/src/simple_audio_volume.rs",

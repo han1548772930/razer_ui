@@ -11011,6 +11011,22 @@
         "voiceChanger": {
           "isEnabled": true,
           "value": 1
+        },
+        "echoReverb": {
+          "isEnabled": false,
+          "activeMode": "library",
+          "modeValues": [
+            40,
+            1.7,
+            0.5,
+            150
+          ],
+          "customValues": [
+            40,
+            1.7,
+            0.5,
+            150
+          ]
         }
       }
     },
@@ -12102,6 +12118,88 @@
                 "enabled_by": "/device/voiceChanger/isEnabled"
               }
             ]
+          },
+          {
+            "title": "ECHO_REVERB",
+            "controls": [
+              {
+                "path": "/device/echoReverb/isEnabled",
+                "label": "ECHO_REVERB",
+                "kind": "toggle"
+              },
+              {
+                "path": "/device/echoReverb/activeMode",
+                "label": "ENVIRONMENT_PRESETS",
+                "kind": "presets",
+                "enabled_by": "/device/echoReverb/isEnabled",
+                "options": [
+                  {
+                    "label": "ARENA",
+                    "value": "arena"
+                  },
+                  {
+                    "label": "CHAPEL",
+                    "value": "chapel"
+                  },
+                  {
+                    "label": "LIBRARY",
+                    "value": "library"
+                  },
+                  {
+                    "label": "MARBLE_ROOM",
+                    "value": "marbleroom"
+                  },
+                  {
+                    "label": "SMALL_CONCERT_HALL",
+                    "value": "smallconcerthall"
+                  },
+                  {
+                    "label": "CUSTOM",
+                    "value": "custom"
+                  }
+                ]
+              },
+              {
+                "path": "/device/echoReverb/modeValues/0",
+                "label": "ROOM_SIZE",
+                "kind": "slider",
+                "min": 0,
+                "max": 100,
+                "step": 1,
+                "unit": "",
+                "enabled_by": "/device/echoReverb/isEnabled"
+              },
+              {
+                "path": "/device/echoReverb/modeValues/1",
+                "label": "DECAY_TIME",
+                "kind": "slider",
+                "min": 0.6,
+                "max": 2.7,
+                "step": 0.1,
+                "unit": "s",
+                "enabled_by": "/device/echoReverb/isEnabled"
+              },
+              {
+                "path": "/device/echoReverb/modeValues/2",
+                "label": "GAIN",
+                "kind": "slider",
+                "min": 0,
+                "max": 1,
+                "step": 0.1,
+                "unit": "",
+                "enabled_by": "/device/echoReverb/isEnabled"
+              },
+              {
+                "path": "/device/echoReverb/modeValues/3",
+                "label": "DELAY",
+                "kind": "slider",
+                "min": 110,
+                "max": 200,
+                "step": 1,
+                "unit": "ms",
+                "enabled_by": "/device/echoReverb/isEnabled"
+              }
+            ]
           }
         ]
       },
@@ -12315,9 +12413,9 @@
       {
         "key": "mic",
         "frequencies": [
-          "30",
-          "60",
-          "120",
+          "31",
+          "63",
+          "125",
           "250",
           "500",
           "1k",
@@ -12402,6 +12500,66 @@
               0,
               0,
               0,
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "selected": "default",
+        "min": -12,
+        "max": 12,
+        "step": 1,
+        "edit_custom": true
+      },
+      {
+        "key": "mic_basic",
+        "frequencies": [
+          "BASS",
+          "MID",
+          "TREBLE"
+        ],
+        "presets": [
+          {
+            "key": "default",
+            "label": "DEFAULT",
+            "bands": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "key": "radiovoice",
+            "label": "RADIO_VOICE",
+            "bands": [
+              2,
+              0,
+              1
+            ]
+          },
+          {
+            "key": "balanced",
+            "label": "BALANCED",
+            "bands": [
+              -1,
+              0,
+              1
+            ]
+          },
+          {
+            "key": "midfocused",
+            "label": "MID_FOCUSED",
+            "bands": [
+              1,
+              1,
+              0
+            ]
+          },
+          {
+            "key": "custom",
+            "label": "CUSTOM",
+            "bands": [
               0,
               0,
               0

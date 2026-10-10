@@ -43,6 +43,10 @@ DECLARED = (
     re.compile(r"from_str::<Vec<(\w+)>>"),
     re.compile(r"from_str::<(\w+)>"),
 )
+FUNCTION_START = re.compile(
+    r"^[ \t]*(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?fn\s+\w+",
+    re.M,
+)
 TYPE_ALIAS = re.compile(r"\btype\s+(\w+)\s*=\s*([^;]+);")
 
 
@@ -406,10 +410,9 @@ def main() -> int:
             # file's own structs when the declaration cannot be resolved.
             # Scope the search to the enclosing function so a neighbouring
             # declaration cannot be mistaken for this one.
-            function = text.rfind("\nfn ", 0, match.start())
-            if function < 0:
-                function = text.rfind("\npub", 0, match.start())
-            declaration = text[max(0, function) : match.start()]
+            functions = list(FUNCTION_START.finditer(text, 0, match.start()))
+            function = functions[-1].start() if functions else 0
+            declaration = text[function : match.start()]
             declared = next(
                 (found.group(1) for pattern in DECLARED for found in [pattern.search(declaration)] if found),
                 None,

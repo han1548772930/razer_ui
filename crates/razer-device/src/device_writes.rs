@@ -9,6 +9,10 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::OnceLock};
 
+#[cfg(test)]
+#[path = "device_writes_tests.rs"]
+mod tests;
+
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DeviceWriteSetting {

@@ -69,7 +69,7 @@
       "name": "razer-agent",
       "kind": "executable",
       "rust_files": 1,
-      "rust_lines": 5,
+      "rust_lines": 4,
       "dependencies": [
         "razer-service"
       ]
@@ -78,7 +78,7 @@
       "name": "razer-app",
       "kind": "library",
       "rust_files": 1,
-      "rust_lines": 512,
+      "rust_lines": 511,
       "dependencies": [
         "razer-assets",
         "razer-catalog",
@@ -96,7 +96,7 @@
       "name": "razer-app-pages",
       "kind": "library",
       "rust_files": 81,
-      "rust_lines": 38763,
+      "rust_lines": 38682,
       "dependencies": [
         "razer-assets",
         "razer-catalog",
@@ -114,14 +114,14 @@
       "name": "razer-assets",
       "kind": "library",
       "rust_files": 1,
-      "rust_lines": 478,
+      "rust_lines": 477,
       "dependencies": []
     },
     {
       "name": "razer-catalog",
       "kind": "library",
       "rust_files": 5,
-      "rust_lines": 3606,
+      "rust_lines": 3601,
       "dependencies": [
         "razer-i18n"
       ]
@@ -130,7 +130,7 @@
       "name": "razer-dashboard",
       "kind": "library",
       "rust_files": 9,
-      "rust_lines": 3654,
+      "rust_lines": 3645,
       "dependencies": [
         "razer-assets",
         "razer-i18n",
@@ -142,15 +142,15 @@
     {
       "name": "razer-device",
       "kind": "library",
-      "rust_files": 16,
-      "rust_lines": 3416,
+      "rust_files": 21,
+      "rust_lines": 6085,
       "dependencies": []
     },
     {
       "name": "razer-discovery",
       "kind": "library",
-      "rust_files": 10,
-      "rust_lines": 1978,
+      "rust_files": 11,
+      "rust_lines": 2105,
       "dependencies": [
         "razer-catalog",
         "razer-device",
@@ -162,7 +162,7 @@
       "name": "razer-hid",
       "kind": "library",
       "rust_files": 3,
-      "rust_lines": 279,
+      "rust_lines": 314,
       "dependencies": [
         "razer-device"
       ]
@@ -171,14 +171,14 @@
       "name": "razer-i18n",
       "kind": "library",
       "rust_files": 1,
-      "rust_lines": 107,
+      "rust_lines": 106,
       "dependencies": []
     },
     {
       "name": "razer-ipc",
       "kind": "library",
       "rust_files": 2,
-      "rust_lines": 585,
+      "rust_lines": 624,
       "dependencies": [
         "razer-device",
         "razer-storage"
@@ -188,7 +188,7 @@
       "name": "razer-model",
       "kind": "library",
       "rust_files": 7,
-      "rust_lines": 4595,
+      "rust_lines": 4588,
       "dependencies": [
         "razer-catalog",
         "razer-device",
@@ -198,8 +198,8 @@
     {
       "name": "razer-pages",
       "kind": "library",
-      "rust_files": 194,
-      "rust_lines": 93108,
+      "rust_files": 195,
+      "rust_lines": 94113,
       "dependencies": [
         "razer-assets",
         "razer-catalog",
@@ -215,8 +215,8 @@
     {
       "name": "razer-platform",
       "kind": "library",
-      "rust_files": 12,
-      "rust_lines": 1158,
+      "rust_files": 18,
+      "rust_lines": 2126,
       "dependencies": [
         "razer-catalog"
       ]
@@ -224,8 +224,8 @@
     {
       "name": "razer-service",
       "kind": "library",
-      "rust_files": 19,
-      "rust_lines": 4674,
+      "rust_files": 23,
+      "rust_lines": 5590,
       "dependencies": [
         "razer-catalog",
         "razer-device",
@@ -239,7 +239,7 @@
       "name": "razer-settings",
       "kind": "library",
       "rust_files": 10,
-      "rust_lines": 3956,
+      "rust_lines": 3946,
       "dependencies": [
         "razer-catalog",
         "razer-device",
@@ -257,8 +257,8 @@
     {
       "name": "razer-shell",
       "kind": "library",
-      "rust_files": 31,
-      "rust_lines": 9473,
+      "rust_files": 38,
+      "rust_lines": 10856,
       "dependencies": [
         "razer-app-pages",
         "razer-assets",
@@ -282,21 +282,21 @@
       "name": "razer-state",
       "kind": "library",
       "rust_files": 1,
-      "rust_lines": 196,
+      "rust_lines": 195,
       "dependencies": []
     },
     {
       "name": "razer-storage",
       "kind": "library",
-      "rust_files": 2,
-      "rust_lines": 506,
+      "rust_files": 3,
+      "rust_lines": 729,
       "dependencies": []
     },
     {
       "name": "razer-tray",
       "kind": "library",
       "rust_files": 6,
-      "rust_lines": 2233,
+      "rust_lines": 2227,
       "dependencies": [
         "razer-i18n",
         "razer-model",
@@ -307,7 +307,7 @@
       "name": "razer-widgets",
       "kind": "library",
       "rust_files": 25,
-      "rust_lines": 7913,
+      "rust_lines": 7888,
       "dependencies": [
         "razer-assets",
         "razer-i18n",

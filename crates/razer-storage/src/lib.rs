@@ -1,6 +1,8 @@
-//! Local draft file persistence and original host process-local Map semantics.
-//! Neither storage scope writes devices or claims vendor profile file formats.
+//! Local draft persistence, source-confirmed receiver binding JSON and original
+//! host process-local Map semantics. Storage does not write devices or claim
+//! Chromium database or vendor profile file formats.
 pub mod host;
+pub mod receiver_pairing;
 use std::path::Path;
 pub fn read_document<T>(
     path: &Path,

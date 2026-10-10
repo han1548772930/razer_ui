@@ -71,8 +71,7 @@ pub fn open_character_map() -> anyhow::Result<()> {
     anyhow::bail!("Character Map is only available on Windows")
 }
 /// Current monitor refresh-rate links dispatch `msSettings("display")`.
-/// This existing adapter launches that Windows settings URI directly; this
-/// directory migration does not establish original launcher lifecycle parity.
+/// The Windows adapter preserves the native ANSI command line and SW_SHOW.
 pub fn open_display_settings() -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {

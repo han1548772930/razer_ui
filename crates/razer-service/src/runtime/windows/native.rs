@@ -26,6 +26,10 @@ mod macro_recorder;
 mod mixer_driver;
 #[path = "receiver.rs"]
 mod receiver;
+#[path = "receiver_events.rs"]
+mod receiver_events;
+#[path = "receiver_pairing.rs"]
+mod receiver_pairing;
 #[path = "usb.rs"]
 mod usb;
 
@@ -117,6 +121,7 @@ pub(super) struct NativeRuntime {
     event_callback_installed: bool,
     shortcut_events: Receiver<Value>,
     macro_recorder: macro_recorder::Recorder,
+    receiver_pairing: receiver_pairing::Controller,
     poisoned: bool,
 }
 
@@ -133,6 +138,7 @@ impl NativeRuntime {
             event_callback_installed: false,
             shortcut_events,
             macro_recorder: macro_recorder::Recorder::new(),
+            receiver_pairing: receiver_pairing::Controller::default(),
             poisoned: false,
         }
     }
@@ -224,6 +230,7 @@ impl NativeRuntime {
         }
         match request {
             ServiceRequest::HostStorageView { .. }
+            | ServiceRequest::KeyboardLayoutRead
             | ServiceRequest::AudioVolumeRead { .. }
             | ServiceRequest::AudioVolumeWrite { .. }
             | ServiceRequest::WheelScrollLinesRead
@@ -235,6 +242,14 @@ impl NativeRuntime {
             | ServiceRequest::HostStorageCall { .. }
             | ServiceRequest::HostStorageEvents { .. }
             | ServiceRequest::AudioEndpoints { .. }
+            | ServiceRequest::AudioNotificationsEnable { .. }
+            | ServiceRequest::AudioNotificationsDrain
+            | ServiceRequest::AudioRoutingEnable { .. }
+            | ServiceRequest::AudioRouteDevice { .. }
+            | ServiceRequest::AudioRouterEvents
+            | ServiceRequest::ForegroundMonitorStart { .. }
+            | ServiceRequest::ForegroundMonitorStop { .. }
+            | ServiceRequest::ForegroundMonitorEvents { .. }
             | ServiceRequest::HidNodes
             | ServiceRequest::HidNodeReports { .. }
             | ServiceRequest::HidNodeDpiStagesRead { .. }
@@ -245,6 +260,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeWrite { .. }
             | ServiceRequest::HidNodeMixerRead { .. }
             | ServiceRequest::HidNodeMixerWrite { .. }
+            | ServiceRequest::HidNodeMixerEqWrite { .. }
             | ServiceRequest::HidNodeMixerRouteRead { .. }
             | ServiceRequest::HidNodeMixerRouteWrite { .. }
             | ServiceRequest::HidNodeMixerRestartStreams { .. }
@@ -337,6 +353,25 @@ impl NativeRuntime {
                 path,
                 device_container_id,
             } => receiver::query(&path, &device_container_id),
+            ServiceRequest::ReceiverPairingStart {
+                operation_id,
+                path,
+                device_container_id,
+                category,
+                action,
+            } => self.receiver_pairing.start(
+                operation_id,
+                path,
+                device_container_id,
+                category,
+                action,
+            ),
+            ServiceRequest::ReceiverPairingPoll { operation_id } => {
+                self.receiver_pairing.poll(&operation_id)
+            }
+            ServiceRequest::ReceiverPairingCancel { operation_id } => {
+                self.receiver_pairing.cancel(&operation_id)
+            }
             ServiceRequest::AudioDevices => {
                 Ok(serde_json::to_value(crate::simple_audio::enumerate()?)?)
             }

@@ -1,0 +1,646 @@
+{
+  "method": "Static current host JS and byte-verified IDA/Hex-Rays; no application, DLL or device execution",
+  "binary": {
+    "path": ".ref/host-4.0.827/native-evidence/node_modules/node-rz-hid/build/Release/HID.node",
+    "sha256": "f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f"
+  },
+  "ida_evidence": {
+    "path": "docs/re/evidence/ida-native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f.json.gz",
+    "sha256": "6511f6cde46845d87e4912b6ec67af72bf8964b02430d68d79415d1b93fe854a"
+  },
+  "functions": [
+    {
+      "rva": 96256,
+      "end_rva": 96746,
+      "name": "hid_read_timeout",
+      "code_sha256": "31167d50edcce76de1089c915bfb510a3ea08415cc26818dd26726951a4ee2cf",
+      "pseudocode": "__int64 __fastcall hid_read_timeout(__int64 a1, __int64 a2, unsigned __int64 a3, signed int a4)\n{\n  unsigned __int64 v4; // rbx\n  LPVOID *v10; // rsi\n  void *v11; // r12\n  struct _OVERLAPPED *lpOverlapped; // r13\n  __int64 v13; // r8\n  BOOL OverlappedResult; // eax\n  DWORD LastError; // eax\n  __int16 *v16; // rax\n  __int16 v17; // cx\n  char *v18; // rdx\n  WCHAR Buffer[4]; // [rsp+40h] [rbp-38h] BYREF\n  DWORD NumberOfBytesRead; // [rsp+80h] [rbp+8h] BYREF\n\n  LODWORD(v4) = 0;\n  NumberOfBytesRead = 0;\n  if ( !a1 )\n    return 0xFFFFFFFFi64;\n  v10 = (LPVOID *)(a1 + 40);\n  v11 = *(void **)(a1 + 72);\n  lpOverlapped = (struct _OVERLAPPED *)(a1 + 48);\n  if ( !*(_DWORD *)(a1 + 36) )\n  {\n    v13 = *(_QWORD *)(a1 + 16);\n    *(_DWORD *)(a1 + 36) = 1;\n    sub_18003E210(*v10, 0i64, v13);\n    ResetEvent(v11);\n    OverlappedResult = ReadFile(*(HANDLE *)a1, *v10, *(_DWORD *)(a1 + 16), &NumberOfBytesRead, lpOverlapped);\n    if ( OverlappedResult )\n      goto LABEL_16;\n    if ( GetLastError() != 997 )\n    {\n      CancelIo(*(HANDLE *)a1);\n      *(_DWORD *)(a1 + 36) = 0;\n      goto LABEL_7;\n    }\n  }\n  if ( a4 >= 0 )\n  {\n    if ( WaitForSingleObject(v11, a4) )\n      return 0i64;\n    v10 = (LPVOID *)(a1 + 40);\n  }\n  OverlappedResult = GetOverlappedResult(*(HANDLE *)a1, lpOverlapped, &NumberOfBytesRead, 1);\nLABEL_16:\n  *(_DWORD *)(a1 + 36) = 0;\n  if ( OverlappedResult )\n  {\n    if ( NumberOfBytesRead )\n    {\n      v18 = (char *)*v10;\n      v4 = a3;\n      if ( !*(_BYTE *)*v10 )\n      {\n        if ( a3 > --NumberOfBytesRead )\n          v4 = NumberOfBytesRead;\n        sub_18003E5D0(a2, v18 + 1, v4);\n        return (unsigned int)v4;\n      }\n      if ( a3 > NumberOfBytesRead )\n        v4 = NumberOfBytesRead;\n      sub_18003E5D0(a2, v18, v4);\n    }\n    return (unsigned int)v4;\n  }\nLABEL_7:\n  LastError = GetLastError();\n  FormatMessageW(0x1300u, 0i64, LastError, 0x400u, Buffer, 0, 0i64);\n  v16 = *(__int16 **)Buffer;\n  v17 = **(_WORD **)Buffer;\n  if ( **(_WORD **)Buffer )\n  {\n    while ( v17 != 13 )\n    {\n      v17 = v16[1];\n      ++v16;\n      if ( !v17 )\n        goto LABEL_27;\n    }\n    *v16 = 0;\n  }\nLABEL_27:\n  LocalFree(*(HLOCAL *)(a1 + 24));\n  *(_QWORD *)(a1 + 24) = *(_QWORD *)Buffer;\n  return 0xFFFFFFFFi64;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 20296,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 25661,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 27323,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 28767,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 96760,
+          "type": 19,
+          "is_code": true
+        },
+        {
+          "from_rva": 368552,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 393224,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 96256,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 96258,
+          "text": "push    rbp"
+        },
+        {
+          "rva": 96259,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 96260,
+          "text": "push    r14"
+        },
+        {
+          "rva": 96262,
+          "text": "push    r15"
+        },
+        {
+          "rva": 96264,
+          "text": "sub     rsp, 50h"
+        },
+        {
+          "rva": 96268,
+          "text": "xor     ebx, ebx"
+        },
+        {
+          "rva": 96270,
+          "text": "mov     r14d, r9d"
+        },
+        {
+          "rva": 96273,
+          "text": "mov     [rsp+78h+NumberOfBytesRead], ebx"
+        },
+        {
+          "rva": 96280,
+          "text": "mov     rbp, r8"
+        },
+        {
+          "rva": 96283,
+          "text": "mov     r15, rdx"
+        },
+        {
+          "rva": 96286,
+          "text": "mov     rdi, rcx"
+        },
+        {
+          "rva": 96289,
+          "text": "test    rcx, rcx"
+        },
+        {
+          "rva": 96292,
+          "text": "jnz     short loc_180017837"
+        },
+        {
+          "rva": 96294,
+          "text": "mov     eax, 0FFFFFFFFh"
+        },
+        {
+          "rva": 96299,
+          "text": "add     rsp, 50h"
+        },
+        {
+          "rva": 96303,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 96305,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 96307,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 96308,
+          "text": "pop     rbp"
+        },
+        {
+          "rva": 96309,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 96310,
+          "text": "retn"
+        },
+        {
+          "rva": 96311,
+          "text": "mov     [rsp+78h+arg_8], rsi"
+        },
+        {
+          "rva": 96319,
+          "text": "lea     rsi, [rcx+28h]"
+        },
+        {
+          "rva": 96323,
+          "text": "mov     [rsp+78h+arg_10], r12"
+        },
+        {
+          "rva": 96331,
+          "text": "mov     r12, [rcx+48h]"
+        },
+        {
+          "rva": 96335,
+          "text": "mov     [rsp+78h+arg_18], r13"
+        },
+        {
+          "rva": 96343,
+          "text": "lea     r13, [rcx+30h]"
+        },
+        {
+          "rva": 96347,
+          "text": "cmp     [rcx+24h], ebx"
+        },
+        {
+          "rva": 96350,
+          "text": "jnz     loc_18001791C"
+        },
+        {
+          "rva": 96356,
+          "text": "mov     r8, [rcx+10h]"
+        },
+        {
+          "rva": 96360,
+          "text": "xor     edx, edx"
+        },
+        {
+          "rva": 96362,
+          "text": "mov     dword ptr [rcx+24h], 1"
+        },
+        {
+          "rva": 96369,
+          "text": "mov     rcx, [rsi]"
+        },
+        {
+          "rva": 96372,
+          "text": "call    sub_18003E210"
+        },
+        {
+          "rva": 96377,
+          "text": "mov     rcx, r12; hEvent"
+        },
+        {
+          "rva": 96380,
+          "text": "call    cs:ResetEvent"
+        },
+        {
+          "rva": 96386,
+          "text": "mov     r8d, [rdi+10h]; nNumberOfBytesToRead"
+        },
+        {
+          "rva": 96390,
+          "text": "lea     r9, [rsp+78h+NumberOfBytesRead]; lpNumberOfBytesRead"
+        },
+        {
+          "rva": 96398,
+          "text": "mov     rdx, [rsi]; lpBuffer"
+        },
+        {
+          "rva": 96401,
+          "text": "mov     rcx, [rdi]; hFile"
+        },
+        {
+          "rva": 96404,
+          "text": "mov     [rsp+78h+lpOverlapped], r13; lpOverlapped"
+        },
+        {
+          "rva": 96409,
+          "text": "call    cs:ReadFile"
+        },
+        {
+          "rva": 96415,
+          "text": "test    eax, eax"
+        },
+        {
+          "rva": 96417,
+          "text": "jnz     loc_180017956"
+        },
+        {
+          "rva": 96423,
+          "text": "call    cs:GetLastError"
+        },
+        {
+          "rva": 96429,
+          "text": "cmp     eax, 3E5h"
+        },
+        {
+          "rva": 96434,
+          "text": "jz      short loc_18001791C"
+        },
+        {
+          "rva": 96436,
+          "text": "mov     rcx, [rdi]; hFile"
+        },
+        {
+          "rva": 96439,
+          "text": "call    cs:CancelIo"
+        },
+        {
+          "rva": 96445,
+          "text": "mov     [rdi+24h], ebx"
+        },
+        {
+          "rva": 96448,
+          "text": "call    cs:GetLastError"
+        },
+        {
+          "rva": 96454,
+          "text": "mov     [rsp+78h+Arguments], rbx; Arguments"
+        },
+        {
+          "rva": 96459,
+          "text": "xor     edx, edx; lpSource"
+        },
+        {
+          "rva": 96461,
+          "text": "mov     r8d, eax; dwMessageId"
+        },
+        {
+          "rva": 96464,
+          "text": "mov     [rsp+78h+nSize], ebx; nSize"
+        },
+        {
+          "rva": 96468,
+          "text": "lea     rax, [rsp+78h+Buffer]"
+        },
+        {
+          "rva": 96473,
+          "text": "mov     ecx, 1300h; dwFlags"
+        },
+        {
+          "rva": 96478,
+          "text": "mov     r9d, 400h; dwLanguageId"
+        },
+        {
+          "rva": 96484,
+          "text": "mov     [rsp+78h+lpOverlapped], rax; lpBuffer"
+        },
+        {
+          "rva": 96489,
+          "text": "call    cs:FormatMessageW"
+        },
+        {
+          "rva": 96495,
+          "text": "mov     rax, qword ptr [rsp+78h+Buffer]"
+        },
+        {
+          "rva": 96500,
+          "text": "movzx   ecx, word ptr [rax]"
+        },
+        {
+          "rva": 96503,
+          "text": "test    cx, cx"
+        },
+        {
+          "rva": 96506,
+          "text": "jz      loc_1800179AE"
+        },
+        {
+          "rva": 96512,
+          "text": "cmp     cx, 0Dh"
+        },
+        {
+          "rva": 96516,
+          "text": "jz      loc_1800179AB"
+        },
+        {
+          "rva": 96522,
+          "text": "movzx   ecx, word ptr [rax+2]"
+        },
+        {
+          "rva": 96526,
+          "text": "add     rax, 2"
+        },
+        {
+          "rva": 96530,
+          "text": "test    cx, cx"
+        },
+        {
+          "rva": 96533,
+          "text": "jnz     short loc_180017900"
+        },
+        {
+          "rva": 96535,
+          "text": "jmp     loc_1800179AE"
+        },
+        {
+          "rva": 96540,
+          "text": "test    r14d, r14d"
+        },
+        {
+          "rva": 96543,
+          "text": "js      short loc_18001793C"
+        },
+        {
+          "rva": 96545,
+          "text": "mov     edx, r14d; dwMilliseconds"
+        },
+        {
+          "rva": 96548,
+          "text": "mov     rcx, r12; hHandle"
+        },
+        {
+          "rva": 96551,
+          "text": "call    cs:WaitForSingleObject"
+        },
+        {
+          "rva": 96557,
+          "text": "test    eax, eax"
+        },
+        {
+          "rva": 96559,
+          "text": "jz      short loc_180017938"
+        },
+        {
+          "rva": 96561,
+          "text": "xor     eax, eax"
+        },
+        {
+          "rva": 96563,
+          "text": "jmp     loc_1800179C6"
+        },
+        {
+          "rva": 96568,
+          "text": "lea     rsi, [rdi+28h]"
+        },
+        {
+          "rva": 96572,
+          "text": "mov     rcx, [rdi]; hFile"
+        },
+        {
+          "rva": 96575,
+          "text": "lea     r8, [rsp+78h+NumberOfBytesRead]; lpNumberOfBytesTransferred"
+        },
+        {
+          "rva": 96583,
+          "text": "mov     r9d, 1; bWait"
+        },
+        {
+          "rva": 96589,
+          "text": "mov     rdx, r13; lpOverlapped"
+        },
+        {
+          "rva": 96592,
+          "text": "call    cs:GetOverlappedResult"
+        },
+        {
+          "rva": 96598,
+          "text": "mov     [rdi+24h], ebx"
+        },
+        {
+          "rva": 96601,
+          "text": "test    eax, eax"
+        },
+        {
+          "rva": 96603,
+          "text": "jz      loc_1800178C0"
+        },
+        {
+          "rva": 96609,
+          "text": "mov     eax, [rsp+78h+NumberOfBytesRead]"
+        },
+        {
+          "rva": 96616,
+          "text": "test    eax, eax"
+        },
+        {
+          "rva": 96618,
+          "text": "jz      short loc_1800179A7"
+        },
+        {
+          "rva": 96620,
+          "text": "mov     rdx, [rsi]"
+        },
+        {
+          "rva": 96623,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 96626,
+          "text": "cmp     [rdx], bl"
+        },
+        {
+          "rva": 96628,
+          "text": "mov     rbx, rbp"
+        },
+        {
+          "rva": 96631,
+          "text": "jnz     short loc_180017998"
+        },
+        {
+          "rva": 96633,
+          "text": "dec     eax"
+        },
+        {
+          "rva": 96635,
+          "text": "cmp     rbp, rax"
+        },
+        {
+          "rva": 96638,
+          "text": "mov     [rsp+78h+NumberOfBytesRead], eax"
+        },
+        {
+          "rva": 96645,
+          "text": "cmova   rbx, rax"
+        },
+        {
+          "rva": 96649,
+          "text": "inc     rdx"
+        },
+        {
+          "rva": 96652,
+          "text": "mov     r8, rbx"
+        },
+        {
+          "rva": 96655,
+          "text": "call    sub_18003E5D0"
+        },
+        {
+          "rva": 96660,
+          "text": "mov     eax, ebx"
+        },
+        {
+          "rva": 96662,
+          "text": "jmp     short loc_1800179C6"
+        },
+        {
+          "rva": 96664,
+          "text": "cmp     rbp, rax"
+        },
+        {
+          "rva": 96667,
+          "text": "cmova   rbx, rax"
+        },
+        {
+          "rva": 96671,
+          "text": "mov     r8, rbx"
+        },
+        {
+          "rva": 96674,
+          "text": "call    sub_18003E5D0"
+        },
+        {
+          "rva": 96679,
+          "text": "mov     eax, ebx"
+        },
+        {
+          "rva": 96681,
+          "text": "jmp     short loc_1800179C6"
+        },
+        {
+          "rva": 96683,
+          "text": "mov     [rax], bx"
+        },
+        {
+          "rva": 96686,
+          "text": "mov     rcx, [rdi+18h]; hMem"
+        },
+        {
+          "rva": 96690,
+          "text": "call    cs:LocalFree"
+        },
+        {
+          "rva": 96696,
+          "text": "mov     rax, qword ptr [rsp+78h+Buffer]"
+        },
+        {
+          "rva": 96701,
+          "text": "mov     [rdi+18h], rax"
+        },
+        {
+          "rva": 96705,
+          "text": "mov     eax, 0FFFFFFFFh"
+        },
+        {
+          "rva": 96710,
+          "text": "mov     r12, [rsp+78h+arg_10]"
+        },
+        {
+          "rva": 96718,
+          "text": "mov     rsi, [rsp+78h+arg_8]"
+        },
+        {
+          "rva": 96726,
+          "text": "mov     r13, [rsp+78h+arg_18]"
+        },
+        {
+          "rva": 96734,
+          "text": "add     rsp, 50h"
+        },
+        {
+          "rva": 96738,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 96740,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 96742,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 96743,
+          "text": "pop     rbp"
+        },
+        {
+          "rva": 96744,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 96745,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 96752,
+      "end_rva": 96765,
+      "name": "hid_read",
+      "code_sha256": "224d443914031de138c8f94ae911ec880845b420d65a9534c6812a2d08c37e02",
+      "pseudocode": "__int64 __fastcall hid_read(__int64 a1, __int64 a2, unsigned __int64 a3)\n{\n  return hid_read_timeout(a1, a2, a3, -(*(_DWORD *)(a1 + 8) != 0));\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 368552,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 96752,
+          "text": "mov     eax, [rcx+8]"
+        },
+        {
+          "rva": 96755,
+          "text": "neg     eax"
+        },
+        {
+          "rva": 96757,
+          "text": "sbb     r9d, r9d"
+        },
+        {
+          "rva": 96760,
+          "text": "jmp     hid_read_timeout"
+        }
+      ]
+    }
+  ],
+  "host_source": {
+    "path": ".ref/host-4.0.827/electron/modules/hidHardwareEvents/index.js",
+    "sha256": "d9b9e1964a145263bdf2b03c0f1f50f66e9c9ada78256301fb3f66f0d6fc94cd",
+    "text": "const{webContents:e}=require(\"electron\"),{globalNodeVar:r}=require(\"../../lib/globalNodeVar\"),{isWebContentsDisposed:s}=require(\"../../mainSubFunction\"),n=require(\"node-rz-hid\"),d={},t=e=>`${e.vendorId}-${e.productId}-${e.containerId}`;module.exports={hidHardwareEvents:{registerDevice:o=>{try{const i=n.devices();if(!i)return{success:!1,message:\"No devices found\"};const c=i.filter(e=>e.productId===o.productId&&e.vendorId===o.vendorId&&e.deviceContainerId===o.containerId&&e.usage===o.hidConfig?.usageId&&e.usagePage===o.hidConfig?.usagePage);if(1!==c.length)return{success:!1,message:`Single device not found, found ${c.length} devices`};const a=new n.HID(c[0].path);return a.on(\"error\",e=>{((e,r)=>{console.error(\"[!!][handleHIDErrors] hidDevice:\",e,r)})(o,e)}),a.on(\"data\",n=>{((n,d)=>{n&&e.getAllWebContents().forEach(e=>{const t=r.ffiMappingEngine.createDeviceKey(n.productId,n.containerId),o=r.ffiMappingEngine.usbDeviceMap.get(t);if(o?.addUsbDeviceList.includes(e.getURL())&&!e.isDestroyed()&&!e.isCrashed()&&!s(e))try{const r=[...d];n.hidConfig?.appendReportId&&r.unshift(n.hidConfig?.reportId??5),e.send(\"hidhardwareevent\",{containerId:n?.containerId,productId:n?.productId,vendorId:n?.vendorId,data:{buffer:[...r]},timeTick:Date.now()})}catch(e){console.error(\"[!!][handleHIDHardwareEvents] wc.send(hidhardwareevent) error:\",e.message)}})})(o,n)}),d[t(o)]=a,{success:!0,message:\"\"}}catch(e){return console.error(\"[!!][hidHardwareEvents.registerDevice] e:\",e.message),{success:!1,message:e.message}}},unregisterDevice:e=>{try{const r=t(e);return d[r]&&(d[r].removeAllListeners(),d[r].close(),delete d[r]),{success:!0,message:\"\"}}catch(e){return console.error(\"[!!][hidHardwareEvents.unregisterDevice] e:\",e.message),{success:!1,message:e.message}}},getRegisteredHIDDevices:()=>d}};\n//# sourceMappingURL=index.js.map"
+  },
+  "dependency": {
+    "path": ".work/hidapi-static-reference/src/lib.rs",
+    "sha256": "9470c34ed58bbbdba82040056261b613c9cfd331ba5bf4d604dd22f2f91c1751",
+    "first_line": 563,
+    "last_line": 584,
+    "text": "    /// Read an Input report from a HID device.\n    ///\n    /// Input reports are returned to the host through the 'INTERRUPT IN'\n    /// endpoint. The first byte will contain the Report number if the device\n    /// uses numbered reports.\n    ///\n    /// If successful, returns the actual number of bytes read.\n    pub fn read(&self, buf: &mut [u8]) -> HidResult<usize> {\n        self.inner.read(buf)\n    }\n\n    /// Read an Input report from a HID device with timeout.\n    ///\n    /// Input reports are returned to the host through the 'INTERRUPT IN'\n    /// endpoint. The first byte will contain the Report number if the device\n    /// uses numbered reports. Timeout measured in milliseconds, set -1 for\n    /// blocking wait.\n    ///\n    /// If successful, returns the actual number of bytes read.\n    pub fn read_timeout(&self, buf: &mut [u8], timeout: i32) -> HidResult<usize> {\n        self.inner.read_timeout(buf, timeout)\n    }"
+  },
+  "semantics": {
+    "native": "Overlapped ReadFile; timeout returns 0; actual byte count; leading zero API ID removed, nonzero ID retained; no GET_REPORT request",
+    "host": "Unique vendor/product/ContainerId/usage pair; node data preserved; prepend only when actual producer hidConfig.appendReportId is set; unregister removes listeners and closes retained handle",
+    "portable": "Separate finite-timeout interrupt channel; raw numbered ID retained, unnumbered has no synthetic prefix; descriptor-backed ID/length validation rejects truncation"
+  },
+  "implementation": {
+    "path": "crates/razer-hid/src/transport/hidapi.rs",
+    "sha256": "884f09d3a9b6f6072b8c4b07ed66e7208f56d29fc64cd6d441e7728f4cf680b5"
+  },
+  "contract": {
+    "path": "crates/razer-device/src/backend.rs",
+    "sha256": "f61ff8443da140b2e11b9cc4c6f7377f2436ba484d7cb76aa585fed36d0c5fb3"
+  },
+  "application_policy": [
+    "Finite nonnegative timeout for cancellation polling",
+    "Buffer must fit descriptor maximum; mixed numbered/unnumbered input rejected",
+    "Malformed report rejected rather than copied/truncated"
+  ],
+  "connection": "Receiver Session requires a HardwareEvents provider before Scan/Pair; this transport alone is not a product event subscription",
+  "gaps": [
+    "164/241 mapping-engine selector/callback provenance is independently proved in receiver-pairing-transport-current-evidence.json; other product producers require their own proof and no universal record-5 prefix",
+    "Interrupt reader alone does not establish peer grouping or pairing completion; actual 164/241 service, Dock consumer and local cache have separate implementation evidence",
+    "Equivalent non-Windows physical grouping and full runtime/profile publication remain gaps; cross-platform runtime acceptance not executed"
+  ],
+  "runtime_acceptance": "not_run"
+}

@@ -8,6 +8,10 @@ use super::{
 use anyhow::{Context as _, ensure};
 use std::time::Duration;
 
+#[cfg(test)]
+#[path = "device_query_tests.rs"]
+mod tests;
+
 pub fn read_device(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,

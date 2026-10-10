@@ -52,6 +52,9 @@ pub enum WorkspaceEvent {
     AudioVolumeRequested {
         request: super::audio_products::AudioVolumeRequest,
     },
+    AudioMixerRequested {
+        request: super::audio_products::AudioMixerRequest,
+    },
     IntroDismissed,
     ShareProfile,
     /// Navigation request for the locally implemented Chroma app window.
