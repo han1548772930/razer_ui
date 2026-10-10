@@ -60,3 +60,6 @@ Native 对 payload 越界有“仅日志后返回 true”的分支；Rust 对倒
 目前新增的是当前后台 source 全量取得、两个库归属与被选 native bodies，以及一种 native RGB translator 的直接写回。Engine 的全部 effect 渲染、时间/输入事件调度、ChromaSDK 接管、batch/其他 protocol translator、LED remap、WDL/IoT/InterHaptics adapter、完整生命周期和产品 UI → engine → write → refresh 链仍需要逐项实现和核对。共享 codec 尚未接入真实产品帧生成 owner，不能标成 quickEffects 全功能完成，也不能将资源或函数数量算作整库实现完成。
 
 静态 source/PE/IDA 收据校验与 `cargo check --locked -p razer-device --all-targets` 已通过。按当前约束没有运行设备写回、应用、测试或 DLL；runtime acceptance 未执行。
+# 清单类型约束
+
+`RzLightingEngineApi` 和 `lighting_driver` 是当前 lighting-engine 源码单独声明的两个资源。清单分别使用 `lighting_engine`、`lighting_driver`，Rust `LibraryKind` 必须包含对应类别；动态路径字段保持可选，不编造安装路径。`validate-embedded-json.py` 静态检查 serde unit enum 的完整可接受取值及清单所有嵌套字段。编译检查不能触发运行期JSON解析，因此不能单独证明清单有效。此校验不执行原生库或设备操作，也不代表灯光引擎全部功能完成。

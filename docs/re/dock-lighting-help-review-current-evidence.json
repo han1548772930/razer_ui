@@ -175,11 +175,11 @@
   "native": [
     {
       "path": "crates/razer-pages/src/features/source_help.rs",
-      "sha256": "9cd7ea4f5f3d4d975dfcace25d698176d0e06c1ee38ecbdfaad9ebf9a5a74f39"
+      "sha256": "d11da93778eacbd87ee04c4e15ea4bfde04299f7b39c61c27af5f7bfa57d1385"
     },
     {
       "path": "crates/razer-pages/src/features/source_controls.rs",
-      "sha256": "46babd47ca536a8424fa16e253247a315d898e106c33cd25e3d681b2e8687a35"
+      "sha256": "e5c95ee8f89a69cbd9fbf42c382269dd3cf2fff8f4ffdc0b1e3c164c819869f6"
     },
     {
       "path": "crates/razer-pages/src/features/accessory_controls_data.json",
@@ -191,15 +191,15 @@
     },
     {
       "path": "crates/razer-pages/src/features/source_controls/receiver_brightness_ui.rs",
-      "sha256": "e4cd11fed452825bfbd03b7103ce443e3eaa9416d661c0bae4a104c74be115df"
+      "sha256": "2e20238ce5330b4fc1d76b713321c009fba7db7153ac804b8eeb88beb59e4c04"
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_reset.rs",
-      "sha256": "fb9990b3bd18cd81542c6ea1b481b61d370247fe2254cd3be4327746a3974685"
+      "sha256": "3e06fc8e86f0793a94019537a5693b70ba243ac89905c79ba0b688e7a71d7817"
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_brightness_page.rs",
-      "sha256": "40365fa262032889c32fe096d0500ba4b2ea89c356d1ed6280c9c5158b5aa3da"
+      "sha256": "4eccf834b6c7372b845bc091fed28917d74f33e6f1ea9c932d760b819d07a4f7"
     },
     {
       "path": "crates/razer-storage/src/receiver_reset.rs",

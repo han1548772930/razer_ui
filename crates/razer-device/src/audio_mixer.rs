@@ -47,6 +47,9 @@ pub enum MixerControl {
     VocalFadingLevel,
     PageVocalFadingLevel,
     MicMonitorVolume,
+    /// Mounted 1342 JS copies its first two query data bytes into template
+    /// positions 7/8. This differs from the native property's bit-preserving RMW.
+    PageMicMonitorVolume,
     HeadphonesVolume,
     HeadphonesMuted,
     HeadphonesPeak,
@@ -109,6 +112,7 @@ impl MixerControl {
             Self::VocalFadingLevel => "vocal_fading_level",
             Self::PageVocalFadingLevel => "vocal_fading_level",
             Self::MicMonitorVolume => "mic_monitor_volume",
+            Self::PageMicMonitorVolume => "mic_monitor_volume",
             Self::HeadphonesVolume => "headphones_volume",
             Self::HeadphonesMuted => "headphones_muted",
             Self::HeadphonesPeak => "headphones_peak",
@@ -300,7 +304,9 @@ pub fn matrix_route(route: &MixerRoute) -> anyhow::Result<MatrixRoute> {
 pub trait MixerDriverTransport {
     fn read_matrix(&self) -> anyhow::Result<Vec<u8>>;
     fn write_matrix(&self, bytes: &[u8]) -> anyhow::Result<()>;
-    fn reset_stream(&self, index: u32) -> anyhow::Result<()>;
+    /// Native property return code is data (0 / 0x10001 / 0x10003),
+    /// separately from IPC/identity/transport exceptions.
+    fn reset_stream(&self, index: u32) -> anyhow::Result<u32>;
 }
 
 fn driver_index(route: &MixerRoute) -> anyhow::Result<usize> {
@@ -338,8 +344,7 @@ pub fn read_driver_route(
 pub struct MatrixWriteResult {
     pub requested: bool,
     pub previous: bool,
-    pub observed: bool,
-    pub verified: bool,
+    pub transport_completed: bool,
 }
 
 pub fn write_driver_route(
@@ -360,26 +365,23 @@ pub fn write_driver_route(
     validate()?;
     device
         .write_matrix(&bytes)
-        .context("矩阵设置未能确认；驱动可能已接受，请重新读取")?;
-    validate().context("矩阵已发送，身份或期限变化，未确认设置")?;
-    let observed = matrix_value(
-        &device.read_matrix().context("矩阵已发送，但回读失败")?,
-        index,
-    )?;
-    validate()?;
-    ensure!(observed == enabled, "矩阵回读与请求不符，未确认设置成功");
+        .context("矩阵设置传输失败；未获得驱动完成结果")?;
+    validate().context("矩阵传输已完成，但身份或期限发生变化")?;
+    // Source 0xDA46 -> 0xDA4C -> 0xDA84 continues enumeration after
+    // successful IOCTL; it does not issue a post-write matrix getter.
     Ok(MatrixWriteResult {
         requested: enabled,
         previous,
-        observed,
-        verified: true,
+        transport_completed: true,
     })
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct StreamsResetResult {
     pub completed_indices: Vec<u32>,
-    pub confirmation: &'static str,
+    pub return_codes: Vec<(u32, u32)>,
+    pub source_sequence_completed: bool,
+    pub confirmation: String,
 }
 
 pub fn restart_streams(
@@ -387,17 +389,25 @@ pub fn restart_streams(
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<StreamsResetResult> {
     let mut completed = Vec::new();
+    let mut return_codes = Vec::new();
     for &index in &driver_spec().stream_indices {
         validate().with_context(|| format!("流重置停止；已完成索引 {completed:?}"))?;
-        device.reset_stream(index).with_context(|| {
+        let code = device.reset_stream(index).with_context(|| {
             format!("流 {index} 重置未确认；已完成 {completed:?}，当前流可能已重置")
         })?;
-        completed.push(index);
+        return_codes.push((index, code));
+        if code == 0 {
+            completed.push(index);
+        }
+        // Source restartAudioDriver parses each FFI JSON response but never
+        // branches on its native code; a failed native call does not skip 0..8.
         validate().with_context(|| format!("流重置后身份或期限变化；已完成索引 {completed:?}"))?;
     }
     Ok(StreamsResetResult {
         completed_indices: completed,
-        confirmation: "ioctl_completion_only_no_audio_state_readback",
+        return_codes,
+        source_sequence_completed: true,
+        confirmation: "ioctl_completion_only_no_audio_state_readback".into(),
     })
 }
 
@@ -696,9 +706,10 @@ impl<'a> MixerSession<'a> {
                 return Ok(result);
             }
         }
-        // The original formatter also consumes the fifth busy result. Expose
-        // that uncertainty instead of reporting a confirmed hardware value.
-        bail!("DSP 查询选择位在原码轮询次数后仍繁忙：{result:#010x}")
+        // CmMixerLib formats the last result even when its busy bit remains
+        // set after the fifth query (IDA 0xe1e0 / 0xe4c0 / 0xf190). Only a
+        // failed transport query takes the original error branch.
+        Ok(result)
     }
 
     pub fn read(&self, target: &MixerTarget) -> anyhow::Result<MixerValue> {
@@ -759,8 +770,10 @@ impl<'a> MixerSession<'a> {
                     left: (initial & 0xffff) as f32 / scale,
                     right: (initial >> 16) as f32 / scale,
                 };
-                self.write(command, 0)
-                    .context("峰值已读取，但原码清零命令未能确认")?;
+                // Original 0xde60 calls 0xc460 after publishing the samples
+                // and ignores its return. This value confirms the read only;
+                // it does not claim that the clear request succeeded.
+                let _ = self.write(command, 0);
                 value
             }
             _ => bail!("该 DSP 原件操作尚未实现"),
@@ -828,7 +841,17 @@ impl<'a> MixerSession<'a> {
         } else {
             self.query_property(prop, command)?
         };
-        let payload = if matches!(target.control, MixerControl::PageEqEnabled) {
+        let payload = if matches!(target.control, MixerControl::PageMicMonitorVolume) {
+            let MixerValue::Scalar { value } = requested else {
+                bail!("Current Mic Monitor level must be numeric");
+            };
+            // L query / B template in the actual AudioMixer instance:
+            // i[0][7]=n.data[0], i[0][8]=n.data[1], i[0][6]=abs(trunc(t)).
+            // Query data are LE. Preserve this unusual copy order verbatim.
+            ((*value).trunc().abs() as u32) << 16
+                | (initial & 0xff) << 8
+                | (initial >> 8) & 0xff
+        } else if matches!(target.control, MixerControl::PageEqEnabled) {
             let MixerValue::Boolean { enabled } = requested else {
                 bail!("Current page EQ switch must be boolean");
             };
@@ -1112,6 +1135,7 @@ mod tests {
 
     struct MatrixMock {
         matrix: Mutex<Vec<u8>>,
+        reads: Mutex<usize>,
         writes: Mutex<Vec<Vec<u8>>>,
         resets: Mutex<Vec<u32>>,
     }
@@ -1120,6 +1144,7 @@ mod tests {
         fn new() -> Self {
             Self {
                 matrix: Mutex::new(vec![0; driver_spec().matrix_bytes]),
+                reads: Mutex::new(0),
                 writes: Mutex::new(Vec::new()),
                 resets: Mutex::new(Vec::new()),
             }
@@ -1128,6 +1153,7 @@ mod tests {
 
     impl MixerDriverTransport for MatrixMock {
         fn read_matrix(&self) -> anyhow::Result<Vec<u8>> {
+            *self.reads.lock().unwrap() += 1;
             Ok(self.matrix.lock().unwrap().clone())
         }
 
@@ -1137,14 +1163,14 @@ mod tests {
             Ok(())
         }
 
-        fn reset_stream(&self, index: u32) -> anyhow::Result<()> {
+        fn reset_stream(&self, index: u32) -> anyhow::Result<u32> {
             self.resets.lock().unwrap().push(index);
-            Ok(())
+            Ok(0)
         }
     }
 
     #[test]
-    fn source_driver_matrix_route_reads_writes_and_verifies_real_bytes() {
+    fn source_driver_matrix_route_preserves_bytes_without_post_write_getter() {
         let route = MixerRoute {
             input: 1,
             output: 1,
@@ -1161,10 +1187,12 @@ mod tests {
         }
         let before = device.matrix.lock().unwrap().clone();
         assert!(read_driver_route(&device, &route, || Ok(())).unwrap());
+        let reads_before_write = *device.reads.lock().unwrap();
         let result = write_driver_route(&device, &route, false, || Ok(())).unwrap();
         assert!(result.previous);
-        assert!(!result.observed);
-        assert!(result.verified);
+        assert!(!result.requested);
+        assert!(result.transport_completed);
+        assert_eq!(*device.reads.lock().unwrap(), reads_before_write + 1);
         let matrix = device.matrix.lock().unwrap();
         assert_eq!(&matrix[22 * 4..22 * 4 + 4], &[0, 0, 0, 0]);
         assert_eq!(&matrix[..22 * 4], &before[..22 * 4]);
@@ -1191,6 +1219,48 @@ mod tests {
             result.confirmation,
             "ioctl_completion_only_no_audio_state_readback"
         );
+    }
+
+    #[test]
+    fn source_restart_continues_native_error_codes_but_stops_on_transport_exception() {
+        struct ResetMock {
+            indices: Mutex<Vec<u32>>,
+            exception: bool,
+        }
+        impl MixerDriverTransport for ResetMock {
+            fn read_matrix(&self) -> anyhow::Result<Vec<u8>> {
+                panic!("no matrix query in stream reset")
+            }
+            fn write_matrix(&self, _: &[u8]) -> anyhow::Result<()> {
+                panic!("no matrix write in stream reset")
+            }
+            fn reset_stream(&self, index: u32) -> anyhow::Result<u32> {
+                self.indices.lock().unwrap().push(index);
+                if index == 2 && self.exception {
+                    anyhow::bail!("mock transport exception");
+                }
+                Ok(match index {
+                    1 => 0x10001,
+                    2 => 0x10003,
+                    _ => 0,
+                })
+            }
+        }
+        let mock = ResetMock {
+            indices: Mutex::new(Vec::new()),
+            exception: false,
+        };
+        let result = restart_streams(&mock, || Ok(())).unwrap();
+        assert_eq!(*mock.indices.lock().unwrap(), (0..=8).collect::<Vec<_>>());
+        assert_eq!(result.completed_indices, vec![0, 3, 4, 5, 6, 7, 8]);
+        assert_eq!(result.return_codes[1..3], [(1, 0x10001), (2, 0x10003)]);
+        assert!(result.source_sequence_completed);
+        let mock = ResetMock {
+            indices: Mutex::new(Vec::new()),
+            exception: true,
+        };
+        assert!(restart_streams(&mock, || Ok(())).is_err());
+        assert_eq!(*mock.indices.lock().unwrap(), vec![0, 1, 2]);
     }
 
     #[test]
@@ -1522,7 +1592,7 @@ mod tests {
     }
 
     #[test]
-    fn source_peak_read_sends_clear_and_surfaces_clear_failure() {
+    fn source_peak_read_sends_clear_and_keeps_samples_on_clear_failure() {
         for fail in [None, Some(2)] {
             let mut mock = ReportMock::new(vec![reply32(0x40008000)]);
             mock.fail_output = fail;
@@ -1530,17 +1600,13 @@ mod tests {
             let result = MixerSession::new(&mock, &validate)
                 .unwrap()
                 .read(&target(MixerControl::HeadphonesPeak));
-            if fail.is_some() {
-                assert!(result.is_err());
-            } else {
-                assert!(matches!(
-                    result.unwrap(),
-                    MixerValue::Peak {
-                        left: 1.0,
-                        right: 0.5
-                    }
-                ));
-            }
+            assert!(matches!(
+                result.unwrap(),
+                MixerValue::Peak {
+                    left: 1.0,
+                    right: 0.5
+                }
+            ));
             assert_eq!(
                 mock.outputs(),
                 vec![
@@ -1573,13 +1639,65 @@ mod tests {
                 .chain(std::iter::repeat_n(reply32(0x80000000), 5))
                 .collect(),
         );
+        assert!(matches!(
+            MixerSession::new(&mock, &validate)
+                .unwrap()
+                .read(&target(MixerControl::ReverbRoom))
+                .unwrap(),
+            MixerValue::Scalar { value: 0.0 }
+        ));
+        assert_eq!(mock.outputs().len(), 7);
+        assert!(mock.replies.lock().unwrap().is_empty());
+    }
+
+    #[test]
+    fn source_last_busy_reply_is_formatted_for_both_mailboxes_and_magic_voice() {
+        let validate = || Ok(());
+        for (control, busy, payload, expected) in [
+            (
+                MixerControl::ReverbRoom,
+                0x80000000,
+                (-2500i16) as u16,
+                -25.0,
+            ),
+            (MixerControl::CompressorThreshold, 0x10, 38, -38.0),
+            (MixerControl::MagicVoice, 0x80000000, 0xe28f, 1.0),
+        ] {
+            let mock = ReportMock::new(
+                std::iter::once(reply32(0))
+                    .chain(std::iter::repeat_n(reply32(busy), 4))
+                    .chain(std::iter::once(reply32(busy | (u32::from(payload) << 8))))
+                    .collect(),
+            );
+            match MixerSession::new(&mock, &validate)
+                .unwrap()
+                .read(&target(control))
+                .unwrap()
+            {
+                MixerValue::Scalar { value } => assert_eq!(value, expected),
+                other => panic!("expected original scalar formatter, got {other:?}"),
+            }
+            assert_eq!(mock.outputs().len(), 7);
+            assert!(mock.replies.lock().unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn source_mailbox_failed_query_returns_error_without_further_polling() {
+        let mock = ReportMock::new(vec![
+            reply32(0),
+            reply32(0x80000000),
+            Err("mock mailbox input failed"),
+            reply32(0),
+        ]);
+        let validate = || Ok(());
         assert!(
             MixerSession::new(&mock, &validate)
                 .unwrap()
                 .read(&target(MixerControl::ReverbRoom))
                 .is_err()
         );
-        assert_eq!(mock.outputs().len(), 7);
-        assert!(mock.replies.lock().unwrap().is_empty());
+        assert_eq!(mock.outputs().len(), 4);
+        assert_eq!(mock.replies.lock().unwrap().len(), 1);
     }
 }

@@ -137,6 +137,62 @@
       "end": 788374,
       "sha256": "a7cf4d279459870ae625085de4b92261864f7d26773bbcdbf47c556f78c288b0",
       "source": "class vE extends yt.Component{render(){const e=\"https://dl.razerzone.com/master-guides/RazerSynapse3/ALEXA-\"+(this.props.lang||\"en\")+\".pdf\",t=ie;return(0,vt.jsx)(\"div\",{className:\"help-component\",children:(0,vt.jsx)(\"div\",{className:\"body-widgets flex\",children:(0,vt.jsx)(\"div\",{className:\"widget-col col-left flex\",children:(0,vt.jsxs)(SE,{title:\"SUPPORT\",children:[(0,vt.jsx)(\"div\",{className:\"support-link\",children:(0,vt.jsx)(\"a\",{target:\"_blank\",className:\"with-link-icon\",rel:\"noopener noreferrer\",href:e,children:(0,vt.jsx)(Fr,{text:\"VIEW_MASTER_GUIDE\"})})}),(0,vt.jsx)(\"div\",{className:\"support-link\",children:(0,vt.jsx)(\"a\",{target:\"_blank\",className:\"with-link-icon\",rel:\"noopener noreferrer\",href:t,children:(0,vt.jsx)(Fr,{text:\"VIEW_ALEXA_GUIDE\"})})})]})})})})}}"
+    },
+    {
+      "name": "Ya",
+      "path": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+      "offset": 580890,
+      "end": 582112,
+      "sha256": "8965fee24c50ffb91bfe93cb26f12fd7c499f3f0490b756c507df8089f9418ff",
+      "source": "Ya=new class extends ea{constructor(){super(),this.init=()=>{const e=\"AudioInput.init()\";try{this.currentDevice=this.device||{},navigator.mediaDevices.addEventListener(\"devicechange\",this._getDeviceList),ht.log(e)}catch(t){ht.error(\"\".concat(e,\" - \").concat(t.message))}},this.getDevices=async()=>(ht.log(\"AudioInput.getDevices()\"),this._getDeviceList()),this.setDevice=e=>{ht.log(\"AudioInput.setDevice(\".concat(JSON.stringify(e),\")\")),JSON.stringify(e)!==JSON.stringify(this.currentDevice)&&(this.currentDevice=e,ta.update(le,{[ja]:e}),ht.log(\"AudioInput.on(\".concat(JSON.stringify(za),\", \").concat(JSON.stringify(e),\")\")),this.emit(za,e))},this._getDeviceList=async()=>{let e;try{const t=await navigator.mediaDevices.enumerateDevices(),n=this.currentDevice;let r=!n;e=[],t.forEach(t=>{\"audioinput\"===t.kind&&\"default\"!==t.deviceId&&\"communications\"!==t.deviceId&&\"\"!==t.label&&(e.push(t),n&&n.deviceId===t.deviceId&&(r=!0))}),ht.log(\"AudioInput.on(\".concat(JSON.stringify(Fa),\", \").concat(JSON.stringify(e),\")\")),this.emit(Fa,e),r||this.setDevice(null)}catch(t){ht.error(\"AudioInput._getDeviceList() - \".concat(t.message))}return e},this.currentDevice={}}get device(){return(ta.get(le)||{}).alexaAudioInputDevice||null}}"
+    },
+    {
+      "name": "ta",
+      "path": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+      "offset": 557972,
+      "end": 558360,
+      "sha256": "1f5400214b3e71d561866b5e84ab9c6ac83eeaa54ce0913b91d29fdf50d22575",
+      "source": "ta=new class{constructor(){this.set=(e,t,n)=>{window.localStorage.setItem(e,n?t:JSON.stringify(t))},this.get=(e,t)=>{let n=window.localStorage.getItem(e);if(!t)try{n=JSON.parse(n)}catch(r){ht.error(r.message)}return n},this.update=(e,t,n)=>{const r=this.get(e);this.set(e,n?t:o(o({},r),t))},this.remove=e=>{window.localStorage.removeItem(e)},this.clear=()=>{window.localStorage.clear()}}}"
+    },
+    {
+      "name": "le",
+      "path": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+      "offset": 259913,
+      "end": 259931,
+      "sha256": "b2362ce919cafe22c25ff4d340d4054f25aa1eef61e3db7271c9f991c32f195d",
+      "source": "le=\"alexaSettings\""
+    },
+    {
+      "name": "ja",
+      "path": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+      "offset": 580820,
+      "end": 580846,
+      "sha256": "b66d12ba7273635c4f5f617f0a7e14d0776cd24fef957de7b0fff19b3766d6f5",
+      "source": "ja=\"alexaAudioInputDevice\""
+    },
+    {
+      "name": "Fa",
+      "path": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+      "offset": 580847,
+      "end": 580865,
+      "sha256": "d98d67ae0c48518d87484310216731d21a4913dbbf0b62c134792abd684eca70",
+      "source": "Fa=\"devicesChange\""
+    },
+    {
+      "name": "za",
+      "path": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+      "offset": 580866,
+      "end": 580883,
+      "sha256": "a59da2735a9900dfbbe073cf07a5c0bcb311420f33c35df5334f1372fc9ad874",
+      "source": "za=\"deviceChange\""
+    },
+    {
+      "name": "Ep",
+      "path": ".ref/applications/synapse/alexa/static/js/main.05f102d2.js",
+      "offset": 726807,
+      "end": 728013,
+      "sha256": "542ba660bba4bb6c974eda969844a9a542a7c8210c6348e925327b72336e029c",
+      "source": "Ep=function(){const e=(0,It.useDispatch)(),t=(0,yt.useRef)(!1),n=(0,yt.useCallback)(n=>{let r=n.data;const a=r.action,o=r.payload;switch(a){case\"clearSettingsSynapseModule\":o&&o.name===V&&\"module\"===o.type&&(s=!0,t.current=s);break;case\"AmazonUserInfo\":e((i=o,e=>e({type:w,payload:i})))}var i,s},[]),r=t=>{let n=t.key,r=t.newValue;switch(n){case un:{const t=(\"string\"===typeof r?JSON.parse(r):r)[V];console.log(\"onLocalStorageChange\",{newValue:r,alexaInstalledData:t}),t&&e(Ka(t));break}case ce:a(r)}},a=t=>{let n=t;var r;t||(n=ta.get(ce,!0),console.debug(\"setting to \",n),n||(ta.set(ce,$,!0),n=$)),console.log(\"currentLanguage:\",n),e((r=n,e=>{e({type:ye,payload:r})}))};return(0,yt.useEffect)(()=>{a(),hp(e)},[]),(0,yt.useEffect)(()=>{ka.init(),ip.init({name:\"rzr\",version:1}),Xa(),Ga(n),pp.getUserLoggedIn(),pp.on(\"online\",()=>{e(ut(!0))}),pp.on(\"offline\",()=>{e(ut(!1))}),pp.on(\"userGet\",async t=>e((e=>t=>t({type:I,payload:e}))(t))),pp.on(\"logOut\",()=>{e(e=>e({type:R}))}),window.addEventListener(\"storage\",r),Ya.init(),va.init({name:V,type:\"module\",manifestURL:K,interval:J}),e(Ka(va.localData)),e(async e=>{e(Ja(null)),e(Za(!0)),await va.getManifestData(),e(Za(!1))}),setInterval(At,ae)},[e,n]),null}"
     }
   ],
   "css": [
@@ -3288,20 +3344,32 @@
   ],
   "native": [
     {
-      "path": "src/shell/alexa_page.rs",
-      "sha256": "e488427b6143cfcdf9457ba8d1d20a28d27dd48239baef48dc6b288f248b3446"
+      "path": "crates/razer-app-pages/src/alexa_page.rs",
+      "sha256": "4128db43d903f4ecdc90f65ec17a447393ea56c53bbde816a45c2e949228d5d7"
     },
     {
-      "path": "src/shell/alexa_page/sections.rs",
-      "sha256": "e360344ab22c5375ad7125b4467b9253b6e79a92c91a3f9252890969d27c7eec"
+      "path": "crates/razer-app-pages/src/alexa_page/sections.rs",
+      "sha256": "2319d018cec00fff2dc2a2cc58c3e5300522345c46d73b1fe333c24cf406c22d"
     },
     {
-      "path": "src/shell/alexa_page/controls.rs",
-      "sha256": "b28995d74e17dfa4e3500a041d12e3796e4cbb48f3007dddcba815372728f63d"
+      "path": "crates/razer-app-pages/src/alexa_page/controls.rs",
+      "sha256": "479d1664ea82234711c1441e7619a5ea125bd65c037d8d1d455f5fa35f043743"
     },
     {
-      "path": "src/ui/source_tooltip.rs",
-      "sha256": "1e3a287ee9080755420200e2591c286e0b302c8c811af49a0f0f65a334f18bb9"
+      "path": "crates/razer-widgets/src/source_tooltip.rs",
+      "sha256": "3ee6679ca19db9231d552c1e5c691eff8bff9f2f399336d34a76431f76ec7c2a"
+    },
+    {
+      "path": "crates/razer-app-pages/src/alexa_page/input.rs",
+      "sha256": "bc21fae41c67a2ca01d9ffad6ba671ad71643af7c0c44735fbab0f7bd1384e85"
+    },
+    {
+      "path": "crates/razer-app-pages/src/alexa_page/local_settings.rs",
+      "sha256": "02c153e6a8094f1221ba9931ceb49afd0815d455df2457143c9b16361a4c7075"
+    },
+    {
+      "path": "crates/razer-widgets/src/synapse_select.rs",
+      "sha256": "374d1f930826b0a68d6762a5c6120c9bd64aaca77e57375f78af9510ba4fee60"
     }
   ],
   "verified": [
@@ -3309,13 +3377,19 @@
     "final body cascade is Roboto 16px/#ccc with inherited line-height 1.22",
     "Skills list text starts 20px inside content; 100ms more-label color/opacity",
     "Settings tooltip bottom-left 300px main, intrinsic wrapper 7x8 padding, 100ms delayed show and 100ms linear fade, blur dismiss",
+    "Ya/Ep/yE media input initialization, filter order, record selection and disappearance-to-null traced from current source",
+    "No synthetic input list; default is null, stored MediaDeviceInfo is separate from enumerated records",
+    "Skills synapseSkills and input selection persist source keys with serialized local JSON replacement patches, preserving unrelated fields",
+    "Input trigger retains selected P.label while menu follows latest enumerated labels",
     "source Home 80vh uses host WebContents below 42px TabUI"
   ],
   "limitations": [
     "No application execution or visual acceptance",
     "Skill disc marker uses a native circle; browser font-specific marker rasterization is not reproduced",
     "Home preview modal viewport remains a local preview adaptation",
-    "Authentication, input devices, persistent source settings and service responses remain unconnected",
+    "Authentication and browser media enumeration/devicechange adapter remain unconnected; observed endpoint IDs cannot be substituted for mediaDeviceId",
+    "Settings broadcast/audio-language/shortcut registration and service responses remain unconnected",
+    "Local JSON storage adapter is separate from Chromium localStorage; cross-process storage events and consumer broadcast lifecycle remain missing",
     "Help layout/navigation, installer, logout and patch-note dialogs need separate full content re-audit"
   ],
   "problems": []

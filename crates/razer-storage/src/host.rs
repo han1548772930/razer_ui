@@ -66,13 +66,13 @@ pub struct HostStorageEvent {
 
 #[derive(Default)]
 struct KeySlot {
-    key: String,
+    key: Value,
     value: Option<Value>,
     subscribers: Vec<String>,
 }
 #[derive(Default)]
 struct UrlStore {
-    entries: Vec<(String, Vec<(String, Value)>)>,
+    entries: Vec<(String, Vec<(Value, Value)>)>,
     subscribers: Vec<String>,
 }
 #[derive(Default)]
@@ -146,10 +146,8 @@ impl HostStorage {
         let Some(key) = call.payload.get("key").filter(|v| !v.is_null()) else {
             return Ok(failure("missing arg.payload key"));
         };
-        let key = key.as_str().ok_or_else(|| {
-            anyhow::anyhow!("Non-string JS Map keys are not implemented on the JSON storage wire")
-        })?;
-        let index = self.keys.iter().position(|s| s.key == key);
+        validate_map_key(key)?;
+        let index = self.keys.iter().position(|s| same_map_key(&s.key, key));
         if call.action == "getItem" {
             return Ok(index
                 .and_then(|i| self.keys[i].value.clone())
@@ -163,7 +161,7 @@ impl HostStorage {
                 };
                 let i = index.unwrap_or_else(|| {
                     self.keys.push(KeySlot {
-                        key: key.into(),
+                        key: key.clone(),
                         ..Default::default()
                     });
                     self.keys.len() - 1
@@ -202,7 +200,7 @@ impl HostStorage {
             "registerEvent" => {
                 let i = index.unwrap_or_else(|| {
                     self.keys.push(KeySlot {
-                        key: key.into(),
+                        key: key.clone(),
                         ..Default::default()
                     });
                     self.keys.len() - 1
@@ -267,7 +265,7 @@ impl HostStorage {
             let mut keys = Vec::new();
             for (_, entries) in &store.entries {
                 for (key, _) in entries {
-                    if !keys.contains(key) {
+                    if !keys.iter().any(|current| same_map_key(current, key)) {
                         keys.push(key.clone());
                     }
                 }
@@ -288,9 +286,7 @@ impl HostStorage {
                 HostStorageReply::undefined()
             });
         };
-        let key = key.as_str().ok_or_else(|| {
-            anyhow::anyhow!("Non-string JS Map keys are not implemented on the JSON storage wire")
-        })?;
+        validate_map_key(key)?;
         if get {
             let rows: Vec<_> = store
                 .entries
@@ -298,7 +294,7 @@ impl HostStorage {
                 .filter_map(|(url, entries)| {
                     entries
                         .iter()
-                        .find(|(k, _)| k == key)
+                        .find(|(k, _)| same_map_key(k, key))
                         .filter(|(_, v)| js_truthy(v))
                         .map(|(_, value)| json!({"value":value,"windowName":url}))
                 })
@@ -336,11 +332,15 @@ impl HostStorage {
                     store.entries.push((url.clone(), Vec::new()));
                     store.entries.len() - 1
                 });
-            if let Some((_, current)) = store.entries[i].1.iter_mut().find(|(k, _)| k == key) {
+            if let Some((_, current)) = store.entries[i]
+                .1
+                .iter_mut()
+                .find(|(k, _)| same_map_key(k, key))
+            {
                 old = Some(std::mem::replace(current, value.clone()));
                 state = "changed";
             } else {
-                store.entries[i].1.push((key.into(), value.clone()));
+                store.entries[i].1.push((key.clone(), value.clone()));
                 state = "created";
             }
             result = if no_event {
@@ -352,7 +352,7 @@ impl HostStorage {
             };
         } else {
             if let Some((_, entries)) = store.entries.iter_mut().find(|(u, _)| u == &url) {
-                if let Some(i) = entries.iter().position(|(k, _)| k == key) {
+                if let Some(i) = entries.iter().position(|(k, _)| same_map_key(k, key)) {
                     old = Some(entries.remove(i).1);
                 }
             }
@@ -429,6 +429,25 @@ impl HostStorage {
     }
 }
 
+fn validate_map_key(key: &Value) -> anyhow::Result<()> {
+    // The original modules use JS Map, with no string conversion. JSON can
+    // carry primitive keys but cannot carry JS object identity or undefined.
+    anyhow::ensure!(
+        !matches!(key, Value::Array(_) | Value::Object(_)),
+        "JS object-identity Map keys are not representable on the JSON storage wire"
+    );
+    Ok(())
+}
+
+fn same_map_key(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        // JS has one Number type. SameValueZero equates 1 with 1.0 and both
+        // signed zeros; JSON cannot represent NaN or Infinity.
+        (Value::Number(left), Value::Number(right)) => left.as_f64() == right.as_f64(),
+        _ => left == right,
+    }
+}
+
 fn js_truthy(value: &Value) -> bool {
     match value {
         Value::Null => false,
@@ -438,3 +457,7 @@ fn js_truthy(value: &Value) -> bool {
         Value::Array(_) | Value::Object(_) => true,
     }
 }
+
+#[cfg(test)]
+#[path = "host_tests.rs"]
+mod tests;

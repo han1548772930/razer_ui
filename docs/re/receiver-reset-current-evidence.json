@@ -982,11 +982,11 @@
   "implementation": [
     {
       "path": "crates/razer-device/src/receiver_identity.rs",
-      "sha256": "119c327d2175ac76fb79deed91c45fdf9222fec24a03437079f8d8fe3a554713"
+      "sha256": "6c463dc27b25bfd6585638c25ea441179f0b08faa42ba275c90b1bb3dbffa10b"
     },
     {
       "path": "crates/razer-service/src/runtime/windows/receiver_identity.rs",
-      "sha256": "f5f04e02b640c907c964351ea50b09dc949ac5bf626cb4e0150e2c0b97bf39a8"
+      "sha256": "05410fd798c4b0fe79af6440440c018d7ace072c72940aee6d607b50b04e695f"
     },
     {
       "path": "crates/razer-storage/src/receiver_reset.rs",
@@ -994,11 +994,11 @@
     },
     {
       "path": "crates/razer-pages/src/features/source_help.rs",
-      "sha256": "9cd7ea4f5f3d4d975dfcace25d698176d0e06c1ee38ecbdfaad9ebf9a5a74f39"
+      "sha256": "d11da93778eacbd87ee04c4e15ea4bfde04299f7b39c61c27af5f7bfa57d1385"
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_reset.rs",
-      "sha256": "252d04cddd825d952b3159ae17f95e996c37925e955eee62fe334c527b2bb86d"
+      "sha256": "3e06fc8e86f0793a94019537a5693b70ba243ac89905c79ba0b688e7a71d7817"
     }
   ],
   "semantics": [

@@ -1,0 +1,1039 @@
+{
+  "schema_version": 1,
+  "method": "Current retained official manifest declarations, HTTP receipt, SHA-256/size and static PE inspection; no target execution",
+  "resources": [
+    {
+      "resource_name": "IoTNative",
+      "version": "1.0.20.0",
+      "source": "docs/re/application-resource-metadata-2026-10-09/background-resources.json",
+      "source_sha256": "47feea84a40638fbe9f5091a896d878251f2593d39921c89fb26dd589f75f4f8",
+      "url": "https://app-assets.razer.com/files/synapse/devices/common/IoT/IoTNative_v1.0.20.0.dll",
+      "file": "IoTNative_v1.0.20.0.dll",
+      "path": ".ref/native-libraries/f2e86e50e994dc6f04385cdc60e79e38941199e81b0560f61b9039acd95dbeb8/IoTNative_v1.0.20.0.dll",
+      "http_receipt": ".ref/native-libraries/f2e86e50e994dc6f04385cdc60e79e38941199e81b0560f61b9039acd95dbeb8/IoTNative_v1.0.20.0.dll.http.json",
+      "sha256": "f2e86e50e994dc6f04385cdc60e79e38941199e81b0560f61b9039acd95dbeb8",
+      "md5": "e903919621da06820e3678cc5fee57b7",
+      "bytes": 617160,
+      "machine": 34404,
+      "entry_rva": 423492,
+      "exports": [
+        {
+          "name": "FreeMalloc",
+          "ordinal": 1,
+          "rva": 216784,
+          "forwarder": null
+        },
+        {
+          "name": "GetDLLVersion",
+          "ordinal": 2,
+          "rva": 216672,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_ConnectNetDevice",
+          "ordinal": 3,
+          "rva": 219456,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_DisconnectNetDevice",
+          "ordinal": 4,
+          "rva": 219584,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_GetControllerFilePath",
+          "ordinal": 5,
+          "rva": 229888,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_GetSdkVersion",
+          "ordinal": 6,
+          "rva": 227088,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_IsNetDeviceConnected",
+          "ordinal": 7,
+          "rva": 218208,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_RunCmdEsp32",
+          "ordinal": 8,
+          "rva": 226912,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_RunCmdFw25",
+          "ordinal": 9,
+          "rva": 226704,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_SetDeviceInfoToFile",
+          "ordinal": 10,
+          "rva": 230112,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_SetSdkLog",
+          "ordinal": 11,
+          "rva": 227232,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_StartMdnsDeviceScan",
+          "ordinal": 12,
+          "rva": 216896,
+          "forwarder": null
+        },
+        {
+          "name": "IOT_StopMdnsDeviceScan",
+          "ordinal": 13,
+          "rva": 218112,
+          "forwarder": null
+        },
+        {
+          "name": "Init",
+          "ordinal": 14,
+          "rva": 214752,
+          "forwarder": null
+        },
+        {
+          "name": "SetNodeFFIEvent",
+          "ordinal": 15,
+          "rva": 216448,
+          "forwarder": null
+        },
+        {
+          "name": "UnInit",
+          "ordinal": 16,
+          "rva": 216160,
+          "forwarder": null
+        },
+        {
+          "name": "WIFI_ConnectWifiFromProfile",
+          "ordinal": 17,
+          "rva": 229072,
+          "forwarder": null
+        },
+        {
+          "name": "WIFI_GetConnectedProfileList",
+          "ordinal": 18,
+          "rva": 228688,
+          "forwarder": null
+        },
+        {
+          "name": "WIFI_GetCurrentConnectionsAp",
+          "ordinal": 19,
+          "rva": 228304,
+          "forwarder": null
+        }
+      ],
+      "imports": [
+        {
+          "library": "KERNEL32.dll",
+          "functions": [
+            "SetConsoleTextAttribute",
+            "GetConsoleScreenBufferInfo",
+            "GetStdHandle",
+            "GetConsoleMode",
+            "GetLastError",
+            "WideCharToMultiByte",
+            "Sleep",
+            "GetModuleFileNameW",
+            "GetFileAttributesW",
+            "LoadLibraryW",
+            "GetProcAddress",
+            "OutputDebugStringA",
+            "WriteFile",
+            "CreateDirectoryW",
+            "FormatMessageA",
+            "LocalFree",
+            "lstrcpynW",
+            "LocalAlloc",
+            "MultiByteToWideChar",
+            "InitializeSListHead",
+            "GetSystemTimeAsFileTime",
+            "QueryPerformanceCounter",
+            "AcquireSRWLockExclusive",
+            "WriteConsoleA",
+            "GetDynamicTimeZoneInformation",
+            "GetCurrentProcessId",
+            "FreeLibrary",
+            "ExpandEnvironmentStringsW",
+            "GetACP",
+            "GetCurrentThreadId",
+            "SleepConditionVariableSRW",
+            "WakeAllConditionVariable",
+            "RtlCaptureContext",
+            "RtlLookupFunctionEntry",
+            "RtlVirtualUnwind",
+            "UnhandledExceptionFilter",
+            "SetUnhandledExceptionFilter",
+            "GetCurrentProcess",
+            "TerminateProcess",
+            "IsProcessorFeaturePresent",
+            "ReleaseSRWLockExclusive",
+            "IsDebuggerPresent"
+          ]
+        },
+        {
+          "library": "USER32.dll",
+          "functions": [
+            "wsprintfW"
+          ]
+        },
+        {
+          "library": "ole32.dll",
+          "functions": [
+            "StringFromGUID2"
+          ]
+        },
+        {
+          "library": "MSVCP140.dll",
+          "functions": [
+            "?id@?$numpunct@D@std@@2V0locale@2@A",
+            "?_Id_cnt@id@locale@std@@0HA",
+            "_Cnd_do_broadcast_at_thread_exit",
+            "_Cnd_signal",
+            "?_Syserror_map@std@@YAPEBDH@Z",
+            "?_Xout_of_range@std@@YAXPEBD@Z",
+            "_Mbrtowc",
+            "?id@?$numpunct@_W@std@@2V0locale@2@A",
+            "?uflow@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAHXZ",
+            "??0facet@locale@std@@IEAA@_K@Z",
+            "??1facet@locale@std@@MEAA@XZ",
+            "_Thrd_detach",
+            "??1?$basic_ios@DU?$char_traits@D@std@@@std@@UEAA@XZ",
+            "??1?$basic_streambuf@DU?$char_traits@D@std@@@std@@UEAA@XZ",
+            "?imbue@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAXAEBVlocale@2@@Z",
+            "?sync@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAHXZ",
+            "?setbuf@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAAPEAV12@PEAD_J@Z",
+            "?xsputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAA_JPEBD_J@Z",
+            "?xsgetn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAA_JPEAD_J@Z",
+            "?showmanyc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@MEAA_JXZ",
+            "?_Unlock@?$basic_streambuf@DU?$char_traits@D@std@@@std@@UEAAXXZ",
+            "?_Lock@?$basic_streambuf@DU?$char_traits@D@std@@@std@@UEAAXXZ",
+            "??1?$basic_ostream@DU?$char_traits@D@std@@@std@@UEAA@XZ",
+            "?sputc@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QEAAHD@Z",
+            "?uncaught_exceptions@std@@YAHXZ",
+            "?good@ios_base@std@@QEBA_NXZ",
+            "?_Getlconv@_Locinfo@std@@QEBAPEBUlconv@@XZ",
+            "?is@?$ctype@_W@std@@QEBA_NF_W@Z",
+            "?id@?$ctype@_W@std@@2V0locale@2@A",
+            "?id@?$collate@_W@std@@2V0locale@2@A",
+            "?_Xregex_error@std@@YAXW4error_type@regex_constants@1@@Z",
+            "?tolower@?$ctype@_W@std@@QEBA_W_W@Z",
+            "_Wcsxfrm",
+            "_Wcscoll",
+            "?tolower@?$ctype@_W@std@@QEBAPEB_WPEA_WPEB_W@Z",
+            "?_Getcoll@_Locinfo@std@@QEBA?AU_Collvec@@XZ",
+            "??0?$basic_streambuf@DU?$char_traits@D@std@@@std@@IEAA@XZ",
+            "?_Osfx@?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAXXZ",
+            "?setstate@?$basic_ios@DU?$char_traits@D@std@@@std@@QEAAXH_N@Z",
+            "?widen@?$basic_ios@DU?$char_traits@D@std@@@std@@QEBADD@Z",
+            "??0?$basic_ios@DU?$char_traits@D@std@@@std@@IEAA@XZ",
+            "?sputn@?$basic_streambuf@DU?$char_traits@D@std@@@std@@QEAA_JPEBD_J@Z",
+            "??0?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAA@PEAV?$basic_streambuf@DU?$char_traits@D@std@@@1@_N@Z",
+            "?put@?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV12@D@Z",
+            "?flush@?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV12@XZ",
+            "??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV01@P6AAEAV01@AEAV01@@Z@Z",
+            "??6?$basic_ostream@DU?$char_traits@D@std@@@std@@QEAAAEAV01@H@Z",
+            "?setw@std@@YA?AU?$_Smanip@_J@1@_J@Z",
+            "??1?$basic_ios@_WU?$char_traits@_W@std@@@std@@UEAA@XZ",
+            "?sputc@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@QEAAG_W@Z",
+            "??1?$basic_iostream@_WU?$char_traits@_W@std@@@std@@UEAA@XZ",
+            "?gptr@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@IEBAPEA_WXZ",
+            "?pptr@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@IEBAPEA_WXZ",
+            "??1?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@UEAA@XZ",
+            "?_Unlock@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@UEAAXXZ",
+            "?_Lock@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@UEAAXXZ",
+            "?sync@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@MEAAHXZ",
+            "?showmanyc@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@MEAA_JXZ",
+            "?uflow@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@MEAAGXZ",
+            "?xsgetn@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@MEAA_JPEA_W_J@Z",
+            "?xsputn@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@MEAA_JPEB_W_J@Z",
+            "?setbuf@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@MEAAPEAV12@PEA_W_J@Z",
+            "?imbue@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@MEAAXAEBVlocale@2@@Z",
+            "?pbase@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@IEBAPEA_WXZ",
+            "??0?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@IEAA@XZ",
+            "?_Osfx@?$basic_ostream@_WU?$char_traits@_W@std@@@std@@QEAAXXZ",
+            "?flush@?$basic_ostream@_WU?$char_traits@_W@std@@@std@@QEAAAEAV12@XZ",
+            "?setstate@?$basic_ios@_WU?$char_traits@_W@std@@@std@@QEAAXH_N@Z",
+            "?fill@?$basic_ios@_WU?$char_traits@_W@std@@@std@@QEAA_W_W@Z",
+            "??0?$basic_ios@_WU?$char_traits@_W@std@@@std@@IEAA@XZ",
+            "?eback@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@IEBAPEA_WXZ",
+            "?egptr@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@IEBAPEA_WXZ",
+            "?epptr@?$basic_streambuf@_WU?$char_traits@_W@std@@@std@@IEBAPEA_WXZ",
+            "??0?$basic_iostream@_WU?$char_traits@_W@std@@@std@@QEAA@PEAV?$basic_streambuf@_WU?$char_traits@_W@std@@@1@@Z",
+            "??6?$basic_ostream@_WU?$char_traits@_W@std@@@std@@QEAAAEAV01@P6AAEAVios_base@1@AEAV21@@Z@Z",
+            "??6?$basic_ostream@_WU?$char_traits@_W@std@@@std@@QEAAAEAV01@H@Z",
+            "?_Getcvt@_Locinfo@std@@QEBA?AU_Cvtvec@@XZ",
+            "?_Getfalse@_Locinfo@std@@QEBAPEBDXZ",
+            "?_Xbad_alloc@std@@YAXXZ",
+            "?_Gettrue@_Locinfo@std@@QEBAPEBDXZ",
+            "??0_Lockit@std@@QEAA@H@Z",
+            "??0_Locinfo@std@@QEAA@PEBD@Z",
+            "??1_Lockit@std@@QEAA@XZ",
+            "??1_Locinfo@std@@QEAA@XZ",
+            "?_Incref@facet@locale@std@@UEAAXXZ",
+            "?_Init@locale@std@@CAPEAV_Locimp@12@_N@Z",
+            "?_Decref@facet@locale@std@@UEAAPEAV_Facet_base@3@XZ",
+            "_Xtime_get_ticks",
+            "?_Xbad_function_call@std@@YAXXZ",
+            "_Query_perf_frequency",
+            "_Query_perf_counter",
+            "?_Xlength_error@std@@YAXPEBD@Z",
+            "_Thrd_id",
+            "_Thrd_join",
+            "_Mtx_unlock",
+            "_Mtx_lock",
+            "?_Throw_Cpp_error@std@@YAXH@Z",
+            "?_Getgloballocale@locale@std@@CAPEAV_Locimp@12@XZ",
+            "?_Getcat@?$ctype@_W@std@@SA_KPEAPEBVfacet@locale@2@PEBV42@@Z"
+          ]
+        },
+        {
+          "library": "MSVCP140_ATOMIC_WAIT.dll",
+          "functions": [
+            "__std_atomic_notify_all_direct",
+            "__std_atomic_wait_direct"
+          ]
+        },
+        {
+          "library": "wlanapi.dll",
+          "functions": [
+            "WlanGetProfile",
+            "WlanFreeMemory",
+            "WlanGetNetworkBssList",
+            "WlanConnect",
+            "WlanEnumInterfaces",
+            "WlanGetAvailableNetworkList",
+            "WlanQueryInterface",
+            "WlanGetProfileList",
+            "WlanOpenHandle",
+            "WlanSetProfile"
+          ]
+        },
+        {
+          "library": "CRYPT32.dll",
+          "functions": [
+            "CryptQueryObject",
+            "CertFindCertificateInStore",
+            "CertFreeCertificateContext",
+            "CertCloseStore",
+            "CryptMsgClose",
+            "CryptMsgGetParam"
+          ]
+        },
+        {
+          "library": "WINTRUST.dll",
+          "functions": [
+            "WinVerifyTrust"
+          ]
+        },
+        {
+          "library": "VCRUNTIME140_1.dll",
+          "functions": [
+            "__CxxFrameHandler4"
+          ]
+        },
+        {
+          "library": "VCRUNTIME140.dll",
+          "functions": [
+            "memcmp",
+            "memcpy",
+            "memset",
+            "__C_specific_handler",
+            "memchr",
+            "_purecall",
+            "_CxxThrowException",
+            "__std_type_info_destroy_list",
+            "__std_terminate",
+            "strchr",
+            "memmove",
+            "__current_exception",
+            "__std_exception_copy",
+            "__std_exception_destroy",
+            "__current_exception_context"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-runtime-l1-1-0.dll",
+          "functions": [
+            "_invoke_watson",
+            "_seh_filter_dll",
+            "_configure_narrow_argv",
+            "_initialize_narrow_environment",
+            "_initialize_onexit_table",
+            "_register_onexit_function",
+            "_execute_onexit_table",
+            "_crt_atexit",
+            "_cexit",
+            "_initterm",
+            "_initterm_e",
+            "terminate",
+            "_beginthreadex",
+            "abort",
+            "_errno"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-stdio-l1-1-0.dll",
+          "functions": [
+            "__stdio_common_vsprintf",
+            "_filelengthi64",
+            "fclose",
+            "_fileno",
+            "__acrt_iob_func",
+            "_wfopen_s",
+            "fwrite",
+            "__stdio_common_vfprintf",
+            "_wfsopen",
+            "fflush"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-time-l1-1-0.dll",
+          "functions": [
+            "_gmtime64_s",
+            "strftime",
+            "_localtime64_s"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-heap-l1-1-0.dll",
+          "functions": [
+            "malloc",
+            "realloc",
+            "calloc",
+            "_callnewh",
+            "free"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-math-l1-1-0.dll",
+          "functions": [
+            "_dsign",
+            "ceilf",
+            "_dclass"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-string-l1-1-0.dll",
+          "functions": [
+            "isdigit",
+            "strcpy_s"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-filesystem-l1-1-0.dll",
+          "functions": [
+            "_wstat64i32",
+            "_wremove",
+            "_wmkdir",
+            "_wrename"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-locale-l1-1-0.dll",
+          "functions": [
+            "localeconv"
+          ]
+        },
+        {
+          "library": "api-ms-win-crt-convert-l1-1-0.dll",
+          "functions": [
+            "strtod",
+            "strtoull",
+            "strtoll"
+          ]
+        }
+      ],
+      "product_id": null,
+      "manifest_install_action": {
+        "saveToDisk": {
+          "filePath": ""
+        }
+      },
+      "manifest_path": "",
+      "installed_runtime_path_observed": false
+    },
+    {
+      "resource_name": "Razer_IoT_SDK",
+      "version": "2.0.10.071100",
+      "source": "docs/re/application-resource-metadata-2026-10-09/background-resources.json",
+      "source_sha256": "47feea84a40638fbe9f5091a896d878251f2593d39921c89fb26dd589f75f4f8",
+      "url": "https://app-assets.razer.com/files/synapse/devices/common/IoT/Razer_IoT_SDK_v2.0.10.071100.dll",
+      "file": "Razer_IoT_SDK_v2.0.10.071100.dll",
+      "path": ".ref/native-libraries/6469bf29d42a7dae225bdb74797015d34120bda6116ed30f00f160069afd721b/Razer_IoT_SDK_v2.0.10.071100.dll",
+      "http_receipt": ".ref/native-libraries/6469bf29d42a7dae225bdb74797015d34120bda6116ed30f00f160069afd721b/Razer_IoT_SDK_v2.0.10.071100.dll.http.json",
+      "sha256": "6469bf29d42a7dae225bdb74797015d34120bda6116ed30f00f160069afd721b",
+      "md5": "166c667889f0cbb570e84b386a14fa61",
+      "bytes": 4786376,
+      "machine": 34404,
+      "entry_rva": 4896,
+      "exports": [
+        {
+          "name": "AddSdkIotCallBack",
+          "ordinal": 1,
+          "rva": 6636,
+          "forwarder": null
+        },
+        {
+          "name": "ConnectNetDevice",
+          "ordinal": 2,
+          "rva": 8981,
+          "forwarder": null
+        },
+        {
+          "name": "DisconnectNetDevice",
+          "ordinal": 3,
+          "rva": 28021,
+          "forwarder": null
+        },
+        {
+          "name": "GetSdkVersion",
+          "ordinal": 4,
+          "rva": 46636,
+          "forwarder": null
+        },
+        {
+          "name": "IsNetDeviceConnected",
+          "ordinal": 5,
+          "rva": 34546,
+          "forwarder": null
+        },
+        {
+          "name": "RemoveSdkIotCallBack",
+          "ordinal": 6,
+          "rva": 47791,
+          "forwarder": null
+        },
+        {
+          "name": "RunCmdEsp32",
+          "ordinal": 7,
+          "rva": 10201,
+          "forwarder": null
+        },
+        {
+          "name": "RunCmdFw25",
+          "ordinal": 8,
+          "rva": 44311,
+          "forwarder": null
+        },
+        {
+          "name": "SetSdkLog",
+          "ordinal": 9,
+          "rva": 17786,
+          "forwarder": null
+        },
+        {
+          "name": "StartMdnsDeviceScan",
+          "ordinal": 10,
+          "rva": 34786,
+          "forwarder": null
+        },
+        {
+          "name": "StopMdnsDeviceScan",
+          "ordinal": 11,
+          "rva": 11211,
+          "forwarder": null
+        }
+      ],
+      "imports": [
+        {
+          "library": "IPHLPAPI.DLL",
+          "functions": [
+            "GetAdaptersAddresses"
+          ]
+        },
+        {
+          "library": "WS2_32.dll",
+          "functions": [
+            "getnameinfo",
+            "WSAGetLastError",
+            "WSACleanup",
+            "WSAStartup",
+            "socket",
+            "setsockopt",
+            "sendto",
+            "send",
+            "select",
+            "recvfrom",
+            "recv",
+            "__WSAFDIsSet",
+            "ntohl",
+            "inet_addr",
+            "htons",
+            "htonl",
+            "getsockopt",
+            "getsockname",
+            "ioctlsocket",
+            "connect",
+            "closesocket",
+            "bind",
+            "ntohs"
+          ]
+        },
+        {
+          "library": "KERNEL32.dll",
+          "functions": [
+            "SetEndOfFile",
+            "HeapSize",
+            "GetProcessHeap",
+            "SetEnvironmentVariableW",
+            "FreeEnvironmentStringsW",
+            "GetEnvironmentStringsW",
+            "GetCommandLineW",
+            "GetCommandLineA",
+            "GetOEMCP",
+            "GetACP",
+            "IsValidCodePage",
+            "FindNextFileW",
+            "FindFirstFileExW",
+            "FindClose",
+            "HeapReAlloc",
+            "ReadConsoleW",
+            "ReadFile",
+            "GetTimeZoneInformation",
+            "SetConsoleCtrlHandler",
+            "OutputDebugStringW",
+            "SetStdHandle",
+            "GetFullPathNameW",
+            "GetCurrentDirectoryW",
+            "SetCurrentDirectoryW",
+            "GetStdHandle",
+            "WriteFile",
+            "GetLastError",
+            "Sleep",
+            "GetCurrentProcessId",
+            "GetCurrentThreadId",
+            "GetDynamicTimeZoneInformation",
+            "MultiByteToWideChar",
+            "WideCharToMultiByte",
+            "GetConsoleMode",
+            "WriteConsoleA",
+            "GetConsoleScreenBufferInfo",
+            "SetConsoleTextAttribute",
+            "GetLocalTime",
+            "LocalLock",
+            "LocalFree",
+            "FormatMessageA",
+            "SetFilePointerEx",
+            "QueryPerformanceCounter",
+            "QueryPerformanceFrequency",
+            "CloseHandle",
+            "WaitForSingleObjectEx",
+            "SwitchToThread",
+            "GetExitCodeThread",
+            "GetNativeSystemInfo",
+            "ReleaseSRWLockExclusive",
+            "AcquireSRWLockExclusive",
+            "TryAcquireSRWLockExclusive",
+            "WakeConditionVariable",
+            "WakeAllConditionVariable",
+            "SleepConditionVariableSRW",
+            "ReleaseSRWLockShared",
+            "AcquireSRWLockShared",
+            "TryAcquireSRWLockShared",
+            "GetTickCount64",
+            "EnterCriticalSection",
+            "LeaveCriticalSection",
+            "InitializeCriticalSectionEx",
+            "DeleteCriticalSection",
+            "SetFileInformationByHandle",
+            "GetTempPathW",
+            "InitOnceExecuteOnce",
+            "CreateEventExW",
+            "CreateSemaphoreExW",
+            "FlushProcessWriteBuffers",
+            "GetCurrentProcessorNumber",
+            "GetSystemTimeAsFileTime",
+            "FreeLibraryWhenCallbackReturns",
+            "CreateThreadpoolTimer",
+            "SetThreadpoolTimer",
+            "WaitForThreadpoolTimerCallbacks",
+            "CloseThreadpoolTimer",
+            "CreateThreadpoolWait",
+            "SetThreadpoolWait",
+            "CloseThreadpoolWait",
+            "GetModuleHandleW",
+            "GetProcAddress",
+            "GetFileInformationByHandleEx",
+            "CreateSymbolicLinkW",
+            "GetLocaleInfoEx",
+            "EncodePointer",
+            "DecodePointer",
+            "LCMapStringEx",
+            "GetStringTypeW",
+            "CompareStringEx",
+            "GetCPInfo",
+            "RtlCaptureContext",
+            "RtlLookupFunctionEntry",
+            "RtlVirtualUnwind",
+            "IsDebuggerPresent",
+            "UnhandledExceptionFilter",
+            "SetUnhandledExceptionFilter",
+            "GetStartupInfoW",
+            "IsProcessorFeaturePresent",
+            "GetCurrentProcess",
+            "TerminateProcess",
+            "InitializeSListHead",
+            "RtlPcToFileHeader",
+            "RaiseException",
+            "RtlUnwindEx",
+            "InterlockedPushEntrySList",
+            "InterlockedFlushSList",
+            "SetLastError",
+            "InitializeCriticalSectionAndSpinCount",
+            "TlsAlloc",
+            "TlsGetValue",
+            "TlsSetValue",
+            "TlsFree",
+            "FreeLibrary",
+            "LoadLibraryExW",
+            "DeleteFileW",
+            "CreateDirectoryW",
+            "MoveFileExW",
+            "CreateFileW",
+            "GetDriveTypeW",
+            "GetFileInformationByHandle",
+            "GetFileType",
+            "PeekNamedPipe",
+            "SystemTimeToTzSpecificLocalTime",
+            "FileTimeToSystemTime",
+            "GetModuleFileNameW",
+            "GetModuleHandleExW",
+            "WriteConsoleW",
+            "CreateThread",
+            "ExitThread",
+            "ResumeThread",
+            "FreeLibraryAndExitThread",
+            "ExitProcess",
+            "GetCurrentThread",
+            "HeapAlloc",
+            "HeapFree",
+            "FlsAlloc",
+            "FlsGetValue",
+            "FlsSetValue",
+            "FlsFree",
+            "IsThreadAFiber",
+            "VirtualProtect",
+            "GetDateFormatW",
+            "GetTimeFormatW",
+            "CompareStringW",
+            "LCMapStringW",
+            "GetLocaleInfoW",
+            "IsValidLocale",
+            "GetUserDefaultLCID",
+            "EnumSystemLocalesW",
+            "FlushFileBuffers",
+            "GetConsoleOutputCP",
+            "GetFileSizeEx",
+            "RtlUnwind"
+          ]
+        }
+      ],
+      "product_id": null,
+      "manifest_install_action": {
+        "saveToDisk": {
+          "filePath": ""
+        }
+      },
+      "manifest_path": "",
+      "installed_runtime_path_observed": false
+    },
+    {
+      "resource_name": "RzNative0518",
+      "version": "1.0.1.0",
+      "source": ".ref/devices/1304/manifest.json",
+      "source_sha256": "b7363c5f1f9989be46f8ea2c5caad623af628fd004800cfba6900cc3930e3a8e",
+      "url": "https://app-assets.razer.com/files/synapse/devices/1304/1.0.1.0/RzNative_0518.dll",
+      "file": "RzNative_0518.dll",
+      "path": ".ref/native-libraries/5f3ae7fe0e62b6b44e52ced3192cedf25eb487afe8c3e6f597a6ec7a8fe55bcd/RzNative_0518.dll",
+      "http_receipt": ".ref/native-libraries/5f3ae7fe0e62b6b44e52ced3192cedf25eb487afe8c3e6f597a6ec7a8fe55bcd/RzNative_0518.dll.http.json",
+      "sha256": "5f3ae7fe0e62b6b44e52ced3192cedf25eb487afe8c3e6f597a6ec7a8fe55bcd",
+      "md5": "482aeec9b217b1758c75db4614950ba6",
+      "bytes": 367368,
+      "machine": 34404,
+      "entry_rva": 91544,
+      "exports": [
+        {
+          "name": "FreeMalloc",
+          "ordinal": 1,
+          "rva": 60464,
+          "forwarder": null
+        },
+        {
+          "name": "GetDLLVersion",
+          "ordinal": 2,
+          "rva": 55536,
+          "forwarder": null
+        },
+        {
+          "name": "GetSpeakerMute",
+          "ordinal": 3,
+          "rva": 58624,
+          "forwarder": null
+        },
+        {
+          "name": "GetSpeakerVolume",
+          "ordinal": 4,
+          "rva": 59664,
+          "forwarder": null
+        },
+        {
+          "name": "Initialize",
+          "ordinal": 5,
+          "rva": 56960,
+          "forwarder": null
+        },
+        {
+          "name": "SetAllocator",
+          "ordinal": 6,
+          "rva": 55520,
+          "forwarder": null
+        },
+        {
+          "name": "SetEventInterface",
+          "ordinal": 7,
+          "rva": 55472,
+          "forwarder": null
+        },
+        {
+          "name": "SetNodeFFIEvent",
+          "ordinal": 8,
+          "rva": 60496,
+          "forwarder": null
+        },
+        {
+          "name": "SetSpeakerMute",
+          "ordinal": 9,
+          "rva": 58400,
+          "forwarder": null
+        },
+        {
+          "name": "SetSpeakerVolume",
+          "ordinal": 10,
+          "rva": 59424,
+          "forwarder": null
+        },
+        {
+          "name": "Terminate",
+          "ordinal": 11,
+          "rva": 58224,
+          "forwarder": null
+        }
+      ],
+      "imports": [
+        {
+          "library": "KERNEL32.dll",
+          "functions": [
+            "HeapFree",
+            "HeapAlloc",
+            "GetProcessHeap",
+            "HeapDestroy",
+            "SizeofResource",
+            "LockResource",
+            "LoadResource",
+            "FindResourceW",
+            "FindResourceExW",
+            "GetCurrentThreadId",
+            "GetCurrentProcessId",
+            "OutputDebugStringW",
+            "OutputDebugStringA",
+            "InitializeCriticalSectionEx",
+            "GetLastError",
+            "HeapReAlloc",
+            "DecodePointer",
+            "DeleteCriticalSection",
+            "MultiByteToWideChar",
+            "WriteConsoleW",
+            "CreateFileW",
+            "GetConsoleMode",
+            "GetConsoleCP",
+            "WriteFile",
+            "FlushFileBuffers",
+            "SetStdHandle",
+            "SetFilePointerEx",
+            "FreeEnvironmentStringsW",
+            "RaiseException",
+            "HeapSize",
+            "GetEnvironmentStringsW",
+            "GetCommandLineW",
+            "GetCommandLineA",
+            "GetOEMCP",
+            "GetACP",
+            "IsValidCodePage",
+            "FindNextFileW",
+            "FindFirstFileExW",
+            "FindClose",
+            "EnumSystemLocalesW",
+            "GetUserDefaultLCID",
+            "IsValidLocale",
+            "GetFileType",
+            "GetStdHandle",
+            "GetModuleFileNameW",
+            "GetModuleHandleExW",
+            "ExitProcess",
+            "LoadLibraryExW",
+            "FreeLibrary",
+            "InterlockedFlushSList",
+            "RtlPcToFileHeader",
+            "RtlUnwindEx"
+          ]
+        },
+        {
+          "library": "ole32.dll",
+          "functions": [
+            "CoInitializeEx",
+            "CLSIDFromString",
+            "StringFromGUID2",
+            "CoUninitialize",
+            "PropVariantClear",
+            "CoTaskMemFree",
+            "CoCreateInstance"
+          ]
+        },
+        {
+          "library": "HID.DLL",
+          "functions": [
+            "HidD_GetHidGuid"
+          ]
+        },
+        {
+          "library": "SETUPAPI.dll",
+          "functions": [
+            "SetupDiEnumDeviceInterfaces",
+            "SetupDiGetDeviceRegistryPropertyW",
+            "SetupDiGetClassDevsW",
+            "SetupDiGetDeviceInterfaceDetailW",
+            "SetupDiGetDevicePropertyW",
+            "SetupDiEnumDeviceInfo"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-localization-l1-2-0.dll",
+          "functions": [
+            "GetLocaleInfoW",
+            "GetCPInfo",
+            "LCMapStringW"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-string-l1-1-0.dll",
+          "functions": [
+            "WideCharToMultiByte",
+            "GetStringTypeW"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-util-l1-1-0.dll",
+          "functions": [
+            "EncodePointer"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-synch-l1-1-0.dll",
+          "functions": [
+            "InitializeCriticalSectionAndSpinCount",
+            "WaitForSingleObjectEx",
+            "ResetEvent",
+            "CreateEventW",
+            "SetEvent",
+            "EnterCriticalSection",
+            "LeaveCriticalSection"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-errorhandling-l1-1-0.dll",
+          "functions": [
+            "UnhandledExceptionFilter",
+            "SetLastError",
+            "SetUnhandledExceptionFilter"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-processthreads-l1-1-0.dll",
+          "functions": [
+            "GetCurrentProcess",
+            "TlsAlloc",
+            "SwitchToThread",
+            "TlsGetValue",
+            "TerminateProcess",
+            "TlsSetValue",
+            "TlsFree",
+            "GetStartupInfoW"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-sysinfo-l1-1-0.dll",
+          "functions": [
+            "GetSystemTimeAsFileTime"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-libraryloader-l1-2-0.dll",
+          "functions": [
+            "GetModuleHandleW",
+            "GetProcAddress"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-debug-l1-1-0.dll",
+          "functions": [
+            "IsDebuggerPresent"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-handle-l1-1-0.dll",
+          "functions": [
+            "CloseHandle"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-rtlsupport-l1-1-0.dll",
+          "functions": [
+            "RtlCaptureContext",
+            "RtlVirtualUnwind",
+            "RtlLookupFunctionEntry"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-processthreads-l1-1-1.dll",
+          "functions": [
+            "IsProcessorFeaturePresent"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-profile-l1-1-0.dll",
+          "functions": [
+            "QueryPerformanceCounter"
+          ]
+        },
+        {
+          "library": "api-ms-win-core-interlocked-l1-1-0.dll",
+          "functions": [
+            "InitializeSListHead"
+          ]
+        }
+      ],
+      "product_id": 1304,
+      "manifest_install_action": {
+        "saveToDisk": {
+          "filePath": ""
+        }
+      },
+      "manifest_path": "1304",
+      "installed_runtime_path_observed": false
+    }
+  ],
+  "limits": [
+    "Acquisition does not prove installed path, activated product feature, native semantics or Rust implementation.",
+    "Razer_IoT_SDK is a manifest-pinned dependency candidate; import/caller proof remains separate."
+  ]
+}

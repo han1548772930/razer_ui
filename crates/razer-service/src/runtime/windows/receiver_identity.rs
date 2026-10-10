@@ -1,7 +1,6 @@
 //! Static-source-proven direct serial query on the exact receiver collection.
 use anyhow::{Context as _, ensure};
 use serde_json::{Value, json};
-use std::time::{Duration, Instant};
 pub(super) fn read(path: &str, container: &str) -> anyhow::Result<Value> {
     let (before, cap) =
         super::receiver::select_target(&super::hid::enumerate_metadata()?, path, container)?;
@@ -14,12 +13,7 @@ pub(super) fn read(path: &str, container: &str) -> anyhow::Result<Value> {
         .as_u64()
         .context("Missing actual Feature length")? as usize;
     let device = super::hid_transport::open(path, feature)?;
-    let started = Instant::now();
     let validate = || -> anyhow::Result<()> {
-        ensure!(
-            started.elapsed() < Duration::from_secs(10),
-            "Receiver serial query expired"
-        );
         let (current, _) = super::receiver::select_target(
             &super::hid::enumerate_for_product(cap.vendor_id, cap.product_id)?,
             path,

@@ -55,7 +55,7 @@ fn enumeration(client: &mut ServiceClient) -> anyhow::Result<(Value, Vec<HidNode
 pub(super) fn resolve(
     client: &mut ServiceClient,
     observation: &ObservedDevice,
-    target: &MixerTarget,
+    target: Option<&MixerTarget>,
 ) -> anyhow::Result<HidNode> {
     let (hid, nodes) = enumeration(client)?;
     let interfaces = hid["interfaces"]
@@ -98,13 +98,20 @@ pub(super) fn resolve(
         );
         // A descriptor mismatch excludes that collection; an IPC/open failure
         // is unknown, so it must not be mistaken for an incompatible report.
-        let reply = client.request(ServiceRequest::HidNodeReports { node: node.clone() })?;
-        ensure!(
-            reply["node"] == serde_json::to_value(node)?,
-            "Mixer descriptor collection 不匹配"
-        );
-        let lengths: ReportLengths = serde_json::from_value(reply["reports"].clone())?;
-        if validate_report_lengths(target, &lengths).is_ok() {
+        let eligible = if let Some(target) = target {
+            let reply = client.request(ServiceRequest::HidNodeReports { node: node.clone() })?;
+            ensure!(
+                reply["node"] == serde_json::to_value(node)?,
+                "Mixer descriptor collection 不匹配"
+            );
+            let lengths: ReportLengths = serde_json::from_value(reply["reports"].clone())?;
+            validate_report_lengths(target, &lengths).is_ok()
+        } else {
+            // Driver identity anchor only: original ResetStream has no DSP
+            // report requirement and does not query/open a DSP descriptor.
+            true
+        };
+        if eligible {
             ensure!(
                 candidates
                     .insert(path.to_ascii_lowercase(), node.clone())
@@ -115,7 +122,7 @@ pub(super) fn resolve(
     }
     ensure!(
         candidates.len() == 1,
-        "同容器没有唯一符合源报文的 Mixer collection"
+        "同容器没有唯一符合当前操作身份的 Mixer collection"
     );
     let selected = candidates.into_values().next().expect("unique collection");
     let previous_instance = interfaces

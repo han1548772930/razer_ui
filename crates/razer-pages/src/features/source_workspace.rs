@@ -1291,6 +1291,7 @@ impl SourceProductWorkspace {
         generation: u64,
         percent: Option<u8>,
         outcome: Option<super::HelpResetOutcome>,
+        submitted_requested: Option<u8>,
         observed: Option<u8>,
         error: Option<String>,
         scope_current: bool,
@@ -1302,54 +1303,74 @@ impl SourceProductWorkspace {
         }
         if scope_current {
             if let Some(outcome) = outcome {
-                self.device.serial_number = outcome.serial_number;
-                self.help.update(cx, |help, _| {
-                    help.accept_source_serial(&self.device.serial_number)
-                });
-                let document = outcome.source_document;
-                self.device
-                    .source_device_settings
-                    .get_or_insert_with(|| serde_json::json!({}))["_receiver_source_document"] =
-                    document.clone();
-                if let Some(profiles) = document["profiles"].as_array() {
-                    for profile in profiles {
-                        let (Some(guid), Some(name)) =
-                            (profile["guid"].as_str(), profile["name"].as_str())
-                        else {
-                            continue;
-                        };
-                        if let Some(current) =
-                            self.device.profiles.iter_mut().find(|p| p.guid == guid)
-                        {
-                            current.source_settings = Some(profile.clone());
-                            current.name = name.into();
-                        } else {
-                            self.device.profiles.push(Profile {
-                                id: guid.into(),
-                                guid: guid.into(),
-                                name: name.into(),
-                                source_settings: Some(profile.clone()),
-                                settings: None,
-                                dpi_stages: None,
-                            });
-                        }
-                    }
-                    self.device.active_profile = document["activeProfile"]
-                        .as_str()
-                        .unwrap_or_default()
-                        .into();
-                    self.refresh_profile_choices(window, cx);
-                    cx.emit(WorkspaceEvent::Changed);
-                }
+                self.publish_receiver_brightness_profile(generation, percent, outcome, window, cx);
             }
         }
         if let FamilyBody::Controls(body) = &self.body {
             body.update(cx, |body, cx| match percent {
-                Some(percent) => {
-                    body.finish_brightness(generation, percent, observed, error, scope_current, cx)
-                }
+                Some(percent) => body.finish_brightness(
+                    generation,
+                    percent,
+                    submitted_requested,
+                    observed,
+                    error,
+                    scope_current,
+                    cx,
+                ),
                 None => body.finish_brightness_read(generation, observed, error, scope_current, cx),
             });
+        }
+        cx.notify();
+    }
+    /// Original local/profile publication precedes device task completion.
+    /// This updates current page state; it is not a host WindowStorage event.
+    pub fn publish_receiver_brightness_profile(
+        &mut self,
+        generation: u64,
+        percent: Option<u8>,
+        outcome: super::HelpResetOutcome,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.receiver_brightness_matches(generation, percent, true, cx) {
+            self.device.serial_number = outcome.serial_number;
+            self.help.update(cx, |help, _| {
+                help.accept_source_serial(&self.device.serial_number)
+            });
+            let document = outcome.source_document;
+            self.device
+                .source_device_settings
+                .get_or_insert_with(|| serde_json::json!({}))["_receiver_source_document"] =
+                document.clone();
+            if let Some(profiles) = document["profiles"].as_array() {
+                for profile in profiles {
+                    let (Some(guid), Some(name)) =
+                        (profile["guid"].as_str(), profile["name"].as_str())
+                    else {
+                        continue;
+                    };
+                    if let Some(current) = self.device.profiles.iter_mut().find(|p| p.guid == guid)
+                    {
+                        current.source_settings = Some(profile.clone());
+                        current.name = name.into();
+                    } else {
+                        self.device.profiles.push(Profile {
+                            id: guid.into(),
+                            guid: guid.into(),
+                            name: name.into(),
+                            source_settings: Some(profile.clone()),
+                            settings: None,
+                            dpi_stages: None,
+                        });
+                    }
+                }
+                self.device.active_profile = document["activeProfile"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .into();
+                self.refresh_profile_choices(window, cx);
+                cx.emit(WorkspaceEvent::Changed);
+            }
         }
         cx.notify();
     }

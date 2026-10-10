@@ -25,6 +25,9 @@ pub enum LibraryKind {
     Engine,
     Device,
     LightingDriver,
+    /// Current lighting-engine app declares RzLightingEngineApi separately
+    /// from its lighting_driver resource and transport channel.
+    LightingEngine,
     Iot,
     Template,
 }
@@ -368,11 +371,20 @@ mod tests {
 
     #[test]
     fn current_dynamic_lighting_bindings_parse_without_fabricating_an_install_path() {
-        for (id, fallback) in [
-            ("lighting_driver", "Synapse/lighting_driver.dll"),
-            ("RzLightingEngineApi", "Synapse/RzLightingEngineApi.dll"),
+        for (id, fallback, kind) in [
+            (
+                "lighting_driver",
+                "Synapse/lighting_driver.dll",
+                LibraryKind::LightingDriver,
+            ),
+            (
+                "RzLightingEngineApi",
+                "Synapse/RzLightingEngineApi.dll",
+                LibraryKind::LightingEngine,
+            ),
         ] {
             let library = find(id).expect("current lighting source resource");
+            assert_eq!(library.kind, kind);
             let binding = &library.resources[0].bindings[0];
             assert!(binding.install_relative_path.is_none());
             assert!(

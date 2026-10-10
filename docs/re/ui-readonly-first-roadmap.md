@@ -43,4 +43,4 @@
 | 宿主、账户、存储、网络、安全、安装更新与退出 | [宿主全链](host-architecture-current.md)、[全程序矩阵](full-source-reverse-map.md) |
 | 产品与入口覆盖 | [覆盖统计](native-product-coverage.md) |
 
-只使用 [Dashboard 当前版本](20-current-source-version.md)、[host 4.0.827](current-host-version-audit.md)及各产品/应用的当前源码。遵守仓库 AGENTS.md：仅允许格式化、静态源码解析、资源准备/校验和 `cargo check --locked --all-targets`；禁止运行应用、构建、测试、安装器、厂商 JavaScript 或 DLL。
+只使用 [Dashboard 当前版本](20-current-source-version.md)、[host 4.0.827](current-host-version-audit.md)及各产品/应用的当前源码。遵守仓库 AGENTS.md：允许格式化、静态源码解析、资源准备/校验、`cargo check --locked --all-targets`，以及不触及应用/设备的纯 Rust 单元测试和模拟传输测试；禁止运行应用、安装器、厂商 JavaScript、DLL、helper 或真实设备操作。

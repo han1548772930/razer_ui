@@ -16,6 +16,24 @@ pub(super) fn resolve(
     observation: &ObservedDevice,
     target: &MixerTarget,
 ) -> anyhow::Result<HidNode> {
+    resolve_collection(client, observation, Some(target))
+}
+
+/// Driver-only operations need an actual owner identity anchor, never DSP
+/// report capabilities. The Windows service separately matches its driver
+/// interface to this collection's observed ContainerId and instance.
+pub(super) fn resolve_identity(
+    client: &mut ServiceClient,
+    observation: &ObservedDevice,
+) -> anyhow::Result<HidNode> {
+    resolve_collection(client, observation, None)
+}
+
+fn resolve_collection(
+    client: &mut ServiceClient,
+    observation: &ObservedDevice,
+    target: Option<&MixerTarget>,
+) -> anyhow::Result<HidNode> {
     ensure!(
         observation.product_id() == 1342
             && observation.physical_product_id() == 1342
@@ -34,7 +52,9 @@ pub(super) fn resolve(
             nodes.iter().filter(|current| *current == node).count() == 1,
             "Mixer collection 已变化或不唯一"
         );
-        reports_match(client, node, target)?;
+        if let Some(target) = target {
+            reports_match(client, node, target)?;
+        }
         return Ok(node.clone());
     }
     #[cfg(windows)]

@@ -17,11 +17,16 @@ use std::time::Duration;
 
 mod controls;
 mod dialogs;
+mod input;
 mod installer;
+mod local_settings;
 mod sections;
 use controls::{SourceButtonKind, source_button, source_switch, text_button};
 use dialogs::{Modal, ModalKind};
+pub use input::MediaInputDevice;
+use input::MediaInputState;
 use installer::InstallState;
+use local_settings::{LocalSettings, StorageResult};
 
 #[cfg(test)]
 mod tests;
@@ -80,11 +85,15 @@ fn scene_choices() -> Vec<Choice> {
         .map(|(id, label)| Choice::new(*id, *label))
         .collect()
 }
-fn input_choices() -> Vec<Choice> {
-    vec![
-        Choice::new("default", text("DEFAULT")),
-        Choice::new("sample-mic", "示例麦克风（未检测设备）"),
-    ]
+fn input_choices(state: &MediaInputState) -> Vec<Choice> {
+    std::iter::once(Choice::new("default", text("DEFAULT")))
+        .chain(
+            state
+                .devices()
+                .iter()
+                .map(|device| Choice::new(device.device_id(), device.label().to_owned())),
+        )
+        .collect()
 }
 fn language_choices() -> Vec<Choice> {
     [
@@ -170,7 +179,7 @@ pub struct AlexaPage {
     scenes: Entity<SelectState<Vec<Choice>>>,
     inputs: Entity<SelectState<Vec<Choice>>>,
     languages: Entity<SelectState<Vec<Choice>>>,
-    input: String,
+    media_inputs: MediaInputState,
     language: String,
     synapse_skills: bool,
     expanded: Option<&'static str>,
@@ -188,6 +197,11 @@ pub struct AlexaPage {
     lifecycle_task: Option<Task<()>>,
     patch_height: Pixels,
     notice: String,
+    local_settings: Option<LocalSettings>,
+    local_settings_task: Option<Task<()>>,
+    skills_edited: bool,
+    input_edited: bool,
+    input_storage_error: Option<String>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -201,8 +215,14 @@ impl AlexaPage {
     fn create(preview: bool, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let scenes =
             cx.new(|cx| SelectState::new(scene_choices(), Some(IndexPath::new(0)), window, cx));
-        let inputs =
-            cx.new(|cx| SelectState::new(input_choices(), Some(IndexPath::new(0)), window, cx));
+        let inputs = cx.new(|cx| {
+            SelectState::new(
+                input_choices(&MediaInputState::default()),
+                Some(IndexPath::new(0)),
+                window,
+                cx,
+            )
+        });
         let languages =
             cx.new(|cx| SelectState::new(language_choices(), Some(IndexPath::new(5)), window, cx));
         let subscriptions = vec![
@@ -216,8 +236,12 @@ impl AlexaPage {
             }),
             cx.subscribe_in(&inputs, window, |this: &mut Self, _, event, _, cx| {
                 if let SelectEvent::Confirm(Some(value)) = event {
-                    if this.enabled && this.account == Account::Ready {
-                        this.input = value.clone();
+                    if this.enabled
+                        && this.account == Account::Ready
+                        && this.media_inputs.select(value)
+                    {
+                        this.input_edited = true;
+                        this.persist_input();
                         cx.notify();
                     }
                 }
@@ -231,7 +255,7 @@ impl AlexaPage {
                 }
             }),
         ];
-        Self {
+        let mut this = Self {
             preview,
             focus: cx.focus_handle(),
             shortcut_focus: cx.focus_handle(),
@@ -244,7 +268,7 @@ impl AlexaPage {
             scenes,
             inputs,
             languages,
-            input: "default".into(),
+            media_inputs: MediaInputState::default(),
             language: "en-US".into(),
             synapse_skills: true,
             expanded: None,
@@ -264,8 +288,127 @@ impl AlexaPage {
             lifecycle_task: None,
             patch_height: px(0.),
             notice: String::new(),
+            local_settings: None,
+            local_settings_task: None,
+            skills_edited: false,
+            input_edited: false,
+            input_storage_error: None,
             _subscriptions: subscriptions,
+        };
+        if !preview {
+            this.connect_local_settings(window, cx);
         }
+        this
+    }
+
+    fn connect_local_settings(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let (storage, results) = match LocalSettings::open() {
+            Ok(result) => result,
+            Err(error) => {
+                self.input_storage_error = Some(error);
+                return;
+            }
+        };
+        self.local_settings = Some(storage);
+        self.local_settings_task = Some(cx.spawn_in(window, async move |this, cx| {
+            while let Ok(result) = results.recv().await {
+                if this
+                    .update_in(cx, |this, window, cx| {
+                        match result {
+                            StorageResult::Loaded(Ok(values)) => {
+                                if !this.skills_edited {
+                                    this.synapse_skills = values
+                                        .get("synapseSkills")
+                                        .and_then(serde_json::Value::as_bool)
+                                        .unwrap_or(true);
+                                }
+                                if !this.input_edited {
+                                    match values.get("alexaAudioInputDevice") {
+                                        Some(value) => {
+                                            match serde_json::from_value(value.clone()) {
+                                                Ok(selected) => {
+                                                    if this.media_inputs.restore(selected) {
+                                                        this.persist_input();
+                                                    }
+                                                }
+                                                Err(error) => {
+                                                    this.input_storage_error =
+                                                        Some(error.to_string())
+                                                }
+                                            }
+                                        }
+                                        None => {
+                                            this.media_inputs.restore(None);
+                                        }
+                                    }
+                                    this.sync_input_selection(window, cx);
+                                }
+                            }
+                            StorageResult::Loaded(Err(error))
+                            | StorageResult::Saved(Err(error)) => {
+                                this.input_storage_error = Some(error);
+                            }
+                            StorageResult::Saved(Ok(())) => this.input_storage_error = None,
+                        }
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        }));
+    }
+
+    fn set_synapse_skills(&mut self, value: bool, cx: &mut Context<Self>) {
+        self.synapse_skills = value;
+        self.skills_edited = true;
+        if let Some(storage) = &self.local_settings {
+            if let Err(error) = storage.update("synapseSkills", serde_json::Value::Bool(value)) {
+                self.input_storage_error = Some(error);
+            }
+        }
+        cx.notify();
+    }
+
+    fn persist_input(&mut self) {
+        if let Some(storage) = &self.local_settings {
+            let value = serde_json::to_value(self.media_inputs.selected());
+            let result = value
+                .map_err(|error| error.to_string())
+                .and_then(|value| storage.update("alexaAudioInputDevice", value));
+            if let Err(error) = result {
+                self.input_storage_error = Some(error);
+            }
+        }
+    }
+
+    fn sync_input_selection(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let selected = self
+            .media_inputs
+            .selected()
+            .map_or("default", MediaInputDevice::device_id)
+            .to_owned();
+        self.inputs.update(cx, |state, cx| {
+            state.set_items(input_choices(&self.media_inputs), window, cx);
+            state.set_selected_value(&selected, window, cx);
+        });
+    }
+
+    /// Consume successful media enumeration/devicechange responses. No fabricated
+    /// records are added. Browser-compatible enumeration identity remains an adapter gap.
+    pub fn observe_media_inputs(
+        &mut self,
+        devices: Vec<MediaInputDevice>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.media_inputs.observe(devices) {
+            self.input_edited = true;
+            self.persist_input();
+        }
+        self.sync_input_selection(window, cx);
+        cx.notify();
     }
     pub fn focus(&self, window: &mut Window, cx: &mut App) {
         if self.modal.is_some() {
@@ -776,6 +919,14 @@ impl Render for AlexaPage {
                                         .mb(css(10.))
                                         .text_color(cx.theme().muted_foreground)
                                         .child(self.notice.clone()),
+                                )
+                            })
+                            .when_some(self.input_storage_error.as_ref(), |view, error| {
+                                view.child(
+                                    div()
+                                        .mb(css(10.))
+                                        .text_color(cx.theme().muted_foreground)
+                                        .child(format!("Alexa 本地设置读写失败：{error}")),
                                 )
                             })
                             .child(body),

@@ -65,7 +65,11 @@ SysUtilsNative 前台监控已按 IDA 恢复独立线程、Windows hook、300ms 
 
 164/241 的 Help Reset 已追到实际无 key 的 `taskMakerResetOBM` 分支：当前两产品未注册通用 DeviceResetFeature，也不在硬件 OBM reset 分支，不能发送猜测的固件 reset 命令。真实 `[22,0,130]` 串号查询用于默认文档与 serial metadata；UI 快照及 USB serial 不能替代该值。源 schema-13 默认配置、缺串号 activeProfileGuid 的初始 profile、重置时追加唯一默认 profile、版本递增、本地 CAS 保存和页面刷新已连接。该 JSON 文件是应用本地适配。随后的[接收器亮度](receiver-brightness-current.md)使用主 Linker E0 / profile 1 / region 15，严格保留原pre-read/conditional setter，不追加getter或值比较，setter回应与独立getter观察分开。效果、映射及原host memory/cache发布仍未闭合，不能报告全部重置完成。
 
-页面细节与原交互始终属于全量范围。[设置实际挂载和入口](settings-entrypoints-current.md)已按当前组件调用链修正卡片和列几何，并移除原版没有的第三个诊断页及测试快捷操作；未挂载的历史侧栏CSS不用于实现。[164/241 Lighting](receiver-brightness-page-current.md)及[1342 Effects](audio-mixer-page-bindings-current.md)各自保留具体控件、菜单、参数和真实服务缺口，路由或静态编译通过不代表整页完成。
+页面细节与原交互始终属于全量范围。[设置实际挂载和入口](settings-entrypoints-current.md)按当前组件调用链核对卡片和列几何；用户要求保留的“服务连接”仅作测试入口，打开实际页面 owner，不使用简化样例 Dialog。未挂载的历史侧栏CSS不用于实现。[164/241 Lighting](receiver-brightness-page-current.md)及[1342 Effects](audio-mixer-page-bindings-current.md)各自保留具体控件、菜单、参数和真实服务缺口，路由或静态编译通过不代表整页完成。
+
+接收器当前 Linker 的 busy 后 IN exception、首次 IN/send exception、每次 OUT 标志重置、实际 payload slice 和独立串号空结果已按原分支修正；本地 source profile 在保存后、设备任务前发布到真实 workspace，设备失败不抹去本地结果，原 host storage URL/全局缓存仍未接通。CmMixerLib 的[查询结果](audio-mixer-read-outcomes-current-evidence.json)恢复第五次 busy 后格式化以及 Peak 清零失败不覆盖已读样本；[1342 Help](audio-mixer-help-current-evidence.json)连接一秒 spinner 后的 ResetStream 0–8 序列，原 native 错误码与真正传输异常分开，回执不冒充设备恢复。Mic Monitor 的实际 AudioCamy caller 仍缺失，不能用同名 CmMixerLib 属性替代。
+
+[Alexa 输入与本地状态](alexa-input-local-state-current.md)已移除正式页示例麦克风，恢复原过滤、Default/null、已选对象和菜单标签分离以及原键本地合并保存。媒体枚举/devicechange 平台适配、账户与广播仍未接通。宿主 Map primitive key 类型和数字相等恢复见[存储](host-storage-current.md)，对象身份和非 JSON wire 类型仍是缺口。
 
 SysUtilsNative 的 `OpenGameController` 已通过 IDA 原函数恢复为 `WinExec("control joy.cpl",5)`，连接 614/642/678/679/688 五个实际模拟键盘页面调用者，原第二行 SVG、列位置、间隔与交互样式单独留证，见[模拟键盘系统属性](keyboard-analog-properties-current.md)。这是当前源码实际注册的系统属性操作，不把共享组件的存在当作其他产品已启用。
 
@@ -78,6 +82,6 @@ SysUtilsNative 的 `OpenGameController` 已通过 IDA 原函数恢复为 `WinExe
 3. **全插件传输**：逐项匹配当前包的 Node 插件源代码/PE、原 JS caller、发现身份、事件和退出顺序；共享 HID/BLE/serial/网络编码保留跨平台，真正的平台适配分别实现。第三方不同架构预编译件不能由 Windows 导出表替代取证。
 4. **本地安装/卸载真实状态发布**：继续当前 background-manager 与 installer 资源声明的实际 consumer，接本地包、签名/散列、取消、clear-settings、失败和完成刷新；当前确认框已发出的 command 必须接这条生产链。网络专属升级清单/下载/云编排按本地版本要求排除。
 
-这些是依赖可定位的下一条完整链，不是关闭其他范围。当前未执行应用、厂商代码、DLL 或硬件验证；静态检查结果仅支持文件/结构/编译一致性。
+这些是依赖可定位的下一条完整链，不是关闭其他范围。当前未执行应用、厂商代码、DLL 或硬件验证；静态检查结果仅支持文件/结构/编译一致性。2026-10-10 当前批次 `cargo check --locked --all-targets --workspace` 与格式检查通过；70 项共享设备协议测试、4 项 host storage 测试、1 项 native inventory 解析回归及 5 项 Alexa 输入/合并测试通过，均为纯 Rust 或模拟传输，不代表真实窗口、设备或原服务运行验收。
 
 复核命令：`python -X utf8 tools/audit-whole-program-closure-current.py --check`。若并行开发改变 Rust 行号或源清单，先重新审查对应事实，再重生成矩阵；不能用更新 hash 掩盖原行为或 consumer 缺失。

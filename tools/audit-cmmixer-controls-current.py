@@ -344,7 +344,8 @@ def main():
         'input':'caller uint32 stream index, 4 bytes', 'output':'4-byte native buffer; semantic fields unresolved',
         'caller_indices':list(range(9)),'source_flags':{'desired_access':0xc0000000,'share_mode':0,
             'creation_disposition':3,'attributes':0x80},
-        'status':'Source recipe and Rust IPC/Windows adapter implemented; UI consumer and runtime target correlation unverified',
+        'status':'Source recipe, Rust IPC/Windows adapter and actual 1342 Help consumer implemented; runtime target correlation unverified',
+        'caller_result_semantics':'Each native response code remains data and does not stop indices 0..8; transport/identity exceptions stop. Per-index codes and completed indices are separate; no recovered audio state is claimed',
         'rust':'crates/razer-service/src/runtime/windows/mixer_driver.rs',
         'identity_difference':'Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId',
         'rust_lifecycle':'Retain HID identity lock across sequence, open/close an exclusive driver handle for each stream as the source does'}
@@ -364,6 +365,15 @@ def main():
              'mov dword ptr [rsp+20h],3', 'mov edx,0C0000000h',
              'call qword ptr [00000001800120E0h]')
     gate(6, 'xor ebx,ebx')
+    sequence(6, 'call qword ptr [0000000180012140h]', 'test eax,eax',
+             'jne 000000018000DA84', 'mov ebx,10003h', 'jmp 000000018000DACE')
+    # The successful write skips the getter formatting branch, proceeds
+    # directly to interface enumeration and does not read the matrix again.
+    assert [(x['rva'], x['instruction']) for x in ranges[6]['instructions']
+            if 0xda46 <= x['rva'] <= 0xda55] == [
+        (0xda46, 'call qword ptr [0000000180012140h]'),
+        (0xda4c, 'test eax,eax'), (0xda4e, 'jne 000000018000DA84'),
+        (0xda50, 'mov ebx,10003h'), (0xda55, 'jmp 000000018000DACE')]
     for offset, target in zip([4,1,2,0,6,5,3], input_targets):
         target_instructions = [x['instruction'] for x in ranges[6]['instructions']
                                if x['rva'] == target]
@@ -401,7 +411,10 @@ def main():
                         'creation_disposition':3,'attributes':0},
         'status':'Rust matrix codec, scoped Windows adapter and IPC reads/writes implemented; UI consumer and runtime target correlation unverified',
         'rust':'crates/razer-service/src/runtime/windows/mixer_driver.rs',
-        'confirmation_difference':'Rust checks actual returned length and reads back the selected boolean after writes; original does neither',
+        'write_completion':{'source_write_rva':0xda46,'source_success_rva':0xda84,
+                            'source_failure_code':0x10003,'post_write_getter':False,
+                            'rust_result':'requested, previous from original RMW read, transport_completed; no observed state or comparison'},
+        'confirmation_difference':'Rust validates the actual matrix read length; the original ignores the returned length. Both complete the setter on successful write IOCTL without a post-write getter or comparison',
         'identity_difference':'Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId'}
 
     # Identify COM interfaces from their actual GUID bytes and the activation
@@ -468,7 +481,7 @@ def main():
                     'cleanup_difference':'Original cancels IO and sleeps 500 ms before handle cleanup; Rust uses hidapi RAII, no equivalent delay/thread model claimed'},
                 "limits": ["No COM endpoint enumeration, firmware flash or service replacement implemented.",
                            "Scoped driver adapter and IPC exist; original broadcast policy differs and actual ContainerId correlation remains unverified.",
-                           "Device page does not consume the new driver/HID IPC yet; local drafts remain local.",
+                           "1342 DSP and Help Reset Audio consume IPC; matrix and AudioCamy consumers remain incomplete; local drafts remain local.",
                            "Raw DSP firmware is uint32; version component naming remains unresolved.",
                            "Mailbox reads change hardware selector state; they are not pure reads.",
                            "Exact device descriptor, path identity and caller value validation are required at runtime.",

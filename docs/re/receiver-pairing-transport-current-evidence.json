@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "method": "Current acquisition-verified 164/241 AST, current official host source and retained IDA mapping_engine analysis; vendor JavaScript and native targets never executed",
-  "generator_sha256": "db081cf887267db04c85a55b57a2547e56ab4ec867b0a8a5b380f8287345f998",
+  "generator_sha256": "22e7f08372ca9a32117ddd5df01b441d93fe611c9eeed9f828c8aac4aa4dbed7",
   "receipts": [
     {
       "product_id": 164,
@@ -164,6 +164,16 @@
       "offset": 1190416,
       "end": 1191257,
       "source": "(e,t,n)=>L(void 0,void 0,void 0,(function*(){try{if(!e)return console.warn(\"[getMouseLayoutId] No slaveDevice provided.\"),0;if(\"MOUSE\"!==e.category)return console.warn(\"[getMouseLayoutId] slaveDevice is not a mouse. slaveDevice = \",e),e.layoutId||0;let o=U?yield(0,T.oP)(U,t):null;if(null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(o=U?yield(0,T.oP)(U,n):null,null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(\"function\"==typeof e.getHWModule){const{jsonData:{status:t}}=yield(0,k.v5)(e);return t||e.layoutId||0}console.warn(\"[getMouseLayoutId] getHWModule function not available on slaveDevice.\"),console.warn(\"[getMouseLayoutId] sidepadLayout not available on slaveDevice = \",e)}catch(t){return console.error(\"[getMouseLayoutId] Error retrieving mouse layout ID:\",t,\"slaveDevice = \",e),e.layoutId||0}return e.layoutId||0}))"
+    },
+    {
+      "product_id": 164,
+      "module": 7755,
+      "name": "postpair _getUSBTransferInResult",
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 780039,
+      "end": 783082,
+      "source": "_getUSBTransferInResult(e,t,n,o){return dl(this,void 0,void 0,(function*(){const r=\"getUSBTransferInResult\";n.resendOutCommand=!1;try{let s=!0;for(let l=0;l<this.maxRetryIn&&s;l++){let c;if(l>0&&(yield a._v(this.sleepTimeBetweenIn)),this.isElectron){const e={action:\"hid.getFeatureReport\",payload:{productId:this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,protocol:\"25\",reportId:this.reportId,reportLength:this.reportLength}};c=yield(0,il.NH)(e),c||(c=new Array(90).fill(0))}else{const e=yield this.device.controlTransferIn({requestType:\"class\",recipient:\"interface\",request:1,value:768,index:this.claimInterface},90);if(\"ok\"!==e.status){n.status=i.STATUS_FAIL,n.error=e.status;continue}c=new Uint8Array(e.data.buffer)}if(n.dataHeader=c.slice(0,8),n.rawData=[...c.slice(8)],n.data=[...c.slice(8,8+c[5])],c[1]!==t[1]){console.log(`${this.name}.${r}:commandSend:${e}, commandDesc:${o}, different transId, dataSend[1]: ${t[1]}, dataReturned[1]:${c[1]}, retry get:${s}, i:${l}`),n.resendOutCommand=!0;break}if(c[6]!==t[6]){n.resendOutCommand=!0;break}if(c[7]!==t[7]){console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, different command, dataSend[7]: ${t[7]}, dataReturned[7]:${c[7]}, retry get:${s}, i:${l}`),n.resendOutCommand=!0;break}switch(n.packetSizeReturned=c[5],c[0]){case 0:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_NEW_COMMAND,s=!1,n.resendOutCommand=!0;break;case 1:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_BUSY,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_BUSY, retry get:${s}, i:${l}`);break;case 2:n.status=i.STATUS_SUCCESS,n.error=\"\",s=!1,n.resendOutCommand=!1;break;case 3:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_FAILED,s=!1,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_FAILED, retry get:${s}, i:${l}`);break;case 4:e===al.at&&this.ignoreSetDeviceModeTimeoutError?(s=!1,console.log(`${this.name} workaround for setDeviceMode(DriverMode)`),n.status=i.STATUS_SUCCESS,n.error=\"\",n.resendOutCommand=!1):(s=!1,n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_TIMEOUT,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_TIMEOUT, retry get:${s}, i:${l}`));break;case 5:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED, retry get:${s}, i:${l}`);break;default:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN, retry get:${s}, i:${l}`)}}}catch(t){n.status=i.STATUS_FAIL,n.error=t.message,console.warn(`${this.name}.${r} error: ${a.Cf(e[1])}, ${a.Cf(e[2])},\\n\\t\\t\\t\\t${JSON.stringify(t)}`)}}))}"
     },
     {
       "product_id": 164,
@@ -765,6 +775,16 @@
       "offset": 1178673,
       "end": 1179514,
       "source": "(e,t,n)=>L(void 0,void 0,void 0,(function*(){try{if(!e)return console.warn(\"[getMouseLayoutId] No slaveDevice provided.\"),0;if(\"MOUSE\"!==e.category)return console.warn(\"[getMouseLayoutId] slaveDevice is not a mouse. slaveDevice = \",e),e.layoutId||0;let o=U?yield(0,T.oP)(U,t):null;if(null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(o=U?yield(0,T.oP)(U,n):null,null==o?void 0:o.sidepadLayout)return o.sidepadLayout;if(\"function\"==typeof e.getHWModule){const{jsonData:{status:t}}=yield(0,k.v5)(e);return t||e.layoutId||0}console.warn(\"[getMouseLayoutId] getHWModule function not available on slaveDevice.\"),console.warn(\"[getMouseLayoutId] sidepadLayout not available on slaveDevice = \",e)}catch(t){return console.error(\"[getMouseLayoutId] Error retrieving mouse layout ID:\",t,\"slaveDevice = \",e),e.layoutId||0}return e.layoutId||0}))"
+    },
+    {
+      "product_id": 241,
+      "module": 7755,
+      "name": "postpair _getUSBTransferInResult",
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 771322,
+      "end": 774365,
+      "source": "_getUSBTransferInResult(e,t,n,o){return ol(this,void 0,void 0,(function*(){const r=\"getUSBTransferInResult\";n.resendOutCommand=!1;try{let s=!0;for(let l=0;l<this.maxRetryIn&&s;l++){let c;if(l>0&&(yield a._v(this.sleepTimeBetweenIn)),this.isElectron){const e={action:\"hid.getFeatureReport\",payload:{productId:this.productId,vendorId:this.device.vendorId,deviceContainerId:this.containerId,claimInterface:this.claimInterface,protocol:\"25\",reportId:this.reportId,reportLength:this.reportLength}};c=yield(0,qs.NH)(e),c||(c=new Array(90).fill(0))}else{const e=yield this.device.controlTransferIn({requestType:\"class\",recipient:\"interface\",request:1,value:768,index:this.claimInterface},90);if(\"ok\"!==e.status){n.status=i.STATUS_FAIL,n.error=e.status;continue}c=new Uint8Array(e.data.buffer)}if(n.dataHeader=c.slice(0,8),n.rawData=[...c.slice(8)],n.data=[...c.slice(8,8+c[5])],c[1]!==t[1]){console.log(`${this.name}.${r}:commandSend:${e}, commandDesc:${o}, different transId, dataSend[1]: ${t[1]}, dataReturned[1]:${c[1]}, retry get:${s}, i:${l}`),n.resendOutCommand=!0;break}if(c[6]!==t[6]){n.resendOutCommand=!0;break}if(c[7]!==t[7]){console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, different command, dataSend[7]: ${t[7]}, dataReturned[7]:${c[7]}, retry get:${s}, i:${l}`),n.resendOutCommand=!0;break}switch(n.packetSizeReturned=c[5],c[0]){case 0:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_NEW_COMMAND,s=!1,n.resendOutCommand=!0;break;case 1:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_BUSY,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_BUSY, retry get:${s}, i:${l}`);break;case 2:n.status=i.STATUS_SUCCESS,n.error=\"\",s=!1,n.resendOutCommand=!1;break;case 3:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_FAILED,s=!1,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_FAILED, retry get:${s}, i:${l}`);break;case 4:e===Xs.at&&this.ignoreSetDeviceModeTimeoutError?(s=!1,console.log(`${this.name} workaround for setDeviceMode(DriverMode)`),n.status=i.STATUS_SUCCESS,n.error=\"\",n.resendOutCommand=!1):(s=!1,n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_TIMEOUT,n.resendOutCommand=!0,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_TIMEOUT, retry get:${s}, i:${l}`));break;case 5:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_NOT_SUPPORTED, retry get:${s}, i:${l}`);break;default:n.status=i.STATUS_FAIL,n.error=i.ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN,s=!1,n.resendOutCommand=!1,console.log(`${this.name}.${r}: commandSend:${e}, commandDesc:${o}, ERROR_USB_TRANSFER_IN_COMMAND_UNKNOWN, retry get:${s}, i:${l}`)}}}catch(t){n.status=i.STATUS_FAIL,n.error=t.message,console.warn(`${this.name}.${r} error: ${a.Cf(e[1])}, ${a.Cf(e[2])},\\n\\t\\t\\t\\t${JSON.stringify(t)}`)}}))}"
     },
     {
       "product_id": 241,
@@ -1512,8 +1532,8 @@
   "implementation_receipts": [
     {
       "path": "crates/razer-device/src/receiver_pairing.rs",
-      "sha256": "2fbdb14c73e14e5fe75ecc7c926c1551ab99f783ccaac71f53619971d7338782",
-      "bytes": 26479,
+      "sha256": "6f95072233031ab35c3feeeaca1ea91db7ae715ee062816fd0c726e4d68f948e",
+      "bytes": 28529,
       "runtime_acceptance": false
     },
     {
@@ -1571,6 +1591,7 @@
       "runtime_acceptance": false
     }
   ],
+  "exchange_semantics": "Current inherited _getUSBTransferInResult resets resendOutCommand per OUT, retains it after busy and does not clear it in catch. IN exceptions retry OUT only after busy; send exceptions terminate. Original slice clamps to actual returned bytes. Rust adds only canonical transport Report ID/header and typed payload bounds, not full-length or profile/region success conditions.",
   "metadata_transport": {
     "factory_sleep_multiplier": 5,
     "base_sleep_ms": 5,

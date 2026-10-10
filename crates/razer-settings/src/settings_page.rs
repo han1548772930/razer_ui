@@ -8,7 +8,6 @@ use razer_widgets::settings_button::settings_button;
 mod tests;
 use gpui_kit::component::{
     button::Button,
-    checkbox::Checkbox,
     select::{SelectEvent, SelectState},
     tooltip::Tooltip,
     *,
@@ -154,7 +153,12 @@ impl SettingsPage {
         cx.emit(SettingsEvent::Language);
         self.changed(cx);
     }
-    pub fn new(mut values: AppPreferences, runtime: Entity<super::runtime_page::RuntimePanel>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        mut values: AppPreferences,
+        runtime: Entity<super::runtime_page::RuntimePanel>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let saved = values.clone();
         let locale = i18n::locale();
         if let Some((code, _)) = LANGUAGES
@@ -363,6 +367,8 @@ impl SettingsPage {
         v_flex()
             .w(surface::css(600.))
             .min_w(surface::css(600.))
+            .flex_shrink_0()
+            .mx_auto()
             .my(surface::css(10.))
             .py(surface::css(surface::WIDGET_PADDING_Y))
             .px(surface::css(surface::WIDGET_PADDING_X))
@@ -389,27 +395,29 @@ impl SettingsPage {
         h_flex()
             .items_start()
             .flex_wrap()
+            .w_full()
             .max_w(surface::css(1240.))
             .mx_auto()
             .justify_center()
             .child(
                 v_flex()
                     .w(surface::css(600.))
-                    .flex_shrink_0()
+                    .min_w(surface::css(600.))
+                    .flex_grow(1.)
+                    .flex_shrink(1.)
+                    .flex_basis(surface::css(600.))
                     .mx(column_margin)
                     .child(
                         self.panel("AUTO_LAUNCH", cx).child(
                             v_flex()
                                 .child(
-                                    Checkbox::new("settings-auto-start")
-                                        .label(i18n::t("START_SYNAPSE"))
-                                        .checked(startup.auto_start)
-                                        .on_click(cx.listener(|this, checked, _, cx| {
+                                    settings_check("settings-auto-start", i18n::t("START_SYNAPSE"), startup.auto_start, false, window, cx)
+                                        .on_click(cx.listener(|this, _, _, cx| {
                                             let draft = this
                                                 .values
                                                 .startup_draft
                                                 .get_or_insert_with(Default::default);
-                                            draft.auto_start = *checked;
+                                            draft.auto_start = !draft.auto_start;
                                             this.changed(cx);
                                         })),
                                 )
@@ -443,11 +451,8 @@ impl SettingsPage {
                                                 .child(i18n::t("NOTE_DISABLE_SYNAPSE")),
                                         )
                                         .child(
-                                            Checkbox::new("settings-start-minimized")
-                                                .label(i18n::t("MINIMIZE_SYSTRAY"))
-                                                .checked(startup.start_minimized)
-                                                .disabled(!startup.auto_start)
-                                                .on_click(cx.listener(|this, checked, _, cx| {
+                                            settings_check("settings-start-minimized", i18n::t("MINIMIZE_SYSTRAY"), startup.start_minimized, !startup.auto_start, window, cx)
+                                                .on_click(cx.listener(|this, _, _, cx| {
                                                     if !this.values.startup_draft.unwrap_or_default().auto_start {
                                                         return;
                                                     }
@@ -455,7 +460,7 @@ impl SettingsPage {
                                                         .values
                                                         .startup_draft
                                                         .get_or_insert_with(Default::default);
-                                                    draft.start_minimized = *checked;
+                                                    draft.start_minimized = !draft.start_minimized;
                                                     this.changed(cx);
                                                 })),
                                         ),
@@ -477,11 +482,9 @@ impl SettingsPage {
                             div()
                                 .relative()
                                 .child(
-                                    Checkbox::new("settings-notifications")
-                                        .label(i18n::t("DISPLAY_NOTIFICATIONS"))
-                                        .checked(self.values.notifications)
-                                        .on_click(cx.listener(|this, checked, _, cx| {
-                                            this.values.notifications = *checked;
+                                    settings_check("settings-notifications", i18n::t("DISPLAY_NOTIFICATIONS"), self.values.notifications, false, window, cx)
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.values.notifications = !this.values.notifications;
                                             this.changed(cx);
                                         })),
                                 )
@@ -508,7 +511,10 @@ impl SettingsPage {
             .child(
                 v_flex()
                     .w(surface::css(600.))
-                    .flex_shrink_0()
+                    .min_w(surface::css(600.))
+                    .flex_grow(1.)
+                    .flex_shrink(1.)
+                    .flex_basis(surface::css(600.))
                     .mx(column_margin)
                     .child(
                         self.panel("TUTORIAL_RESET", cx).child(
@@ -579,13 +585,15 @@ impl SettingsPage {
     fn recommendations(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         self.panel_with_control(
             "RECOMMENDATION_HEADER",
-            surface::SynapseSwitch::new("settings-recommendations")
-                .accessibility_label(i18n::t("RECOMMENDATION_HEADER"))
-                .checked(self.values.recommendations)
-                .on_change(cx.listener(|this, checked, _, cx| {
-                    this.values.recommendations = *checked;
-                    this.changed(cx);
-                })),
+            div().relative().top(surface::css(3.)).child(
+                surface::SynapseSwitch::new("settings-recommendations")
+                    .accessibility_label(i18n::t("RECOMMENDATION_HEADER"))
+                    .checked(self.values.recommendations)
+                    .on_change(cx.listener(|this, checked, _, cx| {
+                        this.values.recommendations = *checked;
+                        this.changed(cx);
+                    })),
+            ),
             cx,
         )
         .gap_0()
@@ -595,97 +603,132 @@ impl SettingsPage {
                 .mb(surface::css(20.))
                 .child(i18n::t("RECOMMENDATION_DESC")),
         )
-        .child(div().child(i18n::t("DEVICES_HEADER").to_uppercase()))
         .child(
-            div()
-                .mt(surface::css(5.))
-                .mb(surface::css(10.))
-                .child(i18n::t("RECOMMENDATION_DEVICES_DESC")),
-        )
-        .child(
-            // Ia's style_checkGroup is a single vertical column, gap: 10px.
             v_flex()
-                .gap(surface::css(10.))
-                .mb(surface::css(20.))
-                .children(RECOMMENDATION_CATEGORIES.iter().map(|(id, label)| {
-                    let id = *id;
-                    Checkbox::new(SharedString::from(format!("settings-category-{id}")))
-                        .label(i18n::t(label))
-                        .checked(
-                            !self
-                                .values
-                                .ignored_categories
-                                .iter()
-                                .any(|ignored| ignored == id),
+                .opacity(if self.values.recommendations { 1. } else { 0.3 })
+                .child(div().child(i18n::t("DEVICES_HEADER").to_uppercase()))
+                .child(
+                    div()
+                        .mt(surface::css(5.))
+                        .mb(surface::css(10.))
+                        .child(i18n::t("RECOMMENDATION_DEVICES_DESC")),
+                )
+                .child(
+                    // Ia's style_checkGroup is a single vertical column, gap: 10px.
+                    v_flex()
+                        .gap(surface::css(10.))
+                        .mb(surface::css(20.))
+                        .children(RECOMMENDATION_CATEGORIES.iter().map(|(id, label)| {
+                            let id = *id;
+                            settings_check(
+                                SharedString::from(format!("settings-category-{id}")),
+                                i18n::t(label),
+                                !self
+                                    .values
+                                    .ignored_categories
+                                    .iter()
+                                    .any(|ignored| ignored == id),
+                                !self.values.recommendations,
+                                window,
+                                cx,
+                            )
+                            .opacity(1.)
+                            .on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    let checked = this
+                                        .values
+                                        .ignored_categories
+                                        .iter()
+                                        .any(|ignored| ignored == id);
+                                    this.values
+                                        .ignored_categories
+                                        .retain(|ignored| ignored != id);
+                                    if !checked {
+                                        this.values.ignored_categories.push(id.into());
+                                    }
+                                    this.values.ignored_categories.sort();
+                                    this.changed(cx);
+                                },
+                            ))
+                        })),
+                )
+                .child(
+                    div()
+                        .mb(surface::css(10.))
+                        .child(i18n::t("NEW_RELEASE_AND_DEALS").to_uppercase()),
+                )
+                .child(
+                    settings_check(
+                        "settings-new-products",
+                        i18n::t("NEW_RELEASE_DESC"),
+                        self.values.new_products,
+                        !self.values.recommendations,
+                        window,
+                        cx,
+                    )
+                    .opacity(1.)
+                    .mb(surface::css(6.))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.values.new_products = !this.values.new_products;
+                        this.changed(cx);
+                    })),
+                )
+                .child(
+                    settings_check(
+                        "settings-partner-deals",
+                        i18n::t("NEW_RELEASE_DESC_2"),
+                        self.values.partner_deals,
+                        !self.values.recommendations,
+                        window,
+                        cx,
+                    )
+                    .opacity(1.)
+                    .mb(surface::css(20.))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.values.partner_deals = !this.values.partner_deals;
+                        this.changed(cx);
+                    })),
+                )
+                .child(div().child(i18n::t("IGNORE_CATEGORIES_HEADER").to_uppercase()))
+                .child(
+                    div()
+                        // Source block siblings collapse the title's 10px bottom margin
+                        // with this description's 5px top margin to a single 10px gap.
+                        .mt(surface::css(10.))
+                        .mb(surface::css(10.))
+                        .child(i18n::t("IGNORE_CATEGORIES_DESC")),
+                )
+                .child(
+                    settings_button(
+                        "settings-reset-categories",
+                        i18n::t("RESET"),
+                        self.values.ignored_products.is_empty()
+                            && self.values.owned_products.is_empty(),
+                        window,
+                        cx,
+                    )
+                    .disabled(
+                        !self.values.recommendations
+                            || (self.values.ignored_products.is_empty()
+                                && self.values.owned_products.is_empty()),
+                    )
+                    .when(!self.values.recommendations, |button| {
+                        button.cursor_default().when(
+                            !self.values.ignored_products.is_empty()
+                                || !self.values.owned_products.is_empty(),
+                            |button| button.opacity(1.),
                         )
-                        .disabled(!self.values.recommendations)
-                        .on_click(cx.listener(move |this, checked, _, cx| {
-                            this.values
-                                .ignored_categories
-                                .retain(|ignored| ignored != id);
-                            if !checked {
-                                this.values.ignored_categories.push(id.into());
-                            }
-                            this.values.ignored_categories.sort();
-                            this.changed(cx);
-                        }))
-                })),
-        )
-        .child(
-            div()
-                .mb(surface::css(10.))
-                .child(i18n::t("NEW_RELEASE_AND_DEALS").to_uppercase()),
-        )
-        .child(
-            Checkbox::new("settings-new-products")
-                .label(i18n::t("NEW_RELEASE_DESC"))
-                .mb(surface::css(6.))
-                .checked(self.values.new_products)
-                .disabled(!self.values.recommendations)
-                .on_click(cx.listener(|this, checked, _, cx| {
-                    this.values.new_products = *checked;
-                    this.changed(cx);
-                })),
-        )
-        .child(
-            Checkbox::new("settings-partner-deals")
-                .label(i18n::t("NEW_RELEASE_DESC_2"))
-                .mb(surface::css(20.))
-                .checked(self.values.partner_deals)
-                .disabled(!self.values.recommendations)
-                .on_click(cx.listener(|this, checked, _, cx| {
-                    this.values.partner_deals = *checked;
-                    this.changed(cx);
-                })),
-        )
-        .child(div().child(i18n::t("IGNORE_CATEGORIES_HEADER").to_uppercase()))
-        .child(
-            div()
-                // Source block siblings collapse the title's 10px bottom margin
-                // with this description's 5px top margin to a single 10px gap.
-                .mt(surface::css(10.))
-                .mb(surface::css(10.))
-                .child(i18n::t("IGNORE_CATEGORIES_DESC")),
-        )
-        .child(
-            settings_button(
-                "settings-reset-categories",
-                i18n::t("RESET"),
-                !self.values.recommendations
-                    || (self.values.ignored_products.is_empty()
-                        && self.values.owned_products.is_empty()),
-                window,
-                cx,
-            )
-            // Ia's reset uses fit-content with 27px horizontal padding.
-            .min_w_0()
-            .self_start()
-            .px(surface::css(27.))
-            .on_click(cx.listener(|this, _, _, cx| {
-                this.values.ignored_products.clear();
-                this.values.owned_products.clear();
-                this.changed(cx);
-            })),
+                    })
+                    // Ia's reset uses fit-content with 27px horizontal padding.
+                    .min_w_0()
+                    .self_start()
+                    .px(surface::css(27.))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.values.ignored_products.clear();
+                        this.values.owned_products.clear();
+                        this.changed(cx);
+                    })),
+                ),
         )
         .into_any_element()
     }
@@ -698,13 +741,17 @@ impl SettingsPage {
         h_flex()
             .items_start()
             .flex_wrap()
+            .w_full()
             .max_w(surface::css(1240.))
             .mx_auto()
             .justify_center()
             .child(
                 v_flex()
                     .w(surface::css(600.))
-                    .flex_shrink_0()
+                    .min_w(surface::css(600.))
+                    .flex_grow(1.)
+                    .flex_shrink(1.)
+                    .flex_basis(surface::css(600.))
                     .mx(column_margin)
                     .child(
                         self.panel("LANGUAGE", cx).child(
@@ -744,7 +791,10 @@ impl SettingsPage {
             .child(
                 v_flex()
                     .w(surface::css(600.))
-                    .flex_shrink_0()
+                    .min_w(surface::css(600.))
+                    .flex_grow(1.)
+                    .flex_shrink(1.)
+                    .flex_basis(surface::css(600.))
                     .mx(column_margin)
                     .child(self.about(cx)),
             )
@@ -798,7 +848,8 @@ impl SettingsPage {
                         ].map(|(id, label, asset, hover, url)| social_link(id, i18n::t(label).into(), asset, hover, url, false, cx)))),
             )
             .into_any_element()
-    }    fn connection(&self, cx: &mut Context<Self>) -> AnyElement {
+    }
+    fn connection(&self, cx: &mut Context<Self>) -> AnyElement {
         v_flex()
             .gap_4()
             .child(self.runtime.clone())
@@ -846,7 +897,7 @@ impl SettingsPage {
                             }))
                     }))
                     .child(surface::note(
-                        format!("razer_ui {} · 本地重构界面。自动启动偏好和灯光控制权尚未读取；上方正式设置中的相关控件因此禁用。", env!("CARGO_PKG_VERSION")),
+                        format!("razer_ui {} 本地自动启动草稿尚未应用到系统；灯光控制权尚未读取。", env!("CARGO_PKG_VERSION")),
                         cx,
                     ))
                     .child(surface::note(
@@ -870,13 +921,13 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-profile-migration")
-                                    .label("预览配置迁移状态…")
+                                    .label("打开配置迁移")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| { cx.emit(SettingsEvent::ProfileMigration); })),
                             )
                             .child(
                                 Button::new("preview-module-pages")
-                                    .label("模块状态样例…")
+                                    .label("打开设备和模块")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::Modules)
@@ -898,7 +949,7 @@ impl SettingsPage {
                             ))
                             .child(
                                 Button::new("preview-app-picker")
-                                    .label("预览更多应用…")
+                                    .label("打开更多应用")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::AppPicker)
@@ -906,7 +957,7 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-alexa")
-                                    .label("Alexa 状态样例…")
+                                    .label("打开 Alexa")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::Alexa)
@@ -914,7 +965,7 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-chroma-tour")
-                                    .label("预览 Chroma 入门教程…")
+                                    .label("打开 Chroma 入门教程")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::ChromaTour)
@@ -922,7 +973,7 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-header-states")
-                                    .label("顶部状态样例…")
+                                    .label("打开控制板")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| {
                                         cx.emit(SettingsEvent::Dashboard)
@@ -930,49 +981,49 @@ impl SettingsPage {
                             )
                             .child(
                                 Button::new("preview-lighting-settings")
-                                    .label("灯光设置状态样例…")
+                                    .label("打开设备灯光设置")
                                     .outline()
                                     .on_click(cx.listener(|this, _, _, cx| { this.page = Page::Synapse; cx.notify(); })),
                             )
                             .child(
                                 Button::new("preview-keyboard-calibration")
-                                    .label("磁轴键盘校准状态样例…")
+                                    .label("打开磁轴键盘预览")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(740)))),
                             )
                             .child(
                                 Button::new("preview-hue")
-                                    .label("Philips Hue 状态样例…")
+                                    .label("打开 Philips Hue 预览")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(769)))),
                             )
                             .child(
                                 Button::new("preview-aether-strip")
-                                    .label("Aether 灯带状态样例…")
+                                    .label("打开 Aether 灯带预览")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(784)))),
                             )
                             .child(
                                 Button::new("preview-wireless-argb")
-                                    .label("无线 ARGB 状态样例…")
+                                    .label("打开无线 ARGB 预览")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3884)))),
                             )
                             .child(
                                 Button::new("preview-wired-argb")
-                                    .label("主板与 ARGB 端口状态样例…")
+                                    .label("打开主板与 ARGB 端口预览")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3871)))),
                             )
                             .child(
                                 Button::new("preview-automation")
-                                    .label("自动化状态样例…")
+                                    .label("打开 Base Station V3 预览")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(3946)))),
                             )
                             .child(
                                 Button::new("open-pairing-page")
-                                    .label("鼠标底座配对状态样例…")
+                                    .label("打开鼠标底座预览")
                                     .outline()
                                     .on_click(cx.listener(|_, _, _, cx| cx.emit(SettingsEvent::Preview(241)))),
                             )
@@ -988,6 +1039,61 @@ impl SettingsPage {
             )
             .into_any_element()
     }
+}
+// Settings 720: .main-setting .widget .check-item margin:0; original
+// 20px indicator, 14px/17px label, 2.4px radius and source tick origins.
+fn settings_check(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    checked: bool,
+    disabled: bool,
+    window: &mut Window,
+    cx: &mut App,
+) -> gpui_kit::base::Button {
+    let label = label.into();
+    let mut characters = label.chars();
+    let label = match characters.next() {
+        Some(first) => {
+            SharedString::from(format!("{}{}", first.to_uppercase(), characters.as_str()))
+        }
+        None => label,
+    };
+    surface::check_item_with_style(
+        id,
+        "",
+        checked,
+        disabled,
+        surface::CheckItemStyle {
+            unchecked_background: cx.theme().transparent,
+            tick_bottom_origin: (0.8, 10.2),
+        },
+        window,
+        cx,
+    )
+    .m_0()
+    .items_start()
+    .accessibility_label(label.clone())
+    .child(
+        div()
+            .relative()
+            // Source text is inside the 1px indicator border, then top:2px.
+            .top(surface::css(3.))
+            // Original left:30px is relative to the indicator's inner border.
+            .ml(surface::css(11.))
+            .max_h(surface::css(20.))
+            .flex_shrink_0()
+            .whitespace_nowrap()
+            .text_size(surface::css(14.))
+            .line_height(surface::css(17.))
+            .text_color(cx.theme().foreground)
+            .child(label),
+    )
+    .role(Role::CheckBox)
+    .aria_toggled(if checked {
+        Toggled::True
+    } else {
+        Toggled::False
+    })
 }
 fn settings_help(id: &'static str, label: String, text: String) -> gpui_kit::base::Button {
     gpui_kit::base::Button::new(id)
@@ -1088,6 +1194,9 @@ impl Render for SettingsPage {
             .test_support()
             .size_full()
             .min_h_0()
+            .font_family("Roboto")
+            .text_color(cx.theme().foreground)
+            .bg(cx.theme().background)
             .child(
                 gpui_kit::base::Tabs::new("settings-navigation")
                     .flex()
@@ -1103,7 +1212,7 @@ impl Render for SettingsPage {
                         [
                             (Page::Synapse, "settings-tab-synapse", "SYNAPSE"),
                             (Page::General, "settings-tab-general", "GENERAL"),
-                            (Page::Connection, "settings-tab-connection", "????"),
+                            (Page::Connection, "settings-tab-connection", "服务连接"),
                         ]
                         .map(|(page, id, label)| {
                             surface::navigation_button(id, i18n::t(label), self.page == page, cx)

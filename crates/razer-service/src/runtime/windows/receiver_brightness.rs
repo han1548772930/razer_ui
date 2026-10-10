@@ -2,7 +2,6 @@
 use super::{hid, hid_transport, receiver};
 use anyhow::{Context as _, ensure};
 use serde_json::{Value, json};
-use std::time::{Duration, Instant};
 
 pub(super) fn request(path: &str, container: &str, percent: Option<u8>) -> anyhow::Result<Value> {
     let (before, cap) = receiver::select_target(&hid::enumerate_metadata()?, path, container)?;
@@ -16,12 +15,7 @@ pub(super) fn request(path: &str, container: &str, percent: Option<u8>) -> anyho
         .and_then(|value| usize::try_from(value).ok())
         .context("Receiver Feature length is unavailable")?;
     let device = hid_transport::open(path, feature)?;
-    let started = Instant::now();
     let validate = || -> anyhow::Result<()> {
-        ensure!(
-            started.elapsed() < Duration::from_secs(10),
-            "Receiver brightness exceeded application deadline"
-        );
         let (current, current_cap) = receiver::select_target(
             &hid::enumerate_for_product(cap.vendor_id, cap.product_id)?,
             path,

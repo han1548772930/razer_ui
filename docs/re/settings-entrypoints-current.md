@@ -1,10 +1,18 @@
 # 设置入口与正式页面呈现
 
-本项依据当前 Synapse Settings、Dashboard、Alexa、Profile Migration 和对应产品源码，修正“服务连接”中的旧测试入口。静态根组件、动作、精确字符区间、源码 SHA-256、255 段产品组件及实现文件哈希见 [证据](settings-entrypoints-current-evidence.json)，维护工具为 `node tools/audit-settings-entrypoints-current.cjs --check`。
+本项依据当前 Synapse Settings、Dashboard、Alexa、Profile Migration 和对应产品源码，修正“服务连接”中的旧测试入口。静态根组件、动作、精确字符区间、源码 SHA-256、255 段产品组件及实现文件哈希见 [证据](settings-entrypoints-current-evidence.json)，维护工具为 `node tools/audit-settings-entrypoints-current.cjs --check`。用户明确要求保留“服务连接”，供打开没有实体设备的产品；该测试入口只复用实际页面 owner，不计入原版页面覆盖。
 
 当前官方 Synapse Settings 的 `4914/kr` 实际挂载 `po` 顶部导航和 `mo` 正文，`$i` 仅声明 Synapse/General 两个原版导航。`ho` 是左右两栏，左侧 `Ks/bn/Ia`、右侧 `Un/Ta/ia`；`uo` 左侧语言与 Release Notes `Te`、右侧 About `Fs`。样式表虽定义旧 `.side-navigation`/`.setting-content`，这些节点没有出现在当前挂载链，不能据此添加侧栏。原版没有本地“服务连接”诊断页。这个本地入口区不能作为原版页面覆盖的证据，也不能通过示例选择器推断真实服务或硬件状态。
 
 本项同时修正正文几何：原 `.body-wrapper` 内距为上10、左右20、下20；`.body-widgets` 最大1240；两栏各600，不新增20px水平gap；每张卡片保留上下10px margin、30/40px内距、5px圆角和18px RazerF5标题。窄窗口的两条同特异性媒体规则按源码顺序核对，最终 `.body-widgets div.widget-col` 在1279px及以下使用左右30px margin；当前根不挂 `.setting-content`，其250px侧栏偏移和80px尾部内距不适用。推荐开关不再重复显示标题，保留独立可访问名称与原受控状态。颜色继续使用当前源对应的既有主题 token。
+
+列宽600是伸展前的基础宽度，不是禁止伸展的最终宽度。`Q` 挂 `body-widgets flex`，其直接子列同时命中 `div.flex>div{flex:auto}`；外容器1240时两列各620，600px卡片通过水平auto margin居中，卡片之间自然留下20px。对应Rust列保留grow/shrink与600基础宽度，卡片水平居中；不能只删除人为gap却把列固定600，从而令卡片紧贴。窄窗口亦按每条flex line分配剩余空间，列的左右margin按上述实际媒体规则处理。
+
+雷云页的复选框原挂载 `On → xn`，使用20px方框、2.4px圆角、14px/17px文字、0.8/10.2的下勾起点和 `.main-setting .widget .check-item{margin:0}`。通用 Checkbox 默认16px且采用另一套勾选字形，已替换为原 CSS 对应的共享绘制；保留各原受控动作。正文显式占可用宽度再限制1240，卡片禁止纵向压缩，字体继承Roboto；设备控制权和真实宿主写回仍按实际缺口登记。
+
+文字在Settings局部按源单行max-content语义参与布局，不沿用共享绘制的绝对文字节点；源框内1px边框及文字top2对应框外文字的3px偏移。推荐开关保留源top3，关闭时内部内容块整体透明度0.3，说明文字与控件一同变暗；复选框保留禁用输入语义而不重复乘透明度。
+
+文字水平位置亦计入框内1px边框，并保留first-letter大写。推荐Reset的视觉禁用只由忽略/拥有列表是否为空决定；推荐关闭时另行阻断输入，不能把推荐关闭同时当作按钮自身透明度0.3的条件，否则已有列表时会错误叠成0.09。
 
 | 本地入口 | 当前原代码与实际呈现 |
 | --- | --- |

@@ -210,11 +210,11 @@ impl<'a> Session<'a> {
             std::thread::sleep(Duration::from_millis(transport.sleep_between_out_ms));
             validate()?;
             if let Err(e) = self.device.send_feature(&outgoing) {
-                last_error = format!("{e:#}");
-                continue;
+                return Err(e);
             }
             validate()?;
             std::thread::sleep(Duration::from_millis(transport.sleep_between_out_in_ms));
+            let mut resend_out_command = false;
             for attempt in 0..transport.max_retry_in {
                 if attempt > 0 {
                     std::thread::sleep(Duration::from_millis(transport.sleep_between_in_ms));
@@ -223,14 +223,15 @@ impl<'a> Session<'a> {
                 let mut incoming = vec![0; 91];
                 let count = match self.device.get_feature(&mut incoming) {
                     Ok(n) => n,
-                    Err(e) => {
+                    Err(e) if resend_out_command => {
                         last_error = format!("{e:#}");
                         break;
                     }
+                    Err(e) => return Err(e),
                 };
                 validate()?;
                 ensure!(
-                    count == 91 && incoming[0] == 0,
+                    (9..=incoming.len()).contains(&count) && incoming[0] == 0,
                     "配对命令应答长度或 ReportID 不匹配"
                 );
                 if incoming[2] != transaction || incoming[7..9] != command[1..] {
@@ -240,6 +241,7 @@ impl<'a> Session<'a> {
                 match incoming[1] {
                     1 => {
                         last_error = "设备忙".into();
+                        resend_out_command = true;
                         continue;
                     }
                     2 => {}
@@ -250,8 +252,7 @@ impl<'a> Session<'a> {
                     status => anyhow::bail!("配对命令不支持或状态未知 {status}"),
                 }
                 let length = usize::from(incoming[6]);
-                ensure!(length <= 80, "配对应答长度超出协议");
-                return Ok(incoming[9..9 + length].to_vec());
+                return Ok(incoming[9..(9 + length).min(count)].to_vec());
             }
         }
         anyhow::bail!("配对命令失败：{last_error}")
@@ -523,6 +524,58 @@ mod tests {
     }
     fn deadline() -> Instant {
         Instant::now() + Duration::from_secs(1)
+    }
+
+    #[test]
+    fn linker_exchange_retains_busy_state_on_in_exception_and_stops_send_exceptions() {
+        struct Faults {
+            base: Mock,
+            states: Mutex<VecDeque<Result<u8, &'static str>>>,
+            fail_send: bool,
+        }
+        impl FeatureTransport for Faults {
+            fn send_feature(&self, data: &[u8]) -> anyhow::Result<()> {
+                self.base.send_feature(data)?;
+                ensure!(!self.fail_send, "send interrupted");
+                Ok(())
+            }
+            fn get_feature(&self, data: &mut [u8]) -> anyhow::Result<usize> {
+                let state = self
+                    .states
+                    .lock()
+                    .unwrap()
+                    .pop_front()
+                    .expect("extra IN")
+                    .map_err(anyhow::Error::msg)?;
+                let count = self.base.get_feature(data)?;
+                data[1] = state;
+                Ok(count)
+            }
+            fn metadata(&self) -> serde_json::Value {
+                serde_json::Value::Null
+            }
+        }
+        let mut cap = cap(164, "MOUSE");
+        cap.transport.max_retry_out = 3;
+        cap.transport.max_retry_in = 2;
+        for (states, fail_send, succeeds, sends) in [
+            (vec![Ok(1), Err("IN after busy"), Ok(2)], false, true, 2),
+            (vec![Err("first IN")], false, false, 1),
+            (vec![], true, false, 1),
+        ] {
+            let device = Faults {
+                base: Mock::new(&[&[1], &[1]]),
+                states: Mutex::new(states.into()),
+                fail_send,
+            };
+            let mut events = Events::new(&[]);
+            let result =
+                Session::new(&device, &mut events, &cap)
+                    .unwrap()
+                    .exchange(SCAN, &[1], &|| Ok(()));
+            assert_eq!(result.is_ok(), succeeds);
+            assert_eq!(device.base.sent.lock().unwrap().len(), sends);
+        }
     }
 
     #[test]

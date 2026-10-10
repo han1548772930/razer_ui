@@ -261,6 +261,10 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if request.is_audio_streams() {
+            self.request_audio_stream_reset(workspace, request, window, cx);
+            return;
+        }
         if !workspace.read(cx).help_reset_matches(request, cx) {
             return;
         }
@@ -390,7 +394,15 @@ impl AppShell {
         request: HelpResetRequest,
         cx: &App,
     ) {
-        let key = workspace.read(cx).identity(cx);
+        let key = if request.is_audio_streams() {
+            format!(
+                "{}:audio-streams:{}",
+                workspace.read(cx).identity(cx),
+                request.generation()
+            )
+        } else {
+            workspace.read(cx).identity(cx)
+        };
         if self
             .receiver_reset
             .get(&key)
@@ -398,5 +410,133 @@ impl AppShell {
         {
             self.retire_help_reset(&key);
         }
+    }
+
+    fn request_audio_stream_reset(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        request: HelpResetRequest,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !workspace.read(cx).help_reset_matches(request, cx) {
+            return;
+        }
+        let device = workspace.read(cx).device(cx);
+        if device.product_id != 1342 {
+            return;
+        }
+        let observations = self
+            .device_observations
+            .iter()
+            .filter(|route| {
+                route.matches(device)
+                    && route.peer_product_id().is_none()
+                    && matches!(
+                        route.transport(),
+                        Some(razer_discovery::discovery::ObservedTransport::Wired)
+                    )
+            })
+            .collect::<Vec<_>>();
+        let [observation] = observations.as_slice() else {
+            workspace.update(cx, |view, cx| {
+                view.finish_help_reset(
+                    request,
+                    None,
+                    Some("Audio restart 缺少唯一的有线设备观察".into()),
+                    window,
+                    cx,
+                )
+            });
+            return;
+        };
+        let observation = (**observation).clone();
+        let container = device.device_container_id.clone();
+        let revision = self.discovery_revision;
+        let key = format!(
+            "{}:audio-streams:{}",
+            workspace.read(cx).identity(cx),
+            request.generation()
+        );
+        let canceled = Arc::new(AtomicBool::new(false));
+        let signal = canceled.clone();
+        let (sender, receiver) = mpsc::channel();
+        let worker = thread::Builder::new()
+            .name("audio-stream-reset-client".into())
+            .spawn(move || {
+                let result = super::audio_mixer::restart_audio_streams(&observation, &signal)
+                    .map_err(|error| format!("{error:#}"));
+                let _ = sender.send(result);
+            });
+        let worker = match worker {
+            Ok(worker) => worker,
+            Err(error) => {
+                workspace.update(cx, |view, cx| {
+                    view.finish_help_reset(
+                        request,
+                        None,
+                        Some(format!("Audio restart 任务启动失败：{error}")),
+                        window,
+                        cx,
+                    )
+                });
+                return;
+            }
+        };
+        let delivery_key = key.clone();
+        let _delivery = cx.spawn_in(window, async move |shell, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(50))
+                    .await;
+                let result = match receiver.try_recv() {
+                    Ok(result) => Some(result),
+                    Err(mpsc::TryRecvError::Empty) => None,
+                    Err(mpsc::TryRecvError::Disconnected) => {
+                        Some(Err("Audio restart 工作线程已结束，缺少回执".into()))
+                    }
+                };
+                let terminal = result.is_some();
+                let current = shell.update_in(cx, |shell, window, cx| {
+                    if !shell.receiver_reset.contains_key(&delivery_key) {
+                        return false;
+                    }
+                    let current = shell.discovery_revision == revision
+                        && shell.devices.contains(&workspace)
+                        && workspace.read(cx).device(cx).product_id == 1342
+                        && workspace.read(cx).device(cx).device_container_id == container
+                        && workspace.read(cx).help_reset_matches(request, cx);
+                    if !current {
+                        shell.retire_help_reset(&delivery_key);
+                        return false;
+                    }
+                    if let Some(result) = result {
+                        shell.retire_help_reset(&delivery_key);
+                        let error = result.err();
+                        if let Some(error) = &error {
+                            shell.status = error.clone();
+                        }
+                        // No profile replacement, audio-state readback, or
+                        // local persistence is part of the source action.
+                        workspace.update(cx, |view, cx| {
+                            view.finish_help_reset(request, None, error, window, cx)
+                        });
+                    }
+                    true
+                });
+                if terminal || !matches!(current, Ok(true)) {
+                    break;
+                }
+            }
+        });
+        self.receiver_reset.insert(
+            key,
+            Session {
+                request,
+                canceled,
+                worker: Some(worker),
+                _delivery,
+            },
+        );
     }
 }

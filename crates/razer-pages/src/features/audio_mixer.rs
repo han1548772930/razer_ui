@@ -2,8 +2,8 @@
 //!
 //! The current middleware names these controls through `MixerSDKLib_PropertyControl`.
 //! This module only maps controls whose path and native property are present in
-//! the current 1342 source; virtual Windows mix devices are intentionally left
-//! to the separate AudioCamy adapter.
+//! the actual current 1342 AudioMixer instance. Bundled AudioCamy wrappers do
+//! not establish the transport used by a mounted product caller.
 
 use razer_device::audio_mixer::{MixerChannel, MixerControl, MixerTarget, MixerValue};
 use std::sync::{Arc, atomic::AtomicBool};
@@ -74,6 +74,7 @@ pub enum AudioMixerPath {
     KeyShift,
     MicEqBand(u8),
     MicEqEnabled,
+    MicMonitorVolume,
 }
 
 impl AudioMixerPath {
@@ -103,6 +104,7 @@ impl AudioMixerPath {
             Self::KeyShift => MixerControl::PageKeyShift,
             Self::MicEqBand(_) => MixerControl::EqBand,
             Self::MicEqEnabled => MixerControl::PageEqEnabled,
+            Self::MicMonitorVolume => MixerControl::PageMicMonitorVolume,
         };
         MixerTarget {
             control,
@@ -116,8 +118,8 @@ impl AudioMixerPath {
 }
 
 /// Return a native target only when the current source names the property.
-/// `outputMixer`, `playbackMix`, `streamMix`, `lineOut` and `voiceChat` are
-/// AudioCamy virtual endpoints and must not be routed to this HID protocol.
+/// Other 1342 mixer endpoints need their own actual caller and native recipe;
+/// the bundled AudioCamy ABI alone cannot establish their transport.
 pub fn path(path: &str) -> Option<AudioMixerPath> {
     Some(match path {
         "/device/noiseGate/isEnabled" => AudioMixerPath::NoiseGateEnabled,
@@ -148,6 +150,7 @@ pub fn path(path: &str) -> Option<AudioMixerPath> {
         "/device/keyShifter/value" => AudioMixerPath::KeyShift,
         "/device/keyShifter/isEnabled" => AudioMixerPath::KeyShift,
         "/equalizers/mic/isEnabled" => AudioMixerPath::MicEqEnabled,
+        "/device/micMonitor/value" => AudioMixerPath::MicMonitorVolume,
         _ => {
             let suffix = path.strip_prefix("/equalizers/mic/bands/")?;
             let band: u8 = suffix.parse().ok()?;
@@ -258,6 +261,18 @@ pub fn write_plan(
             "/device/keyShifter/value".into(),
             value_for(AudioMixerPath::KeyShift, &value)?,
         )]);
+    }
+    if path == "/device/micMonitor/value" {
+        let value = draft.pointer(path).and_then(serde_json::Value::as_f64)
+            .ok_or_else(|| anyhow::anyhow!("Mic Monitor source value missing"))?;
+        anyhow::ensure!(value.is_finite(), "Mic Monitor value must be finite");
+        // Actual Mi calls Di(Number(i),0,100,-45,0); Di uses Math.floor.
+        // isEnabled belongs to playback mic routing and is not consumed by Mi.
+        let level = (value * 45. / 100. - 45.).floor();
+        if !(-45. ..=0.).contains(&level) {
+            return Ok(Vec::new());
+        }
+        return Ok(vec![(path.into(), MixerValue::Scalar { value: level as f32 })]);
     }
     if path.starts_with("/device/voiceChanger/") {
         let enabled = draft

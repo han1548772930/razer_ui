@@ -55,8 +55,7 @@ impl AlexaPage {
                         .on_change(switch_callback(
                             cx,
                             |this, value, cx| {
-                                this.synapse_skills = value;
-                                cx.notify();
+                                this.set_synapse_skills(value, cx);
                             },
                         )),
                     ),
@@ -336,7 +335,14 @@ impl AlexaPage {
                     .child(
                         surface::select_alexa(&self.inputs)
                             .id("alexa-input-device")
-                            .items(input_choices())
+                            .items(input_choices(&self.media_inputs))
+                            // yE's trigger uses literal Default; the menu alone localizes it.
+                            .selected_text(
+                                self.media_inputs
+                                    .selected()
+                                    .map_or("Default", MediaInputDevice::label)
+                                    .to_owned(),
+                            )
                             .w(css(230.))
                             .disabled(disabled)
                             // Source yE dims the containing .item only once.

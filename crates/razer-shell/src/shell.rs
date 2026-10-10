@@ -306,7 +306,8 @@ impl AppShell {
         let runtime = cx.new(|_| runtime_page::RuntimePanel::new());
         let gamer_room_seen = preferences.gamer_room_tutorial_seen;
         let dashboard_seen = preferences.dashboard_tutorial_seen;
-        let settings = cx.new(|cx| settings_page::SettingsPage::new(preferences, runtime.clone(), window, cx));
+        let settings =
+            cx.new(|cx| settings_page::SettingsPage::new(preferences, runtime.clone(), window, cx));
         let mut this = Self {
             devices: vec![],
             receiver_queries: BTreeMap::new(),
@@ -418,59 +419,77 @@ impl AppShell {
         this.subscriptions.push(cx.subscribe_in(
             &this.settings,
             window,
-            |this, _, event, window, cx| match event {
-                settings_page::SettingsEvent::Changed => {
-                    let preferences = this.settings.read(cx).snapshot();
-                    let seen = preferences.gamer_room_tutorial_seen;
-                    this.gamer_room
-                        .update(cx, |page, cx| page.set_tutorial_seen(seen, cx));
-                    this.dashboard_tutorial.update(cx, |tutorial, cx| {
-                        tutorial.set_seen(preferences.dashboard_tutorial_seen, cx)
-                    });
-                    this.save_auxiliary_preferences(cx);
-                    cx.notify();
-                }
-                settings_page::SettingsEvent::Language => {
-                    if let Some(tray) = &mut this.tray {
-                        tray.refresh(cx);
+            |this, _, event, window, cx| {
+                match event {
+                    settings_page::SettingsEvent::Changed => {
+                        let preferences = this.settings.read(cx).snapshot();
+                        let seen = preferences.gamer_room_tutorial_seen;
+                        this.gamer_room
+                            .update(cx, |page, cx| page.set_tutorial_seen(seen, cx));
+                        this.dashboard_tutorial.update(cx, |tutorial, cx| {
+                            tutorial.set_seen(preferences.dashboard_tutorial_seen, cx)
+                        });
+                        this.save_auxiliary_preferences(cx);
+                        cx.notify();
                     }
-                    for device in &this.devices {
-                        device.update(cx, |device, cx| device.refresh_locale(window, cx));
+                    settings_page::SettingsEvent::Language => {
+                        if let Some(tray) = &mut this.tray {
+                            tray.refresh(cx);
+                        }
+                        for device in &this.devices {
+                            device.update(cx, |device, cx| device.refresh_locale(window, cx));
+                        }
+                        if let Some(page) = &this.profiles_page {
+                            page.update(cx, |page, cx| page.refresh_locale(window, cx));
+                        }
+                        cx.refresh_windows();
                     }
-                    if let Some(page) = &this.profiles_page {
-                        page.update(cx, |page, cx| page.refresh_locale(window, cx));
+                    settings_page::SettingsEvent::Preview(pid) => {
+                        this.add_preview(*pid, window, cx)
                     }
-                    cx.refresh_windows();
-                }
-                settings_page::SettingsEvent::Preview(pid) => this.add_preview(*pid, window, cx),
-                settings_page::SettingsEvent::PreviewVariant(pid, edition, layout) => this.add_preview_variant(*pid, *edition, *layout, window, cx),
-                settings_page::SettingsEvent::ChromaTour => this.navigate(Location::Tour(TourKind::Chroma), window, cx),
-                settings_page::SettingsEvent::Alexa => this.open_module_tab(service_pages::ModulePage::Alexa, window, cx),
-                settings_page::SettingsEvent::AppPicker => this.app_picker.update(cx, |picker, cx| picker.show(window, cx)),
-                settings_page::SettingsEvent::Modules => this.navigate(Location::Main(Tab::Modules), window, cx),
-                settings_page::SettingsEvent::Dashboard => this.navigate(Location::Main(Tab::Home), window, cx),
-                settings_page::SettingsEvent::Pairing => this.navigate(Location::Pairing("multi-device-pairing".into()), window, cx),
-                settings_page::SettingsEvent::ProfileMigration => {
-                    this.navigate(Location::ProfileMigration, window, cx);
-                }
-                settings_page::SettingsEvent::ReleaseNotes => {
-                    this.release_notes = Some(release_notes::open(window, cx));
-                    cx.notify();
-                }
-                settings_page::SettingsEvent::ResetTutorials => {
-                    this.tracking_intro_seen = false;
-                    for device in &this.devices {
-                        device.update(cx, |device, cx| device.set_intro_seen(false, cx));
+                    settings_page::SettingsEvent::PreviewVariant(pid, edition, layout) => {
+                        this.add_preview_variant(*pid, *edition, *layout, window, cx)
                     }
-                    this.gamer_room
-                        .update(cx, |page, cx| page.reset_tutorial(cx));
-                    this.dashboard_tutorial
-                        .update(cx, |tutorial, cx| tutorial.reset(cx));
-                    this.settings.update(cx, |settings, cx| {
-                        settings.tutorial_seen(false, cx);
-                        settings.dashboard_tutorial_seen(false, cx);
-                    });
-                    this.save_auxiliary_preferences(cx);
+                    settings_page::SettingsEvent::ChromaTour => {
+                        this.navigate(Location::Tour(TourKind::Chroma), window, cx)
+                    }
+                    settings_page::SettingsEvent::Alexa => {
+                        this.open_module_tab(service_pages::ModulePage::Alexa, window, cx)
+                    }
+                    settings_page::SettingsEvent::AppPicker => this
+                        .app_picker
+                        .update(cx, |picker, cx| picker.show(window, cx)),
+                    settings_page::SettingsEvent::Modules => {
+                        this.navigate(Location::Main(Tab::Modules), window, cx)
+                    }
+                    settings_page::SettingsEvent::Dashboard => {
+                        this.navigate(Location::Main(Tab::Home), window, cx)
+                    }
+                    settings_page::SettingsEvent::Pairing => {
+                        this.navigate(Location::Pairing("multi-device-pairing".into()), window, cx)
+                    }
+                    settings_page::SettingsEvent::ProfileMigration => {
+                        this.navigate(Location::ProfileMigration, window, cx);
+                    }
+                    settings_page::SettingsEvent::ReleaseNotes => {
+                        this.release_notes = Some(release_notes::open(window, cx));
+                        cx.notify();
+                    }
+                    settings_page::SettingsEvent::ResetTutorials => {
+                        this.tracking_intro_seen = false;
+                        for device in &this.devices {
+                            device.update(cx, |device, cx| device.set_intro_seen(false, cx));
+                        }
+                        this.gamer_room
+                            .update(cx, |page, cx| page.reset_tutorial(cx));
+                        this.dashboard_tutorial
+                            .update(cx, |tutorial, cx| tutorial.reset(cx));
+                        this.settings.update(cx, |settings, cx| {
+                            settings.tutorial_seen(false, cx);
+                            settings.dashboard_tutorial_seen(false, cx);
+                        });
+                        this.save_auxiliary_preferences(cx);
+                    }
                 }
             },
         ));

@@ -368,3 +368,7 @@
 !/tools/acquire-lighting-engine-source-current.py
 !/tools/audit-lighting-native-current.cjs
 !/tools/validate-lighting-native-ida-current.py
+!/tools/audit-host-storage-current.py
+!/tools/refresh-workspace-receipts.py
+!/tools/audit-cmmixer-read-outcomes-current.py
+!/tools/audit-audio-mixer-help-current.py

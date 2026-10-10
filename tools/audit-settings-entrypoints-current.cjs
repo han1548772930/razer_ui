@@ -31,7 +31,7 @@ const navigationItems = binding(settings, 4914, '$i');
 const columns = binding(settings, 4914, 'ee');
 binding(settings, 4914, 'Q');
 binding(settings, 4914, 'ue');
-for (const name of ['Ks', 'bn', 'Ia', 'Un', 'Te', 'Fs']) binding(settings, 4914, name);
+for (const name of ['Ks', 'bn', 'Ia', 'Un', 'Te', 'Fs', 'xn', 'Da', 'Aa', 'Ma', 'fa', '_a', 'Na', 'ba']) binding(settings, 4914, name);
 assert(mountedRoot.includes('(po,{})') && mountedRoot.includes('(mo,{})')
   && mountedView.includes('className:"main-setting"')
   && navigation.includes('navs:$i') && navigationItems === '[{id:1,name:qi},{id:2,name:Qi}]', 'Actual Settings top navigation changed');
@@ -40,8 +40,11 @@ assert(![mountedRoot, mountedView, synapse, general].some(text => text.includes(
 const cssPath = '.ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css';
 const cssSource = read(cssPath);
 const cssSelectors = ['.body-wrapper', '.body-widgets', '.widget-col', '.body-widgets .widget',
+  'div.flex', 'div.flex>div',
   '.widget .titleRow .title', '.main-setting .widget .title', '.main-setting div.widget-col',
-  '.body-widgets div.widget-col', 'div.nav-tabs', '.nav-tabs .nav', '.widget-switch'];
+  '.body-widgets div.widget-col', 'div.nav-tabs', '.nav-tabs .nav', '.widget-switch',
+  '.check-box', '.check-box:after', '.check-box:before', '.check-text',
+  '.main-setting .widget .check-item', '.tree-checkbox .child-content .note'];
 const css = parseCSS(cssSource).filter(rule => cssSelectors.includes(rule.selector))
   .map(rule => ({path: cssPath, sha256: hash(cssSource), ...rule}));
 const hasCSS = (selector, property, value) => css.some(rule => rule.selector === selector
@@ -51,6 +54,12 @@ for (const [selector, property, value] of [['.body-wrapper', 'padding', '10px 20
   ['.body-widgets .widget', 'margin', '10px auto'], ['.body-widgets .widget', 'padding', '30px 40px'],
   ['.main-setting .widget .title', 'font-size', '18px'], ['.body-widgets div.widget-col', 'margin', '0 30px']])
   assert(hasCSS(selector, property, value), `Current layout changed: ${selector}/${property}`);
+for (const [selector, property, value] of [['.check-box', 'width', '20px'],
+  ['.check-box', 'height', '20px'], ['.check-box', 'border-radius', '2.4px'],
+  ['.check-text', 'font-size', '14px'], ['.check-text', 'line-height', '17px'],
+  ['.main-setting .widget .check-item', 'margin', '0']])
+  assert(hasCSS(selector, property, value), `Current checkbox changed: ${selector}/${property}`);
+assert(hasCSS('div.flex>div', 'flex', 'auto'), 'Original Settings column growth changed');
 const narrowRules = css.filter(rule => ['.main-setting div.widget-col', '.body-widgets div.widget-col'].includes(rule.selector));
 assert(narrowRules.length === 2 && narrowRules[1].selector === '.body-widgets div.widget-col'
   && narrowRules.every(rule => rule.conditions.includes('@media(max-width:1279px)')), 'Column media cascade order changed');
@@ -105,14 +114,15 @@ const eventEnd = shell.indexOf('settings_page::SettingsEvent::ResetTutorials =>'
 assert(eventStart >= 0 && eventEnd > eventStart, 'Settings dispatch boundary changed');
 assert(!page.includes('::open_preview(') && !page.includes('open_calibration_preview(')
   && !shell.slice(eventStart, eventEnd).includes('open_preview('), 'Settings still opens a sample wrapper');
-assert(!page.includes('Page::Connection') && !page.includes('settings-tab-connection')
-  && !page.includes('fn connection(') && !page.includes('preview-product-select')
-  && !page.includes('SettingsEvent::Preview'), 'Settings contains non-source diagnostics or preview controls');
+assert(!page.includes('Checkbox::new(') && page.includes('surface::check_item_with_style(')
+  && page.includes('tick_bottom_origin: (0.8, 10.2)'), 'Settings no longer uses original checkbox geometry');
+assert((page.match(/\.flex_grow\(1\.\)/g) || []).length >= 4
+  && page.includes('.flex_basis(surface::css(600.))'), 'Settings columns lost source flex:auto growth');
 const result = {schema_version: 1, method: 'Acorn mounted roots and byte-exact current product slices; no vendor execution',
   generator_sha256: hash(fs.readFileSync(__filename)), receipts, css, product_evidence: productReceipts,
-  implementation: ['crates/razer-settings/src/settings_page.rs', 'crates/razer-shell/src/shell.rs', 'crates/razer-app-pages/src/app_picker.rs']
+  implementation: ['crates/razer-settings/src/settings_page.rs', 'crates/razer-widgets/src/surface.rs', 'crates/razer-shell/src/shell.rs', 'crates/razer-app-pages/src/app_picker.rs']
     .map(file => ({path: file, sha256: hash(fs.readFileSync(path.join(root, file)))})),
-  scope: 'Current Settings has only mounted Synapse/General navigation, source column/card geometry and recommendation switch; non-source diagnostics and preview controls removed',
+  scope: 'Current Settings mounted Synapse/General navigation, column/card geometry and recommendation switch; user-authorized Connection diagnostics opens actual page owners and is separate from original coverage',
   remaining: ['Actual page details and backend coverage remain tracked individually', 'No application, visual, focus or hardware runtime acceptance'], runtime_acceptance: 'not_run'};
 const output = path.join(root, 'docs/re/settings-entrypoints-current-evidence.json');
 const text = JSON.stringify(result, null, 2) + '\n';

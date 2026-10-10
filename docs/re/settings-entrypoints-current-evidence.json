@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "method": "Acorn mounted roots and byte-exact current product slices; no vendor execution",
-  "generator_sha256": "828667d05e224d5fd7ad57eadab6ba8b1fdc86d263f448166d44c5ccddf69247",
+  "generator_sha256": "73e8b57b89608347528a993c27fdd57e1726dbf62a5ec3278f5c0cd220ff0c1d",
   "receipts": [
     {
       "module": 4914,
@@ -157,6 +157,78 @@
       "source": "function(){const e=(0,o.useState)(\"\"),t=(0,ne.A)(e,2),s=t[0],a=t[1],i=(0,l.useSelector)(e=>e.languageReducer.lang),r=new URL(window.location.href).href.includes(\"appsbeta\"),c=n(7795).A,d=n(2304).A;(0,o.useEffect)(()=>{(async()=>{try{const e=await zn().get(\"/synapse/dashboard/manifest.json?timestamp=\".concat(Date.now()));let t=\"4.0.0\";return e.data.buildVersion&&e.data.version&&(t=[\"4\",...e.data.version.split(\".\").slice(1),e.data.buildVersion].join(\".\")),t}catch(e){let t=RazerApp.getAppData(\"synapse\",\"version\");return console.log(\"getAppVersion version\",t),\"string\"===typeof t&&(t=[\"4\",...t.split(\".\").slice(1)].join(\".\")),t}})().then(e=>{a(e)})},[]);const p=e=>()=>{window.apiElectron.doElectronAction({action:\"openInDefaultBrowser\",url:e})};return(0,o.useEffect)(()=>{Array.from(document.querySelectorAll(\".social-item\")).filter(e=>{var t,n,s;return null===e||void 0===e||null===(t=e.lastChild)||void 0===t||null===(n=t.className)||void 0===n||null===(s=n.includes)||void 0===s?void 0:s.call(n,\"tooltip\")}).forEach(e=>{e.lastChild.clientWidth&&(e.lastChild.style.left=-e.lastChild.clientWidth/2+14+\"px\")})},[i]),(0,Y.jsx)(me,{title:le.OZV,hasSwitch:!1,children:(0,Y.jsxs)(\"div\",{className:\"about-setting\",children:[(0,Y.jsx)(\"img\",{className:\"img-nodrag\",src:r?d:c,alt:\"\",style:{maxHeight:\"120px\"}}),(0,Y.jsx)(\"div\",{className:\"version\",children:(0,Y.jsx)(re.A,{text:le.xvI,data:{number:s}})}),(0,Y.jsxs)(\"div\",{className:\"copyright\",children:[(0,Y.jsx)(re.A,{text:le.cCC,data:{year:(new Date).getFullYear()}}),(0,Y.jsx)(\"br\",{}),(0,Y.jsx)(re.A,{text:le.uag})]}),(0,Y.jsxs)(\"div\",{className:\"policy\",children:[(0,Y.jsx)(Zn,{href:\"https://assets.razerzone.com/downloads/software/RazerSynapse3EndUserLicenseAgreement.pdf\",className:\"hovering-effect\",children:(0,Y.jsx)(re.A,{text:le.glQ})}),(0,Y.jsx)(\"span\",{children:\"|\"}),(0,Y.jsx)(Zn,{href:\"https://mysupport.razer.com/app/answers/detail/a_id/15020\",className:\"hovering-effect\",children:(0,Y.jsx)(re.A,{text:le.UAL})}),(0,Y.jsx)(\"span\",{children:\"|\"}),(0,Y.jsx)(Zn,{href:\"https://www.razer.com/legal/terms-of-service\",className:\"hovering-effect\",children:(0,Y.jsx)(re.A,{text:le.J6R})}),(0,Y.jsx)(\"span\",{children:\"|\"}),(0,Y.jsx)(\"br\",{}),(0,Y.jsx)(Zn,{href:\"https://www.razer.com/legal/privacy-policy\",className:\"hovering-effect\",children:(0,Y.jsx)(re.A,{text:le.cgZ})})]}),(0,Y.jsx)(\"div\",{className:\"copyright\",style:{textTransform:\"uppercase\"},children:(0,Y.jsx)(re.A,{text:le.$Ml})}),(0,Y.jsx)(\"div\",{className:\"social-container\",children:(0,Y.jsx)(\"button\",{className:\"social-item\",onClick:p(\"https://insider.razer.com\"),\"aria-label\":\"Razer Insider\",children:(0,Y.jsx)(Zs,{\"aria-hidden\":\"true\"})},\"social-insider\")}),(0,Y.jsx)(\"div\",{className:\"social-container\",children:Object.entries(Gs).map(e=>{let t=(0,ne.A)(e,2),n=t[0],s=t[1];return(0,Y.jsxs)(\"button\",{onClick:p(s.link),className:\"social-item\",children:[s.component,(0,Y.jsx)(\"div\",{className:\"tooltip\",\"aria-hidden\":!0,children:(0,Y.jsx)(re.A,{text:Ws[s.translationType]})})]},\"social\"+n)})})]})})}"
     },
     {
+      "module": 4914,
+      "name": "xn",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 46936,
+      "end": 48445,
+      "source": "class xn extends o.Component{constructor(e){super(e),this.checkMe=e=>{e.stopPropagation(),this.props.onCheck()};const t=this.props,n=t.active,s=t.disabled;this.state={active:n,disabled:s},this.id=([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,e=>(e^crypto.getRandomValues(new Uint8Array(1))[0]&15>>e/4).toString(16))}componentDidUpdate(e){const t=this.props,n=t.active,s=t.disabled;n!==e.active&&this.setState({active:n}),s!==e.disabled&&this.setState({disabled:s})}render(){const e=this.props,t=e.name,n=e.extraClass,s=e.isSpinner,a=this.state,i=a.active,o=a.disabled,r=this.checkMe,l=this.id;var c=\"check-item \".concat(n||\"\",\" \").concat(o?\"disabled\":\"\");return s?(0,Y.jsxs)(Y.Fragment,{children:[(0,Y.jsxs)(\"div\",{style:{display:\"inline-block\"},className:c,children:[(0,Y.jsx)(\"input\",{type:\"checkbox\",id:l,checked:i||!1,onChange:r}),(0,Y.jsx)(\"label\",{htmlFor:l,className:\"check-box\"})]}),(0,Y.jsxs)(\"div\",{className:\"lable-spinner\",children:[(0,Y.jsx)(\"div\",{className:\"check-text\",children:\"string\"===typeof t?(0,Y.jsx)(re.A,{text:t}):t}),(0,Y.jsx)(Oe,{isMounted:!0}),(0,Y.jsx)(\"div\",{className:\"checkingTip\",children:(0,Y.jsx)(re.A,{text:le.Vl5})})]})]}):(0,Y.jsxs)(\"div\",{className:c,onMouseDown:e=>{this.props.onMouseDown&&this.props.onMouseDown(e)},children:[(0,Y.jsx)(\"input\",{type:\"checkbox\",id:l,checked:i||!1,onChange:r}),(0,Y.jsx)(\"label\",{htmlFor:l,className:\"check-box\",children:(0,Y.jsx)(\"div\",{className:\"check-text \".concat(n),children:\"string\"===typeof t?(0,Y.jsx)(re.A,{text:t}):t})})]})}}"
+    },
+    {
+      "module": 4914,
+      "name": "Da",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 87303,
+      "end": 87322,
+      "source": "\"style_mg20__Gwb+L\""
+    },
+    {
+      "module": 4914,
+      "name": "Aa",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 87371,
+      "end": 87391,
+      "source": "\"style_title__aG062\""
+    },
+    {
+      "module": 4914,
+      "name": "Ma",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 87395,
+      "end": 87419,
+      "source": "\"style_groupDesc__mjQvr\""
+    },
+    {
+      "module": 4914,
+      "name": "fa",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 87326,
+      "end": 87345,
+      "source": "\"style_mg10__jgnWB\""
+    },
+    {
+      "module": 4914,
+      "name": "_a",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 87349,
+      "end": 87367,
+      "source": "\"style_mg6__IzR+-\""
+    },
+    {
+      "module": 4914,
+      "name": "Na",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 87452,
+      "end": 87479,
+      "source": "\"style_ignoreDevice__rodIQ\""
+    },
+    {
+      "module": 4914,
+      "name": "ba",
+      "path": ".ref/applications/synapse/settings/static/js/720.1e5d1c8f.chunk.js",
+      "sha256": "09885484dcda19f25b9b216d575da5d2cbed2abe5678e6280c0011387be4ce64",
+      "offset": 88061,
+      "end": 88259,
+      "source": "e=>{let t=e.action,n=e.ignoredList;return(0,Y.jsx)(\"div\",{className:ya(wa,Da),children:xa.map(e=>{const s=e.name,a=e.type;return(0,Y.jsx)(On,{active:!n.includes(a),name:s,onCheck:()=>{t(a)}},s)})})}"
+    },
+    {
       "module": 96776,
       "name": "E",
       "path": ".ref/applications/synapse/dashboard/static/js/App.72827d47.chunk.js",
@@ -192,6 +264,36 @@
     }
   ],
   "css": [
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 4462,
+      "selector": "div.flex",
+      "conditions": [],
+      "declarations": "display:flex",
+      "properties": [
+        {
+          "property": "display",
+          "value": "flex",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 4484,
+      "selector": "div.flex>div",
+      "conditions": [],
+      "declarations": "flex:auto",
+      "properties": [
+        {
+          "property": "flex",
+          "value": "auto",
+          "important": false
+        }
+      ]
+    },
     {
       "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
       "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
@@ -557,6 +659,181 @@
     {
       "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
       "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 85117,
+      "selector": ".check-box",
+      "conditions": [],
+      "declarations": "background-color:#0000;border:1px solid #737373;border-radius:2.4px;box-sizing:border-box;display:inline-block;height:20px;margin-right:10px;position:relative;transition:border-color .3s ease;width:20px",
+      "properties": [
+        {
+          "property": "background-color",
+          "value": "#0000",
+          "important": false
+        },
+        {
+          "property": "border",
+          "value": "1px solid #737373",
+          "important": false
+        },
+        {
+          "property": "border-radius",
+          "value": "2.4px",
+          "important": false
+        },
+        {
+          "property": "box-sizing",
+          "value": "border-box",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "inline-block",
+          "important": false
+        },
+        {
+          "property": "height",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "margin-right",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "transition",
+          "value": "border-color .3s ease",
+          "important": false
+        },
+        {
+          "property": "width",
+          "value": "20px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 85680,
+      "selector": ".check-box:before",
+      "conditions": [],
+      "declarations": "left:8.6px;top:16.4px;transform:rotate(-145deg)",
+      "properties": [
+        {
+          "property": "left",
+          "value": "8.6px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "16.4px",
+          "important": false
+        },
+        {
+          "property": "transform",
+          "value": "rotate(-145deg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 85746,
+      "selector": ".check-box:after",
+      "conditions": [],
+      "declarations": "left:.8px;top:10.2px;transform:rotate(-50deg)",
+      "properties": [
+        {
+          "property": "left",
+          "value": ".8px",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "10.2px",
+          "important": false
+        },
+        {
+          "property": "transform",
+          "value": "rotate(-50deg)",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 86166,
+      "selector": ".check-text",
+      "conditions": [],
+      "declarations": "color:#ccc;display:block;font-size:14px;left:30px;line-height:17px;max-height:20px;min-width:-webkit-max-content;min-width:max-content;position:relative;text-align:left;top:2px",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#ccc",
+          "important": false
+        },
+        {
+          "property": "display",
+          "value": "block",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "left",
+          "value": "30px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "17px",
+          "important": false
+        },
+        {
+          "property": "max-height",
+          "value": "20px",
+          "important": false
+        },
+        {
+          "property": "min-width",
+          "value": "-webkit-max-content",
+          "important": false
+        },
+        {
+          "property": "min-width",
+          "value": "max-content",
+          "important": false
+        },
+        {
+          "property": "position",
+          "value": "relative",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "left",
+          "important": false
+        },
+        {
+          "property": "top",
+          "value": "2px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
       "offset": 260101,
       "selector": ".main-setting .widget .title",
       "conditions": [],
@@ -565,6 +842,21 @@
         {
           "property": "font-size",
           "value": "18px",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 260145,
+      "selector": ".main-setting .widget .check-item",
+      "conditions": [],
+      "declarations": "margin:0",
+      "properties": [
+        {
+          "property": "margin",
+          "value": "0",
           "important": false
         }
       ]
@@ -582,6 +874,41 @@
         {
           "property": "margin",
           "value": "0",
+          "important": false
+        }
+      ]
+    },
+    {
+      "path": ".ref/applications/synapse/settings/static/css/720.dbc9cca5.chunk.css",
+      "sha256": "986d72b2d006545b4805e158a6f20d10328b7328970ad8955b932afae6f3aafd",
+      "offset": 271709,
+      "selector": ".tree-checkbox .child-content .note",
+      "conditions": [],
+      "declarations": "color:#707070;font-size:14px;line-height:17px;margin-bottom:10px;text-align:left",
+      "properties": [
+        {
+          "property": "color",
+          "value": "#707070",
+          "important": false
+        },
+        {
+          "property": "font-size",
+          "value": "14px",
+          "important": false
+        },
+        {
+          "property": "line-height",
+          "value": "17px",
+          "important": false
+        },
+        {
+          "property": "margin-bottom",
+          "value": "10px",
+          "important": false
+        },
+        {
+          "property": "text-align",
+          "value": "left",
           "important": false
         }
       ]
@@ -634,18 +961,22 @@
   "implementation": [
     {
       "path": "crates/razer-settings/src/settings_page.rs",
-      "sha256": "1e991c89ffb5a8fff24717ed1a8361669a29bf8701def58ca66ee0b4cca4625b"
+      "sha256": "3edcfa374049da0c80b6ac3eae87090ca937f4097adc55ef09c083d496ebd411"
+    },
+    {
+      "path": "crates/razer-widgets/src/surface.rs",
+      "sha256": "90e3a188a9c3dad7d9671acd6076745ca0b70216d70207baa8acd226f19e68f5"
     },
     {
       "path": "crates/razer-shell/src/shell.rs",
-      "sha256": "ae204422bbcafd191649cafff038082eecfae2f7f30af23f7327155264080395"
+      "sha256": "766663b14b95b4dade933142a7c5c360bb417c9189c82c551ec9f7a4c59f710a"
     },
     {
       "path": "crates/razer-app-pages/src/app_picker.rs",
       "sha256": "9cb92b544ef9c95e064f2854d78045bb819ce972492c0a46e00313eea48b1aad"
     }
   ],
-  "scope": "Current Settings mounted navigation, column/card geometry, recommendation switch and local shortcut presentation; original Settings has no Connection diagnostics tab",
+  "scope": "Current Settings mounted Synapse/General navigation, column/card geometry and recommendation switch; user-authorized Connection diagnostics opens actual page owners and is separate from original coverage",
   "remaining": [
     "Actual page details and backend coverage remain tracked individually",
     "No application, visual, focus or hardware runtime acceptance"

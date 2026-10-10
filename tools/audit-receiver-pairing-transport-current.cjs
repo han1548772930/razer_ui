@@ -29,7 +29,14 @@ for(const product of [164,241]){
  record(s,34340,'mouse layout fallback',s.binding(34340,product===164?'_e':'he'));
  let base=s.exported(7755,'default');let aliases=0;
  while(base.type==='Identifier'){assert(aliases++<8);base=s.binding(7755,base.name);}
- walk(base,n=>{if(n.type==='MethodDefinition'&&['getEdition','getHWModule'].includes(key(n.key)))record(s,7755,'postpair '+key(n.key),n);});
+ walk(base,n=>{if(n.type==='MethodDefinition'&&['getEdition','getHWModule','_getUSBTransferInResult'].includes(key(n.key))){
+  const text=record(s,7755,'postpair '+key(n.key),n);
+  if(key(n.key)==='_getUSBTransferInResult'){
+   const handlers=[];walk(n,node=>{if(node.type==='CatchClause')handlers.push(node);});
+   assert(text.includes('n.resendOutCommand=!1;try{')&&text.includes('n.error=i.ERROR_USB_TRANSFER_IN_BUSY,n.resendOutCommand=!0'));
+   assert.equal(handlers.length,1);assert(!s.snippet(7755,handlers[0]).includes('resendOutCommand'));
+  }
+ }});
  for(const name of ['ZK','J7','yi','jQ'])exported(s,50652,name);
  for(const name of ['U1','ft','Zz'])exported(s,52975,name);
  for(const name of ['q','Se','Te','Ee','Ke','j','Y','Z','me','Ie','ye','X','ee','Q','Ne','Ce','De','ge','Me','N','Ye','Ze','Be'])record(s,34340,name,s.binding(34340,name));
@@ -136,9 +143,10 @@ const gaps=[
  'Failed-unpair 2000ms V2 query recovery is implemented; category-specific mapping/profile recombination and native reconnect semantics remain incomplete.',
  'Protocol25 scan parser exposes three records; unsupported counts fail rather than fabricate device identity.',
 ];
+const exchangeSemantics='Current inherited _getUSBTransferInResult resets resendOutCommand per OUT, retains it after busy and does not clear it in catch. IN exceptions retry OUT only after busy; send exceptions terminate. Original slice clamps to actual returned bytes. Rust adds only canonical transport Report ID/header and typed payload bounds, not full-length or profile/region success conditions.';
 const implementation=['crates/razer-device/src/receiver_pairing.rs','crates/razer-service/src/runtime/windows/receiver_events.rs','crates/razer-service/src/runtime/windows/receiver_pairing.rs','crates/razer-discovery/src/receiver_pairing.rs','crates/razer-storage/src/receiver_pairing.rs','crates/razer-shell/src/shell/receiver_pairing.rs','crates/razer-shell/src/shell/receiver_pairing/route.rs','crates/razer-shell/src/shell/receiver_pairing/route/windows.rs','crates/razer-pages/src/features/dock_pairing/observation.rs','crates/razer-pages/src/features/dock_pairing/state.rs'];
 const implementationReceipts=implementation.map(file=>{const bytes=fs.readFileSync(path.join(root,file));return{path:file,sha256:hash(bytes),bytes:bytes.length,runtime_acceptance:false};});
-const evidence={schema_version:1,method:'Current acquisition-verified 164/241 AST, current official host source and retained IDA mapping_engine analysis; vendor JavaScript and native targets never executed',generator_sha256:hash(fs.readFileSync(__filename)),receipts,products,native_transport:nativeTransport,gaps,implementation,implementation_receipts:implementationReceipts,metadata_transport:{factory_sleep_multiplier:5,base_sleep_ms:5,actual_sleep_ms:25,max_retry_in:10,max_retry_out:20,edition_command:[3,0,134],edition_parser:'data[0]=keyboardLayout, data[1]=edition, data[2]=firmwareId',edition_helper_retries:3,edition_helper_retry_delay_ms:100,mouse_layout_command:[1,0,185],mouse_layout_parser:'data[0]=status; actual scoped runtime sidepadLayout has precedence in the original caller'},scan_catalog:{asset:'assets/data/receiver-pairing-catalog.json',devices:scanCatalog.devices.length,available:scanCatalog.available.length,raw_dongle_is_not_product_id:true},worker_actions:['ReceiverPairingStart','ReceiverPairingPoll','ReceiverPairingCancel']};
+const evidence={schema_version:1,method:'Current acquisition-verified 164/241 AST, current official host source and retained IDA mapping_engine analysis; vendor JavaScript and native targets never executed',generator_sha256:hash(fs.readFileSync(__filename)),receipts,products,native_transport:nativeTransport,gaps,implementation,implementation_receipts:implementationReceipts,exchange_semantics:exchangeSemantics,metadata_transport:{factory_sleep_multiplier:5,base_sleep_ms:5,actual_sleep_ms:25,max_retry_in:10,max_retry_out:20,edition_command:[3,0,134],edition_parser:'data[0]=keyboardLayout, data[1]=edition, data[2]=firmwareId',edition_helper_retries:3,edition_helper_retry_delay_ms:100,mouse_layout_command:[1,0,185],mouse_layout_parser:'data[0]=status; actual scoped runtime sidepadLayout has precedence in the original caller'},scan_catalog:{asset:'assets/data/receiver-pairing-catalog.json',devices:scanCatalog.devices.length,available:scanCatalog.available.length,raw_dongle_is_not_product_id:true},worker_actions:['ReceiverPairingStart','ReceiverPairingPoll','ReceiverPairingCancel']};
 const assets={schema_version:1,products};
 for(const [file,value]of [['docs/re/receiver-pairing-transport-current-evidence.json',evidence],['assets/data/receiver-pairing-capabilities.json',assets],['assets/data/receiver-pairing-catalog.json',scanCatalog]]){
  const text=JSON.stringify(value,null,2)+'\n';if(process.argv.includes('--check'))assert.equal(read(file),text,'Stale '+file);else fs.writeFileSync(path.join(root,file),text);

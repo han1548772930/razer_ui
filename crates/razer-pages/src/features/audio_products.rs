@@ -783,8 +783,8 @@ impl AudioProductWorkspace {
     }
 
     /// Emit a source-verified HID DSP write for controls backed by
-    /// `MixerSDKLib_PropertyControl`. AudioCamy virtual endpoints are omitted
-    /// by `mixer_path` and remain local until their own adapter is connected.
+    /// the actual AudioMixer instance. Other endpoints are omitted by
+    /// `mixer_path` until their distinct source caller chains are connected.
     fn request_mixer_write(&mut self, path: &str, _value: Option<Value>, cx: &mut Context<Self>) {
         if path.starts_with("/equalizers/mic/bands/")
             || path.starts_with("/equalizers/mic_basic/bands/")

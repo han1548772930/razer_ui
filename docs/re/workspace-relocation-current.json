@@ -3708,7 +3708,7 @@
     },
     {
       "path": "crates/razer-app-pages/src/alexa_page/sections.rs",
-      "sha256": "65822ea2f145bf808d03c0fc3753b5bef37b173133025a8f32e1df141d195bdd"
+      "sha256": "2319d018cec00fff2dc2a2cc58c3e5300522345c46d73b1fe333c24cf406c22d"
     },
     {
       "path": "crates/razer-app-pages/src/alexa_page/tests.rs",
@@ -3716,11 +3716,11 @@
     },
     {
       "path": "crates/razer-app-pages/src/alexa_page.rs",
-      "sha256": "64850d6b9000d13a1327e1eff20992a1904799e44e587d8745ef067c8bfdb666"
+      "sha256": "4128db43d903f4ecdc90f65ec17a447393ea56c53bbde816a45c2e949228d5d7"
     },
     {
       "path": "crates/razer-app-pages/src/app_picker.rs",
-      "sha256": "cf6fef2f357b405b5627a7ff28f21742fbf60a5491df9cd83802273aaa4f6ee9"
+      "sha256": "9cb92b544ef9c95e064f2854d78045bb819ce972492c0a46e00313eea48b1aad"
     },
     {
       "path": "crates/razer-app-pages/src/app_picker_tests.rs",
@@ -4060,7 +4060,7 @@
     },
     {
       "path": "crates/razer-assets/src/lib.rs",
-      "sha256": "9b12586e63996956167bf5e7011af5835c670e2b84faa59a93e4c22c44c6761b"
+      "sha256": "316a1762ab8c16f189a03b0c2dfcdea4ae383a3c0c2bfb8f6244bbf9f3450209"
     },
     {
       "path": "crates/razer-catalog/Cargo.toml",
@@ -4076,7 +4076,7 @@
     },
     {
       "path": "crates/razer-catalog/src/native_library.rs",
-      "sha256": "e716a71a86e17cf3fe8d6b0dda9d0451f44d476fad5ad5f127ce2a54066d7ec7"
+      "sha256": "0898b713b14685736e4e283c898ca32b0b4f69536dceac820856671452ab3088"
     },
     {
       "path": "crates/razer-catalog/src/registry.rs",
@@ -4132,7 +4132,7 @@
     },
     {
       "path": "crates/razer-device/src/audio_mixer.rs",
-      "sha256": "5a1651eafbd791e0d309f3663b1346ef75843306c9d7db9f1056d6f3290feaed"
+      "sha256": "d3ded4b16f2712787602baff261a31bb38b64f83142fab7af7becda211fb2d82"
     },
     {
       "path": "crates/razer-device/src/audio_notification.rs",
@@ -4184,7 +4184,7 @@
     },
     {
       "path": "crates/razer-device/src/lib.rs",
-      "sha256": "19e541c6053663ac087eb303997e16a06f64387f28d0361e0c0d2e16d7ff6958"
+      "sha256": "43ad4e7c8c04c6c63fc0b66b4a906b92d20af2d78d76b6ea26bd78691236b90b"
     },
     {
       "path": "crates/razer-device/src/mouse_dpi_stages.rs",
@@ -4204,7 +4204,7 @@
     },
     {
       "path": "crates/razer-device/src/receiver_pairing.rs",
-      "sha256": "2fbdb14c73e14e5fe75ecc7c926c1551ab99f783ccaac71f53619971d7338782"
+      "sha256": "6f95072233031ab35c3feeeaca1ea91db7ae715ee062816fd0c726e4d68f948e"
     },
     {
       "path": "crates/razer-device/src/receiver_peer_catalog.json",
@@ -4304,7 +4304,7 @@
     },
     {
       "path": "crates/razer-ipc/src/lib.rs",
-      "sha256": "f601cab29e650765666420e03e5705785b3659c994e924833fce69491b0aaedc"
+      "sha256": "64ef738a9b9883c33f39408ed4160b1ba63a2ea7406ebd7246b2c7c41b137a4a"
     },
     {
       "path": "crates/razer-ipc/src/runtime_job.rs",
@@ -4432,7 +4432,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/audio_mixer.rs",
-      "sha256": "a83c0e2f3c31c57e6f85cf25c8c3dca7ed19395ba9f6b0ec46e3cf4cd7b5c282"
+      "sha256": "36926952561fab4199af5b3e334967e487186ccb7b311f09277653f5e2176fa3"
     },
     {
       "path": "crates/razer-pages/src/features/audio_nommo.rs",
@@ -4544,11 +4544,11 @@
     },
     {
       "path": "crates/razer-pages/src/features/audio_products.rs",
-      "sha256": "d8dfc90ac1ec8736550955b186c1ff0f4fce4778e3c4713973315af99525d26b"
+      "sha256": "8ad60729e2e14dc02e6fd37fbe687ab5c2bc686d06535cd1831c35b7cd663397"
     },
     {
       "path": "crates/razer-pages/src/features/audio_products_data.json",
-      "sha256": "55f28f89be24482db8887666a552b33462dc64197c23802bd6e6c95634d47732"
+      "sha256": "9776982b6ec9d1b50f5d6056a2bd6aab28af4dd2586ebdd07e1bb36de7a544ff"
     },
     {
       "path": "crates/razer-pages/src/features/audio_volume.rs",
@@ -4868,7 +4868,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/keyboard_products.rs",
-      "sha256": "55a5ac549409a067d974428b27138fe851c5238c8ef03825840656547e4e28f0"
+      "sha256": "c78a745daa9383003e68a5146caee962d28ffa6f3c863fb8b95d85b0273cc523"
     },
     {
       "path": "crates/razer-pages/src/features/keyboard_products_data.json",
@@ -4880,7 +4880,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/keyboard_properties.rs",
-      "sha256": "0e511b2f43c6514853d9cba69d8288b045de181f86fa1c46e03193c175930094"
+      "sha256": "be5e9ed203a06e31100257ef807a758478fa7a1586d322f39db9a791a5f20491"
     },
     {
       "path": "crates/razer-pages/src/features/keyboard_snap_tap.rs",
@@ -4956,7 +4956,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/mod.rs",
-      "sha256": "8093984f3aa653fd9e0cbc8a889f1f8fa6bf4905409b5cc24c7d69d02672303c"
+      "sha256": "2a7c9e7bc8a2e54bb0d14b2d83ae46e58b3c8752b1f82d36cb86e7d76e334f74"
     },
     {
       "path": "crates/razer-pages/src/features/module_service.rs",
@@ -5052,7 +5052,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/product_workspace.rs",
-      "sha256": "54d3c51933d83e2a13728bfc061306be6cccc93adf92b176abae5d5aff8538da"
+      "sha256": "761fdc9858fbf8424a64e15de1f7bc22c84ef7d523e9b34b838549b9d8d57299"
     },
     {
       "path": "crates/razer-pages/src/features/product_workspace_tests.rs",
@@ -5196,7 +5196,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/source_controls.rs",
-      "sha256": "e2257d048c4cdf3e8632dedb7c92f14d55ce36bbf0c714593391160b9dde1e4c"
+      "sha256": "e5c95ee8f89a69cbd9fbf42c382269dd3cf2fff8f4ffdc0b1e3c164c819869f6"
     },
     {
       "path": "crates/razer-pages/src/features/source_controls_data.json",
@@ -5204,7 +5204,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/source_help.rs",
-      "sha256": "993b5424f21431db1d43c096d6cf1acdcd86fdfad11a2e2eb525d3899d0d7e9e"
+      "sha256": "d11da93778eacbd87ee04c4e15ea4bfde04299f7b39c61c27af5f7bfa57d1385"
     },
     {
       "path": "crates/razer-pages/src/features/source_help_data.json",
@@ -5244,7 +5244,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/source_workspace.rs",
-      "sha256": "7a96ce4d661c3e189d8409d842638de303587f59ebdd53b3a0dd8c4f2fcba655"
+      "sha256": "bdecc470589dc78aadbcdbadf8b04cee4f44d09fad3aaffc48578706a0ce8c76"
     },
     {
       "path": "crates/razer-pages/src/features/stream_mixer.rs",
@@ -5312,7 +5312,7 @@
     },
     {
       "path": "crates/razer-pages/src/features/workspace.rs",
-      "sha256": "cb9351ee9ac160731cb457612a0fb6ad1977bcebe0e5b0d07d6828b45369d678"
+      "sha256": "640676ba0df8f2ad15dcbd0e802862c01de25e97baaf89b48c6e0798df372b4b"
     },
     {
       "path": "crates/razer-pages/src/features/workspace_tests.rs",
@@ -5352,11 +5352,11 @@
     },
     {
       "path": "crates/razer-platform/src/lib.rs",
-      "sha256": "150db42e4b5af16915b44f42dff6a9b87a4e116c4b96d22a6daacb0fb7eb33fa"
+      "sha256": "b11ecb853afca80db5e4f930583f7ab15ca1e0609b5e8f6e526f3875998bb821"
     },
     {
       "path": "crates/razer-platform/src/native_paths.rs",
-      "sha256": "b1529acd40c8648e087693a81f67b69c30a541e24a3bd4f18ed8829d36c9089d"
+      "sha256": "5fec9d942fa6c709266899b03cd3be984fab64d775ca318da0c98a06e3e2053b"
     },
     {
       "path": "crates/razer-platform/src/platform/mod.rs",
@@ -5380,7 +5380,7 @@
     },
     {
       "path": "crates/razer-platform/src/platform/windows/mod.rs",
-      "sha256": "68e5447bf2053611c94aa195fae8d219772f2732a6e7b3b6be589a05c2f437e0"
+      "sha256": "5518db8dd662cb1f449bc01255f29c462d4b4be05a4828e2f752de65b4d1b0fc"
     },
     {
       "path": "crates/razer-platform/src/platform/windows/services.rs",
@@ -5388,7 +5388,7 @@
     },
     {
       "path": "crates/razer-platform/src/platform/windows/system.rs",
-      "sha256": "cbfbf1a68aeac8e69ce83e38d9dfcf0992ef1aa41584388d4da3c048e376291e"
+      "sha256": "a2f3bf3223293c9b4807d5160faa503f694338b9a26180f9475ee7ec3d0691eb"
     },
     {
       "path": "crates/razer-platform/src/platform/windows/wheel_scroll.rs",
@@ -5396,7 +5396,7 @@
     },
     {
       "path": "crates/razer-platform/src/system.rs",
-      "sha256": "fa7e295299dd602e5fbd37830f1002f37c7ac901115a3d57332d0c9ecd6bb217"
+      "sha256": "10d4aaa7ca40468172b6c297d40f13eafb80f8e0a9d471933e5b3d90148975a6"
     },
     {
       "path": "crates/razer-platform/src/wheel_scroll.rs",
@@ -5416,7 +5416,7 @@
     },
     {
       "path": "crates/razer-service/src/audio_util.rs",
-      "sha256": "6dd9e4a4339b58f542879046a2956a254009919fcc44eb76500cec7d74b6a76c"
+      "sha256": "badea9647271bdbe9c89f8e40e52d64732aff80da7a6591999e7fb5dfdb6c98e"
     },
     {
       "path": "crates/razer-service/src/dll.rs",
@@ -5424,7 +5424,7 @@
     },
     {
       "path": "crates/razer-service/src/lib.rs",
-      "sha256": "47bad1ba535bdfdf0529a88b3cac8857cf72e962ff56969320cedf031e567ae5"
+      "sha256": "fc7a231fff515d452570b8b68d89cb65c5577ad42ac08895d4e5f26030dbdde4"
     },
     {
       "path": "crates/razer-service/src/lighting.rs",
@@ -5444,11 +5444,11 @@
     },
     {
       "path": "crates/razer-service/src/runtime/mod.rs",
-      "sha256": "b69f720efdf68f222db0815be2691d5b6872b46096df171147eacab0eb0a3a97"
+      "sha256": "f971ac252f4850a94fa5a404b6a2cb59e27ebed7cf575305de8db4909b295e6b"
     },
     {
       "path": "crates/razer-service/src/runtime/portable.rs",
-      "sha256": "55ea42ab92a83defa903d2c5cf58705c100749a56966db044b7b0ec3faea4acb"
+      "sha256": "25a33e00a1967455fa13e1707e38570164023643f5dc57aea87416c8c1bf92d4"
     },
     {
       "path": "crates/razer-service/src/runtime/windows/audio_volume.rs",
@@ -5472,11 +5472,11 @@
     },
     {
       "path": "crates/razer-service/src/runtime/windows/mixer_driver.rs",
-      "sha256": "08ed86bc0f3c48c2e5747bb2bb49925f93d931fd5d4891764e3e6c814079884b"
+      "sha256": "5a1f9cb17a666a33ccfa65332f7d25552421bb96c2c151dcfd1e1b6e59d8451c"
     },
     {
       "path": "crates/razer-service/src/runtime/windows/native.rs",
-      "sha256": "9f5264e5a955ee36bf49d0fbb8f50376a7dc37d7e5cbfd1b91e8eb5ef65624c8"
+      "sha256": "5faa2b750239f0ca02e4628d6204f07a9782ebc5645bc153b3e403c091c2f975"
     },
     {
       "path": "crates/razer-service/src/runtime/windows/receiver.rs",
@@ -5524,7 +5524,7 @@
     },
     {
       "path": "crates/razer-settings/src/settings_page.rs",
-      "sha256": "2e6148acd4ba71afd0b722ee34241bf6054d9b459524b24008a6c500f150dcfd"
+      "sha256": "3edcfa374049da0c80b6ac3eae87090ca937f4097adc55ef09c083d496ebd411"
     },
     {
       "path": "crates/razer-settings/src/settings_systray_action.rs",
@@ -5532,7 +5532,7 @@
     },
     {
       "path": "crates/razer-settings/src/settings_tests.rs",
-      "sha256": "a01e14079697df9dbeaafbb8883f93eb8d7da00f5b51f8ac358ed95c2bb1405c"
+      "sha256": "f1fe5872a880ca46dc1db6ee7bfc2f58db71c4cc4ddce1fb919450ee2879996a"
     },
     {
       "path": "crates/razer-settings/src/settings_window.rs",
@@ -5572,19 +5572,19 @@
     },
     {
       "path": "crates/razer-shell/src/shell/audio_mixer/route/windows.rs",
-      "sha256": "52f596534aaed87a652337369ab2c73f28c62698083ef13922a3bbe59a0d2778"
+      "sha256": "2adc3ea9b04f3901862104c0b01e8aefca55594235721a54e10c6ca8f586b623"
     },
     {
       "path": "crates/razer-shell/src/shell/audio_mixer/route.rs",
-      "sha256": "a399ac30bb73bf1a5126a304653a258503af3344789c4481499042d46678d8e8"
+      "sha256": "fd92122a7664a762fc2d6389462957a8305f6bdd2b490604cd170445af33ed8e"
     },
     {
       "path": "crates/razer-shell/src/shell/audio_mixer.rs",
-      "sha256": "efb955c00149106d934c3d6fc82697b8f36bd073f5b7a0a0d52811b3263aac57"
+      "sha256": "0cfd3a63f12ef000e8d32fc104bc04374031dc600b69f48e3ccf75f4a4c59fca"
     },
     {
       "path": "crates/razer-shell/src/shell/audio_notifications.rs",
-      "sha256": "f163ef5a1b43f3929e995e1ecd57eb929cfff13f47cae030a38987d0c24f4743"
+      "sha256": "ba4b847d9f2a25722efef88682378e192e2662f7cd58e6c93e6f29dd123e5462"
     },
     {
       "path": "crates/razer-shell/src/shell/audio_volume.rs",
@@ -5600,7 +5600,7 @@
     },
     {
       "path": "crates/razer-shell/src/shell/device_discovery.rs",
-      "sha256": "ac5a813c0747c342e6348a798a2787f3d51929a338fa2a6a6eb61e9a00931df8"
+      "sha256": "63e5bd6be5b2a36d6c7bfa6bc65aaaaf868f9e451e1156bc604e54d99c6d56dc"
     },
     {
       "path": "crates/razer-shell/src/shell/device_discovery_tests.rs",
@@ -5684,11 +5684,11 @@
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_pairing/route.rs",
-      "sha256": "25bcb862b8789a07f583275b6b6d26b70016e7b782c0d16a4fe258a7a1e9959a"
+      "sha256": "9518c5d19a793eb42ff0d70f3fd854b147e0cdbaa41e594fbc26408ef2bd894c"
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_pairing.rs",
-      "sha256": "2dad1b303a9dd5ef5e99d0297710ae812051b7afb144110c479b931d9cb74d2a"
+      "sha256": "8f2aae7e9746ddf3019795da9e4f443b74261a7345748585fc665cd5e77967f5"
     },
     {
       "path": "crates/razer-shell/src/shell/save_queue_tests.rs",
@@ -5704,7 +5704,7 @@
     },
     {
       "path": "crates/razer-shell/src/shell.rs",
-      "sha256": "142be71b8ffc0aeb946d7cec50ac9cf0bd27d6aa787256417506bfb1235cef15"
+      "sha256": "766663b14b95b4dade933142a7c5c360bb417c9189c82c551ec9f7a4c59f710a"
     },
     {
       "path": "crates/razer-shell/src/store.rs",
@@ -5724,11 +5724,11 @@
     },
     {
       "path": "crates/razer-storage/src/host.rs",
-      "sha256": "c6fcba2754d5673e0eedc5d0057c957e84ba9d0d6c0bc3abf5d29f13de72a28d"
+      "sha256": "b9b1ff28785a39408e68b9a72c06bd9ff8bb16a52b4cef39ceff6ba45ea6364e"
     },
     {
       "path": "crates/razer-storage/src/lib.rs",
-      "sha256": "79546103f15e08a596fa9b264efcdaeb028a62bdba96fa43fe82ed5ad98c01d3"
+      "sha256": "456ddf1c0c91a76868d440fa652aa66fa94eb2dd0bb5ebbedf6e030f4874f728"
     },
     {
       "path": "crates/razer-storage/src/receiver_pairing.rs",
@@ -5852,7 +5852,7 @@
     },
     {
       "path": "crates/razer-widgets/src/synapse_select.rs",
-      "sha256": "fdf164272efc0bc588d3d7f490a4abe6df023b151a93918de6f9229ed9b2e8a4"
+      "sha256": "374d1f930826b0a68d6762a5c6120c9bd64aaca77e57375f78af9510ba4fee60"
     },
     {
       "path": "crates/razer-widgets/src/theme.rs",

@@ -1,0 +1,453 @@
+{
+  "schema_version": 1,
+  "method": "Retained IDA 8.3 / Hex-Rays pseudocode, function byte hashes and incoming references; static validation only",
+  "generator_sha256": "dca0983b08fc1c50fbe0d0f8f61979d7f4c22e3b5e3a4ee54a9d278f279e0546",
+  "binary": {
+    "path": ".ref/native-libraries/af10595e3ce6cf9b394488e1929fc6e3d54a887c6be62b66260d7ee507c9e8f2/CmMixerLib_v1.0.1.0.dll",
+    "sha256": "af10595e3ce6cf9b394488e1929fc6e3d54a887c6be62b66260d7ee507c9e8f2",
+    "bytes": 119584
+  },
+  "ida_receipt": {
+    "path": "docs/re/evidence/ida-native/af10595e3ce6cf9b394488e1929fc6e3d54a887c6be62b66260d7ee507c9e8f2.json.gz",
+    "sha256": "6aef716dbce10619d07bd8a1a6162c02da3c53245c87c59833d44f3b9aa542d5"
+  },
+  "functions": [
+    {
+      "rva": 57824,
+      "end_rva": 58322,
+      "code_sha256": "a2c1bdf701667740c1360218dd90420cf8efa83d5b89972c91dd4c13fc0a3059",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78808,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1164872,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 58560,
+      "end_rva": 58892,
+      "code_sha256": "15bea2d85416deb41f4f0d12ba830aa808e8efe2b4fba242557bdf897bcf4d0e",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78824,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1164932,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 58896,
+      "end_rva": 59263,
+      "code_sha256": "cf550164a76a43118e454611f5236d995c20a86cce11ab74a8924585fff7f65b",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78832,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1164944,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 59264,
+      "end_rva": 59627,
+      "code_sha256": "42580dbd7ae20f8c555d3947565c289ef42221c816b9f8116d1a53b79f099371",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78840,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1164956,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 59632,
+      "end_rva": 59944,
+      "code_sha256": "28122e87f5b6c7553c409f598e10a690a8c914bff6a32c0319c338b3bd469c1d",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78848,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1164968,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 60144,
+      "end_rva": 60575,
+      "code_sha256": "8d8d28353525985e9935aeb69332304a77702d63ad8e81d1eca1792c1874e0e0",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78864,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 104012,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 104032,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1164992,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 60576,
+      "end_rva": 61007,
+      "code_sha256": "d15887c3db1e59606d31cca8ad5886880e8ddae3113cdd4f37ef31c9f4f4e3cd",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78872,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 104052,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 104072,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165052,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 61008,
+      "end_rva": 61317,
+      "code_sha256": "c9ef948a111ade97239d7b5589e54f79a89440441429065cc745e858e15c3683",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78880,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165112,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 61328,
+      "end_rva": 61637,
+      "code_sha256": "2dfd2d7be7f239b5776dadc5b012451ed514df3eedaa73c4519cb102a3e09437",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78888,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165124,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 61840,
+      "end_rva": 62151,
+      "code_sha256": "453db9f849f2cafd74647c259f1fd21797da2875200bd1a91a981e82efb9719b",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78904,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165148,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 62160,
+      "end_rva": 62468,
+      "code_sha256": "703e09e7ab73d2a4f2a83a5681b1c044d913b3b9b2e989bfb859a77e2f15a2a9",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78912,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165160,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 62480,
+      "end_rva": 62843,
+      "code_sha256": "da4a162a40139da0d4e00b2432c386029160a82bab935a5126e69fd6684f4b27",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78920,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165172,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 62848,
+      "end_rva": 63156,
+      "code_sha256": "f1a5588911f6244d8932f35f62f287a6ca0212badd9d7071b063a7313655d8c9",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78928,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165184,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 63168,
+      "end_rva": 63476,
+      "code_sha256": "8ec98fbec0389fb4187261002751ce7de2abaf4946d37686821771f8a55e804c",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78936,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165196,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 63488,
+      "end_rva": 63796,
+      "code_sha256": "445264551aff1129a367ef05a3ec50ee7e8fb2834140532d2f2ebf26fba73201",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78944,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165208,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 63808,
+      "end_rva": 64116,
+      "code_sha256": "74406b39da647eead1022823cde499577d4b6a282129130facc2fafd56290c87",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78952,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165220,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 64320,
+      "end_rva": 64628,
+      "code_sha256": "79e0e34d853969efcd59197fd9ddb910381a38272cf89d80ce45434f9cd89fed",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78968,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1165244,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    },
+    {
+      "rva": 56928,
+      "end_rva": 57617,
+      "code_sha256": "9f2b27ddfc7e4036c6d9144a3b50daf63fa60f178890b16b19c75dcfc1b427a6",
+      "incoming_references": [
+        {
+          "from_rva": 47453,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 78792,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1164848,
+          "type": 1,
+          "is_code": false
+        }
+      ]
+    }
+  ],
+  "mailbox": {
+    "function_count": 17,
+    "poll_delay_ms": 8,
+    "max_successful_queries": 5,
+    "busy_exhaustion": "Decode and format final raw reply even if busy remains set",
+    "query_failure": "Return original query error immediately; no further polling"
+  },
+  "peak": {
+    "rva": 56928,
+    "query_failure": "Return original query error",
+    "clear": "After publishing both samples, issue zero write and ignore helper return; samples do not confirm successful clear"
+  },
+  "rust": {
+    "path": "crates/razer-device/src/audio_mixer.rs",
+    "sha256": "d3ded4b16f2712787602baff261a31bb38b64f83142fab7af7becda211fb2d82"
+  },
+  "runtime_acceptance": "Not executed: no application, vendor DLL or hardware operation; Rust mock tests are separate verification",
+  "remaining_gaps": [
+    "COM endpoint branch and lifetime remain incomplete",
+    "No full native library equivalence or device acceptance is claimed"
+  ]
+}

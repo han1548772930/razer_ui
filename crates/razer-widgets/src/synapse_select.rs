@@ -52,6 +52,7 @@ pub fn select<I: SelectItem<Value = String> + 'static>(
         disabled: false,
         label: None,
         placeholder: None,
+        selected_text: None,
         presentation: Presentation::Synapse,
     }
 }
@@ -75,6 +76,7 @@ pub struct SynapseSelect<I: SelectItem<Value = String> + 'static> {
     disabled: bool,
     label: Option<SharedString>,
     placeholder: Option<SharedString>,
+    selected_text: Option<SharedString>,
     presentation: Presentation,
 }
 
@@ -100,6 +102,17 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
         self.placeholder = Some(placeholder.into());
         self
     }
+
+    /// Owner-supplied text for the committed value in the trigger only.
+    ///
+    /// Menu titles and selection remain controlled by `items` and SelectState.
+    /// Without a committed value, the placeholder is still displayed. This
+    /// preserves source selectors that retain a selected object's old label
+    /// while the refreshed menu contains its new label.
+    pub fn selected_text(mut self, text: impl Into<SharedString>) -> Self {
+        self.selected_text = Some(text.into());
+        self
+    }
 }
 
 impl<I: SelectItem<Value = String> + 'static> Disableable for SynapseSelect<I> {
@@ -123,6 +136,7 @@ struct SynapseSelectView<I: SelectItem<Value = String> + 'static> {
     disabled: bool,
     label: Option<SharedString>,
     placeholder: Option<SharedString>,
+    selected_text: Option<SharedString>,
     presentation: Presentation,
     open: bool,
     hovered: bool,
@@ -170,6 +184,7 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             disabled: false,
             label: None,
             placeholder: None,
+            selected_text: None,
             presentation: Presentation::Synapse,
             open: false,
             hovered: false,
@@ -288,6 +303,7 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
             view.style = self.style;
             view.label = self.label;
             view.placeholder = self.placeholder;
+            view.selected_text = self.selected_text;
             view.disabled = self.disabled;
             view.presentation = self.presentation;
             if self.disabled {
@@ -305,11 +321,17 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
         let content_focus = self.list.focus_handle(cx);
         let options = self.list.read(cx).delegate();
         let selected = self.state.read(cx).selected_value();
-        let title = options
-            .items
-            .iter()
-            .find(|item| Some(item.value()) == selected)
-            .map(SelectItem::title)
+        let title = self
+            .selected_text
+            .clone()
+            .filter(|_| selected.is_some())
+            .or_else(|| {
+                options
+                    .items
+                    .iter()
+                    .find(|item| Some(item.value()) == selected)
+                    .map(SelectItem::title)
+            })
             .unwrap_or_else(|| self.placeholder.clone().unwrap_or_default());
         let presentation = self.presentation;
         let alexa = presentation == Presentation::Alexa;

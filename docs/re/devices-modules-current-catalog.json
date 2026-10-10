@@ -1,7 +1,7 @@
 {
   "source_date": "2026-10-05",
   "method": "Current manifest-listed 6505/44442 declarations parsed as Acorn data. Feedback host-beta branches retained separately; Armory feature condition remains runtime data.",
-  "generator_sha256": "5a24b164f1749e5bef1d5bb2f35ef18d46dc8e5ba3e92af264c045d55418f8e6",
+  "generator_sha256": "7ea390e8fa8c7dfee11fe7dd4edfd1a53932fd28c7c2d6bc0d2820f751e53b44",
   "contracts": [
     {
       "symbol": "ae",

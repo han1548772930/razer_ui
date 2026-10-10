@@ -5,8 +5,9 @@ field is a startup panic rather than a compile error. This check statically
 parses the struct definitions in the same Rust file and verifies that each
 embedded document satisfies its resolved type, including primitive shape/range,
 balanced generic maps, nested vectors, arrays, tuples and struct fields.
-External enums and custom deserialize implementations are outside this tool's
-struct schema scope. Fields marked `#[serde(default)]`, `Option<...>` or
+Serde unit enums with explicit variant names or standard rename rules are
+validated too. Tagged/data-bearing enums and custom deserialize implementations
+remain outside this tool's schema scope. Fields marked `#[serde(default)]`, `Option<...>` or
 `#[serde(flatten)]` are not required.
 
 This tool only reads our own sources and the embedded JSON; it never runs the
@@ -30,6 +31,8 @@ STRUCT = re.compile(
     r"(?:pub(?:\([^)]*\))?\s+)?struct\s+(?P<name>\w+)\s*(?:<[^>]*>)?\s*\{(?P<body>[^}]*)\}",
     re.S,
 )
+UNIT_ENUM = re.compile(STRUCT.pattern.replace(r"struct\s+", r"enum\s+"), re.S)
+ENUM_VARIANTS = "__serde_unit_enum_variants__"
 FIELD = re.compile(r"(?P<attributes>(?:#\[[^\]]*\]\s*)*)(?:pub(?:\([^)]*\))?\s+)?(?P<name>\w+)\s*:\s*(?P<type>.+)", re.S)
 # `#[serde(default)]` and named defaults such as `#[serde(rename = "x", default)]`.
 SERDE_DEFAULT = re.compile(r"serde\([^)]*\bdefault\b")
@@ -328,7 +331,60 @@ def load_structs(text: str) -> dict[str, dict]:
     return structs
 
 
+def load_unit_enums(text: str) -> dict[str, dict]:
+    """Only accept all-unit serde enums; never guess tagged/payload schemas."""
+    result = {}
+    for match in UNIT_ENUM.finditer(strip_comments(text)):
+        attributes = match.group("attributes")
+        if "Deserialize" not in match.group("derives") or re.search(
+            r"\b(?:tag|content|untagged|from|try_from)\b", attributes
+        ):
+            continue
+        rule = (re.search(r'rename_all\s*=\s*"([^"]+)"', attributes) or [None, None])[1]
+        if rule not in (None, "snake_case", "SCREAMING_SNAKE_CASE", "kebab-case",
+                        "SCREAMING-KEBAB-CASE", "camelCase", "PascalCase", "lowercase", "UPPERCASE"):
+            continue
+        variants = []
+        for declaration in split_types(match.group("body")):
+            if not declaration:
+                continue
+            unit = re.fullmatch(r'(?P<attrs>(?:#\[[^\]]*\]\s*)*)(?P<name>\w+)', declaration)
+            if unit is None or re.search(r'\b(?:other|skip|skip_deserializing)\b', unit.group("attrs")):
+                break
+            name = unit.group("name")
+            renamed = re.search(r'rename\s*=\s*"([^"]+)"', unit.group("attrs"))
+            if renamed:
+                name = renamed.group(1)
+            elif rule in ("snake_case", "SCREAMING_SNAKE_CASE", "kebab-case", "SCREAMING-KEBAB-CASE", "camelCase"):
+                # Serde's enum rule inserts a separator before each uppercase
+                # letter after the first (including acronym letters).
+                snake = re.sub(r'(?<!^)([A-Z])', r'_\1', name).lower()
+                if rule == "camelCase":
+                    name = name[:1].lower() + name[1:]
+                elif rule == "snake_case":
+                    name = snake
+                elif rule == "SCREAMING_SNAKE_CASE":
+                    name = snake.upper()
+                elif rule == "kebab-case":
+                    name = snake.replace("_", "-")
+                else:
+                    name = snake.upper().replace("_", "-")
+            elif rule == "lowercase":
+                name = name.lower()
+            elif rule == "UPPERCASE":
+                name = name.upper()
+            variants.append(name)
+            variants.extend(re.findall(r'alias\s*=\s*"([^"]+)"', unit.group("attrs")))
+        else:
+            result[match.group("name")] = {ENUM_VARIANTS: frozenset(variants)}
+    return result
+
+
 def check_document(document, fields: dict, lookup, path: str, errors: list[str], aliases=None, seen=(), strict_unknown=False) -> None:
+    if ENUM_VARIANTS in fields:
+        if not isinstance(document, str) or document not in fields[ENUM_VARIANTS]:
+            errors.append(f"{path}: unknown unit enum variant {document!r}; expected {sorted(fields[ENUM_VARIANTS])}")
+        return
     if not isinstance(document, dict):
         errors.append(f"{path}: expected an object for this struct")
         return
@@ -372,7 +428,8 @@ def main() -> int:
     sources = production_modules()
     defined: dict[str, list[tuple[Path, dict]]] = {}
     for source in sources:
-        for name, fields in load_structs(source.read_text(encoding="utf-8")).items():
+        text = source.read_text(encoding="utf-8")
+        for name, fields in {**load_structs(text), **load_unit_enums(text)}.items():
             defined.setdefault(name, []).append((source, fields))
 
     def resolve(name: str | None, source: Path) -> tuple[str | None, dict | None]:

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "5f7af0c7145ca22e67fee992fddc40da23e14f648f1d230425e25f6faf3a1759",
+  "generator_sha256": "c5b7ab4d78b9e620677cdf0c898699b23f536bbf183d6af2fed408f2f40b4033",
   "method": "Manifest-bound current binaries, full property disassembly, exact instruction gates and numeric constants; no vendor execution",
   "binary_identity": [
     {
@@ -19756,7 +19756,8 @@
       "creation_disposition": 3,
       "attributes": 128
     },
-    "status": "Source recipe and Rust IPC/Windows adapter implemented; UI consumer and runtime target correlation unverified",
+    "status": "Source recipe, Rust IPC/Windows adapter and actual 1342 Help consumer implemented; runtime target correlation unverified",
+    "caller_result_semantics": "Each native response code remains data and does not stop indices 0..8; transport/identity exceptions stop. Per-index codes and completed indices are separate; no recovered audio state is claimed",
     "rust": "crates/razer-service/src/runtime/windows/mixer_driver.rs",
     "identity_difference": "Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId",
     "rust_lifecycle": "Retain HID identity lock across sequence, open/close an exclusive driver handle for each stream as the source does"
@@ -20000,7 +20001,14 @@
     },
     "status": "Rust matrix codec, scoped Windows adapter and IPC reads/writes implemented; UI consumer and runtime target correlation unverified",
     "rust": "crates/razer-service/src/runtime/windows/mixer_driver.rs",
-    "confirmation_difference": "Rust checks actual returned length and reads back the selected boolean after writes; original does neither",
+    "write_completion": {
+      "source_write_rva": 55878,
+      "source_success_rva": 55940,
+      "source_failure_code": 65539,
+      "post_write_getter": false,
+      "rust_result": "requested, previous from original RMW read, transport_completed; no observed state or comparison"
+    },
+    "confirmation_difference": "Rust validates the actual matrix read length; the original ignores the returned length. Both complete the setter on successful write IOCTL without a post-write getter or comparison",
     "identity_difference": "Original visits all driver interfaces; Rust requires a unique interface sharing the observed HID ContainerId"
   },
   "com_endpoints": {
@@ -21194,7 +21202,7 @@
   "limits": [
     "No COM endpoint enumeration, firmware flash or service replacement implemented.",
     "Scoped driver adapter and IPC exist; original broadcast policy differs and actual ContainerId correlation remains unverified.",
-    "Device page does not consume the new driver/HID IPC yet; local drafts remain local.",
+    "1342 DSP and Help Reset Audio consume IPC; matrix and AudioCamy consumers remain incomplete; local drafts remain local.",
     "Raw DSP firmware is uint32; version component naming remains unresolved.",
     "Mailbox reads change hardware selector state; they are not pure reads.",
     "Exact device descriptor, path identity and caller value validation are required at runtime.",

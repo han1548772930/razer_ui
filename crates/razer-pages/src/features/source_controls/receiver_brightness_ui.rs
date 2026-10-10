@@ -1,5 +1,5 @@
 //! Source brightness change/toggle intents and serialized active-device requests.
-//! Draft persistence is local; only the service readback can confirm hardware.
+//! Draft persistence and requested-value completion stay separate from readback.
 use super::SourceControls;
 use gpui_kit::*;
 
@@ -48,6 +48,10 @@ pub(super) struct State {
     error: Option<String>,
     queued: Option<u8>,
     observed: Option<u8>,
+    // The original TaskRunner updates curValue/value with its requested value
+    // after the setter or same-percent skip. This local completion state is
+    // separate from the getter's actual observation and Chromium memory storage.
+    submitted_requested: Option<u8>,
     preview: Option<u8>,
 }
 impl State {
@@ -57,6 +61,7 @@ impl State {
         self.epoch = self.epoch.wrapping_add(1);
         self.queued = None;
         self.observed = None;
+        self.submitted_requested = None;
         self.preview = None;
         self.error = None;
         self.read_needed = self.active;
@@ -134,6 +139,7 @@ impl SourceControls {
         &mut self,
         generation: u64,
         percent: u8,
+        submitted_requested: Option<u8>,
         observed: Option<u8>,
         error: Option<String>,
         scope_current: bool,
@@ -152,6 +158,9 @@ impl SourceControls {
         }
         self.brightness.pending = None;
         if current {
+            if let Some(value) = submitted_requested {
+                self.brightness.submitted_requested = Some(value);
+            }
             self.brightness.observed = observed;
             self.brightness.error = error;
         }
@@ -255,6 +264,8 @@ impl SourceControls {
                 || format!("设备亮度未确认：{error}"),
                 |value| format!("设备实际亮度：{value}%；提交未确认：{error}"),
             )
+        } else if let Some(value) = self.brightness.submitted_requested {
+            format!("设备亮度原链提交完成：{value}%；本地配置单独保存")
         } else if let Some(value) = self.brightness.observed {
             format!("设备亮度：{value}%；本地配置单独保存")
         } else {

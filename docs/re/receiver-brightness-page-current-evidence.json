@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "90d77c6b25367978912aa4db1ca543dc9f16ca621479c47345a8e16474de385b",
+  "generator_sha256": "90525234f2024ce5d5f00ca9c1238a105a3af5ac866055dac0636a99b76f88a1",
   "method": "Current frontend exact lexical AST nodes, current middleware AST receipts and CSS rules including enclosing conditions; no vendor execution",
   "products": [
     {
@@ -2996,6 +2996,66 @@
     },
     {
       "product_id": 164,
+      "name": "profile-runtime-publication-WJ",
+      "module": 20236,
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2206060,
+      "end": 2206222,
+      "source": "e=>{var t;let n=k.default.runtimeData;return n.subDevices&&e&&(n=null!==(t=n.subDevices.find((t=>t.deviceContainerId==e)))&&void 0!==t?t:k.default.runtimeData),n}"
+    },
+    {
+      "product_id": 164,
+      "name": "profile-runtime-publication-lY",
+      "module": 20236,
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2206265,
+      "end": 2206987,
+      "source": "(e,t=k.default.runtimeData)=>Z(void 0,void 0,void 0,(function*(){if(ge&&e&&\"object\"==typeof e){const n=(e=>{var t,n;const{isComboDevice:o}=(0,R.N$)(),r=null===(t=K.Z.getActiveProfile(e))||void 0===t?void 0:t.guid,a={productId:o?v.razerWindow.rzDevice.productId:i.DeviceInfo.productId,activeProfile:r};let s=[];if(\"MOUSE\"===i.DeviceInfo.category||\"MOUSEPLUSMAT\"===i.DeviceInfo.category)s=e.profiles.map((({name:e,guid:t,dpiStages:n})=>({name:e,guid:t,dpiStages:n})));else{const t=K.Z.getProfiles(e);s=null!==(n=null==t?void 0:t.map((({name:e,guid:t})=>({name:e,guid:t}))))&&void 0!==n?n:[]}return a.profiles=s,a})(e);he(t,n),yield E.Z.setWindowStorageItem(b.rt.DEVICE_RUNTIME_DATA,JSON.stringify(k.default.runtimeData))}}))"
+    },
+    {
+      "product_id": 164,
+      "name": "profile-runtime-publication-I4",
+      "module": 20236,
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2206991,
+      "end": 2207342,
+      "source": "(()=>{let e;return(t,n=k.default.runtimeData)=>Z(void 0,void 0,void 0,(function*(){if(ge&&t&&\"object\"==typeof t){he(n,t);const o=(0,g.XR)(k.default.runtimeData,[]);o!==e&&(console.log(\"%c[%s]\",\"color: #ae0;\",\"saveRuntimeDataToWindowStorage\",n),e=o,yield E.Z.setWindowStorageItem(b.rt.DEVICE_RUNTIME_DATA,JSON.stringify(k.default.runtimeData)))}}))})()"
+    },
+    {
+      "product_id": 164,
+      "name": "profile-runtime-publication-Tb",
+      "module": 60763,
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2186566,
+      "end": 2186705,
+      "source": "(e=a.default.runtimeData)=>_(void 0,void 0,void 0,(function*(){const t=yield w(e);if(!t)throw new Error(\"No device data found\");return t}))"
+    },
+    {
+      "product_id": 164,
+      "name": "profile-runtime-publication-mZ",
+      "module": 60763,
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2187817,
+      "end": 2188580,
+      "source": "function k(e,t=a.default.runtimeData,n=!0){var i,s;return _(this,void 0,void 0,(function*(){const a=(0,y.C)();if(null===(i=null==a?void 0:a.storageOverrides)||void 0===i?void 0:i.localStorageHandler)return null===(s=null==a?void 0:a.storageOverrides)||void 0===s?void 0:s.localStorageHandler.setLocalStorageDeviceCache(e,t,n);if(!t.serialNumber)return void(0,o.G)(\"no serial number, do not save to localstorage\");e.deviceMetadatas||(e.deviceMetadatas={});const l=g.Z.getProfiles(e);l&&l.length>0&&void 0===e.deviceMetadatas[t.serialNumber]&&((0,o.G)(`set default activeprofile: ${t.serialNumber}`),D(e,t.serialNumber,l[0].guid)),void 0!==e.isDefault&&!0===n&&(console.warn(\"removing isDefault flag\"),delete e.isDefault),yield I(r.Pt.DEVICE_LOCALSTORAGE_KEY,e)}))}"
+    },
+    {
+      "product_id": 164,
+      "name": "profile-runtime-publication-OI",
+      "module": 60763,
+      "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
+      "sha256": "5125fc82ea7f1712995187d6fbf47520fc6c1cdc3cb50557a17b4700abae8b02",
+      "offset": 2186708,
+      "end": 2187080,
+      "source": "e=>{var t,n;const o=(0,y.C)();if(null===(t=null==o?void 0:o.storageOverrides)||void 0===t?void 0:t.localStorageHandler)return null===(n=null==o?void 0:o.storageOverrides)||void 0===n?void 0:n.localStorageHandler.getActiveProfile(e);const i=g.Z.getProfiles(e),r=null==i?void 0:i.find((t=>t.guid===e.activeProfile));if(!r)throw new Error(\"No active profile found\");return r}"
+    },
+    {
+      "product_id": 164,
       "name": "ON_SET_BRIGHTNESS-state-machine",
       "module": 41374,
       "path": ".ref/middleware/164/6120.a753e1f51c7ae6c35ea0.js",
@@ -3100,6 +3160,66 @@
     },
     {
       "product_id": 241,
+      "name": "profile-runtime-publication-WJ",
+      "module": 20236,
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2150980,
+      "end": 2151142,
+      "source": "e=>{var t;let n=k.default.runtimeData;return n.subDevices&&e&&(n=null!==(t=n.subDevices.find((t=>t.deviceContainerId==e)))&&void 0!==t?t:k.default.runtimeData),n}"
+    },
+    {
+      "product_id": 241,
+      "name": "profile-runtime-publication-lY",
+      "module": 20236,
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2151185,
+      "end": 2151907,
+      "source": "(e,t=k.default.runtimeData)=>Y(void 0,void 0,void 0,(function*(){if(fe&&e&&\"object\"==typeof e){const n=(e=>{var t,n;const{isComboDevice:o}=(0,R.N$)(),r=null===(t=z.Z.getActiveProfile(e))||void 0===t?void 0:t.guid,a={productId:o?v.razerWindow.rzDevice.productId:i.DeviceInfo.productId,activeProfile:r};let s=[];if(\"MOUSE\"===i.DeviceInfo.category||\"MOUSEPLUSMAT\"===i.DeviceInfo.category)s=e.profiles.map((({name:e,guid:t,dpiStages:n})=>({name:e,guid:t,dpiStages:n})));else{const t=z.Z.getProfiles(e);s=null!==(n=null==t?void 0:t.map((({name:e,guid:t})=>({name:e,guid:t}))))&&void 0!==n?n:[]}return a.profiles=s,a})(e);me(t,n),yield E.Z.setWindowStorageItem(b.rt.DEVICE_RUNTIME_DATA,JSON.stringify(k.default.runtimeData))}}))"
+    },
+    {
+      "product_id": 241,
+      "name": "profile-runtime-publication-I4",
+      "module": 20236,
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2151911,
+      "end": 2152262,
+      "source": "(()=>{let e;return(t,n=k.default.runtimeData)=>Y(void 0,void 0,void 0,(function*(){if(fe&&t&&\"object\"==typeof t){me(n,t);const o=(0,g.XR)(k.default.runtimeData,[]);o!==e&&(console.log(\"%c[%s]\",\"color: #ae0;\",\"saveRuntimeDataToWindowStorage\",n),e=o,yield E.Z.setWindowStorageItem(b.rt.DEVICE_RUNTIME_DATA,JSON.stringify(k.default.runtimeData)))}}))})()"
+    },
+    {
+      "product_id": 241,
+      "name": "profile-runtime-publication-Tb",
+      "module": 60763,
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2132139,
+      "end": 2132278,
+      "source": "(e=a.default.runtimeData)=>m(void 0,void 0,void 0,(function*(){const t=yield R(e);if(!t)throw new Error(\"No device data found\");return t}))"
+    },
+    {
+      "product_id": 241,
+      "name": "profile-runtime-publication-mZ",
+      "module": 60763,
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2133390,
+      "end": 2134153,
+      "source": "function w(e,t=a.default.runtimeData,n=!0){var i,s;return m(this,void 0,void 0,(function*(){const a=(0,y.C)();if(null===(i=null==a?void 0:a.storageOverrides)||void 0===i?void 0:i.localStorageHandler)return null===(s=null==a?void 0:a.storageOverrides)||void 0===s?void 0:s.localStorageHandler.setLocalStorageDeviceCache(e,t,n);if(!t.serialNumber)return void(0,o.G)(\"no serial number, do not save to localstorage\");e.deviceMetadatas||(e.deviceMetadatas={});const l=g.Z.getProfiles(e);l&&l.length>0&&void 0===e.deviceMetadatas[t.serialNumber]&&((0,o.G)(`set default activeprofile: ${t.serialNumber}`),T(e,t.serialNumber,l[0].guid)),void 0!==e.isDefault&&!0===n&&(console.warn(\"removing isDefault flag\"),delete e.isDefault),yield E(r.Pt.DEVICE_LOCALSTORAGE_KEY,e)}))}"
+    },
+    {
+      "product_id": 241,
+      "name": "profile-runtime-publication-OI",
+      "module": 60763,
+      "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
+      "sha256": "307bc83daf2670a476a721ea67fc6461ec49d01adb4e3294a62eed6f5e7377ea",
+      "offset": 2132281,
+      "end": 2132653,
+      "source": "e=>{var t,n;const o=(0,y.C)();if(null===(t=null==o?void 0:o.storageOverrides)||void 0===t?void 0:t.localStorageHandler)return null===(n=null==o?void 0:o.storageOverrides)||void 0===n?void 0:n.localStorageHandler.getActiveProfile(e);const i=g.Z.getProfiles(e),r=null==i?void 0:i.find((t=>t.guid===e.activeProfile));if(!r)throw new Error(\"No active profile found\");return r}"
+    },
+    {
+      "product_id": 241,
       "name": "ON_SET_BRIGHTNESS-state-machine",
       "module": 41374,
       "path": ".ref/middleware/241/6120.0efaddd43f12eb2fb450.js",
@@ -3136,11 +3256,19 @@
     },
     {
       "path": "crates/razer-pages/src/features/source_controls/receiver_brightness_ui.rs",
-      "sha256": "e4cd11fed452825bfbd03b7103ce443e3eaa9416d661c0bae4a104c74be115df"
+      "sha256": "2e20238ce5330b4fc1d76b713321c009fba7db7153ac804b8eeb88beb59e4c04"
+    },
+    {
+      "path": "crates/razer-pages/src/features/source_workspace.rs",
+      "sha256": "bdecc470589dc78aadbcdbadf8b04cee4f44d09fad3aaffc48578706a0ce8c76"
+    },
+    {
+      "path": "crates/razer-pages/src/features/product_workspace.rs",
+      "sha256": "761fdc9858fbf8424a64e15de1f7bc22c84ef7d523e9b34b838549b9d8d57299"
     },
     {
       "path": "crates/razer-shell/src/shell/receiver_brightness_page.rs",
-      "sha256": "40365fa262032889c32fe096d0500ba4b2ea89c356d1ed6280c9c5158b5aa3da"
+      "sha256": "4eccf834b6c7372b845bc091fed28917d74f33e6f1ea9c932d760b819d07a4f7"
     },
     {
       "path": "crates/razer-storage/src/receiver_reset.rs",
@@ -3152,12 +3280,14 @@
     "Brightness switch preserves the remembered value. Slider drag previews while held and commits on mouseup; zero disables brightness. Off brightness remains draggable because the source brightness/no-pointer CSS preserves pointer events.",
     "taskMakerSetBrightness loads serial metadata active profile, increments the 53-bit version, changes isEnabled/value in the active profile, persists mZ before scheduling the skippable setting task. The helper does not write the generic factory-reset opcode.",
     "Native page submission uses the actual serial query, source document producer/cache preparation, local source document adaptation and original pre-read/conditional setter. It does not add a post-setter getter or value comparison. Actual responses and local storage remain separate.",
+    "Source-completed requested brightness is published separately from a genuine getter observation. A successful setter with observed=null is not labeled unconfirmed, and worker cleanup failure is retained alongside a primary failure.",
+    "The worker publishes its real serial-owned locally persisted source profile to current workspace state before submitting ReceiverBrightnessWrite; device pending remains active. A later device or cleanup failure preserves that local publication. This is a local page-state connection, not an invented original host storage event or device readback.",
     "UI request slots survive page/profile invalidation until worker completion; newest desired brightness is queued, stale reads cannot clear the queued edit, and exit retains and joins actual worker threads."
   ],
   "gaps": [
     "Right-side regular Quick/Advanced effects tabs, effect parameter editors, color synchronization and complete effect/engine submission are not completed by the current descriptor effect selector.",
     "Switch-off display/idle settings currently remain local draft controls. Original lifecycle event registration, taskMakerSwitchOffLighting source-document persistence and host memory/cache publication still require their real implementation.",
-    "The local JSON adaptation is separate from Chromium storage. Source storage overrides, older schema migration, linked subdevice scope and all other products remain explicit full-scope gaps.",
-    "Static CSS receipts and cargo check do not prove runtime pixel parity or device acceptance. Application, builds, tests, vendor JS and DLLs have not been run."
+    "The local JSON adaptation and page-state publication are separate from original host WindowStorage/MemoryStorage. Original lY publishes productId/activeProfile/profiles summaries under connectedDevices, I4 publishes only when serialized runtime changes, and Vb7 updates task-runner requested/version caches under usb_VID_PID. Actual middleware host URL/sender and receiving subscriptions are not yet connected; source storage overrides, older schema migration, linked subdevice scope and all other products remain gaps.",
+    "Static CSS receipts, cargo check and pure Rust simulated transport tests do not prove runtime pixel parity or device acceptance. Application, vendor JS, DLLs and real device operations have not been run."
   ]
 }

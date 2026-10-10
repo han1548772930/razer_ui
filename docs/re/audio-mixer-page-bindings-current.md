@@ -18,6 +18,15 @@ enter the separate observed-state map; local drafts and preset storage remain
 local. Owner/revision cancellation and collection identity checks do not invent
 hardware GET commands or rollback.
 
+The separate driver matrix route retains its source-required 112-byte RMW
+read and one write IOCTL. Source `0xDA46/0xDA4C/0xDA4E` skips directly to
+enumeration at `0xDA84` after successful write; it performs no post-write GET.
+`MatrixWriteResult` returns requested value, previous value from that RMW read
+and transport completion only. It does not publish an observed state, compare
+hardware values, refresh the page or persist local state. The matrix page
+consumer remains incomplete; [the native protocol audit](audio-mixer-dll-protocol-current.md)
+records the retained returned-length and target-selection differences.
+
 Voice `Ti` reads Magic Voice enabled state and changes it only when different.
 The changed switch setter reads its register once, copies low24 into the fixed
 C0 high template and toggles bit1. Enabled mode submission reads EQ/Magic/Echo
@@ -110,5 +119,7 @@ implementation differences do not claim complete native semantic equivalence.
 Static verification uses `cargo check --locked --all-targets`, formatting,
 source audit `python tools/audit-audio-mixer-page-bindings-current.py --check`
 and diff checks. Existing static test definitions reflect source report order;
-no tests, application, DLL, device command or vendor JS were executed. Runtime
+14 pure Rust mock tests passed; no application, DLL, device command or vendor JS were executed. Runtime
 acceptance remains unperformed. See [the structured chain receipt](audio-mixer-page-bindings-current.json).
+
+Actual 1342 Help now routes Audio Troubleshooting through its original one-second spinner timer, `resetAudio` intent and the direct local ResetStream IPC sequence. Native return codes remain response data and later indices run; transport or identity exceptions stop. No confirmation, profile replacement, getter or persisted audio state is added. [Current Help/IDA evidence](audio-mixer-help-current-evidence.json) preserves the mounted caller and code boundaries. The exact NORMAL_SKIPPABLE scheduling, factory reset, final inherited CSS and rendered acceptance remain gaps. Mic Monitor still requires its separate AudioCamy consumer.

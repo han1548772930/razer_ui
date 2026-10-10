@@ -26,7 +26,7 @@ for (const statement of scopes[0].body.body) {
   }
 }
 const names = ['ch', 'QE', 'zE', 'Jr', 'qr', 'Zr', 'Kr', 'Bp', 'Yp', 'zp',
-  'yE', 'sE', 'oE', 'Jp', 'OE', 'vE'];
+  'yE', 'sE', 'oE', 'Jp', 'OE', 'vE', 'Ya', 'ta', 'le', 'ja', 'Fa', 'za', 'Ep'];
 const components = names.map(name => {
   const node = bindings.get(name);
   if (!node) throw Error(`Missing bootstrap binding ${name}`);
@@ -47,6 +47,13 @@ for (const [name, contracts] of Object.entries({
   Jr: ['className:"main"', 'className:"wrapper"', '(0,vt.jsx)(Zr,'],
   Yp: ['"synapseSkills",!0', 'maxHeight:r.scrollHeight', 'e.content.map', 'className:"btn-more"'],
   yE: ['(0,vt.jsxs)(sE,{position:"bottom-left"', 'TEXT_TOOLTIPS_1', 'TEXT_TOOLTIPS_2'],
+  Ya: ['navigator.mediaDevices.enumerateDevices()', '"audioinput"===t.kind',
+    '"default"!==t.deviceId', '"communications"!==t.deviceId', '""!==t.label',
+    'e.push(t)', 'n&&n.deviceId===t.deviceId', 'this.emit(Fa,e),r||this.setDevice(null)',
+    'ta.update(le,{[ja]:e})', 'this.currentDevice=this.device||{}',
+    'navigator.mediaDevices.addEventListener("devicechange",this._getDeviceList)'],
+  ta: ['window.localStorage.setItem', 'this.update=', 'this.set(e,n?t:o(o({},r),t))'],
+  Ep: ['Ya.init()'],
   sE: ['onMouseEnter:()=>i(!0)', 'onMouseLeave:()=>i(!1)', 'window.addEventListener("blur",e)', 'children:["?"'],
   oE: ['showClassName:"show"})},100)', 'position:"fixed",left:e.x,top:e.y+90', 'showClassName:""', 'style:{}})},100)'],
   Jp: ['document.getElementById("pageContainer")', 'x:i.left-o.left,y:i.top-o.top'],
@@ -65,11 +72,18 @@ for (const contract of ['font-family:Roboto,sans-serif', 'font-size:16px', 'colo
   requireText(finalBody.declarations, contract, 'final body cascade');
 }
 const nativePaths = ['crates/razer-app-pages/src/alexa_page.rs', 'crates/razer-app-pages/src/alexa_page/sections.rs',
-  'crates/razer-app-pages/src/alexa_page/controls.rs', 'crates/razer-widgets/src/source_tooltip.rs'];
+  'crates/razer-app-pages/src/alexa_page/controls.rs', 'crates/razer-widgets/src/source_tooltip.rs',
+  'crates/razer-app-pages/src/alexa_page/input.rs', 'crates/razer-app-pages/src/alexa_page/local_settings.rs',
+  'crates/razer-widgets/src/synapse_select.rs'];
 const native = nativePaths.map(p => ({path: p, sha256: hash(read(p))}));
 const local = read(nativePaths[0]), sections = read(nativePaths[1]), controls = read(nativePaths[2]), tooltip = read(nativePaths[3]);
 for (const contract of ['.font_family("Roboto")', '.text_size(css(16.))', 'window.rem_size() * (42. / 16.)', '.mt(css(19.52))']) requireText(local, contract, 'native Alexa root/home');
 for (const contract of ['"more-color"', '"more-opacity"', '.pl(css(20.))', '.left(css(6.))', 'controls::settings_help()']) requireText(sections, contract, 'native skills/settings');
+for (const contract of ['Ya.on("devicesChange",t)', 'Ya.on("deviceChange",n)', 'Ya.getDevices()', 'value:P?P.label:"Default"', 'Ya.setDevice(null)', 'Ya.setDevice(t)']) requireText(component('yE'), contract, 'mounted media input caller');
+requireText(component('Yp'), 'ta.update(le,{synapseSkills:t})', 'local Skills write');
+if (local.includes('"sample-mic"')) problems.push('Production Alexa must never seed a synthetic microphone');
+for (const contract of ['MediaInputState::default()', 'this.persist_input()', 'storage.update("synapseSkills"', 'observe_media_inputs', 'if !preview']) requireText(local, contract, 'native Alexa input/local persistence');
+for (const contract of ['input_choices(&self.media_inputs)', '.selected_text(', '.map_or("Default", MediaInputDevice::label)', 'this.set_synapse_skills(value, cx)']) requireText(sections, contract, 'native Alexa consumer');
 for (const contract of ['SourceTooltipKind::Alexa', '"alexa-help-highlight"', '.child("?")']) requireText(controls, contract, 'native tooltip trigger');
 for (const contract of ['kind == SourceTooltipKind::Alexa', 'observe_window_activation', '.delay(Duration::from_millis(', '.px(surface::css(8.))', '.py(surface::css(7.))']) requireText(tooltip, contract, 'native tooltip portal');
 const iconFiles = [
@@ -93,11 +107,17 @@ const report = {
     'final body cascade is Roboto 16px/#ccc with inherited line-height 1.22',
     'Skills list text starts 20px inside content; 100ms more-label color/opacity',
     'Settings tooltip bottom-left 300px main, intrinsic wrapper 7x8 padding, 100ms delayed show and 100ms linear fade, blur dismiss',
+    'Ya/Ep/yE media input initialization, filter order, record selection and disappearance-to-null traced from current source',
+    'No synthetic input list; default is null, stored MediaDeviceInfo is separate from enumerated records',
+    'Skills synapseSkills and input selection persist source keys with serialized local JSON replacement patches, preserving unrelated fields',
+    'Input trigger retains selected P.label while menu follows latest enumerated labels',
     'source Home 80vh uses host WebContents below 42px TabUI'],
   limitations: ['No application execution or visual acceptance',
     'Skill disc marker uses a native circle; browser font-specific marker rasterization is not reproduced',
     'Home preview modal viewport remains a local preview adaptation',
-    'Authentication, input devices, persistent source settings and service responses remain unconnected',
+    'Authentication and browser media enumeration/devicechange adapter remain unconnected; observed endpoint IDs cannot be substituted for mediaDeviceId',
+    'Settings broadcast/audio-language/shortcut registration and service responses remain unconnected',
+    'Local JSON storage adapter is separate from Chromium localStorage; cross-process storage events and consumer broadcast lifecycle remain missing',
     'Help layout/navigation, installer, logout and patch-note dialogs need separate full content re-audit'],
   problems,
 };

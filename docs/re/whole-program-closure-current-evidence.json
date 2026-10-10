@@ -18,12 +18,12 @@
     "runtime_policy": "Application, DLL, vendor JavaScript and hardware execution remain prohibited during development, so runtime acceptance is recorded separately and never fabricated."
   },
   "method": "Static receipt/hash verification and reviewed Rust boundary locators; no vendor code execution",
-  "generator_sha256": "30a5a4b900ffef297d3cdc24e942e6e82b86d7d951e44c0e3938acb50e07fb34",
+  "generator_sha256": "70ec0e356c44db01a0f8f38e1fe9778176e7140a7e11fdd45d2d9930a6d88457",
   "inputs": [
     {
       "path": "assets/data/native-library-inventory.json",
-      "sha256": "096596ad43047cef40b3de5a4324396b57871a3063c141dd20cdb6e28eb6065d",
-      "bytes": 13457659
+      "sha256": "79a787cdf6322c59f2b184dc57c1455d4a177b0cdb60d1603d46ea42499d367a",
+      "bytes": 13505689
     },
     {
       "path": "docs/re/host-architecture-current-evidence.json",
@@ -47,7 +47,7 @@
     },
     {
       "path": "docs/re/cross-platform-hid-current-evidence.json",
-      "sha256": "f04dce197d66faed5d711473c93142f8871238c70ce02be71c3e4ba4e97ca727",
+      "sha256": "c1c836e0ab8dc33747059bc60801aee6fb9f2939933885e9533f5c435b44da28",
       "bytes": 48654
     },
     {
@@ -67,18 +67,63 @@
     },
     {
       "path": "docs/re/hid-interrupt-current-evidence.json",
-      "sha256": "98eba738955f9e78a73c04acca0626ac9d472baf08fe948495ab87890a0ad24b",
-      "bytes": 20983
+      "sha256": "6e6b58d76a5d8ef9a96bcc8d569a2c8e6912ed2542433e6b3d82d27d828c29a1",
+      "bytes": 21190
     },
     {
       "path": "docs/re/receiver-pairing-transport-current-evidence.json",
-      "sha256": "121c8877e971529557d870531ad4fd17f32529ab757905a16b19254f1fcfde90",
-      "bytes": 168322
+      "sha256": "d0fbb780912629e58f2af0b855daa0f2202de4bc0954d36106be30f57a314300",
+      "bytes": 200290
+    },
+    {
+      "path": "docs/re/receiver-reset-current-evidence.json",
+      "sha256": "e6d22e01143e5a77bd15235134e04f3e99d933e83667b5db0641696d5c4439bc",
+      "bytes": 75172
+    },
+    {
+      "path": "docs/re/receiver-brightness-current-evidence.json",
+      "sha256": "3fcf03c44eb7146218089496fa1954d19666a5aedd531e2b059f179aaf46604f",
+      "bytes": 45001
+    },
+    {
+      "path": "docs/re/keyboard-analog-properties-current-evidence.json",
+      "sha256": "8e0c77aa6a2843b8694c261c37250ebf2f059cba661ceb262078b8666f9bcff0",
+      "bytes": 127265
+    },
+    {
+      "path": "docs/re/settings-entrypoints-current-evidence.json",
+      "sha256": "c06781ae0f7599271f65bb451fa97af987693d1cf5404c6738472683907743f5",
+      "bytes": 62271
+    },
+    {
+      "path": "docs/re/host-storage-current-evidence.json",
+      "sha256": "c3ad2a0bac7d3d828abf7103ffbe4fa7f4dcbc908b3de0e45b2b4f8ae6adbb93",
+      "bytes": 7768
+    },
+    {
+      "path": "docs/re/lighting-native-current-source-evidence.json",
+      "sha256": "dd1b7f16d02001192d44f1b4581633f567c47a43b89b3935f9a998a3d9b252c8",
+      "bytes": 58239
+    },
+    {
+      "path": "docs/re/lighting-native-current-acquisition.json",
+      "sha256": "2d8b6f919cedf4a7ade3b7990e3a6e5d00aa43c1a69f3ff634947129fdeb07a0",
+      "bytes": 4434
     },
     {
       "path": "docs/re/audio-util-notifications-current-evidence.json",
-      "sha256": "6e31e951bbcbd587a45f6527dd6668f648d45d7c63a4e097060181fe50c5f20f",
-      "bytes": 41029
+      "sha256": "72f31d31a1ffdb1b442092b95d360a817743c608af8a66c5948ef8aaec7f32f5",
+      "bytes": 17523
+    },
+    {
+      "path": "docs/re/audio-util-active-consumers-current.json",
+      "sha256": "52754c085eb44ccefcf234e621d66ef1a43dcdd4a8e5380a63eb0d6cd2acdfe0",
+      "bytes": 251886
+    },
+    {
+      "path": "docs/re/audio-router-current-evidence.json",
+      "sha256": "b10c2d4fa0b1fe798799022b93501e1ab0625d7498457ea9919d1c85dcb6052e",
+      "bytes": 4186
     },
     {
       "path": "docs/re/rzaudioutil-dll-version-current-evidence.json",
@@ -106,19 +151,34 @@
       "bytes": 18979
     },
     {
+      "path": "docs/re/audio-mixer-read-outcomes-current-evidence.json",
+      "sha256": "ed1be28ed28fd1c140945268eac7749883f34731032c5506c06d2affd8a446ef",
+      "bytes": 10695
+    },
+    {
+      "path": "docs/re/audio-mixer-help-current-evidence.json",
+      "sha256": "c2fca777d824a09e8d71dd80ed9ce1ac672e93802eb2392b8e4cd1c196095960",
+      "bytes": 28580
+    },
+    {
+      "path": "docs/re/alexa-content-current-evidence.json",
+      "sha256": "a33cac2dc7c4a14031f4873f70dddc7f92379b77d1392f28db339bd5b2ab9e95",
+      "bytes": 113190
+    },
+    {
       "path": "docs/re/audio-mixer-page-bindings-current.json",
-      "sha256": "b4ba2f0c264bb95d65831cb04c3a39c614b0272396bccabcc847b5a83eec0c49",
-      "bytes": 5756
+      "sha256": "24d6d4c337b10a1e7d59e587dc4759c4a5c0c1d954d0c2d4b67d92315607eb34",
+      "bytes": 13642
     }
   ],
   "summary": {
-    "native_libraries": 48,
-    "libraries_without_acquired_resources": 5,
+    "native_libraries": 49,
+    "libraries_without_acquired_resources": 4,
     "native_pe_files": 81,
     "host_native_binary_entries_all_platforms": 64,
     "helper_reference_names": 9,
     "host_helper_exe_bodies": 4,
-    "reviewed_non_product_domains": 24,
+    "reviewed_non_product_domains": 25,
     "entire_library_replacements_completed": 0,
     "entire_program_equivalence_completed": false
   },
@@ -315,11 +375,11 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageCall",
-          "line": 60
+          "line": 69
         }
       ],
       "status": "partially_implemented",
-      "gap": "HostStorage implements URL subscriptions, tombstones and IPC event queues; actual host window registration and page consumers remain absent. Local draft files are separate.",
+      "gap": "HostStorage implements original primitive JS Map key types, Number SameValueZero, URL subscriptions, tombstones and IPC event queues; actual host window registration and page consumers remain absent. Object-identity keys and undefined/non-JSON values remain explicit wire gaps. Local draft files are separate.",
       "runtime_acceptance": "not_run"
     },
     {
@@ -357,7 +417,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageEvents",
-          "line": 63
+          "line": 72
         }
       ],
       "status": "partially_implemented",
@@ -399,7 +459,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::HostStorageClose",
-          "line": 56
+          "line": 65
         }
       ],
       "status": "partially_implemented",
@@ -821,7 +881,7 @@
         {
           "path": "crates/razer-shell/src/shell.rs",
           "symbol_or_token": "ModuleCatalogEvent::ServiceCommand",
-          "line": 601
+          "line": 617
         },
         {
           "path": "crates/razer-app-pages/src/module_service_remove.rs",
@@ -1015,7 +1075,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "pub fn run_worker",
-          "line": 13
+          "line": 22
         }
       ],
       "status": "partially_implemented",
@@ -1239,22 +1299,22 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::WindowsServiceStatus",
-          "line": 41
+          "line": 50
         },
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::WindowsServiceStart",
-          "line": 33
+          "line": 42
         },
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::WindowsServiceStop",
-          "line": 37
+          "line": 46
         },
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
           "symbol_or_token": "ServiceRequest::Shutdown",
-          "line": 459
+          "line": 444
         }
       ],
       "status": "partially_implemented",
@@ -1493,7 +1553,7 @@
         {
           "path": "crates/razer-shell/src/shell.rs",
           "symbol_or_token": "GamerRoomEvent::DeviceCommand",
-          "line": 550
+          "line": 566
         }
       ],
       "status": "partially_implemented",
@@ -1812,7 +1872,7 @@
         {
           "path": "crates/razer-service/src/runtime/portable.rs",
           "symbol_or_token": "ServiceRequest::AudioVolumeWrite",
-          "line": 89
+          "line": 118
         },
         {
           "path": "crates/razer-shell/src/shell/audio_volume.rs",
@@ -2066,7 +2126,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "pub fn run_worker",
-          "line": 13
+          "line": 22
         },
         {
           "path": "crates/razer-service/src/native_read.rs",
@@ -3100,7 +3160,7 @@
         {
           "path": "crates/razer-device/src/receiver_pairing.rs",
           "symbol_or_token": "pub fn pair",
-          "line": 376
+          "line": 377
         },
         {
           "path": "crates/razer-service/src/runtime/windows/receiver_events.rs",
@@ -3115,7 +3175,27 @@
         {
           "path": "crates/razer-shell/src/shell/receiver_pairing.rs",
           "symbol_or_token": "fn submit_dock_pairing",
-          "line": 352
+          "line": 393
+        },
+        {
+          "path": "crates/razer-device/src/receiver_identity.rs",
+          "symbol_or_token": "pub fn read_serial",
+          "line": 5
+        },
+        {
+          "path": "crates/razer-device/src/receiver_brightness.rs",
+          "symbol_or_token": "pub fn apply",
+          "line": 166
+        },
+        {
+          "path": "crates/razer-storage/src/receiver_reset.rs",
+          "symbol_or_token": "pub struct ResetPlan",
+          "line": 70
+        },
+        {
+          "path": "crates/razer-shell/src/shell/receiver_reset.rs",
+          "symbol_or_token": "fn reset",
+          "line": 30
         },
         {
           "path": "crates/razer-storage/src/receiver_pairing.rs",
@@ -3124,7 +3204,7 @@
         }
       ],
       "status": "partially_implemented",
-      "gap": "IDA-proved mapping_engine all-collection ContainerId/PID selector and actual interrupt bytes are implemented without vendor loading. Typed asynchronous Start/Poll/Cancel controller and Dock UI preserve actual event54/55 completion, owner epochs, cancellation cleanup and full-array/lane scan semantics. Local ye/ge physical-key cache add/remove is connected only after real hardware confirmation; it is a local document adaptation, not a device read or original Chromium file. Post-pair metadata, product runtime/serial publishing, profile combining/reconnect, and equivalent non-Windows physical grouping remain separate required gaps. Runtime acceptance not run.",
+      "gap": "IDA-proved mapping_engine all-collection ContainerId/PID selector and actual interrupt bytes are implemented without vendor loading. Typed asynchronous Start/Poll/Cancel controller and Dock UI preserve actual event54/55 completion, owner epochs, cancellation cleanup and full-array/lane scan semantics. Real post-pair edition/layout and V2 connection observations feed a local ye/ge physical-key cache only after hardware confirmation. Current 164/241 Help emits the actual no-key taskMakerResetOBM branch, not a firmware reset opcode: real command serial owns source-derived schema-13 local profile initialization, serial cache preparation, append-default/reset persistence and UI refresh. Brightness uses audited primary E0 profile1/region15 get/set with pre-read skips, real acknowledgments, source pre-read/conditional setter completion without an additional getter, and preserved partial mutation receipts. Local JSON documents are application adaptations, not the original Chromium file. Receiver effect/mapping executors, original host memory/cache publishing, full product runtime/serial publishing, profile combining/reconnect and equivalent non-Windows physical grouping remain required gaps. Runtime acceptance not run.",
       "runtime_acceptance": "not_run"
     },
     {
@@ -3149,21 +3229,50 @@
         {
           "path": "crates/razer-service/src/runtime/portable.rs",
           "symbol_or_token": "ServiceRequest::AudioNotificationsEnable",
-          "line": 80
+          "line": 109
         },
         {
           "path": "crates/razer-shell/src/shell/audio_notifications.rs",
           "symbol_or_token": "fn run",
-          "line": 59
+          "line": 62
         },
         {
           "path": "crates/razer-shell/src/shell/audio_notifications.rs",
           "symbol_or_token": "fn sync_audio_notifications",
-          "line": 123
+          "line": 130
         }
       ],
       "status": "partially_implemented",
-      "gap": "Current RzAudioUtil 1.0.3.1 IDA proves filter 0/1/3, exact payload, repeated callback enable and all-of-type disable. Direct Windows COM callback and worker IPC implement registration, events, unregister, reference ownership and apartment cleanup; other platforms explicitly reject this OS capability. Shell starts one retained worker per uniquely observed current instance of the eight source-verified products, enables once, drains actual notifications, and disables/shuts down on loss or quit; 1401 is excluded. No application/notification registration runtime acceptance is performed. Native event DeviceChange differs in case from product deviceChange listeners, which only log; no automatic device cache refresh is invented.",
+      "gap": "Current RzAudioUtil 1.0.3.1 IDA proves filter 0/1/3, exact payload, repeated callback enable and all-of-type disable. Direct Windows COM callback and worker IPC implement registration, events, unregister, reference ownership and apartment cleanup; other platforms explicitly reject this OS capability. Eight current boot roots and actual exported init methods prove automatic notifications only for audio_streamMixer products 1422/1446; generic AudioUtil init in the other six does not enable. Shell starts one retained worker per uniquely observed instance of those two products, drains actual notifications, and disables/shuts down on loss or quit; retired workers retain cleanup ownership. No application/notification registration runtime acceptance is performed. Native event DeviceChange differs in case from product deviceChange listeners, which only log; no automatic device cache refresh is invented.",
+      "runtime_acceptance": "not_run"
+    },
+    {
+      "id": "audio_util_pcm_routing",
+      "current_sources": [],
+      "reviewed_rust_boundaries": [
+        {
+          "path": "crates/razer-device/src/audio_router.rs",
+          "symbol_or_token": "pub struct AudioFifo",
+          "line": 13
+        },
+        {
+          "path": "crates/razer-service/src/audio_router.rs",
+          "symbol_or_token": "pub struct AudioRouter",
+          "line": 7
+        },
+        {
+          "path": "crates/razer-service/src/platform/windows/audio_router.rs",
+          "symbol_or_token": "struct Pump",
+          "line": 521
+        },
+        {
+          "path": "crates/razer-service/src/runtime/portable.rs",
+          "symbol_or_token": "ServiceRequest::AudioRouteDevice",
+          "line": 83
+        }
+      ],
+      "status": "partially_implemented",
+      "gap": "Current RzAudioUtil 1.0.3.1 IDA proves EnableRouting, destructive route replacement, UTF-16 ordering, OR endpoint matching, native notification timer and PCM FIFO/drift correction. Rust shared FIFO and independent Windows WASAPI/COM owners implement real capture-to-render streams, route removal, observations and stop/join/release without vendor DLL loading. Current boot/exported feature evidence proves active callers in 1422/1446; bundled code in other products is not automatic activation. Full page/device-class submissions, exact original diagnostic statistics, selected unsafe/non-S_OK/release-retry branches and other OS adapters remain gaps. No streams, routes or OS notifications were executed.",
       "runtime_acceptance": "not_run"
     },
     {
@@ -3235,7 +3344,7 @@
         {
           "path": "crates/razer-service/src/runtime/portable.rs",
           "symbol_or_token": "ServiceRequest::ForegroundMonitorEvents",
-          "line": 68
+          "line": 97
         }
       ],
       "status": "partially_implemented",
@@ -3297,7 +3406,7 @@
         {
           "path": "crates/razer-service/src/runtime/mod.rs",
           "symbol_or_token": "ServiceRequest::KeyboardLayoutRead",
-          "line": 31
+          "line": 40
         }
       ],
       "status": "partially_implemented",
@@ -3406,16 +3515,21 @@
         {
           "path": "crates/razer-platform/src/system.rs",
           "symbol_or_token": "pub fn open_display_settings",
-          "line": 75
+          "line": 76
         },
         {
           "path": "crates/razer-platform/src/platform/windows/system.rs",
           "symbol_or_token": "WinExec",
-          "line": 126
+          "line": 128
+        },
+        {
+          "path": "crates/razer-pages/src/features/keyboard_properties.rs",
+          "symbol_or_token": "GameController",
+          "line": 94
         }
       ],
       "status": "partially_implemented",
-      "gap": "Five current native command bodies and existing mouse/keyboard/audio/display page callers are verified: control keyboard, control mmsys.cpl sounds, control main.cpl, sndvol.exe and explorer ms-settings:display use WinExec SW_SHOW=5 without vendor DLL loading. Native launch failures are surfaced explicitly. Generic parameterized msSettings, other system launch functions and full DLL Initialize/Terminate chains remain gaps; non-Windows capability is explicit and no system commands were executed.",
+      "gap": "Five current native command bodies and existing mouse/keyboard/audio/display page callers are verified: control keyboard, control mmsys.cpl sounds, control main.cpl, sndvol.exe and explorer ms-settings:display use WinExec SW_SHOW=5 without vendor DLL loading. Separately proven OpenGameController uses control joy.cpl with the same SW_SHOW and is connected to five actual analog keyboard consumers 614/642/678/679/688, preserving their column, SVG and CSS. Native launch failures are surfaced explicitly. Generic parameterized msSettings, other system launch functions and full DLL Initialize/Terminate chains remain gaps; non-Windows capability is explicit and no system commands were executed.",
       "runtime_acceptance": "not_run"
     },
     {
@@ -3573,11 +3687,16 @@
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
           "symbol_or_token": "self.shutdown_macro_recording",
-          "line": 461
+          "line": 446
+        },
+        {
+          "path": "crates/razer-service/src/runtime/mod.rs",
+          "symbol_or_token": "drop(portable)",
+          "line": 147
         }
       ],
       "status": "partially_implemented",
-      "gap": "Worker mapping/simple shutdown exists; host cannot-exit guards, app collection ordering, poweroff, pending callbacks and full plugin teardown are not equivalent.",
+      "gap": "Worker mapping/simple shutdown exists; normal Shutdown drops owned WASAPI/notification/receiver owners before sending its completion frame to the terminating parent. Retired Shell notification/pairing workers retain cleanup ownership. These Rust process ownership guarantees do not replace host cannot-exit guards, app collection ordering, poweroff, pending callbacks and full plugin teardown.",
       "runtime_acceptance": "not_run"
     },
     {
@@ -3888,7 +4007,14 @@
       "version_declaration_candidates": [
         "GetDllVersion"
       ],
-      "resources": [],
+      "resources": [
+        {
+          "file": "lighting_driver_v1.9.14.0.dll",
+          "sha256": "9b701a56c5ed0c1c30d26452fb5752ee328304a197f9a36cd3c51e0cd6a4de6b",
+          "bytes": 968392,
+          "machine": 34404
+        }
+      ],
       "literal_rust_locators_not_consumer_proof": [
         {
           "path": "crates/razer-app/src/lib.rs",
@@ -3897,6 +4023,18 @@
         {
           "path": "crates/razer-catalog/src/engines.rs",
           "line": 23
+        },
+        {
+          "path": "crates/razer-catalog/src/native_library.rs",
+          "line": 29
+        },
+        {
+          "path": "crates/razer-device/src/lib.rs",
+          "line": 12
+        },
+        {
+          "path": "crates/razer-device/src/lighting_driver.rs",
+          "line": 1
         },
         {
           "path": "crates/razer-device/src/protocol.rs",
@@ -3916,7 +4054,7 @@
         }
       ],
       "entire_library_replacement": "not_completed",
-      "acquisition_gap": true
+      "acquisition_gap": false
     },
     {
       "id": "mapping_engine",
@@ -3940,7 +4078,7 @@
         },
         {
           "path": "crates/razer-catalog/src/native_library.rs",
-          "line": 181
+          "line": 198
         },
         {
           "path": "crates/razer-platform/src/native_paths.rs",
@@ -3952,7 +4090,7 @@
         },
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
-          "line": 184
+          "line": 188
         },
         {
           "path": "crates/razer-service/src/runtime/windows/receiver_events.rs",
@@ -4223,6 +4361,10 @@
           "line": 1
         },
         {
+          "path": "crates/razer-device/src/audio_router.rs",
+          "line": 1
+        },
+        {
           "path": "crates/razer-device/src/audio_util.rs",
           "line": 1
         },
@@ -4243,8 +4385,12 @@
           "line": 14
         },
         {
+          "path": "crates/razer-service/src/platform/windows/audio_router.rs",
+          "line": 1
+        },
+        {
           "path": "crates/razer-shell/src/shell/audio_notifications.rs",
-          "line": 75
+          "line": 78
         }
       ],
       "entire_library_replacement": "not_completed",
@@ -4350,6 +4496,40 @@
       "acquisition_gap": false
     },
     {
+      "id": "RzLightingEngineApi",
+      "products": [],
+      "declared_functions": 9,
+      "signature_conflicts": 0,
+      "session_candidates": 0,
+      "version_declaration_candidates": [
+        "GetDLLVersion"
+      ],
+      "resources": [
+        {
+          "file": "RzLightingEngineApi_v4.0.55.0.dll",
+          "sha256": "cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa",
+          "bytes": 2153672,
+          "machine": 34404
+        }
+      ],
+      "literal_rust_locators_not_consumer_proof": [
+        {
+          "path": "crates/razer-catalog/src/engines.rs",
+          "line": 38
+        },
+        {
+          "path": "crates/razer-catalog/src/native_library.rs",
+          "line": 28
+        },
+        {
+          "path": "crates/razer-device/src/protocol.rs",
+          "line": 1
+        }
+      ],
+      "entire_library_replacement": "not_completed",
+      "acquisition_gap": false
+    },
+    {
       "id": "RzNative_0517",
       "products": [
         1303
@@ -4429,7 +4609,7 @@
       "literal_rust_locators_not_consumer_proof": [
         {
           "path": "crates/razer-catalog/src/native_library.rs",
-          "line": 181
+          "line": 198
         }
       ],
       "entire_library_replacement": "not_completed",
@@ -4804,7 +4984,7 @@
         },
         {
           "path": "crates/razer-service/src/runtime/windows/native.rs",
-          "line": 202
+          "line": 206
         },
         {
           "path": "crates/razer-service/src/simple_audio.rs",

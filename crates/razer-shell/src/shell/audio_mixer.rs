@@ -15,6 +15,59 @@ mod route;
 
 static MIXER_PAGE_QUEUE: OnceLock<Mutex<()>> = OnceLock::new();
 
+pub(super) fn restart_audio_streams(
+    observation: &discovery::ObservedDevice,
+    canceled: &std::sync::atomic::AtomicBool,
+) -> anyhow::Result<razer_device::audio_mixer::StreamsResetResult> {
+    use anyhow::ensure;
+    use std::sync::atomic::Ordering;
+    let _queue = MIXER_PAGE_QUEUE
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| anyhow::anyhow!("Mixer 请求队列不可用"))?;
+    ensure!(!canceled.load(Ordering::Acquire), "Audio restart 已取消");
+    let mut client = ServiceClient::spawn()?;
+    let result = (|| {
+        // Original ResetStream uses its driver GUID and stream index only;
+        // no firmware query or unrelated DSP descriptor gates are added.
+        let node = route::resolve_identity(&mut client, observation)?;
+        ensure!(
+            !canceled.load(Ordering::Acquire),
+            "Audio restart 已取消，未提交重置"
+        );
+        let response = client.request(ServiceRequest::HidNodeMixerRestartStreams {
+            node: node.clone(),
+            product_id: 1342,
+        })?;
+        ensure!(
+            response["node"] == serde_json::to_value(&node)?
+                && response["product_id"] == 1342
+                && response["result"]["source_property"] == "RazerT2ResetStream",
+            "Audio restart 回执作用域不匹配"
+        );
+        let returns: Vec<(u32, u32)> =
+            serde_json::from_value(response["result"]["reset"]["return_codes"].clone())?;
+        ensure!(
+            response["result"]["reset"]["source_sequence_completed"] == true
+                && returns.iter().map(|(index, _)| *index).collect::<Vec<_>>()
+                    == razer_device::audio_mixer::driver_spec().stream_indices,
+            "Audio restart 原流索引序列缺少回执"
+        );
+        // Original caller does not turn native response codes into thrown
+        // errors. Keep every code in the receipt without claiming audio state.
+        serde_json::from_value(response["result"]["reset"].clone()).map_err(Into::into)
+    })();
+    let cleanup = client.request(ServiceRequest::Shutdown);
+    match (result, cleanup) {
+        (Ok(result), Ok(_)) => Ok(result),
+        (Err(error), Ok(_)) => Err(error),
+        (Ok(_), Err(error)) => Err(error.context("Audio restart 原序列已完成，但通信进程结束失败")),
+        (Err(error), Err(cleanup)) => {
+            Err(anyhow::anyhow!("{error:#}；通信进程结束失败：{cleanup:#}"))
+        }
+    }
+}
+
 fn check_response(
     response: &serde_json::Value,
     node: &razer_device::backend::HidNode,
@@ -146,7 +199,7 @@ impl AppShell {
                                 ensure!(
                                     results.len() == 11
                                         && results.iter().all(|result| result.transport_completed),
-                                    "Mic EQ缺少完整设备回读确认"
+                                    "Mic EQ各步骤的设备传输未全部完成"
                                 );
                                 ensure!(
                                     serde_json::to_value(&results[0].requested)?
@@ -252,7 +305,7 @@ impl AppShell {
                                     serde_json::to_value(&write.requested)? == sent_value,
                                     "Mixer 写入回执与请求不匹配"
                                 );
-                                ensure!(write.transport_completed, "Mixer 写入缺少真实回读确认");
+                                ensure!(write.transport_completed, "Mixer 写入传输未完成");
                                 AudioMixerReply::Write(write)
                             }
                         };

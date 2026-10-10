@@ -84,6 +84,9 @@ fn exchange(
             return Err(error).context("Receiver brightness send transport failed; source exits its send loop on an exception");
         }
         std::thread::sleep(Duration::from_millis(cap.sleep_between_out_in_ms));
+        // _getUSBTransferInResult resets this once per OUT, then retains it
+        // across IN attempts. Its catch does not clear a preceding busy flag.
+        let mut resend_out_command = false;
         for attempt in 0..cap.max_retry_in {
             if attempt > 0 {
                 std::thread::sleep(Duration::from_millis(cap.sleep_between_in_ms));
@@ -94,11 +97,18 @@ fn exchange(
             validate()?;
             let count = match reply {
                 Ok(count) => count,
-                Err(error) => return Err(error).context("Receiver brightness getter transport failed; source does not resend this exception"),
+                Err(error) if resend_out_command => {
+                    last = format!("Receiver brightness getter transport failed: {error:#}");
+                    break;
+                }
+                Err(error) => return Err(error).context("Receiver brightness getter transport failed before source requested an OUT retry"),
             };
+            // The backend contract retains Report ID, whereas original host
+            // strips it. Only bounds required to safely inspect that packet
+            // belong here; source slices accept a shorter returned payload.
             ensure!(
-                count == 91 && incoming[0] == 0,
-                "Receiver brightness report length/ID differs"
+                (9..=incoming.len()).contains(&count) && incoming[0] == 0,
+                "Receiver brightness transport packet has no complete header or has a different report ID"
             );
             if incoming[2] != transaction || incoming[7..9] != command[1..] {
                 last = "Receiver brightness transaction/command differs".into();
@@ -107,6 +117,7 @@ fn exchange(
             match incoming[1] {
                 1 => {
                     last = "Receiver is busy".into();
+                    resend_out_command = true;
                     continue;
                 }
                 2 => {}
@@ -119,11 +130,7 @@ fn exchange(
                 ),
             }
             let bytes = usize::from(incoming[6]);
-            ensure!(
-                bytes <= 80,
-                "Receiver brightness data exceeds source packet"
-            );
-            return Ok(incoming[9..9 + bytes].to_vec());
+            return Ok(incoming[9..(9 + bytes).min(count)].to_vec());
         }
     }
     anyhow::bail!("Receiver brightness retry failed: {last}")
@@ -131,10 +138,6 @@ fn exchange(
 
 fn parse(data: &[u8]) -> anyhow::Result<Brightness> {
     ensure!(data.len() >= 3, "Receiver brightness reply is truncated");
-    ensure!(
-        data[0] == PROFILE && data[1] == REGION,
-        "Receiver brightness profile/region differs"
-    );
     Ok(Brightness {
         profile_id: data[0],
         region_id: data[1],

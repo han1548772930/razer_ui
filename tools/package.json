@@ -1,1 +1,1 @@
-{"private":true,"description":"Static resource extraction only","dependencies":{"acorn":"8.15.0"}}
+{"private":true,"description":"Static resource extraction only","dependencies":{"@babel/parser":"8.0.7","@babel/traverse":"8.0.7","acorn":"8.15.0"}}

@@ -1096,11 +1096,27 @@ impl ProductWorkspace {
     ) -> bool {
         matches!(&self.body,Body::Source(body) if body.read(cx).receiver_brightness_matches(generation,percent,current,cx))
     }
+    pub fn publish_receiver_brightness_profile(
+        &mut self,
+        generation: u64,
+        percent: Option<u8>,
+        outcome: super::HelpResetOutcome,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.publish_receiver_brightness_profile(generation, percent, outcome, window, cx)
+            });
+        }
+        cx.notify();
+    }
     pub fn finish_receiver_brightness(
         &mut self,
         generation: u64,
         percent: Option<u8>,
         outcome: Option<super::HelpResetOutcome>,
+        submitted_requested: Option<u8>,
         observed: Option<u8>,
         error: Option<String>,
         scope_current: bool,
@@ -1113,6 +1129,7 @@ impl ProductWorkspace {
                     generation,
                     percent,
                     outcome,
+                    submitted_requested,
                     observed,
                     error,
                     scope_current,

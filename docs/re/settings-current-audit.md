@@ -25,7 +25,7 @@
 | `Te` 语言、engineVersion≥4.0.633、loading、BroadcastChannel回应 | 本地语言及Release Notes入口存在；原版本门控、完整loading/回应仍缺 |
 | `Fs` Dashboard manifest，异常回退 `getAppData("synapse","version")` | About用已获取当前官方manifest；原运行期宿主回退未接通，不用Rust crate版本冒充 |
 
-原版没有第三个“服务连接”设置导航。已移除该页、产品预览选择器、源码展示及测试快捷按钮，并移除对应设置事件与初始化订阅。设置只呈现原 Synapse/General；服务状态与设备发现仍由已有后台 owner 管理，不依赖该诊断页挂载。原内部校准、配对、编辑、删除弹层保留各自确认语义。
+原版只有 Synapse/General。按用户明确要求保留额外“服务连接”测试页，供打开没有实体设备的产品。其入口复用实际产品工作区或应用页面 owner，不再用简化样例 Dialog 代替页面；测试入口不计入原版界面覆盖。预览身份不用于真实通信，原内部校准、配对、编辑、删除弹层保留各自确认语义。
 
 ## 独立 Settings
 

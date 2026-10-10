@@ -35,7 +35,7 @@ child 从 RVA `0x134b0` 取 UTF-16 名称表，逐项精确比较，索引上限
 | --- | --- | --- |
 | `0xc170` | WriteFile 请求 report `0x04`；HidD_GetInputReport 读取 `0x12` | 请求 `[1..4]` 为命令的大端 uint32；响应 `[1..4]` 解为小端 uint32 |
 | `0xc2f0` | WriteFile 请求 report `0x04`；读取 `0x02` | 请求命令仍为大端 uint32；响应 `[1..2]` 解为小端 uint16 |
-| `0xc460` | WriteFile 请求 report `0x13` | `[1..4]` 命令大端；`[5..8]` 参数大端 uint32；Rust `MixerSession::write` 已按实际 descriptor 发送并要求回读确认 |
+| `0xc460` | WriteFile 请求 report `0x13` | `[1..4]` 命令大端；`[5..8]` 参数大端 uint32；Rust `MixerSession::write` 按实际 descriptor 发送，只返回原 setter 传输完成，不增加回读 |
 | `0xc580` | WriteFile 请求 report `0x03` | `[1..4]` 命令大端；`[5..6]` 参数大端 uint16；Rust 已接通硬件端点音量/静音分支 |
 
 查询 helper 将缓冲区清零，候选请求长度 `0x42 = 66`，发送长度受对象内 OutputReportByteLength 限制。发送使用 WriteFile 和对象内 OVERLAPPED；等待事件 100ms，随后复位事件；等待不返回 0 则进入取消/失败路径。成功分支 Sleep 4ms 后调用 HidD_GetInputReport，读取长度来自已存储 InputReportByteLength。没有把这些字段当固定设备描述符，也没有新增兼容性猜测。
@@ -57,7 +57,7 @@ child 从 RVA `0x134b0` 取 UTF-16 名称表，逐项精确比较，索引上限
 
 以上均是机器码返回路径，并非实机结果。[控制项证据](audio-mixer-controls-current-evidence.json) 对 37 项属性做整段反汇编和指令门控，生成 [运行配方](../../assets/data/audio-mixer-protocol.json)。Rust [audio_mixer.rs](../../crates/razer-device/src/audio_mixer.rs) 已实现 47 个展开控制项：26 个 DSP/寄存器控制（包括固件只读查询和麦克风监听）、15 个硬件端点 Volume/Mute/Peak 控制、6 条硬件混音路由。它们来自 30 个不同的原分发表属性，不能写成 47 个独立原 DLL 函数。另提供 3 个麦克风监听常量及 5 组端点范围元数据，均标记为源常量，不冒充设备观察。
 
-这些控制项接通独立 agent/IPC 的 `HidNodeMixerRead`/`HidNodeMixerWrite`；字段类型、范围、EQ 频段、声道、描述符、身份及回读确认均在 Rust 中检查。另已接通驱动矩阵及原 0..8 流重置请求。1342 页面的 Noise Gate、Compressor、Vocal Fading、Key Shifter 和 Mic EQ 正在通过当前实际 caller 接入该链，模式与级联提交见 [页面专项](audio-mixer-page-bindings-current.md)。虚拟音频 mixer reducers 不对应这些 HID 端点，仍缺单独实现；本地保存也不能记作设备持久化。6 个原属性仍缺 COM 分支；整个 DLL 完成数仍为 0，初始化、回调、完整页面消费和运行验收不能以配方覆盖替代。
+这些控制项接通独立 agent/IPC 的 `HidNodeMixerRead`/`HidNodeMixerWrite`；字段类型、范围、EQ 频段、声道、描述符及身份在 Rust 中检查。写结果 `transport_completed` 只表示原 setter 传输完成，不代表设备观察或持久化，也不会新增前后 value GET 或比较门控。原 caller 与 setter 必需的 GET/RMW 保留。另已接通驱动矩阵及原 0..8 流重置请求。1342 页面的 Noise Gate、Compressor、Vocal Fading、Key Shifter 和 Mic EQ 正在通过当前实际 caller 接入该链，模式与级联提交见 [页面专项](audio-mixer-page-bindings-current.md)。虚拟音频 mixer reducers 不对应这些 HID 端点，仍缺单独实现；本地保存也不能记作设备持久化。6 个原属性仍缺 COM 分支；整个 DLL 完成数仍为 0，初始化、回调、完整页面消费和运行验收不能以配方覆盖替代。
 
 麦克风监听寄存器使用原码 `RazerT2MicMonitorVolumeControl`：查询 `0x5ffc002c`，字段为返回 uint32 的 `0x7f0000`、右移 16 位，负值以绝对值写回，范围由原常量证明为 `-45..=0`、步长 `1`。该读写已进入 Rust DSP session 和 IPC 写回链，仍需页面实际消费者接通。
 
@@ -77,7 +77,7 @@ child 从 RVA `0x134b0` 取 UTF-16 名称表，逐项精确比较，索引上限
 
 Mic/LineIn/LineOut 的 Both 写入替换整个 uint16，单声道替换选中字节并保留另一字节；这会按原码清除对应字节的旧静音位。Headphones 每次写入先保留 `0x8080`，Console 保留 `0xffff8080`，单声道也会清除另一个声道的音量位。原 `0xb5f0` helper、连续指令和声道顺序已门控；不能改成统一的“只改音量、保留所有其他位”。
 
-静音写入两个声道，读分支观察 bit15；Headphones 极性反转。峰值返回两个 uint16/32768 的采样，随后向同一寄存器写 0 清除峰值，因此不是无副作用读取。Rust 清零失败返回错误；原码忽略该清零返回，这是明确的实现差异。
+静音写入两个声道，读分支观察 bit15；Headphones 极性反转。峰值返回两个 uint16/32768 的采样，随后向同一寄存器写 0 清除峰值，因此不是无副作用读取。Rust 按原 `0xde60` 发出清零请求后忽略 helper 返回，仍返回已读取的峰值；它只确认读取，不宣称清零成功。
 
 ## 混音矩阵与 ResetStream 驱动
 
@@ -85,9 +85,9 @@ Mic/LineIn/LineOut 的 Both 写入替换整个 uint16，单声道替换选中字
 
 其他分支枚举驱动接口 GUID `c129656a-b1ab-4adf-88de-8d2993eb1232`。读 IOCTL=`0x1d6144`，返回 112 字节、28 个小端 float32；写 IOCTL=`0x1da148`，先读完整矩阵、替换选中浮点值、再写全部 112 字节。两张跳转表已从 PE 原字节解码：input 偏移 `[4,1,2,0,6,5,3]`，output 基址 `[0,21,7,14]`；已走 HID 的六组合不能绕过门控改走驱动。getter 仅在选中值精确等于 1.0 时为真，NaN 也为假。静态生成器核对全部 7×4 组合，得到 6 条 HID、22 条驱动路由；驱动写入保留其余 108 字节，包括其他浮点值的 NaN 位模式。
 
-共享 Rust 矩阵编解码和 [Windows 适配](../../crates/razer-service/src/runtime/windows/mixer_driver.rs) 已连接 `HidNodeMixerRouteRead`/`HidNodeMixerRouteWrite`。矩阵按原 `CreateFileW` 参数独占同步打开，attributes=0。适配要求当前 HID 路径、实例、ContainerId 及同容器唯一驱动接口，操作前后重新观察；没有加载厂商 DLL。原件会遍历同类全部接口，Rust 限定选中设备，这是明确的身份策略差异；实际驱动接口是否与 HID 共享 ContainerId 未运行验证，缺失或歧义会报错。Rust 还校验实际返回 112 字节，并在写后回读目标布尔值；这两项是额外确认策略。页面消费尚缺。
+共享 Rust 矩阵编解码和 [Windows 适配](../../crates/razer-service/src/runtime/windows/mixer_driver.rs) 已连接 `HidNodeMixerRouteRead`/`HidNodeMixerRouteWrite`。矩阵按原 `CreateFileW` 参数独占同步打开，attributes=0。适配要求当前 HID 路径、实例、ContainerId 及同容器唯一驱动接口，操作前后重新观察；没有加载厂商 DLL。原件会遍历同类全部接口，Rust 限定选中设备，这是明确的身份策略差异；实际驱动接口是否与 HID 共享 ContainerId 未运行验证，缺失或歧义会报错。Rust 校验实际读出 112 字节，原件不检查该返回长度；这项差异保留并单独记录。原 `0xda46` 写 IOCTL 成功在 `0xda4e` 跳到 `0xda84` 继续接口枚举，失败返回 `0x10003`，没有写后矩阵 GET。Rust 保留完整 RMW 前读，仅完成一次写传输，不增加 GET 或布尔比较。结果为 `requested`、前读得到的 `previous` 和 `transport_completed`，不含 `observed`/`verified`，也不触发设备状态刷新或本地持久化。页面消费尚缺。
 
-`RazerT2ResetStream` 只接受 write，使用同一驱动 GUID、IOCTL `0x222440`，输入为 4 字节 stream index，输出 4 字节缓冲的语义仍未知。原 JS `restartAudioDriver` 依次提交 0..8；不是任意流索引接口。原打开/接口失败 `0x10001`，IOCTL 失败 `0x10003`。Rust `HidNodeMixerRestartStreams` 已执行同一有序序列，每次按原 attributes=0x80 打开/释放驱动句柄，并跨序列保留身份锁。失败返回已完成的索引，不伪造音频恢复状态；成功只确认 IOCTL 完成，不解释原件忽略的输出缓冲。页面消费者和运行验收仍缺，其他平台明确不支持该 Windows 驱动能力。
+`RazerT2ResetStream` 只接受 write，使用同一驱动 GUID、IOCTL `0x222440`，输入为 4 字节 stream index，输出 4 字节缓冲的语义仍未知。原 JS `restartAudioDriver` 依次提交 0..8；不是任意流索引接口。原打开/接口失败 `0x10001`，IOCTL 失败 `0x10003`。Rust `HidNodeMixerRestartStreams` 已执行同一有序序列，每次按原 attributes=0x80 打开/释放驱动句柄，并跨序列保留身份锁。原生返回码作为数据保留，不中止后续索引；真正传输或身份异常才停止。结果分别记录 `return_codes`、仅原生 0 的 `completed_indices` 和 `source_sequence_completed`，不伪造音频恢复状态，也不解释原件忽略的输出缓冲。1342 真实 Help 已接本地提交链；运行验收仍缺，其他平台明确不支持该 Windows 驱动能力。
 
 ## COM 与 HID 生命周期
 
@@ -101,17 +101,21 @@ child `CmMixerOpenHID` 会释放旧对象，再构造并枚举 HID；选择函�
 
 当前 JS 中存在 `RazerT2KeyShifterLevelEnable`，但这份 child 的 37 项分发表中没有这个名称。不能给它补造 table 项，也不能据此宣布整个功能不可用；仍需追其他实现、分支和实际消费者。
 
-DSP mailbox 读取会写 selector 并轮询，不是纯查询。原 formatter 接受第 5 次仍繁忙的结果；Rust 此时返回繁忙错误。写入无设备 ACK，Rust 额外回读并比对按原码量化后的值，量化确认是本项目策略。EQ 的第一个原 uint32 字段物理单位仍未知，未命名为 Hz；固件原 uint32 未猜测版本分量。各 setter 的类型、范围在发送报告前检查。
+DSP mailbox 读取会写 selector 并轮询，不是纯查询。原 formatter 接受第 5 次仍繁忙的结果；Rust 已按相同条件解析最后结果，只有实际查询失败才停止。两种 busy 位及 MagicVoice 分支由 [18 个 IDA/Hex-Rays 函数体审查](audio-mixer-read-outcomes-current-evidence.json)证明，并由纯 Rust 模拟覆盖。写入无设备 ACK；Rust 按原 setter 结束于报告传输，不额外回读或比较量化值。EQ 的第一个原 uint32 字段物理单位仍未知，未命名为 Hz；固件原 uint32 未猜测版本分量。各 setter 的类型、范围在发送报告前检查。
 
-EQ 原函数 `0xdd30..0xde60` 的 getter 使用 `(raw >> 1) & 0x7ffff`，gain 从 byte(raw >> 14) 按有符号数除 4 并截断；setter 则对 data 使用 `0x7fff` 掩码，gain 使用 `0x3f` 掩码。两个字段在 getter 中重叠，不能假设原始 data 与 gain 无损往返。例如 setter 输入 `data=0x1234,gain=-4` 的 payload 为 `0x003c2469`，getter 返回 `data=0x61234,gain=-4`。Rust 接受原 uint32 data 并保留 setter 的低 15 位掩码，不再错误拒绝来自真实 getter 的高位字段。页面写入遵循当前 JS 的固定频段模板，使用 data 30/60/120/250/500/1000/2000/4000/8000/16000，不能保留 getter 中与 gain 重叠的 data。原 getter 值只作为独立设备观察；麦克风 EQ 完整数组提交先启用，再依次写 0..9，各步按原 codec 回读确认。详见 [页面链](audio-mixer-page-bindings-current.md)。
+EQ 原函数 `0xdd30..0xde60` 的 getter 使用 `(raw >> 1) & 0x7ffff`，gain 从 byte(raw >> 14) 按有符号数除 4 并截断；setter 则对 data 使用 `0x7fff` 掩码，gain 使用 `0x3f` 掩码。两个字段在 getter 中重叠，不能假设原始 data 与 gain 无损往返。例如 setter 输入 `data=0x1234,gain=-4` 的 payload 为 `0x003c2469`，getter 返回 `data=0x61234,gain=-4`。Rust 接受原 uint32 data 并保留 setter 的低 15 位掩码，不再错误拒绝来自真实 getter 的高位字段。页面写入遵循当前 JS 的固定频段模板，使用 data 30/60/120/250/500/1000/2000/4000/8000/16000，不能保留 getter 中与 gain 重叠的 data。原 getter 值只作为独立设备观察；麦克风 EQ 完整数组提交先启用，再依次写 0..9，各步仅返回原传输结果，没有额外 band GET 或比较。详见 [页面链](audio-mixer-page-bindings-current.md)。
 
-已执行 `cargo test --locked -p razer-device audio_mixer::tests` 的 11 项纯 Rust/mock 测试，覆盖原 16/32 位报文字节序、collection 最大长度、EQ 重叠与量化、驱动矩阵保留字节和重置顺序、失败回读、峰值清零、mailbox 轮询上限。模拟传输测试不加载原库或访问设备，不是硬件验收。
+本轮完成静态审计、`cargo check --locked --all-targets` 及 14 个纯 Rust 模拟测试；未执行应用、厂商 JS、DLL 或设备命令。矩阵模拟明确要求仅一次 RMW 前读和一次写入，不允许 SET 后读回。编译检查、模拟测试及静态证据不构成硬件验收。
 
 HID helper 不等价于全部混音、服务或驱动功能。当前 JSON 的 `unsupported_properties`、`partial_properties` 及专项 COM/driver/lifecycle 记录保留未闭合边界。平台共用协议已隔离，Windows COM/驱动不在其他平台伪装成功；目前只有 Windows 静态编译检查，没有设备或三平台运行验收。
 
 ```text
 python tools/audit-cmmixer-protocol-current.py --check
 python tools/audit-cmmixer-controls-current.py --check
+python tools/audit-cmmixer-read-outcomes-current.py --check
+python tools/audit-audio-mixer-help-current.py --check
 ```
 
 校验核对原 PE hash、manifest 归属、GetProcAddress 导入槽、37 项 dispatch、原 JS 收据、report 构造和错误分支原文；不会执行 DLL 或设备命令。
+
+1342 Help 当前真实挂载与 Audio Troubleshooting 提交链见[Help 专项证据](audio-mixer-help-current-evidence.json)：原 `ug.resetAudio` 无确认框，置 spinner 后等待 1 秒调用实际 `resetAudio` prop，并立即移除 spinner，不等待设备结果。每次点击保留独立 timer；页面离开或设备更换取消本地未提交请求。原后台 NORMAL_SKIPPABLE 调度与 Rust 本地串行队列未完整等价，factory reset 和 Help 最终 CSS 渲染仍为缺口。Mic Monitor 页面走 AudioCamy `SetMicMonitorEnable/Level`，不能接到同名 CmMixerLib 硬件属性。

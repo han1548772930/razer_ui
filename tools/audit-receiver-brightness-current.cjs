@@ -21,11 +21,14 @@ for(const product of [164,241]){
  if(registration.arguments[1]?.value!=='rzDevice25'||cap.brightness.regionId!==15||cap.brightness.setByLightingEngine||cap.duallinkDeviceType!==(product===164?'LINKER':'LINKERMULTIDEVICES'))throw Error('Active brightness capability changed');
  receipts.push({product_id:product,name:'active-device-type-registration',path:s.mainFile,sha256:hash(main),offset:registration.start,end:registration.end,source:main.slice(registration.start,registration.end)});
  const cls=exported(s,7755,'default'),methods=[];
- walk(cls,node=>{if(node.type==='MethodDefinition'&&['getBrightness','setBrightness','_createDataSend','_calculateChecksum','_getUSBTransferInResult'].includes(key(node.key))){record(s,7755,key(node.key),node);if(['getBrightness','setBrightness'].includes(key(node.key)))methods.push(key(node.key));}});
+ walk(cls,node=>{if(node.type==='MethodDefinition'&&['getBrightness','setBrightness','_createDataSend','_calculateChecksum','_getUSBTransferInResult'].includes(key(node.key))){record(s,7755,key(node.key),node);if(key(node.key)==='_getUSBTransferInResult'){
+  const text=s.snippet(7755,node),handlers=[];walk(node,n=>{if(n.type==='CatchClause')handlers.push(n);});
+  if(!text.includes('n.resendOutCommand=!1;try{')||!text.includes('n.error=i.ERROR_USB_TRANSFER_IN_BUSY,n.resendOutCommand=!0')||handlers.length!==1||s.snippet(7755,handlers[0]).includes('resendOutCommand'))throw Error('Source busy/IN-exception OUT retry state changed');
+ }if(['getBrightness','setBrightness'].includes(key(node.key)))methods.push(key(node.key));}});
  if(methods.length!==2)throw Error('Brightness device methods changed');
  for(const name of ['Fm','n4'])record(s,13953,'brightness-helper-'+name,exported(s,13953,name));
  const parser=s.binding(13953,'T');record(s,13953,'brightness-parser',parser);
- if(!s.snippet(13953,parser).includes('Math.ceil(e.data[2]/255*100)')||!s.snippet(13953,exported(s,13953,'n4')).includes('Math.floor(r/100*255)'))throw Error('Brightness quantization changed');
+ if(s.snippet(13953,parser)!=='e=>{e.jsonData={profileId:e.data[0],regionIdEnum:a.oW(r._C,e.data[1]),regionId:e.data[1],brightness:Math.ceil(e.data[2]/255*100)}}'||!s.snippet(13953,exported(s,13953,'n4')).includes('Math.floor(r/100*255)'))throw Error('Brightness parser/quantization changed');
  const get=command(s,'_9'),set=command(s,'ne');
  if(JSON.stringify(get)!=='[3,15,132]'||JSON.stringify(set)!=='[3,15,4]')throw Error('Brightness commands changed');
  const task=exported(s,96571,'Vb7');record(s,96571,'taskRunnerSetBrightnessToDevice',task);
@@ -53,13 +56,14 @@ for(const product of [164,241]){
   transaction_prefix:224,transaction_modulus:31,pre_read_before_write:true,setter_skipped_if_same_percent:true,
   percentage_to_byte:'floor(percent / 100 * 255)',byte_to_percentage:'ceil(raw / 255 * 100)',acquisition:s.acquisition});
 }
-const implementation_receipts=['crates/razer-device/src/receiver_brightness.rs','crates/razer-service/src/runtime/windows/receiver_brightness.rs'].map(file=>({path:file,sha256:hash(fs.readFileSync(path.join(root,file)))}));
+const implementation_receipts=['crates/razer-device/src/receiver_brightness.rs','crates/razer-device/src/receiver_brightness_tests.rs','crates/razer-service/src/runtime/windows/receiver_brightness.rs'].map(file=>({path:file,sha256:hash(fs.readFileSync(path.join(root,file)))}));
 const evidence={schema_version:1,generator_sha256:hash(read('tools/audit-receiver-brightness-current.cjs')),
  offset_unit:'UTF-16 code units; end exclusive; SHA-256 covers actual UTF-8 source bytes',products,receipts,implementation_receipts,
  semantics:['Normal 164/241 TaskRunner uses profile 1, active receiver brightness region 15 and the primary Linker E0 transaction namespace. Pairing lane transaction namespaces must not be reused.',
   'TaskRunner performs a real getBrightness before normal writes and skips setBrightness if the source-rounded percentage already equals the request.',
-  'Both source getter and setter parse three response bytes: profile, region and raw brightness. Conversion uses ceil on reads and floor on writes.',
-  'Source command/transaction mismatches and statuses 0/3/4 retry OUT, busy status 1 retries IN, while unsupported/unknown status and transport exceptions stop the operation. Rust does not resend an exception after a potentially delivered write.',
+  'Both source getter and setter extract three response bytes: profile, region and raw brightness, without comparing profile or region to the request. Conversion uses ceil on reads and floor on writes.',
+  'Source command/transaction mismatches and statuses 0/3/4 retry OUT; busy status 1 retries IN and retains resendOutCommand=true. An IN exception stops immediately if that flag is false, but retains a previous busy flag and therefore retries OUT. Every new OUT resets the flag. Unsupported/unknown status and send exceptions stop the operation.',
+  'Original payload slice clamps its end to actual returned bytes. Rust follows that slice while rejecting packets missing a complete header/three brightness bytes and an invalid canonical transport Report ID, because those cannot be represented as a valid Rust Brightness observation. These bounds are transport/safety checks, not original profile/region or full-length success comparisons.',
   'Current TaskRunner performs one pre-read and a conditional setter, without an additional post-write getter or comparison. Source completion is not a separate hardware readback.',
   'Transport receipts preserve attempted/sent state and actual setter response separately from errors; no failed send is treated as an acknowledgment or rollback.',
   'Brightness completion alone does not complete Help Reset: original effect, mapping, storage publication and memory-cache chains must be tracked independently.'],

@@ -28,14 +28,20 @@ impl Drop for Session {
     }
 }
 struct Completion {
-    outcome: Option<HelpResetOutcome>,
     response: Value,
     error: Option<String>,
+}
+enum Delivery {
+    /// Source local/profile publication precedes its queued hardware task.
+    /// This is not a getter, transport acknowledgement or host storage event.
+    LocalProfile(HelpResetOutcome),
+    Finished(Result<Completion, String>),
 }
 fn execute(
     device: Device,
     request: Option<ReceiverBrightnessRequested>,
     cancel: &AtomicBool,
+    delivery: &mpsc::Sender<Delivery>,
 ) -> anyhow::Result<Completion> {
     let guard = || -> anyhow::Result<()> {
         ensure!(
@@ -53,7 +59,6 @@ fn execute(
             &device.device_container_id,
         )?;
         guard()?;
-        let mut outcome = None;
         let mut storage = None;
         // Editing follows taskMakerSetBrightness: load real serial-owned
         // document, mutate active brightness, persist, then enqueue device.
@@ -138,10 +143,12 @@ fn execute(
                 previous.as_ref(),
                 &document,
             )?;
-            outcome = Some(HelpResetOutcome {
-                source_document: document.clone(),
-                serial_number: serial.clone(),
-            });
+            delivery
+                .send(Delivery::LocalProfile(HelpResetOutcome {
+                    source_document: document.clone(),
+                    serial_number: serial.clone(),
+                }))
+                .map_err(|_| anyhow::anyhow!("Receiver local profile recipient closed"))?;
             storage = Some((local, serial, document));
         }
         let response = (|| -> anyhow::Result<Value> {
@@ -186,11 +193,7 @@ fn execute(
                 error = Some(error.map_or(detail.clone(), |error| format!("{error}; {detail}")));
             }
         }
-        Ok(Completion {
-            outcome,
-            response,
-            error,
-        })
+        Ok(Completion { response, error })
     })();
     let shutdown = client.request(ServiceRequest::Shutdown);
     match (result, shutdown) {
@@ -203,7 +206,10 @@ fn execute(
             );
             Ok(result)
         }
-        (result, _) => result,
+        (Err(error), Err(cleanup)) => Err(anyhow::anyhow!(
+            "{error:#}; worker shutdown failed: {cleanup:#}"
+        )),
+        (result, Ok(_)) => result,
     }
 }
 impl AppShell {
@@ -299,6 +305,7 @@ impl AppShell {
                         percent,
                         None,
                         None,
+                        None,
                         Some(format!("{error:#}")),
                         false,
                         window,
@@ -311,15 +318,17 @@ impl AppShell {
         let revision = self.discovery_revision;
         let product = device.product_id;
         let container = device.device_container_id.clone();
-        let profile = device.active_profile.clone();
+        let mut profile = device.active_profile.clone();
         let canceled = Arc::new(AtomicBool::new(false));
         let signal = canceled.clone();
         let (sender, receiver) = mpsc::channel();
         let worker = match thread::Builder::new()
             .name("receiver-brightness-page".into())
             .spawn(move || {
-                let _ = sender
-                    .send(execute(device, request, &signal).map_err(|error| format!("{error:#}")));
+                let _ = sender.send(Delivery::Finished(
+                    execute(device, request, &signal, &sender)
+                        .map_err(|error| format!("{error:#}")),
+                ));
             }) {
             Ok(worker) => worker,
             Err(error) => {
@@ -327,6 +336,7 @@ impl AppShell {
                     workspace.finish_receiver_brightness(
                         generation,
                         percent,
+                        None,
                         None,
                         None,
                         Some(error.to_string()),
@@ -347,11 +357,11 @@ impl AppShell {
                 let result = match receiver.try_recv() {
                     Ok(result) => Some(result),
                     Err(mpsc::TryRecvError::Empty) => None,
-                    Err(mpsc::TryRecvError::Disconnected) => {
-                        Some(Err("Brightness worker disconnected".into()))
-                    }
+                    Err(mpsc::TryRecvError::Disconnected) => Some(Delivery::Finished(Err(
+                        "Brightness worker disconnected".into(),
+                    ))),
                 };
-                let terminal = result.is_some();
+                let terminal = matches!(result, Some(Delivery::Finished(_)));
                 let keep = shell.update_in(cx, |shell, window, cx| {
                     if !shell
                         .receiver_brightness_page
@@ -378,29 +388,66 @@ impl AppShell {
                         }
                         return true;
                     }
-                    if let Some(result) = result {
+                    if let Some(Delivery::LocalProfile(outcome)) = result {
+                        if current {
+                            workspace.update(cx, |workspace, cx| {
+                                workspace.publish_receiver_brightness_profile(
+                                    generation, percent, outcome, window, cx,
+                                )
+                            });
+                            // The source document may install its serial-owned
+                            // active GUID. Retain that publication as our scope;
+                            // a later user profile change still invalidates it.
+                            profile = workspace.read(cx).device(cx).active_profile.clone();
+                        }
+                        return true;
+                    }
+                    if let Some(Delivery::Finished(result)) = result {
                         shell.retire_receiver_brightness(&delivery_key);
-                        let (outcome, observed, error) = match result {
+                        let (outcome, submitted_requested, observed, error) = match result {
                             Ok(result) => {
+                                // Source TaskRunner publishes its requested value after
+                                // the pre-read/conditional setter. Keep that completion
+                                // separate from an actual getter observation.
+                                let submitted_requested = if percent.is_some()
+                                    && result.response["result"]["source_completed"] == true
+                                {
+                                    result.response["result"]["requested_percent"]
+                                        .as_u64()
+                                        .and_then(|n| u8::try_from(n).ok())
+                                } else {
+                                    None
+                                };
                                 let observed = if percent.is_some() {
                                     result.response["result"]["observed"]["percent"].as_u64()
                                 } else {
                                     result.response["result"]["percent"].as_u64()
                                 }
                                 .and_then(|n| u8::try_from(n).ok());
-                                (result.outcome, observed, result.error)
+                                (None, submitted_requested, observed, result.error)
                             }
-                            Err(error) => (None, None, Some(error)),
+                            Err(error) => (None, None, None, Some(error)),
                         };
                         if current {
-                            shell.status = error.clone().unwrap_or_else(|| match observed {
-                                Some(value) => format!("设备实际亮度：{value}%"),
-                                None => "设备亮度未确认".into(),
+                            shell.status = error.clone().unwrap_or_else(|| {
+                                match (submitted_requested, observed) {
+                                    (Some(value), _) => format!("设备亮度原链提交完成：{value}%"),
+                                    (None, Some(value)) => format!("设备实际亮度：{value}%"),
+                                    (None, None) => "设备亮度未确认".into(),
+                                }
                             });
                         }
                         workspace.update(cx, |workspace, cx| {
                             workspace.finish_receiver_brightness(
-                                generation, percent, outcome, observed, error, current, window, cx,
+                                generation,
+                                percent,
+                                outcome,
+                                submitted_requested,
+                                observed,
+                                error,
+                                current,
+                                window,
+                                cx,
                             )
                         });
                         cx.notify();

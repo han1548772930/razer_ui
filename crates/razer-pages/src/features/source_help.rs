@@ -1,13 +1,18 @@
 //! Retained Help UI from each product's mounted current source component.
 use gpui_kit::base::{Button as BaseButton, Link};
 use gpui_kit::component::button::Button;
+use gpui_kit::component::spinner::Spinner;
 use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_i18n as i18n;
 use razer_model::model::Device;
 use razer_widgets::surface;
 use serde::Deserialize;
-use std::{sync::OnceLock, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::OnceLock,
+    time::Duration,
+};
 
 #[derive(Deserialize)]
 struct Help {
@@ -53,10 +58,14 @@ pub(super) struct SourceHelp {
     reset_cooldown: bool,
     reset_cooldown_task: Option<Task<()>>,
     reset_error: Option<String>,
+    audio_restart: bool,
+    audio_reset_generations: BTreeSet<u64>,
+    audio_reset_tasks: BTreeMap<u64, Task<()>>,
 }
 #[derive(Clone, Copy, Debug)]
 pub struct HelpResetRequest {
     generation: u64,
+    audio_streams: bool,
 }
 /// Actual query identity accompanies the raw source document separately.
 /// Transport fields must never be injected into the original storage document.
@@ -67,6 +76,9 @@ pub struct HelpResetOutcome {
 impl HelpResetRequest {
     pub fn generation(self) -> u64 {
         self.generation
+    }
+    pub fn is_audio_streams(self) -> bool {
+        self.audio_streams
     }
 }
 pub(super) enum HelpResetEvent {
@@ -88,6 +100,9 @@ impl SourceHelp {
             reset_cooldown: false,
             reset_cooldown_task: None,
             reset_error: None,
+            audio_restart: false,
+            audio_reset_generations: BTreeSet::new(),
+            audio_reset_tasks: BTreeMap::new(),
         }
     }
     pub(super) fn set_device(&mut self, device: &Device, cx: &mut Context<Self>) {
@@ -98,6 +113,7 @@ impl SourceHelp {
             if self.pending_reset {
                 cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
                     generation: self.reset_generation,
+                    audio_streams: false,
                 }));
             }
             self.copy_task = None;
@@ -109,6 +125,7 @@ impl SourceHelp {
             self.reset_cooldown = false;
             self.reset_cooldown_task = None;
             self.reset_error = None;
+            self.cancel_audio_resets(cx);
         }
         if self.device.product_id != device.product_id {
             self.page_offset = None;
@@ -121,6 +138,7 @@ impl SourceHelp {
             if self.pending_reset {
                 cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
                     generation: self.reset_generation,
+                    audio_streams: false,
                 }));
             }
             self.page_offset = Some(offset);
@@ -131,6 +149,7 @@ impl SourceHelp {
             self.reset_cooldown = false;
             self.reset_cooldown_task = None;
             self.reset_error = None;
+            self.cancel_audio_resets(cx);
             cx.notify();
         }
     }
@@ -248,6 +267,7 @@ impl SourceHelp {
                                                     view.reset_generation.wrapping_add(1);
                                                 let request = HelpResetRequest {
                                                     generation: view.reset_generation,
+                                                    audio_streams: false,
                                                 };
                                                 view.reset_cooldown = true;
                                                 // Original Help resetDevice re-enables after two
@@ -283,7 +303,51 @@ impl SourceHelp {
         });
     }
     pub(super) fn reset_matches(&self, request: HelpResetRequest) -> bool {
+        if request.audio_streams {
+            return self.audio_reset_generations.contains(&request.generation);
+        }
         self.pending_reset && self.reset_generation == request.generation
+    }
+    fn cancel_audio_resets(&mut self, cx: &mut Context<Self>) {
+        for generation in std::mem::take(&mut self.audio_reset_generations) {
+            cx.emit(HelpResetEvent::Canceled(HelpResetRequest {
+                generation,
+                audio_streams: true,
+            }));
+        }
+        self.audio_reset_tasks.clear();
+        self.audio_restart = false;
+    }
+    fn restart_audio(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.device.product_id != 1342 {
+            return;
+        }
+        // Current ug.resetAudio sets the spinner, delays 1000 ms, invokes its
+        // actual resetAudio prop and removes the spinner without awaiting IO.
+        // Repeated clicks each retain their own original timer/request.
+        self.audio_restart = true;
+        self.reset_generation = self.reset_generation.wrapping_add(1);
+        let request = HelpResetRequest {
+            generation: self.reset_generation,
+            audio_streams: true,
+        };
+        self.audio_reset_generations.insert(request.generation);
+        let task = cx.spawn_in(window, async move |view, cx| {
+            cx.background_executor().timer(Duration::from_secs(1)).await;
+            let _ = view.update(cx, |view, cx| {
+                if !view.reset_matches(request) {
+                    return;
+                }
+                view.audio_restart = false;
+                if let Some(task) = view.audio_reset_tasks.remove(&request.generation) {
+                    task.detach();
+                }
+                cx.emit(HelpResetEvent::Requested(request));
+                cx.notify();
+            });
+        });
+        self.audio_reset_tasks.insert(request.generation, task);
+        cx.notify();
     }
     pub(super) fn accept_source_serial(&mut self, serial: &str) {
         if self.device.serial_number != serial {
@@ -299,6 +363,12 @@ impl SourceHelp {
         cx: &mut Context<Self>,
     ) {
         if !self.reset_matches(request) {
+            return;
+        }
+        if request.audio_streams {
+            self.audio_reset_generations.remove(&request.generation);
+            // This action does not replace profiles or claim recovered audio.
+            cx.notify();
             return;
         }
         self.pending_reset = false;
@@ -362,6 +432,19 @@ fn unavailable_panel(
             help_button(id, i18n::t(action), true, cx)
                 .tooltip(|window, cx| tooltip::Tooltip::new("设备服务未连接").build(window, cx)),
         )
+}
+fn audio_setup_action(id: &'static str, key: &str, uri: &'static str, cx: &App) -> BaseButton {
+    let label = format!("1. {}", i18n::t(key));
+    BaseButton::new(id)
+        .accessibility_label(label.clone())
+        .disabled(!cfg!(windows))
+        .self_start()
+        .p_0()
+        .mb(surface::css(10.))
+        .text_color(cx.theme().foreground)
+        .hover(|style| style.text_color(cx.theme().primary))
+        .child(label)
+        .on_click(move |_, _, cx| cx.open_url(uri))
 }
 impl Render for SourceHelp {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -430,7 +513,93 @@ impl Render for SourceHelp {
             ));
         }
         left = left.child(support);
-        if page.reset || page.oled_reset && !self.device.use_ble {
+        let audio_support = self.device.product_id == 1342;
+        if audio_support {
+            // ug mounts Audio Troubleshooting in the left column, with
+            // Support in the right. No factory-reset confirmation is involved.
+            left = v_flex()
+                .gap(surface::css(20.))
+                .child(
+                    surface::panel(i18n::t("SETTING_IT_UP"), cx)
+                        .child(i18n::t("SETTING_IT_UP_DES"))
+                        .child(
+                            div()
+                                .mt(surface::css(20.))
+                                .child(i18n::t("SETTING_IT_UP_BASIC")),
+                        )
+                        .child(
+                            v_flex()
+                                .child(audio_setup_action(
+                                    "source-help-sound-settings",
+                                    "SETTING_IT_UP_BASIC_1",
+                                    "ms-settings:sound",
+                                    cx,
+                                ))
+                                .child(
+                                    div()
+                                        .mb(surface::css(10.))
+                                        .child(format!("2. {}", i18n::t("SETTING_IT_UP_BASIC_2"))),
+                                )
+                                .child(
+                                    div()
+                                        .mb(surface::css(10.))
+                                        .child(format!("3. {}", i18n::t("SETTING_IT_UP_BASIC_3"))),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .mt(surface::css(20.))
+                                .child(i18n::t("SETTING_IT_UP_ADVANCED")),
+                        )
+                        .child(
+                            v_flex()
+                                .child(audio_setup_action(
+                                    "source-help-volume-settings",
+                                    "SETTING_IT_UP_ADVANCED_1",
+                                    "ms-settings:apps-volume",
+                                    cx,
+                                ))
+                                .child(
+                                    div().mb(surface::css(10.)).child(format!(
+                                        "2. {}",
+                                        i18n::t("SETTING_IT_UP_ADVANCED_2")
+                                    )),
+                                )
+                                .child(
+                                    div().mb(surface::css(10.)).child(format!(
+                                        "3. {}",
+                                        i18n::t("SETTING_IT_UP_ADVANCED_3")
+                                    )),
+                                )
+                                .child(
+                                    div().mb(surface::css(10.)).child(format!(
+                                        "4. {}",
+                                        i18n::t("SETTING_IT_UP_ADVANCED_4")
+                                    )),
+                                ),
+                        ),
+                )
+                .child(
+                    surface::panel(i18n::t("AUDIO_TROUBLESHOOTING"), cx)
+                        .child(i18n::t("AUDIO_TROUBLESHOOTING_DES"))
+                        .child(
+                            h_flex()
+                                .child(
+                                    help_button(
+                                        "source-help-restart-audio",
+                                        i18n::t("AUDIO_TROUBLESHOOTING_BUTTON"),
+                                        false,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(
+                                        |this, _, window, cx| this.restart_audio(window, cx),
+                                    )),
+                                )
+                                .when(self.audio_restart, |row| row.child(Spinner::new().small())),
+                        ),
+                );
+        }
+        if !audio_support && (page.reset || page.oled_reset && !self.device.use_ble) {
             left = left.child(
                 surface::panel(i18n::t("FACTORY_RESET"), cx)
                     .child(i18n::t(&page.reset_title))
@@ -451,6 +620,47 @@ impl Render for SourceHelp {
         }
         let serial = self.device.serial_number.clone();
         let mut right = v_flex().gap(surface::css(20.));
+        if audio_support {
+            let mut panel = surface::panel(i18n::t("SUPPORT"), cx).gap(surface::css(10.));
+            if let Some(url) = &help.support {
+                panel = panel.child(help_link(
+                    "source-help-audio-device",
+                    "VISIT_DEVICE_SUPPORT",
+                    url.clone(),
+                    cx,
+                ));
+            }
+            if let Some(prefix) = &help.guide {
+                let locale = i18n::locale().to_ascii_lowercase();
+                let locale = if locale.is_empty() { "en" } else { &locale };
+                panel = panel.child(help_link(
+                    "source-help-audio-guide",
+                    "VISIT_MASTER_PAGE",
+                    format!("{prefix}{locale}.pdf"),
+                    cx,
+                ));
+            }
+            right = right.child(panel.child(help_link(
+                "source-help-audio-synapse",
+                "VISIT_SYNAPSE_SUPPORT",
+                "https://support.razer.com",
+                cx,
+            )));
+            right = right.child(
+                surface::panel(i18n::t("FACTORY_RESET"), cx)
+                    .child(i18n::t(&page.reset_title))
+                    .child(
+                        help_button(
+                            "source-help-reset",
+                            i18n::t("RESET"),
+                            self.reset_cooldown,
+                            cx,
+                        )
+                        .self_start()
+                        .on_click(cx.listener(|this, _, window, cx| this.show_reset(window, cx))),
+                    ),
+            );
+        }
         if page.serial {
             right = right.child(
                 surface::panel(i18n::t("SERIAL_NUM"), cx)

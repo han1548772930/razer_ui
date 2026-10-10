@@ -276,7 +276,7 @@ impl MixerDriverTransport for Driver {
         );
         Ok(())
     }
-    fn reset_stream(&self, index: u32) -> anyhow::Result<()> {
+    fn reset_stream(&self, index: u32) -> anyhow::Result<u32> {
         let spec = audio_mixer::driver_spec();
         ensure!(
             spec.stream_indices.contains(&index),
@@ -285,25 +285,21 @@ impl MixerDriverTransport for Driver {
         let input = index.to_le_bytes();
         let mut output = [0u8; 4];
         let mut returned = 0;
-        ensure!(
-            unsafe {
-                DeviceIoControl(
-                    self.0,
-                    spec.reset_stream_ioctl,
-                    input.as_ptr().cast(),
-                    4,
-                    output.as_mut_ptr().cast(),
-                    4,
-                    &mut returned,
-                    ptr::null_mut(),
-                )
-            } != 0,
-            "Mixer 流重置未确认：{}",
-            std::io::Error::last_os_error()
-        );
+        let succeeded = unsafe {
+            DeviceIoControl(
+                self.0,
+                spec.reset_stream_ioctl,
+                input.as_ptr().cast(),
+                4,
+                output.as_mut_ptr().cast(),
+                4,
+                &mut returned,
+                ptr::null_mut(),
+            )
+        } != 0;
         // The original caller ignores this buffer. Do not invent state fields.
-        ensure!(returned <= 4, "流重置返回长度超过原缓冲区");
-        Ok(())
+        let _ = (output, returned);
+        Ok(if succeeded { 0 } else { 0x10003 })
     }
 }
 
@@ -318,9 +314,12 @@ impl MixerDriverTransport for StreamDriver<'_> {
         anyhow::bail!("流重置适配不支持矩阵设置")
     }
 
-    fn reset_stream(&self, index: u32) -> anyhow::Result<()> {
+    fn reset_stream(&self, index: u32) -> anyhow::Result<u32> {
         // Each original property call opens and closes its own driver handle.
-        let driver = Driver::open(self.0, FILE_ATTRIBUTE_NORMAL)?;
+        let driver = match Driver::open(self.0, FILE_ATTRIBUTE_NORMAL) {
+            Ok(driver) => driver,
+            Err(_) => return Ok(0x10001),
+        };
         driver.reset_stream(index)
     }
 }

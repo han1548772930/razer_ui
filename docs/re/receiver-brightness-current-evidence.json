@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generator_sha256": "2ac59d4ea5ac26189d5d13dcbd408b097506ab9192df783133a3cf26f04a400c",
+  "generator_sha256": "4fcb89a5fe56e9071b8565478005fd203f2ba3db14d5b87f7f3a0fb1100631d9",
   "offset_unit": "UTF-16 code units; end exclusive; SHA-256 covers actual UTF-8 source bytes",
   "products": [
     {
@@ -514,18 +514,23 @@
   "implementation_receipts": [
     {
       "path": "crates/razer-device/src/receiver_brightness.rs",
-      "sha256": "5aa3d5f8f2aec2e02a08c7beb0eb34098460f08560a3dccb83acfa77b4853f1f"
+      "sha256": "746dcedce1a8c3eada864cabc7021ac90bb10aa401cf0dd11c7a443a861fe820"
+    },
+    {
+      "path": "crates/razer-device/src/receiver_brightness_tests.rs",
+      "sha256": "73c20ece4ed867a4893f5d2d5c693efdf33f31de4aef6cab62b17dd7846fb507"
     },
     {
       "path": "crates/razer-service/src/runtime/windows/receiver_brightness.rs",
-      "sha256": "7304f3c79d25fe2cd695bb572307b5a35f123e9865dcdd44b1545d3635fc30a5"
+      "sha256": "4312a757ea5b28424a9d70ceda87a287352ae400b24eb6aecbab9be07de1b0c2"
     }
   ],
   "semantics": [
     "Normal 164/241 TaskRunner uses profile 1, active receiver brightness region 15 and the primary Linker E0 transaction namespace. Pairing lane transaction namespaces must not be reused.",
     "TaskRunner performs a real getBrightness before normal writes and skips setBrightness if the source-rounded percentage already equals the request.",
-    "Both source getter and setter parse three response bytes: profile, region and raw brightness. Conversion uses ceil on reads and floor on writes.",
-    "Source command/transaction mismatches and statuses 0/3/4 retry OUT, busy status 1 retries IN, while unsupported/unknown status and transport exceptions stop the operation. Rust does not resend an exception after a potentially delivered write.",
+    "Both source getter and setter extract three response bytes: profile, region and raw brightness, without comparing profile or region to the request. Conversion uses ceil on reads and floor on writes.",
+    "Source command/transaction mismatches and statuses 0/3/4 retry OUT; busy status 1 retries IN and retains resendOutCommand=true. An IN exception stops immediately if that flag is false, but retains a previous busy flag and therefore retries OUT. Every new OUT resets the flag. Unsupported/unknown status and send exceptions stop the operation.",
+    "Original payload slice clamps its end to actual returned bytes. Rust follows that slice while rejecting packets missing a complete header/three brightness bytes and an invalid canonical transport Report ID, because those cannot be represented as a valid Rust Brightness observation. These bounds are transport/safety checks, not original profile/region or full-length success comparisons.",
     "Current TaskRunner performs one pre-read and a conditional setter, without an additional post-write getter or comparison. Source completion is not a separate hardware readback.",
     "Transport receipts preserve attempted/sent state and actual setter response separately from errors; no failed send is treated as an acknowledgment or rollback.",
     "Brightness completion alone does not complete Help Reset: original effect, mapping, storage publication and memory-cache chains must be tracked independently."
