@@ -1,0 +1,506 @@
+[
+  {
+    "asset": "synapse/keyboard679-current/1-1x.5005237a.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-1x.5005237a.avif",
+    "source_sha256": "b791c5492e73ac37be2891098ef048cd2a23ce94266b97fd79708423ceb85901",
+    "output": "assets/synapse/keyboard679-current/1-1x.5005237a.png",
+    "output_sha256": "4c844853fd003a7510c3d8b1d6b5ecda19b4a0311a30128952517934f3df9d65",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/1-3x.0f5a7290.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-3x.0f5a7290.avif",
+    "source_sha256": "3ca95654bffb56ded05bc650679760eab6a173e9d8f7dd05becb50fc910ea14a",
+    "output": "assets/synapse/keyboard679-current/1-3x.0f5a7290.png",
+    "output_sha256": "25bd09b4cda11018580062dcb27f902b1a88433c2677c3cc033d7fa53ba94951",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/12-1x.458a733f.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-1x.458a733f.avif",
+    "source_sha256": "b84fbd0fa854f22170ae3bfc1e2b01f51bd5aedb2e32169d549744fc7027100c",
+    "output": "assets/synapse/keyboard679-current/12-1x.458a733f.png",
+    "output_sha256": "41ac83472084218e7d3493bcf3317b97605bc61064c04d09dd1206d095585c7c",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/12-3x.a749c3fc.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-3x.a749c3fc.avif",
+    "source_sha256": "8cdd9f2a3b8108bb35ccc38f5ddf4e1a0bcee0f28f3da82e820c19a47f440a0b",
+    "output": "assets/synapse/keyboard679-current/12-3x.a749c3fc.png",
+    "output_sha256": "346394c1f37ccfe33b560bf3bff6a48fb8e91b2ac7d9c36aba1b811a00da1a21",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/15-1x.0e4c3192.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/15-1x.0e4c3192.avif",
+    "source_sha256": "4fd96d74a104910a50cd6cc7fb105fca16be19034acace6cc804878c12f000fc",
+    "output": "assets/synapse/keyboard679-current/15-1x.0e4c3192.png",
+    "output_sha256": "5ddfcaa97031882fac99d04f4a8819a25626bd8f716c79d5ad7640fb26259166",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/15-3x.11b5804f.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/15-3x.11b5804f.avif",
+    "source_sha256": "02a73ab094838308e55e8d4c95f43a8d740a05f8a416e416874da4460fbba021",
+    "output": "assets/synapse/keyboard679-current/15-3x.11b5804f.png",
+    "output_sha256": "02165aa3b3c6f438eb65ed89f15b56f3aedae53968d681bdd6e82a44edcb302e",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/16-1x.59d3ba90.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/16-1x.59d3ba90.avif",
+    "source_sha256": "06671f6f4af7634905da4cfc954ac95222c3bdd298c20c32a96d1523cfe7bcf2",
+    "output": "assets/synapse/keyboard679-current/16-1x.59d3ba90.png",
+    "output_sha256": "41d3c8fbf7b1ee539db52880cb48f42ffb23abb2cd3f418d72b7921494b10759",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/16-3x.1e9d17ed.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/16-3x.1e9d17ed.avif",
+    "source_sha256": "0fa476812b48ce42d0b1b13956d32eb6d0400f8cdbd09ea3e99d55b207088c37",
+    "output": "assets/synapse/keyboard679-current/16-3x.1e9d17ed.png",
+    "output_sha256": "ce608a6678ad5887f7396049b3704fe392dc3e22fd6fc884f8026a412e2f90d9",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/3-1x.6274375d.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/3-1x.6274375d.avif",
+    "source_sha256": "2e0a7fc428956b938ed5a421f791aa39e0bbb57e70bd7faf4b8fc7ec04972c96",
+    "output": "assets/synapse/keyboard679-current/3-1x.6274375d.png",
+    "output_sha256": "73d37fe62af51100b642757d5a7fd48c257bc6deb05c1f35f8227ebd09768509",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/3-3x.ef744b55.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/3-3x.ef744b55.avif",
+    "source_sha256": "3f56b1e96ab1e7ebe7306aa2928953d9a0d7f2a5046a8b8ae36a48afb76409e9",
+    "output": "assets/synapse/keyboard679-current/3-3x.ef744b55.png",
+    "output_sha256": "83fb28c5e7d39668c0d903f344923f8443c9ff197b4437e356fbee6dda5ba20d",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/4-1x.718fba5a.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/4-1x.718fba5a.avif",
+    "source_sha256": "0ef261f461a6a02e7bb1f214f3091c13f3f324bad218d61d99b3b4e2100f9e86",
+    "output": "assets/synapse/keyboard679-current/4-1x.718fba5a.png",
+    "output_sha256": "92aa32fac50527940d59ce4b7ac04824a175eda6a6b34eee09a7d5174cc68ca7",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/4-3x.994070cb.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/4-3x.994070cb.avif",
+    "source_sha256": "bde0f6d0d6d1d3dcc785142f0df40d1637fa1cfd9f9a4d6b1e53ef200fc0e3e3",
+    "output": "assets/synapse/keyboard679-current/4-3x.994070cb.png",
+    "output_sha256": "f064abf326b01a382c4ff0d2e52f1ce72a6e741d93f72490c954664fb904bb08",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/6-1x.3210cb64.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/6-1x.3210cb64.avif",
+    "source_sha256": "70c9683474449f5df00de497ede37e468144ebf94f1017a9678c08679d61e7ef",
+    "output": "assets/synapse/keyboard679-current/6-1x.3210cb64.png",
+    "output_sha256": "8af35f6d8b2589be648c74ac00b5354565bc625403d8e8063705ca78816ffb8d",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/6-3x.d4403088.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/6-3x.d4403088.avif",
+    "source_sha256": "174220887a4dc7bd1c90c50c58d8a500403168136e076e43c409c728c056c111",
+    "output": "assets/synapse/keyboard679-current/6-3x.d4403088.png",
+    "output_sha256": "c8e71e655ea483d96cebcf9e5df13c36eb8531dffe22d5ea7eb100e03f29558b",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/7-1x.55bb042d.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/7-1x.55bb042d.avif",
+    "source_sha256": "3df3e6d0fb0014cd36944a9123bb441f4842f7057a8424699baaa31fcea24a8e",
+    "output": "assets/synapse/keyboard679-current/7-1x.55bb042d.png",
+    "output_sha256": "870908b856898965894a78540aac9ee303ca42b34e143b3ff3ac2acb5f6dd21f",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/7-3x.55bb042d.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/7-3x.55bb042d.avif",
+    "source_sha256": "3df3e6d0fb0014cd36944a9123bb441f4842f7057a8424699baaa31fcea24a8e",
+    "output": "assets/synapse/keyboard679-current/7-3x.55bb042d.png",
+    "output_sha256": "870908b856898965894a78540aac9ee303ca42b34e143b3ff3ac2acb5f6dd21f",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/8-1x.314beedc.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/8-1x.314beedc.avif",
+    "source_sha256": "ae323dcf9ed46341e2f4d2f9efda6b2849996c26084bdfbd635bac30bd7d393f",
+    "output": "assets/synapse/keyboard679-current/8-1x.314beedc.png",
+    "output_sha256": "e8d69e49a42d9920b401a7eebd326393b07516f8da9c0913545e2f3920158158",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/8-3x.c2670903.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/8-3x.c2670903.avif",
+    "source_sha256": "5e5d7f31293f3e44cdef5ee1c7bd0fe7fd907d6ce173cd87d9ae1414866f24f9",
+    "output": "assets/synapse/keyboard679-current/8-3x.c2670903.png",
+    "output_sha256": "7f67df3c713b8e7d849979138eabfbfbbffaa44494b9ee253aeebc7eb98a1851",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/9-1x.b934a70e.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/9-1x.b934a70e.avif",
+    "source_sha256": "74c56c7855b3e0a036b24531231ca1dc7ab8d93ff379ff77f9c3c96fd2cd7c00",
+    "output": "assets/synapse/keyboard679-current/9-1x.b934a70e.png",
+    "output_sha256": "2c325125ba5236ebf9e8a18e72e7133266675f9d5c219c3046ba64e7d3410c0d",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/9-3x.5d1a4c72.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/9-3x.5d1a4c72.avif",
+    "source_sha256": "1419dad5b50780dd395be8a311cf1eb27090edb7b296b77e32317079aa66ae49",
+    "output": "assets/synapse/keyboard679-current/9-3x.5d1a4c72.png",
+    "output_sha256": "3836ba0c55f4e1d31febdf83e7f99be49adec26089c19c5cd3f2794312414fe2",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/customize-taliat1tkl-wristrest-1x.809f3cb4.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/customize-taliat1tkl-wristrest-1x.809f3cb4.avif",
+    "source_sha256": "eb1a06eca3db653d1d9c9ead9279fc83c45a7cbee617d30026d43ce12dd018d4",
+    "output": "assets/synapse/keyboard679-current/customize-taliat1tkl-wristrest-1x.809f3cb4.png",
+    "output_sha256": "598d454d95db02e2b92adc6eec6488e01f03e4280e71267d9a56f8820001f009",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/customize-taliat1tkl-wristrest-3x.596e8b54.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/customize-taliat1tkl-wristrest-3x.596e8b54.avif",
+    "source_sha256": "20e3995f4eb8843d5bf4f8be0244194a76070ffd9857230c7060e6047e327f9a",
+    "output": "assets/synapse/keyboard679-current/customize-taliat1tkl-wristrest-3x.596e8b54.png",
+    "output_sha256": "cfc3bc4093e3de57750cfad25967c2bc2b88318e08a0ffeebae7c4d1a0f7b9fa",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/wrist-without-gap.8e806975.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/wrist-without-gap.8e806975.avif",
+    "source_sha256": "11a9b78c088180168c476bef6dc5e34dfeb351d7bbaeb1d4ddddd00794145780",
+    "output": "assets/synapse/keyboard679-current/wrist-without-gap.8e806975.png",
+    "output_sha256": "db04234bd6d8f55c8300ae6d661f6a8c162f96acfb661d3f64b2f2cb1d669d8f",
+    "pixel_size": [
+      2190,
+      482
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/1-1x.e36421c0.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-1x.e36421c0.avif",
+    "source_sha256": "b924567ea5093b27931b84c26868530e0bbdebaab6fe2a1ecb0576cad2bac6c7",
+    "output": "assets/synapse/keyboard679-current/1-1x.e36421c0.png",
+    "output_sha256": "38211fd81e0ea2a57709fdd9bbd7a0de538c96001cb1ebfa6b24c25dcf8f5f1b",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/1-3x.c292b97c.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-3x.c292b97c.avif",
+    "source_sha256": "3c64489a38b282f2c22da1de60e5739110c7617d686c044eec5a820dfec596c5",
+    "output": "assets/synapse/keyboard679-current/1-3x.c292b97c.png",
+    "output_sha256": "17429ccb2014ef3902b029105e9c5c4d717be8d16bb08c202cdb5a9a066930e7",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/12-1x.f5f77dd2.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-1x.f5f77dd2.avif",
+    "source_sha256": "16d6b0eb0602b62af5214bd769c69e65fb62463a4449bc71804bc5394f01d23d",
+    "output": "assets/synapse/keyboard679-current/12-1x.f5f77dd2.png",
+    "output_sha256": "ea1772fb0bc1936b93a2e87e502c3d1a0c0ecc934ecb9145101013f67e88b873",
+    "pixel_size": [
+      730,
+      340
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/12-3x.809c2332.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-3x.809c2332.avif",
+    "source_sha256": "041bde59542fd65e565ab70ceb15b58beea1c7c41242e66a0c4293bfa81ae792",
+    "output": "assets/synapse/keyboard679-current/12-3x.809c2332.png",
+    "output_sha256": "a26bce519c24313d66decb61fd04bd2067cb6806c5208927e071891a8e589c06",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/1-1x.d58f9b3f.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-1x.d58f9b3f.avif",
+    "source_sha256": "75010364e51cbfc08bdd1b3af2855508ba51e8f514e651006de5e74f37a4d2f6",
+    "output": "assets/synapse/keyboard679-current/1-1x.d58f9b3f.png",
+    "output_sha256": "224526f60643009ff84c574f6f397154aef781c58d13bcc43ab6ac3d732b3e40",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/1-3x.d58f9b3f.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-3x.d58f9b3f.avif",
+    "source_sha256": "75010364e51cbfc08bdd1b3af2855508ba51e8f514e651006de5e74f37a4d2f6",
+    "output": "assets/synapse/keyboard679-current/1-3x.d58f9b3f.png",
+    "output_sha256": "224526f60643009ff84c574f6f397154aef781c58d13bcc43ab6ac3d732b3e40",
+    "pixel_size": [
+      2190,
+      1020
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/button-3x.a3cfcd87.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/button-3x.a3cfcd87.avif",
+    "source_sha256": "adc547ac5a541522f2c990f2d98d331015e78c967b1979647159d68bc080b195",
+    "output": "assets/synapse/keyboard679-current/button-3x.a3cfcd87.png",
+    "output_sha256": "dff1edec125fdbc9dfdf4104d6b672b584b38908902e90e11dadf9da1c60fe39",
+    "pixel_size": [
+      468,
+      468
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/button-3x_128.a00ec100.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/button-3x_128.a00ec100.avif",
+    "source_sha256": "abfd767711b1efe5365f1ec2cb156f49193d4efbff9a3593fc734e8bba94f3d9",
+    "output": "assets/synapse/keyboard679-current/button-3x_128.a00ec100.png",
+    "output_sha256": "08a21edb4ba1fda532bafac3f33c0b6b8e89f595a5fd6f7e81cdc7a7215b7abe",
+    "pixel_size": [
+      467,
+      468
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/dial-3x-1-2x.a080fd96.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/dial-3x-1-2x.a080fd96.avif",
+    "source_sha256": "947d5043db2d6cb96584e292d444e0df01569d097569dab8eb85059ca97b060f",
+    "output": "assets/synapse/keyboard679-current/dial-3x-1-2x.a080fd96.png",
+    "output_sha256": "94fcb2ecab70da63204a7667338aa298b83579913cb6293fc80fb777ad0f9d94",
+    "pixel_size": [
+      120,
+      120
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/dial-3x-1-2x_128.dd49c2d4.png",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/dial-3x-1-2x_128.dd49c2d4.avif",
+    "source_sha256": "9abb446805050d4bfc5adfe00d7071790725245773f660519e2cb8bb634fa98e",
+    "output": "assets/synapse/keyboard679-current/dial-3x-1-2x_128.dd49c2d4.png",
+    "output_sha256": "61167029e842a08f7b9643bb22c203ed0ee286f4c06765ec835c29dc5973c61e",
+    "pixel_size": [
+      160,
+      160
+    ],
+    "conversion": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_scrolldown_a.4224bc6a.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrolldown_a.4224bc6a.svg",
+    "source_sha256": "1ee8a585f07d9c91871666bb3cf9b6bd32d5689c39b7f6e78c16da59701a747b",
+    "output": "assets/synapse/keyboard679-current/icon_scrolldown_a.4224bc6a.svg",
+    "output_sha256": "1ee8a585f07d9c91871666bb3cf9b6bd32d5689c39b7f6e78c16da59701a747b",
+    "pixel_size": [
+      20.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_scrolldown.96292d1b.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrolldown.96292d1b.svg",
+    "source_sha256": "8012ffe70ac93a6acdc655ed5637f631af18de2be728d0e738fa3964c370fa93",
+    "output": "assets/synapse/keyboard679-current/icon_scrolldown.96292d1b.svg",
+    "output_sha256": "8012ffe70ac93a6acdc655ed5637f631af18de2be728d0e738fa3964c370fa93",
+    "pixel_size": [
+      20.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_mutevolume_a.e5e1d147.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_mutevolume_a.e5e1d147.svg",
+    "source_sha256": "06b81d52ab98ec4e8271f61a7101e25fe71ed5c25271370cc38865353ba97bdf",
+    "output": "assets/synapse/keyboard679-current/icon_mutevolume_a.e5e1d147.svg",
+    "output_sha256": "06b81d52ab98ec4e8271f61a7101e25fe71ed5c25271370cc38865353ba97bdf",
+    "pixel_size": [
+      20.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_mutevolume.00860e32.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_mutevolume.00860e32.svg",
+    "source_sha256": "2b7db673848fb340304d0d04a96f2169b62c73e2fd59c1158a7e09ed76d3ad7c",
+    "output": "assets/synapse/keyboard679-current/icon_mutevolume.00860e32.svg",
+    "output_sha256": "2b7db673848fb340304d0d04a96f2169b62c73e2fd59c1158a7e09ed76d3ad7c",
+    "pixel_size": [
+      20.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_scrollup_a.b399c705.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrollup_a.b399c705.svg",
+    "source_sha256": "018e83ad48320e134049ecfb60ba17ff2342695aeb6e136f99313c2b2971cb4e",
+    "output": "assets/synapse/keyboard679-current/icon_scrollup_a.b399c705.svg",
+    "output_sha256": "018e83ad48320e134049ecfb60ba17ff2342695aeb6e136f99313c2b2971cb4e",
+    "pixel_size": [
+      20.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_scrollup.d4ceff30.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrollup.d4ceff30.svg",
+    "source_sha256": "7942e54f805720c2157b32d1b84bc1ae13f71a4958dcd3d3846b711365aa7ebc",
+    "output": "assets/synapse/keyboard679-current/icon_scrollup.d4ceff30.svg",
+    "output_sha256": "7942e54f805720c2157b32d1b84bc1ae13f71a4958dcd3d3846b711365aa7ebc",
+    "pixel_size": [
+      20.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_playandpause.30c146c6.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_playandpause.30c146c6.svg",
+    "source_sha256": "dc3fd929bf531c08affc371019e91e6274c5e7563d46a7e9fb4b85561bbe49a7",
+    "output": "assets/synapse/keyboard679-current/icon_playandpause.30c146c6.svg",
+    "output_sha256": "dc3fd929bf531c08affc371019e91e6274c5e7563d46a7e9fb4b85561bbe49a7",
+    "pixel_size": [
+      20.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_tapdouble.e5332a5c.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_tapdouble.e5332a5c.svg",
+    "source_sha256": "e38809688efc47324988d2935ab1492302ae63d6d564e5746c94c09c4ae8d85a",
+    "output": "assets/synapse/keyboard679-current/icon_tapdouble.e5332a5c.svg",
+    "output_sha256": "e38809688efc47324988d2935ab1492302ae63d6d564e5746c94c09c4ae8d85a",
+    "pixel_size": [
+      24.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  },
+  {
+    "asset": "synapse/keyboard679-current/icon_taptriple.b652d4b5.svg",
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_taptriple.b652d4b5.svg",
+    "source_sha256": "f06e0af659cd648483c96e10bef3896def776a47fe313b74533b9af2065de32c",
+    "output": "assets/synapse/keyboard679-current/icon_taptriple.b652d4b5.svg",
+    "output_sha256": "f06e0af659cd648483c96e10bef3896def776a47fe313b74533b9af2065de32c",
+    "pixel_size": [
+      32.0,
+      20.0
+    ],
+    "conversion": "Original SVG XML bytes, unchanged"
+  }
+]

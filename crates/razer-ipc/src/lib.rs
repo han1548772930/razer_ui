@@ -101,6 +101,20 @@ pub enum ServiceRequest {
     HidNodeReports {
         node: razer_device::backend::HidNode,
     },
+    /// Current V3 trigger calibration owns its exact collection until cleanup.
+    /// Acceptance and task completion are distinct from verified device writes.
+    ControllerTriggerCalibrationStart {
+        operation_id: String,
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        part_id: u8,
+    },
+    ControllerTriggerCalibrationPoll {
+        operation_id: String,
+    },
+    ControllerTriggerCalibrationCancel {
+        operation_id: String,
+    },
     HidNodeRead {
         node: razer_device::backend::HidNode,
         product_id: u32,

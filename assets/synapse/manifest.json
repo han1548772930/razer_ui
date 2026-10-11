@@ -18955,101 +18955,965 @@
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
       "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
-      "output": "assets/synapse/keyboard-679-chroma-sync.svg",
+      "output": "assets/synapse/chroma_sync_v3_static.svg",
       "sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
       "source_bytes": 310620,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/chroma_sync_v3_static.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+          "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+          "source_bytes": 310620,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                7665,
+                7939
+              ],
+              "utf16_range": [
+                7665,
+                7939
+              ],
+              "slice_sha256": "f4e5e5fa06e54a8d7d79c2fc59e4d7c61393460db2efd41a1429bf6945666cb0",
+              "source": "px;margin-right:10px;position:relative;width:26px}.chroma-studio-animate:before{background-image:url(../../static/media/chroma_sync_v3_static.c8ddf315.svg);content:\"\";display:inline-block;height:26px;left:0;position:absolute;top:0;width:26px}.chroma-studio-animate:hover,.ch"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/chroma_sync_v3_static.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+          "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+          "source_bytes": 310620,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                7665,
+                7939
+              ],
+              "utf16_range": [
+                7665,
+                7939
+              ],
+              "slice_sha256": "f4e5e5fa06e54a8d7d79c2fc59e4d7c61393460db2efd41a1429bf6945666cb0",
+              "source": "px;margin-right:10px;position:relative;width:26px}.chroma-studio-animate:before{background-image:url(../../static/media/chroma_sync_v3_static.c8ddf315.svg);content:\"\";display:inline-block;height:26px;left:0;position:absolute;top:0;width:26px}.chroma-studio-animate:hover,.ch"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/chroma_sync_v3_static.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+          "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+          "source_bytes": 310620,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                7665,
+                7939
+              ],
+              "utf16_range": [
+                7665,
+                7939
+              ],
+              "slice_sha256": "f4e5e5fa06e54a8d7d79c2fc59e4d7c61393460db2efd41a1429bf6945666cb0",
+              "source": "px;margin-right:10px;position:relative;width:26px}.chroma-studio-animate:before{background-image:url(../../static/media/chroma_sync_v3_static.c8ddf315.svg);content:\"\";display:inline-block;height:26px;left:0;position:absolute;top:0;width:26px}.chroma-studio-animate:hover,.ch"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_expand.55a47b0c.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/icon_expand.55a47b0c.svg",
       "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
-      "output": "assets/synapse/keyboard-679-expand.svg",
+      "output": "assets/synapse/icon_expand.svg",
       "sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
       "source_bytes": 467,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/icon_expand.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_expand.55a47b0c.svg",
+          "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+          "source_bytes": 467,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                34239,
+                34503
+              ],
+              "utf16_range": [
+                34239,
+                34503
+              ],
+              "slice_sha256": "c9853ba2fe6f7e2a7cdda5b80b2b27769c00748af6841789789572083da44fd6",
+              "source": "ht:30px;position:absolute;right:23px;top:0;width:auto}.s3-dropdown>.icon.expand{background-image:url(../../static/media/icon_expand.55a47b0c.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;height:25px;position:absolute;right:0;top:0;t"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/icon_expand.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_expand.55a47b0c.svg",
+          "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+          "source_bytes": 467,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                34239,
+                34503
+              ],
+              "utf16_range": [
+                34239,
+                34503
+              ],
+              "slice_sha256": "c9853ba2fe6f7e2a7cdda5b80b2b27769c00748af6841789789572083da44fd6",
+              "source": "ht:30px;position:absolute;right:23px;top:0;width:auto}.s3-dropdown>.icon.expand{background-image:url(../../static/media/icon_expand.55a47b0c.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;height:25px;position:absolute;right:0;top:0;t"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/icon_expand.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_expand.55a47b0c.svg",
+          "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+          "source_bytes": 467,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                34239,
+                34503
+              ],
+              "utf16_range": [
+                34239,
+                34503
+              ],
+              "slice_sha256": "c9853ba2fe6f7e2a7cdda5b80b2b27769c00748af6841789789572083da44fd6",
+              "source": "ht:30px;position:absolute;right:23px;top:0;width:auto}.s3-dropdown>.icon.expand{background-image:url(../../static/media/icon_expand.55a47b0c.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;height:25px;position:absolute;right:0;top:0;t"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller_icon_qe.4b3f269f.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/controller_icon_qe.4b3f269f.svg",
       "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
-      "output": "assets/synapse/keyboard-679-quick-qe.svg",
+      "output": "assets/synapse/controller_icon_qe.svg",
       "sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
       "source_bytes": 2219,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller_icon_qe.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller_icon_qe.4b3f269f.svg",
+          "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+          "source_bytes": 2219,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                393918,
+                394189
+              ],
+              "utf16_range": [
+                393858,
+                394129
+              ],
+              "slice_sha256": "755bfea82b4f983645043b4379454696933f5cbb3bbb8301d49bbc4a39d907b7",
+              "source": "sd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{background-image:url(../../static/media/controller_icon_qe.4b3f269f.svg)}.quick-bind-title{flex:1 1 auto;padding:0 10px}.toggle-title-container{display:flex;gap:10px;padding-bottom:10px}.togg"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller_icon_qe.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller_icon_qe.4b3f269f.svg",
+          "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+          "source_bytes": 2219,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                393835,
+                394106
+              ],
+              "utf16_range": [
+                393775,
+                394046
+              ],
+              "slice_sha256": "755bfea82b4f983645043b4379454696933f5cbb3bbb8301d49bbc4a39d907b7",
+              "source": "sd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{background-image:url(../../static/media/controller_icon_qe.4b3f269f.svg)}.quick-bind-title{flex:1 1 auto;padding:0 10px}.toggle-title-container{display:flex;gap:10px;padding-bottom:10px}.togg"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller_icon_qe.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller_icon_qe.4b3f269f.svg",
+          "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+          "source_bytes": 2219,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                370860,
+                371131
+              ],
+              "utf16_range": [
+                370800,
+                371071
+              ],
+              "slice_sha256": "755bfea82b4f983645043b4379454696933f5cbb3bbb8301d49bbc4a39d907b7",
+              "source": "sd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{background-image:url(../../static/media/controller_icon_qe.4b3f269f.svg)}.quick-bind-title{flex:1 1 auto;padding:0 10px}.toggle-title-container{display:flex;gap:10px;padding-bottom:10px}.togg"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller_icon_wasd.421387bd.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/controller_icon_wasd.421387bd.svg",
       "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
-      "output": "assets/synapse/keyboard-679-quick-wasd.svg",
+      "output": "assets/synapse/controller_icon_wasd.svg",
       "sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
       "source_bytes": 2054,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller_icon_wasd.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller_icon_wasd.421387bd.svg",
+          "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+          "source_bytes": 2054,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                393728,
+                394001
+              ],
+              "utf16_range": [
+                393668,
+                393941
+              ],
+              "slice_sha256": "64d64fb2b816536f68b02a7b3166d7c1f388829e8a7c4c6b7aab166d8ead841a",
+              "source": "ight:auto;width:auto}.quick-bind-qe-joystick{padding:10px 0}.joystick-icon-wasd{background-image:url(../../static/media/controller_icon_wasd.421387bd.svg)}.joystick-icon-qe,.joystick-icon-wasd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{bac"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller_icon_wasd.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller_icon_wasd.421387bd.svg",
+          "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+          "source_bytes": 2054,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                393645,
+                393918
+              ],
+              "utf16_range": [
+                393585,
+                393858
+              ],
+              "slice_sha256": "64d64fb2b816536f68b02a7b3166d7c1f388829e8a7c4c6b7aab166d8ead841a",
+              "source": "ight:auto;width:auto}.quick-bind-qe-joystick{padding:10px 0}.joystick-icon-wasd{background-image:url(../../static/media/controller_icon_wasd.421387bd.svg)}.joystick-icon-qe,.joystick-icon-wasd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{bac"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller_icon_wasd.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller_icon_wasd.421387bd.svg",
+          "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+          "source_bytes": 2054,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                370670,
+                370943
+              ],
+              "utf16_range": [
+                370610,
+                370883
+              ],
+              "slice_sha256": "64d64fb2b816536f68b02a7b3166d7c1f388829e8a7c4c6b7aab166d8ead841a",
+              "source": "ight:auto;width:auto}.quick-bind-qe-joystick{padding:10px 0}.joystick-icon-wasd{background-image:url(../../static/media/controller_icon_wasd.421387bd.svg)}.joystick-icon-qe,.joystick-icon-wasd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{bac"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
       "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
-      "output": "assets/synapse/keyboard-679-sidepanel-active.svg",
+      "output": "assets/synapse/icon_sidepanel_a.svg",
       "sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
       "source_bytes": 408,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/icon_sidepanel_a.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
+          "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+          "source_bytes": 408,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                404285,
+                404554
+              ],
+              "utf16_range": [
+                404225,
+                404494
+              ],
+              "slice_sha256": "0f7baaa5d936038e05d3a3d2da3a2154617ddca96e4c80405edeb4f30105a5ef",
+              "source": "id #5d5d5d;border-radius:14px;height:27px;width:38px}.toggle-drawer.drawer-open{background-image:url(../../static/media/icon_sidepanel_a.90d67a6e.svg);border-color:#44d62c}.toggle-hyper.drawer-open.hover-btn{transition:background-color .2s,opacity .2s,color .2s;will-ch"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/icon_sidepanel_a.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
+          "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+          "source_bytes": 408,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                403005,
+                403274
+              ],
+              "utf16_range": [
+                402945,
+                403214
+              ],
+              "slice_sha256": "0f7baaa5d936038e05d3a3d2da3a2154617ddca96e4c80405edeb4f30105a5ef",
+              "source": "id #5d5d5d;border-radius:14px;height:27px;width:38px}.toggle-drawer.drawer-open{background-image:url(../../static/media/icon_sidepanel_a.90d67a6e.svg);border-color:#44d62c}.toggle-hyper.drawer-open.hover-btn{transition:background-color .2s,opacity .2s,color .2s;will-ch"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/icon_sidepanel_a.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
+          "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+          "source_bytes": 408,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                374621,
+                374890
+              ],
+              "utf16_range": [
+                374561,
+                374830
+              ],
+              "slice_sha256": "0f7baaa5d936038e05d3a3d2da3a2154617ddca96e4c80405edeb4f30105a5ef",
+              "source": "id #5d5d5d;border-radius:14px;height:27px;width:38px}.toggle-drawer.drawer-open{background-image:url(../../static/media/icon_sidepanel_a.90d67a6e.svg);border-color:#44d62c}.toggle-hyper.drawer-open.hover-btn{transition:background-color .2s,opacity .2s,color .2s;will-ch"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel.e53fef93.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel.e53fef93.svg",
       "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
-      "output": "assets/synapse/keyboard-679-sidepanel.svg",
+      "output": "assets/synapse/icon_sidepanel.svg",
       "sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
       "source_bytes": 402,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/icon_sidepanel.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_sidepanel.e53fef93.svg",
+          "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+          "source_bytes": 402,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                404049,
+                404316
+              ],
+              "utf16_range": [
+                403989,
+                404256
+              ],
+              "slice_sha256": "77a84091addbc5edd6b6f124d4a248515a97ba6085d115134d3f1e4d2417cba6",
+              "source": "p.hypershift-mode-tip{left:auto;right:1vw}}.toggle-drawer{background-color:#111;background-image:url(../../static/media/icon_sidepanel.e53fef93.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/icon_sidepanel.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel.e53fef93.svg",
+          "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+          "source_bytes": 402,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                402769,
+                403036
+              ],
+              "utf16_range": [
+                402709,
+                402976
+              ],
+              "slice_sha256": "77a84091addbc5edd6b6f124d4a248515a97ba6085d115134d3f1e4d2417cba6",
+              "source": "p.hypershift-mode-tip{left:auto;right:1vw}}.toggle-drawer{background-color:#111;background-image:url(../../static/media/icon_sidepanel.e53fef93.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/icon_sidepanel.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_sidepanel.e53fef93.svg",
+          "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+          "source_bytes": 402,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                374385,
+                374652
+              ],
+              "utf16_range": [
+                374325,
+                374592
+              ],
+              "slice_sha256": "77a84091addbc5edd6b6f124d4a248515a97ba6085d115134d3f1e4d2417cba6",
+              "source": "p.hypershift-mode-tip{left:auto;right:1vw}}.toggle-drawer{background-color:#111;background-image:url(../../static/media/icon_sidepanel.e53fef93.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-left.4d0f408c.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-left.4d0f408c.svg",
       "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
-      "output": "assets/synapse/keyboard-679-trigger-left.svg",
+      "output": "assets/synapse/xbox-trigger-left.svg",
       "sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
       "source_bytes": 2236,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/xbox-trigger-left.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+          "source_bytes": 2236,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
+              "file_sha256": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180",
+              "utf8_byte_range": [
+                840442,
+                840712
+              ],
+              "utf16_range": [
+                840442,
+                840712
+              ],
+              "slice_sha256": "0ca1ea28b3eaca50e5dba2f8581ae9b9629038066ca1cacf1335d1b96be90545",
+              "source": "static/media/ps-dpad-left.d522b514.svg\";const R=a.p+\"static/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";co"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                398215,
+                398485
+              ],
+              "utf16_range": [
+                398155,
+                398425
+              ],
+              "slice_sha256": "eb758ce1dce2585dbb0b974bec952008581137843ee40a4d366805961e00da3c",
+              "source": "ox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.svg)}.controller-button-drag-image .icon.right-bumper{background-image:url(../../static/media/xbox-button-right.54513544.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/xbox-trigger-left.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+          "source_bytes": 2236,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+              "file_sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+              "utf8_byte_range": [
+                829256,
+                829526
+              ],
+              "utf16_range": [
+                829256,
+                829526
+              ],
+              "slice_sha256": "0ca1ea28b3eaca50e5dba2f8581ae9b9629038066ca1cacf1335d1b96be90545",
+              "source": "static/media/ps-dpad-left.d522b514.svg\";const R=a.p+\"static/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";co"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                396935,
+                397205
+              ],
+              "utf16_range": [
+                396875,
+                397145
+              ],
+              "slice_sha256": "eb758ce1dce2585dbb0b974bec952008581137843ee40a4d366805961e00da3c",
+              "source": "ox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.svg)}.controller-button-drag-image .icon.right-bumper{background-image:url(../../static/media/xbox-button-right.54513544.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/xbox-trigger-left.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+          "source_bytes": 2236,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
+              "file_sha256": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929",
+              "utf8_byte_range": [
+                1103995,
+                1104265
+              ],
+              "utf16_range": [
+                1103893,
+                1104163
+              ],
+              "slice_sha256": "0ca1ea28b3eaca50e5dba2f8581ae9b9629038066ca1cacf1335d1b96be90545",
+              "source": "static/media/ps-dpad-left.d522b514.svg\";const R=a.p+\"static/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";co"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                366703,
+                366973
+              ],
+              "utf16_range": [
+                366643,
+                366913
+              ],
+              "slice_sha256": "eb758ce1dce2585dbb0b974bec952008581137843ee40a4d366805961e00da3c",
+              "source": "ox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.svg)}.controller-button-drag-image .icon.right-bumper{background-image:url(../../static/media/xbox-button-right.54513544.sv"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
       "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
-      "output": "assets/synapse/keyboard-679-trigger-right.svg",
+      "output": "assets/synapse/xbox-trigger-right.svg",
       "sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
       "source_bytes": 2762,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/xbox-trigger-right.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+          "source_bytes": 2762,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
+              "file_sha256": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180",
+              "utf8_byte_range": [
+                840500,
+                840771
+              ],
+              "utf16_range": [
+                840500,
+                840771
+              ],
+              "slice_sha256": "1754c56f4ff95f479e4863669c276e53e30827da460c62aee46c5ba699759302",
+              "source": "c/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";const p=a.p+\"static/media/xbox-button-right.54513544.svg\";con"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                398093,
+                398364
+              ],
+              "utf16_range": [
+                398033,
+                398304
+              ],
+              "slice_sha256": "c581ca5d896ef78f86f034c9a8dccab2e8331c58551fe98bc030de64120bd409",
+              "source": "ic/media/xbox-y.9c2fb89a.svg)}.controller-button-drag-image .icon.trigger-right{background-image:url(../../static/media/xbox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/xbox-trigger-right.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+          "source_bytes": 2762,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+              "file_sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+              "utf8_byte_range": [
+                829314,
+                829585
+              ],
+              "utf16_range": [
+                829314,
+                829585
+              ],
+              "slice_sha256": "1754c56f4ff95f479e4863669c276e53e30827da460c62aee46c5ba699759302",
+              "source": "c/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";const p=a.p+\"static/media/xbox-button-right.54513544.svg\";con"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                396813,
+                397084
+              ],
+              "utf16_range": [
+                396753,
+                397024
+              ],
+              "slice_sha256": "c581ca5d896ef78f86f034c9a8dccab2e8331c58551fe98bc030de64120bd409",
+              "source": "ic/media/xbox-y.9c2fb89a.svg)}.controller-button-drag-image .icon.trigger-right{background-image:url(../../static/media/xbox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/xbox-trigger-right.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+          "source_bytes": 2762,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
+              "file_sha256": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929",
+              "utf8_byte_range": [
+                1104053,
+                1104324
+              ],
+              "utf16_range": [
+                1103951,
+                1104222
+              ],
+              "slice_sha256": "1754c56f4ff95f479e4863669c276e53e30827da460c62aee46c5ba699759302",
+              "source": "c/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";const p=a.p+\"static/media/xbox-button-right.54513544.svg\";con"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                366581,
+                366852
+              ],
+              "utf16_range": [
+                366521,
+                366792
+              ],
+              "slice_sha256": "c581ca5d896ef78f86f034c9a8dccab2e8331c58551fe98bc030de64120bd409",
+              "source": "ic/media/xbox-y.9c2fb89a.svg)}.controller-button-drag-image .icon.trigger-right{background-image:url(../../static/media/xbox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.sv"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-green-icon.68e5616a.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/controller-fill-green-icon.68e5616a.svg",
       "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
-      "output": "assets/synapse/keyboard-679-controller-green.svg",
+      "output": "assets/synapse/controller-fill-green-icon.svg",
       "sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
       "source_bytes": 857,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller-fill-green-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+          "source_bytes": 857,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                401234,
+                401513
+              ],
+              "utf16_range": [
+                401174,
+                401453
+              ],
+              "slice_sha256": "37353ea6433f053a78ad81acd573edf74bdd70f2d12b4743b884dabe20470537",
+              "source": "d;border-radius:14px;height:27px;width:38px;z-index:100}.toggle-controller.open{background-image:url(../../static/media/controller-fill-green-icon.68e5616a.svg);border-color:#44d62c}.gamepad-tester{align-items:center;display:flex;margin-left:-10px;margin-top:-8px}.gamepad-tester"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller-fill-green-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+          "source_bytes": 857,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                399954,
+                400233
+              ],
+              "utf16_range": [
+                399894,
+                400173
+              ],
+              "slice_sha256": "37353ea6433f053a78ad81acd573edf74bdd70f2d12b4743b884dabe20470537",
+              "source": "d;border-radius:14px;height:27px;width:38px;z-index:100}.toggle-controller.open{background-image:url(../../static/media/controller-fill-green-icon.68e5616a.svg);border-color:#44d62c}.gamepad-tester{align-items:center;display:flex;margin-left:-10px;margin-top:-8px}.gamepad-tester"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller-fill-green-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+          "source_bytes": 857,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                369722,
+                370001
+              ],
+              "utf16_range": [
+                369662,
+                369941
+              ],
+              "slice_sha256": "bbb5dc02bb93509cb551fda7218cdf5da073e54616946335a1f8a5526189f475",
+              "source": "d;border-radius:14px;height:27px;width:38px;z-index:100}.toggle-controller.open{background-image:url(../../static/media/controller-fill-green-icon.68e5616a.svg);border-color:#44d62c}.quick-bind-btn{background-color:#707070;border-radius:3px;cursor:pointer;height:27px;left:1074px"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
       "source_url": "https://apps.razer.com/synapse/products/679/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
       "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
-      "output": "assets/synapse/keyboard-679-controller-grey.svg",
+      "output": "assets/synapse/controller-fill-grey-icon.svg",
       "sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
       "source_bytes": 861,
       "preparation": "Byte-for-byte copy of the current product media. Static comparison only.",
-      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+      "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller-fill-grey-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+          "source_bytes": 861,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                400978,
+                401256
+              ],
+              "utf16_range": [
+                400918,
+                401196
+              ],
+              "slice_sha256": "187f1fe31a0b0b3f57201b091455271604477030a2773def7f9a31912e50f965",
+              "source": "ng-something{cursor:grabbing!important}.toggle-controller{background-color:#111;background-image:url(../../static/media/controller-fill-grey-icon.a9ec3fff.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller-fill-grey-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+          "source_bytes": 861,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                399698,
+                399976
+              ],
+              "utf16_range": [
+                399638,
+                399916
+              ],
+              "slice_sha256": "187f1fe31a0b0b3f57201b091455271604477030a2773def7f9a31912e50f965",
+              "source": "ng-something{cursor:grabbing!important}.toggle-controller{background-color:#111;background-image:url(../../static/media/controller-fill-grey-icon.a9ec3fff.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller-fill-grey-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+          "source_bytes": 861,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                369466,
+                369744
+              ],
+              "utf16_range": [
+                369406,
+                369684
+              ],
+              "slice_sha256": "187f1fe31a0b0b3f57201b091455271604477030a2773def7f9a31912e50f965",
+              "source": "ng-something{cursor:grabbing!important}.toggle-controller{background-color:#111;background-image:url(../../static/media/controller-fill-grey-icon.a9ec3fff.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        }
+      ],
+      "shared_resource_evidence": "docs/re/keyboard-analog-shared-assets-current-source.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/mod_tap.37006906.svg",
@@ -19060,6 +19924,394 @@
       "source_bytes": 2715,
       "preparation": "Exact current source SVG bytes; mounted by the independently audited PID 688 ModTap caller.",
       "evidence": "docs/re/keyboard-679-customize-lighting-current-source.md"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-selection-edition-0.svg",
+      "sha256": "c228a8baa953950601bd2e9f9707f9ba242760e16abbf4ab7b6931d024177383",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/media/prd.37292859.svg",
+      "source_sha256": "c228a8baa953950601bd2e9f9707f9ba242760e16abbf4ab7b6931d024177383",
+      "source_bytes": 541884,
+      "module": 57435,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/7435.701f6c8b.chunk.js",
+      "chunk_sha256": "383baf7b074fb0c97de10e37a9b36099daf5bfce7bb693c66ec892b6c8e14d14",
+      "edition": 0,
+      "kind": "prd",
+      "product_id": 2676,
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/media/prd.37292859.svg",
+      "output_bytes": 541884,
+      "preparation": "Exact original per-product, per-edition SVG bytes selected by current webpack context. No substitution or redraw.",
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-trigger-artwork-edition-0.svg",
+      "sha256": "6a37b05df5932aee7187a9deb8a1ff77ed937d2674daab1f516447fe2e490733",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/media/ActuationDevice.5f4b983f.svg",
+      "source_sha256": "6a37b05df5932aee7187a9deb8a1ff77ed937d2674daab1f516447fe2e490733",
+      "source_bytes": 231113,
+      "module": 72259,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/2259.a01ca5bf.chunk.js",
+      "chunk_sha256": "eb6fcf5f15c806d51a4a1334e4e4cd9894c3c3419d64a92cdf1fdac7b079c3bd",
+      "edition": 0,
+      "kind": "ActuationDevice",
+      "product_id": 2676,
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/media/ActuationDevice.5f4b983f.svg",
+      "output_bytes": 231113,
+      "preparation": "Exact original per-product, per-edition SVG bytes selected by current webpack context. No substitution or redraw.",
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-0.svg",
+      "sha256": "7af5c885543091d3eb03a00f55733d3ab08026cf9e0d290043d87a43e8ef2501",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-1.svg",
+      "sha256": "ebbd843ce8a74ee648aa0aa9d2cbe5452dd16e49356b5b17c3c36d7243b66da4",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-2.svg",
+      "sha256": "f096887a6e669ee331f4a45cd1905f38691ffb61d7f45b852b6fb37381847d53",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-3.svg",
+      "sha256": "9548eb699dca4b3fe36a8fe7564843153662f78ea501b79235f43bf617e59b9b",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-4.svg",
+      "sha256": "5db9abb439e5f533d5f477e9017f560419862abdc84f2f9269c7693d16134345",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-steps-1.svg",
+      "sha256": "9f2201f863e5702be1fbdec6534ccad9a59ef6f38e7c34f76e1d0f6a6c559308",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "dm",
+      "offset": 6771132,
+      "end": 6778457,
+      "product_id": 2676,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors.",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 1544,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-steps-2.svg",
+      "sha256": "bfb584aabd7453b683ecf31eed60c25631a7e1e23db95a5af0192b00bb5261c7",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "dm",
+      "offset": 6771132,
+      "end": 6778457,
+      "product_id": 2676,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors.",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 1544,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-meter-template.svg",
+      "sha256": "7b3c6dfca30eb0a1c8b87e8393336d7384bcff4814d6010c61fe7ba790c16efa",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "FL",
+      "offset": 6745088,
+      "end": 6747942,
+      "product_id": 2676,
+      "preparation": "Literal source calibration meter path data and gradient geometry, with placeholders only for source-controlled direction, marker coordinates, track color and prompt animation.",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 1134,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-timer-template.svg",
+      "sha256": "4b1d2060176258671e9e646ea69660550531825e181e91075cdadbc9785d1fcf",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "ep",
+      "offset": 6801479,
+      "end": 6802018,
+      "product_id": 2676,
+      "preparation": "Exact source timer sector template. Rust applies the source clamped percentage formula; at 100% source uses a full circle, at 0% there is no timer SVG.",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 189,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-warning.svg",
+      "sha256": "395885be4ac83b3632d60deea573636b0a723c9de326e8ae2d7a9846fdada9a9",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "pm",
+      "offset": 6782796,
+      "end": 6783082,
+      "product_id": 2676,
+      "preparation": "Literal source warning path and source translation/fill serialized as SVG.",
+      "source_url": "https://apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_bytes": 7783026,
+      "output_bytes": 334,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-selection-edition-0.svg",
+      "sha256": "784efef3f5b15f8fc0e5a10c9cfb7f54ea8d8afbbd8703ded2ecda63e4dc2b16",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/media/prd.a6abcc55.svg",
+      "source_sha256": "784efef3f5b15f8fc0e5a10c9cfb7f54ea8d8afbbd8703ded2ecda63e4dc2b16",
+      "source_bytes": 599082,
+      "module": 5364,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/5364.c76a16e2.chunk.js",
+      "chunk_sha256": "a519b1b50b15fe4c51a40bcbcb2ff2a3dba8c5f23203c37ebdfad45aa62968e7",
+      "edition": 0,
+      "kind": "prd",
+      "product_id": 2684,
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/media/prd.a6abcc55.svg",
+      "output_bytes": 599082,
+      "preparation": "Exact original per-product, per-edition SVG bytes selected by current webpack context. No substitution or redraw.",
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-trigger-artwork-edition-0.svg",
+      "sha256": "224fadaef89ee02f4181ad10d009061ad90ff91370b3c19df4fee28aec8d2efe",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/media/ActuationDevice.280c9417.svg",
+      "source_sha256": "224fadaef89ee02f4181ad10d009061ad90ff91370b3c19df4fee28aec8d2efe",
+      "source_bytes": 240685,
+      "module": 8744,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8744.961f60df.chunk.js",
+      "chunk_sha256": "3e0e15a49c9a4fcc3e878f17649b728d5f2ff7014709d9c8129b38dec194322c",
+      "edition": 0,
+      "kind": "ActuationDevice",
+      "product_id": 2684,
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/media/ActuationDevice.280c9417.svg",
+      "output_bytes": 240685,
+      "preparation": "Exact original per-product, per-edition SVG bytes selected by current webpack context. No substitution or redraw.",
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-0.svg",
+      "sha256": "7af5c885543091d3eb03a00f55733d3ab08026cf9e0d290043d87a43e8ef2501",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-1.svg",
+      "sha256": "ebbd843ce8a74ee648aa0aa9d2cbe5452dd16e49356b5b17c3c36d7243b66da4",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-2.svg",
+      "sha256": "f096887a6e669ee331f4a45cd1905f38691ffb61d7f45b852b6fb37381847d53",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-3.svg",
+      "sha256": "9548eb699dca4b3fe36a8fe7564843153662f78ea501b79235f43bf617e59b9b",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-4.svg",
+      "sha256": "5db9abb439e5f533d5f477e9017f560419862abdc84f2f9269c7693d16134345",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF).",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 583,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-steps-1.svg",
+      "sha256": "9f2201f863e5702be1fbdec6534ccad9a59ef6f38e7c34f76e1d0f6a6c559308",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "zl",
+      "offset": 500175,
+      "end": 507477,
+      "product_id": 2684,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors.",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 1544,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-steps-2.svg",
+      "sha256": "bfb584aabd7453b683ecf31eed60c25631a7e1e23db95a5af0192b00bb5261c7",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "zl",
+      "offset": 500175,
+      "end": 507477,
+      "product_id": 2684,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors.",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 1544,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-meter-template.svg",
+      "sha256": "7b3c6dfca30eb0a1c8b87e8393336d7384bcff4814d6010c61fe7ba790c16efa",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Sl",
+      "offset": 474347,
+      "end": 477184,
+      "product_id": 2684,
+      "preparation": "Literal source calibration meter path data and gradient geometry, with placeholders only for source-controlled direction, marker coordinates, track color and prompt animation.",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 1134,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-timer-template.svg",
+      "sha256": "4b1d2060176258671e9e646ea69660550531825e181e91075cdadbc9785d1fcf",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "xc",
+      "offset": 529146,
+      "end": 529681,
+      "product_id": 2684,
+      "preparation": "Exact source timer sector template. Rust applies the source clamped percentage formula; at 100% source uses a full circle, at 0% there is no timer SVG.",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 189,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-warning.svg",
+      "sha256": "395885be4ac83b3632d60deea573636b0a723c9de326e8ae2d7a9846fdada9a9",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "ac",
+      "offset": 511813,
+      "end": 512098,
+      "product_id": 2684,
+      "preparation": "Literal source warning path and source translation/fill serialized as SVG.",
+      "source_url": "https://apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_bytes": 611253,
+      "output_bytes": 334,
+      "evidence": "docs/re/gamepad-trigger-selection-resources-current.json"
     },
     {
       "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2629/ui/static/media/0-3x.860566fa.avif",
@@ -19268,6 +20520,1386 @@
       "evidence": "docs/re/gamepad-4144-calibration-live-source.json",
       "current_component_source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/4144/ui/static/js/main.a5c50629.js",
       "current_component_sha256": "9a6cae35074ee895b48e3a4c96f9f833ebf51f59896126f934a3183e5cee83e6"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/synapse-ai.aa585cbf.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/synapse-ai.aa585cbf.svg",
+      "output": "assets/synapse/mapping-ai.svg",
+      "source_sha256": "32ab9ad53f27878c40cba509f8185d75934c0742718f91a8040d8f9dd83424ae",
+      "sha256": "32ab9ad53f27878c40cba509f8185d75934c0742718f91a8040d8f9dd83424ae",
+      "source_bytes": 785,
+      "output_bytes": 785,
+      "preparation": "Exact current PID190 AI mapping CSS icon bytes.",
+      "css_evidence": [
+        {
+          "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+          "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+          "rule": ".action-wrapper.AI_LAUNCHER .head:before{background-image:url(../../static/media/synapse-ai.aa585cbf.svg)}"
+        }
+      ],
+      "evidence": "docs/re/mouse-190-ai-icons-current-source.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/synapse-ai-open.2fb76614.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/synapse-ai-open.2fb76614.svg",
+      "output": "assets/synapse/mapping-ai-active.svg",
+      "source_sha256": "9f2597fffefe5813c9bd418ef0bdd931feac1c801c32f5e7534dea85ee617a5e",
+      "sha256": "9f2597fffefe5813c9bd418ef0bdd931feac1c801c32f5e7534dea85ee617a5e",
+      "source_bytes": 785,
+      "output_bytes": 785,
+      "preparation": "Exact current PID190 AI mapping CSS icon bytes.",
+      "css_evidence": [
+        {
+          "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+          "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+          "rule": ".action-wrapper.AI_LAUNCHER.open .head:before{background-image:url(../../static/media/synapse-ai-open.2fb76614.svg)}"
+        }
+      ],
+      "evidence": "docs/re/mouse-190-ai-icons-current-source.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/logo_synapse.bc241e5e.svg",
+      "output": "assets/synapse/mapping-190-requires-synapse.svg",
+      "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/logo_synapse.bc241e5e.svg",
+      "source_sha256": "f74f198ee96c805884128990125507816603ce9d28db5d5e25685198c2f43f79",
+      "sha256": "f74f198ee96c805884128990125507816603ce9d28db5d5e25685198c2f43f79",
+      "source_bytes": 994,
+      "output_bytes": 994,
+      "css_evidence": [
+        {
+          "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+          "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+          "rule": ".require-synapse .logo{background-color:initial;background-image:url(../../static/media/logo_synapse.bc241e5e.svg)!important;background-repeat:no-repeat!important;background-size:24px 24px!important;height:24px;margin-left:10px;width:24px}"
+        }
+      ],
+      "preparation": "Exact current source logo bytes; no substitution.",
+      "evidence": "docs/re/mouse-190-requires-synapse-logo-current-source.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-skeleton.72fd3181.svg",
+      "output": "assets/synapse/keyboard-floating-controller-skeleton.72fd3181.svg",
+      "source_sha256": "1d0cb6e1a6ed76ed32983ca41ee837307ead2e07c81e8ba84d791e14ba2de15f",
+      "sha256": "1d0cb6e1a6ed76ed32983ca41ee837307ead2e07c81e8ba84d791e14ba2de15f",
+      "source_bytes": 7537,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-skeleton.72fd3181.svg",
+          "source_sha256": "1d0cb6e1a6ed76ed32983ca41ee837307ead2e07c81e8ba84d791e14ba2de15f"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-skeleton.72fd3181.svg",
+          "source_sha256": "1d0cb6e1a6ed76ed32983ca41ee837307ead2e07c81e8ba84d791e14ba2de15f"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller-skeleton.72fd3181.svg",
+          "source_sha256": "1d0cb6e1a6ed76ed32983ca41ee837307ead2e07c81e8ba84d791e14ba2de15f"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_draggable.be674683.svg",
+      "output": "assets/synapse/keyboard-floating-icon_draggable.be674683.svg",
+      "source_sha256": "01415d956dc6b497a1d4e2109e08f631497cc201490fc9ac22b04499545275f2",
+      "sha256": "01415d956dc6b497a1d4e2109e08f631497cc201490fc9ac22b04499545275f2",
+      "source_bytes": 772,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_draggable.be674683.svg",
+          "source_sha256": "01415d956dc6b497a1d4e2109e08f631497cc201490fc9ac22b04499545275f2"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_draggable.be674683.svg",
+          "source_sha256": "01415d956dc6b497a1d4e2109e08f631497cc201490fc9ac22b04499545275f2"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_draggable.be674683.svg",
+          "source_sha256": "01415d956dc6b497a1d4e2109e08f631497cc201490fc9ac22b04499545275f2"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+      "output": "assets/synapse/keyboard-floating-controller-fill-grey-icon.a9ec3fff.svg",
+      "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+      "sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+      "source_bytes": 861,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+      "output": "assets/synapse/keyboard-floating-controller-fill-green-icon.68e5616a.svg",
+      "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+      "sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+      "source_bytes": 857,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-a.c85cb7b9.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-a.c85cb7b9.svg",
+      "source_sha256": "67b5af974eeea36dc8fa9c4e5be805aaf764210e7876cd61cd4ddd9764c1ddb0",
+      "sha256": "67b5af974eeea36dc8fa9c4e5be805aaf764210e7876cd61cd4ddd9764c1ddb0",
+      "source_bytes": 557,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-a.c85cb7b9.svg",
+          "source_sha256": "67b5af974eeea36dc8fa9c4e5be805aaf764210e7876cd61cd4ddd9764c1ddb0"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-a.c85cb7b9.svg",
+          "source_sha256": "67b5af974eeea36dc8fa9c4e5be805aaf764210e7876cd61cd4ddd9764c1ddb0"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-a.c85cb7b9.svg",
+          "source_sha256": "67b5af974eeea36dc8fa9c4e5be805aaf764210e7876cd61cd4ddd9764c1ddb0"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-b.3e7f0305.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-b.3e7f0305.svg",
+      "source_sha256": "63ac2cd9b105b30392e73697ce2f400aa7cb3561f4b69157814c9b743cc7c949",
+      "sha256": "63ac2cd9b105b30392e73697ce2f400aa7cb3561f4b69157814c9b743cc7c949",
+      "source_bytes": 825,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-b.3e7f0305.svg",
+          "source_sha256": "63ac2cd9b105b30392e73697ce2f400aa7cb3561f4b69157814c9b743cc7c949"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-b.3e7f0305.svg",
+          "source_sha256": "63ac2cd9b105b30392e73697ce2f400aa7cb3561f4b69157814c9b743cc7c949"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-b.3e7f0305.svg",
+          "source_sha256": "63ac2cd9b105b30392e73697ce2f400aa7cb3561f4b69157814c9b743cc7c949"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-x.4c09810f.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-x.4c09810f.svg",
+      "source_sha256": "d2d5180c2bc8c4f4afa20c8ea7911bb9f82ea0103114ff1da15c19717ae2edfc",
+      "sha256": "d2d5180c2bc8c4f4afa20c8ea7911bb9f82ea0103114ff1da15c19717ae2edfc",
+      "source_bytes": 609,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-x.4c09810f.svg",
+          "source_sha256": "d2d5180c2bc8c4f4afa20c8ea7911bb9f82ea0103114ff1da15c19717ae2edfc"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-x.4c09810f.svg",
+          "source_sha256": "d2d5180c2bc8c4f4afa20c8ea7911bb9f82ea0103114ff1da15c19717ae2edfc"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-x.4c09810f.svg",
+          "source_sha256": "d2d5180c2bc8c4f4afa20c8ea7911bb9f82ea0103114ff1da15c19717ae2edfc"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-y.9c2fb89a.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-y.9c2fb89a.svg",
+      "source_sha256": "0bfe205f0e450bde7ea55e43bac887d39e191617354af2242f09acfef511e3ed",
+      "sha256": "0bfe205f0e450bde7ea55e43bac887d39e191617354af2242f09acfef511e3ed",
+      "source_bytes": 518,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-y.9c2fb89a.svg",
+          "source_sha256": "0bfe205f0e450bde7ea55e43bac887d39e191617354af2242f09acfef511e3ed"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-y.9c2fb89a.svg",
+          "source_sha256": "0bfe205f0e450bde7ea55e43bac887d39e191617354af2242f09acfef511e3ed"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-y.9c2fb89a.svg",
+          "source_sha256": "0bfe205f0e450bde7ea55e43bac887d39e191617354af2242f09acfef511e3ed"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-trigger-right.7dfd89a0.svg",
+      "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+      "sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+      "source_bytes": 2762,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-trigger-left.4d0f408c.svg",
+      "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+      "sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+      "source_bytes": 2236,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-button-right.54513544.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-button-right.54513544.svg",
+      "source_sha256": "9b9ddcc33c03842966f9fb512f7338dcf2ab448449a1fbed669bf3eb4ca96452",
+      "sha256": "9b9ddcc33c03842966f9fb512f7338dcf2ab448449a1fbed669bf3eb4ca96452",
+      "source_bytes": 4491,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-button-right.54513544.svg",
+          "source_sha256": "9b9ddcc33c03842966f9fb512f7338dcf2ab448449a1fbed669bf3eb4ca96452"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-button-right.54513544.svg",
+          "source_sha256": "9b9ddcc33c03842966f9fb512f7338dcf2ab448449a1fbed669bf3eb4ca96452"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-button-right.54513544.svg",
+          "source_sha256": "9b9ddcc33c03842966f9fb512f7338dcf2ab448449a1fbed669bf3eb4ca96452"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-button-left.956f0830.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-button-left.956f0830.svg",
+      "source_sha256": "7d752136979f50414c5e8411a75aee9f1c18e09aaf2a58c42f99fbaa5f864dfd",
+      "sha256": "7d752136979f50414c5e8411a75aee9f1c18e09aaf2a58c42f99fbaa5f864dfd",
+      "source_bytes": 3795,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-button-left.956f0830.svg",
+          "source_sha256": "7d752136979f50414c5e8411a75aee9f1c18e09aaf2a58c42f99fbaa5f864dfd"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-button-left.956f0830.svg",
+          "source_sha256": "7d752136979f50414c5e8411a75aee9f1c18e09aaf2a58c42f99fbaa5f864dfd"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-button-left.956f0830.svg",
+          "source_sha256": "7d752136979f50414c5e8411a75aee9f1c18e09aaf2a58c42f99fbaa5f864dfd"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-up.20cc1a34.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-rightjoystick-up.20cc1a34.svg",
+      "source_sha256": "7b085eb402b33600c5ee28b6486f74e9565d375ac3ac448810970760925b3254",
+      "sha256": "7b085eb402b33600c5ee28b6486f74e9565d375ac3ac448810970760925b3254",
+      "source_bytes": 1194,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-up.20cc1a34.svg",
+          "source_sha256": "7b085eb402b33600c5ee28b6486f74e9565d375ac3ac448810970760925b3254"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-rightjoystick-up.20cc1a34.svg",
+          "source_sha256": "7b085eb402b33600c5ee28b6486f74e9565d375ac3ac448810970760925b3254"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-rightjoystick-up.20cc1a34.svg",
+          "source_sha256": "7b085eb402b33600c5ee28b6486f74e9565d375ac3ac448810970760925b3254"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-right.6eb651a2.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-rightjoystick-right.6eb651a2.svg",
+      "source_sha256": "2de48629611f974aefdaf981a16006a82f9cc253af28191b65cd7020da832aad",
+      "sha256": "2de48629611f974aefdaf981a16006a82f9cc253af28191b65cd7020da832aad",
+      "source_bytes": 1203,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-right.6eb651a2.svg",
+          "source_sha256": "2de48629611f974aefdaf981a16006a82f9cc253af28191b65cd7020da832aad"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-rightjoystick-right.6eb651a2.svg",
+          "source_sha256": "2de48629611f974aefdaf981a16006a82f9cc253af28191b65cd7020da832aad"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-rightjoystick-right.6eb651a2.svg",
+          "source_sha256": "2de48629611f974aefdaf981a16006a82f9cc253af28191b65cd7020da832aad"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-left.57986288.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-rightjoystick-left.57986288.svg",
+      "source_sha256": "9c8389c866d784434828601a7b263bc314e296d6dbf7e9a419c0ec6d70a1fac4",
+      "sha256": "9c8389c866d784434828601a7b263bc314e296d6dbf7e9a419c0ec6d70a1fac4",
+      "source_bytes": 1213,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-left.57986288.svg",
+          "source_sha256": "9c8389c866d784434828601a7b263bc314e296d6dbf7e9a419c0ec6d70a1fac4"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-rightjoystick-left.57986288.svg",
+          "source_sha256": "9c8389c866d784434828601a7b263bc314e296d6dbf7e9a419c0ec6d70a1fac4"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-rightjoystick-left.57986288.svg",
+          "source_sha256": "9c8389c866d784434828601a7b263bc314e296d6dbf7e9a419c0ec6d70a1fac4"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-down.bb1eccbf.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-rightjoystick-down.bb1eccbf.svg",
+      "source_sha256": "1336da81181ea936b41665df0878a944a3da4bc218556261e5c4fc66c66cd6d5",
+      "sha256": "1336da81181ea936b41665df0878a944a3da4bc218556261e5c4fc66c66cd6d5",
+      "source_bytes": 1206,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-down.bb1eccbf.svg",
+          "source_sha256": "1336da81181ea936b41665df0878a944a3da4bc218556261e5c4fc66c66cd6d5"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-rightjoystick-down.bb1eccbf.svg",
+          "source_sha256": "1336da81181ea936b41665df0878a944a3da4bc218556261e5c4fc66c66cd6d5"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-rightjoystick-down.bb1eccbf.svg",
+          "source_sha256": "1336da81181ea936b41665df0878a944a3da4bc218556261e5c4fc66c66cd6d5"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-press.72ccb46d.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-rightjoystick-press.72ccb46d.svg",
+      "source_sha256": "384a861dd9e907ae7f16a67e20a9b27c68c5c076eff5cf1b1a733f8dbeb72487",
+      "sha256": "384a861dd9e907ae7f16a67e20a9b27c68c5c076eff5cf1b1a733f8dbeb72487",
+      "source_bytes": 1026,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-rightjoystick-press.72ccb46d.svg",
+          "source_sha256": "384a861dd9e907ae7f16a67e20a9b27c68c5c076eff5cf1b1a733f8dbeb72487"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-rightjoystick-press.72ccb46d.svg",
+          "source_sha256": "384a861dd9e907ae7f16a67e20a9b27c68c5c076eff5cf1b1a733f8dbeb72487"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-rightjoystick-press.72ccb46d.svg",
+          "source_sha256": "384a861dd9e907ae7f16a67e20a9b27c68c5c076eff5cf1b1a733f8dbeb72487"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-up.dea6602a.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-leftjoystick-up.dea6602a.svg",
+      "source_sha256": "344c13b525f915a90fdc7b87686477687429bfed9d86c1a5f5355e37d79fba84",
+      "sha256": "344c13b525f915a90fdc7b87686477687429bfed9d86c1a5f5355e37d79fba84",
+      "source_bytes": 601,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-up.dea6602a.svg",
+          "source_sha256": "344c13b525f915a90fdc7b87686477687429bfed9d86c1a5f5355e37d79fba84"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-leftjoystick-up.dea6602a.svg",
+          "source_sha256": "344c13b525f915a90fdc7b87686477687429bfed9d86c1a5f5355e37d79fba84"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-leftjoystick-up.dea6602a.svg",
+          "source_sha256": "344c13b525f915a90fdc7b87686477687429bfed9d86c1a5f5355e37d79fba84"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-right.d7503399.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-leftjoystick-right.d7503399.svg",
+      "source_sha256": "cad0c67a0465694e95531e86ae3f9f524f36cdadd2e1a2272123347b73612001",
+      "sha256": "cad0c67a0465694e95531e86ae3f9f524f36cdadd2e1a2272123347b73612001",
+      "source_bytes": 723,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-right.d7503399.svg",
+          "source_sha256": "cad0c67a0465694e95531e86ae3f9f524f36cdadd2e1a2272123347b73612001"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-leftjoystick-right.d7503399.svg",
+          "source_sha256": "cad0c67a0465694e95531e86ae3f9f524f36cdadd2e1a2272123347b73612001"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-leftjoystick-right.d7503399.svg",
+          "source_sha256": "cad0c67a0465694e95531e86ae3f9f524f36cdadd2e1a2272123347b73612001"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-left.bd19a0fe.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-leftjoystick-left.bd19a0fe.svg",
+      "source_sha256": "530b6c6eb6a3d7c3f85a9b3e0ac723139468de2358912cbfe4f581a1519a04e4",
+      "sha256": "530b6c6eb6a3d7c3f85a9b3e0ac723139468de2358912cbfe4f581a1519a04e4",
+      "source_bytes": 721,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-left.bd19a0fe.svg",
+          "source_sha256": "530b6c6eb6a3d7c3f85a9b3e0ac723139468de2358912cbfe4f581a1519a04e4"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-leftjoystick-left.bd19a0fe.svg",
+          "source_sha256": "530b6c6eb6a3d7c3f85a9b3e0ac723139468de2358912cbfe4f581a1519a04e4"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-leftjoystick-left.bd19a0fe.svg",
+          "source_sha256": "530b6c6eb6a3d7c3f85a9b3e0ac723139468de2358912cbfe4f581a1519a04e4"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-down.8a28a654.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-leftjoystick-down.8a28a654.svg",
+      "source_sha256": "9821f034701fe97e31c8397a6e67c4959843cd7d2c3bd904d5c249017cdf8983",
+      "sha256": "9821f034701fe97e31c8397a6e67c4959843cd7d2c3bd904d5c249017cdf8983",
+      "source_bytes": 721,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-down.8a28a654.svg",
+          "source_sha256": "9821f034701fe97e31c8397a6e67c4959843cd7d2c3bd904d5c249017cdf8983"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-leftjoystick-down.8a28a654.svg",
+          "source_sha256": "9821f034701fe97e31c8397a6e67c4959843cd7d2c3bd904d5c249017cdf8983"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-leftjoystick-down.8a28a654.svg",
+          "source_sha256": "9821f034701fe97e31c8397a6e67c4959843cd7d2c3bd904d5c249017cdf8983"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-press.a58c272c.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-leftjoystick-press.a58c272c.svg",
+      "source_sha256": "1c76826b6ae8b2fb0a8f583e103da0d5c23c6ec0980a0e4c0984fd0c1d7dbf56",
+      "sha256": "1c76826b6ae8b2fb0a8f583e103da0d5c23c6ec0980a0e4c0984fd0c1d7dbf56",
+      "source_bytes": 530,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-leftjoystick-press.a58c272c.svg",
+          "source_sha256": "1c76826b6ae8b2fb0a8f583e103da0d5c23c6ec0980a0e4c0984fd0c1d7dbf56"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-leftjoystick-press.a58c272c.svg",
+          "source_sha256": "1c76826b6ae8b2fb0a8f583e103da0d5c23c6ec0980a0e4c0984fd0c1d7dbf56"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-leftjoystick-press.a58c272c.svg",
+          "source_sha256": "1c76826b6ae8b2fb0a8f583e103da0d5c23c6ec0980a0e4c0984fd0c1d7dbf56"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-menu.029cb487.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-menu.029cb487.svg",
+      "source_sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993",
+      "sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993",
+      "source_bytes": 437,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-menu.029cb487.svg",
+          "source_sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-menu.029cb487.svg",
+          "source_sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-menu.029cb487.svg",
+          "source_sha256": "0639884b9e2abdc41aeb20ed1927bb463bccc7fc1a3ca1dd3f151221565fc993"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-view.771d8231.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-view.771d8231.svg",
+      "source_sha256": "34a03041ecf88afa8b365f1787c22fbba7394e2139b02982daaac4ba3e58eea5",
+      "sha256": "34a03041ecf88afa8b365f1787c22fbba7394e2139b02982daaac4ba3e58eea5",
+      "source_bytes": 442,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-view.771d8231.svg",
+          "source_sha256": "34a03041ecf88afa8b365f1787c22fbba7394e2139b02982daaac4ba3e58eea5"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-view.771d8231.svg",
+          "source_sha256": "34a03041ecf88afa8b365f1787c22fbba7394e2139b02982daaac4ba3e58eea5"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-view.771d8231.svg",
+          "source_sha256": "34a03041ecf88afa8b365f1787c22fbba7394e2139b02982daaac4ba3e58eea5"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-up.8f32398c.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-dpad-up.8f32398c.svg",
+      "source_sha256": "c3f635031a47e6936256894574061d22a99619fab0456fd229def73805b086be",
+      "sha256": "c3f635031a47e6936256894574061d22a99619fab0456fd229def73805b086be",
+      "source_bytes": 3317,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-up.8f32398c.svg",
+          "source_sha256": "c3f635031a47e6936256894574061d22a99619fab0456fd229def73805b086be"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-dpad-up.8f32398c.svg",
+          "source_sha256": "c3f635031a47e6936256894574061d22a99619fab0456fd229def73805b086be"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-dpad-up.8f32398c.svg",
+          "source_sha256": "c3f635031a47e6936256894574061d22a99619fab0456fd229def73805b086be"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-right.34fa065b.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-dpad-right.34fa065b.svg",
+      "source_sha256": "3d71a6d995fbb27ae402e6524fcce2a62230516c166caf0dd0f29c3877868f0f",
+      "sha256": "3d71a6d995fbb27ae402e6524fcce2a62230516c166caf0dd0f29c3877868f0f",
+      "source_bytes": 3474,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-right.34fa065b.svg",
+          "source_sha256": "3d71a6d995fbb27ae402e6524fcce2a62230516c166caf0dd0f29c3877868f0f"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-dpad-right.34fa065b.svg",
+          "source_sha256": "3d71a6d995fbb27ae402e6524fcce2a62230516c166caf0dd0f29c3877868f0f"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-dpad-right.34fa065b.svg",
+          "source_sha256": "3d71a6d995fbb27ae402e6524fcce2a62230516c166caf0dd0f29c3877868f0f"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-down.b22e39fe.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-dpad-down.b22e39fe.svg",
+      "source_sha256": "6430f2efc4872dd726a6e57f5b1878a84c00fbbafe1c77d9f705100ce57a2af5",
+      "sha256": "6430f2efc4872dd726a6e57f5b1878a84c00fbbafe1c77d9f705100ce57a2af5",
+      "source_bytes": 3338,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-down.b22e39fe.svg",
+          "source_sha256": "6430f2efc4872dd726a6e57f5b1878a84c00fbbafe1c77d9f705100ce57a2af5"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-dpad-down.b22e39fe.svg",
+          "source_sha256": "6430f2efc4872dd726a6e57f5b1878a84c00fbbafe1c77d9f705100ce57a2af5"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-dpad-down.b22e39fe.svg",
+          "source_sha256": "6430f2efc4872dd726a6e57f5b1878a84c00fbbafe1c77d9f705100ce57a2af5"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-left.91e17572.svg",
+      "output": "assets/synapse/keyboard-floating-xbox-dpad-left.91e17572.svg",
+      "source_sha256": "4fd1e1703479381fe03700a1beeeb295199e1b6e498f1436a019486ccac0961d",
+      "sha256": "4fd1e1703479381fe03700a1beeeb295199e1b6e498f1436a019486ccac0961d",
+      "source_bytes": 3326,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-dpad-left.91e17572.svg",
+          "source_sha256": "4fd1e1703479381fe03700a1beeeb295199e1b6e498f1436a019486ccac0961d"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-dpad-left.91e17572.svg",
+          "source_sha256": "4fd1e1703479381fe03700a1beeeb295199e1b6e498f1436a019486ccac0961d"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-dpad-left.91e17572.svg",
+          "source_sha256": "4fd1e1703479381fe03700a1beeeb295199e1b6e498f1436a019486ccac0961d"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_close.55fe41f1.svg",
+      "output": "assets/synapse/keyboard-floating-icon_close.55fe41f1.svg",
+      "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "source_bytes": 339,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_close.55fe41f1.svg",
+          "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_close.55fe41f1.svg",
+          "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_close.55fe41f1.svg",
+          "source_sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/path.0086a00e.svg",
+      "output": "assets/synapse/keyboard-floating-path.0086a00e.svg",
+      "source_sha256": "4a0fcd9621e96a2a46fb2d9f60b78288d009d736cc6036bbfefd6cf212874a6a",
+      "sha256": "4a0fcd9621e96a2a46fb2d9f60b78288d009d736cc6036bbfefd6cf212874a6a",
+      "source_bytes": 259,
+      "preparation": "Exact current source bytes; shared only after independent per-product byte comparison.",
+      "evidence": "docs/re/keyboard-analog-floating-controller-current-source.json",
+      "current_product_sources": [
+        {
+          "product_id": 678,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/path.0086a00e.svg",
+          "source_sha256": "4a0fcd9621e96a2a46fb2d9f60b78288d009d736cc6036bbfefd6cf212874a6a"
+        },
+        {
+          "product_id": 679,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/path.0086a00e.svg",
+          "source_sha256": "4a0fcd9621e96a2a46fb2d9f60b78288d009d736cc6036bbfefd6cf212874a6a"
+        },
+        {
+          "product_id": 688,
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/path.0086a00e.svg",
+          "source_sha256": "4a0fcd9621e96a2a46fb2d9f60b78288d009d736cc6036bbfefd6cf212874a6a"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-1x.5005237a.avif",
+      "output": "assets/synapse/keyboard679-current/1-1x.5005237a.png",
+      "source_sha256": "b791c5492e73ac37be2891098ef048cd2a23ce94266b97fd79708423ceb85901",
+      "sha256": "4c844853fd003a7510c3d8b1d6b5ecda19b4a0311a30128952517934f3df9d65",
+      "source_bytes": 12596,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-3x.0f5a7290.avif",
+      "output": "assets/synapse/keyboard679-current/1-3x.0f5a7290.png",
+      "source_sha256": "3ca95654bffb56ded05bc650679760eab6a173e9d8f7dd05becb50fc910ea14a",
+      "sha256": "25bd09b4cda11018580062dcb27f902b1a88433c2677c3cc033d7fa53ba94951",
+      "source_bytes": 57987,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-1x.458a733f.avif",
+      "output": "assets/synapse/keyboard679-current/12-1x.458a733f.png",
+      "source_sha256": "b84fbd0fa854f22170ae3bfc1e2b01f51bd5aedb2e32169d549744fc7027100c",
+      "sha256": "41ac83472084218e7d3493bcf3317b97605bc61064c04d09dd1206d095585c7c",
+      "source_bytes": 12871,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-3x.a749c3fc.avif",
+      "output": "assets/synapse/keyboard679-current/12-3x.a749c3fc.png",
+      "source_sha256": "8cdd9f2a3b8108bb35ccc38f5ddf4e1a0bcee0f28f3da82e820c19a47f440a0b",
+      "sha256": "346394c1f37ccfe33b560bf3bff6a48fb8e91b2ac7d9c36aba1b811a00da1a21",
+      "source_bytes": 56519,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/15-1x.0e4c3192.avif",
+      "output": "assets/synapse/keyboard679-current/15-1x.0e4c3192.png",
+      "source_sha256": "4fd96d74a104910a50cd6cc7fb105fca16be19034acace6cc804878c12f000fc",
+      "sha256": "5ddfcaa97031882fac99d04f4a8819a25626bd8f716c79d5ad7640fb26259166",
+      "source_bytes": 12218,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/15-3x.11b5804f.avif",
+      "output": "assets/synapse/keyboard679-current/15-3x.11b5804f.png",
+      "source_sha256": "02a73ab094838308e55e8d4c95f43a8d740a05f8a416e416874da4460fbba021",
+      "sha256": "02165aa3b3c6f438eb65ed89f15b56f3aedae53968d681bdd6e82a44edcb302e",
+      "source_bytes": 50980,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/16-1x.59d3ba90.avif",
+      "output": "assets/synapse/keyboard679-current/16-1x.59d3ba90.png",
+      "source_sha256": "06671f6f4af7634905da4cfc954ac95222c3bdd298c20c32a96d1523cfe7bcf2",
+      "sha256": "41d3c8fbf7b1ee539db52880cb48f42ffb23abb2cd3f418d72b7921494b10759",
+      "source_bytes": 12168,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/16-3x.1e9d17ed.avif",
+      "output": "assets/synapse/keyboard679-current/16-3x.1e9d17ed.png",
+      "source_sha256": "0fa476812b48ce42d0b1b13956d32eb6d0400f8cdbd09ea3e99d55b207088c37",
+      "sha256": "ce608a6678ad5887f7396049b3704fe392dc3e22fd6fc884f8026a412e2f90d9",
+      "source_bytes": 54033,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/3-1x.6274375d.avif",
+      "output": "assets/synapse/keyboard679-current/3-1x.6274375d.png",
+      "source_sha256": "2e0a7fc428956b938ed5a421f791aa39e0bbb57e70bd7faf4b8fc7ec04972c96",
+      "sha256": "73d37fe62af51100b642757d5a7fd48c257bc6deb05c1f35f8227ebd09768509",
+      "source_bytes": 12437,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/3-3x.ef744b55.avif",
+      "output": "assets/synapse/keyboard679-current/3-3x.ef744b55.png",
+      "source_sha256": "3f56b1e96ab1e7ebe7306aa2928953d9a0d7f2a5046a8b8ae36a48afb76409e9",
+      "sha256": "83fb28c5e7d39668c0d903f344923f8443c9ff197b4437e356fbee6dda5ba20d",
+      "source_bytes": 54566,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/4-1x.718fba5a.avif",
+      "output": "assets/synapse/keyboard679-current/4-1x.718fba5a.png",
+      "source_sha256": "0ef261f461a6a02e7bb1f214f3091c13f3f324bad218d61d99b3b4e2100f9e86",
+      "sha256": "92aa32fac50527940d59ce4b7ac04824a175eda6a6b34eee09a7d5174cc68ca7",
+      "source_bytes": 12284,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/4-3x.994070cb.avif",
+      "output": "assets/synapse/keyboard679-current/4-3x.994070cb.png",
+      "source_sha256": "bde0f6d0d6d1d3dcc785142f0df40d1637fa1cfd9f9a4d6b1e53ef200fc0e3e3",
+      "sha256": "f064abf326b01a382c4ff0d2e52f1ce72a6e741d93f72490c954664fb904bb08",
+      "source_bytes": 54271,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/6-1x.3210cb64.avif",
+      "output": "assets/synapse/keyboard679-current/6-1x.3210cb64.png",
+      "source_sha256": "70c9683474449f5df00de497ede37e468144ebf94f1017a9678c08679d61e7ef",
+      "sha256": "8af35f6d8b2589be648c74ac00b5354565bc625403d8e8063705ca78816ffb8d",
+      "source_bytes": 12501,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/6-3x.d4403088.avif",
+      "output": "assets/synapse/keyboard679-current/6-3x.d4403088.png",
+      "source_sha256": "174220887a4dc7bd1c90c50c58d8a500403168136e076e43c409c728c056c111",
+      "sha256": "c8e71e655ea483d96cebcf9e5df13c36eb8531dffe22d5ea7eb100e03f29558b",
+      "source_bytes": 58292,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/7-1x.55bb042d.avif",
+      "output": "assets/synapse/keyboard679-current/7-1x.55bb042d.png",
+      "source_sha256": "3df3e6d0fb0014cd36944a9123bb441f4842f7057a8424699baaa31fcea24a8e",
+      "sha256": "870908b856898965894a78540aac9ee303ca42b34e143b3ff3ac2acb5f6dd21f",
+      "source_bytes": 55798,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/7-3x.55bb042d.avif",
+      "output": "assets/synapse/keyboard679-current/7-3x.55bb042d.png",
+      "source_sha256": "3df3e6d0fb0014cd36944a9123bb441f4842f7057a8424699baaa31fcea24a8e",
+      "sha256": "870908b856898965894a78540aac9ee303ca42b34e143b3ff3ac2acb5f6dd21f",
+      "source_bytes": 55798,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/8-1x.314beedc.avif",
+      "output": "assets/synapse/keyboard679-current/8-1x.314beedc.png",
+      "source_sha256": "ae323dcf9ed46341e2f4d2f9efda6b2849996c26084bdfbd635bac30bd7d393f",
+      "sha256": "e8d69e49a42d9920b401a7eebd326393b07516f8da9c0913545e2f3920158158",
+      "source_bytes": 13115,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/8-3x.c2670903.avif",
+      "output": "assets/synapse/keyboard679-current/8-3x.c2670903.png",
+      "source_sha256": "5e5d7f31293f3e44cdef5ee1c7bd0fe7fd907d6ce173cd87d9ae1414866f24f9",
+      "sha256": "7f67df3c713b8e7d849979138eabfbfbbffaa44494b9ee253aeebc7eb98a1851",
+      "source_bytes": 59489,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/9-1x.b934a70e.avif",
+      "output": "assets/synapse/keyboard679-current/9-1x.b934a70e.png",
+      "source_sha256": "74c56c7855b3e0a036b24531231ca1dc7ab8d93ff379ff77f9c3c96fd2cd7c00",
+      "sha256": "2c325125ba5236ebf9e8a18e72e7133266675f9d5c219c3046ba64e7d3410c0d",
+      "source_bytes": 12559,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/9-3x.5d1a4c72.avif",
+      "output": "assets/synapse/keyboard679-current/9-3x.5d1a4c72.png",
+      "source_sha256": "1419dad5b50780dd395be8a311cf1eb27090edb7b296b77e32317079aa66ae49",
+      "sha256": "3836ba0c55f4e1d31febdf83e7f99be49adec26089c19c5cd3f2794312414fe2",
+      "source_bytes": 55894,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/customize-taliat1tkl-wristrest-1x.809f3cb4.avif",
+      "output": "assets/synapse/keyboard679-current/customize-taliat1tkl-wristrest-1x.809f3cb4.png",
+      "source_sha256": "eb1a06eca3db653d1d9c9ead9279fc83c45a7cbee617d30026d43ce12dd018d4",
+      "sha256": "598d454d95db02e2b92adc6eec6488e01f03e4280e71267d9a56f8820001f009",
+      "source_bytes": 9333,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/customize-taliat1tkl-wristrest-3x.596e8b54.avif",
+      "output": "assets/synapse/keyboard679-current/customize-taliat1tkl-wristrest-3x.596e8b54.png",
+      "source_sha256": "20e3995f4eb8843d5bf4f8be0244194a76070ffd9857230c7060e6047e327f9a",
+      "sha256": "cfc3bc4093e3de57750cfad25967c2bc2b88318e08a0ffeebae7c4d1a0f7b9fa",
+      "source_bytes": 126145,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/wrist-without-gap.8e806975.avif",
+      "output": "assets/synapse/keyboard679-current/wrist-without-gap.8e806975.png",
+      "source_sha256": "11a9b78c088180168c476bef6dc5e34dfeb351d7bbaeb1d4ddddd00794145780",
+      "sha256": "db04234bd6d8f55c8300ae6d661f6a8c162f96acfb661d3f64b2f2cb1d669d8f",
+      "source_bytes": 129978,
+      "pixel_size": [
+        2190,
+        482
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-1x.e36421c0.avif",
+      "output": "assets/synapse/keyboard679-current/1-1x.e36421c0.png",
+      "source_sha256": "b924567ea5093b27931b84c26868530e0bbdebaab6fe2a1ecb0576cad2bac6c7",
+      "sha256": "38211fd81e0ea2a57709fdd9bbd7a0de538c96001cb1ebfa6b24c25dcf8f5f1b",
+      "source_bytes": 12705,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-3x.c292b97c.avif",
+      "output": "assets/synapse/keyboard679-current/1-3x.c292b97c.png",
+      "source_sha256": "3c64489a38b282f2c22da1de60e5739110c7617d686c044eec5a820dfec596c5",
+      "sha256": "17429ccb2014ef3902b029105e9c5c4d717be8d16bb08c202cdb5a9a066930e7",
+      "source_bytes": 41228,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-1x.f5f77dd2.avif",
+      "output": "assets/synapse/keyboard679-current/12-1x.f5f77dd2.png",
+      "source_sha256": "16d6b0eb0602b62af5214bd769c69e65fb62463a4449bc71804bc5394f01d23d",
+      "sha256": "ea1772fb0bc1936b93a2e87e502c3d1a0c0ecc934ecb9145101013f67e88b873",
+      "source_bytes": 12837,
+      "pixel_size": [
+        730,
+        340
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/12-3x.809c2332.avif",
+      "output": "assets/synapse/keyboard679-current/12-3x.809c2332.png",
+      "source_sha256": "041bde59542fd65e565ab70ceb15b58beea1c7c41242e66a0c4293bfa81ae792",
+      "sha256": "a26bce519c24313d66decb61fd04bd2067cb6806c5208927e071891a8e589c06",
+      "source_bytes": 47567,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-1x.d58f9b3f.avif",
+      "output": "assets/synapse/keyboard679-current/1-1x.d58f9b3f.png",
+      "source_sha256": "75010364e51cbfc08bdd1b3af2855508ba51e8f514e651006de5e74f37a4d2f6",
+      "sha256": "224526f60643009ff84c574f6f397154aef781c58d13bcc43ab6ac3d732b3e40",
+      "source_bytes": 104279,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/1-3x.d58f9b3f.avif",
+      "output": "assets/synapse/keyboard679-current/1-3x.d58f9b3f.png",
+      "source_sha256": "75010364e51cbfc08bdd1b3af2855508ba51e8f514e651006de5e74f37a4d2f6",
+      "sha256": "224526f60643009ff84c574f6f397154aef781c58d13bcc43ab6ac3d732b3e40",
+      "source_bytes": 104279,
+      "pixel_size": [
+        2190,
+        1020
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/button-3x.a3cfcd87.avif",
+      "output": "assets/synapse/keyboard679-current/button-3x.a3cfcd87.png",
+      "source_sha256": "adc547ac5a541522f2c990f2d98d331015e78c967b1979647159d68bc080b195",
+      "sha256": "dff1edec125fdbc9dfdf4104d6b672b584b38908902e90e11dadf9da1c60fe39",
+      "source_bytes": 8857,
+      "pixel_size": [
+        468,
+        468
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/button-3x_128.a00ec100.avif",
+      "output": "assets/synapse/keyboard679-current/button-3x_128.a00ec100.png",
+      "source_sha256": "abfd767711b1efe5365f1ec2cb156f49193d4efbff9a3593fc734e8bba94f3d9",
+      "sha256": "08a21edb4ba1fda532bafac3f33c0b6b8e89f595a5fd6f7e81cdc7a7215b7abe",
+      "source_bytes": 11599,
+      "pixel_size": [
+        467,
+        468
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/dial-3x-1-2x.a080fd96.avif",
+      "output": "assets/synapse/keyboard679-current/dial-3x-1-2x.a080fd96.png",
+      "source_sha256": "947d5043db2d6cb96584e292d444e0df01569d097569dab8eb85059ca97b060f",
+      "sha256": "94fcb2ecab70da63204a7667338aa298b83579913cb6293fc80fb777ad0f9d94",
+      "source_bytes": 3248,
+      "pixel_size": [
+        120,
+        120
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/dial-3x-1-2x_128.dd49c2d4.avif",
+      "output": "assets/synapse/keyboard679-current/dial-3x-1-2x_128.dd49c2d4.png",
+      "source_sha256": "9abb446805050d4bfc5adfe00d7071790725245773f660519e2cb8bb634fa98e",
+      "sha256": "61167029e842a08f7b9643bb22c203ed0ee286f4c06765ec835c29dc5973c61e",
+      "source_bytes": 6541,
+      "pixel_size": [
+        160,
+        160
+      ],
+      "preparation": "Pillow RGBA lossless PNG, original dimensions, no crop or rescale",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrolldown_a.4224bc6a.svg",
+      "output": "assets/synapse/keyboard679-current/icon_scrolldown_a.4224bc6a.svg",
+      "source_sha256": "1ee8a585f07d9c91871666bb3cf9b6bd32d5689c39b7f6e78c16da59701a747b",
+      "sha256": "1ee8a585f07d9c91871666bb3cf9b6bd32d5689c39b7f6e78c16da59701a747b",
+      "source_bytes": 689,
+      "pixel_size": [
+        20.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrolldown.96292d1b.svg",
+      "output": "assets/synapse/keyboard679-current/icon_scrolldown.96292d1b.svg",
+      "source_sha256": "8012ffe70ac93a6acdc655ed5637f631af18de2be728d0e738fa3964c370fa93",
+      "sha256": "8012ffe70ac93a6acdc655ed5637f631af18de2be728d0e738fa3964c370fa93",
+      "source_bytes": 689,
+      "pixel_size": [
+        20.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_mutevolume_a.e5e1d147.svg",
+      "output": "assets/synapse/keyboard679-current/icon_mutevolume_a.e5e1d147.svg",
+      "source_sha256": "06b81d52ab98ec4e8271f61a7101e25fe71ed5c25271370cc38865353ba97bdf",
+      "sha256": "06b81d52ab98ec4e8271f61a7101e25fe71ed5c25271370cc38865353ba97bdf",
+      "source_bytes": 370,
+      "pixel_size": [
+        20.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_mutevolume.00860e32.svg",
+      "output": "assets/synapse/keyboard679-current/icon_mutevolume.00860e32.svg",
+      "source_sha256": "2b7db673848fb340304d0d04a96f2169b62c73e2fd59c1158a7e09ed76d3ad7c",
+      "sha256": "2b7db673848fb340304d0d04a96f2169b62c73e2fd59c1158a7e09ed76d3ad7c",
+      "source_bytes": 367,
+      "pixel_size": [
+        20.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrollup_a.b399c705.svg",
+      "output": "assets/synapse/keyboard679-current/icon_scrollup_a.b399c705.svg",
+      "source_sha256": "018e83ad48320e134049ecfb60ba17ff2342695aeb6e136f99313c2b2971cb4e",
+      "sha256": "018e83ad48320e134049ecfb60ba17ff2342695aeb6e136f99313c2b2971cb4e",
+      "source_bytes": 686,
+      "pixel_size": [
+        20.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_scrollup.d4ceff30.svg",
+      "output": "assets/synapse/keyboard679-current/icon_scrollup.d4ceff30.svg",
+      "source_sha256": "7942e54f805720c2157b32d1b84bc1ae13f71a4958dcd3d3846b711365aa7ebc",
+      "sha256": "7942e54f805720c2157b32d1b84bc1ae13f71a4958dcd3d3846b711365aa7ebc",
+      "source_bytes": 686,
+      "pixel_size": [
+        20.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_playandpause.30c146c6.svg",
+      "output": "assets/synapse/keyboard679-current/icon_playandpause.30c146c6.svg",
+      "source_sha256": "dc3fd929bf531c08affc371019e91e6274c5e7563d46a7e9fb4b85561bbe49a7",
+      "sha256": "dc3fd929bf531c08affc371019e91e6274c5e7563d46a7e9fb4b85561bbe49a7",
+      "source_bytes": 363,
+      "pixel_size": [
+        20.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_tapdouble.e5332a5c.svg",
+      "output": "assets/synapse/keyboard679-current/icon_tapdouble.e5332a5c.svg",
+      "source_sha256": "e38809688efc47324988d2935ab1492302ae63d6d564e5746c94c09c4ae8d85a",
+      "sha256": "e38809688efc47324988d2935ab1492302ae63d6d564e5746c94c09c4ae8d85a",
+      "source_bytes": 594,
+      "pixel_size": [
+        24.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_taptriple.b652d4b5.svg",
+      "output": "assets/synapse/keyboard679-current/icon_taptriple.b652d4b5.svg",
+      "source_sha256": "f06e0af659cd648483c96e10bef3896def776a47fe313b74533b9af2065de32c",
+      "sha256": "f06e0af659cd648483c96e10bef3896def776a47fe313b74533b9af2065de32c",
+      "source_bytes": 888,
+      "pixel_size": [
+        32.0,
+        20.0
+      ],
+      "preparation": "Original SVG XML bytes, unchanged",
+      "evidence": "docs/re/keyboard-679-source-artwork-current.json"
     }
   ]
 }

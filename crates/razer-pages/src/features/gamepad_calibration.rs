@@ -138,6 +138,7 @@ impl GamepadProductWorkspace {
         }
     }
     pub fn leave_calibration(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.close_trigger_calibration_popup(window, cx);
         if self.has_page_calibration() || self.has_popup_calibration() {
             if self.calibration_state.step != 0 {
                 if let Some(intent) = self

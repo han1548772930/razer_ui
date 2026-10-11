@@ -38,6 +38,8 @@ pub enum WorkspaceEvent {
         hz: u32,
     },
     MouseDynamicRequested(super::mouse_products::MouseDynamicRequested),
+    /// Actual local validation failure; no device submission has succeeded.
+    MouseMappingSaveRejected(super::mouse_products::MouseMappingSaveRejected),
     MouseDynamicTutorialChanged(bool),
     MouseDpiStagesRequested {
         scope: super::mouse_polling::MousePollingScope,
@@ -53,6 +55,7 @@ pub enum WorkspaceEvent {
         percent: u8,
     },
     KeyboardActuationRequested(super::keyboard_products::KeyboardActuationRequested),
+    TriggerCalibrationRequested(super::gamepad_products::TriggerCalibrationIntent),
     KeyboardIndicatorLedRequested(super::keyboard_products::KeyboardIndicatorLedRequested),
     KeyboardBrightnessReadRequested {
         generation: u64,

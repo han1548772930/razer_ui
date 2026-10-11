@@ -1,0 +1,97 @@
+{
+  "product_id": 2676,
+  "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+  "sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+  "receipts": [
+    {
+      "symbol": "VL",
+      "offset": 6749122,
+      "end": 6749124,
+      "source": "bL"
+    },
+    {
+      "symbol": "FL",
+      "offset": 6745088,
+      "end": 6747942,
+      "source": "e=>{let{segments:t=100,activeSegments:a=50,gap:n=.01,direction:i=\"left\",actuateMin:o=0,actuateMax:r=100,width:s=160,height:E=170,viewBox:_=\"-70 -50 160 100\",background:T=\"#222\",outerRadius:l=83,activeInnerRadius:I=65,innerRadius:A=73,activeColor:d=\"#44D62C\",inactiveColor:c=\"#FFFFFF\",disabledColor:O=\"#555555\",markerProgress:S,markerRadius:u=5.485,markerInnerRadius:R=2.74,markerColor:N=\"#44D62C\",markerInnerColor:D=\"#BBBBBB\",className:C=\"\",variant:L=\"segmented\",showPrompt:m=!1,trackColor:p=\"#555555\",promptColor:P=\"#555555\",animateMarker:h=!0,markerAnimationDuration:M=yL}=e;const g=\"calibration\"===L,U=Math.PI,f=U/t,G=void 0!==S&&null!==S,v=HL(S),y=BL(v,M,h&&G);return(0,yn.jsx)(\"svg\",{className:C,width:s,height:E,viewBox:g?\"0 0 77 141\":_,preserveAspectRatio:\"xMidYMid meet\",style:{background:T,transform:g||\"left\"!==i?\"none\":\"scaleX(-1)\",...g?{\"--calibration-arc-center\":\"70.4707px\"}:{}},children:g?(()=>{const e=-Math.PI/2-y/100*U,t=GL+vL*Math.cos(e),a=GL+vL*Math.sin(e),n=`semi-circular-widget-prompt-${i}`,o=\"right\"===i?\"translate(77 0) scale(-1 1)\":void 0;return(0,yn.jsxs)(yn.Fragment,{children:[(0,yn.jsx)(\"defs\",{children:(0,yn.jsxs)(\"linearGradient\",{id:n,x1:\"70.4707\",y1:\"38.4853\",x2:\"6.50006\",y2:\"38.4853\",gradientUnits:\"userSpaceOnUse\",children:[(0,yn.jsx)(\"stop\",{stopColor:P,stopOpacity:\"0\"}),(0,yn.jsx)(\"stop\",{offset:\"1\",stopColor:P})]})}),(0,yn.jsxs)(\"g\",{transform:o,children:[(0,yn.jsx)(\"path\",{className:\"semi-circular-widget__prompt\",d:\"M6.50006 70.4706C6.50006 35.1406 35.1407 6.5 70.4707 6.5\",fill:\"none\",stroke:`url(#${n})`,strokeWidth:\"13\",strokeLinecap:\"round\",style:{visibility:m?\"visible\":\"hidden\"}}),(0,yn.jsx)(\"path\",{d:\"M70.4705 0.516602C73.775 0.516606 76.4538 3.19546 76.4539 6.5C76.4539 9.80457 73.775 12.4834 70.4705 12.4834C38.445 12.4834 12.4832 38.4453 12.4832 70.4707C12.4832 102.496 38.445 128.458 70.4705 128.458C73.775 128.458 76.4539 131.137 76.4539 134.441C76.4538 137.746 73.775 140.425 70.4705 140.425C31.8359 140.425 0.516357 109.105 0.516357 70.4707C0.516357 31.8361 31.8359 0.516602 70.4705 0.516602Z\",fill:\"none\",stroke:p,strokeLinecap:\"round\"}),(0,yn.jsx)(\"circle\",{cx:t,cy:a,r:u,fill:N})]})]})})():(0,yn.jsxs)(yn.Fragment,{children:[(()=>{const e=[];for(let i=0;i<t;i++){const t=-Math.PI/2+i*f+n/2,s=t+f-n;let E=i+1>=o&&i<r,_=i+1<=a?I:A;const T=l*Math.cos(t),S=l*Math.sin(t),u=l*Math.cos(s),R=l*Math.sin(s),N=_*Math.cos(s),D=_*Math.sin(s),C=_*Math.cos(t),L=_*Math.sin(t),m=`\\n        M ${T} ${S} \\n        A ${l} ${l} 0 0 1 ${u} ${R}\\n        L ${N} ${D} \\n        A ${_} ${_} 0 0 0 ${C} ${L} \\n        Z\\n      `;e.push((0,yn.jsx)(\"path\",{d:m,fill:E?i+1<=a?d:c:O},i))}return e})(),(()=>{if(!G)return null;const e=-Math.PI/2+y/100*U,t=l*Math.cos(e),a=l*Math.sin(e);return(0,yn.jsxs)(\"g\",{children:[(0,yn.jsx)(\"circle\",{cx:t,cy:a,r:u,fill:N}),(0,yn.jsx)(\"circle\",{cx:t,cy:a,r:R,fill:D})]})})()]})})}"
+    },
+    {
+      "symbol": "ep",
+      "offset": 6801479,
+      "end": 6802018,
+      "source": "e=>{let{progress:t}=e;const a=Math.min(100,Math.max(0,Number(t)||0));if(a<=0)return null;if(a>=100)return(0,yn.jsx)(\"svg\",{width:\"100\",height:\"100\",viewBox:\"0 0 100 100\",\"aria-hidden\":\"true\",children:(0,yn.jsx)(\"circle\",{cx:\"50\",cy:\"50\",r:\"50\",fill:\"#44D62C\",opacity:.3})});const n=a/100*Math.PI*2,i=`M 50 50 L 50 0 A 50 50 0 ${a>50?1:0} 1 ${50+50*Math.sin(n)} ${50-50*Math.cos(n)} Z`;return(0,yn.jsx)(\"svg\",{width:\"100\",height:\"100\",viewBox:\"0 0 100 100\",\"aria-hidden\":\"true\",children:(0,yn.jsx)(\"path\",{d:i,fill:\"#44D62C\",opacity:.3})})}"
+    },
+    {
+      "symbol": "cm",
+      "offset": 6778498,
+      "end": 6778500,
+      "source": "dm"
+    },
+    {
+      "symbol": "pm",
+      "offset": 6782796,
+      "end": 6783082,
+      "source": "function(){return(0,yn.jsx)(mm.A,{d:\"M9.16.48.15,15.49A.992.992,0,0,0,.98,17H19.02a1,1,0,0,0,.84-1.51L10.84.48A.975.975,0,0,0,9.16.48Zm1.82,13.53H9.02V12.02h1.96v1.99Zm0-3.98H9.02V6.05a.98.98,0,1,1,1.96,0Z\",width:20,height:20,transformX:-.04,transformY:2,fill:\"rgba(253, 134, 17, 1)\"})}"
+    },
+    {
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "source": "(e,t)=>{let{title:a,titleId:n,...i}=e;return M.createElement(\"svg\",jm({width:292,height:304,viewBox:\"0 0 292 304\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",ref:t,\"aria-labelledby\":n},i),a?M.createElement(\"title\",{id:n},a):null,km||(km=M.createElement(\"path\",{className:\"connector connector--right-trigger\",d:\"M246.871 36.0957L275.857 0.499997L291.056 0.499997\",stroke:\"#5D5D5D\"})),zm||(zm=M.createElement(\"path\",{className:\"connector connector--right-thumbstick\",d:\"M203.002 172L249.297 301L265.002 301\",stroke:\"#5D5D5D\"})),xm||(xm=M.createElement(\"path\",{className:\"connector connector--left-trigger\",d:\"M52.1306 36.0957L23.1446 0.499997L-4.19617e-05 0.500061\",stroke:\"#5D5D5D\"})),$m||($m=M.createElement(\"path\",{className:\"connector connector--left-thumbstick\",d:\"M46.0017 114L46.0017 303.124L26.0653 303.124\",stroke:\"#5D5D5D\"})))}"
+    },
+    {
+      "symbol": "Wm",
+      "offset": 6796689,
+      "end": 6798094,
+      "source": "e=>{let{pid:t,editionId:n,...i}=e;const{className:o,height:r,earbudBatteries:s,...E}=i,_=\"EARBUDS\"===re.DeviceInfo.subCategory,[T,l]=g().useState(!1),[I,A]=g().useState(!1),d=g().useCallback(e=>n=>((e,t,n)=>a(48154)(`./${e}_${t}/svg_prods/${n}`))(t,n,e),[t]),c=g().useMemo(()=>d(\"prd-l.svg\"),[d]),O=g().useMemo(()=>d(\"prd-r.svg\"),[d]),S=g().useMemo(()=>d(\"prd.svg\"),[d]),u=Ym(t,n,_?c:null),R=Ym(t,n,_?O:null),N=Ym(t,n,_?null:S),D=function(){let e=arguments.length>0&&void 0!==arguments[0]&&arguments[0];return()=>{e&&(null===s||void 0===s?void 0:s.left)<=0?l(!0):!e&&(null===s||void 0===s?void 0:s.right)<=0&&A(!0)}},C=()=>{l(!1),A(!1)};if(_&&u&&R){const e=r||160,t=(null===s||void 0===s?void 0:s.left)<0||(null===s||void 0===s?void 0:s.left)>100,a=(null===s||void 0===s?void 0:s.right)<0||(null===s||void 0===s?void 0:s.right)>100;return(0,yn.jsxs)(\"div\",{className:\"earbuds-img\",children:[(0,yn.jsx)(\"img\",{src:u,...E,onMouseEnter:D(!0),onMouseLeave:C,height:e,className:`${o} ${t?\"disabled\":\"\"} audio-left`,id:\"disconnected-left\"}),(0,yn.jsx)(\"img\",{src:R,...E,onMouseEnter:D(),onMouseLeave:C,height:e,className:`${o} ${a?\"disabled\":\"\"} audio-right`,id:\"disconnected-right\"}),(0,yn.jsx)(wo.A,{isFollowCursor:!0,position:\"bottom-left\",isMounted:T||I,target:\"disconnected-\"+(T?\"left\":\"right\"),children:(0,yn.jsx)(vn.A,{text:He._NJ})})]})}return N?(0,yn.jsx)(\"img\",{src:N,...E,height:r,className:o}):null}"
+    },
+    {
+      "symbol": "wL",
+      "offset": 6747946,
+      "end": 6748059,
+      "source": "(e,t,a)=>{const n=new RegExp(`(<[^>]*class=\"${t}\"[^>]*\\\\sopacity=\")[^\"]*(\")`,\"g\");return e.replace(n,`$1${a}$2`)}"
+    },
+    {
+      "symbol": "HL",
+      "offset": 6744525,
+      "end": 6744566,
+      "source": "e=>Math.min(100,Math.max(0,Number(e)||0))"
+    },
+    {
+      "symbol": "GL",
+      "offset": 6744497,
+      "end": 6744504,
+      "source": "70.4707"
+    },
+    {
+      "symbol": "vL",
+      "offset": 6744508,
+      "end": 6744515,
+      "source": "63.9707"
+    },
+    {
+      "symbol": "yL",
+      "offset": 6744519,
+      "end": 6744521,
+      "source": "50"
+    },
+    {
+      "symbol": "BL",
+      "offset": 6744570,
+      "end": 6745084,
+      "source": "(e,t,a)=>{const[n,i]=(0,M.useState)(e),o=(0,M.useRef)(e),r=(0,M.useRef)(null);return(0,M.useEffect)(()=>{const n=e=>{const t=HL(e);o.current=t,i(t)},s=()=>{null!==r.current&&(cancelAnimationFrame(r.current),r.current=null)},E=o.current;if(!a||!(t>0)||E===e)return s(),void n(e);let _=null;const T=a=>{null===_&&(_=a);const i=Math.min(1,Math.max(0,(a-_)/t));i<1?(n(E+(e-E)*(e=>1-Math.pow(1-e,3))(i)),r.current=requestAnimationFrame(T)):(n(e),r.current=null)};return r.current=requestAnimationFrame(T),s},[e,t,a]),n}"
+    },
+    {
+      "symbol": "bL",
+      "offset": 6748063,
+      "end": 6749014,
+      "source": "e=>{let{leftTriggerOpacity:t,rightTriggerOpacity:n,width:i,height:o,extraClass:r}=e;const s=(0,G.useSelector)(e=>e.deviceReducer.productId),E=(0,G.useSelector)(e=>e.deviceReducer.editionId),[_,T]=(0,M.useState)(\"\");(0,M.useEffect)(()=>{let e=!0;return(async()=>{const t=await(async e=>{try{return(await a(7503)(`./${s}_${e}/svg_prods/ActuationDevice.svg`)).default}catch(t){if(\"0\"===`${e}`)return null;try{return(await a(44821)(`./${s}_0/svg_prods/ActuationDevice.svg`)).default}catch(n){return null}}})(E);let n=\"\";if(t)try{const e=await fetch(t);e.ok&&(n=await e.text())}catch(i){n=\"\"}e&&T(n)})(),()=>{e=!1}},[E,s]);const l=(0,M.useMemo)(()=>_?wL(wL(_,\"leftTrigger\",t),\"rightTrigger\",n):\"\",[t,n,_]);return l?(0,yn.jsx)(\"div\",{className:`actuation-device-artwork ${r||\"\"}`,style:{width:`${i}px`,height:`${o}px`},\"aria-hidden\":\"true\",children:(0,yn.jsx)(\"div\",{className:\"actuation-device-artwork__overlay\",dangerouslySetInnerHTML:{__html:l}})}):null}"
+    },
+    {
+      "symbol": "dm",
+      "offset": 6771132,
+      "end": 6778457,
+      "source": "e=>{let{steps:t,totalSteps:a}=e,n=\"activeStep\",i=\"pendingStep\";return 2===a?(0,yn.jsxs)(\"svg\",{width:\"90.25\",height:\"21\",viewBox:\"0 0 90.25 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",children:[(0,yn.jsx)(\"circle\",{cx:\"10\",cy:\"10\",r:\"10\",className:t>=1.5?n:i}),(0,yn.jsx)(\"path\",{d:\"M161.046 4.99219V15H159.781V6.57129L157.231 7.50098V6.35938L160.848 4.99219H161.046Z\",fill:\"black\",transform:\"translate(-150)\"}),(0,yn.jsx)(\"line\",{x1:\"25\",y1:\"9.5\",x2:\"65\",y2:\"9.5\",strokeDasharray:\"2 2\",className:t>=2?n:i}),(0,yn.jsx)(\"circle\",{cx:\"80.25\",cy:\"10\",r:\"10\",className:t>=2.5?n:i}),(0,yn.jsx)(\"path\",{d:\"M233.411 13.4609V14.5H226.896V13.5908L230.157 9.96094C230.558 9.51432 230.868 9.13607 231.087 8.82617C231.31 8.51172 231.465 8.23145 231.552 7.98535C231.643 7.7347 231.688 7.47949 231.688 7.21973C231.688 6.8916 231.62 6.59538 231.483 6.33105C231.351 6.06217 231.155 5.84798 230.896 5.68848C230.636 5.52897 230.321 5.44922 229.952 5.44922C229.51 5.44922 229.141 5.53581 228.845 5.70898C228.553 5.8776 228.334 6.11458 228.188 6.41992C228.043 6.72526 227.97 7.07617 227.97 7.47266H226.705C226.705 6.91211 226.828 6.39941 227.074 5.93457C227.32 5.46973 227.685 5.10059 228.168 4.82715C228.651 4.54915 229.246 4.41016 229.952 4.41016C230.581 4.41016 231.119 4.52181 231.565 4.74512C232.012 4.96387 232.354 5.27376 232.591 5.6748C232.832 6.07129 232.953 6.53613 232.953 7.06934C232.953 7.361 232.903 7.65723 232.803 7.95801C232.707 8.25423 232.573 8.55046 232.399 8.84668C232.231 9.1429 232.033 9.43457 231.805 9.72168C231.581 10.0088 231.342 10.2913 231.087 10.5693L228.421 13.4609H233.411Z\",fill:\"black\",transform:\"translate(-150)\"})]}):(0,yn.jsx)(yn.Fragment,{children:(0,yn.jsxs)(\"svg\",{width:\"601\",height:\"21\",viewBox:\"0 0 601 20\",fill:\"none\",xmlns:\"http://www.w3.org/2000/svg\",children:[(0,yn.jsx)(\"circle\",{cx:\"160\",cy:\"10\",r:\"10\",className:t>=1.5?n:i}),(0,yn.jsx)(\"path\",{d:\"M161.046 4.99219V15H159.781V6.57129L157.231 7.50098V6.35938L160.848 4.99219H161.046Z\",fill:\"black\"}),(0,yn.jsx)(\"line\",{x1:\"175\",y1:\"9.5\",x2:\"215\",y2:\"9.5\",strokeDasharray:\"2 2\",className:t>=2?n:i}),(0,yn.jsx)(\"circle\",{cx:\"230.25\",cy:\"10\",r:\"10\",className:t>=2.5?n:i}),(0,yn.jsx)(\"path\",{d:\"M233.411 13.4609V14.5H226.896V13.5908L230.157 9.96094C230.558 9.51432 230.868 9.13607 231.087 8.82617C231.31 8.51172 231.465 8.23145 231.552 7.98535C231.643 7.7347 231.688 7.47949 231.688 7.21973C231.688 6.8916 231.62 6.59538 231.483 6.33105C231.351 6.06217 231.155 5.84798 230.896 5.68848C230.636 5.52897 230.321 5.44922 229.952 5.44922C229.51 5.44922 229.141 5.53581 228.845 5.70898C228.553 5.8776 228.334 6.11458 228.188 6.41992C228.043 6.72526 227.97 7.07617 227.97 7.47266H226.705C226.705 6.91211 226.828 6.39941 227.074 5.93457C227.32 5.46973 227.685 5.10059 228.168 4.82715C228.651 4.54915 229.246 4.41016 229.952 4.41016C230.581 4.41016 231.119 4.52181 231.565 4.74512C232.012 4.96387 232.354 5.27376 232.591 5.6748C232.832 6.07129 232.953 6.53613 232.953 7.06934C232.953 7.361 232.903 7.65723 232.803 7.95801C232.707 8.25423 232.573 8.55046 232.399 8.84668C232.231 9.1429 232.033 9.43457 231.805 9.72168C231.581 10.0088 231.342 10.2913 231.087 10.5693L228.421 13.4609H233.411Z\",fill:\"black\"}),(0,yn.jsx)(\"line\",{x1:\"245.25\",y1:\"9.5\",x2:\"285.25\",y2:\"9.5\",strokeDasharray:\"2 2\",className:t>=3?n:i}),(0,yn.jsx)(\"circle\",{cx:\"300.5\",cy:\"10\",r:\"10\",className:t>=3.5?n:i}),(0,yn.jsx)(\"path\",{d:\"M298.985 8.90137H299.888C300.33 8.90137 300.694 8.82845 300.981 8.68262C301.273 8.53223 301.49 8.32943 301.631 8.07422C301.777 7.81445 301.85 7.52279 301.85 7.19922C301.85 6.81641 301.786 6.49512 301.658 6.23535C301.531 5.97559 301.339 5.77962 301.084 5.64746C300.829 5.5153 300.505 5.44922 300.113 5.44922C299.758 5.44922 299.443 5.51986 299.17 5.66113C298.901 5.79785 298.689 5.99382 298.534 6.24902C298.384 6.50423 298.309 6.80501 298.309 7.15137H297.044C297.044 6.64551 297.172 6.18522 297.427 5.77051C297.682 5.35579 298.04 5.02539 298.5 4.7793C298.965 4.5332 299.503 4.41016 300.113 4.41016C300.715 4.41016 301.241 4.51725 301.692 4.73145C302.144 4.94108 302.494 5.25553 302.745 5.6748C302.996 6.08952 303.121 6.60677 303.121 7.22656C303.121 7.47721 303.062 7.74609 302.943 8.0332C302.829 8.31576 302.649 8.58008 302.403 8.82617C302.162 9.07227 301.847 9.27507 301.46 9.43457C301.073 9.58952 300.608 9.66699 300.065 9.66699H298.985V8.90137ZM298.985 9.94043V9.18164H300.065C300.699 9.18164 301.223 9.25684 301.638 9.40723C302.052 9.55762 302.378 9.75814 302.615 10.0088C302.857 10.2594 303.025 10.5352 303.121 10.8359C303.221 11.1322 303.271 11.4284 303.271 11.7246C303.271 12.1895 303.192 12.6019 303.032 12.9619C302.877 13.3219 302.656 13.6273 302.369 13.8779C302.087 14.1286 301.754 14.3177 301.371 14.4453C300.988 14.5729 300.571 14.6367 300.12 14.6367C299.687 14.6367 299.279 14.5752 298.896 14.4521C298.518 14.3291 298.183 14.1514 297.892 13.9189C297.6 13.682 297.372 13.3926 297.208 13.0508C297.044 12.7044 296.962 12.3102 296.962 11.8682H298.227C298.227 12.2145 298.302 12.5176 298.452 12.7773C298.607 13.0371 298.826 13.2399 299.108 13.3857C299.396 13.527 299.733 13.5977 300.12 13.5977C300.507 13.5977 300.84 13.5316 301.118 13.3994C301.401 13.2627 301.617 13.0576 301.768 12.7842C301.923 12.5107 302 12.1667 302 11.752C302 11.3372 301.913 10.9977 301.74 10.7334C301.567 10.4645 301.321 10.2663 301.002 10.1387C300.688 10.0065 300.316 9.94043 299.888 9.94043H298.985Z\",fill:\"black\"}),(0,yn.jsx)(\"line\",{x1:\"315.5\",y1:\"9.5\",x2:\"355.5\",y2:\"9.5\",strokeDasharray:\"2 2\",className:t>=4?n:i}),(0,yn.jsx)(\"circle\",{cx:\"370.75\",cy:\"10\",r:\"10\",className:t>=4.5?n:i}),(0,yn.jsx)(\"path\",{d:\"M374.116 11.1504V12.1895H366.925V11.4443L371.382 4.54688H372.414L371.307 6.54297L368.36 11.1504H374.116ZM372.729 4.54688V14.5H371.464V4.54688H372.729Z\",fill:\"black\"}),(0,yn.jsx)(\"line\",{x1:\"385.75\",y1:\"9.5\",x2:\"425.75\",y2:\"9.5\",strokeDasharray:\"2 2\",className:t>=5?n:i}),(0,yn.jsx)(\"circle\",{cx:\"441\",cy:\"10\",r:\"10\",className:t>=5.5?n:i}),(0,yn.jsx)(\"path\",{d:\"M439.239 9.7627L438.228 9.50293L438.727 4.54688H443.833V5.71582H439.8L439.499 8.42285C439.681 8.31803 439.911 8.22005 440.189 8.12891C440.472 8.03776 440.796 7.99219 441.16 7.99219C441.62 7.99219 442.033 8.07194 442.397 8.23145C442.762 8.38639 443.072 8.6097 443.327 8.90137C443.587 9.19303 443.785 9.54395 443.922 9.9541C444.059 10.3643 444.127 10.8223 444.127 11.3281C444.127 11.8066 444.061 12.2464 443.929 12.6475C443.801 13.0485 443.607 13.3994 443.348 13.7002C443.088 13.9964 442.76 14.2266 442.363 14.3906C441.971 14.5547 441.509 14.6367 440.976 14.6367C440.575 14.6367 440.194 14.582 439.834 14.4727C439.479 14.3587 439.16 14.1878 438.877 13.96C438.599 13.7275 438.371 13.4404 438.193 13.0986C438.02 12.7523 437.911 12.3467 437.865 11.8818H439.068C439.123 12.2555 439.232 12.57 439.396 12.8252C439.561 13.0804 439.775 13.2741 440.039 13.4062C440.308 13.5339 440.62 13.5977 440.976 13.5977C441.276 13.5977 441.543 13.5452 441.775 13.4404C442.008 13.3356 442.204 13.1852 442.363 12.9893C442.523 12.7933 442.644 12.5563 442.726 12.2783C442.812 12.0003 442.855 11.6882 442.855 11.3418C442.855 11.0273 442.812 10.7357 442.726 10.4668C442.639 10.1979 442.509 9.96322 442.336 9.7627C442.167 9.56217 441.96 9.40723 441.714 9.29785C441.468 9.18392 441.185 9.12695 440.866 9.12695C440.442 9.12695 440.121 9.18392 439.902 9.29785C439.688 9.41178 439.467 9.56673 439.239 9.7627Z\",fill:\"black\"})]})})}"
+    }
+  ]
+}

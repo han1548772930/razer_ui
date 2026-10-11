@@ -848,9 +848,7 @@ impl<'a> MixerSession<'a> {
             // L query / B template in the actual AudioMixer instance:
             // i[0][7]=n.data[0], i[0][8]=n.data[1], i[0][6]=abs(trunc(t)).
             // Query data are LE. Preserve this unusual copy order verbatim.
-            ((*value).trunc().abs() as u32) << 16
-                | (initial & 0xff) << 8
-                | (initial >> 8) & 0xff
+            ((*value).trunc().abs() as u32) << 16 | (initial & 0xff) << 8 | (initial >> 8) & 0xff
         } else if matches!(target.control, MixerControl::PageEqEnabled) {
             let MixerValue::Boolean { enabled } = requested else {
                 bail!("Current page EQ switch must be boolean");

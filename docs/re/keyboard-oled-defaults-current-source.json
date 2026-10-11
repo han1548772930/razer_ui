@@ -1,0 +1,43 @@
+{
+  "method": "Fresh current direct JS bytes; pure AST literal decode; default symbol is cross-checked against its reducer initial-state expression. Offset unit is UTF-8 bytes. This is reducer state acquisition, not UI mount or device acceptance.",
+  "receipts": [
+    {
+      "product_id": 691,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/691/ui/static/js/main.e51ce83a.js",
+      "sha256": "cda5a124306518591d0481f37336122cfbbb04883179dea7b8775c88aee9e078",
+      "default": {
+        "byte_offset": 800287,
+        "source": "{oledLowBatteryWarningDisplay:{enabled:!0,value:20}}",
+        "value": {
+          "oledLowBatteryWarningDisplay": {
+            "enabled": true,
+            "value": 20
+          }
+        }
+      },
+      "reducer": {
+        "byte_offset": 820153,
+        "source": "oledLowBatteryWarningDisplayReducer:function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:wt,t=arguments.length>1?arguments[1]:void 0;switch(t.type){case Gt.SET_OLED_LOW_BATTERY_WARNING_DISPLAY:{var n;let o=(0,T.A)((0,T.A)({},e),{},{oledLowBatteryWarningDisplay:t.payload});return null===(n=window.mwBroadcastChannel)||void 0===n||n.postMessage({type:\"ON_SET_OLED_LOW_BATTERY_WARNING_DISPLAY\",timerTick:void 0,payload:{oledLowBatteryWarningDisplay:t.payload}}),o}case Gt.MW_SET_OLED_LOW_BATTERY_WARNING_DISPLAY_TO_UI:return{oledLowBatteryWarningDisplay:t.payload.oledLowBatteryWarningDisplay};default:return e}},oledLowPowerModeWarningReducer:function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:Bt,t=arguments.length>1?arguments[1]:void 0;return\"MW_UPDATE_OLED_LOW_POWER_MODE\"===t.type?(0,T.A)((0,T.A)({},e),{},{status:t.payload.status}):e},oledScreensaverReducer:function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:Vt,t=arguments.length>1?arguments[1]:void 0;if(\"undefined\"===typeof e)return Vt;switch(t.type){case Gt.SET_OLED_SCREENSAVER:{var n;let o=(0,T.A)((0,T.A)({},e),{},{oledScreensaver:t.payload.oledScreensaver.enabled?t.payload.oledScreensaver.value+1:0});const i={oledScreensaver:{enabled:t.payload.oledScreensaver.enabled,value:t.payload.oledScreensaver.enabled?t.payload.oledScreensaver.value:e.oledScreensaver-1}},a=new vt.A(\"O"
+      }
+    },
+    {
+      "product_id": 708,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/708/ui/static/js/main.bb6f013a.js",
+      "sha256": "910654257315b3ae516df42a1c3ee3cdb4e139082227cc4d252c2ffbfc250955",
+      "default": {
+        "byte_offset": 321626,
+        "source": "{oledLowBatteryWarningDisplay:{enabled:!0,value:20}}",
+        "value": {
+          "oledLowBatteryWarningDisplay": {
+            "enabled": true,
+            "value": 20
+          }
+        }
+      },
+      "reducer": {
+        "byte_offset": 338940,
+        "source": "oledLowBatteryWarningDisplayReducer:function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:Ut,t=arguments.length>1?arguments[1]:void 0;switch(t.type){case ct.SET_OLED_LOW_BATTERY_WARNING_DISPLAY:{var I;let E={...e,oledLowBatteryWarningDisplay:t.payload};return null===(I=window.mwBroadcastChannel)||void 0===I||I.postMessage({type:\"ON_SET_OLED_LOW_BATTERY_WARNING_DISPLAY\",timerTick:void 0,payload:{oledLowBatteryWarningDisplay:t.payload}}),E}case ct.MW_SET_OLED_LOW_BATTERY_WARNING_DISPLAY_TO_UI:{const{oledLowBatteryWarningDisplay:e}=t.payload;return{oledLowBatteryWarningDisplay:e}}default:return e}},installationReducer:function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:Dt,t=arguments.length>1?arguments[1]:void 0;switch(t.type){case r.or_:return{...e,downloading:t.payload};case r.Ue2:return{...e,progressLoaded:t.payload.loaded,progressTotal:t.payload.total};case r.xwz:return{...e,installing:t.payload};case r.w4Z:return{...e,uninstalling:t.payload};case r.t9v:return{...e,waiting:t.payload};case r.IrY:return{...e,installData:t.payload};case r.uXK:return{...e,updateData:t.payload};default:return e}},deviceSetup:Ft,pollingRate:Gt,installerStatus:gt,snapTapReducer:function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:Bt,t=arguments.length>1?arguments[1]:void 0;switch(\"SYSTEM\"===(null===p.DeviceInfo||void 0===p.DeviceInfo?void 0:p.D"
+      }
+    }
+  ]
+}

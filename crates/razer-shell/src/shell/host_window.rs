@@ -2,6 +2,40 @@
 //! GPUI 0.3.7's Windows zoom() only calls SW_MAXIMIZE, so it cannot restore.
 use gpui_kit::Window;
 
+/// Electron BrowserWindow.isVisible/isMinimized. GPUI is_visible() describes
+/// frame presentation/occlusion and is not equivalent to BrowserWindow state.
+pub(in crate::shell) fn status(
+    window: &Window,
+) -> anyhow::Result<Option<razer_model::host_window_focus::HostWindowStatus>> {
+    #[cfg(target_os = "windows")]
+    {
+        use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+        use windows_sys::Win32::UI::WindowsAndMessaging::{IsIconic, IsWindow, IsWindowVisible};
+        let handle =
+            HasWindowHandle::window_handle(window).map_err(|error| anyhow::anyhow!("{error}"))?;
+        let RawWindowHandle::Win32(handle) = handle.as_raw() else {
+            anyhow::bail!("expected the owning Win32 window");
+        };
+        let hwnd = handle.hwnd.get() as _;
+        unsafe {
+            if IsWindow(hwnd) == 0 {
+                return Ok(None);
+            }
+            Ok(Some(razer_model::host_window_focus::HostWindowStatus {
+                is_visible: Some(IsWindowVisible(hwnd) != 0),
+                is_minimized: Some(IsIconic(hwnd) != 0),
+            }))
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // No equivalent platform adapter has been established. Do not invent
+        // BrowserWindow visibility from GPUI presentation state.
+        let _ = window;
+        anyhow::bail!("BrowserWindow status adapter is not implemented on this platform")
+    }
+}
+
 pub(in crate::shell) fn toggle_maximize(window: &Window) -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {

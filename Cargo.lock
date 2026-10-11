@@ -5690,6 +5690,7 @@ name = "razer-device"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "md5",
  "serde",
  "serde_json",
 ]
@@ -5755,6 +5756,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "gpui-kit",
+ "lyon_tessellation",
  "md5",
  "razer-assets",
  "razer-catalog",

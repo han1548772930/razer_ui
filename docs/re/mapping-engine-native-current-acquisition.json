@@ -1,0 +1,1629 @@
+{
+  "method": "Static PE export parsing and private byte copy; no target execution",
+  "source": "C:\\Program Files\\Razer\\RazerAppEngine\\app-4.0.827\\CommonDLL\\mapping_engine.dll",
+  "host_version": "4.0.827",
+  "sha256": "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a",
+  "bytes": 3945672,
+  "machine": 34404,
+  "private_input": ".work/ida-mapping-engine-current/mapping_engine.dll",
+  "exports": [
+    {
+      "name": "?addDevice@@YAXPEBD0P6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 1,
+      "rva": 154608,
+      "forwarded": false
+    },
+    {
+      "name": "?addUsbDevice@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 2,
+      "rva": 161744,
+      "forwarded": false
+    },
+    {
+      "name": "?addUsbDeviceWithoutFilterDriver@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 3,
+      "rva": 159328,
+      "forwarded": false
+    },
+    {
+      "name": "?disableAllDevicesHooks@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 4,
+      "rva": 168672,
+      "forwarded": false
+    },
+    {
+      "name": "?disableGlobalShortcut@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 5,
+      "rva": 317632,
+      "forwarded": false
+    },
+    {
+      "name": "?disableInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 6,
+      "rva": 194048,
+      "forwarded": false
+    },
+    {
+      "name": "?disableKeyboardInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 7,
+      "rva": 200320,
+      "forwarded": false
+    },
+    {
+      "name": "?disableMapping@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 8,
+      "rva": 166944,
+      "forwarded": false
+    },
+    {
+      "name": "?disableMouseInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 9,
+      "rva": 206592,
+      "forwarded": false
+    },
+    {
+      "name": "?disableMouseMoveRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 10,
+      "rva": 221536,
+      "forwarded": false
+    },
+    {
+      "name": "?disableRazerKeyInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 11,
+      "rva": 212864,
+      "forwarded": false
+    },
+    {
+      "name": "?enableAllDevicesHooks@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 12,
+      "rva": 167888,
+      "forwarded": false
+    },
+    {
+      "name": "?enableGlobalShortcut@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 13,
+      "rva": 316848,
+      "forwarded": false
+    },
+    {
+      "name": "?enableInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 14,
+      "rva": 191984,
+      "forwarded": false
+    },
+    {
+      "name": "?enableKeyboardInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 15,
+      "rva": 198256,
+      "forwarded": false
+    },
+    {
+      "name": "?enableMapping@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 16,
+      "rva": 166160,
+      "forwarded": false
+    },
+    {
+      "name": "?enableMouseInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 17,
+      "rva": 204528,
+      "forwarded": false
+    },
+    {
+      "name": "?enableMouseMoveRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 18,
+      "rva": 219472,
+      "forwarded": false
+    },
+    {
+      "name": "?enableRazerKeyInputRedirect@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 19,
+      "rva": 210800,
+      "forwarded": false
+    },
+    {
+      "name": "?getDefaultMicrophoneDevice@@YAXP6AX_NPEBD11E0@Z@Z",
+      "ordinal": 20,
+      "rva": 144400,
+      "forwarded": false
+    },
+    {
+      "name": "?getDefaultSpeakerDevice@@YAXP6AX_NPEBD11E0@Z@Z",
+      "ordinal": 21,
+      "rva": 145600,
+      "forwarded": false
+    },
+    {
+      "name": "?getDeviceMode@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 22,
+      "rva": 308544,
+      "forwarded": false
+    },
+    {
+      "name": "?getGlobalMode@@YAXP6AX_NPEBD1@Z@Z",
+      "ordinal": 23,
+      "rva": 309648,
+      "forwarded": false
+    },
+    {
+      "name": "?getGlobalShortcuts@@YAXP6AX_NPEBD1@Z@Z",
+      "ordinal": 24,
+      "rva": 310560,
+      "forwarded": false
+    },
+    {
+      "name": "?getMacroRecordingMode@@YAXP6AX_NPEBD1@Z@Z",
+      "ordinal": 25,
+      "rva": 298720,
+      "forwarded": false
+    },
+    {
+      "name": "?getMouseSensorRotationAngle@@YAXPEBDP6AX_N00H@Z@Z",
+      "ordinal": 26,
+      "rva": 234832,
+      "forwarded": false
+    },
+    {
+      "name": "?getVersion@@YAPEBDXZ",
+      "ordinal": 27,
+      "rva": 131088,
+      "forwarded": false
+    },
+    {
+      "name": "?hasKeepAliveStarted@@YA_NXZ",
+      "ordinal": 28,
+      "rva": 331136,
+      "forwarded": false
+    },
+    {
+      "name": "?hasKeyboardInputMonitoringStarted@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 29,
+      "rva": 324768,
+      "forwarded": false
+    },
+    {
+      "name": "?hasMacroRecordingStarted@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 30,
+      "rva": 296048,
+      "forwarded": false
+    },
+    {
+      "name": "?hasMouseInputMonitoringStarted@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 31,
+      "rva": 327120,
+      "forwarded": false
+    },
+    {
+      "name": "?isAllAnalogKeysEventRegistered@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 32,
+      "rva": 239264,
+      "forwarded": false
+    },
+    {
+      "name": "?isAllDevicesHooksEnabled@@YA_NXZ",
+      "ordinal": 33,
+      "rva": 167264,
+      "forwarded": false
+    },
+    {
+      "name": "?isAnalogKeyEventRegistered@@YAXPEBD0P6AX_N00@Z@Z",
+      "ordinal": 34,
+      "rva": 247744,
+      "forwarded": false
+    },
+    {
+      "name": "?isAudioServiceEventRegistered@@YA_NXZ",
+      "ordinal": 35,
+      "rva": 136608,
+      "forwarded": false
+    },
+    {
+      "name": "?isBigDataEventRegistered@@YA_NXZ",
+      "ordinal": 36,
+      "rva": 328432,
+      "forwarded": false
+    },
+    {
+      "name": "?isDeviceModeChangedEventRegistered@@YA_NXZ",
+      "ordinal": 37,
+      "rva": 303024,
+      "forwarded": false
+    },
+    {
+      "name": "?isGlobalShortcutEnableEventRegistered@@YA_NXZ",
+      "ordinal": 38,
+      "rva": 317952,
+      "forwarded": false
+    },
+    {
+      "name": "?isGlobalShortcutRegistered@@YAXIIP6AX_NPEBD0II@Z@Z",
+      "ordinal": 39,
+      "rva": 311616,
+      "forwarded": false
+    },
+    {
+      "name": "?isHardwareEventRegistered@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 40,
+      "rva": 169760,
+      "forwarded": false
+    },
+    {
+      "name": "?isHypershiftActive@@YAXP6AX_NPEBD0@Z@Z",
+      "ordinal": 41,
+      "rva": 306752,
+      "forwarded": false
+    },
+    {
+      "name": "?isInputNotificationRegistered@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 42,
+      "rva": 226080,
+      "forwarded": false
+    },
+    {
+      "name": "?isInputRedirectEnabled@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 43,
+      "rva": 189920,
+      "forwarded": false
+    },
+    {
+      "name": "?isJoystickEventRegistered@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 44,
+      "rva": 258096,
+      "forwarded": false
+    },
+    {
+      "name": "?isKeyboardInputRedirectEnabled@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 45,
+      "rva": 196192,
+      "forwarded": false
+    },
+    {
+      "name": "?isMacroRecorderEventRegistered@@YA_NXZ",
+      "ordinal": 46,
+      "rva": 299040,
+      "forwarded": false
+    },
+    {
+      "name": "?isMappingEnabled@@YA_NXZ",
+      "ordinal": 47,
+      "rva": 165536,
+      "forwarded": false
+    },
+    {
+      "name": "?isMouseInputRedirectEnabled@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 48,
+      "rva": 202464,
+      "forwarded": false
+    },
+    {
+      "name": "?isMouseMoveRedirectEnabled@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 49,
+      "rva": 217408,
+      "forwarded": false
+    },
+    {
+      "name": "?isOtfsActive@@YAXP6AX_NPEBD0@Z@Z",
+      "ordinal": 50,
+      "rva": 307632,
+      "forwarded": false
+    },
+    {
+      "name": "?isRazerKeyInputRedirectEnabled@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 51,
+      "rva": 208736,
+      "forwarded": false
+    },
+    {
+      "name": "?isUnsupportedMappingRegistered@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 52,
+      "rva": 181232,
+      "forwarded": false
+    },
+    {
+      "name": "?isXboxGamepadEventRegistered@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 53,
+      "rva": 269440,
+      "forwarded": false
+    },
+    {
+      "name": "?localStorageDeleteAllItems@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 54,
+      "rva": 136288,
+      "forwarded": false
+    },
+    {
+      "name": "?localStorageDeleteItem@@YAXPEBDP6AX_N0@Z@Z",
+      "ordinal": 55,
+      "rva": 134912,
+      "forwarded": false
+    },
+    {
+      "name": "?localStorageSetItem@@YAXPEBD0P6AX_N0@Z@Z",
+      "ordinal": 56,
+      "rva": 133408,
+      "forwarded": false
+    },
+    {
+      "name": "?mappingEngineInitialize@@YAXP6AXXZ@Z",
+      "ordinal": 57,
+      "rva": 130096,
+      "forwarded": false
+    },
+    {
+      "name": "?mappingEngineShutdown@@YAXP6AXXZ@Z",
+      "ordinal": 58,
+      "rva": 130768,
+      "forwarded": false
+    },
+    {
+      "name": "?microphoneVolumeStepDown@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 59,
+      "rva": 146384,
+      "forwarded": false
+    },
+    {
+      "name": "?microphoneVolumeStepUp@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 60,
+      "rva": 147168,
+      "forwarded": false
+    },
+    {
+      "name": "?notifyInputForExternalDevice@@YAXPEBD0P6AX_N00@Z@Z",
+      "ordinal": 61,
+      "rva": 289376,
+      "forwarded": false
+    },
+    {
+      "name": "?queryRunningMacrosAndKeysPressed@@YAXPEBDP6AX_N00EE@Z@Z",
+      "ordinal": 62,
+      "rva": 292016,
+      "forwarded": false
+    },
+    {
+      "name": "?registerAllAnalogKeysEvent@@YAXPEBDIP6AX_N00@Z@Z",
+      "ordinal": 63,
+      "rva": 241328,
+      "forwarded": false
+    },
+    {
+      "name": "?registerAnalogKeyEvent@@YAXPEBD0IP6AX_N00@Z@Z",
+      "ordinal": 64,
+      "rva": 250192,
+      "forwarded": false
+    },
+    {
+      "name": "?registerAudioServiceEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 65,
+      "rva": 137232,
+      "forwarded": false
+    },
+    {
+      "name": "?registerBigDataEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 66,
+      "rva": 329056,
+      "forwarded": false
+    },
+    {
+      "name": "?registerDeviceModeChangedEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 67,
+      "rva": 303648,
+      "forwarded": false
+    },
+    {
+      "name": "?registerGlobalShortcut@@YAXIIPEBDP6AX_N0@Z@Z",
+      "ordinal": 68,
+      "rva": 313984,
+      "forwarded": false
+    },
+    {
+      "name": "?registerGlobalShortcutEnableEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 69,
+      "rva": 319984,
+      "forwarded": false
+    },
+    {
+      "name": "?registerHardwareEvent@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 70,
+      "rva": 171824,
+      "forwarded": false
+    },
+    {
+      "name": "?registerInputNotification@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 71,
+      "rva": 228144,
+      "forwarded": false
+    },
+    {
+      "name": "?registerIntervaledAnalogKeysEvent@@YAXPEBDIP6AX_N00@Z@Z",
+      "ordinal": 72,
+      "rva": 243456,
+      "forwarded": false
+    },
+    {
+      "name": "?registerIntervaledHardwareEvent@@YAXPEBDIP6AX_N00@Z@Z",
+      "ordinal": 73,
+      "rva": 173888,
+      "forwarded": false
+    },
+    {
+      "name": "?registerIntervaledJoystickEvent@@YAXPEBDIP6AX_N00@Z@Z",
+      "ordinal": 74,
+      "rva": 262304,
+      "forwarded": false
+    },
+    {
+      "name": "?registerJoystickEvent@@YAXPEBDIP6AX_N00@Z@Z",
+      "ordinal": 75,
+      "rva": 260160,
+      "forwarded": false
+    },
+    {
+      "name": "?registerMacroRecorderEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 76,
+      "rva": 299664,
+      "forwarded": false
+    },
+    {
+      "name": "?registerUnsupportedMapping@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 77,
+      "rva": 183296,
+      "forwarded": false
+    },
+    {
+      "name": "?registerXboxGamepadEvent@@YAXPEBDIP6AX_N00@Z@Z",
+      "ordinal": 78,
+      "rva": 271504,
+      "forwarded": false
+    },
+    {
+      "name": "?removeDevice@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 79,
+      "rva": 157264,
+      "forwarded": false
+    },
+    {
+      "name": "?removeUsbDevice@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 80,
+      "rva": 164160,
+      "forwarded": false
+    },
+    {
+      "name": "?setAnalogKeyEventCallback@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 81,
+      "rva": 255616,
+      "forwarded": false
+    },
+    {
+      "name": "?setBigDataEventCallback@@YAXP6AXPEBD@ZP6AX_N0@Z@Z",
+      "ordinal": 82,
+      "rva": 330672,
+      "forwarded": false
+    },
+    {
+      "name": "?setDefaultMicrophoneDeviceChangedCallback@@YAXP6AXW4AudioEventType@@PEBD1E_N@ZP6AX21@Z@Z",
+      "ordinal": 83,
+      "rva": 139488,
+      "forwarded": false
+    },
+    {
+      "name": "?setDefaultSpeakerDeviceChangedCallback@@YAXP6AXW4AudioEventType@@PEBD1E_N@ZP6AX21@Z@Z",
+      "ordinal": 84,
+      "rva": 141104,
+      "forwarded": false
+    },
+    {
+      "name": "?setDeviceModeChangedEventCallback@@YAXP6AXW4DeviceModeEventType@@PEBD_K@ZP6AX_N1@Z@Z",
+      "ordinal": 85,
+      "rva": 305728,
+      "forwarded": false
+    },
+    {
+      "name": "?setGlobalShortcutEnableEventCallback@@YAXP6AXW4GlobalShortcutEventType@@_K@ZP6AX_NPEBD@Z@Z",
+      "ordinal": 86,
+      "rva": 319056,
+      "forwarded": false
+    },
+    {
+      "name": "?setGlobalShortcutEventCallback@@YAXP6AXW4GlobalShortcutEventType@@PEBD_K@ZP6AX_N1@Z@Z",
+      "ordinal": 87,
+      "rva": 313056,
+      "forwarded": false
+    },
+    {
+      "name": "?setGlobalShortcutUnsupportedMappingCallback@@YAXP6AXW4GlobalShortcutEventType@@PEBD11_K@ZP6AX_N1@Z@Z",
+      "ordinal": 88,
+      "rva": 322272,
+      "forwarded": false
+    },
+    {
+      "name": "?setHardwareEventCallback@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 89,
+      "rva": 178752,
+      "forwarded": false
+    },
+    {
+      "name": "?setInputMonitoringCallback@@YAXP6AXPEBDW4InputMonitoringEventType@@0@ZP6AX_N0@Z@Z",
+      "ordinal": 90,
+      "rva": 327968,
+      "forwarded": false
+    },
+    {
+      "name": "?setInputNotificationCallback@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 91,
+      "rva": 232368,
+      "forwarded": false
+    },
+    {
+      "name": "?setInputRedirectCallback@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 92,
+      "rva": 215024,
+      "forwarded": false
+    },
+    {
+      "name": "?setJoystickEventCallback@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 93,
+      "rva": 266960,
+      "forwarded": false
+    },
+    {
+      "name": "?setKeepAliveCallback@@YAXP6AXPEBD@ZP6AX_N0@Z@Z",
+      "ordinal": 94,
+      "rva": 333760,
+      "forwarded": false
+    },
+    {
+      "name": "?setMacroRecorderEventCallback@@YAXP6AXPEBDW4MacroRecorderEventType@@_K@Z3P6AX102@ZP6AX_N0@Z@Z",
+      "ordinal": 95,
+      "rva": 302288,
+      "forwarded": false
+    },
+    {
+      "name": "?setMicrophoneMute@@YAX_NP6AX0PEBD@Z@Z",
+      "ordinal": 96,
+      "rva": 147952,
+      "forwarded": false
+    },
+    {
+      "name": "?setMicrophoneVolume@@YAXHP6AX_NPEBD@Z@Z",
+      "ordinal": 97,
+      "rva": 148816,
+      "forwarded": false
+    },
+    {
+      "name": "?setMicrophoneVolumeChangedCallback@@YAXP6AXW4AudioEventType@@E_N@ZP6AX1PEBD@Z@Z",
+      "ordinal": 98,
+      "rva": 142080,
+      "forwarded": false
+    },
+    {
+      "name": "?setMouseMoveRedirectCallback@@YAXPEBDP6AX0W4DeviceEventType@@EE_K@ZP6AX_N00@Z@Z",
+      "ordinal": 99,
+      "rva": 223696,
+      "forwarded": false
+    },
+    {
+      "name": "?setMouseSensorRotationAngle@@YAXPEBDHP6AX_N00@Z@Z",
+      "ordinal": 100,
+      "rva": 236976,
+      "forwarded": false
+    },
+    {
+      "name": "?setSpeakerMute@@YAX_NP6AX0PEBD@Z@Z",
+      "ordinal": 101,
+      "rva": 149968,
+      "forwarded": false
+    },
+    {
+      "name": "?setSpeakerVolume@@YAXHP6AX_NPEBD@Z@Z",
+      "ordinal": 102,
+      "rva": 150832,
+      "forwarded": false
+    },
+    {
+      "name": "?setSpeakerVolumeChangedCallback@@YAXP6AXW4AudioEventType@@E_N@ZP6AX1PEBD@Z@Z",
+      "ordinal": 103,
+      "rva": 143056,
+      "forwarded": false
+    },
+    {
+      "name": "?setUnsupportedMappingCallback@@YAXPEBDP6AX0W4DeviceEventType@@00_K@ZP6AX_N00@Z@Z",
+      "ordinal": 104,
+      "rva": 187536,
+      "forwarded": false
+    },
+    {
+      "name": "?setXboxGamepadEventCallback@@YAXPEBDP6AX0W4DeviceEventType@@0_K@ZP6AX_N00@Z@Z",
+      "ordinal": 105,
+      "rva": 278304,
+      "forwarded": false
+    },
+    {
+      "name": "?speakerVolumeStepDown@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 106,
+      "rva": 151984,
+      "forwarded": false
+    },
+    {
+      "name": "?speakerVolumeStepUp@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 107,
+      "rva": 152768,
+      "forwarded": false
+    },
+    {
+      "name": "?startKeepAlive@@YAXIP6AX_NPEBD@Z@Z",
+      "ordinal": 108,
+      "rva": 331760,
+      "forwarded": false
+    },
+    {
+      "name": "?startKeyboardInputMonitoring@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 109,
+      "rva": 323200,
+      "forwarded": false
+    },
+    {
+      "name": "?startMacroRecording@@YAXPEBDP6AX_N0@Z@Z",
+      "ordinal": 110,
+      "rva": 296832,
+      "forwarded": false
+    },
+    {
+      "name": "?startMouseInputMonitoring@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 111,
+      "rva": 325552,
+      "forwarded": false
+    },
+    {
+      "name": "?stopKeepAlive@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 112,
+      "rva": 332976,
+      "forwarded": false
+    },
+    {
+      "name": "?stopKeyboardInputMonitoring@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 113,
+      "rva": 323984,
+      "forwarded": false
+    },
+    {
+      "name": "?stopMacroRecording@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 114,
+      "rva": 297808,
+      "forwarded": false
+    },
+    {
+      "name": "?stopMouseInputMonitoring@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 115,
+      "rva": 326336,
+      "forwarded": false
+    },
+    {
+      "name": "?stopRunningTurbosAndMacros@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 116,
+      "rva": 294096,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterAllAnalogKeysEvent@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 117,
+      "rva": 245600,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterAnalogKeyEvent@@YAXPEBD0P6AX_N00@Z@Z",
+      "ordinal": 118,
+      "rva": 252720,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterAudioServiceEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 119,
+      "rva": 138016,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterBigDataEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 120,
+      "rva": 329840,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterDeviceModeChangedEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 121,
+      "rva": 304432,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterGlobalShortcut@@YAXIIP6AX_NPEBD@Z@Z",
+      "ordinal": 122,
+      "rva": 315120,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterGlobalShortcutEnableEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 123,
+      "rva": 320768,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterGlobalShortcuts@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 124,
+      "rva": 316064,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterHardwareEvent@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 125,
+      "rva": 175968,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterInputNotification@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 126,
+      "rva": 230208,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterJoystickEvent@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 127,
+      "rva": 264448,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterMacroRecorderEvent@@YAXP6AX_NPEBD@Z@Z",
+      "ordinal": 128,
+      "rva": 300448,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterUnsupportedMapping@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 129,
+      "rva": 185360,
+      "forwarded": false
+    },
+    {
+      "name": "?unregisterXboxGamepadEvent@@YAXPEBDP6AX_N00@Z@Z",
+      "ordinal": 130,
+      "rva": 275792,
+      "forwarded": false
+    },
+    {
+      "name": "GetHandleVerifier",
+      "ordinal": 131,
+      "rva": 2029536,
+      "forwarded": false
+    },
+    {
+      "name": "addDevice",
+      "ordinal": 132,
+      "rva": 154608,
+      "forwarded": false
+    },
+    {
+      "name": "addUsbDevice",
+      "ordinal": 133,
+      "rva": 161744,
+      "forwarded": false
+    },
+    {
+      "name": "addUsbDeviceWithoutFilterDriver",
+      "ordinal": 134,
+      "rva": 159328,
+      "forwarded": false
+    },
+    {
+      "name": "disableAllDevicesHooks",
+      "ordinal": 135,
+      "rva": 168672,
+      "forwarded": false
+    },
+    {
+      "name": "disableGlobalShortcut",
+      "ordinal": 136,
+      "rva": 317632,
+      "forwarded": false
+    },
+    {
+      "name": "disableInputRedirect",
+      "ordinal": 137,
+      "rva": 194048,
+      "forwarded": false
+    },
+    {
+      "name": "disableKeyboardInputRedirect",
+      "ordinal": 138,
+      "rva": 200320,
+      "forwarded": false
+    },
+    {
+      "name": "disableMapping",
+      "ordinal": 139,
+      "rva": 166944,
+      "forwarded": false
+    },
+    {
+      "name": "disableMouseInputRedirect",
+      "ordinal": 140,
+      "rva": 206592,
+      "forwarded": false
+    },
+    {
+      "name": "disableMouseMoveRedirect",
+      "ordinal": 141,
+      "rva": 221536,
+      "forwarded": false
+    },
+    {
+      "name": "disableRazerKeyInputRedirect",
+      "ordinal": 142,
+      "rva": 212864,
+      "forwarded": false
+    },
+    {
+      "name": "enableAllDevicesHooks",
+      "ordinal": 143,
+      "rva": 167888,
+      "forwarded": false
+    },
+    {
+      "name": "enableGlobalShortcut",
+      "ordinal": 144,
+      "rva": 316848,
+      "forwarded": false
+    },
+    {
+      "name": "enableInputRedirect",
+      "ordinal": 145,
+      "rva": 191984,
+      "forwarded": false
+    },
+    {
+      "name": "enableKeyboardInputRedirect",
+      "ordinal": 146,
+      "rva": 198256,
+      "forwarded": false
+    },
+    {
+      "name": "enableMapping",
+      "ordinal": 147,
+      "rva": 166160,
+      "forwarded": false
+    },
+    {
+      "name": "enableMouseInputRedirect",
+      "ordinal": 148,
+      "rva": 204528,
+      "forwarded": false
+    },
+    {
+      "name": "enableMouseMoveRedirect",
+      "ordinal": 149,
+      "rva": 219472,
+      "forwarded": false
+    },
+    {
+      "name": "enableRazerKeyInputRedirect",
+      "ordinal": 150,
+      "rva": 210800,
+      "forwarded": false
+    },
+    {
+      "name": "getDefaultMicrophoneDevice",
+      "ordinal": 151,
+      "rva": 144400,
+      "forwarded": false
+    },
+    {
+      "name": "getDefaultSpeakerDevice",
+      "ordinal": 152,
+      "rva": 145600,
+      "forwarded": false
+    },
+    {
+      "name": "getDeviceMode",
+      "ordinal": 153,
+      "rva": 308544,
+      "forwarded": false
+    },
+    {
+      "name": "getGlobalMode",
+      "ordinal": 154,
+      "rva": 309648,
+      "forwarded": false
+    },
+    {
+      "name": "getGlobalShortcuts",
+      "ordinal": 155,
+      "rva": 310560,
+      "forwarded": false
+    },
+    {
+      "name": "getMacroRecordingMode",
+      "ordinal": 156,
+      "rva": 298720,
+      "forwarded": false
+    },
+    {
+      "name": "getMouseSensorRotationAngle",
+      "ordinal": 157,
+      "rva": 234832,
+      "forwarded": false
+    },
+    {
+      "name": "getVersion",
+      "ordinal": 158,
+      "rva": 131088,
+      "forwarded": false
+    },
+    {
+      "name": "hasKeepAliveStarted",
+      "ordinal": 159,
+      "rva": 331136,
+      "forwarded": false
+    },
+    {
+      "name": "hasKeyboardInputMonitoringStarted",
+      "ordinal": 160,
+      "rva": 324768,
+      "forwarded": false
+    },
+    {
+      "name": "hasMacroRecordingStarted",
+      "ordinal": 161,
+      "rva": 296048,
+      "forwarded": false
+    },
+    {
+      "name": "hasMouseInputMonitoringStarted",
+      "ordinal": 162,
+      "rva": 327120,
+      "forwarded": false
+    },
+    {
+      "name": "isAllAnalogKeysEventRegistered",
+      "ordinal": 163,
+      "rva": 239264,
+      "forwarded": false
+    },
+    {
+      "name": "isAllDevicesHooksEnabled",
+      "ordinal": 164,
+      "rva": 167264,
+      "forwarded": false
+    },
+    {
+      "name": "isAnalogKeyEventRegistered",
+      "ordinal": 165,
+      "rva": 247744,
+      "forwarded": false
+    },
+    {
+      "name": "isAudioServiceEventRegistered",
+      "ordinal": 166,
+      "rva": 136608,
+      "forwarded": false
+    },
+    {
+      "name": "isBigDataEventRegistered",
+      "ordinal": 167,
+      "rva": 328432,
+      "forwarded": false
+    },
+    {
+      "name": "isDeviceModeChangedEventRegistered",
+      "ordinal": 168,
+      "rva": 303024,
+      "forwarded": false
+    },
+    {
+      "name": "isGlobalShortcutEnableEventRegistered",
+      "ordinal": 169,
+      "rva": 317952,
+      "forwarded": false
+    },
+    {
+      "name": "isGlobalShortcutRegistered",
+      "ordinal": 170,
+      "rva": 311616,
+      "forwarded": false
+    },
+    {
+      "name": "isHardwareEventRegistered",
+      "ordinal": 171,
+      "rva": 169760,
+      "forwarded": false
+    },
+    {
+      "name": "isHypershiftActive",
+      "ordinal": 172,
+      "rva": 306752,
+      "forwarded": false
+    },
+    {
+      "name": "isInputNotificationRegistered",
+      "ordinal": 173,
+      "rva": 226080,
+      "forwarded": false
+    },
+    {
+      "name": "isInputRedirectEnabled",
+      "ordinal": 174,
+      "rva": 189920,
+      "forwarded": false
+    },
+    {
+      "name": "isJoystickEventRegistered",
+      "ordinal": 175,
+      "rva": 258096,
+      "forwarded": false
+    },
+    {
+      "name": "isKeyboardInputRedirectEnabled",
+      "ordinal": 176,
+      "rva": 196192,
+      "forwarded": false
+    },
+    {
+      "name": "isMacroRecorderEventRegistered",
+      "ordinal": 177,
+      "rva": 299040,
+      "forwarded": false
+    },
+    {
+      "name": "isMappingEnabled",
+      "ordinal": 178,
+      "rva": 165536,
+      "forwarded": false
+    },
+    {
+      "name": "isMouseInputRedirectEnabled",
+      "ordinal": 179,
+      "rva": 202464,
+      "forwarded": false
+    },
+    {
+      "name": "isMouseMoveRedirectEnabled",
+      "ordinal": 180,
+      "rva": 217408,
+      "forwarded": false
+    },
+    {
+      "name": "isOtfsActive",
+      "ordinal": 181,
+      "rva": 307632,
+      "forwarded": false
+    },
+    {
+      "name": "isRazerKeyInputRedirectEnabled",
+      "ordinal": 182,
+      "rva": 208736,
+      "forwarded": false
+    },
+    {
+      "name": "isSnaptapKeyEventRegistered",
+      "ordinal": 183,
+      "rva": 280784,
+      "forwarded": false
+    },
+    {
+      "name": "isUnsupportedMappingRegistered",
+      "ordinal": 184,
+      "rva": 181232,
+      "forwarded": false
+    },
+    {
+      "name": "isXboxGamepadEventRegistered",
+      "ordinal": 185,
+      "rva": 269440,
+      "forwarded": false
+    },
+    {
+      "name": "localStorageDeleteAllItems",
+      "ordinal": 186,
+      "rva": 136288,
+      "forwarded": false
+    },
+    {
+      "name": "localStorageDeleteItem",
+      "ordinal": 187,
+      "rva": 134912,
+      "forwarded": false
+    },
+    {
+      "name": "localStorageGetItem",
+      "ordinal": 188,
+      "rva": 131808,
+      "forwarded": false
+    },
+    {
+      "name": "localStorageSetItem",
+      "ordinal": 189,
+      "rva": 133408,
+      "forwarded": false
+    },
+    {
+      "name": "mappingEngineInitialize",
+      "ordinal": 190,
+      "rva": 130096,
+      "forwarded": false
+    },
+    {
+      "name": "mappingEngineShutdown",
+      "ordinal": 191,
+      "rva": 130768,
+      "forwarded": false
+    },
+    {
+      "name": "microphoneVolumeStepDown",
+      "ordinal": 192,
+      "rva": 146384,
+      "forwarded": false
+    },
+    {
+      "name": "microphoneVolumeStepUp",
+      "ordinal": 193,
+      "rva": 147168,
+      "forwarded": false
+    },
+    {
+      "name": "notifyInputForExternalDevice",
+      "ordinal": 194,
+      "rva": 289376,
+      "forwarded": false
+    },
+    {
+      "name": "queryRunningMacrosAndKeysPressed",
+      "ordinal": 195,
+      "rva": 292016,
+      "forwarded": false
+    },
+    {
+      "name": "registerAllAnalogKeysEvent",
+      "ordinal": 196,
+      "rva": 241328,
+      "forwarded": false
+    },
+    {
+      "name": "registerAnalogKeyEvent",
+      "ordinal": 197,
+      "rva": 250192,
+      "forwarded": false
+    },
+    {
+      "name": "registerAudioServiceEvent",
+      "ordinal": 198,
+      "rva": 137232,
+      "forwarded": false
+    },
+    {
+      "name": "registerBigDataEvent",
+      "ordinal": 199,
+      "rva": 329056,
+      "forwarded": false
+    },
+    {
+      "name": "registerDeviceModeChangedEvent",
+      "ordinal": 200,
+      "rva": 303648,
+      "forwarded": false
+    },
+    {
+      "name": "registerGlobalShortcut",
+      "ordinal": 201,
+      "rva": 313984,
+      "forwarded": false
+    },
+    {
+      "name": "registerGlobalShortcutEnableEvent",
+      "ordinal": 202,
+      "rva": 319984,
+      "forwarded": false
+    },
+    {
+      "name": "registerHardwareEvent",
+      "ordinal": 203,
+      "rva": 171824,
+      "forwarded": false
+    },
+    {
+      "name": "registerInputNotification",
+      "ordinal": 204,
+      "rva": 228144,
+      "forwarded": false
+    },
+    {
+      "name": "registerIntervaledAnalogKeysEvent",
+      "ordinal": 205,
+      "rva": 243456,
+      "forwarded": false
+    },
+    {
+      "name": "registerIntervaledHardwareEvent",
+      "ordinal": 206,
+      "rva": 173888,
+      "forwarded": false
+    },
+    {
+      "name": "registerIntervaledJoystickEvent",
+      "ordinal": 207,
+      "rva": 262304,
+      "forwarded": false
+    },
+    {
+      "name": "registerIntervaledXboxGamepadEvent",
+      "ordinal": 208,
+      "rva": 273648,
+      "forwarded": false
+    },
+    {
+      "name": "registerJoystickEvent",
+      "ordinal": 209,
+      "rva": 260160,
+      "forwarded": false
+    },
+    {
+      "name": "registerMacroRecorderEvent",
+      "ordinal": 210,
+      "rva": 299664,
+      "forwarded": false
+    },
+    {
+      "name": "registerSnaptapKeyEvent",
+      "ordinal": 211,
+      "rva": 282848,
+      "forwarded": false
+    },
+    {
+      "name": "registerUnsupportedMapping",
+      "ordinal": 212,
+      "rva": 183296,
+      "forwarded": false
+    },
+    {
+      "name": "registerXboxGamepadEvent",
+      "ordinal": 213,
+      "rva": 271504,
+      "forwarded": false
+    },
+    {
+      "name": "removeDevice",
+      "ordinal": 214,
+      "rva": 157264,
+      "forwarded": false
+    },
+    {
+      "name": "removeUsbDevice",
+      "ordinal": 215,
+      "rva": 164160,
+      "forwarded": false
+    },
+    {
+      "name": "setAnalogKeyEventCallback",
+      "ordinal": 216,
+      "rva": 255616,
+      "forwarded": false
+    },
+    {
+      "name": "setBigDataEventCallback",
+      "ordinal": 217,
+      "rva": 330672,
+      "forwarded": false
+    },
+    {
+      "name": "setDefaultMicrophoneDeviceChangedCallback",
+      "ordinal": 218,
+      "rva": 139488,
+      "forwarded": false
+    },
+    {
+      "name": "setDefaultSpeakerDeviceChangedCallback",
+      "ordinal": 219,
+      "rva": 141104,
+      "forwarded": false
+    },
+    {
+      "name": "setDeviceModeChangedEventCallback",
+      "ordinal": 220,
+      "rva": 305728,
+      "forwarded": false
+    },
+    {
+      "name": "setGlobalShortcutEnableEventCallback",
+      "ordinal": 221,
+      "rva": 319056,
+      "forwarded": false
+    },
+    {
+      "name": "setGlobalShortcutEventCallback",
+      "ordinal": 222,
+      "rva": 313056,
+      "forwarded": false
+    },
+    {
+      "name": "setGlobalShortcutUnsupportedMappingCallback",
+      "ordinal": 223,
+      "rva": 322272,
+      "forwarded": false
+    },
+    {
+      "name": "setHardwareEventCallback",
+      "ordinal": 224,
+      "rva": 178752,
+      "forwarded": false
+    },
+    {
+      "name": "setInputMonitoringCallback",
+      "ordinal": 225,
+      "rva": 327968,
+      "forwarded": false
+    },
+    {
+      "name": "setInputNotificationCallback",
+      "ordinal": 226,
+      "rva": 232368,
+      "forwarded": false
+    },
+    {
+      "name": "setInputRedirectCallback",
+      "ordinal": 227,
+      "rva": 215024,
+      "forwarded": false
+    },
+    {
+      "name": "setJoystickEventCallback",
+      "ordinal": 228,
+      "rva": 266960,
+      "forwarded": false
+    },
+    {
+      "name": "setKeepAliveCallback",
+      "ordinal": 229,
+      "rva": 333760,
+      "forwarded": false
+    },
+    {
+      "name": "setMacroRecorderEventCallback",
+      "ordinal": 230,
+      "rva": 302288,
+      "forwarded": false
+    },
+    {
+      "name": "setMicrophoneMute",
+      "ordinal": 231,
+      "rva": 147952,
+      "forwarded": false
+    },
+    {
+      "name": "setMicrophoneVolume",
+      "ordinal": 232,
+      "rva": 148816,
+      "forwarded": false
+    },
+    {
+      "name": "setMicrophoneVolumeChangedCallback",
+      "ordinal": 233,
+      "rva": 142080,
+      "forwarded": false
+    },
+    {
+      "name": "setMouseMoveRedirectCallback",
+      "ordinal": 234,
+      "rva": 223696,
+      "forwarded": false
+    },
+    {
+      "name": "setMouseSensorRotationAngle",
+      "ordinal": 235,
+      "rva": 236976,
+      "forwarded": false
+    },
+    {
+      "name": "setSnaptapKeyEventCallback",
+      "ordinal": 236,
+      "rva": 287072,
+      "forwarded": false
+    },
+    {
+      "name": "setSpeakerMute",
+      "ordinal": 237,
+      "rva": 149968,
+      "forwarded": false
+    },
+    {
+      "name": "setSpeakerVolume",
+      "ordinal": 238,
+      "rva": 150832,
+      "forwarded": false
+    },
+    {
+      "name": "setSpeakerVolumeChangedCallback",
+      "ordinal": 239,
+      "rva": 143056,
+      "forwarded": false
+    },
+    {
+      "name": "setUnsupportedMappingCallback",
+      "ordinal": 240,
+      "rva": 187536,
+      "forwarded": false
+    },
+    {
+      "name": "setXboxGamepadEventCallback",
+      "ordinal": 241,
+      "rva": 278304,
+      "forwarded": false
+    },
+    {
+      "name": "speakerVolumeStepDown",
+      "ordinal": 242,
+      "rva": 151984,
+      "forwarded": false
+    },
+    {
+      "name": "speakerVolumeStepUp",
+      "ordinal": 243,
+      "rva": 152768,
+      "forwarded": false
+    },
+    {
+      "name": "startKeepAlive",
+      "ordinal": 244,
+      "rva": 331760,
+      "forwarded": false
+    },
+    {
+      "name": "startKeyboardInputMonitoring",
+      "ordinal": 245,
+      "rva": 323200,
+      "forwarded": false
+    },
+    {
+      "name": "startMacroRecording",
+      "ordinal": 246,
+      "rva": 296832,
+      "forwarded": false
+    },
+    {
+      "name": "startMouseInputMonitoring",
+      "ordinal": 247,
+      "rva": 325552,
+      "forwarded": false
+    },
+    {
+      "name": "stopKeepAlive",
+      "ordinal": 248,
+      "rva": 332976,
+      "forwarded": false
+    },
+    {
+      "name": "stopKeyboardInputMonitoring",
+      "ordinal": 249,
+      "rva": 323984,
+      "forwarded": false
+    },
+    {
+      "name": "stopMacroRecording",
+      "ordinal": 250,
+      "rva": 297808,
+      "forwarded": false
+    },
+    {
+      "name": "stopMouseInputMonitoring",
+      "ordinal": 251,
+      "rva": 326336,
+      "forwarded": false
+    },
+    {
+      "name": "stopRunningTurbosAndMacros",
+      "ordinal": 252,
+      "rva": 294096,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterAllAnalogKeysEvent",
+      "ordinal": 253,
+      "rva": 245600,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterAnalogKeyEvent",
+      "ordinal": 254,
+      "rva": 252720,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterAudioServiceEvent",
+      "ordinal": 255,
+      "rva": 138016,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterBigDataEvent",
+      "ordinal": 256,
+      "rva": 329840,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterDeviceModeChangedEvent",
+      "ordinal": 257,
+      "rva": 304432,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterGlobalShortcut",
+      "ordinal": 258,
+      "rva": 315120,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterGlobalShortcutEnableEvent",
+      "ordinal": 259,
+      "rva": 320768,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterGlobalShortcuts",
+      "ordinal": 260,
+      "rva": 316064,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterHardwareEvent",
+      "ordinal": 261,
+      "rva": 175968,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterInputNotification",
+      "ordinal": 262,
+      "rva": 230208,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterJoystickEvent",
+      "ordinal": 263,
+      "rva": 264448,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterMacroRecorderEvent",
+      "ordinal": 264,
+      "rva": 300448,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterSnaptapKeyEvent",
+      "ordinal": 265,
+      "rva": 284912,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterUnsupportedMapping",
+      "ordinal": 266,
+      "rva": 185360,
+      "forwarded": false
+    },
+    {
+      "name": "unregisterXboxGamepadEvent",
+      "ordinal": 267,
+      "rva": 275792,
+      "forwarded": false
+    }
+  ],
+  "selected_exports": [
+    {
+      "name": "localStorageGetItem",
+      "ordinal": 188,
+      "rva": 131808,
+      "forwarded": false
+    },
+    {
+      "name": "localStorageSetItem",
+      "ordinal": 189,
+      "rva": 133408,
+      "forwarded": false
+    }
+  ],
+  "semantic_completion": false,
+  "runtime_acceptance": "not_run"
+}

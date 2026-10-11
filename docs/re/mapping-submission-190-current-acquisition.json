@@ -1,0 +1,31 @@
+{
+  "product_id": 190,
+  "method": "Current official HTML and declared scripts fetched as data; never executed",
+  "receipts": [
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/mw/index.html",
+      "url": "https://apps.razer.com/synapse/products/190/mw/index.html",
+      "retrieved_utc": "2026-10-10T17:14:28.993092+00:00",
+      "sha256": "5cdd4b365a91ae2c7f2f89ef1bf7a5b40ea4f3981b54243fc381b3151336c4b3",
+      "bytes": 4313,
+      "http_status": 200
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/mw/main.46378a7add1c518d1ac8.js",
+      "url": "https://apps.razer.com/synapse/products/190/mw/main.46378a7add1c518d1ac8.js",
+      "retrieved_utc": "2026-10-10T17:14:30.098433+00:00",
+      "sha256": "92d95bc2e72cec41f227e8560a2e573f03e7b17f2a167106f3a830f8c029524e",
+      "bytes": 163114,
+      "http_status": 200
+    }
+  ],
+  "shared_script_urls": [
+    "https://apps.razer.com/synapse/assets/js/razer-config@latest/index.global.js",
+    "https://apps.razer.com/synapse/assets/js/@sentry/browser@6.19.7/browser.js",
+    "https://apps.razer.com/synapse/assets/js/@sentry/tracing@6.19.7/tracing.js",
+    "https://apps.razer.com/synapse/assets/js/xstate@4.38.3/xstate.js",
+    "https://apps.razer.com/synapse/assets/js/buffer@6.0.3/buffer.js",
+    "https://apps.razer.com/synapse/assets/js/pkijs@3.0.15/pkijs.js",
+    "https://apps.razer.com/synapse/assets/js/manifest.js"
+  ]
+}

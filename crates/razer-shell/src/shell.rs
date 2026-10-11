@@ -34,6 +34,8 @@ mod audio_notifications;
 mod audio_volume;
 mod chroma_studio_window;
 mod chroma_window;
+mod controller_calibration;
+mod controller_calibration_focus;
 mod device_discovery;
 mod display_window;
 mod keyboard_brightness_read;
@@ -146,6 +148,10 @@ pub struct AppShell {
     device_value_owners: std::collections::BTreeSet<String>,
     device_read_scopes: BTreeMap<String, razer_pages::features::mouse_polling::MousePollingScope>,
     audio_notifications: BTreeMap<String, audio_notifications::Session>,
+    controller_calibrations: BTreeMap<String, controller_calibration::Session>,
+    controller_calibration_cleanup: Vec<std::thread::JoinHandle<()>>,
+    controller_calibration_stop_cleanup:
+        Vec<(Task<()>, std::sync::Arc<std::sync::atomic::AtomicBool>)>,
     audio_preset_shortcuts: BTreeMap<String, audio_mixer::presets::Session>,
     audio_preset_shortcut_cleanup: Vec<std::thread::JoinHandle<()>>,
     audio_notification_cleanup: Vec<std::thread::JoinHandle<()>>,
@@ -325,6 +331,9 @@ impl AppShell {
             receiver_devices_complete: false,
             device_read_scopes: BTreeMap::new(),
             audio_notifications: BTreeMap::new(),
+            controller_calibrations: BTreeMap::new(),
+            controller_calibration_cleanup: Vec::new(),
+            controller_calibration_stop_cleanup: Vec::new(),
             audio_preset_shortcuts: BTreeMap::new(),
             audio_preset_shortcut_cleanup: Vec::new(),
             audio_notification_cleanup: Vec::new(),
@@ -827,6 +836,10 @@ impl AppShell {
                 this.host_tabs.reveal_active(&this.location);
                 cx.notify();
             }));
+        this.subscriptions
+            .push(cx.observe_window_activation(window, |this, window, cx| {
+                this.observe_controller_calibration_window_focus(window, cx);
+            }));
         if window.focused(cx).is_none() {
             this.host_tabs.focus_location(&this.location, window, cx);
         }
@@ -841,6 +854,7 @@ impl AppShell {
         });
         this.install_tray(window, cx);
         this.install_audio_notification_cleanup(cx);
+        this.install_controller_calibration_cleanup(cx);
         this.install_audio_preset_shortcut_cleanup(cx);
         this.install_receiver_pairing_cleanup(cx);
         this.install_receiver_reset_cleanup(cx);
@@ -900,6 +914,12 @@ impl AppShell {
                     });
                     this.save_auxiliary_preferences(cx);
                 }
+                WorkspaceEvent::MouseMappingSaveRejected(reason) => {
+                    // The current alert has no mounted error paragraph. Retain
+                    // the draft/confirmation and report the genuine rejected
+                    // local operation without adding source-absent UI text.
+                    eprintln!("[mapping] local Save rejected for {}: {reason:?}", entity.read(cx).identity(cx));
+                }
                 WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
                     this.write_mouse_idle(entity.clone(), *scope, *minutes, window, cx);
                 }
@@ -929,6 +949,9 @@ impl AppShell {
                             cx,
                         );
                     });
+                }
+                WorkspaceEvent::TriggerCalibrationRequested(request) => {
+                    this.request_controller_calibration(entity.clone(), request.clone(), window, cx);
                 }
                 WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                     entity.update(cx, |workspace, cx| {
@@ -1340,6 +1363,9 @@ impl AppShell {
             .update(cx, |picker, cx| picker.dismiss(window, cx));
         self.host_tabs.visit(&next, cx);
         if next != self.location {
+            // TabManager broadcasts activeTabChanged with the selected frame;
+            // this predicate differs from BrowserWindow focus/blur.
+            self.observe_controller_calibration_tab(&next, window, cx);
             if self.location == Location::Macro {
                 if let Some(page) = &self.macro_page {
                     page.update(cx, |page, cx| page.cancel_recording(cx));
@@ -1585,7 +1611,8 @@ impl AppShell {
         };
         match target {
             HistoryTarget::Device(device) => device.update(cx, |device, cx| {
-                device.step_page_history(forward, window, cx)
+                device.step_page_history(forward, window, cx);
+                device.mapping_history_clicked(forward, window, cx);
             }),
             HistoryTarget::Profiles(page) => {
                 page.update(cx, |page, cx| page.step_history(forward, window, cx))

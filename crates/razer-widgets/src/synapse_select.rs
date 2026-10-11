@@ -15,6 +15,7 @@ use super::{
     surface::css,
     theme::{AlexaColors, DropdownColors},
 };
+use std::rc::Rc;
 use std::time::Duration;
 
 #[derive(Clone, Copy, Default, PartialEq)]
@@ -54,6 +55,7 @@ pub fn select<I: SelectItem<Value = String> + 'static>(
         placeholder: None,
         selected_text: None,
         presentation: Presentation::Synapse,
+        on_trigger_click: None,
     }
 }
 
@@ -78,6 +80,7 @@ pub struct SynapseSelect<I: SelectItem<Value = String> + 'static> {
     placeholder: Option<SharedString>,
     selected_text: Option<SharedString>,
     presentation: Presentation,
+    on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
 }
 
 impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
@@ -113,6 +116,18 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelect<I> {
         self.selected_text = Some(text.into());
         self
     }
+
+    /// Observe an actual click on the trigger, including closing clicks.
+    /// Menu option clicks, keyboard open actions and state synchronization do
+    /// not call this adapter. Kit's popover stops mouse-down propagation, so
+    /// attach source document-click behavior to the trigger itself.
+    pub fn on_trigger_click(
+        mut self,
+        handler: impl Fn(&ClickEvent, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_trigger_click = Some(Rc::new(handler));
+        self
+    }
 }
 
 impl<I: SelectItem<Value = String> + 'static> Disableable for SynapseSelect<I> {
@@ -138,6 +153,7 @@ struct SynapseSelectView<I: SelectItem<Value = String> + 'static> {
     placeholder: Option<SharedString>,
     selected_text: Option<SharedString>,
     presentation: Presentation,
+    on_trigger_click: Option<Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>>,
     open: bool,
     hovered: bool,
     width: Pixels,
@@ -186,6 +202,7 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
             placeholder: None,
             selected_text: None,
             presentation: Presentation::Synapse,
+            on_trigger_click: None,
             open: false,
             hovered: false,
             width: px(0.),
@@ -306,6 +323,7 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
             view.selected_text = self.selected_text;
             view.disabled = self.disabled;
             view.presentation = self.presentation;
+            view.on_trigger_click = self.on_trigger_click.clone();
             if self.disabled {
                 view.set_open(false, window, cx);
             }
@@ -383,6 +401,9 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
         let trigger = div()
             .id("input")
             .test_support()
+            .when_some(self.on_trigger_click.clone(), |trigger, handler| {
+                trigger.on_click(move |event, window, cx| handler(event, window, cx))
+            })
             .w_full()
             .h(css(25.))
             .flex()

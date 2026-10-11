@@ -2,7 +2,7 @@
 use super::*;
 
 impl GamepadProductWorkspace {
-    pub(super) fn has_popup_calibration(&self) -> bool {
+    pub(in super::super) fn has_popup_calibration(&self) -> bool {
         matches!(self.spec.product_id, 2676 | 2684)
     }
 
@@ -18,6 +18,8 @@ impl GamepadProductWorkspace {
         {
             return;
         }
+        self.calibration_state
+            .set_reducer_valid(self.trigger_calibration_state.valid);
         let return_focus = window.focused(cx);
         let focus = cx.focus_handle();
         focus.focus(window, cx);
@@ -109,7 +111,7 @@ impl GamepadProductWorkspace {
                         .text_size(surface::css(16.))
                         .line_height(surface::css(16.))
                         .text_color(Colors::warning())
-                        .child(t("FAILED_CALIBRATION").to_uppercase()),
+                        .child(t("FAILED_CALIBRATION_SHORT").to_uppercase()),
                 )
                 .child(
                     h_flex()

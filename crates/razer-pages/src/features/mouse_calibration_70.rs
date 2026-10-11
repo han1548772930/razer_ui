@@ -61,11 +61,7 @@ impl MouseProductWorkspace {
                             .left(surface::css(10.))
                             .size(surface::css(20.))
                             .rounded(surface::css(10.))
-                            .bg(if active {
-                                rgb(0x44d62c).into()
-                            } else {
-                                rgba(0).into()
-                            }),
+                            .bg(if active { rgb(0x44d62c) } else { rgba(0) }),
                     )
                     .child(div().h(surface::css(140.)))
                     .child(

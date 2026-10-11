@@ -1,0 +1,2647 @@
+{
+  "schema_version": 1,
+  "method": "IDA autoanalysis and Hex-Rays static decompilation; no debugger or target execution",
+  "input_sha256": "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a",
+  "input_bytes": 3945672,
+  "ida_version": "9.1",
+  "image_base": 6442450944,
+  "hexrays_available": true,
+  "functions": [
+    {
+      "rva": 123988,
+      "end_rva": 123993,
+      "name": "sub_18001E454",
+      "code_sha256": "9621a40345775ced233b070547f2b9a8635085f5fb52795421b870047aa1d5b2",
+      "pseudocode": "// attributes: thunk\n__int64 sub_18001E454()\n{\n  return sub_180001000();\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 130129,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 130969,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 132188,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 133875,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 135298,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 136489,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 136706,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 137433,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 138217,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 139768,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 141384,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 142360,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 143336,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 144601,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 145801,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 146585,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 147369,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 148230,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 149376,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 150246,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 151392,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 152185,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 152969,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 155317,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 157732,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 159944,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 162360,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 164628,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 165634,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 166361,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 167145,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 167362,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 168089,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 168873,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 170228,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 172292,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 174358,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 176436,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 179316,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 181700,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 183764,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 185828,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 188089,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 190388,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 192452,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 194516,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 196660,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 198724,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 200788,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 202932,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 204996,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 207060,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 209204,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 211268,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 213332,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 215577,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 217876,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 219940,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 222004,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 224249,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 226548,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 228612,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 230676,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 232921,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 235300,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 237514,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 239732,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 241866,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 243994,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 246068,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 248359,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 250877,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 253335,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 256180,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 258564,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 260698,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 262842,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 264916,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 267524,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 269908,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 272042,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 274186,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 276260,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 278868,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 281252,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 283316,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 285380,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 287625,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 289991,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 292484,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 294564,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 296254,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 297191,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 298009,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 298921,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 299138,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 299865,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 300649,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 302710,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 303122,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 303849,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 304633,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 306008,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 306953,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 307833,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 308903,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 309849,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 310761,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 311963,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 313336,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 314484,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 315467,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 316265,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 317049,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 317833,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 318050,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 319336,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 320185,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 320969,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 322552,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 323401,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 324185,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 324969,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 325753,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 326537,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 327321,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 328248,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 328530,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 329257,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 330041,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 330952,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 331234,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 332042,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 333177,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 334040,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 123988,
+          "text": "jmp     sub_180001000"
+        }
+      ]
+    },
+    {
+      "rva": 132736,
+      "end_rva": 133400,
+      "name": "sub_180020680",
+      "code_sha256": "5f6d947399db4344c2bb377bd04046de7a4c5d08cb4a4bb025508cd1c6d7d2b5",
+      "pseudocode": "char __fastcall sub_180020680(__int64 (__fastcall *a1)(_QWORD, char *), __int64 **a2, unsigned int a3, char *a4)\n{\n  char result; // al\n  __int64 v9; // rax\n  __int64 v10; // rax\n  __int64 v11; // rax\n  __int64 v12; // rax\n  __int64 v13; // rax\n  __int64 v14; // rax\n  __int64 v15; // rax\n  __int64 v16; // rax\n  __int64 *v17; // r8\n  __int64 v18; // rcx\n  __int64 v19; // rax\n  __int64 v20; // rax\n  __int64 v21; // rax\n  __int64 v22; // rax\n  __int64 *v23; // r8\n  __int64 v24; // rax\n  __int64 v25; // rax\n  __int64 v26; // rax\n  __int64 v27; // rax\n  __int64 v28; // r8\n  char *v29; // rdx\n  _BYTE v30[16]; // [rsp+20h] [rbp-178h] BYREF\n  _BYTE v31[296]; // [rsp+30h] [rbp-168h] BYREF\n\n  if ( (_BYTE)a3 )\n  {\n    result = sub_1801C6ED0(0);\n    if ( result )\n    {\n      sub_1801C6FD0(v30, \"..\\\\..\\\\mapping_engine\\\\mapping_engine_dll_impl.cc\", 124, 0);\n      v9 = sub_18001B495(v31, \"localStorageSetItemCompleted\", 28);\n      v10 = sub_18001B495(v9, \": \", 2);\n      v11 = sub_18001B495(v10, \"callback\", 8);\n      v12 = sub_18001B495(v11, \"[\", 1);\n      v13 = sub_180180326(v12, a1);\n      v14 = sub_18001B495(v13, \"] \", 2);\n      v15 = sub_18001B495(v14, \"key\", 3);\n      v16 = sub_18001B495(v15, \"[\", 1);\n      v17 = (__int64 *)*((unsigned __int8 *)a2 + 23);\n      if ( (char)v17 < 0 )\n      {\n        v17 = a2[1];\n        a2 = (__int64 **)*a2;\n      }\n      v18 = sub_18001B495(v16, a2, v17);\nLABEL_12:\n      sub_18001B495(v18, \"] \", 2);\n      result = sub_1801C7500(v30);\n    }\n  }\n  else\n  {\n    result = sub_1801C6ED0(2);\n    if ( result )\n    {\n      sub_1801C6FD0(v30, \"..\\\\..\\\\mapping_engine\\\\mapping_engine_dll_impl.cc\", 126, 2);\n      v19 = sub_18001B495(v31, \"localStorageSetItemCompleted\", 28);\n      v20 = sub_18001B495(v19, \": \", 2);\n      v21 = sub_18001B495(v20, \"key\", 3);\n      v22 = sub_18001B495(v21, \"[\", 1);\n      v23 = (__int64 *)*((unsigned __int8 *)a2 + 23);\n      if ( (char)v23 < 0 )\n      {\n        v23 = a2[1];\n        a2 = (__int64 **)*a2;\n      }\n      v24 = sub_18001B495(v22, a2, v23);\n      v25 = sub_18001B495(v24, \"] \", 2);\n      v26 = sub_18001B495(v25, \"error_reason\", 12);\n      v27 = sub_18001B495(v26, \"[\", 1);\n      v28 = (unsigned __int8)a4[23];\n      v29 = a4;\n      if ( (v28 & 0x80u) != 0LL )\n      {\n        v28 = *((_QWORD *)a4 + 1);\n        v29 = *(char **)a4;\n      }\n      v18 = sub_18001B495(v27, v29, v28);\n      goto LABEL_12;\n    }\n  }\n  if ( a1 )\n  {\n    result = byte_180394748;\n    if ( (byte_180394748 & 1) != 0 )\n    {\n      if ( a4[23] < 0 )\n        a4 = *(char **)a4;\n      return a1(a3, a4);\n    }\n  }\n  return result;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 133883,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 3584980,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 132736,
+          "text": "push    r15"
+        },
+        {
+          "rva": 132738,
+          "text": "push    r14"
+        },
+        {
+          "rva": 132740,
+          "text": "push    r13"
+        },
+        {
+          "rva": 132742,
+          "text": "push    r12"
+        },
+        {
+          "rva": 132744,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 132745,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 132746,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 132747,
+          "text": "sub     rsp, 160h"
+        },
+        {
+          "rva": 132754,
+          "text": "mov     rsi, r9"
+        },
+        {
+          "rva": 132757,
+          "text": "mov     ebx, r8d"
+        },
+        {
+          "rva": 132760,
+          "text": "mov     r14, rdx"
+        },
+        {
+          "rva": 132763,
+          "text": "mov     rdi, rcx"
+        },
+        {
+          "rva": 132766,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 132773,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 132776,
+          "text": "mov     [rsp+198h+var_40], rax"
+        },
+        {
+          "rva": 132784,
+          "text": "test    r8b, r8b"
+        },
+        {
+          "rva": 132787,
+          "text": "jz      loc_1800207B4"
+        },
+        {
+          "rva": 132793,
+          "text": "xor     ecx, ecx"
+        },
+        {
+          "rva": 132795,
+          "text": "call    sub_1801C6ED0"
+        },
+        {
+          "rva": 132800,
+          "text": "test    al, al"
+        },
+        {
+          "rva": 132802,
+          "text": "jz      loc_1800208CE"
+        },
+        {
+          "rva": 132808,
+          "text": "lea     rdx, aMappingEngineM_1; \"..\\\\..\\\\mapping_engine\\\\mapping_engine_\"..."
+        },
+        {
+          "rva": 132815,
+          "text": "lea     r15, [rsp+198h+var_178]"
+        },
+        {
+          "rva": 132820,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 132823,
+          "text": "mov     r8d, 7Ch ; '|'"
+        },
+        {
+          "rva": 132829,
+          "text": "xor     r9d, r9d"
+        },
+        {
+          "rva": 132832,
+          "text": "call    sub_1801C6FD0"
+        },
+        {
+          "rva": 132837,
+          "text": "lea     rcx, [rsp+198h+var_168]"
+        },
+        {
+          "rva": 132842,
+          "text": "lea     rdx, aLocalstoragese_1; \"localStorageSetItemCompleted\""
+        },
+        {
+          "rva": 132849,
+          "text": "mov     r8d, 1Ch"
+        },
+        {
+          "rva": 132855,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 132860,
+          "text": "lea     rdx, asc_1802DF53B; \": \""
+        },
+        {
+          "rva": 132867,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 132873,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 132876,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 132881,
+          "text": "lea     rdx, aCallback; \"callback\""
+        },
+        {
+          "rva": 132888,
+          "text": "mov     r8d, 8"
+        },
+        {
+          "rva": 132894,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 132897,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 132902,
+          "text": "lea     r13, asc_1802DF543; \"[\""
+        },
+        {
+          "rva": 132909,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 132915,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 132918,
+          "text": "mov     rdx, r13"
+        },
+        {
+          "rva": 132921,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 132926,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 132929,
+          "text": "mov     rdx, rdi"
+        },
+        {
+          "rva": 132932,
+          "text": "call    sub_180180326"
+        },
+        {
+          "rva": 132937,
+          "text": "lea     r12, asc_1802DF545; \"] \""
+        },
+        {
+          "rva": 132944,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 132950,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 132953,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 132956,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 132961,
+          "text": "lea     rdx, aKey; \"key\""
+        },
+        {
+          "rva": 132968,
+          "text": "mov     r8d, 3"
+        },
+        {
+          "rva": 132974,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 132977,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 132982,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 132988,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 132991,
+          "text": "mov     rdx, r13"
+        },
+        {
+          "rva": 132994,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 132999,
+          "text": "movzx   r8d, byte ptr [r14+17h]"
+        },
+        {
+          "rva": 133004,
+          "text": "test    r8b, r8b"
+        },
+        {
+          "rva": 133007,
+          "text": "jns     short loc_180020798"
+        },
+        {
+          "rva": 133009,
+          "text": "mov     r8, [r14+8]"
+        },
+        {
+          "rva": 133013,
+          "text": "mov     r14, [r14]"
+        },
+        {
+          "rva": 133016,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133019,
+          "text": "mov     rdx, r14"
+        },
+        {
+          "rva": 133022,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133027,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 133033,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133036,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 133039,
+          "text": "jmp     loc_1800208C1"
+        },
+        {
+          "rva": 133044,
+          "text": "mov     ecx, 2"
+        },
+        {
+          "rva": 133049,
+          "text": "call    sub_1801C6ED0"
+        },
+        {
+          "rva": 133054,
+          "text": "test    al, al"
+        },
+        {
+          "rva": 133056,
+          "text": "jz      loc_1800208CE"
+        },
+        {
+          "rva": 133062,
+          "text": "lea     rdx, aMappingEngineM_1; \"..\\\\..\\\\mapping_engine\\\\mapping_engine_\"..."
+        },
+        {
+          "rva": 133069,
+          "text": "lea     r15, [rsp+198h+var_178]"
+        },
+        {
+          "rva": 133074,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 133077,
+          "text": "mov     r8d, 7Eh ; '~'"
+        },
+        {
+          "rva": 133083,
+          "text": "mov     r9d, 2"
+        },
+        {
+          "rva": 133089,
+          "text": "call    sub_1801C6FD0"
+        },
+        {
+          "rva": 133094,
+          "text": "lea     rcx, [rsp+198h+var_168]"
+        },
+        {
+          "rva": 133099,
+          "text": "lea     rdx, aLocalstoragese_1; \"localStorageSetItemCompleted\""
+        },
+        {
+          "rva": 133106,
+          "text": "mov     r8d, 1Ch"
+        },
+        {
+          "rva": 133112,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133117,
+          "text": "lea     rdx, asc_1802DF53B; \": \""
+        },
+        {
+          "rva": 133124,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 133130,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133133,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133138,
+          "text": "lea     rdx, aKey; \"key\""
+        },
+        {
+          "rva": 133145,
+          "text": "mov     r8d, 3"
+        },
+        {
+          "rva": 133151,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133154,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133159,
+          "text": "lea     r12, asc_1802DF543; \"[\""
+        },
+        {
+          "rva": 133166,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 133172,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133175,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 133178,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133183,
+          "text": "movzx   r8d, byte ptr [r14+17h]"
+        },
+        {
+          "rva": 133188,
+          "text": "test    r8b, r8b"
+        },
+        {
+          "rva": 133191,
+          "text": "jns     short loc_180020850"
+        },
+        {
+          "rva": 133193,
+          "text": "mov     r8, [r14+8]"
+        },
+        {
+          "rva": 133197,
+          "text": "mov     r14, [r14]"
+        },
+        {
+          "rva": 133200,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133203,
+          "text": "mov     rdx, r14"
+        },
+        {
+          "rva": 133206,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133211,
+          "text": "lea     r14, asc_1802DF545; \"] \""
+        },
+        {
+          "rva": 133218,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 133224,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133227,
+          "text": "mov     rdx, r14"
+        },
+        {
+          "rva": 133230,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133235,
+          "text": "lea     rdx, aErrorReason; \"error_reason\""
+        },
+        {
+          "rva": 133242,
+          "text": "mov     r8d, 0Ch"
+        },
+        {
+          "rva": 133248,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133251,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133256,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 133262,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133265,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 133268,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133273,
+          "text": "movzx   r8d, byte ptr [rsi+17h]"
+        },
+        {
+          "rva": 133278,
+          "text": "mov     rdx, rsi"
+        },
+        {
+          "rva": 133281,
+          "text": "test    r8b, r8b"
+        },
+        {
+          "rva": 133284,
+          "text": "jns     short loc_1800208AD"
+        },
+        {
+          "rva": 133286,
+          "text": "mov     r8, [rsi+8]"
+        },
+        {
+          "rva": 133290,
+          "text": "mov     rdx, [rsi]"
+        },
+        {
+          "rva": 133293,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133296,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133301,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 133307,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 133310,
+          "text": "mov     rdx, r14"
+        },
+        {
+          "rva": 133313,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 133318,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 133321,
+          "text": "call    sub_1801C7500"
+        },
+        {
+          "rva": 133326,
+          "text": "test    rdi, rdi"
+        },
+        {
+          "rva": 133329,
+          "text": "jz      short loc_1800208F4"
+        },
+        {
+          "rva": 133331,
+          "text": "mov     al, cs:byte_180394748"
+        },
+        {
+          "rva": 133337,
+          "text": "test    al, 1"
+        },
+        {
+          "rva": 133339,
+          "text": "jz      short loc_1800208F4"
+        },
+        {
+          "rva": 133341,
+          "text": "cmp     byte ptr [rsi+17h], 0"
+        },
+        {
+          "rva": 133345,
+          "text": "jns     short loc_1800208E6"
+        },
+        {
+          "rva": 133347,
+          "text": "mov     rsi, [rsi]"
+        },
+        {
+          "rva": 133350,
+          "text": "mov     ecx, ebx"
+        },
+        {
+          "rva": 133352,
+          "text": "mov     rdx, rsi"
+        },
+        {
+          "rva": 133355,
+          "text": "mov     rax, rdi"
+        },
+        {
+          "rva": 133358,
+          "text": "call    cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 133364,
+          "text": "mov     rcx, [rsp+198h+var_40]"
+        },
+        {
+          "rva": 133372,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 133375,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 133380,
+          "text": "nop"
+        },
+        {
+          "rva": 133381,
+          "text": "add     rsp, 160h"
+        },
+        {
+          "rva": 133388,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 133389,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 133390,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 133391,
+          "text": "pop     r12"
+        },
+        {
+          "rva": 133393,
+          "text": "pop     r13"
+        },
+        {
+          "rva": 133395,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 133397,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 133399,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 334332,
+      "end_rva": 334437,
+      "name": "sub_1800519FC",
+      "code_sha256": "d7cec2b873a8bb7ae8893a61f8c7e502e6d0e2605b3b55cb4588f45345510384",
+      "pseudocode": "_QWORD *__fastcall sub_1800519FC(_QWORD *a1, __int64 a2, __int64 a3, _QWORD *a4, _QWORD *a5, __int64 a6)\n{\n  _OWORD *v8; // rcx\n\n  sub_1801CB370(a1, a3, sub_180051A70);\n  a1[4] = *a4;\n  a1[5] = *a5;\n  v8 = a1 + 6;\n  if ( *(char *)(a6 + 23) < 0 )\n  {\n    sub_18019C1B8(v8, *(_QWORD *)a6, *(_QWORD *)(a6 + 8));\n  }\n  else\n  {\n    a1[8] = *(_QWORD *)(a6 + 16);\n    *v8 = *(_OWORD *)a6;\n  }\n  return a1;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 133942,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 155436,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 157799,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 160011,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 160084,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 162427,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 162500,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 164695,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 170295,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 172359,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 174425,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 176503,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 179383,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 179455,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 179516,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 181767,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 183831,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 185895,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 188156,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 188228,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 190455,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 192519,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 194583,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 196727,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 198791,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 200855,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 202999,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 205063,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 207127,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 209271,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 211335,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 213399,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 215644,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 215716,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 217943,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 220007,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 222071,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 224316,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 224388,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 226615,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 228679,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 230743,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 232988,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 233060,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 235367,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 237581,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 239799,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 241933,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 244061,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 246135,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 248426,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 250944,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 253402,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 256247,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 256319,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 256380,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 258631,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 260765,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 262909,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 264983,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 267591,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 267663,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 267724,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 269975,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 272109,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 274253,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 276327,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 278935,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 279007,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 279068,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 281319,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 283383,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 285447,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 287692,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 287764,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 290058,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 292551,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 294631,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 847001,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 334332,
+          "text": "push    r14"
+        },
+        {
+          "rva": 334334,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 334335,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 334336,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 334337,
+          "text": "sub     rsp, 28h"
+        },
+        {
+          "rva": 334341,
+          "text": "mov     rdi, r9"
+        },
+        {
+          "rva": 334344,
+          "text": "mov     rdx, r8"
+        },
+        {
+          "rva": 334347,
+          "text": "mov     rsi, rcx"
+        },
+        {
+          "rva": 334350,
+          "text": "mov     rbx, [rsp+48h+arg_28]"
+        },
+        {
+          "rva": 334355,
+          "text": "mov     r14, [rsp+48h+arg_20]"
+        },
+        {
+          "rva": 334360,
+          "text": "lea     r8, sub_180051A70"
+        },
+        {
+          "rva": 334367,
+          "text": "call    sub_1801CB370"
+        },
+        {
+          "rva": 334372,
+          "text": "mov     rax, [rdi]"
+        },
+        {
+          "rva": 334375,
+          "text": "mov     [rsi+20h], rax"
+        },
+        {
+          "rva": 334379,
+          "text": "mov     rax, [r14]"
+        },
+        {
+          "rva": 334382,
+          "text": "mov     [rsi+28h], rax"
+        },
+        {
+          "rva": 334386,
+          "text": "lea     rcx, [rsi+30h]"
+        },
+        {
+          "rva": 334390,
+          "text": "cmp     byte ptr [rbx+17h], 0"
+        },
+        {
+          "rva": 334394,
+          "text": "js      short loc_180051A4C"
+        },
+        {
+          "rva": 334396,
+          "text": "mov     rax, [rbx+10h]"
+        },
+        {
+          "rva": 334400,
+          "text": "mov     [rcx+10h], rax"
+        },
+        {
+          "rva": 334404,
+          "text": "movups  xmm0, xmmword ptr [rbx]"
+        },
+        {
+          "rva": 334407,
+          "text": "movups  xmmword ptr [rcx], xmm0"
+        },
+        {
+          "rva": 334410,
+          "text": "jmp     short loc_180051A58"
+        },
+        {
+          "rva": 334412,
+          "text": "mov     rdx, [rbx]"
+        },
+        {
+          "rva": 334415,
+          "text": "mov     r8, [rbx+8]"
+        },
+        {
+          "rva": 334419,
+          "text": "call    sub_18019C1B8"
+        },
+        {
+          "rva": 334424,
+          "text": "mov     rax, rsi"
+        },
+        {
+          "rva": 334427,
+          "text": "add     rsp, 28h"
+        },
+        {
+          "rva": 334431,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 334432,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 334433,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 334434,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 334436,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 334304,
+      "end_rva": 334332,
+      "name": "sub_1800519E0",
+      "code_sha256": "e858badec7ad3aa4443920a752970184f94fe22f26d50dd276b04179a53ba38c",
+      "pseudocode": "__int64 sub_1800519E0()\n{\n  return _guard_dispatch_icall_fptr();\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 133929,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 3586124,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 334304,
+          "text": "mov     r9, r8"
+        },
+        {
+          "rva": 334307,
+          "text": "mov     r8d, edx"
+        },
+        {
+          "rva": 334310,
+          "text": "lea     rdx, [rcx+30h]"
+        },
+        {
+          "rva": 334314,
+          "text": "mov     rax, [rcx+20h]"
+        },
+        {
+          "rva": 334318,
+          "text": "mov     rcx, [rcx+28h]"
+        },
+        {
+          "rva": 334322,
+          "text": "mov     r10, cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 334329,
+          "text": "jmp     r10"
+        }
+      ]
+    },
+    {
+      "rva": 131104,
+      "end_rva": 131794,
+      "name": "sub_180020020",
+      "code_sha256": "f06591226c61f44c2e3ffcdcaded227742076a23c09ff788834cba046f2a6a8e",
+      "pseudocode": "char __fastcall sub_180020020(__int64 (__fastcall *a1)(_QWORD, char *, char *), unsigned int a2, char *a3, char *a4)\n{\n  char result; // al\n  __int64 v9; // rax\n  __int64 v10; // rax\n  __int64 v11; // rax\n  __int64 v12; // rax\n  __int64 v13; // rax\n  __int64 v14; // rax\n  __int64 v15; // rax\n  __int64 v16; // rax\n  __int64 v17; // r8\n  char *v18; // rdx\n  __int64 v19; // rax\n  __int64 v20; // rax\n  __int64 v21; // rax\n  __int64 v22; // rax\n  __int64 v23; // r8\n  char *v24; // rdx\n  __int64 v25; // rax\n  __int64 v26; // rax\n  __int64 v27; // rax\n  __int64 v28; // rax\n  _BYTE v29[16]; // [rsp+20h] [rbp-178h] BYREF\n  _BYTE v30[296]; // [rsp+30h] [rbp-168h] BYREF\n\n  if ( (_BYTE)a2 )\n  {\n    result = sub_1801C6ED0(0);\n    if ( result )\n    {\n      sub_1801C6FD0(v29, \"..\\\\..\\\\mapping_engine\\\\mapping_engine_dll_impl.cc\", 89, 0);\n      v9 = sub_18001B495(v30, \"localStorageGetItemCompleted\", 28);\n      v10 = sub_18001B495(v9, \": \", 2);\n      v11 = sub_18001B495(v10, \"callback\", 8);\n      v12 = sub_18001B495(v11, \"[\", 1);\n      v13 = sub_180180326(v12, a1);\n      v14 = sub_18001B495(v13, \"] \", 2);\n      v15 = sub_18001B495(v14, \"key\", 3);\n      v16 = sub_18001B495(v15, \"[\", 1);\n      v17 = (unsigned __int8)a4[23];\n      v18 = a4;\n      if ( (v17 & 0x80u) != 0LL )\n      {\n        v17 = *((_QWORD *)a4 + 1);\n        v18 = *(char **)a4;\n      }\nLABEL_11:\n      v28 = sub_18001B495(v16, v18, v17);\n      sub_18001B495(v28, \"] \", 2);\n      result = sub_1801C7500(v29);\n    }\n  }\n  else\n  {\n    result = sub_1801C6ED0(2);\n    if ( result )\n    {\n      sub_1801C6FD0(v29, \"..\\\\..\\\\mapping_engine\\\\mapping_engine_dll_impl.cc\", 91, 2);\n      v19 = sub_18001B495(v30, \"localStorageGetItemCompleted\", 28);\n      v20 = sub_18001B495(v19, \": \", 2);\n      v21 = sub_18001B495(v20, \"key\", 3);\n      v22 = sub_18001B495(v21, \"[\", 1);\n      v23 = (unsigned __int8)a4[23];\n      v24 = a4;\n      if ( (v23 & 0x80u) != 0LL )\n      {\n        v23 = *((_QWORD *)a4 + 1);\n        v24 = *(char **)a4;\n      }\n      v25 = sub_18001B495(v22, v24, v23);\n      v26 = sub_18001B495(v25, \"] \", 2);\n      v27 = sub_18001B495(v26, \"error_reason\", 12);\n      v16 = sub_18001B495(v27, \"[\", 1);\n      v17 = (unsigned __int8)a3[23];\n      v18 = a3;\n      if ( (v17 & 0x80u) != 0LL )\n      {\n        v17 = *((_QWORD *)a3 + 1);\n        v18 = *(char **)a3;\n      }\n      goto LABEL_11;\n    }\n  }\n  if ( a1 )\n  {\n    result = byte_180394748;\n    if ( (byte_180394748 & 1) != 0 )\n    {\n      if ( a4[23] < 0 )\n        a4 = *(char **)a4;\n      if ( a3[23] < 0 )\n        a3 = *(char **)a3;\n      return a1(a2, a3, a4);\n    }\n  }\n  return result;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 132231,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 3584972,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 131104,
+          "text": "push    r15"
+        },
+        {
+          "rva": 131106,
+          "text": "push    r14"
+        },
+        {
+          "rva": 131108,
+          "text": "push    r12"
+        },
+        {
+          "rva": 131110,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 131111,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 131112,
+          "text": "push    rbp"
+        },
+        {
+          "rva": 131113,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 131114,
+          "text": "sub     rsp, 160h"
+        },
+        {
+          "rva": 131121,
+          "text": "mov     rsi, r9"
+        },
+        {
+          "rva": 131124,
+          "text": "mov     rbx, r8"
+        },
+        {
+          "rva": 131127,
+          "text": "mov     ebp, edx"
+        },
+        {
+          "rva": 131129,
+          "text": "mov     rdi, rcx"
+        },
+        {
+          "rva": 131132,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 131139,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 131142,
+          "text": "mov     [rsp+198h+var_40], rax"
+        },
+        {
+          "rva": 131150,
+          "text": "test    dl, dl"
+        },
+        {
+          "rva": 131152,
+          "text": "jz      loc_180020151"
+        },
+        {
+          "rva": 131158,
+          "text": "xor     ecx, ecx"
+        },
+        {
+          "rva": 131160,
+          "text": "call    sub_1801C6ED0"
+        },
+        {
+          "rva": 131165,
+          "text": "test    al, al"
+        },
+        {
+          "rva": 131167,
+          "text": "jz      loc_18002026B"
+        },
+        {
+          "rva": 131173,
+          "text": "lea     rdx, aMappingEngineM_1; \"..\\\\..\\\\mapping_engine\\\\mapping_engine_\"..."
+        },
+        {
+          "rva": 131180,
+          "text": "lea     r14, [rsp+198h+var_178]"
+        },
+        {
+          "rva": 131185,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 131188,
+          "text": "mov     r8d, 59h ; 'Y'"
+        },
+        {
+          "rva": 131194,
+          "text": "xor     r9d, r9d"
+        },
+        {
+          "rva": 131197,
+          "text": "call    sub_1801C6FD0"
+        },
+        {
+          "rva": 131202,
+          "text": "lea     rcx, [rsp+198h+var_168]"
+        },
+        {
+          "rva": 131207,
+          "text": "lea     rdx, aLocalstoragege_0; \"localStorageGetItemCompleted\""
+        },
+        {
+          "rva": 131214,
+          "text": "mov     r8d, 1Ch"
+        },
+        {
+          "rva": 131220,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131225,
+          "text": "lea     rdx, asc_1802DF53B; \": \""
+        },
+        {
+          "rva": 131232,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 131238,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131241,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131246,
+          "text": "lea     rdx, aCallback; \"callback\""
+        },
+        {
+          "rva": 131253,
+          "text": "mov     r8d, 8"
+        },
+        {
+          "rva": 131259,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131262,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131267,
+          "text": "lea     r12, asc_1802DF543; \"[\""
+        },
+        {
+          "rva": 131274,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 131280,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131283,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 131286,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131291,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131294,
+          "text": "mov     rdx, rdi"
+        },
+        {
+          "rva": 131297,
+          "text": "call    sub_180180326"
+        },
+        {
+          "rva": 131302,
+          "text": "lea     r15, asc_1802DF545; \"] \""
+        },
+        {
+          "rva": 131309,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 131315,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131318,
+          "text": "mov     rdx, r15"
+        },
+        {
+          "rva": 131321,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131326,
+          "text": "lea     rdx, aKey; \"key\""
+        },
+        {
+          "rva": 131333,
+          "text": "mov     r8d, 3"
+        },
+        {
+          "rva": 131339,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131342,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131347,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 131353,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131356,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 131359,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131364,
+          "text": "movzx   r8d, byte ptr [rsi+17h]"
+        },
+        {
+          "rva": 131369,
+          "text": "mov     rdx, rsi"
+        },
+        {
+          "rva": 131372,
+          "text": "test    r8b, r8b"
+        },
+        {
+          "rva": 131375,
+          "text": "jns     short loc_180020138"
+        },
+        {
+          "rva": 131377,
+          "text": "mov     r8, [rsi+8]"
+        },
+        {
+          "rva": 131381,
+          "text": "mov     rdx, [rsi]"
+        },
+        {
+          "rva": 131384,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131387,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131392,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 131398,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131401,
+          "text": "mov     rdx, r15"
+        },
+        {
+          "rva": 131404,
+          "text": "jmp     loc_18002025E"
+        },
+        {
+          "rva": 131409,
+          "text": "mov     ecx, 2"
+        },
+        {
+          "rva": 131414,
+          "text": "call    sub_1801C6ED0"
+        },
+        {
+          "rva": 131419,
+          "text": "test    al, al"
+        },
+        {
+          "rva": 131421,
+          "text": "jz      loc_18002026B"
+        },
+        {
+          "rva": 131427,
+          "text": "lea     rdx, aMappingEngineM_1; \"..\\\\..\\\\mapping_engine\\\\mapping_engine_\"..."
+        },
+        {
+          "rva": 131434,
+          "text": "lea     r14, [rsp+198h+var_178]"
+        },
+        {
+          "rva": 131439,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 131442,
+          "text": "mov     r8d, 5Bh ; '['"
+        },
+        {
+          "rva": 131448,
+          "text": "mov     r9d, 2"
+        },
+        {
+          "rva": 131454,
+          "text": "call    sub_1801C6FD0"
+        },
+        {
+          "rva": 131459,
+          "text": "lea     rcx, [rsp+198h+var_168]"
+        },
+        {
+          "rva": 131464,
+          "text": "lea     rdx, aLocalstoragege_0; \"localStorageGetItemCompleted\""
+        },
+        {
+          "rva": 131471,
+          "text": "mov     r8d, 1Ch"
+        },
+        {
+          "rva": 131477,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131482,
+          "text": "lea     rdx, asc_1802DF53B; \": \""
+        },
+        {
+          "rva": 131489,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 131495,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131498,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131503,
+          "text": "lea     rdx, aKey; \"key\""
+        },
+        {
+          "rva": 131510,
+          "text": "mov     r8d, 3"
+        },
+        {
+          "rva": 131516,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131519,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131524,
+          "text": "lea     r15, asc_1802DF543; \"[\""
+        },
+        {
+          "rva": 131531,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 131537,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131540,
+          "text": "mov     rdx, r15"
+        },
+        {
+          "rva": 131543,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131548,
+          "text": "movzx   r8d, byte ptr [rsi+17h]"
+        },
+        {
+          "rva": 131553,
+          "text": "mov     rdx, rsi"
+        },
+        {
+          "rva": 131556,
+          "text": "test    r8b, r8b"
+        },
+        {
+          "rva": 131559,
+          "text": "jns     short loc_1800201F0"
+        },
+        {
+          "rva": 131561,
+          "text": "mov     r8, [rsi+8]"
+        },
+        {
+          "rva": 131565,
+          "text": "mov     rdx, [rsi]"
+        },
+        {
+          "rva": 131568,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131571,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131576,
+          "text": "lea     r12, asc_1802DF545; \"] \""
+        },
+        {
+          "rva": 131583,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 131589,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131592,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 131595,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131600,
+          "text": "lea     rdx, aErrorReason; \"error_reason\""
+        },
+        {
+          "rva": 131607,
+          "text": "mov     r8d, 0Ch"
+        },
+        {
+          "rva": 131613,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131616,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131621,
+          "text": "mov     r8d, 1"
+        },
+        {
+          "rva": 131627,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131630,
+          "text": "mov     rdx, r15"
+        },
+        {
+          "rva": 131633,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131638,
+          "text": "movzx   r8d, byte ptr [rbx+17h]"
+        },
+        {
+          "rva": 131643,
+          "text": "mov     rdx, rbx"
+        },
+        {
+          "rva": 131646,
+          "text": "test    r8b, r8b"
+        },
+        {
+          "rva": 131649,
+          "text": "jns     short loc_18002024A"
+        },
+        {
+          "rva": 131651,
+          "text": "mov     r8, [rbx+8]"
+        },
+        {
+          "rva": 131655,
+          "text": "mov     rdx, [rbx]"
+        },
+        {
+          "rva": 131658,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131661,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131666,
+          "text": "mov     r8d, 2"
+        },
+        {
+          "rva": 131672,
+          "text": "mov     rcx, rax"
+        },
+        {
+          "rva": 131675,
+          "text": "mov     rdx, r12"
+        },
+        {
+          "rva": 131678,
+          "text": "call    sub_18001B495"
+        },
+        {
+          "rva": 131683,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 131686,
+          "text": "call    sub_1801C7500"
+        },
+        {
+          "rva": 131691,
+          "text": "test    rdi, rdi"
+        },
+        {
+          "rva": 131694,
+          "text": "jz      short loc_1800202AF"
+        },
+        {
+          "rva": 131696,
+          "text": "mov     al, cs:byte_180394748"
+        },
+        {
+          "rva": 131702,
+          "text": "test    al, 1"
+        },
+        {
+          "rva": 131704,
+          "text": "jz      short loc_1800202AF"
+        },
+        {
+          "rva": 131706,
+          "text": "mov     r9, [rsp+198h+arg_20]"
+        },
+        {
+          "rva": 131714,
+          "text": "cmp     byte ptr [r9+17h], 0"
+        },
+        {
+          "rva": 131719,
+          "text": "jns     short loc_18002028C"
+        },
+        {
+          "rva": 131721,
+          "text": "mov     r9, [r9]"
+        },
+        {
+          "rva": 131724,
+          "text": "cmp     byte ptr [rsi+17h], 0"
+        },
+        {
+          "rva": 131728,
+          "text": "jns     short loc_180020295"
+        },
+        {
+          "rva": 131730,
+          "text": "mov     rsi, [rsi]"
+        },
+        {
+          "rva": 131733,
+          "text": "cmp     byte ptr [rbx+17h], 0"
+        },
+        {
+          "rva": 131737,
+          "text": "jns     short loc_18002029E"
+        },
+        {
+          "rva": 131739,
+          "text": "mov     rbx, [rbx]"
+        },
+        {
+          "rva": 131742,
+          "text": "mov     ecx, ebp"
+        },
+        {
+          "rva": 131744,
+          "text": "mov     rdx, rbx"
+        },
+        {
+          "rva": 131747,
+          "text": "mov     r8, rsi"
+        },
+        {
+          "rva": 131750,
+          "text": "mov     rax, rdi"
+        },
+        {
+          "rva": 131753,
+          "text": "call    cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 131759,
+          "text": "mov     rcx, [rsp+198h+var_40]"
+        },
+        {
+          "rva": 131767,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 131770,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 131775,
+          "text": "nop"
+        },
+        {
+          "rva": 131776,
+          "text": "add     rsp, 160h"
+        },
+        {
+          "rva": 131783,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 131784,
+          "text": "pop     rbp"
+        },
+        {
+          "rva": 131785,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 131786,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 131787,
+          "text": "pop     r12"
+        },
+        {
+          "rva": 131789,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 131791,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 131793,
+          "text": "retn"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Pseudocode is inferred from machine code; check types and indirect targets against original bytes.",
+    "Selected functions only, not full-program semantic completion."
+  ]
+}

@@ -3,8 +3,14 @@
 use super::*;
 use gpui_kit::base::Button as BaseButton;
 
+#[path = "keyboard_mapping_drawer.rs"]
+mod mapping_drawer;
+pub(super) use mapping_drawer::Next as MappingNext;
+
 #[derive(Default)]
 pub(super) struct State {
+    pub(super) floating: floating_controller::State,
+    pub(super) mapping: mapping_drawer::State,
     pub(super) effect_menu: bool,
     pub(super) advanced: bool,
     pub(super) gamepad: Option<KeyboardGamepadTesterObservation>,
@@ -130,7 +136,7 @@ impl KeyboardProductWorkspace {
         surface::panel_with_control(
             t("QUICK_REMAPPING"),
             surface::help_control(
-                "keyboard-679-quick-remap-help",
+                "keyboard-analog-quick-remap-help",
                 t("QUICK_REMAPPING_TOOLTIPS"),
             ),
             cx,
@@ -153,13 +159,13 @@ impl KeyboardProductWorkspace {
                 .py(surface::css(10.))
                 .child(
                     img(SharedString::from(format!(
-                        "synapse/keyboard-679-quick-{name}.svg"
+                        "synapse/controller_icon_{name}.svg"
                     )))
                     .size(surface::css(44.)),
                 )
                 .child(div().flex_1().px(surface::css(10.)).child(t(label)))
                 .child(
-                    BaseButton::new(SharedString::from(format!("keyboard-679-quick-{name}")))
+                    BaseButton::new(SharedString::from(format!("keyboard-analog-quick-{name}")))
                         .w(surface::css(136.))
                         .h(surface::css(27.))
                         .rounded(surface::css(3.))
@@ -298,7 +304,7 @@ impl KeyboardProductWorkspace {
             .children([(false, "QUICK_EFFECTS"), (true, "ADVANCED_EFFECTS")].map(
                 |(mode, label)| {
                     BaseButton::new(SharedString::from(format!(
-                        "keyboard-679-effects-tab-{mode}"
+                        "keyboard-analog-effects-tab-{mode}"
                     )))
                     .h(surface::css(26.))
                     .px(surface::css(10.))
@@ -307,9 +313,9 @@ impl KeyboardProductWorkspace {
                     .text_size(surface::css(14.))
                     .line_height(surface::css(16.))
                     .bg(if advanced == mode {
-                        rgb(0x44d62c).into()
+                        rgb(0x44d62c)
                     } else {
-                        rgba(0x00000000).into()
+                        rgba(0x00000000)
                     })
                     .text_color(if advanced == mode {
                         rgb(0x212121)
@@ -341,7 +347,7 @@ impl KeyboardProductWorkspace {
                                 .w(surface::css(150.))
                                 .relative()
                                 .child(
-                                    BaseButton::new("keyboard-679-effect-dropdown")
+                                    BaseButton::new("keyboard-analog-effect-dropdown")
                                         .w_full()
                                         .h(surface::css(27.))
                                         .px(surface::css(5.))
@@ -359,7 +365,7 @@ impl KeyboardProductWorkspace {
                                         .items_center()
                                         .child(t(selected_name))
                                         .child(
-                                            img("synapse/keyboard-679-expand.svg")
+                                            img("synapse/icon_expand.svg")
                                                 .w(surface::css(10.))
                                                 .h(surface::css(10.)),
                                         )
@@ -372,7 +378,7 @@ impl KeyboardProductWorkspace {
                                 .when(self.analog_gamepad.effect_menu, |dropdown| {
                                     dropdown.child(
                                         div()
-                                            .id("keyboard-679-effect-options")
+                                            .id("keyboard-analog-effect-options")
                                             .absolute()
                                             .top(surface::css(27.))
                                             .left_0()
@@ -389,7 +395,7 @@ impl KeyboardProductWorkspace {
                                                     Some(
                                                         BaseButton::new(SharedString::from(
                                                             format!(
-                                                                "keyboard-679-effect-option-{id}"
+                                                                "keyboard-analog-effect-option-{id}"
                                                             ),
                                                         ))
                                                         .w_full()
@@ -423,7 +429,7 @@ impl KeyboardProductWorkspace {
                                 .items_center()
                                 .opacity(0.3)
                                 .child(
-                                    img("synapse/keyboard-679-chroma-sync.svg")
+                                    img("synapse/chroma_sync_v3_static.svg")
                                         .size(surface::css(26.))
                                         .mr(surface::css(10.)),
                                 )
@@ -434,7 +440,7 @@ impl KeyboardProductWorkspace {
         }
         surface::panel_with_control(
             t("EFFECTS"),
-            surface::help_control("keyboard-679-effects-help", t("EFFECTS_TOOLTIP")),
+            surface::help_control("keyboard-analog-effects-help", t("EFFECTS_TOOLTIP")),
             cx,
         )
         .mb_0()
@@ -488,30 +494,65 @@ impl KeyboardProductWorkspace {
         let direction = self.draft["quickEffects"]["selectedEffectSetting"]["direction"]
             .as_u64()
             .unwrap_or(2);
-        Some(h_flex().mt(surface::css(20.)).gap(surface::css(20.))
-            .child(div().child(t("DIRECTION")))
-            .child(h_flex().border_1().border_color(rgb(0x5d5d5d)).rounded(surface::css(3.))
-                .children([(1,"left"),(2,"right")].map(|(value,name)| {
-                    let selected = direction == value;
-                    BaseButton::new(SharedString::from(format!("keyboard-679-wave-{name}")))
-                        .w(surface::css(51.)).h(surface::css(25.)).flex().items_center().justify_center()
-                        .bg(if selected { rgb(0x44d62c) } else { rgb(0x111111) })
-                        .child(img(SharedString::from(format!("synapse/direction-{name}{}.svg",if selected {"-active"} else {""}))).size(surface::css(20.)))
-                        .on_click(cx.listener(move |this,_,_,cx| {
-                            this.draft["quickEffects"]["selectedEffectSetting"]["direction"] = json!(value);
-                            if let Some(settings) = this.draft["quickEffects"]["effectSettings"].as_array_mut() {
-                                for setting in settings.iter_mut().filter(|setting|setting["effectId"] == 4) { setting["direction"] = json!(value); }
-                            }
-                            cx.emit(KeyboardProductChanged);cx.notify();
-                        }))
-                }))).into_any_element())
+        Some(
+            h_flex()
+                .mt(surface::css(20.))
+                .gap(surface::css(20.))
+                .child(div().child(t("DIRECTION")))
+                .child(
+                    h_flex()
+                        .border_1()
+                        .border_color(rgb(0x5d5d5d))
+                        .rounded(surface::css(3.))
+                        .children([(1, "left"), (2, "right")].map(|(value, name)| {
+                            let selected = direction == value;
+                            BaseButton::new(SharedString::from(format!(
+                                "keyboard-analog-wave-{name}"
+                            )))
+                            .w(surface::css(51.))
+                            .h(surface::css(25.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .bg(if selected {
+                                rgb(0x44d62c)
+                            } else {
+                                rgb(0x111111)
+                            })
+                            .child(
+                                img(SharedString::from(format!(
+                                    "synapse/direction-{name}{}.svg",
+                                    if selected { "-active" } else { "" }
+                                )))
+                                .size(surface::css(20.)),
+                            )
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.draft["quickEffects"]["selectedEffectSetting"]["direction"] =
+                                    json!(value);
+                                if let Some(settings) =
+                                    this.draft["quickEffects"]["effectSettings"].as_array_mut()
+                                {
+                                    for setting in settings
+                                        .iter_mut()
+                                        .filter(|setting| setting["effectId"] == 4)
+                                    {
+                                        setting["direction"] = json!(value);
+                                    }
+                                }
+                                cx.emit(KeyboardProductChanged);
+                                cx.notify();
+                            }))
+                        })),
+                )
+                .into_any_element(),
+        )
     }
 
     pub(super) fn huntsman_gamepad_tester(&self, cx: &Context<Self>) -> AnyElement {
         let observed = self.analog_gamepad.gamepad;
         surface::panel_with_control(
             t("KEYBOARD_ANALOG_OPTIONS"),
-            surface::help_control("keyboard-679-gamepad-help", t("GAMEPAD_TESTER_TOOLTIPS")),
+            surface::help_control("keyboard-analog-gamepad-help", t("GAMEPAD_TESTER_TOOLTIPS")),
             cx,
         )
         .mb_0()
@@ -613,7 +654,7 @@ fn trigger(name: &'static str, value: Option<u8>) -> AnyElement {
         .items_center()
         .child(
             img(SharedString::from(format!(
-                "synapse/keyboard-679-trigger-{name}.svg"
+                "synapse/xbox-trigger-{name}.svg"
             )))
             .w(surface::css(34.))
             .mr(surface::css(10.)),

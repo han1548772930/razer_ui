@@ -138,11 +138,7 @@ impl MouseProductWorkspace {
                             .h(surface::css(24.))
                             .mr(surface::css(5.))
                             .rounded(surface::css(12.))
-                            .bg(if hypershift {
-                                rgba(0).into()
-                            } else {
-                                rgb(0x44d62c).into()
-                            })
+                            .bg(if hypershift { rgba(0) } else { rgb(0x44d62c) })
                             .text_color(rgb(if hypershift { 0xcccccc } else { 0x212121 }))
                             .child(t("STANDARD")),
                     )
@@ -153,11 +149,7 @@ impl MouseProductWorkspace {
                             .pb(surface::css(5.))
                             .h(surface::css(24.))
                             .rounded(surface::css(12.))
-                            .bg(if hypershift {
-                                rgb(0xfd8611).into()
-                            } else {
-                                rgba(0).into()
-                            })
+                            .bg(if hypershift { rgb(0xfd8611) } else { rgba(0) })
                             .text_color(rgb(if hypershift { 0x212121 } else { 0xcccccc }))
                             .child(t("HYPERSHIFT")),
                     ),
@@ -233,15 +225,11 @@ impl MouseProductWorkspace {
                     .text_size(surface::css(14.))
                     .line_height(surface::css(17.))
                     .text_color(if enabled {
-                        rgb(0xcccccc).into()
+                        rgb(0xcccccc)
                     } else {
-                        rgba(0xcccccc4d).into()
+                        rgba(0xcccccc4d)
                     })
-                    .bg(if active {
-                        rgb(0x111111).into()
-                    } else {
-                        rgba(0).into()
-                    })
+                    .bg(if active { rgb(0x111111) } else { rgba(0) })
                     .disabled(!enabled)
                     .hover(|s| s.bg(rgb(0x383838)))
                     .active(|s| s.bg(rgb(0x111111)))

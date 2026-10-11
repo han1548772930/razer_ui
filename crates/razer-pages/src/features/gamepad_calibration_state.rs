@@ -120,6 +120,12 @@ pub struct CalibrationState {
 }
 
 impl CalibrationState {
+    pub(in super::super) fn reducer_valid(&self) -> bool {
+        self.valid
+    }
+    pub(in super::super) fn set_reducer_valid(&mut self, valid: bool) {
+        self.valid = valid;
+    }
     pub(super) fn generation(&self) -> u64 {
         self.generation
     }
@@ -152,11 +158,6 @@ impl CalibrationState {
             self.intent = Some(intent.clone());
             return Some(intent);
         }
-        if action == CalibrationAction::Start && !matches!(self.step, 0 | -1)
-            || action == CalibrationAction::Stop && self.step == 0
-        {
-            return None;
-        }
         self.generation = self.generation.wrapping_add(1);
         self.sequence = None;
         self.step = if action == CalibrationAction::Start {
@@ -165,7 +166,8 @@ impl CalibrationState {
             0
         };
         self.part = part;
-        self.valid = false;
+        // Current reducer spreads its state on START/STOP; validity is
+        // refreshed only by actual MW_UPDATE_CONTROLLER_CALIBRATION_PROGRESS.
         self.positions = [None, None];
         self.observed = false;
         self.reset_rotation();

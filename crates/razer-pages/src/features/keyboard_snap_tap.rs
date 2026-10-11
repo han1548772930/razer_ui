@@ -296,17 +296,18 @@ impl State {
     }
 }
 
-/// Products with audited ordinary-component definitions, row/editor functions
-/// and an actual Customize caller. Shared component markers alone never enable
-/// a product. Remaining ordinary candidates require the same caller audit;
-/// analog/v3/v4 widgets remain separate branches.
-pub(super) fn ordinary_product(pid: u32) -> bool {
-    matches!(pid, 515 | 565 | 567 | 585 | 659 | 716 | 752)
+/// Current Rust ordinary-renderer implementation coverage, not a vendor
+/// capability whitelist. Other source-mounted widgets remain implementation
+/// gaps. Current 521 re-audit proves the ordinary topology/helper equivalence
+/// and its Customize left-column caller; analog/v3/v4 need their own branches.
+pub(super) fn ordinary_renderer_implemented(pid: u32) -> bool {
+    matches!(pid, 515 | 521 | 565 | 567 | 585 | 659 | 716 | 752)
 }
 
-/// Whether the ordinary widget is mounted on the Customize page at all.
+/// Whether this Rust ordinary renderer can currently mount the widget. This
+/// implementation guard is not proof of vendor support or absence.
 pub(super) fn snap_tap_visible(pid: u32) -> bool {
-    ordinary_product(pid)
+    ordinary_renderer_implemented(pid)
 }
 
 /// Current source column placement for the ordinary widget.
@@ -337,7 +338,9 @@ impl KeyboardProductWorkspace {
         }
     }
     pub(super) fn init_snap_tap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if !ordinary_product(self.spec.product_id) && !self.spec.analog_gamepad_layout() {
+        if !ordinary_renderer_implemented(self.spec.product_id)
+            && !self.spec.analog_gamepad_layout()
+        {
             return;
         }
         self.snap_tap = Some(State::new(cx));
@@ -575,6 +578,7 @@ impl KeyboardProductWorkspace {
             }
             _ => {}
         }
+        let razer_keys = self.snap_razer_keys();
         let Some(state) = &mut self.snap_tap else {
             cx.notify();
             return;
@@ -637,7 +641,7 @@ impl KeyboardProductWorkspace {
                             .as_str()
                             .map(str::to_owned)
                             .unwrap_or_else(|| input["key"].to_string());
-                        self.snap_razer_keys().iter().find(|key| key["key"] == id)
+                        razer_keys.iter().find(|key| key["key"] == id)
                     })
                     .and_then(|key| key["inputID"].as_str())
                     .map(str::to_owned);
@@ -687,7 +691,7 @@ impl KeyboardProductWorkspace {
         }
         cx.notify();
     }
-    fn snap_razer_keys(&self) -> &[Value] {
+    fn snap_razer_keys(&self) -> &'static [Value] {
         self.spec
             .config
             .get("DKM_KEYS")

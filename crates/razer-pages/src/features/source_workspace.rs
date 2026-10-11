@@ -1,6 +1,7 @@
 //! Native product ownership. Source navigation identity and local profile data
 //! stay independent from the original ten hand-written adapters.
 use super::{Choice, WorkspaceEvent};
+use gpui_kit::base::ElementExt as _;
 use gpui_kit::base::TestSupportExt as _;
 use gpui_kit::component::{
     input::{InputEvent, InputState},
@@ -504,6 +505,62 @@ impl SourceProductWorkspace {
         }
     }
 
+    pub fn trigger_calibration_generation(&self, cx: &App) -> Option<u64> {
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.read(cx).trigger_calibration_generation(),
+            _ => None,
+        }
+    }
+    pub fn trigger_calibration_focus_pending(&self, cx: &App) -> bool {
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.read(cx).trigger_calibration_focus_pending(),
+            _ => false,
+        }
+    }
+    pub fn observe_trigger_calibration(
+        &mut self,
+        observation: super::gamepad_products::TriggerCalibrationObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.active {
+            return false;
+        }
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                body.observe_trigger_calibration(observation, window, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn observe_trigger_calibration_focus(
+        &mut self,
+        generation: u64,
+        active: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                body.observe_trigger_calibration_focus(generation, active, window, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn finish_trigger_calibration_submission(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                body.finish_trigger_calibration_submission(generation, result, cx)
+            }),
+            _ => false,
+        }
+    }
+
     pub fn calibration_intent(
         &self,
         cx: &App,
@@ -520,11 +577,10 @@ impl SourceProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if !self.active
-            || self
-                .current_page()
-                .is_none_or(|page| page.kind().key() != "TAB_CALIBRATION")
-        {
+        // Hm/Zl mount Mm/cc from THUMBSTICKS too. The family body checks
+        // the actual page or mounted popup; an outer tab-only filter drops
+        // genuine progress from that source caller.
+        if !self.active {
             return false;
         }
         match &self.body {
@@ -910,7 +966,11 @@ impl SourceProductWorkspace {
             })
     }
     /// Select the audited independent Armory component before mapping roots.
-    pub fn mapping_page_element(&self, cx: &mut Context<Self>) -> Option<AnyElement> {
+    pub fn mapping_page_element(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
         if super::armory_product::supports(&self.device) {
             return Some(
                 super::armory_product::ArmoryProduct::new(&self.device).into_any_element(),
@@ -920,7 +980,9 @@ impl SourceProductWorkspace {
             return None;
         }
         match &self.body {
-            FamilyBody::Mouse(view) => Some(view.update(cx, |view, cx| view.customize_element(cx))),
+            FamilyBody::Mouse(view) => {
+                Some(view.update(cx, |view, cx| view.customize_element(window, cx)))
+            }
             FamilyBody::Keyboard(view) => {
                 Some(view.update(cx, |view, cx| view.customize_element(cx)))
             }
@@ -983,10 +1045,34 @@ impl SourceProductWorkspace {
                     this.capture(body.read(cx).snapshot(), cx);
                 },
             ));
+            subscriptions.push(cx.subscribe_in(
+                &body,
+                window,
+                |this: &mut Self,
+                 _,
+                 navigation: &super::mouse_products::MouseMappingNavigation,
+                 window,
+                 cx| {
+                    match navigation {
+                        super::mouse_products::MouseMappingNavigation::Page(key) => {
+                            this.set_page_key(key, window, cx)
+                        }
+                        super::mouse_products::MouseMappingNavigation::History(forward) => {
+                            this.step_page_history(*forward, window, cx)
+                        }
+                    }
+                },
+            ));
             subscriptions.push(cx.subscribe(
                 &body,
                 |_: &mut Self, _, request: &super::mouse_products::MouseDynamicRequested, cx| {
                     cx.emit(WorkspaceEvent::MouseDynamicRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, error: &super::mouse_products::MouseMappingSaveRejected, cx| {
+                    cx.emit(WorkspaceEvent::MouseMappingSaveRejected(*error));
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -1014,6 +1100,17 @@ impl SourceProductWorkspace {
                     window,
                     cx,
                 )
+            });
+            body.update(cx, |body, cx| {
+                body.observe_source_artwork(
+                    super::keyboard_products::SourceArtworkObservation {
+                        product_id: device.product_id,
+                        edition_id: device.edition_id,
+                        layout_id: device.layout_id,
+                        wristrest_connected: None,
+                    },
+                    cx,
+                );
             });
             subscriptions.push(cx.subscribe(
                 &body,
@@ -1093,6 +1190,12 @@ impl SourceProductWorkspace {
                  window,
                  cx| {
                     this.set_page_key("TAB_CALIBRATION", window, cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_, _, request: &super::gamepad_products::TriggerCalibrationIntent, cx| {
+                    cx.emit(WorkspaceEvent::TriggerCalibrationRequested(request.clone()));
                 },
             ));
             FamilyBody::Gamepad(body)
@@ -1896,6 +1999,13 @@ impl SourceProductWorkspace {
         if self.page == Some(page) {
             return;
         }
+        if let FamilyBody::Mouse(body) = &self.body {
+            if body.update(cx, |body, cx| {
+                body.defer_mapping_page(page.key(), window, cx)
+            }) {
+                return;
+            }
+        }
         if let FamilyBody::Audio(body) = &self.body {
             if body.update(cx, |body, cx| {
                 body.defer_pod_navigation(
@@ -1931,6 +2041,13 @@ impl SourceProductWorkspace {
         if !self.can_step_history(forward) {
             return;
         }
+        if let FamilyBody::Mouse(body) = &self.body {
+            if body.update(cx, |body, cx| {
+                body.defer_mapping_history(forward, window, cx)
+            }) {
+                return;
+            }
+        }
         if let FamilyBody::Audio(body) = &self.body {
             if body.update(cx, |body, cx| {
                 body.defer_pod_navigation(
@@ -1951,6 +2068,28 @@ impl SourceProductWorkspace {
         self.select_body_page(window, cx);
         cx.emit(WorkspaceEvent::Changed);
         cx.notify();
+    }
+    /// GR's concrete .arrow.back/forward click after its history handler.
+    /// Programmatic continuations call step_page_history without inventing a
+    /// second browser document click.
+    pub fn mapping_history_clicked(
+        &mut self,
+        forward: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(mouse) = &self.body {
+            mouse.update(cx, |mouse, cx| {
+                mouse.mapping_190_document_click(
+                    &["arrow", if forward { "forward" } else { "back" }],
+                    &["navigation"],
+                    &[],
+                    false,
+                    window,
+                    cx,
+                )
+            });
+        }
     }
     fn select_body_page(&self, window: &mut Window, cx: &mut Context<Self>) {
         self.sync_keyboard_read_activity(cx);
@@ -2144,6 +2283,10 @@ impl Render for SourceProductWorkspace {
                 }
             }
         };
+        let mapping_body_bounds = match &self.body {
+            FamilyBody::Mouse(mouse) => Some(mouse.read(cx).mapping_190_body_bounds_handle()),
+            _ => None,
+        };
         v_flex()
             .id("source-product-workspace")
             .test_support()
@@ -2175,7 +2318,26 @@ impl Render for SourceProductWorkspace {
                                 )
                                 .role(Role::Tab)
                                 .on_click(cx.listener(
-                                    move |this, _, window, cx| this.set_page(id, window, cx),
+                                    move |this, _, window, cx| {
+                                        this.set_page(id, window, cx);
+                                        if let FamilyBody::Mouse(mouse) = &this.body {
+                                            // Current d_ renders .nav directly
+                                            // inside an's .navs-wrapper. Run
+                                            // windowClick after the local
+                                            // navigation handler; an existing
+                                            // dirty continuation owns the click.
+                                            mouse.update(cx, |mouse, cx| {
+                                                mouse.mapping_190_document_click(
+                                                    &["nav"],
+                                                    &["navs-wrapper"],
+                                                    &[],
+                                                    false,
+                                                    window,
+                                                    cx,
+                                                )
+                                            });
+                                        }
+                                    },
                                 ))
                             }))
                             .children(overflow),
@@ -2224,6 +2386,13 @@ impl Render for SourceProductWorkspace {
             .child(
                 div()
                     .id("source-product-content")
+                    .on_prepaint(move |bounds, _, _| {
+                        if let Some(handle) = &mapping_body_bounds {
+                            // Source openFunctionsView compares against the
+                            // outer .body-wrapper, not the Customize surface.
+                            handle.set(bounds);
+                        }
+                    })
                     .flex_1()
                     .min_h_0()
                     .scrollable_both()

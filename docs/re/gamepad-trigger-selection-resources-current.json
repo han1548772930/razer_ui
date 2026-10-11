@@ -1,0 +1,2634 @@
+{
+  "preparation_tool": "tools/prepare-gamepad-trigger-selection-current.cjs",
+  "assets": [
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-selection-edition-0.svg",
+      "sha256": "c228a8baa953950601bd2e9f9707f9ba242760e16abbf4ab7b6931d024177383",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/media/prd.37292859.svg",
+      "source_sha256": "c228a8baa953950601bd2e9f9707f9ba242760e16abbf4ab7b6931d024177383",
+      "source_bytes": 541884,
+      "module": 57435,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/7435.701f6c8b.chunk.js",
+      "chunk_sha256": "383baf7b074fb0c97de10e37a9b36099daf5bfce7bb693c66ec892b6c8e14d14",
+      "edition": 0,
+      "kind": "prd",
+      "product_id": 2676
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-trigger-artwork-edition-0.svg",
+      "sha256": "6a37b05df5932aee7187a9deb8a1ff77ed937d2674daab1f516447fe2e490733",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/media/ActuationDevice.5f4b983f.svg",
+      "source_sha256": "6a37b05df5932aee7187a9deb8a1ff77ed937d2674daab1f516447fe2e490733",
+      "source_bytes": 231113,
+      "module": 72259,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/2259.a01ca5bf.chunk.js",
+      "chunk_sha256": "eb6fcf5f15c806d51a4a1334e4e4cd9894c3c3419d64a92cdf1fdac7b079c3bd",
+      "edition": 0,
+      "kind": "ActuationDevice",
+      "product_id": 2676
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-0.svg",
+      "sha256": "7af5c885543091d3eb03a00f55733d3ab08026cf9e0d290043d87a43e8ef2501",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-1.svg",
+      "sha256": "ebbd843ce8a74ee648aa0aa9d2cbe5452dd16e49356b5b17c3c36d7243b66da4",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-2.svg",
+      "sha256": "f096887a6e669ee331f4a45cd1905f38691ffb61d7f45b852b6fb37381847d53",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-3.svg",
+      "sha256": "9548eb699dca4b3fe36a8fe7564843153662f78ea501b79235f43bf617e59b9b",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-calibration-connectors-4.svg",
+      "sha256": "5db9abb439e5f533d5f477e9017f560419862abdc84f2f9269c7693d16134345",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "Xm",
+      "offset": 6798905,
+      "end": 6799743,
+      "product_id": 2676,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-steps-1.svg",
+      "sha256": "9f2201f863e5702be1fbdec6534ccad9a59ef6f38e7c34f76e1d0f6a6c559308",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "dm",
+      "offset": 6771132,
+      "end": 6778457,
+      "product_id": 2676,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-steps-2.svg",
+      "sha256": "bfb584aabd7453b683ecf31eed60c25631a7e1e23db95a5af0192b00bb5261c7",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "dm",
+      "offset": 6771132,
+      "end": 6778457,
+      "product_id": 2676,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-meter-template.svg",
+      "sha256": "7b3c6dfca30eb0a1c8b87e8393336d7384bcff4814d6010c61fe7ba790c16efa",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "FL",
+      "offset": 6745088,
+      "end": 6747942,
+      "product_id": 2676,
+      "preparation": "Literal source calibration meter path data and gradient geometry, with placeholders only for source-controlled direction, marker coordinates, track color and prompt animation."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-timer-template.svg",
+      "sha256": "4b1d2060176258671e9e646ea69660550531825e181e91075cdadbc9785d1fcf",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "ep",
+      "offset": 6801479,
+      "end": 6802018,
+      "product_id": 2676,
+      "preparation": "Exact source timer sector template. Rust applies the source clamped percentage formula; at 100% source uses a full circle, at 0% there is no timer SVG."
+    },
+    {
+      "output": "assets/synapse/gamepad-2676-trigger-warning.svg",
+      "sha256": "395885be4ac83b3632d60deea573636b0a723c9de326e8ae2d7a9846fdada9a9",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "source_sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "receipt": "docs/re/gamepad-2676-trigger-resources-live-source.json",
+      "symbol": "pm",
+      "offset": 6782796,
+      "end": 6783082,
+      "product_id": 2676,
+      "preparation": "Literal source warning path and source translation/fill serialized as SVG."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-selection-edition-0.svg",
+      "sha256": "784efef3f5b15f8fc0e5a10c9cfb7f54ea8d8afbbd8703ded2ecda63e4dc2b16",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/media/prd.a6abcc55.svg",
+      "source_sha256": "784efef3f5b15f8fc0e5a10c9cfb7f54ea8d8afbbd8703ded2ecda63e4dc2b16",
+      "source_bytes": 599082,
+      "module": 5364,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/5364.c76a16e2.chunk.js",
+      "chunk_sha256": "a519b1b50b15fe4c51a40bcbcb2ff2a3dba8c5f23203c37ebdfad45aa62968e7",
+      "edition": 0,
+      "kind": "prd",
+      "product_id": 2684
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-trigger-artwork-edition-0.svg",
+      "sha256": "224fadaef89ee02f4181ad10d009061ad90ff91370b3c19df4fee28aec8d2efe",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/media/ActuationDevice.280c9417.svg",
+      "source_sha256": "224fadaef89ee02f4181ad10d009061ad90ff91370b3c19df4fee28aec8d2efe",
+      "source_bytes": 240685,
+      "module": 8744,
+      "chunk": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8744.961f60df.chunk.js",
+      "chunk_sha256": "3e0e15a49c9a4fcc3e878f17649b728d5f2ff7014709d9c8129b38dec194322c",
+      "edition": 0,
+      "kind": "ActuationDevice",
+      "product_id": 2684
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-0.svg",
+      "sha256": "7af5c885543091d3eb03a00f55733d3ab08026cf9e0d290043d87a43e8ef2501",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-1.svg",
+      "sha256": "ebbd843ce8a74ee648aa0aa9d2cbe5452dd16e49356b5b17c3c36d7243b66da4",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-2.svg",
+      "sha256": "f096887a6e669ee331f4a45cd1905f38691ffb61d7f45b852b6fb37381847d53",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-3.svg",
+      "sha256": "9548eb699dca4b3fe36a8fe7564843153662f78ea501b79235f43bf617e59b9b",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-calibration-connectors-4.svg",
+      "sha256": "5db9abb439e5f533d5f477e9017f560419862abdc84f2f9269c7693d16134345",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Nc",
+      "offset": 526592,
+      "end": 527430,
+      "product_id": 2684,
+      "preparation": "Literal source createElement paths serialized as inert SVG; only the hovered connector stroke follows source CSS (#FFFFFF)."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-steps-1.svg",
+      "sha256": "9f2201f863e5702be1fbdec6534ccad9a59ef6f38e7c34f76e1d0f6a6c559308",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "zl",
+      "offset": 500175,
+      "end": 507477,
+      "product_id": 2684,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-steps-2.svg",
+      "sha256": "bfb584aabd7453b683ecf31eed60c25631a7e1e23db95a5af0192b00bb5261c7",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "zl",
+      "offset": 500175,
+      "end": 507477,
+      "product_id": 2684,
+      "preparation": "Source two-step JSX indicator serialized with the original active/pending CSS colors."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-meter-template.svg",
+      "sha256": "7b3c6dfca30eb0a1c8b87e8393336d7384bcff4814d6010c61fe7ba790c16efa",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "Sl",
+      "offset": 474347,
+      "end": 477184,
+      "product_id": 2684,
+      "preparation": "Literal source calibration meter path data and gradient geometry, with placeholders only for source-controlled direction, marker coordinates, track color and prompt animation."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-timer-template.svg",
+      "sha256": "4b1d2060176258671e9e646ea69660550531825e181e91075cdadbc9785d1fcf",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "xc",
+      "offset": 529146,
+      "end": 529681,
+      "product_id": 2684,
+      "preparation": "Exact source timer sector template. Rust applies the source clamped percentage formula; at 100% source uses a full circle, at 0% there is no timer SVG."
+    },
+    {
+      "output": "assets/synapse/gamepad-2684-trigger-warning.svg",
+      "sha256": "395885be4ac83b3632d60deea573636b0a723c9de326e8ae2d7a9846fdada9a9",
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/8169.3cf63c70.chunk.js",
+      "source_sha256": "3a29229d21266b889c11a0fb1875d3986d76a0337acaca30822f132bd24db012",
+      "receipt": "docs/re/gamepad-2684-trigger-resources-live-source.json",
+      "symbol": "ac",
+      "offset": 511813,
+      "end": 512098,
+      "product_id": 2684,
+      "preparation": "Literal source warning path and source translation/fill serialized as SVG."
+    }
+  ],
+  "bindings": [
+    [
+      2676,
+      0,
+      "prd",
+      "assets/synapse/gamepad-2676-calibration-selection-edition-0.svg"
+    ],
+    [
+      2676,
+      0,
+      "ActuationDevice",
+      "assets/synapse/gamepad-2676-calibration-trigger-artwork-edition-0.svg"
+    ],
+    [
+      2684,
+      0,
+      "prd",
+      "assets/synapse/gamepad-2684-calibration-selection-edition-0.svg"
+    ],
+    [
+      2684,
+      0,
+      "ActuationDevice",
+      "assets/synapse/gamepad-2684-calibration-trigger-artwork-edition-0.svg"
+    ]
+  ],
+  "animations": [
+    {
+      "product_id": 2676,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/css/main.5a8c40cd.css",
+      "sha256": "e43575cc38eea25b6b8d2fbfd902cd71a63c0f5beea8969d0721bbeb02c0bdbb",
+      "offset": 478237,
+      "end": 478422,
+      "name": "trigger-calibration-prompt-sweep",
+      "source": "@keyframes trigger-calibration-prompt-sweep{0%{transform:rotate(0deg)}7.44%{animation-timing-function:cubic-bezier(.5,0,.5,1);transform:rotate(0deg)}35.09%,to{transform:rotate(-90deg)}}"
+    },
+    {
+      "product_id": 2676,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/css/main.5a8c40cd.css",
+      "sha256": "e43575cc38eea25b6b8d2fbfd902cd71a63c0f5beea8969d0721bbeb02c0bdbb",
+      "offset": 478422,
+      "end": 478520,
+      "name": "trigger-calibration-prompt-fade",
+      "source": "@keyframes trigger-calibration-prompt-fade{0%{opacity:0}25%,56.57%{opacity:1}72.18%,to{opacity:0}}"
+    },
+    {
+      "product_id": 2684,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/css/8169.785b4da5.chunk.css",
+      "sha256": "6c720e512e229df5db1b25379db76af9b974ac853fdac683d75ce43441bcf073",
+      "offset": 117850,
+      "end": 118035,
+      "name": "trigger-calibration-prompt-sweep",
+      "source": "@keyframes trigger-calibration-prompt-sweep{0%{transform:rotate(0deg)}7.44%{animation-timing-function:cubic-bezier(.5,0,.5,1);transform:rotate(0deg)}35.09%,to{transform:rotate(-90deg)}}"
+    },
+    {
+      "product_id": 2684,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/css/8169.785b4da5.chunk.css",
+      "sha256": "6c720e512e229df5db1b25379db76af9b974ac853fdac683d75ce43441bcf073",
+      "offset": 118035,
+      "end": 118133,
+      "name": "trigger-calibration-prompt-fade",
+      "source": "@keyframes trigger-calibration-prompt-fade{0%{opacity:0}25%,56.57%{opacity:1}72.18%,to{opacity:0}}"
+    }
+  ],
+  "styles": [
+    {
+      "product_id": 2676,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/css/main.5a8c40cd.css",
+      "sha256": "e43575cc38eea25b6b8d2fbfd902cd71a63c0f5beea8969d0721bbeb02c0bdbb",
+      "rules": [
+        {
+          "offset": 69246,
+          "selector": ".body-widgets .widget-col.col-left .tip",
+          "conditions": [],
+          "declarations": "left:auto;right:14px;word-break:break-word",
+          "properties": [
+            {
+              "property": "left",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "word-break",
+              "value": "break-word",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69354,
+          "selector": ".body-widgets .widget-col.col-left .tip",
+          "conditions": [
+            "@media(max-width:1279px)"
+          ],
+          "declarations": "left:auto;right:14px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69416,
+          "selector": ".body-widgets .widget-col.col-left .widget.mic-enhancements .tip,.body-widgets .widget-col.col-left .widget.microphone .tip,.body-widgets .widget-col.col-left .widget.volume .tip",
+          "conditions": [],
+          "declarations": "white-space:pre-line",
+          "properties": [
+            {
+              "property": "white-space",
+              "value": "pre-line",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69729,
+          "selector": ".body-widgets .widget",
+          "conditions": [],
+          "declarations": "background-color:#111;border-radius:5px;flex:0 0 auto;font-size:14px;height:auto;margin:10px auto;max-width:600px;min-width:600px;padding:30px 40px;position:relative;transition:height .2s;will-change:height",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "0 0 auto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px auto",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "600px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "600px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "30px 40px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "height .2s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "height",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69958,
+          "selector": ".body-widgets .widget.global-shortcut",
+          "conditions": [],
+          "declarations": "padding:20px 10px 30px",
+          "properties": [
+            {
+              "property": "padding",
+              "value": "20px 10px 30px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70019,
+          "selector": ".body-widgets .widget.global-shortcut .body-text,.body-widgets .widget.global-shortcut .shortcut",
+          "conditions": [],
+          "declarations": "margin-bottom:20px;padding:0 10px",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70150,
+          "selector": ".body-widgets .widget>.info",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70209,
+          "selector": ".body-widgets .widget>.info.active",
+          "conditions": [],
+          "declarations": "opacity:1;pointer-events:auto",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70274,
+          "selector": ".body-widgets .widget>.mic-container",
+          "conditions": [],
+          "declarations": "position:relative",
+          "properties": [
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70329,
+          "selector": ".body-widgets .widget>.mic-container .tip-disabled",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;left:25%;line-height:16px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;top:40%;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "25%",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "300px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "40%",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70645,
+          "selector": ".body-widgets .widget>.mic-container:hover>.tip-disabled",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:1000",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "1000",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70744,
+          "selector": ".body-widgets .widget .shortcut>.shortcut-tip",
+          "conditions": [],
+          "declarations": "transition:opacity .2s;will-change:opacity",
+          "properties": [
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70833,
+          "selector": ".body-widgets .widget .shortcut:hover>.shortcut-tip",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:100",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "100",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70926,
+          "selector": ".body-widgets .widget .ble-edit-tip,.body-widgets .widget .shortcut-tip",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;line-height:16px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;right:39px;text-align:left;text-transform:none;top:67px;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-wrap;width:max-content;will-change:visibility,opacity;z-index:99",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "300px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "39px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "67px",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "pre-wrap",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "max-content",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "99",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71348,
+          "selector": ".body-widgets .widget .hyperpolling-span-hover:hover",
+          "conditions": [],
+          "declarations": "color:#44d62c",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71498,
+          "selector": ".body-widgets .widget>div:not(.widget-covering):not(.panel-light--chroma)",
+          "conditions": [],
+          "declarations": "transition:opacity .2s",
+          "properties": [
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71595,
+          "selector": ".body-widgets .widget.actuation-widget>div",
+          "conditions": [],
+          "declarations": "will-change:auto!important",
+          "properties": [
+            {
+              "property": "will-change",
+              "value": "auto",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 71665,
+          "selector": ".body-widgets .widget.tip-break-spaces .tip",
+          "conditions": [],
+          "declarations": "white-space:break-spaces",
+          "properties": [
+            {
+              "property": "white-space",
+              "value": "break-spaces",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71734,
+          "selector": ".body-widgets .widget.disabled>div",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73368,
+          "selector": ".widget .titleRow",
+          "conditions": [],
+          "declarations": "display:flex;justify-content:space-between",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "space-between",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73429,
+          "selector": ".widget .titleRow .title",
+          "conditions": [],
+          "declarations": "color:#44d62c;display:flex;font-family:RazerF5,sans-serif;font-size:16px;margin-bottom:20px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5,sans-serif",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73571,
+          "selector": ".widget .titleRow .shortcuts",
+          "conditions": [],
+          "declarations": "align-items:center;display:flex;height:27px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73644,
+          "selector": ".widget .titleRow .shortcuts .shortcutButton",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#292929;border:1px solid #5d5d5d;border-radius:3px;display:flex;height:100%;justify-content:center;margin:0 10px;width:47px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#292929",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0 10px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "47px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 260226,
+          "selector": ".main-setting .device-setting .setting-block .customize-setting-button",
+          "conditions": [],
+          "declarations": "margin-left:5px",
+          "properties": [
+            {
+              "property": "margin-left",
+              "value": "5px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 261167,
+          "selector": ".main-setting .about-setting .customize-setting-button",
+          "conditions": [],
+          "declarations": "margin-bottom:50px;margin-left:50%;transform:translateX(-50%);width:150px",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "50px",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateX(-50%)",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "150px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 267436,
+          "selector": ".customize-setting-button",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#707070;border-radius:3px;color:#fff;display:flex;font-size:12px;height:27px;justify-content:center;min-width:90px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 267638,
+          "selector": ".customize-setting-button:active",
+          "conditions": [],
+          "declarations": "opacity:.3",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 424616,
+          "selector": ".controller-mode-alert__confirm.customize-setting-button",
+          "conditions": [],
+          "declarations": "border:1px solid #0000004d;height:auto;line-height:14px;min-width:90px;padding:7px 16px 6px;text-align:center",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #0000004d",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "7px 16px 6px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 424783,
+          "selector": ".controller-mode-alert__confirm.customize-setting-button:hover",
+          "conditions": [],
+          "declarations": "opacity:.8",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".8",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 427947,
+          "selector": ".body-widgets .widget-col.col-left .modes-area",
+          "conditions": [],
+          "declarations": "padding-top:0",
+          "properties": [
+            {
+              "property": "padding-top",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 428008,
+          "selector": ".body-widgets .widget-col.col-right .widget:first-child .h1-body",
+          "conditions": [],
+          "declarations": "margin-bottom:20px",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 428092,
+          "selector": ".body-widgets .widget-col.col-right .widget:first-child .polling-warn",
+          "conditions": [],
+          "declarations": "margin:0",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 428724,
+          "selector": ".actuation-device-artwork",
+          "conditions": [],
+          "declarations": "flex-shrink:0;overflow:hidden;position:relative",
+          "properties": [
+            {
+              "property": "flex-shrink",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "overflow",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 428798,
+          "selector": ".actuation-device-artwork__overlay,.actuation-device-artwork__underlay",
+          "conditions": [],
+          "declarations": "display:block;height:100%;inset:0;position:absolute;width:100%",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "inset",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 428932,
+          "selector": ".actuation-device-artwork__underlay",
+          "conditions": [],
+          "declarations": "object-fit:contain;object-position:center;z-index:0",
+          "properties": [
+            {
+              "property": "object-fit",
+              "value": "contain",
+              "important": false
+            },
+            {
+              "property": "object-position",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 429020,
+          "selector": ".actuation-device-artwork__overlay",
+          "conditions": [],
+          "declarations": "z-index:1",
+          "properties": [
+            {
+              "property": "z-index",
+              "value": "1",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 429065,
+          "selector": ".actuation-device-artwork__overlay svg",
+          "conditions": [],
+          "declarations": "display:block;height:100%;width:100%",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 469381,
+          "selector": ".thumbstick-calibration-widget__button.customize-setting-button",
+          "conditions": [],
+          "declarations": "overflow-wrap:anywhere;text-align:center;text-transform:uppercase;white-space:normal",
+          "properties": [
+            {
+              "property": "overflow-wrap",
+              "value": "anywhere",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "normal",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 476944,
+          "selector": ".btnCancel",
+          "conditions": [],
+          "declarations": "background:#707070;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#fff;cursor:pointer;font-size:12px;height:27px;margin:10px 5px 0;min-width:90px;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid rgba(0,0,0,.302)",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 477173,
+          "selector": ".btnPrimary",
+          "conditions": [],
+          "declarations": "background:#44d62c;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#000;cursor:pointer;font-size:12px;height:27px;margin:10px 5px 0;min-width:90px;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid rgba(0,0,0,.302)",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 481117,
+          "selector": ".trigger-calibration-popup__artwork .actuation-device-artwork",
+          "conditions": [],
+          "declarations": "align-self:center",
+          "properties": [
+            {
+              "property": "align-self",
+              "value": "center",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 2684,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/css/8169.785b4da5.chunk.css",
+      "sha256": "6c720e512e229df5db1b25379db76af9b974ac853fdac683d75ce43441bcf073",
+      "rules": [
+        {
+          "offset": 64878,
+          "selector": ".controller-mode-alert__confirm.customize-setting-button",
+          "conditions": [],
+          "declarations": "border:1px solid #0000004d;height:auto;line-height:14px;min-width:90px;padding:7px 16px 6px;text-align:center",
+          "properties": [
+            {
+              "property": "border",
+              "value": "1px solid #0000004d",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "7px 16px 6px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 65045,
+          "selector": ".controller-mode-alert__confirm.customize-setting-button:hover",
+          "conditions": [],
+          "declarations": "opacity:.8",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".8",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 67560,
+          "selector": ".body-widgets .widget-col.col-left .modes-area",
+          "conditions": [],
+          "declarations": "padding-top:0",
+          "properties": [
+            {
+              "property": "padding-top",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 67621,
+          "selector": ".body-widgets .widget-col.col-right .widget:first-child .h1-body",
+          "conditions": [],
+          "declarations": "margin-bottom:20px",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 67705,
+          "selector": ".body-widgets .widget-col.col-right .widget:first-child .polling-warn",
+          "conditions": [],
+          "declarations": "margin:0",
+          "properties": [
+            {
+              "property": "margin",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 68337,
+          "selector": ".actuation-device-artwork",
+          "conditions": [],
+          "declarations": "flex-shrink:0;overflow:hidden;position:relative",
+          "properties": [
+            {
+              "property": "flex-shrink",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "overflow",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 68411,
+          "selector": ".actuation-device-artwork__overlay,.actuation-device-artwork__underlay",
+          "conditions": [],
+          "declarations": "display:block;height:100%;inset:0;position:absolute;width:100%",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "inset",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 68545,
+          "selector": ".actuation-device-artwork__underlay",
+          "conditions": [],
+          "declarations": "object-fit:contain;object-position:center;z-index:0",
+          "properties": [
+            {
+              "property": "object-fit",
+              "value": "contain",
+              "important": false
+            },
+            {
+              "property": "object-position",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "0",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 68633,
+          "selector": ".actuation-device-artwork__overlay",
+          "conditions": [],
+          "declarations": "z-index:1",
+          "properties": [
+            {
+              "property": "z-index",
+              "value": "1",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 68678,
+          "selector": ".actuation-device-artwork__overlay svg",
+          "conditions": [],
+          "declarations": "display:block;height:100%;width:100%",
+          "properties": [
+            {
+              "property": "display",
+              "value": "block",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "100%",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 108994,
+          "selector": ".thumbstick-calibration-widget__button.customize-setting-button",
+          "conditions": [],
+          "declarations": "overflow-wrap:anywhere;text-align:center;text-transform:uppercase;white-space:normal",
+          "properties": [
+            {
+              "property": "overflow-wrap",
+              "value": "anywhere",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "normal",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 116557,
+          "selector": ".btnCancel",
+          "conditions": [],
+          "declarations": "background:#707070;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#fff;cursor:pointer;font-size:12px;height:27px;margin:10px 5px 0;min-width:90px;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid rgba(0,0,0,.302)",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 116786,
+          "selector": ".btnPrimary",
+          "conditions": [],
+          "declarations": "background:#44d62c;border:1px solid rgba(0,0,0,.302);border-radius:3px;color:#000;cursor:pointer;font-size:12px;height:27px;margin:10px 5px 0;min-width:90px;padding:0 14px",
+          "properties": [
+            {
+              "property": "background",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid rgba(0,0,0,.302)",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "cursor",
+              "value": "pointer",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px 5px 0",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 120730,
+          "selector": ".trigger-calibration-popup__artwork .actuation-device-artwork",
+          "conditions": [],
+          "declarations": "align-self:center",
+          "properties": [
+            {
+              "property": "align-self",
+              "value": "center",
+              "important": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "product_id": 2684,
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/css/main.037c4a64.css",
+      "sha256": "686d0ed8a8c5b0d0bb3496b6500b0d0f3ca27ffa0970517c969b513ef537084b",
+      "rules": [
+        {
+          "offset": 69258,
+          "selector": ".body-widgets .widget-col.col-left .tip",
+          "conditions": [],
+          "declarations": "left:auto;right:14px;word-break:break-word",
+          "properties": [
+            {
+              "property": "left",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "word-break",
+              "value": "break-word",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69366,
+          "selector": ".body-widgets .widget-col.col-left .tip",
+          "conditions": [
+            "@media(max-width:1279px)"
+          ],
+          "declarations": "left:auto;right:14px",
+          "properties": [
+            {
+              "property": "left",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "14px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69428,
+          "selector": ".body-widgets .widget-col.col-left .widget.mic-enhancements .tip,.body-widgets .widget-col.col-left .widget.microphone .tip,.body-widgets .widget-col.col-left .widget.volume .tip",
+          "conditions": [],
+          "declarations": "white-space:pre-line",
+          "properties": [
+            {
+              "property": "white-space",
+              "value": "pre-line",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69741,
+          "selector": ".body-widgets .widget",
+          "conditions": [],
+          "declarations": "background-color:#111;border-radius:5px;flex:0 0 auto;font-size:14px;height:auto;margin:10px auto;max-width:600px;min-width:600px;padding:30px 40px;position:relative;transition:height .2s;will-change:height",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#111",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "5px",
+              "important": false
+            },
+            {
+              "property": "flex",
+              "value": "0 0 auto",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "auto",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "10px auto",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "600px",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "600px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "30px 40px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "height .2s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "height",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 69970,
+          "selector": ".body-widgets .widget.global-shortcut",
+          "conditions": [],
+          "declarations": "padding:20px 10px 30px",
+          "properties": [
+            {
+              "property": "padding",
+              "value": "20px 10px 30px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70031,
+          "selector": ".body-widgets .widget.global-shortcut .body-text,.body-widgets .widget.global-shortcut .shortcut",
+          "conditions": [],
+          "declarations": "margin-bottom:20px;padding:0 10px",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "0 10px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70162,
+          "selector": ".body-widgets .widget>.info",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70221,
+          "selector": ".body-widgets .widget>.info.active",
+          "conditions": [],
+          "declarations": "opacity:1;pointer-events:auto",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "auto",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70286,
+          "selector": ".body-widgets .widget>.mic-container",
+          "conditions": [],
+          "declarations": "position:relative",
+          "properties": [
+            {
+              "property": "position",
+              "value": "relative",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70341,
+          "selector": ".body-widgets .widget>.mic-container .tip-disabled",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-family:Roboto;left:25%;line-height:16px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;top:40%;transition:visibility 0s,opacity .3s linear;visibility:hidden;will-change:visibility,opacity",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "Roboto",
+              "important": false
+            },
+            {
+              "property": "left",
+              "value": "25%",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "300px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "40%",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70657,
+          "selector": ".body-widgets .widget>.mic-container:hover>.tip-disabled",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:1000",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "1000",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70756,
+          "selector": ".body-widgets .widget .shortcut>.shortcut-tip",
+          "conditions": [],
+          "declarations": "transition:opacity .2s;will-change:opacity",
+          "properties": [
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "opacity",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70845,
+          "selector": ".body-widgets .widget .shortcut:hover>.shortcut-tip",
+          "conditions": [],
+          "declarations": "opacity:1;visibility:visible;z-index:100",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": "1",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "visible",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "100",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 70938,
+          "selector": ".body-widgets .widget .ble-edit-tip,.body-widgets .widget .shortcut-tip",
+          "conditions": [],
+          "declarations": "background-color:#000;border:1px solid #5d5d5d;color:#ccc;font-size:14px;line-height:16px;max-width:300px;opacity:0;padding:8px 10px;position:absolute;right:39px;text-align:left;text-transform:none;top:67px;transition:visibility 0s,opacity .3s linear;visibility:hidden;white-space:pre-wrap;width:max-content;will-change:visibility,opacity;z-index:99",
+          "properties": [
+            {
+              "property": "background-color",
+              "value": "#000",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#ccc",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "14px",
+              "important": false
+            },
+            {
+              "property": "line-height",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "max-width",
+              "value": "300px",
+              "important": false
+            },
+            {
+              "property": "opacity",
+              "value": "0",
+              "important": false
+            },
+            {
+              "property": "padding",
+              "value": "8px 10px",
+              "important": false
+            },
+            {
+              "property": "position",
+              "value": "absolute",
+              "important": false
+            },
+            {
+              "property": "right",
+              "value": "39px",
+              "important": false
+            },
+            {
+              "property": "text-align",
+              "value": "left",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "none",
+              "important": false
+            },
+            {
+              "property": "top",
+              "value": "67px",
+              "important": false
+            },
+            {
+              "property": "transition",
+              "value": "visibility 0s,opacity .3s linear",
+              "important": false
+            },
+            {
+              "property": "visibility",
+              "value": "hidden",
+              "important": false
+            },
+            {
+              "property": "white-space",
+              "value": "pre-wrap",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "max-content",
+              "important": false
+            },
+            {
+              "property": "will-change",
+              "value": "visibility,opacity",
+              "important": false
+            },
+            {
+              "property": "z-index",
+              "value": "99",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71360,
+          "selector": ".body-widgets .widget .hyperpolling-span-hover:hover",
+          "conditions": [],
+          "declarations": "color:#44d62c",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71510,
+          "selector": ".body-widgets .widget>div:not(.widget-covering):not(.panel-light--chroma)",
+          "conditions": [],
+          "declarations": "transition:opacity .2s",
+          "properties": [
+            {
+              "property": "transition",
+              "value": "opacity .2s",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71607,
+          "selector": ".body-widgets .widget.actuation-widget>div",
+          "conditions": [],
+          "declarations": "will-change:auto!important",
+          "properties": [
+            {
+              "property": "will-change",
+              "value": "auto",
+              "important": true
+            }
+          ]
+        },
+        {
+          "offset": 71677,
+          "selector": ".body-widgets .widget.tip-break-spaces .tip",
+          "conditions": [],
+          "declarations": "white-space:break-spaces",
+          "properties": [
+            {
+              "property": "white-space",
+              "value": "break-spaces",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 71746,
+          "selector": ".body-widgets .widget.disabled>div",
+          "conditions": [],
+          "declarations": "opacity:.3;pointer-events:none",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            },
+            {
+              "property": "pointer-events",
+              "value": "none",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73380,
+          "selector": ".widget .titleRow",
+          "conditions": [],
+          "declarations": "display:flex;justify-content:space-between",
+          "properties": [
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "space-between",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73441,
+          "selector": ".widget .titleRow .title",
+          "conditions": [],
+          "declarations": "color:#44d62c;display:flex;font-family:RazerF5,sans-serif;font-size:16px;margin-bottom:20px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "color",
+              "value": "#44d62c",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-family",
+              "value": "RazerF5,sans-serif",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "16px",
+              "important": false
+            },
+            {
+              "property": "margin-bottom",
+              "value": "20px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73583,
+          "selector": ".widget .titleRow .shortcuts",
+          "conditions": [],
+          "declarations": "align-items:center;display:flex;height:27px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 73656,
+          "selector": ".widget .titleRow .shortcuts .shortcutButton",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#292929;border:1px solid #5d5d5d;border-radius:3px;display:flex;height:100%;justify-content:center;margin:0 10px;width:47px",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#292929",
+              "important": false
+            },
+            {
+              "property": "border",
+              "value": "1px solid #5d5d5d",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "100%",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "margin",
+              "value": "0 10px",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "47px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 263614,
+          "selector": ".main-setting .device-setting .setting-block .customize-setting-button",
+          "conditions": [],
+          "declarations": "margin-left:5px",
+          "properties": [
+            {
+              "property": "margin-left",
+              "value": "5px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 264555,
+          "selector": ".main-setting .about-setting .customize-setting-button",
+          "conditions": [],
+          "declarations": "margin-bottom:50px;margin-left:50%;transform:translateX(-50%);width:150px",
+          "properties": [
+            {
+              "property": "margin-bottom",
+              "value": "50px",
+              "important": false
+            },
+            {
+              "property": "margin-left",
+              "value": "50%",
+              "important": false
+            },
+            {
+              "property": "transform",
+              "value": "translateX(-50%)",
+              "important": false
+            },
+            {
+              "property": "width",
+              "value": "150px",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 270824,
+          "selector": ".customize-setting-button",
+          "conditions": [],
+          "declarations": "align-items:center;background-color:#707070;border-radius:3px;color:#fff;display:flex;font-size:12px;height:27px;justify-content:center;min-width:90px;text-transform:uppercase",
+          "properties": [
+            {
+              "property": "align-items",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "background-color",
+              "value": "#707070",
+              "important": false
+            },
+            {
+              "property": "border-radius",
+              "value": "3px",
+              "important": false
+            },
+            {
+              "property": "color",
+              "value": "#fff",
+              "important": false
+            },
+            {
+              "property": "display",
+              "value": "flex",
+              "important": false
+            },
+            {
+              "property": "font-size",
+              "value": "12px",
+              "important": false
+            },
+            {
+              "property": "height",
+              "value": "27px",
+              "important": false
+            },
+            {
+              "property": "justify-content",
+              "value": "center",
+              "important": false
+            },
+            {
+              "property": "min-width",
+              "value": "90px",
+              "important": false
+            },
+            {
+              "property": "text-transform",
+              "value": "uppercase",
+              "important": false
+            }
+          ]
+        },
+        {
+          "offset": 271026,
+          "selector": ".customize-setting-button:active",
+          "conditions": [],
+          "declarations": "opacity:.3",
+          "properties": [
+            {
+              "property": "opacity",
+              "value": ".3",
+              "important": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

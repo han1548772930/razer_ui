@@ -1,0 +1,18 @@
+{
+  "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/logo_synapse.bc241e5e.svg",
+  "output": "assets/synapse/mapping-190-requires-synapse.svg",
+  "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/logo_synapse.bc241e5e.svg",
+  "source_sha256": "f74f198ee96c805884128990125507816603ce9d28db5d5e25685198c2f43f79",
+  "sha256": "f74f198ee96c805884128990125507816603ce9d28db5d5e25685198c2f43f79",
+  "source_bytes": 994,
+  "output_bytes": 994,
+  "css_evidence": [
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+      "rule": ".require-synapse .logo{background-color:initial;background-image:url(../../static/media/logo_synapse.bc241e5e.svg)!important;background-repeat:no-repeat!important;background-size:24px 24px!important;height:24px;margin-left:10px;width:24px}"
+    }
+  ],
+  "preparation": "Exact current source logo bytes; no substitution.",
+  "evidence": "docs/re/mouse-190-requires-synapse-logo-current-source.json"
+}

@@ -3,6 +3,7 @@
 use super::{CALLBACK_TIMEOUT, ServiceRequest};
 use crate::dll::EngineLibrary;
 use anyhow::{Context as _, bail};
+use razer_device::backend::HidNode;
 use razer_platform::native_paths::EnginePaths;
 use serde_json::{Value, json};
 use std::{
@@ -14,6 +15,8 @@ use std::{
     },
 };
 
+#[path = "controller_calibration_identity.rs"]
+mod controller_calibration_identity;
 #[path = "device_reads.rs"]
 mod device_reads;
 #[path = "hid.rs"]
@@ -52,6 +55,10 @@ type Query = unsafe extern "C" fn(Callback3);
 type RegisterShortcut = unsafe extern "C" fn(u32, u32, *const c_char, Callback2);
 type UnregisterShortcut = unsafe extern "C" fn(u32, u32, Callback2);
 type SetShortcutCallback = unsafe extern "C" fn(EventCallback, Callback2);
+
+pub(super) fn controller_calibration_node_proof(node: &HidNode) -> anyhow::Result<Value> {
+    controller_calibration_identity::proof(node)
+}
 type StorageSetItem = unsafe extern "C" fn(*const c_char, *const c_char, Callback2);
 
 struct CallbackReply {
@@ -268,7 +275,10 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeMixerRouteRead { .. }
             | ServiceRequest::HidNodeMixerRouteWrite { .. }
             | ServiceRequest::HidNodeMixerRestartStreams { .. }
-            | ServiceRequest::HidNodeReceiverStatus { .. } => {
+            | ServiceRequest::HidNodeReceiverStatus { .. }
+            | ServiceRequest::ControllerTriggerCalibrationStart { .. }
+            | ServiceRequest::ControllerTriggerCalibrationPoll { .. }
+            | ServiceRequest::ControllerTriggerCalibrationCancel { .. } => {
                 bail!("便携查询必须由设备会话入口分派")
             }
             ServiceRequest::HidDevices => hid::enumerate(),

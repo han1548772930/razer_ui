@@ -1,0 +1,38 @@
+[
+  {
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/synapse-ai.aa585cbf.svg",
+    "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/synapse-ai.aa585cbf.svg",
+    "output": "assets/synapse/mapping-ai.svg",
+    "source_sha256": "32ab9ad53f27878c40cba509f8185d75934c0742718f91a8040d8f9dd83424ae",
+    "sha256": "32ab9ad53f27878c40cba509f8185d75934c0742718f91a8040d8f9dd83424ae",
+    "source_bytes": 785,
+    "output_bytes": 785,
+    "preparation": "Exact current PID190 AI mapping CSS icon bytes.",
+    "css_evidence": [
+      {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+        "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+        "rule": ".action-wrapper.AI_LAUNCHER .head:before{background-image:url(../../static/media/synapse-ai.aa585cbf.svg)}"
+      }
+    ],
+    "evidence": "docs/re/mouse-190-ai-icons-current-source.json"
+  },
+  {
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/synapse-ai-open.2fb76614.svg",
+    "source_url": "https://apps.razer.com/synapse/products/190/ui/static/media/synapse-ai-open.2fb76614.svg",
+    "output": "assets/synapse/mapping-ai-active.svg",
+    "source_sha256": "9f2597fffefe5813c9bd418ef0bdd931feac1c801c32f5e7534dea85ee617a5e",
+    "sha256": "9f2597fffefe5813c9bd418ef0bdd931feac1c801c32f5e7534dea85ee617a5e",
+    "source_bytes": 785,
+    "output_bytes": 785,
+    "preparation": "Exact current PID190 AI mapping CSS icon bytes.",
+    "css_evidence": [
+      {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+        "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+        "rule": ".action-wrapper.AI_LAUNCHER.open .head:before{background-image:url(../../static/media/synapse-ai-open.2fb76614.svg)}"
+      }
+    ],
+    "evidence": "docs/re/mouse-190-ai-icons-current-source.json"
+  }
+]

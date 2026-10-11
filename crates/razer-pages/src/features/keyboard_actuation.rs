@@ -377,7 +377,7 @@ impl KeyboardProductWorkspace {
             })
     }
 
-    fn default_actuation(&self) -> (f32, f32) {
+    pub(super) fn default_actuation(&self) -> (f32, f32) {
         let info = &self.actuation.as_ref().expect("actuation page").spec.info;
         let config = &self.spec.config["DeviceInfo"]["analogSpecs"];
         let high = (self.draft["guid"] == "177a20d5-f30a-4a52-923e-4fadb7db8392")

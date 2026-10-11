@@ -1,0 +1,59 @@
+{
+  "parser": "Acorn static syntax only",
+  "offset_units": "UTF-16 code units",
+  "files": [
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+      "sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+      "bytes": 7783026,
+      "receipts": [
+        {
+          "name": "webpack:21107:A",
+          "offset": 565872,
+          "end": 567138,
+          "source": "21107:(e,t,a)=>{\"use strict\";a.d(t,{A:()=>r});var n=a(41594),i=a(37226);const o=async(e,t)=>{if(!t||\"\"===t)return!0;const a=await i.A.getApiElectron().doElectronAction({action:\"getWindowStatus\"});if(!(!a||!1===(null===a||void 0===a?void 0:a.isVisible)||!0===(null===a||void 0===a?void 0:a.isMinimized))){const a=await i.A.getApiElectron().doElectronAction({action:\"getFocusTab\",windowName:e});if(a===t||\"\"===a&&e===t)return!0}return!1},r=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"synapse\",t=arguments.length>1?arguments[1]:void 0,a=arguments.length>2?arguments[2]:void 0;const[r,s]=(0,n.useState)(!1);return(0,n.useEffect)(()=>{o(e,t).then(e=>s(e))},[]),(0,n.useEffect)(()=>{var a;if(!i.A.isElectron)return void s(!0);const n=null===(a=i.A.getApiElectron())||void 0===a?void 0:a.response(\"tab-message\",async a=>{const n=\"\"===t?window.name:t;if(n&&\"\"!==n)switch(a.action){case\"focus\":if(a.data.isFocus){const t=await i.A.getApiElectron().doElectronAction({action:\"getFocusTab\",windowName:e});s(t===n||\"\"===t&&e===n)}else{const t=await o(e,n);s(t)}break;case\"changeActiveTab\":{const e=a.data.name;s(e===n);break}case\"activeTabChanged\":s(a.data.tabName===n)}else s(!0)});return()=>{n&&n()}},[e,t]),(0,n.useEffect)(()=>{a&&a(r)},[r,a]),r}}"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/ui/static/js/main.fbe5395b.js",
+      "sha256": "bc17900d890e62523c9e8be04871df0455c9709d78b2d189d9c86f0248b11442",
+      "bytes": 624298,
+      "receipts": [
+        {
+          "name": "webpack:1107:A",
+          "offset": 78555,
+          "end": 79818,
+          "source": "1107:(e,t,n)=>{\"use strict\";n.d(t,{A:()=>r});var o=n(1594),i=n(7226);const a=async(e,t)=>{if(!t||\"\"===t)return!0;const n=await i.A.getApiElectron().doElectronAction({action:\"getWindowStatus\"});if(!(!n||!1===(null===n||void 0===n?void 0:n.isVisible)||!0===(null===n||void 0===n?void 0:n.isMinimized))){const n=await i.A.getApiElectron().doElectronAction({action:\"getFocusTab\",windowName:e});if(n===t||\"\"===n&&e===t)return!0}return!1},r=function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:\"synapse\",t=arguments.length>1?arguments[1]:void 0,n=arguments.length>2?arguments[2]:void 0;const[r,_]=(0,o.useState)(!1);return(0,o.useEffect)(()=>{a(e,t).then(e=>_(e))},[]),(0,o.useEffect)(()=>{var n;if(!i.A.isElectron)return void _(!0);const o=null===(n=i.A.getApiElectron())||void 0===n?void 0:n.response(\"tab-message\",async n=>{const o=\"\"===t?window.name:t;if(o&&\"\"!==o)switch(n.action){case\"focus\":if(n.data.isFocus){const t=await i.A.getApiElectron().doElectronAction({action:\"getFocusTab\",windowName:e});_(t===o||\"\"===t&&e===o)}else{const t=await a(e,o);_(t)}break;case\"changeActiveTab\":{const e=n.data.name;_(e===o);break}case\"activeTabChanged\":_(n.data.tabName===o)}else _(!0)});return()=>{o&&o()}},[e,t]),(0,o.useEffect)(()=>{n&&n(r)},[r,n]),r}}"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/main.js",
+      "sha256": "0e3b84c11dd3e6d06072f54fb3295404894afcd7d2f7cce814ac20d9cd7d074e",
+      "bytes": 60830,
+      "receipts": [
+        {
+          "name": "case:getWindowStatus",
+          "offset": 42141,
+          "end": 42541,
+          "source": "case\"getWindowStatus\":{let e=_o(n);if(i.windowName){const o=Sn.get(i.windowName);o?.browserWindow&&!o.browserWindow.isDestroyed()&&(e=o.browserWindow)}if(e)return{isMinimized:e.isMinimized(),isNormal:e.isNormal(),isMaximized:e.isMaximized(),isVisible:e.isVisible(),isResizable:e.isResizable(),size:e.getSize(),maximumSize:e.getMaximumSize(),minimumSize:e.getMinimumSize(),bounds:e.getBounds()};break}"
+        },
+        {
+          "name": "case:getFocusTab",
+          "offset": 46737,
+          "end": 46843,
+          "source": "case\"getFocusTab\":if(i.windowName)return Io(Sn.get(i.windowName)?.browserWindow?.id)?.frameName||\"\";break;"
+        }
+      ]
+    }
+  ],
+  "semantics": {
+    "initial": "Missing/empty tab name => true; otherwise require visible, not minimized and getFocusTab matching the requested tab (empty selected tab matches the synapse window itself).",
+    "focus_true": "Re-query selected tab; no OS active-state comparison.",
+    "focus_false": "Re-query visibility/minimization and selected tab; losing OS focus alone does not imply false.",
+    "changeActiveTab": "Compare data.name with the requested tab.",
+    "activeTabChanged": "Compare data.tabName with the requested tab.",
+    "popup": "The mounted popup closes only after this helper has been true while open and later becomes false."
+  }
+}

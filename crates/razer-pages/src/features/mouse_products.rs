@@ -38,8 +38,12 @@ mod calibration_190;
 mod calibration_70;
 #[path = "mouse_customize_190.rs"]
 mod customize_190;
+pub use customize_190::source_mapping::{MouseMappingNavigation, MouseMappingSaveRejected};
+#[path = "mouse_button_state_current.rs"]
+mod button_state_current;
 #[path = "mouse_customize_70.rs"]
 mod customize_70;
+pub use button_state_current::DeriveError as MouseButtonStateError;
 #[path = "mouse_dynamic.rs"]
 mod dynamic;
 #[path = "mouse_haptic.rs"]
@@ -82,6 +86,8 @@ pub struct MouseProductSpec {
     pages: Vec<String>,
     image: Option<String>,
     groups: Vec<Value>,
+    #[serde(default)]
+    widget_column_layout: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -91,6 +97,9 @@ struct MouseEffect {
 }
 
 impl MouseProductSpec {
+    fn block_widget_columns(&self) -> bool {
+        self.widget_column_layout.as_deref() == Some("block")
+    }
     pub fn macro_groups(&self) -> &[Value] {
         &self.groups
     }
@@ -220,7 +229,9 @@ pub struct MouseProductWorkspace {
     syncing: bool,
     scroll: ScrollHandle,
     mapping_input: Option<String>,
+    mapping_190_state: customize_190::source_mapping::State,
     mapping_assignment: Option<String>,
+    button_state_error: std::cell::RefCell<Option<MouseButtonStateError>>,
     hypershift: bool,
     group_ix: usize,
     customize_hover: Option<usize>,
@@ -259,7 +270,9 @@ impl MouseProductWorkspace {
             syncing: false,
             scroll: ScrollHandle::new(),
             mapping_input: None,
+            mapping_190_state: customize_190::source_mapping::State::default(),
             mapping_assignment: None,
+            button_state_error: std::cell::RefCell::new(None),
             hypershift: false,
             group_ix: 0,
             customize_hover: None,
@@ -304,10 +317,17 @@ impl MouseProductWorkspace {
                 self.dynamic_ui_command(cx);
             }
             self.mapping_input = None;
+            self.mapping_190_state.clear();
             self.mapping_assignment = None;
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
         }
+    }
+
+    /// A source producer that is still unavailable must remain distinguishable
+    /// from a successful derivation of the current button permissions.
+    pub fn mapping_button_state_error(&self) -> Option<MouseButtonStateError> {
+        self.button_state_error.borrow().clone()
     }
 
     pub fn snapshot(&self) -> Value {
@@ -333,6 +353,12 @@ impl MouseProductWorkspace {
         }
     }
     pub fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.spec.product_id == 190 {
+            self.mapping_input = None;
+            self.mapping_assignment = None;
+            self.mapping_190_state.clear();
+            self.customize_hover = None;
+        }
         self.dismiss_dynamic(window, cx);
         self.cancel_scroll_custom(window, cx);
         if let Some(editor) = &self.scroll_editor {
@@ -381,6 +407,7 @@ impl MouseProductWorkspace {
             );
         }
         self.mapping_input = None;
+        self.mapping_190_state.clear();
         self.mapping_assignment = None;
         self.restore_polling(value);
         self.restore_dynamic(value, window, cx);
@@ -1129,17 +1156,24 @@ impl MouseProductWorkspace {
             // together in the left FO, not beneath polling in the right FO.
             if self.spec.product_id == 190 {
                 return surface::page_columns()
+                    .gap_0()
                     .child(surface::page_column(
                         v_flex()
+                            .pb(surface::css(10.))
                             .child(self.dpi_rows(cx))
                             .child(self.mouse_properties(cx)),
                     ))
-                    .child(surface::page_column(v_flex().children(
-                        self.source_polling_visible().then(|| self.polling(cx)),
-                    )))
+                    .child(surface::page_column(
+                        v_flex()
+                            .pb(surface::css(10.))
+                            .children(self.source_polling_visible().then(|| self.polling(cx))),
+                    ))
                     .into_any_element();
             }
             let mut right = v_flex().gap_5();
+            if self.spec.block_widget_columns() {
+                right = right.gap_0().pb(surface::css(10.));
+            }
             if super::mouse_polling::source_spec(self.spec.product_id).is_none()
                 || self.source_polling_visible()
             {
@@ -1152,7 +1186,14 @@ impl MouseProductWorkspace {
                 right = right.child(self.power(cx));
             }
             return surface::page_columns()
-                .child(surface::page_column(self.dpi_rows(cx)))
+                .when(self.spec.block_widget_columns(), |columns| columns.gap_0())
+                .child(surface::page_column(
+                    v_flex()
+                        .when(self.spec.block_widget_columns(), |column| {
+                            column.pb(surface::css(10.))
+                        })
+                        .child(self.dpi_rows(cx)),
+                ))
                 .child(surface::page_column(right))
                 .into_any_element();
         }
@@ -1237,6 +1278,7 @@ impl MouseProductWorkspace {
             .map(Vec::as_slice)
             .unwrap_or(&[]);
         surface::panel(t("POLLING_RATE_HEADER"), cx)
+            .when(self.spec.block_widget_columns(), |panel| panel.mb_0())
             .child(
                 h_flex()
                     .flex_wrap()
@@ -1319,8 +1361,9 @@ impl MouseProductWorkspace {
         if self.page == "TAB_POWER" {
             // Current source `ul` mounts two `.widget-col` siblings (left power
             // saving, right low-power mode); keeping each card in its own
-            // 600px column preserves the 20px inter-column spine.
+            // Preserve the independently audited source column geometry.
             return surface::page_columns()
+                .when(self.spec.block_widget_columns(), |columns| columns.gap_0())
                 .child(surface::page_column(left))
                 .child(surface::page_column(right))
                 .into_any_element();
@@ -1343,8 +1386,12 @@ impl MouseProductWorkspace {
     fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let enabled = self.boolean("/brightness/isEnabled");
         surface::page_columns()
+            .when(self.spec.block_widget_columns(), |columns| columns.gap_0())
             .child(surface::page_column(
                 v_flex()
+                    .when(self.spec.block_widget_columns(), |column| {
+                        column.pb(surface::css(10.))
+                    })
                     .child(
                         surface::panel_with_title_switch(
                             t("BRIGHTNESS_HEADER"),
@@ -1357,6 +1404,7 @@ impl MouseProductWorkspace {
                             surface::help_control("mouse-brightness-help", t("BRIGHTNESS_TOOLTIP")),
                             cx,
                         )
+                        .when(self.spec.block_widget_columns(), |panel| panel.mb_0())
                         .children(
                             (self.spec.product_id != 70)
                                 .then(|| surface::slider_tags("0", None, "100", None)),
@@ -1413,6 +1461,7 @@ impl MouseProductWorkspace {
             ),
             cx,
         )
+        .when(self.spec.block_widget_columns(), |panel| panel.mb_0())
         .child(
             surface::check_item(
                 "mouse-switch-off-display",
@@ -1838,16 +1887,17 @@ impl MouseProductWorkspace {
     }
     /// The `displayMode=armory` root mounts this page without the product
     /// chrome; the renderer itself is shared, so no separate layout is faked.
-    pub fn customize_element(&self, cx: &mut Context<Self>) -> AnyElement {
-        self.customize(cx)
+    pub fn customize_element(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        self.customize(window, cx)
     }
 
-    fn customize(&self, cx: &Context<Self>) -> AnyElement {
+    fn customize(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        *self.button_state_error.borrow_mut() = None;
         if self.spec.product_id == 190 {
             // 190 mounts CO/gO (top-view config block) followed by the
             // shared mapping popup; the generic button-list card below is
             // intentionally unreachable for this product.
-            return self.customize_190(cx);
+            return self.customize_190(window, cx);
         }
         if self.spec.product_id == 70 {
             return self.customize_70(cx);
@@ -1870,6 +1920,38 @@ impl MouseProductWorkspace {
                 }
             }
         }
+        let original_buttons: Vec<Value> = buttons.into_iter().cloned().collect();
+        let all_buttons: Vec<Value> = if self.spec.groups.is_empty() {
+            self.spec
+                .buttons
+                .iter()
+                .chain(&self.spec.dkm)
+                .cloned()
+                .collect()
+        } else {
+            self.spec
+                .groups
+                .iter()
+                .filter_map(|group| group["buttonList"].as_array())
+                .flat_map(|buttons| buttons.iter().cloned())
+                .collect()
+        };
+        let current = button_state_current::derive(
+            self.spec.product_id,
+            &original_buttons,
+            &all_buttons,
+            self.draft["mappings"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or(&[]),
+            self.hypershift,
+            self.group_ix as i32,
+        );
+        // An unresolved source producer cannot grant editing permission from a
+        // stale descriptor. Keep its artwork/labels and expose the explicit gap.
+        let button_state_unavailable = current.is_err();
+        *self.button_state_error.borrow_mut() = current.as_ref().err().cloned();
+        let buttons = current.unwrap_or(original_buttons);
         let mut panel = surface::panel(t("TAB_CUSTOMIZE"), cx)
             .child(
                 h_flex()
@@ -1927,7 +2009,10 @@ impl MouseProductWorkspace {
                     Button::new(SharedString::from(format!("mouse-input-{input}")))
                         .label(label)
                         .outline()
-                        .disabled(!button["isEnabled"].as_bool().unwrap_or(true))
+                        .disabled(
+                            button_state_unavailable
+                                || !button["isEnabled"].as_bool().unwrap_or(true),
+                        )
                         .selected(self.mapping_input.as_ref() == Some(&input))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.mapping_input = Some(input.clone());
@@ -1941,7 +2026,8 @@ impl MouseProductWorkspace {
                 .iter()
                 .find(|button| button["inputID"].as_str() == Some(&input));
             let supported = source_button.is_some_and(|button| {
-                button["isEnabled"].as_bool().unwrap_or(true)
+                !button_state_unavailable
+                    && button["isEnabled"].as_bool().unwrap_or(true)
                     && match &button["functionList"] {
                         Value::Array(functions) => functions
                             .iter()
@@ -2025,7 +2111,7 @@ impl Render for MouseProductWorkspace {
             "TAB_CALIBRATION" => self.calibration(window, cx),
             "TAB_SCROLLING" => self.scrolling(window, cx),
             "ADVANCED" => self.advanced(cx),
-            "TAB_CUSTOMIZE" => self.customize(cx),
+            "TAB_CUSTOMIZE" => self.customize(window, cx),
             _ => div().into_any_element(),
         };
         div()

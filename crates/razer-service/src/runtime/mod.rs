@@ -1,6 +1,7 @@
 //! Worker dispatch only. Wire contract and client are owned by razer-ipc.
 use razer_ipc::{FRAME_PREFIX, RequestEnvelope, ResponseEnvelope, ServiceRequest, read_frame};
 use std::{io::Write, time::Duration};
+mod controller_calibration;
 #[cfg(windows)]
 #[path = "windows/native.rs"]
 mod native;
@@ -91,6 +92,9 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::ForegroundMonitorEvents { .. }
             | ServiceRequest::HidNodes
             | ServiceRequest::HidNodeReports { .. }
+            | ServiceRequest::ControllerTriggerCalibrationStart { .. }
+            | ServiceRequest::ControllerTriggerCalibrationPoll { .. }
+            | ServiceRequest::ControllerTriggerCalibrationCancel { .. }
             | ServiceRequest::HidNodeDpiStagesRead { .. }
             | ServiceRequest::HidNodeDpiStagesWrite { .. }
             | ServiceRequest::HidNodeRead { .. }

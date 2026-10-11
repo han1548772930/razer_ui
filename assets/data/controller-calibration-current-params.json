@@ -1,0 +1,88 @@
+[
+  {
+    "product_id": 2676,
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/mw/main.1a6971221454393778e3.js",
+    "source_sha256": "23b1af43bfc1c706415691fcecfe3f55b54ac1c2703e215dbe953bae054899cb",
+    "offset_unit": "UTF-16 code units",
+    "offset": 2693251,
+    "end": 2693655,
+    "source_expression": "{Version:3,Range:{min:0,max:8192},IdealCenterPoint:{x:4096,y:4096},DeadzoneRatio:3,AllowedDeviationPercent:9,BoundaryTolerance:12,ValidityThreshold:.35,CenterPointThreshold:.1,Trigger:{ThresholdPercent:{min:5,max:2},TriggerMax:2048,Left:{PressThreshold:500,ReleaseThreshold:1490},Right:{PressThreshold:600,ReleaseThreshold:1600},ValidationRange:300,PressValidityPercentUI:18,ReleaseValidityPercentUI:11}}",
+    "params": {
+      "Version": 3,
+      "Range": {
+        "min": 0,
+        "max": 8192
+      },
+      "IdealCenterPoint": {
+        "x": 4096,
+        "y": 4096
+      },
+      "DeadzoneRatio": 3,
+      "AllowedDeviationPercent": 9,
+      "BoundaryTolerance": 12,
+      "ValidityThreshold": 0.35,
+      "CenterPointThreshold": 0.1,
+      "Trigger": {
+        "ThresholdPercent": {
+          "min": 5,
+          "max": 2
+        },
+        "TriggerMax": 2048,
+        "Left": {
+          "PressThreshold": 500,
+          "ReleaseThreshold": 1490
+        },
+        "Right": {
+          "PressThreshold": 600,
+          "ReleaseThreshold": 1600
+        },
+        "ValidationRange": 300,
+        "PressValidityPercentUI": 18,
+        "ReleaseValidityPercentUI": 11
+      }
+    }
+  },
+  {
+    "product_id": 2684,
+    "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2684/mw/main.35aed041f572227bf5d5.js",
+    "source_sha256": "b6300b00b77577e8d59d72b11d38b15ab95d105a9a115338d115e8d3c821304d",
+    "offset_unit": "UTF-16 code units",
+    "offset": 2687899,
+    "end": 2688303,
+    "source_expression": "{Version:3,Range:{min:0,max:8192},IdealCenterPoint:{x:4096,y:4096},DeadzoneRatio:3,AllowedDeviationPercent:9,BoundaryTolerance:12,ValidityThreshold:.35,CenterPointThreshold:.1,Trigger:{ThresholdPercent:{min:5,max:2},TriggerMax:2048,Left:{PressThreshold:400,ReleaseThreshold:1400},Right:{PressThreshold:500,ReleaseThreshold:1500},ValidationRange:300,PressValidityPercentUI:18,ReleaseValidityPercentUI:11}}",
+    "params": {
+      "Version": 3,
+      "Range": {
+        "min": 0,
+        "max": 8192
+      },
+      "IdealCenterPoint": {
+        "x": 4096,
+        "y": 4096
+      },
+      "DeadzoneRatio": 3,
+      "AllowedDeviationPercent": 9,
+      "BoundaryTolerance": 12,
+      "ValidityThreshold": 0.35,
+      "CenterPointThreshold": 0.1,
+      "Trigger": {
+        "ThresholdPercent": {
+          "min": 5,
+          "max": 2
+        },
+        "TriggerMax": 2048,
+        "Left": {
+          "PressThreshold": 400,
+          "ReleaseThreshold": 1400
+        },
+        "Right": {
+          "PressThreshold": 500,
+          "ReleaseThreshold": 1500
+        },
+        "ValidationRange": 300,
+        "PressValidityPercentUI": 18,
+        "ReleaseValidityPercentUI": 11
+      }
+    }
+  }
+]

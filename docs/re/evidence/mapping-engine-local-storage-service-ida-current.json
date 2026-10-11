@@ -1,0 +1,1079 @@
+{
+  "schema_version": 1,
+  "method": "IDA autoanalysis and Hex-Rays static decompilation; no debugger or target execution",
+  "input_sha256": "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a",
+  "input_bytes": 3945672,
+  "ida_version": "9.1",
+  "image_base": 6442450944,
+  "hexrays_available": true,
+  "functions": [
+    {
+      "rva": 870124,
+      "end_rva": 870650,
+      "name": "sub_1800D46EC",
+      "code_sha256": "ca7497ac1ebc0f81e439a0f95fcdae37e772e0718106a885a0234bcb926667cc",
+      "pseudocode": "__int64 __fastcall sub_1800D46EC(__int64 a1, __int64 a2, __int64 a3, unsigned __int64 *a4)\n{\n  __int64 v6; // rcx\n  __int64 v7; // r15\n  __int64 v8; // rdx\n  __int64 v9; // rcx\n  unsigned __int64 v10; // rcx\n  _QWORD v12[2]; // [rsp+40h] [rbp-88h] BYREF\n  char v13; // [rsp+57h] [rbp-71h]\n  __int64 (__fastcall *v14)(int, int, int, int, __int64); // [rsp+60h] [rbp-68h] BYREF\n  __int64 v15; // [rsp+68h] [rbp-60h]\n  __int64 v16; // [rsp+70h] [rbp-58h] BYREF\n  __int64 v17; // [rsp+78h] [rbp-50h] BYREF\n  unsigned __int64 v18; // [rsp+80h] [rbp-48h] BYREF\n\n  if ( *(_QWORD *)(a1 + 8) )\n  {\n    v18 = 0xAAAAAAAAAAAAAAAAuLL;\n    v18 = *(_QWORD *)sub_1801B9750();\n    if ( v18 )\n      sub_18001D7CC(v18 + 8);\n    v6 = *(_QWORD *)(*(_QWORD *)(a1 + 8) + 64LL);\n    if ( v6 )\n      (*(void (__fastcall **)(__int64, __int64 *))(*(_QWORD *)v6 + 8LL))(v6, &v17);\n    else\n      v17 = 0;\n    v7 = v17;\n    if ( (a1 & 0xFFFFFFFC00000000uLL) == *((_QWORD *)&xmmword_180393440 + 1) )\n      sub_1800DF4F8(a1);\n    v15 = a1;\n    v14 = sub_1800D4900;\n    v16 = sub_1800D60DE((__int128 *)sub_1800D6060, (__int64)&v14);\n    sub_1801C9C70(v12, \"SetItem\", \"..\\\\..\\\\mapping_engine\\\\services\\\\local_storage\\\\local_storage_service.cc\", 179);\n    sub_1801B94E0(v7, v12, &v16);\n    if ( (v15 & 0xFFFFFFFC00000000uLL) == *((_QWORD *)&xmmword_180393440 + 1) )\n      sub_1800DF626(v15, v8);\n    if ( v17 )\n    {\n      v9 = v17;\n      if ( !_InterlockedDecrement((volatile signed __int32 *)(v17 + 8)) )\n        sub_1801B9650(v9, v8);\n    }\n    if ( v18 )\n    {\n      v10 = v18;\n      if ( !_InterlockedDecrement((volatile signed __int32 *)(v18 + 8)) )\n        sub_1801B9650(v10, v8);\n    }\n  }\n  else\n  {\n    sub_1800017D8(v12, \"invalid thread\");\n    v18 = 0xAAAAAAAAAAAAAAAAuLL;\n    v18 = *a4;\n    *a4 = 0;\n    (*(void (__fastcall **)(unsigned __int64, _QWORD, _QWORD *))(v18 + 8))(v18, 0, v12);\n    sub_1801CB550(&v18);\n    if ( v13 < 0 )\n      sub_1802A11CC(v12[0]);\n  }\n  return sub_1801CB550(a4);\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 12697,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 870124,
+          "text": "push    r15"
+        },
+        {
+          "rva": 870126,
+          "text": "push    r14"
+        },
+        {
+          "rva": 870128,
+          "text": "push    r13"
+        },
+        {
+          "rva": 870130,
+          "text": "push    r12"
+        },
+        {
+          "rva": 870132,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 870133,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 870134,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 870135,
+          "text": "sub     rsp, 90h"
+        },
+        {
+          "rva": 870142,
+          "text": "mov     rsi, r9"
+        },
+        {
+          "rva": 870145,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 870152,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 870155,
+          "text": "mov     [rsp+0C8h+var_40], rax"
+        },
+        {
+          "rva": 870163,
+          "text": "mov     r15, 0AAAAAAAAAAAAAAAAh"
+        },
+        {
+          "rva": 870173,
+          "text": "cmp     qword ptr [rcx+8], 0"
+        },
+        {
+          "rva": 870178,
+          "text": "jz      short loc_1800D477C"
+        },
+        {
+          "rva": 870180,
+          "text": "mov     rbx, r8"
+        },
+        {
+          "rva": 870183,
+          "text": "mov     rdi, rdx"
+        },
+        {
+          "rva": 870186,
+          "text": "mov     r14, rcx"
+        },
+        {
+          "rva": 870189,
+          "text": "mov     [rsp+0C8h+var_48], r15"
+        },
+        {
+          "rva": 870197,
+          "text": "call    sub_1801B9750"
+        },
+        {
+          "rva": 870202,
+          "text": "mov     rax, [rax]"
+        },
+        {
+          "rva": 870205,
+          "text": "mov     [rsp+0C8h+var_48], rax"
+        },
+        {
+          "rva": 870213,
+          "text": "test    rax, rax"
+        },
+        {
+          "rva": 870216,
+          "text": "jz      short loc_1800D475B"
+        },
+        {
+          "rva": 870218,
+          "text": "mov     rcx, [rsp+0C8h+var_48]"
+        },
+        {
+          "rva": 870226,
+          "text": "add     rcx, 8"
+        },
+        {
+          "rva": 870230,
+          "text": "call    sub_18001D7CC"
+        },
+        {
+          "rva": 870235,
+          "text": "mov     rax, [r14+8]"
+        },
+        {
+          "rva": 870239,
+          "text": "mov     rcx, [rax+40h]"
+        },
+        {
+          "rva": 870243,
+          "text": "test    rcx, rcx"
+        },
+        {
+          "rva": 870246,
+          "text": "jz      short loc_1800D47DB"
+        },
+        {
+          "rva": 870248,
+          "text": "mov     rax, [rcx]"
+        },
+        {
+          "rva": 870251,
+          "text": "mov     rax, [rax+8]"
+        },
+        {
+          "rva": 870255,
+          "text": "lea     rdx, [rsp+0C8h+var_50]"
+        },
+        {
+          "rva": 870260,
+          "text": "call    cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 870266,
+          "text": "jmp     short loc_1800D47E4"
+        },
+        {
+          "rva": 870268,
+          "text": "lea     rdx, aInvalidThread; \"invalid thread\""
+        },
+        {
+          "rva": 870275,
+          "text": "lea     rdi, [rsp+0C8h+var_88]"
+        },
+        {
+          "rva": 870280,
+          "text": "mov     rcx, rdi"
+        },
+        {
+          "rva": 870283,
+          "text": "call    sub_1800017D8"
+        },
+        {
+          "rva": 870288,
+          "text": "lea     rbx, [rsp+0C8h+var_48]"
+        },
+        {
+          "rva": 870296,
+          "text": "mov     [rbx], r15"
+        },
+        {
+          "rva": 870299,
+          "text": "mov     rax, [rsi]"
+        },
+        {
+          "rva": 870302,
+          "text": "mov     [rbx], rax"
+        },
+        {
+          "rva": 870305,
+          "text": "mov     qword ptr [rsi], 0"
+        },
+        {
+          "rva": 870312,
+          "text": "mov     rcx, [rbx]"
+        },
+        {
+          "rva": 870315,
+          "text": "mov     rax, [rcx+8]"
+        },
+        {
+          "rva": 870319,
+          "text": "xor     edx, edx"
+        },
+        {
+          "rva": 870321,
+          "text": "mov     r8, rdi"
+        },
+        {
+          "rva": 870324,
+          "text": "call    cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 870330,
+          "text": "mov     rcx, rbx"
+        },
+        {
+          "rva": 870333,
+          "text": "call    sub_1801CB550"
+        },
+        {
+          "rva": 870338,
+          "text": "cmp     byte ptr [rdi+17h], 0"
+        },
+        {
+          "rva": 870342,
+          "text": "jns     loc_1800D48CE"
+        },
+        {
+          "rva": 870348,
+          "text": "mov     rcx, [rsp+0C8h+var_88]"
+        },
+        {
+          "rva": 870353,
+          "text": "call    sub_1802A11CC"
+        },
+        {
+          "rva": 870358,
+          "text": "jmp     loc_1800D48CE"
+        },
+        {
+          "rva": 870363,
+          "text": "mov     [rsp+0C8h+var_50], 0"
+        },
+        {
+          "rva": 870372,
+          "text": "mov     r12, 0FFFFFFFC00000000h"
+        },
+        {
+          "rva": 870382,
+          "text": "mov     r15, [rsp+0C8h+var_50]"
+        },
+        {
+          "rva": 870387,
+          "text": "lea     r13, [rsp+0C8h+var_60]"
+        },
+        {
+          "rva": 870392,
+          "text": "mov     rax, r14"
+        },
+        {
+          "rva": 870395,
+          "text": "and     rax, r12"
+        },
+        {
+          "rva": 870398,
+          "text": "cmp     rax, qword ptr cs:xmmword_180393440+8"
+        },
+        {
+          "rva": 870405,
+          "text": "jnz     short loc_1800D480F"
+        },
+        {
+          "rva": 870407,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 870410,
+          "text": "call    sub_1800DF4F8"
+        },
+        {
+          "rva": 870415,
+          "text": "mov     [r13+0], r14"
+        },
+        {
+          "rva": 870419,
+          "text": "lea     rax, sub_1800D4900"
+        },
+        {
+          "rva": 870426,
+          "text": "lea     rdx, [rsp+0C8h+var_68]"
+        },
+        {
+          "rva": 870431,
+          "text": "mov     [rdx], rax"
+        },
+        {
+          "rva": 870434,
+          "text": "mov     [rsp+0C8h+var_98], rsi"
+        },
+        {
+          "rva": 870439,
+          "text": "mov     [rsp+0C8h+var_A0], rbx"
+        },
+        {
+          "rva": 870444,
+          "text": "mov     [rsp+0C8h+var_A8], rdi"
+        },
+        {
+          "rva": 870449,
+          "text": "lea     rcx, sub_1800D6060"
+        },
+        {
+          "rva": 870456,
+          "text": "lea     rdi, [rsp+0C8h+var_60]"
+        },
+        {
+          "rva": 870461,
+          "text": "lea     r9, [rsp+0C8h+var_48]"
+        },
+        {
+          "rva": 870469,
+          "text": "mov     r8, rdi"
+        },
+        {
+          "rva": 870472,
+          "text": "call    sub_1800D60DE"
+        },
+        {
+          "rva": 870477,
+          "text": "lea     rbx, [rsp+0C8h+var_58]"
+        },
+        {
+          "rva": 870482,
+          "text": "mov     [rbx], rax"
+        },
+        {
+          "rva": 870485,
+          "text": "lea     rdx, aSetitem; \"SetItem\""
+        },
+        {
+          "rva": 870492,
+          "text": "lea     r8, aMappingEngineS_17; \"..\\\\..\\\\mapping_engine\\\\services\\\\local\"..."
+        },
+        {
+          "rva": 870499,
+          "text": "lea     r14, [rsp+0C8h+var_88]"
+        },
+        {
+          "rva": 870504,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 870507,
+          "text": "mov     r9d, 0B3h"
+        },
+        {
+          "rva": 870513,
+          "text": "call    sub_1801C9C70"
+        },
+        {
+          "rva": 870518,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 870521,
+          "text": "mov     rdx, r14"
+        },
+        {
+          "rva": 870524,
+          "text": "mov     r8, rbx"
+        },
+        {
+          "rva": 870527,
+          "text": "call    sub_1801B94E0"
+        },
+        {
+          "rva": 870532,
+          "text": "mov     rcx, [rdi]"
+        },
+        {
+          "rva": 870535,
+          "text": "and     r12, rcx"
+        },
+        {
+          "rva": 870538,
+          "text": "cmp     r12, qword ptr cs:xmmword_180393440+8"
+        },
+        {
+          "rva": 870545,
+          "text": "jnz     short loc_1800D4898"
+        },
+        {
+          "rva": 870547,
+          "text": "call    sub_1800DF626"
+        },
+        {
+          "rva": 870552,
+          "text": "cmp     [rsp+0C8h+var_50], 0"
+        },
+        {
+          "rva": 870558,
+          "text": "jz      short loc_1800D48B0"
+        },
+        {
+          "rva": 870560,
+          "text": "mov     rcx, [rsp+0C8h+var_50]"
+        },
+        {
+          "rva": 870565,
+          "text": "lock dec dword ptr [rcx+8]"
+        },
+        {
+          "rva": 870569,
+          "text": "jnz     short loc_1800D48B0"
+        },
+        {
+          "rva": 870571,
+          "text": "call    sub_1801B9650"
+        },
+        {
+          "rva": 870576,
+          "text": "cmp     [rsp+0C8h+var_48], 0"
+        },
+        {
+          "rva": 870585,
+          "text": "jz      short loc_1800D48CE"
+        },
+        {
+          "rva": 870587,
+          "text": "mov     rcx, [rsp+0C8h+var_48]"
+        },
+        {
+          "rva": 870595,
+          "text": "lock dec dword ptr [rcx+8]"
+        },
+        {
+          "rva": 870599,
+          "text": "jnz     short loc_1800D48CE"
+        },
+        {
+          "rva": 870601,
+          "text": "call    sub_1801B9650"
+        },
+        {
+          "rva": 870606,
+          "text": "mov     rcx, rsi"
+        },
+        {
+          "rva": 870609,
+          "text": "call    sub_1801CB550"
+        },
+        {
+          "rva": 870614,
+          "text": "mov     rcx, [rsp+0C8h+var_40]"
+        },
+        {
+          "rva": 870622,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 870625,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 870630,
+          "text": "nop"
+        },
+        {
+          "rva": 870631,
+          "text": "add     rsp, 90h"
+        },
+        {
+          "rva": 870638,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 870639,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 870640,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 870641,
+          "text": "pop     r12"
+        },
+        {
+          "rva": 870643,
+          "text": "pop     r13"
+        },
+        {
+          "rva": 870645,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 870647,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 870649,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 869080,
+      "end_rva": 869652,
+      "name": "sub_1800D42D8",
+      "code_sha256": "d0fd88d901955882e6c85a36e3b93e970464aeb143fbeaa36ba07dcdf2d56f01",
+      "pseudocode": "__int64 __fastcall sub_1800D42D8(__int64 a1, __int64 a2, unsigned __int64 *a3)\n{\n  __int64 v6; // rcx\n  unsigned __int64 v7; // r14\n  __int64 v8; // rdx\n  unsigned __int64 v9; // rcx\n  _QWORD v11[2]; // [rsp+38h] [rbp-A0h] BYREF\n  char v12; // [rsp+4Fh] [rbp-89h]\n  __int128 v13; // [rsp+50h] [rbp-88h] BYREF\n  __int64 v14; // [rsp+60h] [rbp-78h]\n  __int64 (__fastcall *v15)(); // [rsp+78h] [rbp-60h]\n  __int64 v16; // [rsp+80h] [rbp-58h]\n  __int64 v17; // [rsp+88h] [rbp-50h] BYREF\n  unsigned __int64 v18; // [rsp+90h] [rbp-48h] BYREF\n\n  if ( *(_QWORD *)(a1 + 8) )\n  {\n    v11[0] = 0xAAAAAAAAAAAAAAAAuLL;\n    v11[0] = *(_QWORD *)sub_1801B9750();\n    if ( v11[0] )\n      sub_18001D7CC(v11[0] + 8LL);\n    v6 = *(_QWORD *)(*(_QWORD *)(a1 + 8) + 64LL);\n    if ( v6 )\n      (*(void (__fastcall **)(__int64, unsigned __int64 *))(*(_QWORD *)v6 + 8LL))(v6, &v18);\n    else\n      v18 = 0;\n    v7 = v18;\n    if ( (a1 & 0xFFFFFFFC00000000uLL) == *((_QWORD *)&xmmword_180393440 + 1) )\n      sub_1800DF4F8(a1);\n    v16 = a1;\n    v15 = sub_1800D4520;\n    v17 = sub_1800D5EC0((__int128 *)sub_1800D5E50);\n    sub_1801C9C70(&v13, \"GetItem\", \"..\\\\..\\\\mapping_engine\\\\services\\\\local_storage\\\\local_storage_service.cc\", 165);\n    sub_1801B94E0(v7, &v13, &v17);\n    if ( (v16 & 0xFFFFFFFC00000000uLL) == *((_QWORD *)&xmmword_180393440 + 1) )\n      sub_1800DF626(v16, v8);\n    if ( v18 )\n    {\n      v9 = v18;\n      if ( !_InterlockedDecrement((volatile signed __int32 *)(v18 + 8)) )\n        sub_1801B9650(v9, v8);\n    }\n    if ( v11[0] && !_InterlockedDecrement((volatile signed __int32 *)(v11[0] + 8LL)) )\n      sub_1801B9650(v11[0], v8);\n  }\n  else\n  {\n    v13 = 0;\n    v14 = 0;\n    sub_1800017D8(v11, \"invalid thread\");\n    v18 = 0xAAAAAAAAAAAAAAAAuLL;\n    v18 = *a3;\n    *a3 = 0;\n    (*(void (__fastcall **)(unsigned __int64, _QWORD, _QWORD *, __int64, __int128 *))(v18 + 8))(v18, 0, v11, a2, &v13);\n    sub_1801CB550(&v18);\n    if ( v12 < 0 )\n      sub_1802A11CC(v11[0]);\n    if ( v14 < 0 )\n      sub_1802A11CC(v13);\n  }\n  return sub_1801CB550(a3);\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 12005,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 349499,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 387727,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 869080,
+          "text": "push    r15"
+        },
+        {
+          "rva": 869082,
+          "text": "push    r14"
+        },
+        {
+          "rva": 869084,
+          "text": "push    r13"
+        },
+        {
+          "rva": 869086,
+          "text": "push    r12"
+        },
+        {
+          "rva": 869088,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 869089,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 869090,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 869091,
+          "text": "sub     rsp, 0A0h"
+        },
+        {
+          "rva": 869098,
+          "text": "mov     rsi, r8"
+        },
+        {
+          "rva": 869101,
+          "text": "mov     rdi, rdx"
+        },
+        {
+          "rva": 869104,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 869111,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 869114,
+          "text": "mov     [rsp+0D8h+var_40], rax"
+        },
+        {
+          "rva": 869122,
+          "text": "mov     r15, 0AAAAAAAAAAAAAAAAh"
+        },
+        {
+          "rva": 869132,
+          "text": "cmp     qword ptr [rcx+8], 0"
+        },
+        {
+          "rva": 869137,
+          "text": "jz      short loc_1800D4366"
+        },
+        {
+          "rva": 869139,
+          "text": "mov     rbx, rcx"
+        },
+        {
+          "rva": 869142,
+          "text": "mov     [rsp+0D8h+var_A0], r15"
+        },
+        {
+          "rva": 869147,
+          "text": "call    sub_1801B9750"
+        },
+        {
+          "rva": 869152,
+          "text": "mov     rax, [rax]"
+        },
+        {
+          "rva": 869155,
+          "text": "mov     [rsp+0D8h+var_A0], rax"
+        },
+        {
+          "rva": 869160,
+          "text": "test    rax, rax"
+        },
+        {
+          "rva": 869163,
+          "text": "jz      short loc_1800D433B"
+        },
+        {
+          "rva": 869165,
+          "text": "mov     rcx, [rsp+0D8h+var_A0]"
+        },
+        {
+          "rva": 869170,
+          "text": "add     rcx, 8"
+        },
+        {
+          "rva": 869174,
+          "text": "call    sub_18001D7CC"
+        },
+        {
+          "rva": 869179,
+          "text": "mov     rax, [rbx+8]"
+        },
+        {
+          "rva": 869183,
+          "text": "mov     rcx, [rax+40h]"
+        },
+        {
+          "rva": 869187,
+          "text": "test    rcx, rcx"
+        },
+        {
+          "rva": 869190,
+          "text": "jz      loc_1800D43EF"
+        },
+        {
+          "rva": 869196,
+          "text": "mov     rax, [rcx]"
+        },
+        {
+          "rva": 869199,
+          "text": "mov     rax, [rax+8]"
+        },
+        {
+          "rva": 869203,
+          "text": "lea     rdx, [rsp+0D8h+var_48]"
+        },
+        {
+          "rva": 869211,
+          "text": "call    cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 869217,
+          "text": "jmp     loc_1800D43FB"
+        },
+        {
+          "rva": 869222,
+          "text": "xorps   xmm0, xmm0"
+        },
+        {
+          "rva": 869225,
+          "text": "lea     r12, [rsp+0D8h+var_88]"
+        },
+        {
+          "rva": 869230,
+          "text": "movaps  xmmword ptr [r12], xmm0"
+        },
+        {
+          "rva": 869235,
+          "text": "xor     r13d, r13d"
+        },
+        {
+          "rva": 869238,
+          "text": "mov     [r12+10h], r13"
+        },
+        {
+          "rva": 869243,
+          "text": "lea     rdx, aInvalidThread; \"invalid thread\""
+        },
+        {
+          "rva": 869250,
+          "text": "lea     rbx, [rsp+0D8h+var_A0]"
+        },
+        {
+          "rva": 869255,
+          "text": "mov     rcx, rbx"
+        },
+        {
+          "rva": 869258,
+          "text": "call    sub_1800017D8"
+        },
+        {
+          "rva": 869263,
+          "text": "lea     r14, [rsp+0D8h+var_48]"
+        },
+        {
+          "rva": 869271,
+          "text": "mov     [r14], r15"
+        },
+        {
+          "rva": 869274,
+          "text": "mov     rax, [rsi]"
+        },
+        {
+          "rva": 869277,
+          "text": "mov     [r14], rax"
+        },
+        {
+          "rva": 869280,
+          "text": "mov     [rsi], r13"
+        },
+        {
+          "rva": 869283,
+          "text": "mov     rcx, [r14]"
+        },
+        {
+          "rva": 869286,
+          "text": "mov     rax, [rcx+8]"
+        },
+        {
+          "rva": 869290,
+          "text": "mov     [rsp+0D8h+var_B8], r12"
+        },
+        {
+          "rva": 869295,
+          "text": "xor     edx, edx"
+        },
+        {
+          "rva": 869297,
+          "text": "mov     r8, rbx"
+        },
+        {
+          "rva": 869300,
+          "text": "mov     r9, rdi"
+        },
+        {
+          "rva": 869303,
+          "text": "call    cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 869309,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 869312,
+          "text": "call    sub_1801CB550"
+        },
+        {
+          "rva": 869317,
+          "text": "cmp     byte ptr [rbx+17h], 0"
+        },
+        {
+          "rva": 869321,
+          "text": "jns     short loc_1800D43D5"
+        },
+        {
+          "rva": 869323,
+          "text": "mov     rcx, [rsp+0D8h+var_A0]"
+        },
+        {
+          "rva": 869328,
+          "text": "call    sub_1802A11CC"
+        },
+        {
+          "rva": 869333,
+          "text": "cmp     [rsp+0D8h+var_71], 0"
+        },
+        {
+          "rva": 869338,
+          "text": "jns     loc_1800D44E8"
+        },
+        {
+          "rva": 869344,
+          "text": "mov     rcx, qword ptr [rsp+0D8h+var_88]"
+        },
+        {
+          "rva": 869349,
+          "text": "call    sub_1802A11CC"
+        },
+        {
+          "rva": 869354,
+          "text": "jmp     loc_1800D44E8"
+        },
+        {
+          "rva": 869359,
+          "text": "mov     [rsp+0D8h+var_48], 0"
+        },
+        {
+          "rva": 869371,
+          "text": "mov     r12, 0FFFFFFFC00000000h"
+        },
+        {
+          "rva": 869381,
+          "text": "mov     r14, [rsp+0D8h+var_48]"
+        },
+        {
+          "rva": 869389,
+          "text": "lea     r15, [rsp+0D8h+var_58]"
+        },
+        {
+          "rva": 869397,
+          "text": "mov     rax, rbx"
+        },
+        {
+          "rva": 869400,
+          "text": "and     rax, r12"
+        },
+        {
+          "rva": 869403,
+          "text": "cmp     rax, qword ptr cs:xmmword_180393440+8"
+        },
+        {
+          "rva": 869410,
+          "text": "jnz     short loc_1800D442C"
+        },
+        {
+          "rva": 869412,
+          "text": "mov     rcx, rbx"
+        },
+        {
+          "rva": 869415,
+          "text": "call    sub_1800DF4F8"
+        },
+        {
+          "rva": 869420,
+          "text": "mov     [r15], rbx"
+        },
+        {
+          "rva": 869423,
+          "text": "lea     rax, sub_1800D4520"
+        },
+        {
+          "rva": 869430,
+          "text": "lea     rdx, [rsp+0D8h+var_60]"
+        },
+        {
+          "rva": 869435,
+          "text": "mov     [rdx], rax"
+        },
+        {
+          "rva": 869438,
+          "text": "mov     [rsp+0D8h+var_B0], rsi"
+        },
+        {
+          "rva": 869443,
+          "text": "mov     [rsp+0D8h+var_B8], rdi"
+        },
+        {
+          "rva": 869448,
+          "text": "lea     rcx, sub_1800D5E50"
+        },
+        {
+          "rva": 869455,
+          "text": "lea     rdi, [rsp+0D8h+var_58]"
+        },
+        {
+          "rva": 869463,
+          "text": "lea     r9, [rsp+0D8h+var_A0]"
+        },
+        {
+          "rva": 869468,
+          "text": "mov     r8, rdi"
+        },
+        {
+          "rva": 869471,
+          "text": "call    sub_1800D5EC0"
+        },
+        {
+          "rva": 869476,
+          "text": "lea     rbx, [rsp+0D8h+var_50]"
+        },
+        {
+          "rva": 869484,
+          "text": "mov     [rbx], rax"
+        },
+        {
+          "rva": 869487,
+          "text": "lea     rdx, aGetitem; \"GetItem\""
+        },
+        {
+          "rva": 869494,
+          "text": "lea     r8, aMappingEngineS_17; \"..\\\\..\\\\mapping_engine\\\\services\\\\local\"..."
+        },
+        {
+          "rva": 869501,
+          "text": "lea     r15, [rsp+0D8h+var_88]"
+        },
+        {
+          "rva": 869506,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 869509,
+          "text": "mov     r9d, 0A5h"
+        },
+        {
+          "rva": 869515,
+          "text": "call    sub_1801C9C70"
+        },
+        {
+          "rva": 869520,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 869523,
+          "text": "mov     rdx, r15"
+        },
+        {
+          "rva": 869526,
+          "text": "mov     r8, rbx"
+        },
+        {
+          "rva": 869529,
+          "text": "call    sub_1801B94E0"
+        },
+        {
+          "rva": 869534,
+          "text": "mov     rcx, [rdi]"
+        },
+        {
+          "rva": 869537,
+          "text": "and     r12, rcx"
+        },
+        {
+          "rva": 869540,
+          "text": "cmp     r12, qword ptr cs:xmmword_180393440+8"
+        },
+        {
+          "rva": 869547,
+          "text": "jnz     short loc_1800D44B2"
+        },
+        {
+          "rva": 869549,
+          "text": "call    sub_1800DF626"
+        },
+        {
+          "rva": 869554,
+          "text": "cmp     [rsp+0D8h+var_48], 0"
+        },
+        {
+          "rva": 869563,
+          "text": "jz      short loc_1800D44D0"
+        },
+        {
+          "rva": 869565,
+          "text": "mov     rcx, [rsp+0D8h+var_48]"
+        },
+        {
+          "rva": 869573,
+          "text": "lock dec dword ptr [rcx+8]"
+        },
+        {
+          "rva": 869577,
+          "text": "jnz     short loc_1800D44D0"
+        },
+        {
+          "rva": 869579,
+          "text": "call    sub_1801B9650"
+        },
+        {
+          "rva": 869584,
+          "text": "cmp     [rsp+0D8h+var_A0], 0"
+        },
+        {
+          "rva": 869590,
+          "text": "jz      short loc_1800D44E8"
+        },
+        {
+          "rva": 869592,
+          "text": "mov     rcx, [rsp+0D8h+var_A0]"
+        },
+        {
+          "rva": 869597,
+          "text": "lock dec dword ptr [rcx+8]"
+        },
+        {
+          "rva": 869601,
+          "text": "jnz     short loc_1800D44E8"
+        },
+        {
+          "rva": 869603,
+          "text": "call    sub_1801B9650"
+        },
+        {
+          "rva": 869608,
+          "text": "mov     rcx, rsi"
+        },
+        {
+          "rva": 869611,
+          "text": "call    sub_1801CB550"
+        },
+        {
+          "rva": 869616,
+          "text": "mov     rcx, [rsp+0D8h+var_40]"
+        },
+        {
+          "rva": 869624,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 869627,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 869632,
+          "text": "nop"
+        },
+        {
+          "rva": 869633,
+          "text": "add     rsp, 0A0h"
+        },
+        {
+          "rva": 869640,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 869641,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 869642,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 869643,
+          "text": "pop     r12"
+        },
+        {
+          "rva": 869645,
+          "text": "pop     r13"
+        },
+        {
+          "rva": 869647,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 869649,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 869651,
+          "text": "retn"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Pseudocode is inferred from machine code; check types and indirect targets against original bytes.",
+    "Selected functions only, not full-program semantic completion."
+  ]
+}

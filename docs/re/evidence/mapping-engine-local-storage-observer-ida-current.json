@@ -1,0 +1,1021 @@
+{
+  "schema_version": 1,
+  "method": "IDA autoanalysis and Hex-Rays static decompilation; no debugger or target execution",
+  "input_sha256": "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a",
+  "input_bytes": 3945672,
+  "ida_version": "9.1",
+  "image_base": 6442450944,
+  "hexrays_available": true,
+  "functions": [
+    {
+      "rva": 874076,
+      "end_rva": 874251,
+      "name": "sub_1800D565C",
+      "code_sha256": "aa0e8928fdb0bcdbc0427ada75d5951933ae0165c722d62d140c209a214d1130",
+      "pseudocode": "_QWORD *__fastcall sub_1800D565C(RTL_SRWLOCK *a1, _QWORD *a2, __int64 a3)\n{\n  RTL_SRWLOCK *v6; // rdi\n  __int64 v7; // rax\n  unsigned __int64 v9; // [rsp+20h] [rbp-38h] BYREF\n\n  v6 = a1 + 8;\n  if ( !TryAcquireSRWLockExclusive(a1 + 8) )\n    AcquireSRWLockExclusive(v6);\n  v9 = 0xAAAAAAAAAAAAAAAAuLL;\n  sub_180055BF6(&a1[9], &v9, a3);\n  if ( (RTL_SRWLOCK *)v9 == &a1[10] )\n  {\n    *a2 = 0;\n  }\n  else\n  {\n    v7 = *(_QWORD *)(v9 + 56);\n    *a2 = v7;\n    if ( v7 )\n      sub_18001D7CC(*a2 + 8LL);\n  }\n  ReleaseSRWLockExclusive(v6);\n  return a2;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 873229,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 873426,
+          "type": 17,
+          "is_code": true
+        },
+        {
+          "from_rva": 873616,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 874076,
+          "text": "push    r15"
+        },
+        {
+          "rva": 874078,
+          "text": "push    r14"
+        },
+        {
+          "rva": 874080,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 874081,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 874082,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 874083,
+          "text": "sub     rsp, 30h"
+        },
+        {
+          "rva": 874087,
+          "text": "mov     r14, r8"
+        },
+        {
+          "rva": 874090,
+          "text": "mov     rsi, rdx"
+        },
+        {
+          "rva": 874093,
+          "text": "mov     rbx, rcx"
+        },
+        {
+          "rva": 874096,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 874103,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 874106,
+          "text": "mov     [rsp+58h+var_30], rax"
+        },
+        {
+          "rva": 874111,
+          "text": "lea     rdi, [rcx+40h]"
+        },
+        {
+          "rva": 874115,
+          "text": "mov     rcx, rdi; SRWLock"
+        },
+        {
+          "rva": 874118,
+          "text": "call    cs:TryAcquireSRWLockExclusive"
+        },
+        {
+          "rva": 874124,
+          "text": "test    al, al"
+        },
+        {
+          "rva": 874126,
+          "text": "jnz     short loc_1800D5698"
+        },
+        {
+          "rva": 874128,
+          "text": "mov     rcx, rdi; SRWLock"
+        },
+        {
+          "rva": 874131,
+          "text": "call    AcquireSRWLockExclusive"
+        },
+        {
+          "rva": 874136,
+          "text": "mov     rax, 0AAAAAAAAAAAAAAAAh"
+        },
+        {
+          "rva": 874146,
+          "text": "lea     r15, [rsp+58h+var_38]"
+        },
+        {
+          "rva": 874151,
+          "text": "mov     [r15], rax"
+        },
+        {
+          "rva": 874154,
+          "text": "lea     rcx, [rbx+48h]"
+        },
+        {
+          "rva": 874158,
+          "text": "mov     rdx, r15"
+        },
+        {
+          "rva": 874161,
+          "text": "mov     r8, r14"
+        },
+        {
+          "rva": 874164,
+          "text": "call    sub_180055BF6"
+        },
+        {
+          "rva": 874169,
+          "text": "add     rbx, 50h ; 'P'"
+        },
+        {
+          "rva": 874173,
+          "text": "mov     rax, [r15]"
+        },
+        {
+          "rva": 874176,
+          "text": "cmp     rax, rbx"
+        },
+        {
+          "rva": 874179,
+          "text": "jz      short loc_1800D56DF"
+        },
+        {
+          "rva": 874181,
+          "text": "mov     rax, [rax+38h]"
+        },
+        {
+          "rva": 874185,
+          "text": "mov     [rsi], rax"
+        },
+        {
+          "rva": 874188,
+          "text": "test    rax, rax"
+        },
+        {
+          "rva": 874191,
+          "text": "jz      short loc_1800D56E6"
+        },
+        {
+          "rva": 874193,
+          "text": "mov     rcx, [rsi]"
+        },
+        {
+          "rva": 874196,
+          "text": "add     rcx, 8"
+        },
+        {
+          "rva": 874200,
+          "text": "call    sub_18001D7CC"
+        },
+        {
+          "rva": 874205,
+          "text": "jmp     short loc_1800D56E6"
+        },
+        {
+          "rva": 874207,
+          "text": "mov     qword ptr [rsi], 0"
+        },
+        {
+          "rva": 874214,
+          "text": "mov     rcx, rdi; SRWLock"
+        },
+        {
+          "rva": 874217,
+          "text": "call    cs:ReleaseSRWLockExclusive"
+        },
+        {
+          "rva": 874223,
+          "text": "mov     rcx, [rsp+58h+var_30]"
+        },
+        {
+          "rva": 874228,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 874231,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 874236,
+          "text": "mov     rax, rsi"
+        },
+        {
+          "rva": 874239,
+          "text": "add     rsp, 30h"
+        },
+        {
+          "rva": 874243,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 874244,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 874245,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 874246,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 874248,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 874250,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 874252,
+      "end_rva": 874739,
+      "name": "sub_1800D570C",
+      "code_sha256": "cff7564c85a1549f6538a7c9f69620fe25b20b1e023ee57eb84472614d593e0c",
+      "pseudocode": "__int64 __fastcall sub_1800D570C(RTL_SRWLOCK *a1, __int64 a2, __int64 a3)\n{\n  _QWORD *i; // rbp\n  __int64 v6; // r14\n  __int64 v7; // r12\n  __int64 v8; // r12\n  __int64 v9; // rdx\n  __int64 v10; // rdx\n  __int64 (__fastcall *v12)(); // [rsp+40h] [rbp-B8h] BYREF\n  int v13; // [rsp+48h] [rbp-B0h]\n  RTL_SRWLOCK *v14; // [rsp+50h] [rbp-A8h] BYREF\n  __int64 v15; // [rsp+58h] [rbp-A0h] BYREF\n  _QWORD v16[5]; // [rsp+60h] [rbp-98h] BYREF\n  _BYTE v17[8]; // [rsp+88h] [rbp-70h] BYREF\n  __int64 v18; // [rsp+90h] [rbp-68h]\n  __int64 v19; // [rsp+98h] [rbp-60h] BYREF\n  _QWORD v20[2]; // [rsp+A0h] [rbp-58h] BYREF\n\n  v20[1] = a3;\n  v16[0] = sub_1800C21B0;\n  v20[0] = sub_1800D6C8C((__int128 *)sub_1800D6C60);\n  if ( !TryAcquireSRWLockExclusive(a1 + 3) )\n    AcquireSRWLockExclusive(a1 + 3);\n  for ( i = a1[7].Ptr; i; i = (_QWORD *)*i )\n  {\n    v6 = i[3];\n    v7 = i[4];\n    sub_1800B1DF2(v16, a1, a2);\n    sub_1801CB4A0(v17, v20);\n    v18 = v7;\n    v8 = i[2];\n    if ( (v8 & 0xFFFFFFFC00000000uLL) == *((_QWORD *)&xmmword_180393440 + 1) )\n      sub_1800DF4F8(i[2]);\n    v15 = v8;\n    v14 = a1;\n    v12 = sub_1800B1640;\n    v13 = 0;\n    v19 = sub_1800B1C3E(\n            (unsigned int)sub_1800B1B90,\n            (unsigned int)&v12,\n            (unsigned int)&v14,\n            (unsigned int)&v15,\n            (__int64)v16);\n    sub_1801B94E0(v6, a2, &v19);\n    if ( (v15 & 0xFFFFFFFC00000000uLL) == *((_QWORD *)&xmmword_180393440 + 1) )\n      sub_1800DF626(v15, v9);\n    sub_1801CB550(v17);\n    if ( (v16[0] & 0xFFFFFFFC00000000uLL) == *((_QWORD *)&xmmword_180393440 + 1) )\n      sub_1800DF626(v16[0], v10);\n  }\n  ReleaseSRWLockExclusive(a1 + 3);\n  return sub_1801CB550(v20);\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 873304,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 874252,
+          "text": "push    r15"
+        },
+        {
+          "rva": 874254,
+          "text": "push    r14"
+        },
+        {
+          "rva": 874256,
+          "text": "push    r13"
+        },
+        {
+          "rva": 874258,
+          "text": "push    r12"
+        },
+        {
+          "rva": 874260,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 874261,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 874262,
+          "text": "push    rbp"
+        },
+        {
+          "rva": 874263,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 874264,
+          "text": "sub     rsp, 0B8h"
+        },
+        {
+          "rva": 874271,
+          "text": "mov     rsi, rdx"
+        },
+        {
+          "rva": 874274,
+          "text": "mov     rdi, rcx"
+        },
+        {
+          "rva": 874277,
+          "text": "movaps  xmm0, [rsp+0F8h+arg_20]"
+        },
+        {
+          "rva": 874285,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 874292,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 874295,
+          "text": "mov     [rsp+0F8h+var_48], rax"
+        },
+        {
+          "rva": 874303,
+          "text": "lea     rax, [rsp+0F8h+var_50]"
+        },
+        {
+          "rva": 874311,
+          "text": "mov     [rax], r8"
+        },
+        {
+          "rva": 874314,
+          "text": "mov     rcx, 0AAAAAAAAAAAAAAAAh"
+        },
+        {
+          "rva": 874324,
+          "text": "mov     [rsp+0F8h+var_58], rcx"
+        },
+        {
+          "rva": 874332,
+          "text": "lea     rcx, sub_1800C21B0"
+        },
+        {
+          "rva": 874339,
+          "text": "lea     rdx, [rsp+0F8h+var_98]"
+        },
+        {
+          "rva": 874344,
+          "text": "mov     [rdx], rcx"
+        },
+        {
+          "rva": 874347,
+          "text": "movups  [rsp+0F8h+var_D8], xmm0"
+        },
+        {
+          "rva": 874352,
+          "text": "lea     rcx, sub_1800D6C60"
+        },
+        {
+          "rva": 874359,
+          "text": "mov     r8, rax"
+        },
+        {
+          "rva": 874362,
+          "text": "call    sub_1800D6C8C"
+        },
+        {
+          "rva": 874367,
+          "text": "mov     [rsp+0F8h+var_58], rax"
+        },
+        {
+          "rva": 874375,
+          "text": "lea     rbx, [rdi+18h]"
+        },
+        {
+          "rva": 874379,
+          "text": "mov     rcx, rbx; SRWLock"
+        },
+        {
+          "rva": 874382,
+          "text": "call    cs:TryAcquireSRWLockExclusive"
+        },
+        {
+          "rva": 874388,
+          "text": "test    al, al"
+        },
+        {
+          "rva": 874390,
+          "text": "jnz     short loc_1800D57A0"
+        },
+        {
+          "rva": 874392,
+          "text": "mov     rcx, rbx; SRWLock"
+        },
+        {
+          "rva": 874395,
+          "text": "call    AcquireSRWLockExclusive"
+        },
+        {
+          "rva": 874400,
+          "text": "mov     [rsp+0F8h+SRWLock], rbx"
+        },
+        {
+          "rva": 874405,
+          "text": "mov     rbp, [rdi+38h]"
+        },
+        {
+          "rva": 874409,
+          "text": "test    rbp, rbp"
+        },
+        {
+          "rva": 874412,
+          "text": "jz      loc_1800D58B6"
+        },
+        {
+          "rva": 874418,
+          "text": "mov     rbx, 0FFFFFFFC00000000h"
+        },
+        {
+          "rva": 874428,
+          "text": "lea     r15, [rsp+0F8h+var_70]"
+        },
+        {
+          "rva": 874436,
+          "text": "lea     r13, [rsp+0F8h+var_A0]"
+        },
+        {
+          "rva": 874441,
+          "text": "mov     r14, [rbp+18h]"
+        },
+        {
+          "rva": 874445,
+          "text": "mov     r12, [rbp+20h]"
+        },
+        {
+          "rva": 874449,
+          "text": "lea     rcx, [rsp+0F8h+var_98]"
+        },
+        {
+          "rva": 874454,
+          "text": "mov     rdx, rdi"
+        },
+        {
+          "rva": 874457,
+          "text": "mov     r8, rsi"
+        },
+        {
+          "rva": 874460,
+          "text": "call    sub_1800B1DF2"
+        },
+        {
+          "rva": 874465,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 874468,
+          "text": "lea     rdx, [rsp+0F8h+var_58]"
+        },
+        {
+          "rva": 874476,
+          "text": "call    sub_1801CB4A0"
+        },
+        {
+          "rva": 874481,
+          "text": "mov     [rsp+0F8h+var_68], r12"
+        },
+        {
+          "rva": 874489,
+          "text": "mov     r12, [rbp+10h]"
+        },
+        {
+          "rva": 874493,
+          "text": "mov     rax, r12"
+        },
+        {
+          "rva": 874496,
+          "text": "and     rax, rbx"
+        },
+        {
+          "rva": 874499,
+          "text": "cmp     rax, qword ptr cs:xmmword_180393440+8"
+        },
+        {
+          "rva": 874506,
+          "text": "jnz     short loc_1800D5814"
+        },
+        {
+          "rva": 874508,
+          "text": "mov     rcx, r12"
+        },
+        {
+          "rva": 874511,
+          "text": "call    sub_1800DF4F8"
+        },
+        {
+          "rva": 874516,
+          "text": "mov     [r13+0], r12"
+        },
+        {
+          "rva": 874520,
+          "text": "mov     [rsp+0F8h+var_A8], rdi"
+        },
+        {
+          "rva": 874525,
+          "text": "lea     rax, sub_1800B1640"
+        },
+        {
+          "rva": 874532,
+          "text": "mov     [rsp+0F8h+var_B8], rax"
+        },
+        {
+          "rva": 874537,
+          "text": "mov     [rsp+0F8h+var_B0], 0"
+        },
+        {
+          "rva": 874545,
+          "text": "lea     rax, [rsp+0F8h+var_98]"
+        },
+        {
+          "rva": 874550,
+          "text": "mov     qword ptr [rsp+0F8h+var_D8], rax"
+        },
+        {
+          "rva": 874555,
+          "text": "lea     rcx, sub_1800B1B90"
+        },
+        {
+          "rva": 874562,
+          "text": "lea     rdx, [rsp+0F8h+var_B8]"
+        },
+        {
+          "rva": 874567,
+          "text": "lea     r8, [rsp+0F8h+var_A8]"
+        },
+        {
+          "rva": 874572,
+          "text": "mov     r9, r13"
+        },
+        {
+          "rva": 874575,
+          "text": "call    sub_1800B1C3E"
+        },
+        {
+          "rva": 874580,
+          "text": "mov     [rsp+0F8h+var_60], rax"
+        },
+        {
+          "rva": 874588,
+          "text": "mov     rcx, r14"
+        },
+        {
+          "rva": 874591,
+          "text": "mov     rdx, rsi"
+        },
+        {
+          "rva": 874594,
+          "text": "lea     r8, [rsp+0F8h+var_60]"
+        },
+        {
+          "rva": 874602,
+          "text": "call    sub_1801B94E0"
+        },
+        {
+          "rva": 874607,
+          "text": "mov     rcx, [rsp+0F8h+var_A0]"
+        },
+        {
+          "rva": 874612,
+          "text": "mov     rax, rcx"
+        },
+        {
+          "rva": 874615,
+          "text": "and     rax, rbx"
+        },
+        {
+          "rva": 874618,
+          "text": "cmp     rax, qword ptr cs:xmmword_180393440+8"
+        },
+        {
+          "rva": 874625,
+          "text": "jnz     short loc_1800D5888"
+        },
+        {
+          "rva": 874627,
+          "text": "call    sub_1800DF626"
+        },
+        {
+          "rva": 874632,
+          "text": "mov     rcx, r15"
+        },
+        {
+          "rva": 874635,
+          "text": "call    sub_1801CB550"
+        },
+        {
+          "rva": 874640,
+          "text": "mov     rcx, [rsp+0F8h+var_98]"
+        },
+        {
+          "rva": 874645,
+          "text": "mov     rax, rcx"
+        },
+        {
+          "rva": 874648,
+          "text": "and     rax, rbx"
+        },
+        {
+          "rva": 874651,
+          "text": "cmp     rax, qword ptr cs:xmmword_180393440+8"
+        },
+        {
+          "rva": 874658,
+          "text": "jnz     short loc_1800D58A9"
+        },
+        {
+          "rva": 874660,
+          "text": "call    sub_1800DF626"
+        },
+        {
+          "rva": 874665,
+          "text": "mov     rbp, [rbp+0]"
+        },
+        {
+          "rva": 874669,
+          "text": "test    rbp, rbp"
+        },
+        {
+          "rva": 874672,
+          "text": "jnz     loc_1800D57C9"
+        },
+        {
+          "rva": 874678,
+          "text": "mov     rcx, [rsp+0F8h+SRWLock]; SRWLock"
+        },
+        {
+          "rva": 874683,
+          "text": "call    cs:ReleaseSRWLockExclusive"
+        },
+        {
+          "rva": 874689,
+          "text": "lea     rcx, [rsp+0F8h+var_58]"
+        },
+        {
+          "rva": 874697,
+          "text": "call    sub_1801CB550"
+        },
+        {
+          "rva": 874702,
+          "text": "mov     rcx, [rsp+0F8h+var_48]"
+        },
+        {
+          "rva": 874710,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 874713,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 874718,
+          "text": "nop"
+        },
+        {
+          "rva": 874719,
+          "text": "add     rsp, 0B8h"
+        },
+        {
+          "rva": 874726,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 874727,
+          "text": "pop     rbp"
+        },
+        {
+          "rva": 874728,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 874729,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 874730,
+          "text": "pop     r12"
+        },
+        {
+          "rva": 874732,
+          "text": "pop     r13"
+        },
+        {
+          "rva": 874734,
+          "text": "pop     r14"
+        },
+        {
+          "rva": 874736,
+          "text": "pop     r15"
+        },
+        {
+          "rva": 874738,
+          "text": "retn"
+        }
+      ]
+    },
+    {
+      "rva": 724688,
+      "end_rva": 724705,
+      "name": "sub_1800B0ED0",
+      "code_sha256": "c45687508eb7556f72b3bc5fc810eca176c8c1507a0704ed4199b9524297f590",
+      "pseudocode": "__int64 sub_1800B0ED0()\n{\n  return _guard_dispatch_icall_fptr();\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 724129,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 788966,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 815881,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 816020,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 837647,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 873480,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 880953,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1010888,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1080872,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1089788,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1143189,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 1269638,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 3587960,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 724688,
+          "text": "mov     rax, [rcx]"
+        },
+        {
+          "rva": 724691,
+          "text": "mov     rax, [rax+8]"
+        },
+        {
+          "rva": 724695,
+          "text": "mov     r10, cs:__guard_dispatch_icall_fptr"
+        },
+        {
+          "rva": 724702,
+          "text": "jmp     r10"
+        }
+      ]
+    },
+    {
+      "rva": 878168,
+      "end_rva": 878402,
+      "name": "sub_1800D6658",
+      "code_sha256": "03e456a1e1df579c505b0ab6a478617a1f95028168607a04fcbf745fc578457e",
+      "pseudocode": "__int128 *__fastcall sub_1800D6658(__int128 *a1, __int128 *a2, __int64 a3, _QWORD *a4)\n{\n  int v6; // edx\n  int v7; // r8d\n  int v8; // r9d\n  _BYTE v10[32]; // [rsp+50h] [rbp-68h] BYREF\n  _BYTE v11[8]; // [rsp+70h] [rbp-48h] BYREF\n\n  sub_1801CB410(a1, a3, sub_1800D6750, sub_18001D450);\n  *((_QWORD *)a1 + 4) = *a4;\n  *a4 = 0;\n  sub_1800D67DA((_DWORD)a1 + 40, v6, v7, v8);\n  if ( !*((_QWORD *)a1 + 4) )\n  {\n    sub_1801C9C70(v10, \"BindState\", \"..\\\\..\\\\base\\\\functional\\\\bind_internal.h\", 1201);\n    sub_1801CF0D0(v11, \"!IsNull(functor_)\", v10);\n    sub_1801CF280(v11);\n  }\n  return a1;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 869972,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 878168,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 878169,
+          "text": "push    rdi"
+        },
+        {
+          "rva": 878170,
+          "text": "push    rbx"
+        },
+        {
+          "rva": 878171,
+          "text": "sub     rsp, 0A0h"
+        },
+        {
+          "rva": 878178,
+          "text": "movaps  [rsp+0B8h+var_28], xmm7"
+        },
+        {
+          "rva": 878186,
+          "text": "movaps  [rsp+0B8h+var_38], xmm6"
+        },
+        {
+          "rva": 878194,
+          "text": "mov     rdi, r9"
+        },
+        {
+          "rva": 878197,
+          "text": "mov     rdx, r8"
+        },
+        {
+          "rva": 878200,
+          "text": "mov     rsi, rcx"
+        },
+        {
+          "rva": 878203,
+          "text": "movaps  xmm6, [rsp+0B8h+arg_20]"
+        },
+        {
+          "rva": 878211,
+          "text": "movaps  xmm7, [rsp+0B8h+arg_30]"
+        },
+        {
+          "rva": 878219,
+          "text": "mov     rax, cs:__security_cookie"
+        },
+        {
+          "rva": 878226,
+          "text": "xor     rax, rsp"
+        },
+        {
+          "rva": 878229,
+          "text": "mov     [rsp+0B8h+var_40], rax"
+        },
+        {
+          "rva": 878234,
+          "text": "lea     r8, sub_1800D6750"
+        },
+        {
+          "rva": 878241,
+          "text": "lea     r9, sub_18001D450"
+        },
+        {
+          "rva": 878248,
+          "text": "call    sub_1801CB410"
+        },
+        {
+          "rva": 878253,
+          "text": "mov     rax, [rdi]"
+        },
+        {
+          "rva": 878256,
+          "text": "mov     [rsi+20h], rax"
+        },
+        {
+          "rva": 878260,
+          "text": "mov     qword ptr [rdi], 0"
+        },
+        {
+          "rva": 878267,
+          "text": "lea     rcx, [rsi+28h]"
+        },
+        {
+          "rva": 878271,
+          "text": "movups  [rsp+0B8h+var_80], xmm7"
+        },
+        {
+          "rva": 878276,
+          "text": "movups  [rsp+0B8h+var_90], xmm6"
+        },
+        {
+          "rva": 878281,
+          "text": "call    sub_1800D67DA"
+        },
+        {
+          "rva": 878286,
+          "text": "cmp     qword ptr [rsi+20h], 0"
+        },
+        {
+          "rva": 878291,
+          "text": "jz      short loc_1800D6700"
+        },
+        {
+          "rva": 878293,
+          "text": "mov     rcx, [rsp+0B8h+var_40]"
+        },
+        {
+          "rva": 878298,
+          "text": "xor     rcx, rsp; StackCookie"
+        },
+        {
+          "rva": 878301,
+          "text": "call    __security_check_cookie"
+        },
+        {
+          "rva": 878306,
+          "text": "mov     rax, rsi"
+        },
+        {
+          "rva": 878309,
+          "text": "movaps  xmm6, [rsp+0B8h+var_38]"
+        },
+        {
+          "rva": 878317,
+          "text": "movaps  xmm7, [rsp+0B8h+var_28]"
+        },
+        {
+          "rva": 878325,
+          "text": "add     rsp, 0A0h"
+        },
+        {
+          "rva": 878332,
+          "text": "pop     rbx"
+        },
+        {
+          "rva": 878333,
+          "text": "pop     rdi"
+        },
+        {
+          "rva": 878334,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 878335,
+          "text": "retn"
+        },
+        {
+          "rva": 878336,
+          "text": "lea     rdx, aBindstate; \"BindState\""
+        },
+        {
+          "rva": 878343,
+          "text": "lea     r8, aBaseFunctional; \"..\\\\..\\\\base\\\\functional\\\\bind_internal\"..."
+        },
+        {
+          "rva": 878350,
+          "text": "lea     rdi, [rsp+0B8h+var_68]"
+        },
+        {
+          "rva": 878355,
+          "text": "mov     rcx, rdi"
+        },
+        {
+          "rva": 878358,
+          "text": "mov     r9d, 4B1h"
+        },
+        {
+          "rva": 878364,
+          "text": "call    sub_1801C9C70"
+        },
+        {
+          "rva": 878369,
+          "text": "lea     rdx, aIsnullFunctor; \"!IsNull(functor_)\""
+        },
+        {
+          "rva": 878376,
+          "text": "lea     rbx, [rsp+0B8h+var_48]"
+        },
+        {
+          "rva": 878381,
+          "text": "mov     rcx, rbx"
+        },
+        {
+          "rva": 878384,
+          "text": "mov     r8, rdi"
+        },
+        {
+          "rva": 878387,
+          "text": "call    sub_1801CF0D0"
+        },
+        {
+          "rva": 878392,
+          "text": "mov     rcx, rbx"
+        },
+        {
+          "rva": 878395,
+          "text": "call    sub_1801CF280"
+        },
+        {
+          "rva": 878400,
+          "text": "jmp     short loc_1800D66D5"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Pseudocode is inferred from machine code; check types and indirect targets against original bytes.",
+    "Selected functions only, not full-program semantic completion."
+  ]
+}

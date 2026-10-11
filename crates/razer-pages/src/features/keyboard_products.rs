@@ -1,5 +1,6 @@
 //! Native drafts for current keyboard and keypad product sources.
 //! Specifications are statically extracted; no vendor JavaScript is executed.
+use gpui_kit::base::ElementExt as _;
 use gpui_kit::component::{
     ActiveTheme, Disableable, Selectable, StyledExt,
     button::Button,
@@ -34,6 +35,11 @@ pub use polling::KeyboardPollingConnection;
 pub use power::{KeyboardIndicatorLedObservation, KeyboardIndicatorLedRequested};
 #[path = "keyboard_analog_gamepad.rs"]
 mod analog_gamepad;
+#[path = "keyboard_floating_controller.rs"]
+mod floating_controller;
+#[path = "keyboard_source_artwork.rs"]
+mod source_artwork;
+pub use source_artwork::SourceArtworkObservation;
 #[path = "keyboard_properties.rs"]
 mod properties;
 pub use analog_gamepad::KeyboardGamepadTesterObservation;
@@ -54,6 +60,8 @@ pub struct KeyboardProductSpec {
     source_mod_tap: bool,
     #[serde(default)]
     source_keyboard_top_padding_percent: f32,
+    #[serde(default)]
+    source_keyboard_top_padding_px: f32,
     name: String,
     config: Value,
     pages: Vec<String>,
@@ -88,13 +96,6 @@ impl KeyboardProductSpec {
         ) {
             for (key, value) in defaults {
                 profile.entry(key.clone()).or_insert_with(|| value.clone());
-            }
-        }
-        if self.product_id == 691 {
-            if let Some(profile) = profile.as_object_mut() {
-                profile
-                    .entry("oledLowBatteryWarningDisplay")
-                    .or_insert_with(|| json!({"enabled":true,"value":20}));
             }
         }
         profile
@@ -154,6 +155,29 @@ pub struct KeyboardProductWorkspace {
     /// Audited Analog Gamepad callers keep the drawer independent of the mapping popup.
     button_drawer_open: bool,
     analog_gamepad: analog_gamepad::State,
+    source_artwork: source_artwork::ArtworkState,
+}
+
+#[derive(IntoElement)]
+struct SourceBaseArtwork {
+    observation: SourceArtworkObservation,
+    frame_width: f32,
+}
+impl RenderOnce for SourceBaseArtwork {
+    fn render(self, window: &mut Window, _: &mut App) -> impl IntoElement {
+        source_artwork::base_image_for_scale(self.observation, window.scale_factor())
+            .map(|artwork| {
+                let [width, height] = artwork.css_size;
+                img(artwork.asset)
+                    .absolute()
+                    .left(surface::css((self.frame_width - width) / 2.))
+                    .top_0()
+                    .w(surface::css(width))
+                    .h(surface::css(height))
+                    .into_any_element()
+            })
+            .unwrap_or_else(|| div().into_any_element())
+    }
 }
 impl EventEmitter<KeyboardProductChanged> for KeyboardProductWorkspace {}
 impl KeyboardProductWorkspace {
@@ -185,6 +209,7 @@ impl KeyboardProductWorkspace {
             power_indicator: power::IndicatorState::default(),
             button_drawer_open: false,
             analog_gamepad: analog_gamepad::State::default(),
+            source_artwork: source_artwork::ArtworkState::default(),
             // Keep this gated by the independently traced mounted caller,
             // rather than the presence of an unused shared source component.
             properties_icon: properties::supported(pid).then(|| {
@@ -234,6 +259,8 @@ impl KeyboardProductWorkspace {
             self.leave_snap_tap(window, cx);
             self.dismiss_calibration(window, cx);
             self.clear_actuation_selection();
+            self.clear_analog_mapping();
+            self.analog_gamepad.floating.unmount();
             self.page = key.into();
             if key == "TAB_POWER" {
                 self.restart_indicator_animation();
@@ -241,6 +268,29 @@ impl KeyboardProductWorkspace {
             self.scroll.set_offset(point(px(0.), px(0.)));
             cx.notify();
         }
+    }
+
+    pub fn observe_source_artwork(
+        &mut self,
+        observation: SourceArtworkObservation,
+        cx: &mut Context<Self>,
+    ) {
+        if observation.product_id != self.spec.product_id {
+            return;
+        }
+        if self.analog_gamepad.layout != Some(observation.layout_id) {
+            self.analog_gamepad.floating.key_bounds.borrow_mut().clear();
+        }
+        self.analog_gamepad.layout = Some(observation.layout_id);
+        self.source_artwork.observe(observation);
+        cx.notify();
+    }
+    fn keyboard_shapes(&self) -> &'static [razer_assets::KeyboardKey] {
+        self.source_artwork
+            .observation()
+            .and_then(source_artwork::geometry)
+            .map(|geometry| geometry.keys)
+            .unwrap_or(&self.spec.shapes)
     }
 
     pub fn set_factory_default_profile(
@@ -256,12 +306,16 @@ impl KeyboardProductWorkspace {
         if factory_default_profile {
             self.dismiss_calibration(window, cx);
             self.clear_actuation_selection();
+            self.clear_analog_mapping();
         }
         cx.notify();
     }
     pub fn snapshot(&self) -> Value {
         let mut snapshot = self.draft.clone();
         self.snap_snapshot(&mut snapshot);
+        if self.spec.analog_gamepad_layout() {
+            self.analog_mapping_snapshot(&mut snapshot);
+        }
         snapshot
     }
     pub fn restore(&mut self, value: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
@@ -280,6 +334,8 @@ impl KeyboardProductWorkspace {
         }
         self.selected_key = None;
         self.hovered_key = None;
+        self.analog_gamepad.floating.cancel_pointer();
+        self.restore_analog_mapping(cx);
         self.restore_snap_tap(window, cx);
         self.clear_actuation_selection();
         self.syncing = true;
@@ -805,17 +861,37 @@ impl KeyboardProductWorkspace {
         .into_any_element()
     }
     fn keyboard_image(&self, interactive: bool, cx: &Context<Self>) -> AnyElement {
-        let [width, height] = self.spec.viewbox;
-        let [image_width, image_height] = self.spec.image_size;
+        let observation = self.source_artwork.observation();
+        let geometry = observation.and_then(source_artwork::geometry);
+        let [width, height] = geometry
+            .map(|geometry| geometry.viewbox)
+            .unwrap_or(self.spec.viewbox);
+        let artwork = observation.and_then(source_artwork::base_image);
+        let [image_width, image_height] = artwork
+            .map(|image| image.css_size)
+            .unwrap_or(self.spec.image_size);
+        let image = artwork.map(|image| image.asset).or_else(|| {
+            (!source_artwork::has_source(self.spec.product_id) || observation.is_none())
+                .then_some(self.spec.image.as_deref())
+                .flatten()
+        });
+        let keyboard_bounds = self.analog_gamepad.floating.keyboard_bounds.clone();
+        let config_bounds = self.analog_gamepad.floating.config_bounds.clone();
         let mut keyboard = div()
             .relative()
             .w(surface::css(width))
             .h(surface::css(height))
             .mx_auto()
+            .on_prepaint(move |bounds, _, _| keyboard_bounds.set(bounds))
             .flex_shrink_0();
-        if let Some(image) = &self.spec.image {
+        if let Some(observation) = observation.filter(|_| geometry.is_some()) {
+            keyboard = keyboard.child(SourceBaseArtwork {
+                observation,
+                frame_width: width,
+            });
+        } else if let Some(image) = image {
             keyboard = keyboard.child(
-                img(SharedString::from(image.clone()))
+                img(SharedString::from(image.to_owned()))
                     .absolute()
                     .left(surface::css((width - image_width) / 2.))
                     .top_0()
@@ -823,8 +899,20 @@ impl KeyboardProductWorkspace {
                     .h(surface::css(image_height)),
             );
         }
+        if let Some(wrist) = self.source_artwork.wrist() {
+            let [x, y, w, h] = wrist.bounds;
+            keyboard = keyboard.child(
+                img(wrist.asset)
+                    .absolute()
+                    .left(surface::css(x))
+                    .top(surface::css(y + wrist.transform_y))
+                    .w(surface::css(w))
+                    .h(surface::css(h))
+                    .when(!wrist.visible, |image| image.invisible()),
+            );
+        }
         if interactive {
-            keyboard = keyboard.children(self.spec.shapes.iter().map(|key| {
+            keyboard = keyboard.children(self.keyboard_shapes().iter().map(|key| {
                 let id = key.id.clone();
                 let hover_id = id.clone();
                 let selected = if self.page == "ACTUATION" {
@@ -836,6 +924,8 @@ impl KeyboardProductWorkspace {
                 };
                 let hovered = self.hovered_key.as_ref() == Some(&id);
                 let [x, y, w, h] = key.bounds;
+                let drop_bounds = self.analog_gamepad.floating.key_bounds.clone();
+                let drop_region = format!("{id}-{x}-{y}");
                 let mapped = self
                     .draft
                     .pointer(&self.mapping_path())
@@ -855,6 +945,11 @@ impl KeyboardProductWorkspace {
                     .top(surface::css(y))
                     .w(surface::css(w))
                     .h(surface::css(h))
+                    .on_prepaint(move |bounds, _, _| {
+                        drop_bounds
+                            .borrow_mut()
+                            .insert(drop_region.clone(), (key, bounds));
+                    })
                     .child(
                         crate::keyboard_geometry::KeyRegion::new(
                             key,
@@ -863,11 +958,11 @@ impl KeyboardProductWorkspace {
                                     // Customize callers do not pass keyHoverAndRemappedColor;
                                     // the special black-remap class is therefore absent.
                                     if self.hypershift {
-                                        rgba(0xfd8611b3)
+                                        Hsla::from(rgba(0xfd8611b3))
                                     } else if selected || hovered {
                                         cx.theme().transparent
                                     } else {
-                                        rgba(0x44d62c66)
+                                        Hsla::from(rgba(0x44d62c66))
                                     }
                                 } else {
                                     cx.theme().primary.opacity(0.4)
@@ -885,6 +980,11 @@ impl KeyboardProductWorkspace {
                             cx.listener(move |this, _, window, cx| {
                                 if this.page == "ACTUATION" {
                                     this.select_actuation_key(&id, window, cx);
+                                } else if this.spec.analog_gamepad_layout() {
+                                    this.analog_mapping_next(
+                                        analog_gamepad::MappingNext::Key(id.clone(), false),
+                                        cx,
+                                    );
                                 } else {
                                     this.selected_key = Some(id.clone());
                                 }
@@ -908,6 +1008,7 @@ impl KeyboardProductWorkspace {
             }));
         }
         surface::config_wrapper()
+            .on_prepaint(move |bounds, _, _| config_bounds.set(bounds))
             // Independently mounted analog_gamepad callers share this final CSS.
             .when(
                 self.spec.analog_gamepad_layout() && self.page == "TAB_CUSTOMIZE",
@@ -926,6 +1027,9 @@ impl KeyboardProductWorkspace {
                         .pt(relative(
                             self.spec.source_keyboard_top_padding_percent / 100.,
                         ))
+                        .when(self.spec.source_keyboard_top_padding_px != 0., |block| {
+                            block.pt(surface::css(self.spec.source_keyboard_top_padding_px))
+                        })
                         .child(keyboard)
                         .into_any_element()
                 } else {
@@ -956,17 +1060,26 @@ impl KeyboardProductWorkspace {
                         .w(surface::css(38.))
                         .h(surface::css(27.))
                         .border_1()
-                        .border_color(rgb(0x5d5d5d))
+                        .border_color(if self.analog_gamepad.floating.open {
+                            rgb(0x44d62c)
+                        } else {
+                            rgb(0x5d5d5d)
+                        })
                         .rounded(surface::css(14.))
                         .bg(rgb(0x111111))
                         .flex()
                         .items_center()
                         .justify_center()
                         .child(
-                            img("synapse/keyboard-679-controller-grey.svg").size(surface::css(18.)),
+                            img(if self.analog_gamepad.floating.open {
+                                "synapse/keyboard-floating-controller-fill-green-icon.68e5616a.svg"
+                            } else {
+                                "synapse/keyboard-floating-controller-fill-grey-icon.a9ec3fff.svg"
+                            })
+                            .size(surface::css(18.)),
                         )
                         .on_click(cx.listener(|this, _, _, cx| {
-                            this.selected_key = None;
+                            this.analog_gamepad.floating.toggle();
                             cx.notify();
                         })),
                 )
@@ -988,14 +1101,14 @@ impl KeyboardProductWorkspace {
                         .justify_center()
                         .child(
                             img(if self.button_drawer_open {
-                                "synapse/keyboard-679-sidepanel-active.svg"
+                                "synapse/icon_sidepanel_a.svg"
                             } else {
-                                "synapse/keyboard-679-sidepanel.svg"
+                                "synapse/icon_sidepanel.svg"
                             })
                             .size(surface::css(18.)),
                         )
                         .on_click(cx.listener(|this, _, _, cx| {
-                            this.button_drawer_open = !this.button_drawer_open;
+                            this.analog_mapping_next(analog_gamepad::MappingNext::Drawer, cx);
                             cx.notify();
                         })),
                 )
@@ -1057,6 +1170,10 @@ impl KeyboardProductWorkspace {
                             .child(t("HYPERSHIFT")),
                     )
                     .on_click(cx.listener(|this, _, _, cx| {
+                        if this.spec.analog_gamepad_layout() {
+                            this.analog_mapping_next(analog_gamepad::MappingNext::Hyper, cx);
+                            return;
+                        }
                         this.hypershift = !this.hypershift;
                         this.selected_key = None;
                         this.hovered_key = None;
@@ -1095,66 +1212,51 @@ impl KeyboardProductWorkspace {
         }
         panel = panel.child(self.keyboard_image(true, cx));
         panel = panel.child(self.hypershift_row(cx));
-        if self.spec.analog_gamepad_layout() && self.button_drawer_open {
+        // All independently traced analog Customize roots place extra inputs
+        // in their source special popovers. Missing SVG shapes do not mount an
+        // additional row of buttons beneath the keyboard.
+        if !self.spec.analog_gamepad_layout() {
             panel = panel.child(
-                v_flex()
-                    .w(surface::css(250.))
-                    .max_h(surface::css(340.))
-                    .id("keyboard-679-button-drawer")
-                    .overflow_y_scroll()
-                    .children(self.spec.keys.iter().filter_map(|key| {
-                        let id = key["inputID"].as_str()?.to_owned();
-                        let name = key["counter"]
-                            .as_str()
-                            .or_else(|| key["defaultValue"].as_str())
-                            .unwrap_or(&id)
-                            .to_owned();
-                        Some(
-                            Button::new(SharedString::from(format!("keyboard-679-drawer-{id}")))
-                                .label(name)
-                                .outline()
-                                .disabled(!key["isEnabled"].as_bool().unwrap_or(true))
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.selected_key = Some(id.clone());
-                                    cx.notify();
-                                })),
-                        )
-                    })),
+                h_flex().gap_2().flex_wrap().children(
+                    self.spec
+                        .keys
+                        .iter()
+                        .filter(|key| {
+                            !self
+                                .spec
+                                .shapes
+                                .iter()
+                                .any(|shape| key["inputID"].as_str() == Some(shape.id.as_str()))
+                        })
+                        .filter_map(|key| {
+                            let id = key["inputID"].as_str()?.to_owned();
+                            let label = key["counter"]
+                                .as_str()
+                                .or_else(|| key["defaultValue"].as_str())
+                                .unwrap_or(&id)
+                                .to_owned();
+                            Some(
+                                Button::new(SharedString::from(format!("keyboard-key-{id}")))
+                                    .label(label)
+                                    .outline()
+                                    .disabled(!key["isEnabled"].as_bool().unwrap_or(true))
+                                    .selected(self.selected_key.as_ref() == Some(&id))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        if this.spec.analog_gamepad_layout() {
+                                            this.analog_mapping_next(
+                                                analog_gamepad::MappingNext::Key(id.clone(), false),
+                                                cx,
+                                            );
+                                        } else {
+                                            this.selected_key = Some(id.clone());
+                                        }
+                                        cx.notify();
+                                    })),
+                            )
+                        }),
+                ),
             );
         }
-        panel = panel.child(
-            h_flex().gap_2().flex_wrap().children(
-                self.spec
-                    .keys
-                    .iter()
-                    .filter(|key| {
-                        !self
-                            .spec
-                            .shapes
-                            .iter()
-                            .any(|shape| key["inputID"].as_str() == Some(shape.id.as_str()))
-                    })
-                    .filter_map(|key| {
-                        let id = key["inputID"].as_str()?.to_owned();
-                        let label = key["counter"]
-                            .as_str()
-                            .or_else(|| key["defaultValue"].as_str())
-                            .unwrap_or(&id)
-                            .to_owned();
-                        Some(
-                            Button::new(SharedString::from(format!("keyboard-key-{id}")))
-                                .label(label)
-                                .outline()
-                                .disabled(!key["isEnabled"].as_bool().unwrap_or(true))
-                                .selected(self.selected_key.as_ref() == Some(&id))
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.selected_key = Some(id.clone());
-                                    cx.notify();
-                                })),
-                        )
-                    }),
-            ),
-        );
         // These source callers open the mounted side mapping blade from OM.
         // The inline generic editor below belongs to older products and must
         // never be reachable for the audited analog_gamepad renderer.
@@ -1439,7 +1541,7 @@ impl KeyboardProductWorkspace {
         let polling = self.polling_panel(cx);
         let polling_visible = polling.is_some();
         if self.spec.analog_gamepad_layout() {
-            return page
+            let page = page
                 .child(
                     surface::page_columns()
                         .gap_0()
@@ -1459,6 +1561,41 @@ impl KeyboardProductWorkspace {
                                 .child(self.huntsman_gamepad_tester(cx)),
                         )),
                 )
+                .into_any_element();
+            return div()
+                .relative()
+                .w_full()
+                .child(
+                    h_flex()
+                        .items_start()
+                        .children(
+                            self.button_drawer_open
+                                .then(|| self.analog_mapping_drawer(cx)),
+                        )
+                        .child(div().flex_1().min_w_0().child(page)),
+                )
+                .children(self.analog_mapping_popup(cx).map(|popup| {
+                    div()
+                        .absolute()
+                        .top(surface::css(90.))
+                        .left(surface::css(if self.button_drawer_open {
+                            230.
+                        } else {
+                            20.
+                        }))
+                        .child(popup)
+                }))
+                .children(self.analog_mapping_confirmation(cx).map(|alert| {
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .bg(rgba(0x00000099))
+                        .flex()
+                        .justify_center()
+                        .items_center()
+                        .child(alert)
+                }))
+                .child(self.floating_controller_layer(cx))
                 .into_any_element();
         }
         if gaming_mode || snap_visible || self.properties_icon.is_some() || polling_visible {

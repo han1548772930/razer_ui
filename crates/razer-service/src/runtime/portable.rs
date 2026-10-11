@@ -25,6 +25,7 @@ pub(super) struct PortableRuntime {
     audio_router: crate::audio_router::AudioRouter,
     foreground_monitor: razer_platform::foreground_monitor::ForegroundMonitor,
     global_shortcuts: razer_platform::global_shortcuts::GlobalShortcuts,
+    controller_calibration: super::controller_calibration::Controller,
 }
 
 impl PortableRuntime {
@@ -61,6 +62,12 @@ impl PortableRuntime {
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
+            ServiceRequest::ControllerTriggerCalibrationStart { operation_id, node, product_id, part_id } =>
+                self.controller_calibration.start(operation_id, node, product_id, part_id),
+            ServiceRequest::ControllerTriggerCalibrationPoll { operation_id } =>
+                self.controller_calibration.poll(&operation_id),
+            ServiceRequest::ControllerTriggerCalibrationCancel { operation_id } =>
+                self.controller_calibration.cancel(&operation_id),
             ServiceRequest::RegisterShortcut { vkey_code, modifiers, argument } => {
                 self.global_shortcuts.register(razer_platform::global_shortcuts::Shortcut {
                     virtual_key:vkey_code, modifiers, argument,

@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "method": "IDA autoanalysis and Hex-Rays static decompilation; no debugger or target execution",
+  "input_sha256": "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a",
+  "input_bytes": 3945672,
+  "ida_version": "9.1",
+  "image_base": 6442450944,
+  "hexrays_available": true,
+  "functions": [
+    {
+      "rva": 4096,
+      "end_rva": 4192,
+      "name": "sub_180001000",
+      "code_sha256": "93a7fa1fcd636497694b3fe3a84af1f95accfe948105f5e0d8f6187e232b509d",
+      "pseudocode": "void *sub_180001000()\n{\n  if ( dword_180394738 > *(_DWORD *)(*((_QWORD *)NtCurrentTeb()->ThreadLocalStoragePointer + (unsigned int)TlsIndex)\n                                   + 96LL) )\n  {\n    sub_1802A121C(&dword_180394738);\n    if ( dword_180394738 == -1 )\n    {\n      sub_180001060(&unk_1803945F8);\n      sub_1802A12D4(&dword_180394738);\n    }\n  }\n  return &unk_1803945F8;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 123988,
+          "type": 19,
+          "is_code": true
+        },
+        {
+          "from_rva": 164,
+          "type": 1,
+          "is_code": false
+        },
+        {
+          "from_rva": 396,
+          "type": 1,
+          "is_code": false
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 4096,
+          "text": "sub     rsp, 28h"
+        },
+        {
+          "rva": 4100,
+          "text": "mov     eax, cs:dword_180394738"
+        },
+        {
+          "rva": 4106,
+          "text": "mov     ecx, cs:TlsIndex"
+        },
+        {
+          "rva": 4112,
+          "text": "mov     rdx, gs:58h"
+        },
+        {
+          "rva": 4121,
+          "text": "mov     rcx, [rdx+rcx*8]"
+        },
+        {
+          "rva": 4125,
+          "text": "cmp     eax, [rcx+60h]"
+        },
+        {
+          "rva": 4131,
+          "text": "jg      short loc_180001031"
+        },
+        {
+          "rva": 4133,
+          "text": "lea     rax, unk_1803945F8"
+        },
+        {
+          "rva": 4140,
+          "text": "add     rsp, 28h"
+        },
+        {
+          "rva": 4144,
+          "text": "retn"
+        },
+        {
+          "rva": 4145,
+          "text": "lea     rcx, dword_180394738"
+        },
+        {
+          "rva": 4152,
+          "text": "call    sub_1802A121C"
+        },
+        {
+          "rva": 4157,
+          "text": "cmp     cs:dword_180394738, 0FFFFFFFFh"
+        },
+        {
+          "rva": 4164,
+          "text": "jnz     short loc_180001025"
+        },
+        {
+          "rva": 4166,
+          "text": "lea     rcx, unk_1803945F8"
+        },
+        {
+          "rva": 4173,
+          "text": "call    sub_180001060"
+        },
+        {
+          "rva": 4178,
+          "text": "lea     rcx, dword_180394738"
+        },
+        {
+          "rva": 4185,
+          "text": "call    sub_1802A12D4"
+        },
+        {
+          "rva": 4190,
+          "text": "jmp     short loc_180001025"
+        }
+      ]
+    },
+    {
+      "rva": 4192,
+      "end_rva": 4432,
+      "name": "sub_180001060",
+      "code_sha256": "c8e241ef28459f5d547cfddf4632911e20e2a6973a9e3f80e363e2bda175235c",
+      "pseudocode": "__int64 __fastcall sub_180001060(__int64 a1)\n{\n  *(_QWORD *)a1 = off_1802DF010;\n  *(_QWORD *)(a1 + 8) = off_1802DF430;\n  *(_QWORD *)(a1 + 16) = off_1802DF460;\n  *(_QWORD *)(a1 + 24) = off_1802DF490;\n  *(_QWORD *)(a1 + 32) = off_1802DF4B0;\n  *(_QWORD *)(a1 + 40) = off_1802DF4D0;\n  *(_OWORD *)(a1 + 48) = 0;\n  *(_DWORD *)(a1 + 64) = 0;\n  sub_1801A9F90(a1 + 72);\n  *(_BYTE *)(a1 + 80) = 0;\n  *(_OWORD *)(a1 + 88) = 0;\n  *(_BYTE *)(a1 + 104) = 0;\n  *(_OWORD *)(a1 + 112) = 0;\n  *(_OWORD *)(a1 + 128) = 0;\n  *(_QWORD *)(a1 + 144) = 0;\n  *(_OWORD *)(a1 + 152) = 0;\n  *(_BYTE *)(a1 + 168) = 0;\n  *(_OWORD *)(a1 + 176) = 0;\n  *(_OWORD *)(a1 + 192) = 0;\n  *(_BYTE *)(a1 + 208) = 0;\n  *(_OWORD *)(a1 + 216) = 0;\n  *(_QWORD *)(a1 + 232) = 0;\n  *(_BYTE *)(a1 + 240) = 0;\n  *(_OWORD *)(a1 + 248) = 0;\n  *(_OWORD *)(a1 + 272) = 0;\n  *(_QWORD *)(a1 + 264) = a1 + 272;\n  *(_OWORD *)(a1 + 288) = 0;\n  *(_OWORD *)(a1 + 304) = 0;\n  return a1;\n}\n",
+      "decompiler_error": null,
+      "incoming_references": [
+        {
+          "from_rva": 4173,
+          "type": 17,
+          "is_code": true
+        }
+      ],
+      "instructions": [
+        {
+          "rva": 4192,
+          "text": "push    rsi"
+        },
+        {
+          "rva": 4193,
+          "text": "sub     rsp, 30h"
+        },
+        {
+          "rva": 4197,
+          "text": "movaps  [rsp+38h+var_18], xmm6"
+        },
+        {
+          "rva": 4202,
+          "text": "mov     rsi, rcx"
+        },
+        {
+          "rva": 4205,
+          "text": "lea     rax, off_1802DF010"
+        },
+        {
+          "rva": 4212,
+          "text": "mov     [rcx], rax"
+        },
+        {
+          "rva": 4215,
+          "text": "lea     rax, off_1802DF430"
+        },
+        {
+          "rva": 4222,
+          "text": "mov     [rcx+8], rax"
+        },
+        {
+          "rva": 4226,
+          "text": "lea     rax, off_1802DF460"
+        },
+        {
+          "rva": 4233,
+          "text": "mov     [rcx+10h], rax"
+        },
+        {
+          "rva": 4237,
+          "text": "lea     rax, off_1802DF490"
+        },
+        {
+          "rva": 4244,
+          "text": "mov     [rcx+18h], rax"
+        },
+        {
+          "rva": 4248,
+          "text": "lea     rax, off_1802DF4B0"
+        },
+        {
+          "rva": 4255,
+          "text": "mov     [rcx+20h], rax"
+        },
+        {
+          "rva": 4259,
+          "text": "lea     rax, off_1802DF4D0"
+        },
+        {
+          "rva": 4266,
+          "text": "mov     [rcx+28h], rax"
+        },
+        {
+          "rva": 4270,
+          "text": "add     rcx, 48h ; 'H'"
+        },
+        {
+          "rva": 4274,
+          "text": "xorps   xmm6, xmm6"
+        },
+        {
+          "rva": 4277,
+          "text": "movups  xmmword ptr [rsi+30h], xmm6"
+        },
+        {
+          "rva": 4281,
+          "text": "mov     dword ptr [rsi+40h], 0"
+        },
+        {
+          "rva": 4288,
+          "text": "call    sub_1801A9F90"
+        },
+        {
+          "rva": 4293,
+          "text": "xor     eax, eax"
+        },
+        {
+          "rva": 4295,
+          "text": "mov     [rsi+50h], al"
+        },
+        {
+          "rva": 4298,
+          "text": "movups  xmmword ptr [rsi+58h], xmm6"
+        },
+        {
+          "rva": 4302,
+          "text": "mov     [rsi+68h], al"
+        },
+        {
+          "rva": 4305,
+          "text": "movups  xmmword ptr [rsi+70h], xmm6"
+        },
+        {
+          "rva": 4309,
+          "text": "movups  xmmword ptr [rsi+80h], xmm6"
+        },
+        {
+          "rva": 4316,
+          "text": "mov     [rsi+90h], rax"
+        },
+        {
+          "rva": 4323,
+          "text": "movups  xmmword ptr [rsi+98h], xmm6"
+        },
+        {
+          "rva": 4330,
+          "text": "mov     [rsi+0A8h], al"
+        },
+        {
+          "rva": 4336,
+          "text": "movups  xmmword ptr [rsi+0B0h], xmm6"
+        },
+        {
+          "rva": 4343,
+          "text": "movups  xmmword ptr [rsi+0C0h], xmm6"
+        },
+        {
+          "rva": 4350,
+          "text": "mov     [rsi+0D0h], al"
+        },
+        {
+          "rva": 4356,
+          "text": "movups  xmmword ptr [rsi+0D8h], xmm6"
+        },
+        {
+          "rva": 4363,
+          "text": "mov     [rsi+0E8h], rax"
+        },
+        {
+          "rva": 4370,
+          "text": "mov     [rsi+0F0h], al"
+        },
+        {
+          "rva": 4376,
+          "text": "movups  xmmword ptr [rsi+0F8h], xmm6"
+        },
+        {
+          "rva": 4383,
+          "text": "lea     rax, [rsi+110h]"
+        },
+        {
+          "rva": 4390,
+          "text": "movups  xmmword ptr [rsi+110h], xmm6"
+        },
+        {
+          "rva": 4397,
+          "text": "mov     [rsi+108h], rax"
+        },
+        {
+          "rva": 4404,
+          "text": "movups  xmmword ptr [rsi+120h], xmm6"
+        },
+        {
+          "rva": 4411,
+          "text": "movups  xmmword ptr [rsi+130h], xmm6"
+        },
+        {
+          "rva": 4418,
+          "text": "mov     rax, rsi"
+        },
+        {
+          "rva": 4421,
+          "text": "movaps  xmm6, [rsp+38h+var_18]"
+        },
+        {
+          "rva": 4426,
+          "text": "add     rsp, 30h"
+        },
+        {
+          "rva": 4430,
+          "text": "pop     rsi"
+        },
+        {
+          "rva": 4431,
+          "text": "retn"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Pseudocode is inferred from machine code; check types and indirect targets against original bytes.",
+    "Selected functions only, not full-program semantic completion."
+  ]
+}

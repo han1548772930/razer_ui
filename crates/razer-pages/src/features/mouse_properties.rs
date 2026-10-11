@@ -56,6 +56,7 @@ impl MouseProductWorkspace {
             surface::help_control("mouse-properties-help", t(&spec.tooltip)),
             cx,
         )
+        .when(self.spec.block_widget_columns(), |panel| panel.mb_0())
         .child(
             h_flex()
                 .items_center()

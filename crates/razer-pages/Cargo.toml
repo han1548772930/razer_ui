@@ -10,6 +10,7 @@ razer-i18n.workspace = true
 razer-device.workspace = true
 razer-state.workspace = true
 gpui-kit.workspace = true
+lyon_tessellation = "=1.0.22"
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true

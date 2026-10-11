@@ -1,0 +1,53 @@
+{
+  "vendor_code_executed": false,
+  "assets": [
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/twohandandmouse.5696dd01.svg",
+      "output": "assets/synapse/mouse-matcher-190/handmouse.svg",
+      "sha256": "6d580db333b16af17719cb0513b36962cfa751b789f56a70a9157aabb47670da",
+      "byte_identical": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/mini-synapse.c50547eb.svg",
+      "output": "assets/synapse/mouse-matcher-190/synapse.svg",
+      "sha256": "2ad6a0b07b78c54d0d91b425fd70ab64313a737aa74c72e4110805f4f40b7e6b",
+      "byte_identical": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/twomouse-completed.362f86de.svg",
+      "output": "assets/synapse/mouse-matcher-190/completed.svg",
+      "sha256": "88157964ce2d6e2345d84488cb82a94e35bbe455a706d1a6ae46cc7c693fa892",
+      "byte_identical": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/common-arrow-right-green.ce0a37e9.svg",
+      "output": "assets/synapse/mouse-matcher-190/arrow.svg",
+      "sha256": "42ba72caed88c2ae7df22c7e92bad8d5bf1cb1be31b305d9967a37bbd7410458",
+      "byte_identical": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/background_glow.43f70cb2.svg",
+      "output": "assets/synapse/mouse-matcher-190/glow.svg",
+      "sha256": "f823fb713910231a041b531361f50bf14fb327b0907cc552fab5508706c3e9bc",
+      "byte_identical": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_close.55fe41f1.svg",
+      "output": "assets/synapse/mouse-matcher-190/close.svg",
+      "sha256": "53b67d2c7d30aa84869391d651541e981b2f9ac508a2c0c04d37f5f4a8faef11",
+      "byte_identical": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/icon_more.fb688d78.svg",
+      "output": "assets/synapse/mouse-matcher-190/more.svg",
+      "sha256": "d776ed8cf536724b0ed9b4ad0f7339d42255c7e36739ca93cc121750dfcd753c",
+      "byte_identical": true
+    },
+    {
+      "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/media/warning.ad3f47f8.svg",
+      "output": "assets/synapse/mouse-matcher-190/warning.svg",
+      "sha256": "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+      "byte_identical": true
+    }
+  ]
+}

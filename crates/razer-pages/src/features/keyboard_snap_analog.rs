@@ -198,16 +198,16 @@ impl KeyboardProductWorkspace {
                             .items_center()
                             .justify_center()
                             .border_color(if recording || warning {
-                                color
+                                Hsla::from(color)
                             } else if pressed == 1 {
                                 Colors::accent()
                             } else if pressed == 2 {
-                                rgb(0x888888)
+                                Hsla::from(rgb(0x888888))
                             } else {
                                 Colors::border()
                             })
                             .text_color(if pressed > 0 && !recording {
-                                rgb(0)
+                                Hsla::from(rgb(0))
                             } else {
                                 Colors::text()
                             })
@@ -215,7 +215,7 @@ impl KeyboardProductWorkspace {
                                 row.bg(if pressed == 1 {
                                     Colors::accent()
                                 } else {
-                                    rgb(0x888888)
+                                    Hsla::from(rgb(0x888888))
                                 })
                             })
                             .child(text)
@@ -289,7 +289,7 @@ impl KeyboardProductWorkspace {
                                     .bg(if enabled && state.phase == Phase::Ready {
                                         Colors::accent()
                                     } else {
-                                        rgb(0x30961f)
+                                        Hsla::from(rgb(0x30961f))
                                     })
                                     .text_color(rgb(0))
                                     .text_size(surface::css(12.))

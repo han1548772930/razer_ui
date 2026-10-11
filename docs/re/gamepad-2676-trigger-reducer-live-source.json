@@ -1,0 +1,16 @@
+{
+  "product_id": 2676,
+  "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/2676/ui/static/js/main.5ee115d4.js",
+  "sha256": "624631c29708f83d15d2b8f754a965439eab38ba3ae8be951d1337154513f377",
+  "address_unit": "UTF-16 code units",
+  "initial_state": {
+    "offset": 6265926,
+    "end": 6266111,
+    "source": "{action:\"stop\",partId:0,step:0,stepDesc:0,isStepValid:!1,calibration:{leftThumbX:0,leftThumbY:0,rightThumbX:0,rightThumbY:0},actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[]}"
+  },
+  "reducer": {
+    "offset": 6286914,
+    "end": 6288348,
+    "source": "function(){let e=arguments.length>0&&void 0!==arguments[0]?arguments[0]:tn,t=arguments.length>1?arguments[1]:void 0;if(\"undefined\"===typeof e)return tn;switch(t.type){case Dt.MW_UPDATE_CONTROLLER_CALIBRATION_PROGRESS:return{...e,step:t.payload.step,stepDesc:t.payload.stepDesc,isStepValid:t.payload.isStepValid};case Dt.SET_THUMBSTICK_CALIBRATION:return{...e,calibration:{...e.calibration,...1===e.partId&&{leftThumbX:10*t.payload.x,leftThumbY:-10*t.payload.y},...2===e.partId&&{rightThumbX:10*t.payload.x,rightThumbY:-10*t.payload.y}}};case Dt.ON_SET_CONTROLLER_CALIBRATION:{var a;const n=Object.values(Dt.CONTROLLER_TRIGGERS_ENUM).includes(t.payload.partId);let i={...e,step:t.payload.action==Dt.CALIBRATION_EVENT.START?n?Dt.CALIBRATION_PROGRESS_STEP.Step_1_Trigger_Press:Dt.CALIBRATION_PROGRESS_STEP.Step_1_Right:t.payload.action==Dt.CALIBRATION_EVENT.STOP?Dt.CALIBRATION_PROGRESS_STEP.Step_None:e.step,action:t.payload.action,partId:t.payload.partId};const o={action:t.payload.action,partId:t.payload.partId},r=new qa(\"ON_SET_CONTROLLER_CALIBRATION\",void 0,o);null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:\"ON_SET_CONTROLLER_CALIBRATION\",timerTick:r.stateMachineEvent.timerTick,payload:o});return i=de(i,{timertick:r.stateMachineEvent.timerTick,actionType:r.stateMachineEvent.type,payload:r.stateMachineEvent.payload}),i}case Dt.MW_SET_CONTROLLER_CALIBRATION_TO_UI:return de(e,t.payload);default:return e}}"
+  }
+}

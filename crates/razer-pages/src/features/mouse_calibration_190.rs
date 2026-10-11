@@ -26,6 +26,7 @@ impl MouseProductWorkspace {
                 .child(t("LOW_POWER_MODE_WARN"))
         }));
         surface::page_columns()
+            .gap_0()
             .child(surface::page_column(saving))
             .child(surface::page_column(low_power))
             .into_any_element()

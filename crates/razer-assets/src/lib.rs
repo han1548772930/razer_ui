@@ -32,6 +32,22 @@ const GAMEPAD_CALIBRATION_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/gamepad-2636-calibration-embedded.rs");
 const GAMEPAD_CALIBRATION_CURRENT_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/gamepad-calibration-current-embedded.rs");
+const GAMEPAD_TRIGGER_SELECTION_ASSETS: &[(&str, &[u8])] =
+    include!("../../../assets/synapse/gamepad-trigger-selection-embedded.rs");
+const MAPPING_AI_ASSETS: &[(&str, &[u8])] = &[
+    (
+        "synapse/mapping-190-requires-synapse.svg",
+        include_bytes!("../../../assets/synapse/mapping-190-requires-synapse.svg"),
+    ),
+    (
+        "synapse/mapping-ai.svg",
+        include_bytes!("../../../assets/synapse/mapping-ai.svg"),
+    ),
+    (
+        "synapse/mapping-ai-active.svg",
+        include_bytes!("../../../assets/synapse/mapping-ai-active.svg"),
+    ),
+];
 const PROFILES_TRANSFER_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/profiles-transfer-embedded.rs");
 const MONITOR_INPUT_ASSETS: &[(&str, &[u8])] =
@@ -41,8 +57,12 @@ const STREAM_MIXER_ASSETS: &[(&str, &[u8])] =
 const SNAP_TAP_ASSETS: &[(&str, &[u8])] = include!("../../../assets/synapse/snap-tap-embedded.rs");
 const KEYBOARD_PROPERTIES_ASSETS: &[(&str, &[u8])] =
     include!("../../../assets/synapse/keyboard-properties-embedded.rs");
-const KEYBOARD_679_ASSETS: &[(&str, &[u8])] =
-    include!("../../../assets/synapse/keyboard-679-embedded.rs");
+const KEYBOARD_ANALOG_ASSETS: &[(&str, &[u8])] =
+    include!("../../../assets/synapse/keyboard-analog-embedded.rs");
+const KEYBOARD_FLOATING_CONTROLLER_ASSETS: &[(&str, &[u8])] =
+    include!("../../../assets/synapse/keyboard-floating-controller-embedded.rs");
+const KEYBOARD_SOURCE_ARTWORK_ASSETS: &[(&str, &[u8])] =
+    include!("../../../assets/synapse/keyboard679-current-embedded.rs");
 const KEYBOARD_MOD_TAP_ASSETS: &[(&str, &[u8])] = &[(
     "synapse/keyboard-688-mod-tap.svg",
     include_bytes!("../../../assets/synapse/keyboard-688-mod-tap.svg"),
@@ -134,12 +154,16 @@ impl AssetSource for SynapseAssets {
             .chain(GAMEPAD_DIALOG_ASSETS)
             .chain(GAMEPAD_CALIBRATION_ASSETS)
             .chain(GAMEPAD_CALIBRATION_CURRENT_ASSETS)
+            .chain(GAMEPAD_TRIGGER_SELECTION_ASSETS)
+            .chain(MAPPING_AI_ASSETS)
             .chain(PROFILES_TRANSFER_ASSETS)
             .chain(MONITOR_INPUT_ASSETS)
             .chain(STREAM_MIXER_ASSETS)
             .chain(SNAP_TAP_ASSETS)
             .chain(KEYBOARD_PROPERTIES_ASSETS)
-            .chain(KEYBOARD_679_ASSETS)
+            .chain(KEYBOARD_ANALOG_ASSETS)
+            .chain(KEYBOARD_FLOATING_CONTROLLER_ASSETS)
+            .chain(KEYBOARD_SOURCE_ARTWORK_ASSETS)
             .chain(KEYBOARD_MOD_TAP_ASSETS)
             .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
             .chain(KEYBOARD_ACTUATION_ASSETS)
@@ -177,12 +201,16 @@ impl AssetSource for SynapseAssets {
                 .chain(GAMEPAD_DIALOG_ASSETS)
                 .chain(GAMEPAD_CALIBRATION_ASSETS)
                 .chain(GAMEPAD_CALIBRATION_CURRENT_ASSETS)
+                .chain(GAMEPAD_TRIGGER_SELECTION_ASSETS)
+                .chain(MAPPING_AI_ASSETS)
                 .chain(PROFILES_TRANSFER_ASSETS)
                 .chain(MONITOR_INPUT_ASSETS)
                 .chain(STREAM_MIXER_ASSETS)
                 .chain(SNAP_TAP_ASSETS)
                 .chain(KEYBOARD_PROPERTIES_ASSETS)
-                .chain(KEYBOARD_679_ASSETS)
+                .chain(KEYBOARD_ANALOG_ASSETS)
+                .chain(KEYBOARD_FLOATING_CONTROLLER_ASSETS)
+                .chain(KEYBOARD_SOURCE_ARTWORK_ASSETS)
                 .chain(KEYBOARD_MOD_TAP_ASSETS)
                 .chain(KEYBOARD_GAME_CONTROLLER_ASSETS)
                 .chain(KEYBOARD_ACTUATION_ASSETS)

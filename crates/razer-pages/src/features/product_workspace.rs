@@ -645,6 +645,59 @@ impl ProductWorkspace {
         }
     }
 
+    pub fn trigger_calibration_generation(&self, cx: &App) -> Option<u64> {
+        match &self.body {
+            Body::Source(body) => body.read(cx).trigger_calibration_generation(cx),
+            _ => None,
+        }
+    }
+    pub fn trigger_calibration_focus_pending(&self, cx: &App) -> bool {
+        match &self.body {
+            Body::Source(body) => body.read(cx).trigger_calibration_focus_pending(cx),
+            _ => false,
+        }
+    }
+    pub fn observe_trigger_calibration(
+        &mut self,
+        observation: super::gamepad_products::TriggerCalibrationObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.observe_trigger_calibration(observation, window, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn observe_trigger_calibration_focus(
+        &mut self,
+        generation: u64,
+        active: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.observe_trigger_calibration_focus(generation, active, window, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn finish_trigger_calibration_submission(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.finish_trigger_calibration_submission(generation, result, cx)
+            }),
+            _ => false,
+        }
+    }
+
     /// Local UI request only; never a device acknowledgement or a write call.
     #[allow(dead_code)]
     pub fn calibration_intent(
@@ -721,6 +774,9 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
+                    WorkspaceEvent::MouseMappingSaveRejected(reason) => {
+                        WorkspaceEvent::MouseMappingSaveRejected(*reason)
+                    }
                     WorkspaceEvent::HelpResetRequested(request) => {
                         WorkspaceEvent::HelpResetRequested(*request)
                     }
@@ -742,6 +798,9 @@ impl ProductWorkspace {
                     },
                     WorkspaceEvent::KeyboardActuationRequested(request) => {
                         WorkspaceEvent::KeyboardActuationRequested(request.clone())
+                    }
+                    WorkspaceEvent::TriggerCalibrationRequested(request) => {
+                        WorkspaceEvent::TriggerCalibrationRequested(request.clone())
                     }
                     WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                         WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
@@ -832,6 +891,9 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
+                    WorkspaceEvent::MouseMappingSaveRejected(reason) => {
+                        WorkspaceEvent::MouseMappingSaveRejected(*reason)
+                    }
                     WorkspaceEvent::HelpResetRequested(request) => {
                         WorkspaceEvent::HelpResetRequested(*request)
                     }
@@ -853,6 +915,9 @@ impl ProductWorkspace {
                     },
                     WorkspaceEvent::KeyboardActuationRequested(request) => {
                         WorkspaceEvent::KeyboardActuationRequested(request.clone())
+                    }
+                    WorkspaceEvent::TriggerCalibrationRequested(request) => {
+                        WorkspaceEvent::TriggerCalibrationRequested(request.clone())
                     }
                     WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                         WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
@@ -1064,9 +1129,9 @@ impl ProductWorkspace {
             Body::Existing(workspace) => Some(workspace.update(cx, |workspace, cx| {
                 workspace.armory_mapping_page(window, cx)
             })),
-            Body::Source(workspace) => {
-                workspace.update(cx, |workspace, cx| workspace.mapping_page_element(cx))
-            }
+            Body::Source(workspace) => workspace.update(cx, |workspace, cx| {
+                workspace.mapping_page_element(window, cx)
+            }),
         }
     }
     /// Existing local profile associations; no executable is launched or scanned.
@@ -1329,6 +1394,18 @@ impl ProductWorkspace {
     pub fn set_source_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if let Body::Source(e) = &self.body {
             e.update(cx, |v, cx| v.set_page_key(key, window, cx));
+        }
+    }
+    pub fn mapping_history_clicked(
+        &mut self,
+        forward: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.mapping_history_clicked(forward, window, cx)
+            });
         }
     }
     pub fn dismiss_profile_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {

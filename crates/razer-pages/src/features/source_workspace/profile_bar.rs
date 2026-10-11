@@ -83,52 +83,74 @@ impl SourceProductWorkspace {
                         .size(surface::css(20.)),
                     ),
             )
-            .child(div().w(surface::css(250.)).px(surface::css(10.)).child(
-                if self.profile_rename.is_some() {
-                    div()
-                        .id("source-profile-name-editor")
-                        .w_full()
-                        .on_action(cx.listener(
-                            |this, _: &gpui_kit::component::input::Escape, window, cx| {
-                                this.profile_rename = None;
-                                this.profile.update(cx, |state, cx| state.focus(window, cx));
-                                cx.notify();
-                            },
-                        ))
-                        .child(
-                            gpui_kit::component::input::Input::new(&self.profile_name)
-                                .id("source-profile-name")
-                                .aria_label(razer_i18n::t("PROFILE"))
-                                .h(surface::css(27.))
-                                .w_full()
-                                .rounded_none()
-                                .focus_bordered(false)
-                                .border_1()
-                                .border_color(cx.theme().primary)
-                                .bg(cx.theme().group_box)
-                                .px(surface::css(5.))
-                                .py(surface::css(5.))
-                                .text_size(surface::css(14.))
-                                .line_height(surface::css(17.)),
-                        )
-                        .into_any_element()
-                } else {
-                    surface::select(&self.profile)
-                        .id("source-profile-select")
-                        .accessibility_label(razer_i18n::t("PROFILE"))
-                        .items(
-                            self.device
-                                .profiles
-                                .iter()
-                                .map(|p| Choice::new(&p.id, &p.name))
-                                .collect(),
-                        )
-                        .disabled(!self.profile_switch_enabled())
-                        .opacity(1.)
-                        .w_full()
-                        .into_any_element()
-                },
-            ))
+            .child(
+                div()
+                    .id("source-profile-dropdown-area")
+                    .w(surface::css(250.))
+                    .px(surface::css(10.))
+                    .child(if self.profile_rename.is_some() {
+                        div()
+                            .id("source-profile-name-editor")
+                            .w_full()
+                            .on_action(cx.listener(
+                                |this, _: &gpui_kit::component::input::Escape, window, cx| {
+                                    this.profile_rename = None;
+                                    this.profile.update(cx, |state, cx| state.focus(window, cx));
+                                    cx.notify();
+                                },
+                            ))
+                            .child(
+                                gpui_kit::component::input::Input::new(&self.profile_name)
+                                    .id("source-profile-name")
+                                    .aria_label(razer_i18n::t("PROFILE"))
+                                    .h(surface::css(27.))
+                                    .w_full()
+                                    .rounded_none()
+                                    .focus_bordered(false)
+                                    .border_1()
+                                    .border_color(cx.theme().primary)
+                                    .bg(cx.theme().group_box)
+                                    .px(surface::css(5.))
+                                    .py(surface::css(5.))
+                                    .text_size(surface::css(14.))
+                                    .line_height(surface::css(17.)),
+                            )
+                            .into_any_element()
+                    } else {
+                        surface::select(&self.profile)
+                            .id("source-profile-select")
+                            .accessibility_label(razer_i18n::t("PROFILE"))
+                            .on_trigger_click(cx.listener(|this, _, window, cx| {
+                                // The source document-click bridge runs for
+                                // the .s3-dropdown trigger. Options are
+                                // detached and use the raw-text.option
+                                // exemption, so only the trigger reaches it.
+                                if let FamilyBody::Mouse(mouse) = &this.body {
+                                    mouse.update(cx, |mouse, cx| {
+                                        mouse.mapping_190_document_click(
+                                            &["s3-dropdown"],
+                                            &["dropdown-area"],
+                                            &[],
+                                            false,
+                                            window,
+                                            cx,
+                                        )
+                                    });
+                                }
+                            }))
+                            .items(
+                                self.device
+                                    .profiles
+                                    .iter()
+                                    .map(|p| Choice::new(&p.id, &p.name))
+                                    .collect(),
+                            )
+                            .disabled(!self.profile_switch_enabled())
+                            .opacity(1.)
+                            .w_full()
+                            .into_any_element()
+                    }),
+            )
             .child(self.profile_more(window, cx))
             .text_color(cx.theme().foreground)
             .into_any_element()

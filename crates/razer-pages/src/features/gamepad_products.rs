@@ -20,10 +20,19 @@ use razer_widgets::surface;
 #[path = "gamepad_calibration.rs"]
 mod calibration;
 pub use calibration::state::{CalibrationIntent, CalibrationObservation};
+#[path = "gamepad_trigger_calibration.rs"]
+mod trigger_calibration;
+#[path = "gamepad_trigger_calibration_state.rs"]
+mod trigger_calibration_state;
+pub use trigger_calibration_state::{TriggerCalibrationIntent, TriggerCalibrationObservation};
+#[path = "gamepad_calibration_selection.rs"]
+mod calibration_selection;
 #[path = "gamepad_deadzone_dialog.rs"]
 mod deadzone_dialog;
 #[path = "kitsune.rs"]
 mod kitsune;
+#[path = "gamepad_trigger_calibration_renderer.rs"]
+mod trigger_calibration_renderer;
 
 #[derive(Deserialize)]
 pub struct GamepadProductSpec {
@@ -147,6 +156,10 @@ pub struct GamepadProductWorkspace {
     calibration_state: calibration::state::CalibrationState,
     calibration_dialog: Option<calibration::CalibrationDialog>,
     calibration_popup: Option<calibration::CalibrationDialog>,
+    trigger_calibration_state: trigger_calibration_state::TriggerCalibrationState,
+    trigger_calibration_popup: Option<trigger_calibration::TriggerDialog>,
+    trigger_frame_pending: bool,
+    calibration_selection_hover: Option<u8>,
     calibration_bounds: Rc<Cell<Bounds<Pixels>>>,
     thumbstick_bounds: Rc<Cell<Bounds<Pixels>>>,
     sliders: BTreeMap<String, Entity<SliderState>>,
@@ -157,6 +170,7 @@ pub struct GamepadProductWorkspace {
 impl EventEmitter<GamepadProductChanged> for GamepadProductWorkspace {}
 impl EventEmitter<GamepadCalibrationRequested> for GamepadProductWorkspace {}
 impl EventEmitter<CalibrationIntent> for GamepadProductWorkspace {}
+impl EventEmitter<TriggerCalibrationIntent> for GamepadProductWorkspace {}
 
 impl GamepadProductWorkspace {
     pub fn new(pid: u32, layout_id: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -176,6 +190,10 @@ impl GamepadProductWorkspace {
             calibration_state: Default::default(),
             calibration_dialog: None,
             calibration_popup: None,
+            trigger_calibration_state: Default::default(),
+            trigger_calibration_popup: None,
+            trigger_frame_pending: false,
+            calibration_selection_hover: None,
             calibration_bounds: Rc::new(Cell::new(Bounds::default())),
             thumbstick_bounds: Rc::new(Cell::new(Bounds::default())),
             sliders: BTreeMap::new(),
@@ -221,7 +239,10 @@ impl GamepadProductWorkspace {
     pub fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
             self.cancel_range_edits(cx);
-            if self.page == "TAB_CALIBRATION" || self.calibration_popup.is_some() {
+            if self.page == "TAB_CALIBRATION"
+                || self.calibration_popup.is_some()
+                || self.trigger_calibration_popup.is_some()
+            {
                 self.leave_calibration(window, cx);
             }
             // 2636's mounted thumbstick component initializes prevLeft/Right
@@ -1480,37 +1501,25 @@ impl GamepadProductWorkspace {
     }
 
     fn calibration(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        if self.has_popup_calibration() {
+            return calibration_selection::render(
+                self.spec.product_id,
+                self.edition_id,
+                self.calibration_selection_hover,
+                cx,
+            );
+        }
         if self.has_page_calibration() {
             return self.render_calibration(window, cx);
         }
-        surface::panel(t("TAB_CALIBRATION"), cx)
-            .child(surface::note(t("CALIBRATION_STEP0"), cx))
-            .child(
-                h_flex()
-                    .gap_3()
-                    .child(
-                        Button::new("gamepad-calibrate-left")
-                            .label(t("CALIBBRTION_LEFT_THUMBSITCK"))
-                            .outline()
-                            .disabled(true),
-                    )
-                    .child(
-                        Button::new("gamepad-calibrate-right")
-                            .label(t("CALIBBRTION_RIGHT_THUMBSITCK"))
-                            .outline()
-                            .disabled(true),
-                    ),
-            )
-            .child(surface::note(
-                "未连接手柄校准服务，无法开始校准或读取摇杆位置。",
-                cx,
-            ))
-            .into_any_element()
+        // No mounted Calibration caller exists for the remaining products.
+        div().into_any_element()
     }
 }
 
 impl Render for GamepadProductWorkspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.schedule_trigger_frame(window, cx);
         let content = match self.page.as_str() {
             "TAB_CUSTOMIZE" => self.customize(cx),
             "TRIGGERS" => self.triggers(cx),
@@ -1530,6 +1539,9 @@ impl Render for GamepadProductWorkspace {
             })
             .when(self.calibration_popup.is_some(), |body| {
                 body.child(self.render_calibration_popup(window, cx))
+            })
+            .when(self.trigger_calibration_popup.is_some(), |body| {
+                body.child(self.render_trigger_calibration_popup(window, cx))
             })
     }
 }

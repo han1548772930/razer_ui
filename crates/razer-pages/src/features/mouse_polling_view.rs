@@ -244,6 +244,8 @@ impl MouseProductWorkspace {
                     .child(img("synapse/external-link.svg").size(surface::css(16.)).ml(surface::css(5.)))
                     .on_click(|_, _, cx| cx.open_url("https://www.razer.com/technology/razer-hyperpolling#best-practices-tips"))));
         }
-        panel.into_any_element()
+        panel
+            .when(self.spec.block_widget_columns(), |panel| panel.mb_0())
+            .into_any_element()
     }
 }

@@ -118,6 +118,11 @@ pub(super) struct HostTabs {
     order_changed: bool,
 }
 impl HostTabs {
+    pub(super) fn frame_name(location: &Location) -> String {
+        HostTab::from_location(location)
+            .map(|tab| tab.id().to_string())
+            .unwrap_or_else(|| "synapse".to_owned())
+    }
     pub(super) fn new(cx: &mut App) -> Self {
         cx.bind_keys([
             KeyBinding::new("ctrl-w", CloseTab, Some("AppShell")),

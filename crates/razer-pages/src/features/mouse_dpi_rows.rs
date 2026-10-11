@@ -625,6 +625,7 @@ impl MouseProductWorkspace {
             surface::help_control("dpi-stages-help", t("SENSITIVITY_TOOLTIP")),
             cx,
         )
+        .when(self.spec.block_widget_columns(), |panel| panel.mb_0())
         .when_some(row_spec.description_key.as_deref(), |panel, key| {
             panel.child(
                 div()

@@ -117,6 +117,18 @@ def main():
               "hexrays_available": has_decompiler, "functions": functions,
               "limitations": ["Pseudocode is inferred from machine code; check types and indirect targets against original bytes.",
                                "Selected functions only, not full-program semantic completion."]}
+    if config.get("data_ranges"):
+        data_ranges = []
+        for item in config["data_ranges"]:
+            rva, size = item["rva"], item["size"]
+            data = ida_bytes.get_bytes(base+rva, size)
+            assert data is not None and len(data) == size
+            data_ranges.append({"name": item["name"], "rva": rva, "size": size,
+                                "hex": data.hex(), "sha256": hashlib.sha256(data).hexdigest(),
+                                "incoming_references": [{"from_rva": ref.frm-base,
+                                    "type": ref.type, "is_code": bool(ref.iscode)}
+                                    for ref in idautils.XrefsTo(base+rva)]})
+        result["data_ranges"] = data_ranges
     if import_anchors:
         result["import_anchors"] = import_anchors
     if config.get("corpus_mode"):

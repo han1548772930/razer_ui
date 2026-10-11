@@ -1,0 +1,57 @@
+{
+  "parser": "Acorn static syntax only",
+  "offset_units": "UTF-16 code units",
+  "files": [
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/components/Tab/common.js",
+      "sha256": "7262ee43326e3960b0159547909282434421aba1cb000c01a6a96fda068f0532",
+      "bytes": 30004,
+      "receipts": [
+        {
+          "name": "broadcast:be",
+          "offset": 8460,
+          "end": 8558,
+          "source": "be=e=>{const o=ae(e);if(o){const n=we(o.windowId);me(n,{action:\"changeActiveTab\",data:{name:e}})}}"
+        },
+        {
+          "name": "broadcast:me",
+          "offset": 8559,
+          "end": 9117,
+          "source": "me=(e,o)=>{const n=e=>{!e||e.isDestroyed()||e.isCrashed()||F(e)||e.send(\"tab-message\",o)};if(null!=e)if(e instanceof i)e.isDestroyed()||(n(e.webContents),Y(e.id)&&J(e.id).forEach(e=>{try{const o=e.getWebContents();n(o)}catch(e){console.log(\"Tab-common.js foreach winObj sendTabMessage error:\",e.message)}}));else if(e instanceof r)n(e.webContents);else try{const o=e.getWebContents();n(o)}catch(e){console.log(\"Tab-common.js last winObj sendTabMessage error:\",e.message)}else console.warn(\"Tab-common.js sendTabMessage: win is null, cannot send message:\",o)}"
+        },
+        {
+          "name": "window:blur",
+          "offset": 13824,
+          "end": 13883,
+          "source": "y.on(\"blur\",()=>{me(y,{action:\"focus\",data:{isFocus:!1}})})"
+        },
+        {
+          "name": "window:focus",
+          "offset": 13884,
+          "end": 13999,
+          "source": "y.on(\"focus\",()=>{y.isDestroyed()||y.flashFrame(!1),De.clearHibernate(n),me(y,{action:\"focus\",data:{isFocus:!0}})})"
+        }
+      ]
+    },
+    {
+      "source": "local-ui-reverse/source/installed/app-4.0.827/electron/components/Tab/TabManager.js",
+      "sha256": "52e68cd707de5504d0ee1ef053a2a796b2b0b846e2a004870f73100c0f5dd36f",
+      "bytes": 8637,
+      "receipts": [
+        {
+          "name": "handleChangeActiveTab",
+          "offset": 4417,
+          "end": 4815,
+          "source": "handleChangeActiveTab(e){const t=b(e);if(!t)return;const a=c(t.windowId);a&&!a.isDestroyed()&&(v.getHibernateView(e)&&!t.checkTabAlive()?this.restoreFromHibernate(e):(t.setTabAsActiveView(a),v.removeHibernate(e),r(t,a),a.isFocused()&&t.getWebContents()?.focus()),this.setActiveTabOfWindow(t.windowId,e),l(a,{action:s.activeTabChanged,data:{tabName:e}}),f({windowName:e,action:s.activeTabChanged}))}"
+        }
+      ]
+    }
+  ],
+  "implementation": {
+    "initial": "Once per mounted trigger popup; retries do not reinitialize the helper.",
+    "focus": "GPUI activation event corresponds to common.js BrowserWindow focus/blur; true only queries selected host tab, false queries selected tab and borrowed native HWND visibility/minimization.",
+    "visibility": "IsWindowVisible/IsIconic on the owning Windows window, never GPUI presentation visibility or GetForegroundWindow. No additional hide/resize/poll event is fabricated.",
+    "frame_identity": "Retained local HostTab IDs serve as internal frame identity; this adapter does not claim an Electron BrowserView or its native frameName was queried.",
+    "missing": "Other platform BrowserWindow status adapters, thumbstick focus connection and application runtime acceptance remain missing."
+  }
+}

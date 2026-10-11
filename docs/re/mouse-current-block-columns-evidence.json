@@ -1,0 +1,333 @@
+{
+  "products": [
+    {
+      "product_id": 70,
+      "css": {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/70/ui/static/css/main.dd229426.css",
+        "sha256": "5c2bd08d0564900249a47bdebf0ef5c6ef12ee59683534fa685e90c1de1c9f59",
+        "rules": [
+          {
+            "offset": 4450,
+            "selector": "div.flex",
+            "conditions": [],
+            "declarations": "display:flex",
+            "properties": [
+              {
+                "property": "display",
+                "value": "flex",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 69207,
+            "selector": ".body-widgets",
+            "conditions": [],
+            "declarations": "flex-direction:row;flex-wrap:wrap;justify-content:center;margin:auto;max-width:1240px",
+            "properties": [
+              {
+                "property": "flex-direction",
+                "value": "row",
+                "important": false
+              },
+              {
+                "property": "flex-wrap",
+                "value": "wrap",
+                "important": false
+              },
+              {
+                "property": "justify-content",
+                "value": "center",
+                "important": false
+              },
+              {
+                "property": "margin",
+                "value": "auto",
+                "important": false
+              },
+              {
+                "property": "max-width",
+                "value": "1240px",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 69677,
+            "selector": ".widget-col",
+            "conditions": [],
+            "declarations": "flex-direction:column;height:-webkit-fit-content;height:fit-content;width:600px",
+            "properties": [
+              {
+                "property": "flex-direction",
+                "value": "column",
+                "important": false
+              },
+              {
+                "property": "height",
+                "value": "-webkit-fit-content",
+                "important": false
+              },
+              {
+                "property": "height",
+                "value": "fit-content",
+                "important": false
+              },
+              {
+                "property": "width",
+                "value": "600px",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 69817,
+            "selector": ".body-widgets .widget",
+            "conditions": [],
+            "declarations": "background-color:#111;border-radius:5px;flex:0 0 auto;font-size:14px;height:auto;margin:10px auto;max-width:600px;min-width:600px;padding:30px 40px;position:relative;transition:height .2s;will-change:height",
+            "properties": [
+              {
+                "property": "background-color",
+                "value": "#111",
+                "important": false
+              },
+              {
+                "property": "border-radius",
+                "value": "5px",
+                "important": false
+              },
+              {
+                "property": "flex",
+                "value": "0 0 auto",
+                "important": false
+              },
+              {
+                "property": "font-size",
+                "value": "14px",
+                "important": false
+              },
+              {
+                "property": "height",
+                "value": "auto",
+                "important": false
+              },
+              {
+                "property": "margin",
+                "value": "10px auto",
+                "important": false
+              },
+              {
+                "property": "max-width",
+                "value": "600px",
+                "important": false
+              },
+              {
+                "property": "min-width",
+                "value": "600px",
+                "important": false
+              },
+              {
+                "property": "padding",
+                "value": "30px 40px",
+                "important": false
+              },
+              {
+                "property": "position",
+                "value": "relative",
+                "important": false
+              },
+              {
+                "property": "transition",
+                "value": "height .2s",
+                "important": false
+              },
+              {
+                "property": "will-change",
+                "value": "height",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 78896,
+            "selector": ".widget-col",
+            "conditions": [
+              "@media(max-width:1279px)"
+            ],
+            "declarations": "margin:0 30px",
+            "properties": [
+              {
+                "property": "margin",
+                "value": "0 30px",
+                "important": false
+              }
+            ]
+          }
+        ]
+      },
+      "implementation": "Source block sibling margins collapse to10px; native standard cards retain top10, remove bottom10, and native columns add final bottom10. Source root has no gap. Mounted callers independently audited in the current mouse page receipts."
+    },
+    {
+      "product_id": 190,
+      "css": {
+        "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+        "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+        "rules": [
+          {
+            "offset": 6021,
+            "selector": "div.flex",
+            "conditions": [],
+            "declarations": "display:flex",
+            "properties": [
+              {
+                "property": "display",
+                "value": "flex",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 70430,
+            "selector": ".body-widgets",
+            "conditions": [],
+            "declarations": "flex-direction:row;flex-wrap:wrap;justify-content:center;margin:auto;max-width:1240px",
+            "properties": [
+              {
+                "property": "flex-direction",
+                "value": "row",
+                "important": false
+              },
+              {
+                "property": "flex-wrap",
+                "value": "wrap",
+                "important": false
+              },
+              {
+                "property": "justify-content",
+                "value": "center",
+                "important": false
+              },
+              {
+                "property": "margin",
+                "value": "auto",
+                "important": false
+              },
+              {
+                "property": "max-width",
+                "value": "1240px",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 70900,
+            "selector": ".widget-col",
+            "conditions": [],
+            "declarations": "flex-direction:column;height:fit-content;width:600px",
+            "properties": [
+              {
+                "property": "flex-direction",
+                "value": "column",
+                "important": false
+              },
+              {
+                "property": "height",
+                "value": "fit-content",
+                "important": false
+              },
+              {
+                "property": "width",
+                "value": "600px",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 71013,
+            "selector": ".body-widgets .widget",
+            "conditions": [],
+            "declarations": "background-color:#111;border-radius:5px;flex:0 0 auto;font-size:14px;height:auto;margin:10px auto;max-width:600px;min-width:600px;padding:30px 40px;position:relative;transition:height .2s;will-change:height",
+            "properties": [
+              {
+                "property": "background-color",
+                "value": "#111",
+                "important": false
+              },
+              {
+                "property": "border-radius",
+                "value": "5px",
+                "important": false
+              },
+              {
+                "property": "flex",
+                "value": "0 0 auto",
+                "important": false
+              },
+              {
+                "property": "font-size",
+                "value": "14px",
+                "important": false
+              },
+              {
+                "property": "height",
+                "value": "auto",
+                "important": false
+              },
+              {
+                "property": "margin",
+                "value": "10px auto",
+                "important": false
+              },
+              {
+                "property": "max-width",
+                "value": "600px",
+                "important": false
+              },
+              {
+                "property": "min-width",
+                "value": "600px",
+                "important": false
+              },
+              {
+                "property": "padding",
+                "value": "30px 40px",
+                "important": false
+              },
+              {
+                "property": "position",
+                "value": "relative",
+                "important": false
+              },
+              {
+                "property": "transition",
+                "value": "height .2s",
+                "important": false
+              },
+              {
+                "property": "will-change",
+                "value": "height",
+                "important": false
+              }
+            ]
+          },
+          {
+            "offset": 79986,
+            "selector": ".widget-col",
+            "conditions": [
+              "@media(max-width:1279px)"
+            ],
+            "declarations": "margin:0 30px",
+            "properties": [
+              {
+                "property": "margin",
+                "value": "0 30px",
+                "important": false
+              }
+            ]
+          }
+        ]
+      },
+      "implementation": "Source block sibling margins collapse to10px; native standard cards retain top10, remove bottom10, and native columns add final bottom10. Source root has no gap. Mounted callers independently audited in the current mouse page receipts."
+    }
+  ]
+}

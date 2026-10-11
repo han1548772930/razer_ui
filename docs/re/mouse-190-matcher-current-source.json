@@ -1,0 +1,1701 @@
+{
+  "vendor_code_executed": false,
+  "offset_units": "Zero-based UTF16 / UTF8 byte ranges; end exclusive",
+  "files": [
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "sha256": "4c6d60b23bebcc9423a561aa86ebf6ed24cd9cbe0938aa13d7fac46022a4dc2f",
+      "bytes": 5672528
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "sha256": "108e1e1f5035ab0746450b6744c7a9bd00f888bdd20980cde797c0b8b3ce5023",
+      "bytes": 490386
+    }
+  ],
+  "localized_keys": {
+    "x3E": "NONE",
+    "Pie": "RENAME",
+    "SJi": "DELETE",
+    "Yc6": "DELETE_ALL",
+    "uEJ": "SENSITIVITY_MATCHER_ACTION_DESC_1",
+    "Bm1": "SENSITIVITY_MATCHER_ACTION_DESC_2",
+    "goi": "SENSITIVITY_MATCHER_ACTION_DESC_3",
+    "EE$": "CALIBRATION_INFORMATION",
+    "q3u": "CURRENT_DPI",
+    "DR1": "NEW_DPI",
+    "sG0": "RESET_PROFILE",
+    "XvQ": "SENSITIVITY_MATCHER_TOOLTIP",
+    "Pjy": "SENSITIVITY_MATCHER",
+    "nGM": "SENSITIVITY_MATCHER_DESC",
+    "KBw": "CALIBRATE",
+    "XTr": "SENSITIVITY_MATCHER_PROFILE_DESC",
+    "Ypv": "SENSITIVITY_MATCHER_STEP_DESC",
+    "bOp": "CANCEL",
+    "pJk": "APPLY",
+    "jYg": "SENSITIVITY_MATCHER_CALIBRATION_ERROR",
+    "Hpk": "SENSITIVITY_MATCHER_CALIBRATION_ERROR_DESC",
+    "wMy": "DELETE_ALL_SENSITIVITY_MATCHER_POPUP_HEADER",
+    "Ue0": "DELETE_ALL_SENSITIVITY_MATCHER_POPUP_DESC",
+    "p6C": "RETRY"
+  },
+  "slices": [
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "class AS",
+      "utf16_range": [
+        4603551,
+        4611565
+      ],
+      "utf8_byte_range": [
+        5404635,
+        5412649
+      ],
+      "slice_sha256": "8bc25ad9cd62693e90e4cba28a046239963eb8e51315e63778a935237e696d28",
+      "source": "class AS extends G.Component{constructor(e){super(e),this.ignoreNextDocumentClick=!1,this.componentDidUpdate=e=>{if(e.sensitivityMatcher.profiles!==this.props.sensitivityMatcher.profiles){1===this.props.sensitivityMatcher.profiles.length&&\"None\"===this.props.sensitivityMatcher.profiles[0].name?this.setState({isProfileDisabled:!0}):this.setState({isProfileDisabled:!1});const e=this.props.sensitivityMatcher.profiles.findIndex(e=>\"None\"===e.name);-1!==e&&this.props.sensitivityMatcher.profiles[e].guid===this.props.selectedSensitivityMatcher?this.setState({disableMoreOptions:!0}):this.setState({disableMoreOptions:!1})}if(this.props.selectedSensitivityMatcher!==e.selectedSensitivityMatcher&&this.setState({activeProfileIndex:this.props.sensitivityMatcher.profiles.findIndex(e=>e.guid===this.props.selectedSensitivityMatcher)}),this.state.showDeleteAllPopup&&this.state.deleteAllPopupPos&&-9999===this.state.deleteAllPopupPos.top&&this.deleteAllPopupRef.current){const e=this.deleteAllPopupRef.current.offsetHeight;e&&e!==this.state.deleteAllPopupHeight&&this.setState({deleteAllPopupHeight:e,showDeleteAllPopup:!1},()=>{setTimeout(()=>this.openDeleteAllPopup(),0)})}this.state.showDeleteAllPopup&&setTimeout(()=>{const e=document.querySelector(\".body-wrapper\"),E=document.querySelector(\".delete-all-popup__wrapper\");if(!E||!e)return;const a=E.getBoundingClientRect(),t=window.innerHeight,_=a.bottom-t;_>0&&e.scrollBy({top:_+20,behavior:\"smooth\"})},300)},this.getSensitivityProfile=()=>{let e={profiles:[]};this.props.validDevices.forEach(E=>{E.category===oe.DeviceInfo.category&&E.productId!==oe.DeviceInfo.productId&&e.profiles.push({guid:(0,ge.gZ)(),name:E.name[this.props.lang],dpi:3200})});return{sensitivityMatcher:e,selectedSensitivityMatcher:this.props.selectedSensitivityMatcher}},this.changeProfile=e=>{if(e.guid===this.props.selectedSensitivityMatcher)return;const E=[...this.props.dpiStages];E[this.props.activeDpiStages-1]=e.dpi,this.props.setDotsPerInchStageValueX(E,this.props.activeDpiStages),this.props.setDeviceSensitivityMatcherProfile(e.guid)},this.handleClickOutside=e=>{if(this.ignoreNextDocumentClick)return void(this.ignoreNextDocumentClick=!1);const E=this.dropdownRef.current&&this.dropdownRef.current.contains(e.target),a=this.actionRef.current&&this.actionRef.current.contains(e.target),t=document.querySelector(\".delete-all-popup__wrapper\"),_=t&&t.contains(e.target);E||a||_||this.setState({displayActions:!1,dropdownPos:null,showDeleteAllPopup:!1})},this.handleDotsClick=()=>{if(this.state.displayActions)this.setState({displayActions:!1,dropdownPos:null});else{const e=this.actionRef.current.getBoundingClientRect(),E=e.bottom+window.scrollY+4,a=e.left+window.scrollX,t=e.width;this.setState({displayActions:!0,dropdownPos:{top:E,left:a,width:t}})}},this.renameProfile=()=>{var e;const{dataset:E,selectedIndex:a}=this.computeDataSet(),t=null===(e=E[a])||void 0===e?void 0:e.name;t&&this.setState({renameActive:!0,profileName:t,displayActions:!1,dropdownPos:null})},this.setProfileName=e=>{e=e.trim(),this.setState({renameActive:!1});let E=(0,ge.$B)(this.props.sensitivityMatcher.profiles,e);e&&e.replace(/\\s/g,\"\").length&&E&&\"none\"!==e&&\"None\"!==e&&this.props.renameSensitivityProfile(e)},this.deleteProfile=()=>{var e;this.setState({displayActions:!1,dropdownPos:null}),null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:_S,payload:{type:TS,payload:this.props.selectedSensitivityMatcher}})},this.openDeleteAllPopup=()=>{if(this.ignoreNextDocumentClick=!0,this.state.deleteAllPopupHeight)if(this.actionRef.current){const e=this.actionRef.current.getBoundingClientRect(),E=this.state.deleteAllPopupHeight,a=window.innerHeight;let t=e.top+window.scrollY;t+E>window.scrollY+a&&(t=window.scrollY+a-E-10,t<0&&(t=0)),this.setState({showDeleteAllPopup:!0,displayActions:!1,dropdownPos:null,deleteAllPopupPos:{top:t,left:e.right+window.scrollX+4}})}else this.ignoreNextDocumentClick=!0,this.setState({showDeleteAllPopup:!0,displayActions:!1,dropdownPos:null,deleteAllPopupPos:null});else this.setState({showDeleteAllPopup:!0,displayActions:!1,dropdownPos:null,deleteAllPopupPos:{top:-9999,left:-9999}})},this.closeDeleteAllPopup=()=>{this.setState({showDeleteAllPopup:!1})},this.deleteAllProfile=()=>{var e;this.setState({showDeleteAllPopup:!1}),null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:_S,payload:{type:IS}})},this.state={displayActions:!1,isProfileDisabled:!0,activeProfileIndex:this.props.selectedSensitivityMatcherProfileIndex,renameActive:!1,profileName:\"\",isResetCalibrate:!1,disableMoreOptions:!1,showDeleteAllPopup:!1,dropdownPos:null,deleteAllPopupPos:null,deleteAllPopupHeight:null},this.actionRef=g().createRef(),this.dropdownRef=g().createRef(),this.deleteAllPopupRef=g().createRef()}componentDidMount(){document.addEventListener(\"click\",this.handleClickOutside);const e=this.props.sensitivityMatcher.profiles.findIndex(e=>\"None\"===e.name);this.props.sensitivityMatcher.profiles.length>1&&this.setState({isProfileDisabled:!1}),-1!==e&&this.setState({disableMoreOptions:!0})}componentWillUnmount(){document.removeEventListener(\"click\",this.handleClickOutside)}computeDataSet(){const{sensitivityMatcher:e,selectedSensitivityMatcher:E,lang:a}=this.props,t=(null===a||void 0===a?void 0:a.toLowerCase())||\"en\",_=this.props.validDevices||[],i=(null===e||void 0===e?void 0:e.profiles)||[],n=i.map(e=>{let E=\"object\"===typeof e.name?e.name[t]||e.name.en||\"\":e.name;const a=_.find(E=>E.guid===e.guid);return null!==a&&void 0!==a&&a.productName&&(E=a.productName[t]||a.productName.en||E),{...e,name:E}});if(!E||!i.some(e=>e.guid===E)){let e=(0,ME.JN)(be.x3E);n.unshift({name:e,guid:\"none\",disabled:!0})}const o=n.findIndex(e=>e.guid===E);return{dataset:n,selectedIndex:-1===o?0:o}}renderDropdownPortal(){if(!this.state.displayActions||!this.state.dropdownPos)return null;const{top:e,left:E}=this.state.dropdownPos;return f().createPortal((0,Ga.jsxs)(\"div\",{ref:this.dropdownRef,className:\"sensitivity-act show\",style:{position:\"absolute\",top:e,left:E,width:100},children:[(0,Ga.jsx)(\"div\",{onClick:this.renameProfile,className:\"sensitivity-action\",children:(0,Ga.jsx)(ha.A,{text:be.Pie})}),(0,Ga.jsx)(\"div\",{onClick:this.deleteProfile,className:\"sensitivity-action\",children:(0,Ga.jsx)(ha.A,{text:be.SJi})}),(0,Ga.jsx)(\"div\",{className:\"divider\"}),(0,Ga.jsx)(\"div\",{onClick:this.openDeleteAllPopup,className:\"sensitivity-action\",children:(0,Ga.jsx)(ha.A,{text:be.Yc6})})]}),document.body)}render(){const{dataset:e,selectedIndex:E}=this.computeDataSet(),{renameActive:a}=this.state,t=\"none\"===e[E].guid;return(0,Ga.jsxs)(\"div\",{className:\"profile-bar flex \"+(e.length<2&&t?\"disabled\":\"\"),children:[(0,Ga.jsx)(\"div\",{className:\"rename-react \"+(a?\"edit\":\"\"),children:a?(0,Ga.jsx)(dn,{name:\"profile\",maxLength:32,value:this.state.profileName,active:a,sendToParent:this.setProfileName}):(0,Ga.jsx)(fa.A,{notLocalize:!0,allowOneItem:!0,dataSet:e,name:\"caliDvDrop\",selectOption:E=>{const a=e[E];\"none\"!==a.guid&&this.changeProfile(a)},value:E,placeholder:\"None\"})}),(0,Ga.jsx)(\"div\",{ref:this.actionRef,className:`dots3 hover-border ${t?\"disabled\":\"\"} ${a?\"edit\":\"\"}  ${this.state.displayActions?\"active\":\"\"}`,onClick:()=>this.setState({displayActions:!this.state.displayActions}),children:(0,Ga.jsxs)(\"div\",{className:\"sensitivity-act \"+(this.state.displayActions?\"show\":\"\"),children:[(0,Ga.jsx)(\"div\",{onClick:e=>{e.stopPropagation(),this.renameProfile()},className:\"sensitivity-action\",children:(0,Ga.jsx)(ha.A,{text:be.Pie})}),(0,Ga.jsx)(\"div\",{className:\"divider\"}),(0,Ga.jsx)(\"div\",{onClick:e=>{e.stopPropagation(),this.deleteProfile()},className:\"sensitivity-action\",children:(0,Ga.jsx)(ha.A,{text:be.SJi})}),(0,Ga.jsx)(\"div\",{onClick:e=>{e.stopPropagation(),this.openDeleteAllPopup()},className:\"sensitivity-action sensitivity-action--delete-all\",children:(0,Ga.jsx)(ha.A,{text:be.Yc6})})]})}),this.state.showDeleteAllPopup&&(0,Ga.jsx)(OS,{ref:this.deleteAllPopupRef,onDelete:this.deleteAllProfile,onCancel:this.closeDeleteAllPopup})]})}}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "class dS",
+      "utf16_range": [
+        4612588,
+        4619036
+      ],
+      "utf8_byte_range": [
+        5413672,
+        5420120
+      ],
+      "slice_sha256": "e7546f7513365ff8e454b444583cc3f803bed2b0d7158c4541125a452f08cd59",
+      "source": "class dS extends G.Component{constructor(e){super(e),this.openSensitivityCalibration=e=>{e.stopPropagation(),this.props.setShowPopUp(!0),window.addEventListener(\"click\",this.startSensitivityMatching)},this.startSensitivityMatching=e=>{var E,a;this.props.showPopup&&null!==(E=this.openCalibrateRef)&&void 0!==E&&E.current&&!this.openCalibrateRef.current.contains(e.target)&&(null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:_S,payload:{type:iS}}),window.removeEventListener(\"click\",this.startSensitivityMatching))},this.closePopUp=e=>{var E,a;(e&&e.stopPropagation(),this.props.setShowPopUp(!1),window.removeEventListener(\"click\",this.startSensitivityMatching),this.props.calibrationState.state===tS.CALIBRATING)?null===(E=window.mwBroadcastChannel)||void 0===E||E.postMessage({type:_S,payload:{type:oS}}):null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:_S,payload:{type:sS}})},this.cancel=e=>{var E;(e.stopPropagation(),window.addEventListener(\"click\",this.startSensitivityMatching),this.props.calibrationState===tS.CALIBRATING)?null===(E=window.mwBroadcastChannel)||void 0===E||E.postMessage({type:_S,payload:{type:oS}}):this.closePopUp(e)},this.applyNewDpi=()=>{var e;this.props.setShowPopUp(!1),null===(e=window.mwBroadcastChannel)||void 0===e||e.postMessage({type:_S,payload:{type:nS}})},this.resetProfile=e=>{var E;e.stopPropagation(),this.openSensitivityCalibration(e),null===(E=window.mwBroadcastChannel)||void 0===E||E.postMessage({type:_S,payload:{type:sS}})},this.componentWillUnmount=()=>{window.removeEventListener(\"click\",this.startSensitivityMatching)},this.isActiveStep=e=>!(1!==e||![tS.READY,tS.CALIBRATING,tS.COMPLETED].includes(this.props.calibrationState.state))||(!(2!==e||![tS.CALIBRATING,tS.COMPLETED].includes(this.props.calibrationState.state))||!(3!==e||![tS.COMPLETED].includes(this.props.calibrationState.state))),this.state={sensitivityStep:tS.READY,firstLoad:0},this.closeRef=g().createRef(),this.openCalibrateRef=g().createRef(),this.resetRef=g().createRef(),this.popupBodyRef=g().createRef()}componentDidMount(){var e,E;null===(e=this.popupBodyRef.current)||void 0===e||e.style.setProperty(\"overflow\",\"auto\"),null===(E=window.mwBroadcastChannel)||void 0===E||E.postMessage({type:_S,payload:{type:rS}})}componentDidUpdate(e){var E;this.props.calibrationState.state!==(null===(E=e.calibrationState)||void 0===E?void 0:E.state)&&this.props.calibrationState.state!==tS.READY&&(this.props.setShowPopUp(!0),this.setState({firstLoad:1}),this.props.calibrationState.state===tS.ERROR&&0===this.state.firstLoad&&this.closePopUp())}render(){let e=null,E=\"\";switch(this.props.calibrationState.state){case tS.READY:e=(0,Ga.jsxs)(\"div\",{children:[(0,Ga.jsx)(\"div\",{className:\"step-desc\",children:(0,Ga.jsx)(ha.A,{text:be.uEJ})}),(0,Ga.jsxs)(\"div\",{className:\"img-component\",children:[(0,Ga.jsx)(\"div\",{className:\"handmouse\"}),(0,Ga.jsx)(\"hr\",{className:\"dotted-line\"}),(0,Ga.jsx)(\"div\",{className:\"mini-synapse\"})]})]});break;case tS.CALIBRATING:case tS.ERROR:e=(0,Ga.jsxs)(Ga.Fragment,{children:[(0,Ga.jsx)(\"div\",{className:\"step-desc\",children:(0,Ga.jsx)(ha.A,{text:be.Bm1})}),(0,Ga.jsxs)(\"div\",{id:\"thm-component\",className:\"img-component\",children:[(0,Ga.jsx)(\"div\",{className:\"handmouse\"}),(0,Ga.jsx)(\"div\",{className:\"right-arrow\"})]}),(0,Ga.jsx)(\"div\",{className:\"sensitivity-calibrated-progress\",children:(0,Ga.jsx)(\"div\",{id:\"current-progress\",className:\"current-state\",style:{width:`${this.props.calibrationState.process}%`}})})]});break;case tS.COMPLETED:E=\"extra-style\",e=(0,Ga.jsxs)(Ga.Fragment,{children:[(0,Ga.jsx)(\"div\",{className:\"step-desc\",children:(0,Ga.jsx)(ha.A,{text:be.goi})}),(0,Ga.jsx)(\"div\",{className:\"img-component center\",children:(0,Ga.jsx)(\"div\",{className:\"twomouse-completed\"})}),(0,Ga.jsx)(\"div\",{className:\"calibration-info\",children:(0,Ga.jsx)(ha.A,{text:be.EE$})}),(0,Ga.jsxs)(\"table\",{className:\"dpi-info\",children:[(0,Ga.jsxs)(\"tr\",{children:[(0,Ga.jsx)(\"td\",{children:(0,Ga.jsx)(ha.A,{text:be.q3u})}),(0,Ga.jsx)(\"td\",{children:(0,Ga.jsx)(\"div\",{className:\"dpi-value\",children:this.props.calibrationState.currentDpi})})]}),(0,Ga.jsxs)(\"tr\",{children:[(0,Ga.jsx)(\"td\",{children:(0,Ga.jsx)(ha.A,{text:be.DR1})}),(0,Ga.jsx)(\"td\",{children:(0,Ga.jsx)(\"div\",{className:\"dpi-value new\",children:this.props.calibrationState.newDpi})})]})]}),(0,Ga.jsx)(\"div\",{onClick:this.resetProfile,className:\"calibration-reset\",children:(0,Ga.jsx)(ha.A,{text:be.sG0})})]})}return(0,Ga.jsxs)(\"div\",{className:\"main-component\",children:[(0,Ga.jsxs)(Ha,{tips:be.XvQ,title:be.Pjy,children:[(0,Ga.jsx)(ha.A,{text:be.nGM}),(0,Ga.jsxs)(\"div\",{className:\"sensitivity-matcher\",children:[(0,Ga.jsx)(\"div\",{ref:this.openCalibrateRef,className:\"calibrate-btn\",onClick:this.openSensitivityCalibration,children:(0,Ga.jsx)(ha.A,{text:be.KBw})}),(0,Ga.jsx)(\"div\",{className:\"sensitivity-matcher-desc\",children:(0,Ga.jsx)(ha.A,{text:be.XTr})}),(0,Ga.jsx)(\"div\",{className:\"sensitivity-profile\",children:(0,Ga.jsx)(SS,{})})]})]}),(0,Ga.jsx)(\"div\",{className:\"backdrop glow \"+(this.props.showPopup?\"show\":\"\"),children:(0,Ga.jsxs)(\"div\",{className:\"choose-a-mat popup-calibration\",ref:this.popupBodyRef,children:[(0,Ga.jsxs)(\"div\",{className:\"head\",children:[(0,Ga.jsx)(ha.A,{text:be.Pjy}),(0,Ga.jsx)(\"div\",{className:\"close\",onClick:this.closePopUp,ref:this.closeRef})]}),(0,Ga.jsxs)(\"div\",{className:\"body scrollable\",style:{minHeight:\"569px\"},children:[(0,Ga.jsx)(\"div\",{className:\"desc\",children:(0,Ga.jsx)(ha.A,{text:be.Ypv})}),(0,Ga.jsxs)(\"div\",{className:\"sensitivity-group-step\",children:[(0,Ga.jsx)(\"div\",{className:\"sensitivity-step \"+(this.isActiveStep(1)?\"active\":\"\")}),(0,Ga.jsx)(\"hr\",{className:\"dotted-line\"}),(0,Ga.jsx)(\"div\",{className:\"sensitivity-step \"+(this.isActiveStep(2)?\"active\":\"\")}),(0,Ga.jsx)(\"hr\",{className:\"dotted-line\"}),(0,Ga.jsx)(\"div\",{className:\"sensitivity-step \"+(this.isActiveStep(3)?\"active\":\"\")})]}),e,(0,Ga.jsxs)(\"div\",{className:`flex keymap-action ${E}`,style:{justifyContent:\"center\",marginTop:\"120px\"},children:[(0,Ga.jsx)(\"div\",{className:\"thx-btn test\",onClick:this.cancel,children:(0,Ga.jsx)(ha.A,{text:be.bOp})}),(0,Ga.jsx)(\"div\",{onClick:this.applyNewDpi,className:\"thx-btn \"+(this.props.calibrationState.state!==tS.COMPLETED?\"disabled\":\"\"),children:(0,Ga.jsx)(ha.A,{text:be.pJk})})]}),this.props.calibrationState.state===tS.ERROR&&(0,Ga.jsx)(RS,{header:be.jYg,content:be.Hpk,onRetry:this.resetProfile,onCancel:this.cancel})]})]})})]})}}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "class uS",
+      "utf16_range": [
+        4619705,
+        4620009
+      ],
+      "utf8_byte_range": [
+        5420789,
+        5421093
+      ],
+      "slice_sha256": "cf537e892c00ccea796657976c180c9a3a419ef9d6bae455630e62887f53c160",
+      "source": "class uS extends G.Component{render(){return(0,Ga.jsxs)(Ur,{children:[(0,Ga.jsxs)(FO,{direction:\"left\",children:[(0,Ga.jsx)(MA,{}),(0,Ga.jsx)(gA,{})]}),(0,Ga.jsxs)(FO,{direction:\"right\",children:[this.props.isBle?null:(0,Ga.jsx)(XA,{supportInGamePollingRate:!0,supportColor:!0}),(0,Ga.jsx)(NS,{})]})]})}}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "class CO",
+      "utf16_range": [
+        4534803,
+        4543795
+      ],
+      "utf8_byte_range": [
+        5335887,
+        5344879
+      ],
+      "slice_sha256": "cc83d607591c115aeda19fbc0fccc5d0bc34808cb2049b5ad9e9526f6f494f17",
+      "source": "class CO extends G.Component{constructor(e){var E;super(e),E=this,this.checkMouseUse=()=>{if(0===this.props.buttonList.length)return;let e={},E={},a=[...this.props.buttonList];this.props.leftHandMode?(e=a[0],E=a[1],e.buttonPos=\"right\",E.buttonPos=\"left\",a[0]=E,a[1]=e,console.log(\"switched left button pos to right and right to left\")):(e=a[1],E=a[0],e.buttonPos=\"left\",E.buttonPos=\"right\",a[0]=e,a[1]=E,console.log(\"switched left button pos to left and right to right\")),this.props.updateButtonWithMappings(a)},this.setCtx=e=>{this.ctx=e},this.setDom=e=>{this.canvasDom=e,this.rect=this.canvasDom.getBoundingClientRect()},this.drawLines=()=>{this.ctx.clearRect(0,0,II.h5.cvsW,II.h5.cvsH),this.drawLine(0,this.props.buttonList[0],114,55,!0),this.drawLine(2,this.props.buttonList[2],147,88,!0),this.drawLine(5,this.props.buttonList[5],88,135,!0),this.drawLine(6,this.props.buttonList[6],88,175,!0),this.drawLine(1,this.props.buttonList[1],181,55,!1),this.drawLine(3,this.props.buttonList[3],148,70,!1),this.drawLine(4,this.props.buttonList[4],148,105,!1),this.drawLine(7,this.props.buttonList[7],this.state.Xcycle,this.state.Ycycle,!1),this.leftCol=0,this.rightCol=0},this.drawLine=function(e,a,t,_){let i=!(arguments.length>4&&void 0!==arguments[4])||arguments[4];if(void 0===a||null===a)return;let n=E.ctx,o=i?II.h5.xLeft:II.h5.xRight,s=i?II.h5.yStart+50*E.leftCol:II.h5.yStart+50*E.rightCol,r=t+3*II.h5.dotRadius,T=_+II.h5.dotRadius,I=E.props.isHyperShiftOn?II.h5.hyperColor:II.h5.activeColor,O=a.isFocused||e===E.state.hoverIndex?I:II.h5.dotColor;a.isEnabled||(O=\"rgba(204, 204, 204, 0.1)\"),i?E.leftCol++:E.rightCol++,n.fillStyle=O,n.strokeStyle=O,n.beginPath(),n.arc(o,s,II.h5.dotRadius,0,ge.Fy(),!0),n.fill(),n.beginPath(),n.moveTo(o,s),n.lineTo(i?o+II.h5.lineLength:o-II.h5.lineLength,s),n.lineTo(r,T),n.stroke(),n.beginPath(),7===e&&!1===E.state.displayCycleButton?n.arc(r,T,II.h5,0,ge.Fy(),!0):n.arc(r,T,II.h5.dotRadius,0,ge.Fy(),!0),n.fill(),(a.isFocused||e===E.state.hoverIndex)&&(n.beginPath(),n.arc(r,T,II.h5.circleRadius,0,ge.Fy(),!0),n.stroke())},this.clickBtn=async e=>{if(void 0===this.props.activeButton||this.props.activeButton.buttonKey!==e){if(this.props.isMappingChanged&&this.props.activeButton)return this.buttonKey=e,void this.props.displaySaveAlert(this.updateActiveButton);this.props.updateActiveButton(e),void 0!==this.props.activeButton&&\"CycleUpSensitivityStages\"===this.props.activeButton.buttonKey&&this.setState({displayCycleButton:!1,Xcycle:186,Ycycle:173},()=>this.drawLines())}},this.updateActiveButton=()=>{this.props.updateActiveButton(this.buttonKey)},this.hoverBtn=e=>{let E=this.props.buttonList.findIndex(E=>E.buttonKey===e);7===E&&this.setState({displayCycleButton:!0,Xcycle:186,Ycycle:173},()=>this.drawLines()),this.setState({hoverIndex:E},()=>this.drawLines())},this.leaveBtn=()=>{this.setState({displayCycleButton:!1,hoverIndex:-1,Xcycle:214,Ycycle:169},()=>this.drawLines()),void 0!==this.props.activeButton&&\"CycleUpSensitivityStages\"===this.props.activeButton.buttonKey&&this.setState({displayCycleButton:!0,hoverIndex:-1,Xcycle:186,Ycycle:173},()=>this.drawLines())},this.toggleButtonPanel=()=>{this.props.isMappingChanged?this.props.displaySaveAlert(this.updateToggleButtonPanel):this.updateToggleButtonPanel()},this.updateToggleButtonPanel=()=>{this.props.isPanelOpen&&this.props.fromPanel&&(this.props.setActiveButton(\"\"),this.props.toggleMappingPanel(!1)),this.props.toggleButtonPanel(!this.props.isPanelOpen)},this.toggleHyperShift=async()=>{this.props.isMappingChanged?this.props.displaySaveAlert(this.updateHypeShift):this.updateHypeShift()},this.updateHypeShift=async()=>{await this.props.toggleHyperShift(!this.props.isHyperShiftOn),this.drawLines(),this.props.setActiveButton(\"\"),this.props.updateMappingChanged(!1),this.props.toggleMappingPanel(!1)},this.getCycleImage=()=>(0,Ga.jsx)(\"div\",{className:\"custom-btn-litat1refresh\",children:(0,Ga.jsx)(\"div\",{className:\"custom-btn-cutout \"+(7===this.state.hoverIndex||this.state.displayCycleButton?\"show\":\"\"),children:(0,Ga.jsx)(DI,{})})}),this.state={hyperShiftOn:!1,hoverIndex:-1,displayCycleButton:!1,hoverIndex:-1,Xcycle:214,Ycycle:169,showMultiPairingFeature:!1,isSlaveDevice:!1},this.configDom=g().createRef(),this.leftCol=g().createRef(),this.rightCol=g().createRef(),this.leftCol=0,this.rightCol=0,this.mappings=[],this.filteredMappings=[],this.prod1x={},this.prod3x={}}componentDidMount(){const e=!!TO(oe.DeviceInfo);this.setState({isSlaveDevice:e}),(async()=>({showMultiPairingFeature:!!(await(0,Js.A)(\"global.multipairing\"))?.provisionFlags}))().then(e=>{let{showMultiPairingFeature:E}=e;this.setState({showMultiPairingFeature:E})}).catch(e=>{console.log(\"TopViewComponent showMultiPairingFeature error:\",e)})}componentDidUpdate(e){e.activeButton===this.props.activeButton&&e.buttonList.length===this.props.buttonList.length&&e.selectedTab===this.props.selectedTab&&Mr()(e.buttonList[0],this.props.buttonList[0])||this.drawLines(),e.activeButton&&\"CycleUpSensitivityStages\"===e.activeButton.buttonKey&&!this.props.activeButton&&this.setState({displayCycleButton:!1,Xcycle:214,Ycycle:169},()=>this.drawLines()),e.activeButton&&\"CycleUpSensitivityStages\"===e.activeButton.buttonKey&&this.props.activeButton&&\"CycleUpSensitivityStages\"===this.props.activeButton.buttonKey&&!this.state.displayCycleButton&&this.setState({displayCycleButton:!0,Xcycle:186,Ycycle:173},()=>this.drawLines()),e.status!==this.props.status&&this.setState({changed:!0,isFirst:!1})}render(){return(0,Ga.jsxs)(\"div\",{className:\"topview-litat1refresh\",children:[(0,Ga.jsxs)(\"div\",{className:\"config-wrapper dot-bg\",children:[(0,Ga.jsxs)(\"div\",{className:\"config-block\",ref:this.configDom,children:[(0,Ga.jsx)(fr,{width:II.h5.cvsW,height:II.h5.cvsH,className:\"config-ctx\",setCtx:this.setCtx,setDom:this.setDom}),(0,Ga.jsxs)(\"div\",{className:\"config-btns flex left\",ref:this.leftCol,children:[(0,Ga.jsx)(oT,{button:this.props.buttonList[0],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"left\",idx:0,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn}),(0,Ga.jsx)(oT,{button:this.props.buttonList[2],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"left\",idx:2,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn}),(0,Ga.jsx)(oT,{button:this.props.buttonList[5],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"left\",idx:5,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn}),(0,Ga.jsx)(oT,{button:this.props.buttonList[6],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"left\",idx:6,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn})]}),(0,Ga.jsx)(lI,{}),this.state.displayCycleButton?this.getCycleImage():null,(0,Ga.jsxs)(\"div\",{className:\"config-btns flex right\",ref:this.rightCol,children:[(0,Ga.jsx)(oT,{button:this.props.buttonList[1],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"right\",idx:1,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn}),(0,Ga.jsx)(oT,{button:this.props.buttonList[3],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"right\",idx:3,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn}),(0,Ga.jsx)(oT,{button:this.props.buttonList[4],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"right\",idx:4,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn}),(0,Ga.jsx)(oT,{button:this.props.buttonList[7],active:!1,hyperShiftOn:this.props.isHyperShiftOn,remap2Disabled:!1,remapped:!1,side:\"right\",idx:7,clickBtn:this.clickBtn,hoverBtn:this.hoverBtn,leaveBtn:this.leaveBtn})]})]}),(0,Ga.jsx)(\"div\",{className:\"dim-corner\"})]}),(0,Ga.jsxs)(\"div\",{className:\"flex config-row mt20 mb20 fillrow\",children:[\"macro\"===this.props.displayMode?null:(0,Ga.jsx)(\"div\",{\"aria-expanded\":this.props.isPanelOpen,\"aria-haspopup\":!0,role:\"button\",\"aria-label\":\"open drawer\",className:`toggle-drawer ${this.props.isPanelOpen?\"drawer-open\":\"\"} hover-btn`,onClick:this.toggleButtonPanel}),(0,Ga.jsxs)(\"div\",{\"aria-label\":\"hypershift mode\",role:\"switch\",className:\"hyper-wrapper \"+(this.props.isHyperShiftOn?\"hyper-on\":\"\"),onClick:this.toggleHyperShift,children:[(0,Ga.jsx)(\"div\",{className:\"text standard\",children:(0,Ga.jsx)(ha.A,{text:be.iWJ})}),(0,Ga.jsx)(\"div\",{className:\"text hypershift\",children:(0,Ga.jsx)(ha.A,{text:be.LUv})})]}),(0,Ga.jsxs)(\"div\",{style:{position:\"relative\"},children:[(0,Ga.jsx)(\"div\",{className:\"help\"}),(0,Ga.jsx)(\"div\",{style:{width:362},className:\"tip hypershift-mode-tip\",children:(0,Ga.jsx)(ha.A,{text:be.Dq6})})]})]}),\"macro\"!=this.props.displayMode&&!0===this.props.isDongle?(0,Ga.jsx)(Ur,{children:(0,Ga.jsx)(Ja,{})}):(0,Ga.jsx)(\"br\",{}),oe.DeviceInfo.isMultiPairingSupported&&this.state.showMultiPairingFeature&&this.state.isSlaveDevice?(0,Ga.jsx)(cO,{deviceInfo:oe.DeviceInfo}):null]})}}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "reducer",
+      "utf16_range": [
+        4228577,
+        4232000
+      ],
+      "utf8_byte_range": [
+        5028000,
+        5031423
+      ],
+      "slice_sha256": "a040948c07dae50ad1630eb2aa6c6a669c68801e55f3c2e85dfbda61c5d94c9f",
+      "source": "(e,E)=>{if(\"undefined\"===typeof e)return Tt;switch(E.type){case Et:return{...e,sensitivityMatchingState:E.payload};case at:return{...e,isShowBackDropPopUp:E.payload};case tt:{var a;let t=function(e,E){let a=e.sensitivityMatcher.profiles.map(a=>a.guid===e.selectedSensitivityMatcher?{...a,name:E.payload}:{...a});return It(a),{...e,sensitivityMatcher:{profiles:a}}}(e,E);const _=new De(\"ON_UPDATE_SENSITIVITY_PROFILE\",void 0,{sensitivityMatcher:t.sensitivityMatcher,selectedSensitivityMatcher:t.selectedSensitivityMatcher});null===(a=window.mwBroadcastChannel)||void 0===a||a.postMessage({type:\"ON_UPDATE_SENSITIVITY_PROFILE\",timerTick:void 0,payload:{sensitivityMatcher:t.sensitivityMatcher,selectedSensitivityMatcher:t.selectedSensitivityMatcher}});return t=le(t,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload}),t}case\"MW_SET_DPI_MATCHER_STATE\":return{...e,calibrationState:E.payload};case _t:{var t;let a=function(e,E){const{profile:a,hasNoneProfile:t}=E;let _=[];return _=e.isResetCalibrate?e.sensitivityMatcher.profiles.map(E=>E.guid===e.selectedSensitivityMatcher?{...a}:{...E}):[...e.sensitivityMatcher.profiles,a],t||(_=_.filter(e=>\"None\"!==e.name)),It(_),{...e,sensitivityMatcher:{profiles:_},selectedSensitivityMatcher:a.guid}}(e,E.payload);const _=new De(\"ON_UPDATE_SENSITIVITY_PROFILE\",void 0,{sensitivityMatcher:a.sensitivityMatcher,selectedSensitivityMatcher:a.selectedSensitivityMatcher});null===(t=window.mwBroadcastChannel)||void 0===t||t.postMessage({type:\"ON_UPDATE_SENSITIVITY_PROFILE\",timerTick:void 0,payload:{sensitivityMatcher:a.sensitivityMatcher,selectedSensitivityMatcher:a.selectedSensitivityMatcher}});return a=le(a,{timertick:_.stateMachineEvent.timerTick,actionType:_.stateMachineEvent.type,payload:_.stateMachineEvent.payload}),a}case st:return{...e,newDpi:E.payload};case it:{var _;let a=structuredClone(e.sensitivityMatcher.profiles);a=a.filter(e=>\"None\"!==e.name);let t={...e,sensitivityMatcher:{profiles:a},selectedSensitivityMatcher:E.payload};const i=new De(\"ON_UPDATE_SENSITIVITY_PROFILE\",void 0,{sensitivityMatcher:t.sensitivityMatcher,selectedSensitivityMatcher:E.payload});null===(_=window.mwBroadcastChannel)||void 0===_||_.postMessage({type:\"ON_UPDATE_SENSITIVITY_PROFILE\",timerTick:void 0,payload:{sensitivityMatcher:t.sensitivityMatcher,selectedSensitivityMatcher:E.payload}});return t=le(t,{timertick:i.stateMachineEvent.timerTick,actionType:i.stateMachineEvent.type,payload:i.stateMachineEvent.payload}),t}case nt:{var i;let a=function(e,E){let a=e.sensitivityMatcher.profiles.filter(e=>e.guid!==E.payload);0===a.length&&(a=[rt]),It(a);const t=a[0]?a[0].guid:\"\";return{...e,sensitivityMatcher:{profiles:a},selectedSensitivityMatcher:t}}(e,E);const t=new De(\"ON_UPDATE_SENSITIVITY_PROFILE\",void 0,{sensitivityMatcher:a.sensitivityMatcher,selectedSensitivityMatcher:a.selectedSensitivityMatcher});null===(i=window.mwBroadcastChannel)||void 0===i||i.postMessage({type:\"ON_UPDATE_SENSITIVITY_PROFILE\",timerTick:void 0,payload:{sensitivityMatcher:a.sensitivityMatcher,selectedSensitivityMatcher:a.selectedSensitivityMatcher}});return a=le(a,{timertick:t.stateMachineEvent.timerTick,actionType:t.stateMachineEvent.type,payload:t.stateMachineEvent.payload}),a}case ot:{const{sensitivityMatcher:a,selectedSensitivityMatcher:t}=E.payload;return{...e,sensitivityMatcher:a,selectedSensitivityMatcher:t}}default:return e}}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "initial_state",
+      "utf16_range": [
+        4228105,
+        4228417
+      ],
+      "utf8_byte_range": [
+        5027528,
+        5027840
+      ],
+      "slice_sha256": "6d522ade75513c245a96a023dfe2a1ba81db2aa48af89714855a67f6f62d9e83",
+      "source": "{sensitivityMatcher:{profiles:[rt]},selectedSensitivityMatcher:\"\",sensitivityMatchingState:\"None\",isShowBackDropPopUp:!1,actionsFromUI:[],actionsFromLocalStorage:[],errorActions:[],sourceDevice:{},mainDevice:{},newDpi:null,isResetCalibrate:!1,hasNoneProfile:!1,calibrationState:{state:\"idle\",process:0,newDpi:0}}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "profile_connect",
+      "utf16_range": [
+        4611574,
+        4611955
+      ],
+      "utf8_byte_range": [
+        5412658,
+        5413039
+      ],
+      "slice_sha256": "7ef74fa3d3fd8ea23ea95ebec3c8682f3f3b2c42a5cdcfc229767d5bb45ccd03",
+      "source": "(0,v.connect)(e=>({sensitivityMatcher:e.sensitivityMatcherReducer.sensitivityMatcher,selectedSensitivityMatcher:e.sensitivityMatcherReducer.selectedSensitivityMatcher,validDevices:e.commonReducer.validDevices,lang:e.languageReducer.lang,dpiStages:e.dpiStages.stages,activeDpiStages:e.dpiStages.active,newDpi:e.sensitivityMatcherReducer.newDpi}),e=>(0,B.zH)({...l,...A,...R},e))(AS)"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "widget_connect",
+      "utf16_range": [
+        4619045,
+        4619704
+      ],
+      "utf8_byte_range": [
+        5420129,
+        5420788
+      ],
+      "slice_sha256": "1c8bae8fda0e402a0dcdafef59f6f9f6fd4867f6b7ecefbf406222a342f5797d",
+      "source": "(0,v.connect)(e=>({sensitivityMatchingState:e.sensitivityMatcherReducer.sensitivityMatchingState,showPopup:e.sensitivityMatcherReducer.isShowBackDropPopUp,currentDpiStages:e.dpiStages.stages[e.dpiStages.active-1],sourceDevice:e.sensitivityMatcherReducer.sourceDevice,mainDevice:e.sensitivityMatcherReducer.mainDevice,validDevices:e.commonReducer.validDevices,newDpi:e.sensitivityMatcherReducer.newDpi,dpiStages:e.dpiStages.stages,activeDpiStages:e.dpiStages.active,sensitivityMatcher:e.sensitivityMatcherReducer.sensitivityMatcher,calibrationState:e.sensitivityMatcherReducer.calibrationState,lang:e.languageReducer.lang}),e=>(0,B.zH)({...l,...R,...A},e))(dS)"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "delete_all",
+      "utf16_range": [
+        4602872,
+        4603550
+      ],
+      "utf8_byte_range": [
+        5403956,
+        5404634
+      ],
+      "slice_sha256": "d74b6fcf6156e6911ff06ea11041f0b5ddbf60eeb7ce62514cafd1aa0a686b88",
+      "source": "g().forwardRef((e,E)=>{let{onCancel:a,onDelete:t,style:_}=e;return(0,Ga.jsxs)(\"div\",{ref:E,className:\"delete-all-popup__wrapper\",style:_,children:[(0,Ga.jsx)(\"span\",{className:\"delete-all-popup__header\",children:(0,Ga.jsx)(ha.A,{text:be.wMy})}),(0,Ga.jsx)(\"span\",{className:\"delete-all-popup__desc\",children:(0,Ga.jsx)(ha.A,{text:be.Ue0})}),(0,Ga.jsxs)(\"div\",{className:\"action-button__wrapper\",children:[(0,Ga.jsx)(\"button\",{onClick:a,className:\"action-button__item action-button__item--cancel\",children:(0,Ga.jsx)(ha.A,{text:be.bOp})}),(0,Ga.jsx)(\"button\",{onClick:t,className:\"action-button__item action-button__item--delete\",children:(0,Ga.jsx)(ha.A,{text:be.SJi})})]})]})})"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "warning",
+      "utf16_range": [
+        4611979,
+        4612587
+      ],
+      "utf8_byte_range": [
+        5413063,
+        5413671
+      ],
+      "slice_sha256": "558f30d725e9680d17020117ffe9d82eecfac753efcfe442252310be7c65d738",
+      "source": "e=>{let{onRetry:E,onCancel:a,header:t,content:_}=e;return(0,Ga.jsx)(\"div\",{className:\"warning-wapper\",children:(0,Ga.jsxs)(\"div\",{className:\"popup-warning\",children:[(0,Ga.jsxs)(\"div\",{className:\"popup-warning__header\",children:[(0,Ga.jsx)(\"img\",{src:lS.A,alt:\"warning\"}),(0,Ga.jsx)(ha.A,{text:t})]}),(0,Ga.jsx)(\"div\",{className:\"popup-warning__content\",children:(0,Ga.jsx)(ha.A,{text:_})}),(0,Ga.jsxs)(\"div\",{className:\"popup-warning__footer\",children:[(0,Ga.jsx)(\"button\",{onClick:a,children:(0,Ga.jsx)(ha.A,{text:be.bOp})}),(0,Ga.jsx)(\"button\",{onClick:E,children:(0,Ga.jsx)(ha.A,{text:be.p6C})})]})]})})}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "show_popup_action",
+      "utf16_range": [
+        4602508,
+        4602544
+      ],
+      "utf8_byte_range": [
+        5403592,
+        5403628
+      ],
+      "slice_sha256": "aa4510674980135e37dc861dc74520fe4d1b908f4924b214c16a8f6f57523192",
+      "source": "e=>async E=>{E({type:at,payload:e})}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "new_dpi_action",
+      "utf16_range": [
+        4602548,
+        4602584
+      ],
+      "utf8_byte_range": [
+        5403632,
+        5403668
+      ],
+      "slice_sha256": "a33a32de6c25f59f080f2abae4b0e53e03e4d85a60f9017803ef04adbabb3862",
+      "source": "e=>async E=>{E({type:st,payload:e})}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "calibration_states",
+      "utf16_range": [
+        4602656,
+        4602733
+      ],
+      "utf8_byte_range": [
+        5403740,
+        5403817
+      ],
+      "slice_sha256": "9586b87119c1840426a5b635de94ccb2368426ac77a9be8e2511e1674d4515ce",
+      "source": "{READY:\"ready\",CALIBRATING:\"calibrating\",COMPLETED:\"completed\",ERROR:\"error\"}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "slave_device_helper",
+      "utf16_range": [
+        4530586,
+        4530799
+      ],
+      "utf8_byte_range": [
+        5331670,
+        5331883
+      ],
+      "slice_sha256": "b984a508103b2c52570d4225f90f7c0bbcdf00c857af044f4c74c66844c6e3c8",
+      "source": "function(){const e=Number((arguments.length>0&&void 0!==arguments[0]?arguments[0]:{}).productId);if(Number.isFinite(e)&&!(e<=0))return iO().find(E=>(null===E||void 0===E?void 0:E.master)&&Number(E.productId)===e)}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "calibration and profile command literals",
+      "utf16_range": [
+        4602653,
+        4602869
+      ],
+      "utf8_byte_range": [
+        5403737,
+        5403953
+      ],
+      "slice_sha256": "88499f602b5af14d9e50a40bdcaa8dfd3027adb9fcba1d4eccdf4b3d5983b382",
+      "source": "tS={READY:\"ready\",CALIBRATING:\"calibrating\",COMPLETED:\"completed\",ERROR:\"error\"},_S=\"DPI_MATCHER_UI_COMMAND\",iS=\"START\",nS=\"CONFIRM\",oS=\"CANCEL\",sS=\"RESET\",rS=\"GET_STATE\",TS=\"DELETE_PROFILE\",IS=\"DELETE_ALL_PROFILES\","
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "multipairing observation",
+      "utf16_range": [
+        4539140,
+        4539515
+      ],
+      "utf8_byte_range": [
+        5340224,
+        5340599
+      ],
+      "slice_sha256": "b9234fba6317c1f6f1224e9030f1a7e9a07627968f04a46c4e81dd225794b138",
+      "source": "lteredMappings=[],this.prod1x={},this.prod3x={}}componentDidMount(){const e=!!TO(oe.DeviceInfo);this.setState({isSlaveDevice:e}),(async()=>({showMultiPairingFeature:!!(await(0,Js.A)(\"global.multipairing\"))?.provisionFlags}))().then(e=>{let{showMultiPairingFeature:E}=e;this.setState({showMultiPairingFeature:E})}).catch(e=>{console.log(\"TopViewComponent showMultiPairingFeatu"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "multipairing mount gate",
+      "utf16_range": [
+        4543644,
+        4543795
+      ],
+      "utf8_byte_range": [
+        5344728,
+        5344879
+      ],
+      "slice_sha256": "15b48da9b213c993fb7bb298138c2ea6ea961e8803559d6e90b3e2db8ae94def",
+      "source": "oe.DeviceInfo.isMultiPairingSupported&&this.state.showMultiPairingFeature&&this.state.isSlaveDevice?(0,Ga.jsx)(cO,{deviceInfo:oe.DeviceInfo}):null]})}}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .description-volume-map .configure-sensitivity",
+      "utf16_range": [
+        159363,
+        159450
+      ],
+      "utf8_byte_range": [
+        159363,
+        159450
+      ],
+      "slice_sha256": "8623bd1c9230f8b88ed8c6fee27ba041d41372f7f27b47a5367ed45bc1d5029e",
+      "source": ".description-volume-map .configure-sensitivity{margin:28px 0;text-decoration:underline}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .description-volume-map .configure-sensitivity:hover",
+      "utf16_range": [
+        159450,
+        159518
+      ],
+      "utf8_byte_range": [
+        159450,
+        159518
+      ],
+      "slice_sha256": "362ae2903c5ce04a4d50359d453e3199d08db59dbf53f16f365d94e8b1720761",
+      "source": ".description-volume-map .configure-sensitivity:hover{cursor:pointer}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .description-cycleup-sensitivity-map",
+      "utf16_range": [
+        159973,
+        160139
+      ],
+      "utf8_byte_range": [
+        159973,
+        160139
+      ],
+      "slice_sha256": "e9ba391a2f0ef23a209b928300639561e17acdabe7653508c9076014fd1b6648",
+      "source": ".description-cycleup-sensitivity-map{display:flex;flex-direction:column;font-size:14px;height:140px;justify-content:space-between;line-height:17px;margin-bottom:20px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .description-cycleup-sensitivity-map .description-stages",
+      "utf16_range": [
+        160139,
+        160224
+      ],
+      "utf8_byte_range": [
+        160139,
+        160224
+      ],
+      "slice_sha256": "053ec0597e41f7ee68eb4e697b4aa365f250d976ef0664299067e4c18e733e19",
+      "source": ".description-cycleup-sensitivity-map .description-stages{color:#999;line-height:17px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .description-cycleup-sensitivity-map .configure-sensitivity",
+      "utf16_range": [
+        160224,
+        160329
+      ],
+      "utf8_byte_range": [
+        160224,
+        160329
+      ],
+      "slice_sha256": "b49e9ead5d447940bc767f142cb2b5dbf978a6b2ccad19f68b3835dd1fb2cad3",
+      "source": ".description-cycleup-sensitivity-map .configure-sensitivity{margin:20px 0 10px;text-decoration:underline}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .description-cycleup-sensitivity-map .configure-sensitivity:hover",
+      "utf16_range": [
+        160329,
+        160410
+      ],
+      "utf8_byte_range": [
+        160329,
+        160410
+      ],
+      "slice_sha256": "e44073ef5a680ee82d3281c525d0b62761ba133932e356ee4d43011bbd18d531",
+      "source": ".description-cycleup-sensitivity-map .configure-sensitivity:hover{cursor:pointer}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .configure-sensitivity",
+      "utf16_range": [
+        239426,
+        239587
+      ],
+      "utf8_byte_range": [
+        239426,
+        239587
+      ],
+      "slice_sha256": "af1f0fe6817685b80402c9cbba38d470f6d398f2868e94d1631966dd0cb4b17a",
+      "source": ".configure-sensitivity{color:#ccc;cursor:pointer;font-family:Roboto;font-size:14px;margin-bottom:20px;margin-left:60px;text-align:left;text-decoration:underline}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .stage:hover .icon-draggable,.stage:hover .icon-sensitivity-xy,.stage:hover .switch",
+      "utf16_range": [
+        240058,
+        240156
+      ],
+      "utf8_byte_range": [
+        240058,
+        240156
+      ],
+      "slice_sha256": "111014d5229e14b766a72b865ea61b33396db1e6f802ee24ffa23dc3471f7156",
+      "source": ".stage:hover .icon-draggable,.stage:hover .icon-sensitivity-xy,.stage:hover .switch{display:block}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .stage .icon-draggable,.stage .icon-sensitivity-xy",
+      "utf16_range": [
+        240806,
+        240909
+      ],
+      "utf8_byte_range": [
+        240806,
+        240909
+      ],
+      "slice_sha256": "77a2ff4fca2c92d0b2713e8318ac4d2728f7d6fc0648678b292734f738d63a83",
+      "source": ".stage .icon-draggable,.stage .icon-sensitivity-xy{background-position:50%;background-repeat:no-repeat}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .stage .icon-sensitivity-xy",
+      "utf16_range": [
+        240909,
+        240992
+      ],
+      "utf8_byte_range": [
+        240909,
+        240992
+      ],
+      "slice_sha256": "e44ec0dad356cefe61d6ea454bed28c46b9656ce02079c6209ac6ed7f2f7feca",
+      "source": ".stage .icon-sensitivity-xy{cursor:pointer;height:32px;margin-left:10px;width:32px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .stage .icon-draggable,.stage .icon-sensitivity-xy,.stage .switch",
+      "utf16_range": [
+        241227,
+        241306
+      ],
+      "utf8_byte_range": [
+        241227,
+        241306
+      ],
+      "slice_sha256": "a7975c72167a3ae6db58cc1e9d9307cfa834be3da03fb72c71ae08983992f913",
+      "source": ".stage .icon-draggable,.stage .icon-sensitivity-xy,.stage .switch{display:none}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .stage.off .icon-draggable,.stage.off .icon-sensitivity-xy,.stage.off .slider-wrapper,.stage.off .stage-ordinal",
+      "utf16_range": [
+        241306,
+        241429
+      ],
+      "utf8_byte_range": [
+        241306,
+        241429
+      ],
+      "slice_sha256": "53f0fd55933d7916f0882098dcd2de6c3cd68f7db9de5da0a25511f36dd5e989",
+      "source": ".stage.off .icon-draggable,.stage.off .icon-sensitivity-xy,.stage.off .slider-wrapper,.stage.off .stage-ordinal{opacity:.3}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .stage.off .icon-sensitivity-xy",
+      "utf16_range": [
+        241429,
+        241544
+      ],
+      "utf8_byte_range": [
+        241429,
+        241544
+      ],
+      "slice_sha256": "ff8d1ae5953db425dc1f5232372e1f656bba0140d2e2d9c509336dda9fd91900",
+      "source": ".stage.off .icon-sensitivity-xy{background-image:url(../../static/media/icon_sensitivity_xy_disabled.3a6ee34e.svg)}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .icon-sensitivity-xy",
+      "utf16_range": [
+        242079,
+        242192
+      ],
+      "utf8_byte_range": [
+        242079,
+        242192
+      ],
+      "slice_sha256": "3cf0261a98e2e9effdf96e64305c5f3c69dee71c444afe649fb3fa301979d03c",
+      "source": ".icon-sensitivity-xy{background-image:url(../../static/media/icon_sensitivity_xy.b9eb5286.svg);position:relative}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .icon-sensitivity-xy.active",
+      "utf16_range": [
+        242192,
+        242301
+      ],
+      "utf8_byte_range": [
+        242192,
+        242301
+      ],
+      "slice_sha256": "0dd77784b192b1492aa9818a36d2b0d869e18706bcb28ecd13d2ec5be8d70958",
+      "source": ".icon-sensitivity-xy.active{background-image:url(../../static/media/icon_sensitivity_xy_active.39d46352.svg)}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .icon-sensitivity-xy.disabled",
+      "utf16_range": [
+        242301,
+        242414
+      ],
+      "utf8_byte_range": [
+        242301,
+        242414
+      ],
+      "slice_sha256": "2dc491b0856ebfcf60fc67318f46c7ff894017553f167de2b21a8916c148114c",
+      "source": ".icon-sensitivity-xy.disabled{background-image:url(../../static/media/icon_sensitivity_xy_disabled.3a6ee34e.svg)}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .icon-sensitivity-xy:hover .xy-tip",
+      "utf16_range": [
+        242414,
+        242492
+      ],
+      "utf8_byte_range": [
+        242414,
+        242492
+      ],
+      "slice_sha256": "1e8bb014fee668f7be8b33f4d6f4dbe7ea7a5faac071069d0b20d6886504da17",
+      "source": ".icon-sensitivity-xy:hover .xy-tip{display:block;opacity:1;visibility:visible}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .two-way-tab-sensitivity",
+      "utf16_range": [
+        244338,
+        244392
+      ],
+      "utf8_byte_range": [
+        244338,
+        244392
+      ],
+      "slice_sha256": "3a3d77d6c6fb8fcc41bf729566e0381b3f5c1eb55eda72e482c85051a8a75a18",
+      "source": ".two-way-tab-sensitivity{height:72px;padding-top:12px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .map_controller .analog_sensitivity_text",
+      "utf16_range": [
+        285474,
+        285618
+      ],
+      "utf8_byte_range": [
+        285474,
+        285618
+      ],
+      "slice_sha256": "3702b11c0c65e94f1a9381029f37731868da056319507b7ca2b7d3eb40e7d65a",
+      "source": ".map_controller .analog_sensitivity_text{color:#ccc;font-size:14px;height:17px;margin-bottom:10px;margin-top:20px;position:relative;z-index:101}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .map_controller .analog_sensitivity_text .tooltip_parent",
+      "utf16_range": [
+        285618,
+        285713
+      ],
+      "utf8_byte_range": [
+        285618,
+        285713
+      ],
+      "slice_sha256": "a3665db599e6f9cca9f94b75bcb25023d8cb4199fb48eb89ca2d5df1f558ccd3",
+      "source": ".map_controller .analog_sensitivity_text .tooltip_parent{float:right;position:relative;top:1px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-matcher",
+      "utf16_range": [
+        427276,
+        427354
+      ],
+      "utf8_byte_range": [
+        427336,
+        427414
+      ],
+      "slice_sha256": "57c05013e97bfe42c8d73ab8acfdc567ebf561276dcaca6d0a220198f87d9aa6",
+      "source": ".sensitivity-matcher{display:flex;flex-wrap:wrap;position:relative;z-index:10}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-matcher-desc",
+      "utf16_range": [
+        427354,
+        427407
+      ],
+      "utf8_byte_range": [
+        427414,
+        427467
+      ],
+      "slice_sha256": "b653e68c0b834cabd56f232d7d2ef05170bc385e2c95a38dfa433712ef105cf3",
+      "source": ".sensitivity-matcher-desc{margin-top:20px;width:100%}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-profile",
+      "utf16_range": [
+        427407,
+        427462
+      ],
+      "utf8_byte_range": [
+        427467,
+        427522
+      ],
+      "slice_sha256": "93d099f65d32c17c9c3c37d8783b378ebf23423078271c5e092565b8c6e4981c",
+      "source": ".sensitivity-profile{margin-left:-16px;margin-top:10px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-profile .hover-border:hover",
+      "utf16_range": [
+        427462,
+        427528
+      ],
+      "utf8_byte_range": [
+        427522,
+        427588
+      ],
+      "slice_sha256": "dea5abda7ab119053d3590e6511c1d6045e6fe884051b02e5e419c661e8d7d34",
+      "source": ".sensitivity-profile .hover-border:hover{border:1px solid #44d62c}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-act",
+      "utf16_range": [
+        427579,
+        427817
+      ],
+      "utf8_byte_range": [
+        427639,
+        427877
+      ],
+      "slice_sha256": "06d2655fae9c28418f75ab6da3e712ef605504fe0199717fbf8230440cea0af8",
+      "source": ".sensitivity-act{background:#000;border:1px solid #5d5d5d;min-width:76px;opacity:0;padding:2.5px 0;position:relative;transition:height 0s,visibility 0s,opacity .1s linear;visibility:hidden;will-change:height,visibility,opacity;z-index:10}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-act.show",
+      "utf16_range": [
+        427817,
+        427905
+      ],
+      "utf8_byte_range": [
+        427877,
+        427965
+      ],
+      "slice_sha256": "903f03f8f852961f7077129f4bedfa27e692c1b424c2b21393630a9c9b7501c7",
+      "source": ".sensitivity-act.show{left:-1px;opacity:1;position:absolute;top:26px;visibility:visible}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-act .divider",
+      "utf16_range": [
+        427905,
+        428002
+      ],
+      "utf8_byte_range": [
+        427965,
+        428062
+      ],
+      "slice_sha256": "4824ff2558ea0b0c9bb263c8994047b7f3a7c5550fd08b454baa2cd9c7b9ad7c",
+      "source": ".sensitivity-act .divider{background:#5d5d5d;height:1px;margin:2.5px 6px;width:calc(100% - 17px)}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-act .sensitivity-action",
+      "utf16_range": [
+        428002,
+        428345
+      ],
+      "utf8_byte_range": [
+        428062,
+        428405
+      ],
+      "slice_sha256": "0c81148b22d087c544189577d2b8d05fc3e9497183642c6a5d95fe95de142ee9",
+      "source": ".sensitivity-act .sensitivity-action{align-items:center;background-color:#0000;color:#999;display:flex;font-family:Roboto;font-size:12px;font-style:normal;font-weight:400;height:19px;line-height:17px;line-height:normal;padding:2.5px 6px;text-transform:capitalize;transition:background-color .3s;white-space:nowrap;will-change:background-color}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-act .sensitivity-action:hover",
+      "utf16_range": [
+        428345,
+        428413
+      ],
+      "utf8_byte_range": [
+        428405,
+        428473
+      ],
+      "slice_sha256": "093ab61551f66590430ef35bb7c65e11fcdd5d54d1bd61441f92d5720ea016db",
+      "source": ".sensitivity-act .sensitivity-action:hover{background-color:#1a1a1a}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-group-step",
+      "utf16_range": [
+        428439,
+        428588
+      ],
+      "utf8_byte_range": [
+        428499,
+        428648
+      ],
+      "slice_sha256": "66c8a58fb4d3bed786d0d4845a8a59e1039e954b38c96ad1b6cee08ff57d939d",
+      "source": ".sensitivity-group-step{align-items:center;display:flex;height:33px;justify-content:space-between;margin:auto;position:relative;top:20px;width:283px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-group-step .sensitivity-step",
+      "utf16_range": [
+        428588,
+        428696
+      ],
+      "utf8_byte_range": [
+        428648,
+        428756
+      ],
+      "slice_sha256": "4f821a0c93489d8090433351d0e09148c4708ec519cf856b69d826613add745d",
+      "source": ".sensitivity-group-step .sensitivity-step{background-color:#707070;border-radius:50%;height:33px;width:33px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-group-step .sensitivity-step:before",
+      "utf16_range": [
+        428696,
+        428865
+      ],
+      "utf8_byte_range": [
+        428756,
+        428925
+      ],
+      "slice_sha256": "9b114e5a002076961eac9badf3ea35fc8ad8f76afbd8e83fdb7afb771a75cd58",
+      "source": ".sensitivity-group-step .sensitivity-step:before{color:#000;font-family:Roboto;font-size:18px;font-weight:400;height:21px;left:12px;position:relative;top:6px;width:11px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-group-step .sensitivity-step:first-child:before",
+      "utf16_range": [
+        428865,
+        428938
+      ],
+      "utf8_byte_range": [
+        428925,
+        428998
+      ],
+      "slice_sha256": "91c01d95ae3b0ed625081280b77d867c53202930d9dba004bd62e3f76e70ff07",
+      "source": ".sensitivity-group-step .sensitivity-step:first-child:before{content:\"1\"}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-group-step .sensitivity-step:nth-child(3):before",
+      "utf16_range": [
+        428938,
+        429012
+      ],
+      "utf8_byte_range": [
+        428998,
+        429072
+      ],
+      "slice_sha256": "8f7c0ea51da6c50a47153641e28ed16ecdf3c2fb9cd69e905d72fd5136397d2c",
+      "source": ".sensitivity-group-step .sensitivity-step:nth-child(3):before{content:\"2\"}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-group-step .sensitivity-step:nth-child(5):before",
+      "utf16_range": [
+        429012,
+        429086
+      ],
+      "utf8_byte_range": [
+        429072,
+        429146
+      ],
+      "slice_sha256": "0eb307bae77629cccb4fadac57b01c270eb1b30efb1dce1dfd37244751c92082",
+      "source": ".sensitivity-group-step .sensitivity-step:nth-child(5):before{content:\"3\"}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-group-step .active",
+      "utf16_range": [
+        429086,
+        429143
+      ],
+      "utf8_byte_range": [
+        429146,
+        429203
+      ],
+      "slice_sha256": "3ca5436da0a85021d0cfe033d5afac8dbb12e36a0d43671616979859443e5026",
+      "source": ".sensitivity-group-step .active{background-color:#44d62c}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .step-desc",
+      "utf16_range": [
+        429143,
+        429250
+      ],
+      "utf8_byte_range": [
+        429203,
+        429310
+      ],
+      "slice_sha256": "e842b9ea3385dc79dce462e2cd19aa35bd58fcfe155062824182a8a70439e378",
+      "source": ".step-desc{color:#ccc;font-size:14px;line-height:17px;margin-bottom:10px;margin-top:50px;text-align:center}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .step-desc p",
+      "utf16_range": [
+        429250,
+        429283
+      ],
+      "utf8_byte_range": [
+        429310,
+        429343
+      ],
+      "slice_sha256": "752b26e4d36eb4d6ee57417e5fb6815685699f11384ee8f65421ae2f014f3881",
+      "source": ".step-desc p{color:#999;margin:0}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .step-desc p:first-child",
+      "utf16_range": [
+        429283,
+        429347
+      ],
+      "utf8_byte_range": [
+        429343,
+        429407
+      ],
+      "slice_sha256": "12ef240066f6809d193daf7cd8dbd5659d67c6d113cd9e8895771f77db8cb11f",
+      "source": ".step-desc p:first-child{color:#fd8611;text-transform:uppercase}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dotted-line",
+      "utf16_range": [
+        429347,
+        429438
+      ],
+      "utf8_byte_range": [
+        429407,
+        429498
+      ],
+      "slice_sha256": "5818b77008b260bcee8b35f92ee5513df9dc1b6afe2ee766474b59dd7c8960d9",
+      "source": ".dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:80px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .img-component .handmouse,.img-component-error .handmouse",
+      "utf16_range": [
+        429553,
+        429706
+      ],
+      "utf8_byte_range": [
+        429613,
+        429766
+      ],
+      "slice_sha256": "b293e5eb938cdc7f3491f20df20184405f19952e1bcad2f5c2d643c397bc8630",
+      "source": ".img-component .handmouse,.img-component-error .handmouse{background-image:url(../../static/media/twohandandmouse.5696dd01.svg);height:136px;width:150px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .img-component .mini-synapse,.img-component-error .mini-synapse",
+      "utf16_range": [
+        429706,
+        429862
+      ],
+      "utf8_byte_range": [
+        429766,
+        429922
+      ],
+      "slice_sha256": "3f3e709281b449ff8058cff0ab8ab28efba87f6c5bad523db346c8b8f0e9f112",
+      "source": ".img-component .mini-synapse,.img-component-error .mini-synapse{background-image:url(../../static/media/mini-synapse.c50547eb.svg);height:103px;width:158px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .img-component .twomouse-completed,.img-component-error .twomouse-completed",
+      "utf16_range": [
+        430060,
+        430234
+      ],
+      "utf8_byte_range": [
+        430120,
+        430294
+      ],
+      "slice_sha256": "7739b282250c7f694be641a4f8e8a54c0a7df512051e5345d393c8ab6ff43ef2",
+      "source": ".img-component .twomouse-completed,.img-component-error .twomouse-completed{background-image:url(../../static/media/twomouse-completed.362f86de.svg);height:109px;width:136px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .img-component .twomouse-error,.img-component-error .twomouse-error",
+      "utf16_range": [
+        430234,
+        430396
+      ],
+      "utf8_byte_range": [
+        430294,
+        430456
+      ],
+      "slice_sha256": "ab4e5a8c6498bfcd0746541e545f998b08a3a03feab4d12e955e5539c2209f2e",
+      "source": ".img-component .twomouse-error,.img-component-error .twomouse-error{background-image:url(../../static/media/twomouse-error.a010c455.svg);height:109px;width:136px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-calibrated-progress",
+      "utf16_range": [
+        430464,
+        430569
+      ],
+      "utf8_byte_range": [
+        430524,
+        430629
+      ],
+      "slice_sha256": "abe20533a4313e6f5669f24cfe9c4b87ae67152693ba848a2e83dee4fb166642",
+      "source": ".sensitivity-calibrated-progress{background-color:#44d62c4d;height:7px;margin:10px auto auto;width:414px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .sensitivity-calibrated-progress .current-state",
+      "utf16_range": [
+        430569,
+        430687
+      ],
+      "utf8_byte_range": [
+        430629,
+        430747
+      ],
+      "slice_sha256": "2a9875c6037c2cad3dd050bdb8f25293923b5f8a995938fcba34339a995d4719",
+      "source": ".sensitivity-calibrated-progress .current-state{background-color:#44d62c;height:7px;transition:width .5s ease;width:0}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .calibration-info",
+      "utf16_range": [
+        430687,
+        430796
+      ],
+      "utf8_byte_range": [
+        430747,
+        430856
+      ],
+      "slice_sha256": "cf0349e2adce6d9f256bdb1542f5315afe92973e46b88e57e898419be36ca39d",
+      "source": ".calibration-info{font-family:RazerF5;height:14px;line-height:14px;margin:auto;text-align:center;width:171px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .calibration-info,.dpi-info",
+      "utf16_range": [
+        430796,
+        430872
+      ],
+      "utf8_byte_range": [
+        430856,
+        430932
+      ],
+      "slice_sha256": "3d4d161877b33111f9a4dd4abf3bba9443b368d4bb72a6e425cebe27fbf95c9a",
+      "source": ".calibration-info,.dpi-info{font-size:14px;font-weight:400;letter-spacing:0}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dpi-info",
+      "utf16_range": [
+        430872,
+        430988
+      ],
+      "utf8_byte_range": [
+        430932,
+        431048
+      ],
+      "slice_sha256": "5428889731d9812f8c3864fe593adf1d01792ffcd7ef694b8c2b37df78853980",
+      "source": ".dpi-info{font-family:Roboto;line-height:17px;margin:10px auto auto;text-align:right;white-space:nowrap;width:118px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .calibration-reset",
+      "utf16_range": [
+        431007,
+        431135
+      ],
+      "utf8_byte_range": [
+        431067,
+        431195
+      ],
+      "slice_sha256": "9390c000515ce16a38729306c1f61828e1623e32737a32433ea96ea3c18547dd",
+      "source": ".calibration-reset{font-size:14px;font-weight:100;height:17px;margin:20px auto auto;text-decoration:underline;width:fit-content}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-calibration",
+      "utf16_range": [
+        431135,
+        431199
+      ],
+      "utf8_byte_range": [
+        431195,
+        431259
+      ],
+      "slice_sha256": "04958e2669702a056dd21afe8eed73c8bbdece8c2361f468929b3773bb455396",
+      "source": ".popup-calibration{height:calc(100vh - 105px);position:relative}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .delete-all-popup__wrapper",
+      "utf16_range": [
+        431238,
+        431527
+      ],
+      "utf8_byte_range": [
+        431298,
+        431587
+      ],
+      "slice_sha256": "cf028def345ab8c4c254d6a3d087cdb1e67c073c10d23daa20aa0deac3a2ae06",
+      "source": ".delete-all-popup__wrapper{align-items:center!important;background-color:#111;border:1px solid #fd4949;border-radius:3px;box-shadow:0 6px 10px 0 #0003;display:flex;flex-direction:column;gap:10px;opacity:1!important;padding:20px;position:absolute!important;right:70px;top:205px;width:300px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .delete-all-popup__header",
+      "utf16_range": [
+        431555,
+        431654
+      ],
+      "utf8_byte_range": [
+        431615,
+        431714
+      ],
+      "slice_sha256": "11c6156aa9d639f95b88e58ffafd35b892a203ca73e2c05b1f2f4fcbcf181a2e",
+      "source": ".delete-all-popup__header{color:#fd4949;font-weight:700;text-align:center;text-transform:uppercase}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .delete-all-popup__desc",
+      "utf16_range": [
+        431654,
+        431716
+      ],
+      "utf8_byte_range": [
+        431714,
+        431776
+      ],
+      "slice_sha256": "513edc4ad6430c4e0a9e226f71fe27315b73d57a08486da97d3da5a90ffc1ab2",
+      "source": ".delete-all-popup__desc{text-align:center;text-transform:none}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .action-button__wrapper",
+      "utf16_range": [
+        431716,
+        431762
+      ],
+      "utf8_byte_range": [
+        431776,
+        431822
+      ],
+      "slice_sha256": "89d38b1c1f60467e0bbef87dc4c9e332ca463be18693267473daa7f4634e25ac",
+      "source": ".action-button__wrapper{display:flex;gap:10px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .action-button__item",
+      "utf16_range": [
+        431762,
+        431966
+      ],
+      "utf8_byte_range": [
+        431822,
+        432026
+      ],
+      "slice_sha256": "713a2ecee843b267d3ea0c6771e3d99e406521e3ca03cd7078468ac15a2925b9",
+      "source": ".action-button__item{border:0;color:#111;cursor:pointer;font-size:12px;height:27px;line-height:17px;min-width:90px;padding:4px 5px;text-align:center;text-transform:uppercase;white-space:nowrap;width:auto}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .action-button__item:hover",
+      "utf16_range": [
+        431966,
+        432004
+      ],
+      "utf8_byte_range": [
+        432026,
+        432064
+      ],
+      "slice_sha256": "de158f5ba0e066d8b7df8f55df89ec2121e349b978e7032324f5357cf439e12f",
+      "source": ".action-button__item:hover{opacity:.8}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .action-button__item--delete",
+      "utf16_range": [
+        432004,
+        432058
+      ],
+      "utf8_byte_range": [
+        432064,
+        432118
+      ],
+      "slice_sha256": "680e38b5e0efe53a9f197cacee8566533d6bfc220011853631468770bd51a552",
+      "source": ".action-button__item--delete{background-color:#fd4949}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .action-button__item--cancel",
+      "utf16_range": [
+        432058,
+        432123
+      ],
+      "utf8_byte_range": [
+        432118,
+        432183
+      ],
+      "slice_sha256": "03f6dbe19a96ce2110fa879295acb28fb0b42760d90e14f3e6ec630b8d25308d",
+      "source": ".action-button__item--cancel{background-color:#707070;color:#fff}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .warning-wapper",
+      "utf16_range": [
+        432123,
+        432220
+      ],
+      "utf8_byte_range": [
+        432183,
+        432280
+      ],
+      "slice_sha256": "b65a6c9e7b437416e89eeaad1fb0910d32010fe470dc95cefce8e7aba03b89d8",
+      "source": ".warning-wapper{background-color:#27272799;height:100%;left:0;position:absolute;top:0;width:100%}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning",
+      "utf16_range": [
+        432220,
+        432513
+      ],
+      "utf8_byte_range": [
+        432280,
+        432573
+      ],
+      "slice_sha256": "43e6ea5e895b5eac269e6f8e65f364da77f8cbba0e6604e9b5b1906821e16c44",
+      "source": ".popup-warning{background-color:#111;border:1px solid #fd8611;border-radius:3px;box-shadow:0 4px 8px #0003;display:flex;flex-direction:column;gap:17px;height:auto;left:50%;min-height:120px;padding:20px;position:absolute;right:50%;top:50%;transform:translate(-50%,-50%);width:400px;z-index:999}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning:before",
+      "utf16_range": [
+        432513,
+        432548
+      ],
+      "utf8_byte_range": [
+        432573,
+        432608
+      ],
+      "slice_sha256": "5439ead7b1495534cb1059489c25cbf4c4b5305feefd1906909f5cf6dce9f9c3",
+      "source": ".popup-warning:before{display:none}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning .popup-warning__header",
+      "utf16_range": [
+        432548,
+        432811
+      ],
+      "utf8_byte_range": [
+        432608,
+        432871
+      ],
+      "slice_sha256": "0c3867a5c910b0aa4d4f6fdf7d35985a90b767ff8ee8847b6f670e7fd0433027",
+      "source": ".popup-warning .popup-warning__header{align-items:center;color:#999;color:#fd8611;display:flex;font-family:Roboto;font-family:RazerF5;font-size:14px;font-size:16px;font-weight:400;justify-content:center;line-height:15px;text-align:center;text-transform:uppercase}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning .popup-warning__header img",
+      "utf16_range": [
+        432811,
+        432883
+      ],
+      "utf8_byte_range": [
+        432871,
+        432943
+      ],
+      "slice_sha256": "b0d9242cfcbdb429e9925a16e16fe59915788d1544f94c2cb106caaa7f22a8bd",
+      "source": ".popup-warning .popup-warning__header img{height:20px;margin-right:10px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning .popup-warning__content",
+      "utf16_range": [
+        432883,
+        433046
+      ],
+      "utf8_byte_range": [
+        432943,
+        433106
+      ],
+      "slice_sha256": "f3ed21761c51f8c7d1a56b5ef5b28bf155dfc0d1d178cc555b4d6a25c07a1144",
+      "source": ".popup-warning .popup-warning__content{color:#999;font-family:Roboto;font-size:14px;font-weight:400;line-height:17px;margin:auto;max-width:360px;text-align:center}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning .popup-warning__footer",
+      "utf16_range": [
+        433046,
+        433102
+      ],
+      "utf8_byte_range": [
+        433106,
+        433162
+      ],
+      "slice_sha256": "9b3b0aa0e62d756567be249466f8f5ffe7a1c8cb3c3c6f5ab92f18171df653f8",
+      "source": ".popup-warning .popup-warning__footer{text-align:center}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning .popup-warning__footer button",
+      "utf16_range": [
+        433102,
+        433249
+      ],
+      "utf8_byte_range": [
+        433162,
+        433309
+      ],
+      "slice_sha256": "f848b1a2f632ee91585bbe176b94e23631879cc6c06e9528d3cb278ee15e36ca",
+      "source": ".popup-warning .popup-warning__footer button{background:#707070;border:none;border-radius:3px;color:#fff;font-size:12px;padding:6px 9px;width:90px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-warning .popup-warning__footer button:last-child",
+      "utf16_range": [
+        433249,
+        433351
+      ],
+      "utf8_byte_range": [
+        433309,
+        433411
+      ],
+      "slice_sha256": "c03569b081e6069c01e6caddc95e6098671e184a33629812f5a8109f953d17e5",
+      "source": ".popup-warning .popup-warning__footer button:last-child{background:#44d62c;color:#222;margin-left:5px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .popup-calibration",
+      "utf16_range": [
+        438066,
+        438136
+      ],
+      "utf8_byte_range": [
+        438126,
+        438196
+      ],
+      "slice_sha256": "9bb2e19ec59b6a9cd55597d617f311610ad9760283355f36aa79572dc27890c6",
+      "source": ".popup-calibration{max-height:calc(100vh - 105px);top:105px!important}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .choose-a-mat.popup-calibration",
+      "utf16_range": [
+        439644,
+        439688
+      ],
+      "utf8_byte_range": [
+        439704,
+        439748
+      ],
+      "slice_sha256": "167f35145ac89de8176af1e03a28afab478e29172184eeceada253a3ee983e86",
+      "source": ".choose-a-mat.popup-calibration{width:800px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .choose-a-mat.popup-calibration",
+      "utf16_range": [
+        439725,
+        439773
+      ],
+      "utf8_byte_range": [
+        439785,
+        439833
+      ],
+      "slice_sha256": "347f5bb31bb9f9e11a0892c5af8c059c64158833217b26dfbf5d5da2567392bb",
+      "source": ".choose-a-mat.popup-calibration{min-width:546px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .body-widgets .widget.dynamic-sensitivity-container",
+      "utf16_range": [
+        446209,
+        446308
+      ],
+      "utf8_byte_range": [
+        446269,
+        446368
+      ],
+      "slice_sha256": "b03329c17c99d1689ac801de381b93956dc10adf4db6b666a714ab645253833d",
+      "source": ".body-widgets .widget.dynamic-sensitivity-container{margin-left:10px;max-width:1200px;padding:40px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage",
+      "utf16_range": [
+        446308,
+        446413
+      ],
+      "utf8_byte_range": [
+        446368,
+        446473
+      ],
+      "slice_sha256": "8953bd0d1fde2fa20bc74c8f2ee32382464ef306f7f07a42cdfd68d6fbc39e5f",
+      "source": ".body-widgets .widget.dynamic-sensitivity-container:hover+.fwupdate-massage{opacity:1;visibility:visible}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .body-widgets .widget.dynamic-sensitivity-container .titleRow",
+      "utf16_range": [
+        446413,
+        446496
+      ],
+      "utf8_byte_range": [
+        446473,
+        446556
+      ],
+      "slice_sha256": "eba3ed17b8f13efd6f49a4265a6beaaa1d368a5eef4c34719ac12bc1790955f0",
+      "source": ".body-widgets .widget.dynamic-sensitivity-container .titleRow{display:inline-block}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .body-widgets .widget.dynamic-sensitivity-container .spinner-razer",
+      "utf16_range": [
+        446496,
+        446629
+      ],
+      "utf8_byte_range": [
+        446556,
+        446689
+      ],
+      "slice_sha256": "6f8cb25283eb6c9e7fcc74bb6fcb2323958ad4ca90f4fe9b23d3a7cbf5ce4386",
+      "source": ".body-widgets .widget.dynamic-sensitivity-container .spinner-razer{margin-left:16px;margin-top:-2px;vertical-align:middle;width:26px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart-container",
+      "utf16_range": [
+        446680,
+        446735
+      ],
+      "utf8_byte_range": [
+        446740,
+        446795
+      ],
+      "slice_sha256": "67766cbc56c9048d70ce372b356215d8a94a36204c7f440efef4e25b77143ec0",
+      "source": ".dynamic-sensitivity-chart-container{position:relative}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart",
+      "utf16_range": [
+        448104,
+        448168
+      ],
+      "utf8_byte_range": [
+        448164,
+        448228
+      ],
+      "slice_sha256": "8f1382bcc63b376ab833e3a8a1acd5859dfe5f846781ea0dfef18c43ad860d1e",
+      "source": ".dynamic-sensitivity-chart{margin:10px 0 20px;position:relative}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .chart-area",
+      "utf16_range": [
+        448168,
+        448238
+      ],
+      "utf8_byte_range": [
+        448228,
+        448298
+      ],
+      "slice_sha256": "5282f48d7f5d5be8d5125d2844148b136ea1201b0b69eeabf6c7e98306f7baeb",
+      "source": ".dynamic-sensitivity-chart .chart-area{left:0;position:absolute;top:0}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip",
+      "utf16_range": [
+        448238,
+        448478
+      ],
+      "utf8_byte_range": [
+        448298,
+        448538
+      ],
+      "slice_sha256": "2ad18eca05c980b2ebc7b36204404005569cac78d79a343da969396c2a007108",
+      "source": ".dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip{background-color:#222;border:1px solid #5d5d5d;border-radius:4px;color:#ccc;display:none;font-size:14px;padding:5px;pointer-events:none;position:fixed;transform:translateX(-50%)}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:after,.dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:before",
+      "utf16_range": [
+        448478,
+        448736
+      ],
+      "utf8_byte_range": [
+        448538,
+        448796
+      ],
+      "slice_sha256": "08df47d22125ecf6e1aeb4f5422cdd9ad3b4eb2b00451b70a14753fd1d71c74d",
+      "source": ".dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:after,.dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:before{border-left:7px solid #0000;border-right:7px solid #0000;content:\"\";left:50%;margin-left:-7px;position:absolute;top:100%}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:before",
+      "utf16_range": [
+        448736,
+        448847
+      ],
+      "utf8_byte_range": [
+        448796,
+        448907
+      ],
+      "slice_sha256": "8ca23536b867daf71735ef833faf16f3663ecd6756d50ed7ea4f6eb2df3443d1",
+      "source": ".dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:before{border-top:7px solid #5d5d5d;margin-top:0}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:after",
+      "utf16_range": [
+        448847,
+        448967
+      ],
+      "utf8_byte_range": [
+        448907,
+        449027
+      ],
+      "slice_sha256": "135d0c5f317edb311dbf86324d94f56d8030b2e23ec8de16e7048162adacdbbf",
+      "source": ".dynamic-sensitivity-chart .dynamic-sensitivity-chart-tooltip:after{border-top:7px solid #222;margin-top:-2px;z-index:1}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .grid-label-x",
+      "utf16_range": [
+        448967,
+        449033
+      ],
+      "utf8_byte_range": [
+        449027,
+        449093
+      ],
+      "slice_sha256": "d16bfb3f9c5ffeed11aa696384172b1965f89738d711690839d47953de8c423d",
+      "source": ".dynamic-sensitivity-chart .grid-label-x{bottom:-10px;height:20px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .grid-label-x,.dynamic-sensitivity-chart .grid-label-y",
+      "utf16_range": [
+        449033,
+        449202
+      ],
+      "utf8_byte_range": [
+        449093,
+        449262
+      ],
+      "slice_sha256": "483663c6dca6a10d778789be74a66a4b6712e90c2a1824649f1c296e215b296a",
+      "source": ".dynamic-sensitivity-chart .grid-label-x,.dynamic-sensitivity-chart .grid-label-y{color:#666;display:flex;font-size:10px;justify-content:space-between;position:absolute}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .grid-label-y",
+      "utf16_range": [
+        449202,
+        449284
+      ],
+      "utf8_byte_range": [
+        449262,
+        449344
+      ],
+      "slice_sha256": "890ef31bf1029662f1bb643da0ac900638c5619de270dd3deec77aecccc292d6",
+      "source": ".dynamic-sensitivity-chart .grid-label-y{flex-direction:column-reverse;width:20px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-chart .grid-label-y :nth-child(2n)",
+      "utf16_range": [
+        449284,
+        449353
+      ],
+      "utf8_byte_range": [
+        449344,
+        449413
+      ],
+      "slice_sha256": "0e006c891f267be7294b22d1b43cf54492d06cfd0b5201efc4811cac285b5caf",
+      "source": ".dynamic-sensitivity-chart .grid-label-y :nth-child(2n){display:none}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-icon",
+      "utf16_range": [
+        449353,
+        449570
+      ],
+      "utf8_byte_range": [
+        449413,
+        449630
+      ],
+      "slice_sha256": "3bcbb9d177045883ac87915f0444a4fbac0c5f97ac76dce979993946caaf4e46",
+      "source": ".dynamic-sensitivity-tutorial-icon{background-image:url(../../static/media/icon_tutorial_book.8b20c805.svg);background-position:50%;background-repeat:no-repeat;height:25px;opacity:.8;transition:opacity .2s;width:25px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-icon:before",
+      "utf16_range": [
+        449570,
+        449655
+      ],
+      "utf8_byte_range": [
+        449630,
+        449715
+      ],
+      "slice_sha256": "6776be34715017228b4de3593fdd51bed4b2b1265c8e7d372fcccfd3530b713b",
+      "source": ".dynamic-sensitivity-tutorial-icon:before{font-size:14px;padding:8px 10px;right:auto}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-icon:hover",
+      "utf16_range": [
+        449655,
+        449706
+      ],
+      "utf8_byte_range": [
+        449715,
+        449766
+      ],
+      "slice_sha256": "901a7cf5e43f09aaf0127359c349145e54fcba757bfce66f00251903dac55c06",
+      "source": ".dynamic-sensitivity-tutorial-icon:hover{opacity:1}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-icon.active",
+      "utf16_range": [
+        449706,
+        449783
+      ],
+      "utf8_byte_range": [
+        449766,
+        449843
+      ],
+      "slice_sha256": "d645f4d515e29dd26aa9d1de7a87a72a6f01250ceb3e3e3d088db307f924155e",
+      "source": ".dynamic-sensitivity-tutorial-icon.active{border:1px solid #44d62c;opacity:1}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup",
+      "utf16_range": [
+        449783,
+        449979
+      ],
+      "utf8_byte_range": [
+        449843,
+        450039
+      ],
+      "slice_sha256": "94676e56617f93380d8363191a3809915204506ab32119c534ef647b5bb4927d",
+      "source": ".dynamic-sensitivity-tutorial-popup{background-color:#111;border:1px solid #44d62c;border-radius:5px;box-sizing:initial;display:flex;height:420px;margin:134px auto 0;position:relative;width:800px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .close",
+      "utf16_range": [
+        449979,
+        450320
+      ],
+      "utf8_byte_range": [
+        450039,
+        450380
+      ],
+      "slice_sha256": "fbea1438e83888ab5d18c08b8b4f4e703d3300ed9c1d195208129ef44e20d771",
+      "source": ".dynamic-sensitivity-tutorial-popup .close{background-color:#0000;background-image:url(../../static/media/icon_close.55fe41f1.svg);background-position:50%;background-repeat:no-repeat;background-size:25px;cursor:pointer;height:25px;position:absolute;right:10px;top:10px;transition:background-color .2s;width:25px;will-change:background-color}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .video",
+      "utf16_range": [
+        450320,
+        450387
+      ],
+      "utf8_byte_range": [
+        450380,
+        450447
+      ],
+      "slice_sha256": "7adf4b5a2355e25031920939a209f69848e47be12134aa23b37cb9ff81faca68",
+      "source": ".dynamic-sensitivity-tutorial-popup .video{height:100%;width:320px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .desc",
+      "utf16_range": [
+        450387,
+        450481
+      ],
+      "utf8_byte_range": [
+        450447,
+        450541
+      ],
+      "slice_sha256": "bac1aa768f6a5c06358e416c8ed29d352ef387d8f5e3ae480489ce16efdb694a",
+      "source": ".dynamic-sensitivity-tutorial-popup .desc{height:100%;padding:50px 30px 50px 50px;width:480px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .desc h3",
+      "utf16_range": [
+        450481,
+        450550
+      ],
+      "utf8_byte_range": [
+        450541,
+        450610
+      ],
+      "slice_sha256": "acf7d3bcd2335835227f4693f854b31068258af8bc55fd37c4c3997de6f3d9b4",
+      "source": ".dynamic-sensitivity-tutorial-popup .desc h3{font-size:20px;margin:0}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .desc .ds-subtitle",
+      "utf16_range": [
+        450550,
+        450688
+      ],
+      "utf8_byte_range": [
+        450610,
+        450748
+      ],
+      "slice_sha256": "f7205da6353485c8ad6e6dfe5cf5335f231a9062b11306c6681c091135198840",
+      "source": ".dynamic-sensitivity-tutorial-popup .desc .ds-subtitle{color:#30961f;font-size:14px;font-weight:300;margin-top:0;text-transform:uppercase}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .desc .ds-caption",
+      "utf16_range": [
+        450688,
+        450771
+      ],
+      "utf8_byte_range": [
+        450748,
+        450831
+      ],
+      "slice_sha256": "0c6f4191134c294ebe7b926886c86e436d01774c8ca7d578503defa4db5f8d1c",
+      "source": ".dynamic-sensitivity-tutorial-popup .desc .ds-caption{font-size:14px;margin:10px 0}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .desc .ds-desc-text",
+      "utf16_range": [
+        450771,
+        450916
+      ],
+      "utf8_byte_range": [
+        450831,
+        450976
+      ],
+      "slice_sha256": "2278a6ec3efe1fa890766d83a108c4a7aa94d6601a70ed38066f6c9b42759020",
+      "source": ".dynamic-sensitivity-tutorial-popup .desc .ds-desc-text{font-size:14px;height:calc(100% - 100px);margin-top:20px;overflow:auto;padding-left:20px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .dynamic-sensitivity-tutorial-popup .desc .ds-desc-text li:not(:first-child)",
+      "utf16_range": [
+        450916,
+        451009
+      ],
+      "utf8_byte_range": [
+        450976,
+        451069
+      ],
+      "slice_sha256": "959bff143f879f447085d8aac23db7aa8c449819ce1004f6b3bd762be81df1a1",
+      "source": ".dynamic-sensitivity-tutorial-popup .desc .ds-desc-text li:not(:first-child){margin-top:10px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/css/main.7ce428ff.css",
+      "name": "CSS .cross-dotted .dotted-line",
+      "utf16_range": [
+        451227,
+        451333
+      ],
+      "utf8_byte_range": [
+        451287,
+        451393
+      ],
+      "slice_sha256": "58c286411eadd519ab74bb61108f53bb6314f361dc39a867e9ef0c7805ffd704",
+      "source": ".cross-dotted .dotted-line{border:none;border-top:2px dotted #707070;color:#707070;height:1px;width:165px}"
+    },
+    {
+      "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/190/ui/static/js/main.81b09779.js",
+      "name": "module4693 source localization constants",
+      "utf16_range": [
+        219200,
+        249713
+      ],
+      "utf8_byte_range": [
+        219410,
+        249923
+      ],
+      "slice_sha256": "541ccd351ca1df28a0c27b34f6d439f8b6d4eae571b730b8d04bd77a42777936",
+      "source": "(e,E,a)=>{\"use strict\";a.d(E,{$4V:()=>ti,$9Y:()=>rA,$C0:()=>So,$Ey:()=>uI,$IC:()=>cI,$Jx:()=>uo,$LP:()=>r_,$Sb:()=>RE,$eM:()=>kO,$kK:()=>Lr,$so:()=>it,$vY:()=>ES,$w6:()=>Wi,A4y:()=>gn,A8A:()=>_E,AEf:()=>eS,AFG:()=>DE,AG3:()=>pT,AGe:()=>MT,APT:()=>fi,AQl:()=>CA,AS$:()=>DS,ATh:()=>eT,AWV:()=>qo,AfU:()=>ot,Ahf:()=>d_,Aiz:()=>Ea,Akl:()=>TO,ArQ:()=>Ue,Aw1:()=>an,Awz:()=>vT,B3z:()=>Ui,BDG:()=>Aa,BFU:()=>Ji,BPG:()=>ZE,BPe:()=>$I,BSg:()=>_,BTA:()=>R_,BXZ:()=>Fi,BdR:()=>wT,BhB:()=>kE,Bk5:()=>Pa,Bm1:()=>ys,BmO:()=>_o,BoM:()=>ft,Bod:()=>pS,BuT:()=>An,Buw:()=>Ae,Byb:()=>Zi,CBT:()=>FA,CDH:()=>IS,CNz:()=>XT,CQw:()=>Kr,CfR:()=>Hn,Chc:()=>ps,Ci9:()=>Ya,CmD:()=>DA,CnU:()=>ss,Cnm:()=>oA,Ctx:()=>go,CxB:()=>Fo,CxF:()=>Cs,CyG:()=>UO,Czv:()=>Lo,D1w:()=>cs,D38:()=>RO,D4H:()=>Ft,DCB:()=>jI,DFX:()=>hA,DGY:()=>jS,DH6:()=>UA,DIA:()=>JO,DI_:()=>Cl,DR1:()=>ks,DU0:()=>xt,DVA:()=>VT,DYH:()=>Zo,DZy:()=>Lt,Dcc:()=>Er,DeN:()=>YT,DgD:()=>oe,DmY:()=>Fa,Dnh:()=>L_,Dq6:()=>k,Dqp:()=>oI,Duz:()=>vE,DxM:()=>zn,E4q:()=>Dn,EC:()=>rl,EE$:()=>ws,ELZ:()=>el,EMO:()=>S_,ENf:()=>__,EQ:()=>st,EXM:()=>hn,E_p:()=>M_,Eaf:()=>Jr,EiB:()=>_O,Ep9:()=>a_,Epr:()=>Ol,F4C:()=>l,F5_:()=>cl,FGZ:()=>sE,FHr:()=>m,FO:()=>JA,FS3:()=>AA,FT7:()=>hi,FTc:()=>nS,Fay:()=>CT,FbG:()=>AO,FoQ:()=>rr,FsE:()=>Ei,FsK:()=>DI,G0o:()=>Fn,G9L:()=>Ve,GCq:()=>Yi,GVn:()=>PS,GY5:()=>xS,GZg:()=>u,Gfw:()=>Oe,Gjg:()=>UE,GkI:()=>NE,GmB:()=>Fr,GoP:()=>fT,GxI:()=>me,HOJ:()=>ie,HOm:()=>HE,HST:()=>U,HZ4:()=>fA,HcD:()=>Qe,HkB:()=>c,Hpk:()=>we,Hq3:()=>yr,HqM:()=>si,Hz6:()=>tn,Hz9:()=>_A,Hze:()=>GE,I$P:()=>Ai,I0$:()=>Ma,I1U:()=>wA,IBN:()=>Oa,IF9:()=>$E,IUp:()=>Xn,IWp:()=>pE,IY1:()=>Yt,IwH:()=>pa,JFB:()=>il,JGH:()=>Na,JHv:()=>BT,JKn:()=>VI,JOn:()=>nn,JPw:()=>oS,JSN:()=>Pn,JSw:()=>TA,JWw:()=>mn,JXn:()=>No,JY4:()=>rS,Jk7:()=>Qo,Jo2:()=>UI,Jp0:()=>gi,Jwk:()=>L,K$7:()=>tT,K29:()=>YE,K3o:()=>QE,K5d:()=>KS,K9N:()=>iE,KBw:()=>Xe,KFn:()=>FE,KHD:()=>Xs,KIw:()=>fo,KOq:()=>OE,KRD:()=>xE,KW9:()=>va,Kco:()=>ba,Ke2:()=>XO,KeL:()=>BO,KfE:()=>fe,KgI:()=>Gs,KkJ:()=>yI,Km:()=>J_,KmA:()=>r,L$3:()=>Re,L47:()=>Sa,LBL:()=>ma,LEH:()=>vA,LJh:()=>xT,LK8:()=>dT,LKF:()=>PO,LQd:()=>yn,LUv:()=>z,LZ_:()=>nE,L_M:()=>kS,Ldn:()=>mE,Lhu:()=>Ne,Ln_:()=>Ka,Lr2:()=>hI,Ltc:()=>zo,Lvx:()=>t_,LwX:()=>Va,Lxb:()=>vo,M$T:()=>XS,M32:()=>Es,M6J:()=>MA,M88:()=>ce,M8m:()=>$r,M9m:()=>y,MGt:()=>NS,MGx:()=>mA,MJD:()=>yE,MK8:()=>AI,MKg:()=>mi,MMj:()=>Il,MOK:()=>UT,MVX:()=>da,MYr:()=>jo,MaH:()=>hr,Mes:()=>Se,Mf0:()=>zO,Mh0:()=>ri,Mr5:()=>nr,Mr7:()=>Mn,N$V:()=>Me,N8v:()=>us,NAr:()=>sS,NCz:()=>na,NER:()=>On,NR_:()=>pr,NSd:()=>es,Ndl:()=>p,Ng5:()=>lO,NnH:()=>Zt,NtE:()=>Ln,Ntw:()=>wI,NuT:()=>Oo,Nwd:()=>le,Nzx:()=>G_,O2c:()=>US,O3I:()=>TS,O64:()=>lI,O9g:()=>QS,OJ0:()=>XE,OK:()=>As,OLJ:()=>Gi,ONj:()=>qi,OOx:()=>he,OPx:()=>PA,OX4:()=>$A,OXp:()=>jn,Oax:()=>kT,Obs:()=>gE,Od_:()=>at,OeT:()=>gs,Oih:()=>lt,Ol3:()=>Qs,Oov:()=>fS,OpV:()=>He,OqA:()=>fE,P1N:()=>ls,P2_:()=>oO,PAE:()=>yA,PDD:()=>IE,PHr:()=>Tr,PKF:()=>Dt,PMU:()=>O_,PNH:()=>_t,PS2:()=>aI,PSG:()=>Wn,PXX:()=>ts,Pb:()=>Ur,Pck:()=>T,PdI:()=>fr,Pie:()=>$,Pjy:()=>Hs,Pln:()=>nO,Pov:()=>v,Pvq:()=>Eo,Py$:()=>Hi,Q$d:()=>qe,Q2y:()=>W,Q4p:()=>je,Q7f:()=>PE,Q9M:()=>JT,QK_:()=>Nl,QN3:()=>bi,Qdb:()=>Dl,Qhm:()=>Tt,Qpe:()=>Ns,QuW:()=>nt,QwU:()=>lS,R42:()=>AT,RFv:()=>O,RGP:()=>aS,RKF:()=>Fe,RMI:()=>ds,RQU:()=>ct,RRQ:()=>_a,RSk:()=>Qa,RVs:()=>Bn,RXF:()=>yt,RYm:()=>T_,RaE:()=>K_,Rb7:()=>e_,RhO:()=>Js,RiR:()=>tO,RlV:()=>_e,RoU:()=>gI,Rox:()=>GS,RyX:()=>en,S21:()=>BA,S5n:()=>Mr,S9K:()=>MO,SA_:()=>qI,SB5:()=>zr,SE2:()=>os,SJi:()=>ae,SKL:()=>C,SVH:()=>kI,SXM:()=>sl,S_m:()=>VO,SmG:()=>FS,Ssd:()=>hs,T2E:()=>mO,T3E:()=>_T,T6K:()=>gt,T8n:()=>un,TCi:()=>dA,TIX:()=>pA,TJ0:()=>NO,TK1:()=>$t,TM:()=>dl,TS8:()=>W_,TXW:()=>I_,TbE:()=>j_,TfZ:()=>Yr,Tr1:()=>VA,Tug:()=>YS,U1M:()=>II,U2L:()=>ya,U5B:()=>wE,UBZ:()=>Ll,UJX:()=>Ir,UP:()=>as,UPh:()=>tA,UZJ:()=>Zn,Ud3:()=>vO,Ue$:()=>z_,Ue0:()=>Ws,UrP:()=>EA,Uty:()=>ze,Uu5:()=>wo,Uxl:()=>h,V3G:()=>eA,V47:()=>SI,V6s:()=>Qi,VDN:()=>SA,VRD:()=>EO,VTm:()=>NA,VUR:()=>eI,VcE:()=>cO,VcX:()=>Yn,VfJ:()=>l_,VfX:()=>HO,VjA:()=>VE,Vjf:()=>AE,Vl5:()=>o_,VvQ:()=>xr,VwB:()=>Ba,Vx:()=>QI,Vyj:()=>w_,W0P:()=>ga,W1f:()=>Xr,W2I:()=>Ta,W8P:()=>pe,W8s:()=>Yo,WCo:()=>DO,WQi:()=>ia,Wjc:()=>$i,WmM:()=>yT,WqG:()=>Kt,X1C:()=>Ts,X1_:()=>kA,XBA:()=>Vn,XD:()=>Vt,XGI:()=>OI,XGW:()=>ka,XGg:()=>tl,XHu:()=>ne,XM5:()=>EE,XRO:()=>Br,XTr:()=>vs,XWn:()=>Is,XZq:()=>B_,Xe_:()=>KT,XsP:()=>Mi,Xsv:()=>eE,XvQ:()=>bs,Xxb:()=>Zr,XyT:()=>v_,Y6o:()=>kn,Y8Q:()=>lr,YCM:()=>ye,YG6:()=>Ml,YHZ:()=>Ti,YIH:()=>ii,YK8:()=>Ci,Y_y:()=>aT,Yc6:()=>Ks,YgB:()=>Da,Yjs:()=>ar,Ypv:()=>Bs,Z4Z:()=>jA,Z8V:()=>BE,ZBo:()=>En,ZEP:()=>At,ZGg:()=>CI,ZKq:()=>Qt,ZVx:()=>FT,ZdL:()=>hS,ZdM:()=>p_,Zed:()=>vr,Zgm:()=>ur,ZjI:()=>Y_,Zn1:()=>di,Zp:()=>_I,ZpT:()=>sT,Zre:()=>gT,Zxd:()=>et,Zxy:()=>Sl,_$r:()=>d,_61:()=>HS,_6K:()=>Qr,_A9:()=>xA,_AH:()=>Nn,_NJ:()=>S,_NK:()=>RT,_Qo:()=>Ja,_ZB:()=>Cr,_mV:()=>rI,_pM:()=>Je,_r4:()=>sI,_rY:()=>KI,_ud:()=>Un,a$S:()=>Wt,a21:()=>Ps,a2v:()=>nA,a8V:()=>vt,a8d:()=>x,a8w:()=>i_,aIK:()=>Bt,aMO:()=>fO,aNg:()=>gr,aPp:()=>B,a_x:()=>qn,abT:()=>Bo,ac5:()=>FI,aeo:()=>la,ald:()=>b_,aqm:()=>uE,atf:()=>ir,b0l:()=>tI,b1N:()=>WT,b4p:()=>It,bAL:()=>LO,bDV:()=>no,bIA:()=>WA,bJ1:()=>XA,bNM:()=>tS,bOp:()=>Ha,bQ0:()=>Ii,bRp:()=>q_,bSO:()=>ve,bgb:()=>Po,bhC:()=>br,bpf:()=>j,bwZ:()=>Co,bwn:()=>Le,bxp:()=>ja,c2H:()=>Vi,c2l:()=>Z,c4X:()=>eO,c6F:()=>aO,c8S:()=>aE,cDK:()=>cE,cG7:()=>VS,cHL:()=>ko,cKZ:()=>LT,cSA:()=>jr,cT$:()=>nl,cTJ:()=>SO,cUk:()=>dS,ca6:()=>Tn,ckz:()=>zt,cnI:()=>F_,cse:()=>IA,cxb:()=>GI,cxo:()=>GT,d6f:()=>Dr,d7A:()=>ho,d9b:()=>b,dEB:()=>uA,dH1:()=>We,dOw:()=>tr,dSq:()=>lo,db_:()=>ni,diY:()=>ms,dld:()=>Jo,dqM:()=>CS,dt6:()=>IT,dxU:()=>HA,dzd:()=>qT,e4R:()=>rt,eAy:()=>Xo,eFb:()=>WS,eGn:()=>oi,eKX:()=>Qn,eMw:()=>rs,eaG:()=>jt,edT:()=>wO,efu:()=>FO,eiB:()=>Ze,ejV:()=>Rr,es7:()=>K,ev6:()=>xa,evJ:()=>qE,evT:()=>dn,f6E:()=>Ho,f9h:()=>Cn,fDg:()=>ei,fI9:()=>I,fNR:()=>gA,fQB:()=>cT,fYN:()=>Us,fYY:()=>qt,f_P:()=>Ni,fab:()=>$s,fcU:()=>xe,fne:()=>bS,foq:()=>pO,ftt:()=>mr,fzA:()=>zE,g$R:()=>wa,g$v:()=>QT,g6m:()=>Nr,gCi:()=>xI,gH9:()=>ai,gL4:()=>Sr,gNJ:()=>zi,gdT:()=>bO,ghM:()=>ZA,gi2:()=>nI,gjU:()=>Q,gkz:()=>R,goi:()=>Ys,gqy:()=>ZS,gsU:()=>ki,gxC:()=>IO,gz7:()=>LE,h1Y:()=>iI,hBP:()=>Ua,hC1:()=>Ss,hH5:()=>To,hIF:()=>Y,hIH:()=>jE,hJ0:()=>re,hUH:()=>aA,hbI:()=>KA,hdS:()=>$O,huN:()=>ao,hxc:()=>mI,hzW:()=>X_,i$P:()=>Di,i5o:()=>uO,iGU:()=>_n,iJd:()=>Ut,iN2:()=>se,iO8:()=>BI,iW8:()=>io,iWJ:()=>w,iZ5:()=>xO,i_6:()=>Rt,i_k:()=>h_,ibi:()=>oo,iiK:()=>SE,iiW:()=>Nt,iyq:()=>oT,j$J:()=>NT,j10:()=>fn,j2c:()=>q,j41:()=>Pe,jA5:()=>g,jDr:()=>Kn,jI8:()=>Pl,jIC:()=>_r,jIM:()=>F,jL0:()=>oE,jMx:()=>vS,jP:()=>s,jU:()=>gS,jYg:()=>Ke,jcF:()=>QA,jfk:()=>uS,jgX:()=>za,jgm:()=>iO,jmF:()=>ke,jrk:()=>Ct,jth:()=>dE,jxF:()=>St,k0f:()=>zT,k7h:()=>OT,k7y:()=>ll,k9y:()=>kt,kBv:()=>Ga,kCR:()=>Wa,kEL:()=>A,kJH:()=>lA,kJl:()=>ns,kL5:()=>$a,kQ5:()=>dr,kTs:()=>cn,kV2:()=>ht,kV3:()=>li,kVo:()=>D,kaE:()=>qS,kez:()=>Go,kh$:()=>RA,ki2:()=>Pr,kiV:()=>sn,kn4:()=>bE,ksQ:()=>zS,kwv:()=>Ra,kxj:()=>$_,l1q:()=>Ee,l57:()=>PI,l6Y:()=>gO,lAq:()=>dt,lGh:()=>dO,lGq:()=>rE,lI1:()=>_S,lM8:()=>XI,lNr:()=>GA,lQZ:()=>MI,lSF:()=>co,lVP:()=>Or,lW4:()=>mT,lZK:()=>oa,lZO:()=>bo,l_P:()=>NI,la6:()=>y_,ljL:()=>eo,lkW:()=>SS,lmA:()=>qa,lvc:()=>$S,lvj:()=>KE,lwW:()=>Rn,m5o:()=>Z_,m96:()=>zA,mEp:()=>EI,mGx:()=>yO,mIV:()=>on,mJB:()=>s_,mKj:()=>bn,mKy:()=>C_,mL9:()=>wS,mMQ:()=>Uo,mN1:()=>Et,mPv:()=>pi,mQ7:()=>ME,mTg:()=>WE,mXl:()=>sr,mYs:()=>Ce,mZ_:()=>Do,m_p:()=>Zs,mcz:()=>ci,mjN:()=>ee,moA:()=>D_,n56:()=>tt,nGD:()=>Al,nGM:()=>fs,nUZ:()=>GO,n_o:()=>Ia,naL:()=>ET,ncy:()=>Jt,nk$:()=>ge,nki:()=>dI,nks:()=>iS,nlm:()=>ta,noB:()=>Q_,nqt:()=>js,nsN:()=>c_,o$l:()=>MS,o5r:()=>Jn,o8v:()=>ua,o9A:()=>Oi,oAf:()=>YI,oD0:()=>$e,oDy:()=>uT,oGB:()=>kr,oJ:()=>_s,oNw:()=>BS,oOR:()=>mt,oZ8:()=>bA,oas:()=>JI,ocj:()=>Hr,ohf:()=>WI,ohz:()=>cS,oo$:()=>wr,orU:()=>lE,orY:()=>Io,ov8:()=>wi,ox5:()=>Wr,p$l:()=>E_,p0f:()=>HT,p1e:()=>zI,p6C:()=>ue,p8U:()=>ra,pC2:()=>Gn,pG7:()=>qO,pHP:()=>Ye,pJk:()=>fa,pJx:()=>AS,pPv:()=>so,pRv:()=>WO,pX1:()=>In,pZB:()=>iT,p_I:()=>ZI,pc5:()=>xi,pcO:()=>Ki,pj9:()=>n,pjv:()=>xn,plG:()=>ea,pmk:()=>M,poJ:()=>Vr,pyi:()=>f,q2Y:()=>u_,q3f:()=>vn,q3u:()=>zs,qIP:()=>Vo,qMP:()=>Ot,qNE:()=>aa,qP2:()=>Tl,qTL:()=>m_,qWQ:()=>qr,q_3:()=>wn,qdP:()=>nT,qes:()=>ZO,qwT:()=>Gt,qzo:()=>mS,r21:()=>tE,r69:()=>sA,r8M:()=>Wo,rB8:()=>Gr,rGE:()=>Be,rJp:()=>TE,rLS:()=>hT,rMU:()=>Ds,rQd:()=>rn,rTA:()=>i,rTN:()=>Rs,rYZ:()=>bt,rlv:()=>Ie,s1I:()=>de,s2B:()=>yi,sFo:()=>Ht,sG0:()=>te,sG3:()=>H_,sHj:()=>pI,sMz:()=>Ar,sQ3:()=>Ls,s_O:()=>El,scu:()=>$o,set:()=>n_,shE:()=>ut,slx:()=>Mt,sm9:()=>LI,spr:()=>QO,sq_:()=>vI,ssI:()=>Sn,ssN:()=>RS,ssg:()=>PT,stg:()=>ST,syG:()=>Za,t1J:()=>Rl,t20:()=>P,t9Z:()=>Pi,tB0:()=>yo,tCz:()=>ui,tD$:()=>OS,tFY:()=>Ao,tGj:()=>al,tJv:()=>is,tPc:()=>V,tYE:()=>mo,tpk:()=>LS,tw2:()=>P_,u4O:()=>Bi,uEJ:()=>Fs,uFG:()=>po,uTW:()=>Ms,uVn:()=>Ri,u_9:()=>H,u_f:()=>ca,uh5:()=>N,uvs:()=>OA,v3x:()=>vi,v5i:()=>G,vBN:()=>N_,vJE:()=>pt,vK7:()=>jT,vMs:()=>Te,vTH:()=>Xa,vZA:()=>rT,vdW:()=>yS,vfD:()=>k_,vlV:()=>sO,vpq:()=>JE,vq6:()=>or,w3I:()=>er,w8T:()=>bI,wCz:()=>bT,wE8:()=>DT,wI6:()=>Os,wIi:()=>V_,wKV:()=>JS,wMd:()=>cr,wMy:()=>Vs,wdt:()=>YA,wfh:()=>Pt,wgk:()=>iA,wlN:()=>ZT,wrJ:()=>ro,wrM:()=>Xt,wtF:()=>rO,wv5:()=>lT,x3E:()=>Ge,x4F:()=>qs,x7g:()=>ha,x9w:()=>g_,xGY:()=>Li,xOP:()=>pn,xQz:()=>hO,xRS:()=>ji,xW9:()=>x_,xYJ:()=>jO,xb1:()=>xs,xe7:()=>$n,xkP:()=>wt,xno:()=>Mo,y0W:()=>X,y33:()=>sa,y35:()=>YO,yE7:()=>J,yEh:()=>La,yH_:()=>$T,yMm:()=>Xi,yUG:()=>hE,yXn:()=>xo,yY:()=>ol,ya0:()=>t,yd4:()=>OO,yer:()=>CE,yhj:()=>HI,yj$:()=>LA,ynX:()=>Si,ypO:()=>Ko,yq5:()=>Ro,yvH:()=>be,yzn:()=>CO,z2l:()=>qA,z99:()=>TI,z9W:()=>_l,zA_:()=>Ca,zHQ:()=>_i,zSC:()=>KO,zUB:()=>to,zWE:()=>TT,zWc:()=>o,zWf:()=>cA,zXH:()=>RI,zZg:()=>fI,z_D:()=>pl,zd8:()=>U_,zgO:()=>De,zjj:()=>A_,zqN:()=>ul,zt5:()=>ln,zzI:()=>f_});const t=\"SYNAPSE\",_=\"GAMER_ROOM_HEADER\",i=\"DASHBOARD_WORKSHOP\",n=\"DASHBOARD_AUDIO_VISUALIZER\",o=\"DASHBOARD_CHROMA_CONNECT\",s=\"DASHBOARD_CHROMA_STUDIO\",r=\"DASHBOARD_PHILIPS_HUE\",T=\"DASHBOARD_ALEXA\",I=\"GAME_PROFILE_DEFAULT\",O=\"VIEW_COMPATIBLE_DEVICES\",A=\"NO_DEVICE_FOUND\",S=\"DISCONNECTED\",l=\"DISABLED\",R=\"ALWAYS_OFF\",d=\"HELP\",N=\"SHOW_ME_HOW\",u=\"DASHBOARD_SENSA\",c=\"LEARN_MORE\",C=\"SIZE\",D=\"RESTART_SYNAPSE_REQUIRED\",L=\"RESTART_CHROMA_REQUIRED\",P=\"REMOVE\",p=\"CLOSE\",M=\"MORE_INFORMATION\",m=\"DOWNLOADING\",U=\"SAVING\",h=\"INSTALLING\",G=\"DETECTING_DEVICE\",g=\"INSTALLATION_FAILED\",H=\"LEFT_CLICK_DISABLE_MESSAGE\",f=\"SYNCING_PROFILES\",v=\"PROFILE_DISABLED_TOOLTIP\",B=\"KEYMAP\",F=\"PROFILES\",y=\"TAB_CUSTOMIZE\",Y=\"TAB_PERFORMANCE\",b=\"TAB_PAIRING\",V=\"TAB_CALIBRATION\",W=\"TAB_POWER\",K=\"TAB_SCROLLING\",w=\"STANDARD\",z=\"HYPERSHIFT\",k=\"HYPERSHIFT_TOOLTIP\",x=\"MOUSE_USE\",X=\"MOUSE_USE_TOOLTIP\",j=\"LEFT_HANDED\",Z=\"RIGHT_HANDED\",q=\"PROFILE\",Q=\"ADD\",J=\"IMPORT\",$=\"RENAME\",ee=\"DUPLICATE\",Ee=\"EXPORT\",ae=\"DELETE\",te=\"RESET_PROFILE\",_e=\"RESHARE_TO_WORKSHOP\",ie=\"RESHARE\",ne=\"RESHARE_DESC\",oe=\"RESET_PROFILE_TITLE\",se=\"RESET_PROFILE_DESC\",re=\"RESET_PROFILE_KEYBINDS_BUTTON\",Te=\"RESET_PROFILE_BUTTON\",Ie=\"DELETE_PROFILE_TITLE\",Oe=\"DELETE_PROFILE_MSG\",Ae=\"DELETE_KEYMAP_TITLE\",Se=\"DELETE_KEYMAP_MSG\",le=\"LINK_GAMES\",Re=\"LINKED_GAMES\",de=\"SHARE_TO_WORKSHOP\",Ne=\"Active Profile\",ue=\"RETRY\",ce=\"BROWSE_FOR_PROFILES\",Ce=\"COMPATIBLE_CLOUD_PROFILES\",De=\"GAMER_ROOM_TOOLTIP\",Le=\"ON_BOARD_MEMORY\",Pe=\"ON_BOARD_MEMORY_TOOLTIP\",pe=\"ON_BOARD_MEMORY_CONTROLLER_TOOLTIP\",Me=\"OBM_LOCK_ICON_TOOLTIP_V1\",me=\"OBM_LOCK_ICON_TOOLTIP_V2\",Ue=\"MACROS\",he=\"AVAILABLE\",Ge=\"NONE\",ge=\"SELECT_A_PROFILE\",He=\"ON_BOARD_PROFILES\",fe=\"SWITCH_TO_WIRED_OR_HYPERSPEED_TO_VIEW_AVAILABLE_SPACE\",ve=\"POWER_SAVING_HEADER\",Be=\"POWER_SAVING_DESC\",Fe=\"POWER_SAVING_TOOLTIP\",ye=\"POWER_SAVING_DESC_V4\",Ye=\"MIN\",be=\"SEC\",Ve=\"MOUSE_MAT_CALIBRATION_HEADER\",We=\"DISMISS\",Ke=\"SENSITIVITY_MATCHER_CALIBRATION_ERROR\",we=\"SENSITIVITY_MATCHER_CALIBRATION_ERROR_DESC\",ze=\"RESET\",ke=\"RESET_DESC1\",xe=\"WARNING_SETTING_LANDING_DISTANCE\",Xe=\"CALIBRATE\",je=\"CUSTOM\",Ze=\"SHOW_MORE\",qe=\"SHOW_LESS\",Qe=\"ACTIVE\",Je=\"MAKE_ACTIVE\",$e=\"MUTE\",eE=\"SMARTTRACKING\",EE=\"TRACKINGDISTANCE\",aE=\"LIFTOFFDISTANCE\",tE=\"LANDINGDISTANCE\",_E=\"MOUSE_MAT_CALIBRATION\",iE=\"SMART_TRACKING_DISC\",nE=\"ENABLEASYMMETRICCUTOFF\",oE=\"SMARTTRACKINGTOOLTIP1\",sE=\"POLLING_RATE_HEADER\",rE=\"WIRED_POLLING_RATE_HEADER\",TE=\"POLLING_RATE_DESC\",IE=\"WIRED_POLLING_RATE_DESC\",OE=\"POLLING_RATE_WARN\",AE=\"POLLING_RATE_WARN_NOBATTERY\",SE=\"POLLING_RATE_V2_TOOLTIP\",lE=\"WIRED_POLLING_RATE_V2_TOOLTIP\",RE=\"POLLING_RATE_SUPPORTED_BUTTON_COMBINATION_TOOLTIP\",dE=\"INGAME_POLLING_RATE_HEADER\",NE=\"IN_GAME_POLLING_RATE_DESC\",uE=\"MOUSE_PROPERTIES_HEADER\",cE=\"MOUSE_PROPERTIES_DESC\",CE=\"MOUSE_PROPERTIES_TOOLTIP\",DE=\"SENSITIVITY_HEADER\",LE=\"SENSITIVITY_DESC\",PE=\"SENSITIVITY_TOOLTIP\",pE=\"SENSITIVITY_STAGES\",ME=\"ENABLE_XY\",mE=\"STAGE\",UE=\"DPI_STAGES\",hE=\"STAGE1\",GE=\"STAGE2\",gE=\"STAGE3\",HE=\"STAGE4\",fE=\"STAGE5\",vE=\"DISABLE_XY\",BE=\"MOVE_STAGE\",FE=\"OFF\",yE=\"GLOBAL_BRIGHTNESS\",YE=\"NEXT\",bE=\"PREVIOUS\",VE=\"LEFT_CLICK\",WE=\"RIGHT_CLICK\",KE=\"SCROLL_CLICK\",wE=\"SCROLL_UP\",zE=\"SCROLL_DOWN\",kE=\"SENSITIVITY_STAGE_UP\",xE=\"SENSITIVITY_STAGE_DOWN\",XE=\"MOUSE_BUTTON_4\",jE=\"MOUSE_BUTTON_5\",ZE=\"SCROLL_MODE_SWITCH\",qE=\"SCROLL_MODE_SWITCH_DESCRIPTION\",QE=\"FREE_SPIN_SCROLLING_MODE\",JE=\"TACTILE_CYCLING_MODE\",$E=\"LEFT_SENSITIVITY_CLUTCH\",ea=\"RIGHT_SENSITIVITY_CLUTCH\",Ea=\"GLOBAL_SENSITIVITY_CLUTCH\",aa=\"DEFAULT\",ta=\"KEYBOARD_FUNCTION\",_a=\"DYNAMIC_KEY_STROKE\",ia=\"KEYBOARD\",na=\"MOUSE_FUNCTION\",oa=\"JOYSTICK\",sa=\"ROLLER_FUNCTION\",ra=\"SWITCH_KEYMAP\",Ta=\"SENSITIVITY\",Ia=\"DEVICE_BRIGHTNESS\",Oa=\"SCROLLING\",Aa=\"MACRO\",Sa=\"INTERDEVICE\",la=\"SWITCH_LIGHTING_PROFILE\",Ra=\"SWITCH_DEVICE_PROFILE\",da=\"SWITCH_DEVICE_SENSITIVITY\",Na=\"CONTROLLER\",ua=\"CONTROLLER_V2\",ca=\"CONTROLLER_PLAYSTATION\",Ca=\"SWITCH_PROFILE\",Da=\"SWITCH_LIGHTING\",La=\"RAZER_HYPERSHIFT\",Pa=\"LAUNCH_PROGRAM\",pa=\"MULTIMEDIA\",Ma=\"DIAL_MULTI_FUNCTION\",ma=\"WINDOWS_SHORTCUT\",Ua=\"TEXT_FUNCTION\",ha=\"DISABLE\",Ga=\"MOUSE\",ga=\"SAVE\",Ha=\"CANCEL\",fa=\"APPLY\",va=\"DYNAMIC_KEY_STROKE_HEADING_TIP\",Ba=\"DYNAMIC_KEY_STROKE_DESC\",Fa=\"PRESS_START_SENSITIVITY\",ya=\"PRESS_END_SENSITIVITY\",Ya=\"RELEASE_END_SENSITIVITY\",ba=\"RELEASE_START_SENSITIVITY\",Va=\"PRESS_START\",Wa=\"PRESS_END\",Ka=\"RELEASE_START\",wa=\"RELEASE_END\",za=\"REQUIRE_CHROMA_APP\",ka=\"REQUIRE_CHROMA_APP_TOOLTIP\",xa=\"REQUIRE_CHROMA_STUDIO_TOOLTIP\",Xa=\"REBIND_KEY_TO\",ja=\"ENABLE_TURBO\",Za=\"SPEED_PER_SEC\",qa=\"ANALOGSENSITIVITY\",Qa=\"ANALOGSENSITIVITYTOOLTIP\",Ja=\"LINEAR\",$a=\"SLOW\",et=\"FAST\",Et=\"INSTANT\",at=\"ANALOGVALUE\",tt=\"BUTTON\",_t=\"DIRECTIONNOSTROMO\",it=\"ACTUATION\",nt=\"ACTUATION_POINT_TOOLTIP\",ot=\"SECONDARYFUNCTIONCAPS\",st=\"SYNC_ACTUATION_RELEASE_POINT\",rt=\"ACTUATION_TEXT_GUIDE\",Tt=\"SENSITIVITY_CLUTCH\",It=\"CYCLE_UP_SENSITIVITY\",Ot=\"ON_THE_FLY_SENSITIVITY_MSG\",At=\"CONFIGURE_SENSITIVITY_SETTINGS\",St=\"CONFIGURE_MACROS\",lt=\"PLAYBACK_OPTION\",Rt=\"PLAY_MULTIPLE_TIMES\",dt=\"NUMBER_OF_TIMES\",Nt=\"CREATE_MACRO_MSG\",ut=\"INTERDEVICE_WARNING\",ct=\"CYCLE_UP_PROFILE\",Ct=\"CONFIGURE_CHROMA_STUDIO\",Dt=\"CONFIGURE_CHROMA_STUDIO_MSG\",Lt=\"RAZER_HYPERSHIFT_MSG1\",Pt=\"RAZER_HYPERSHIFT_MSG2\",pt=\"VOLUME_UP\",Mt=\"VOLUME_DOWN\",mt=\"MUTE_VOLUME\",Ut=\"PLAY_PAUSE\",ht=\"PREVIOUS_TRACK\",Gt=\"NEXT_TRACK\",gt=\"CUT\",Ht=\"COPY\",ft=\"COPIED\",vt=\"PASTE\",Bt=\"REFRESH\",Ft=\"ADD_WIFI_DEVICE\",yt=\"PROGRAM\",Yt=\"WEBSITE\",bt=\"LAUNCH_CHARACTER_MAP\",Vt=\"ENTER_TEXT\",Wt=\"INSTALL_CHROMA_STUDIO\",Kt=\"LAUNCH_CHROMA_STUDIO\",wt=\"BREATHING\",zt=\"REACTIVE\",kt=\"SPECTRUM_CYCLING\",xt=\"STATIC\",Xt=\"WAVE\",jt=\"WHEEL\",Zt=\"RIPPLE\",qt=\"STARLIGHT\",Qt=\"FIRE\",Jt=\"AUDIO_METER\",$t=\"LAMBORGHINI\",e_=\"AMBIENT\",E_=\"BATTERY_LEVEL\",a_=\"SAVE_REMAPPED_BUTTON_HEADER\",t_=\"SAVE_REMAPPED_BUTTON_MSG1\",__=\"SAVE_REMAPPED_BUTTON_MSG2\",i_=\"SAVE_HYPERSHIFT_WARNING\",n_=\"DONT_SAVE\",o_=\"TEXT_CHECKING\",s_=\"RESET_TO_DEFAULT\",r_=\"LOW\",T_=\"HIGH\",I_=\"GAME_CHAT_BALANCE\",O_=\"VOLUME\",A_=\"THX_SPATIAL_AUDIO\",S_=\"THX_SPATIAL_AUDIO_WARNING_TOOLTIP\",l_=\"IS_STEREO_WARNIGN\",R_=\"SURROUND_SOUND\",d_=\"WIDENING\",N_=\"TRUE_SOUND\",u_=\"STEREO\",c_=\"MORE_GAME_MODE\",C_=\"COM_MODE\",D_=\"IMM_MODE\",L_=\"SEARCH\",P_=\"BLUETOOTH\",p_=\"GAME\",M_=\"MEDIUM\",m_=\"SIDETONE_TOOLTIP\",U_=\"BLUETOOTH_VOLUME_DESCRIPTION\",h_=\"SWITCH_BACK_TO_PREVIOUS_KEYMAP_DESCRIPTION\",G_=\"GPU_MODE_INTEGRATED\",g_=\"GPU_MODE_DEDICATED\",H_=\"GPU_MODE_NVIDIA_CONTROL_PANEL\",f_=\"LOW_POWER_MODE_HEADER\",v_=\"LOW_POWER_MODE_TOOLTIP\",B_=\"LOW_POWER_MODE_DESC\",F_=\"SETTINGS_HEADER\",y_=\"FACTORY_RESET\",Y_=\"FACTORY_RESET_MSG_NO_OBM_DEVICE\",b_=\"FACTORY_RESET_MSG_WITH_MINUTES\",V_=\"FACTORY_RESET_MSG_WITH_MINUTES_DESC\",W_=\"FACTORY_RESET_MSG\",K_=\"SERIAL\",w_=\"COPY_SERIAL\",z_=\"COPIED_SERIAL\",k_=\"SYSTEM_DETAILS\",x_=\"MY_SYSTEM\",X_=\"SYSTEM_DETAILS_MSG\",j_=\"VIEW_SYSTEM_INFO\",Z_=\"SAVE_FULL_SYSTEM_LOGS\",q_=\"MACRO_KEYBIND_INFO\",Q_=\"RESTART_NOW\",J_=\"RESTART_REQUIRED\",$_=\"RESTART_REQUIRED_DESC\",ei=\"GPU_MODE_INTEGRATED_DESC\",Ei=\"GPU_MODE_DEDICATED_DESC\",ai=\"ERROR_OFFLINE_2\",ti=\"ERROR_OFFLINE_3\",_i=\"PANEL\",ii=\"NANOLEAF_PANEL\",ni=\"DEVICE\",oi=\"PROFILE_LOWERCASE\",si=\"CHROMA_APP\",ri=\"CONFIRM\",Ti=\"SUPPORT\",Ii=\"VISIT_DEVICE_SUPPORT\",Oi=\"VISIT_SYNAPSE_SUPPORT\",Ai=\"FACTORY_RESET_PROFILES\",Si=\"REGISTER_ONLINE\",li=\"PRODUCT_REGISTRATION\",Ri=\"SERIAL_NUM\",di=\"VISIT_MASTER_PAGE\",Ni=\"DEVICE_NOT_CONNECTED_MSG\",ui=\"MULTIPLE_SIMILAR_DEVICE_WARNING\",ci=\"DISABLED_FEATURE_DESC\",Ci=\"CANNOT_REMAPPED_IN_HYPERSHIFT_MODE\",Di=\"BUTTON_CANNOT_BE_REMAPPED\",Li=\"DEVICE_NOT_CONNECTED\",Pi=\"MAPPING_REQUIRES_RAZER_SYNAPSE\",pi=\"REPEAT_SCROLL_UP\",Mi=\"REPEAT_SCROLL_DOWN\",mi=\"REPEAT_SCROLL_LEFT\",Ui=\"REPEAT_SCROLL_RIGHT\",hi=\"SCROLL_MODE_TOGGLE\",Gi=\"OBM_PROFILE_PANEL_TIP_1\",gi=\"OBM_PROFILE_PANEL_TIP_2\",Hi=\"OBM_PROFILE_PANEL_ERROR_ONE_SLOT\",fi=\"OBM_PROFILE_PANEL_ERROR_MORE_SLOT\",vi=\"IMPORT_EXPORT_MODAL_EMPTY_PROFILE\",Bi=\"IMPORT_EXPORT_MODAL_SYNAPSE3_PROFILE\",Fi=\"IMPORT_EXPORT_MODAL_TIP\",yi=\"TEXT_LOCAL\",Yi=\"TEXT_CLOUD\",bi=\"IMPORT_EXPORT_MODAL_WILL_NOT_IMPORT\",Vi=\"TEXT_SELECT_ALL_PROFILES\",Wi=\"TEXT_DESELECT_ALL_PROFILES\",Ki=\"TEXT_IMPORT_PROFILES\",wi=\"TEXT_EXPORT_PROFILES\",zi=\"KB_KEY_RECORDING\",ki=\"KB_ALPHANUMERIC\",xi=\"KB_FUNCTION\",Xi=\"KB_NUMPAD\",ji=\"KB_NAVIGATION\",Zi=\"KB_MODIFIERS\",qi=\"KB_SYMBOLS\",Qi=\"MAPPING_ADD_MODIFIER_TIP\",Ji=\"TEXT_INCLUDE_MODIFIER\",$i=\"MAPPING_TURBO_CONTROL_TIP\",en=\"LATER\",En=\"NOT_INSTALLED\",an=\"NO_INTERNET\",tn=\"PAUSE\",_n=\"SLEEP\",nn=\"TEXT_CLICK_TO_RECORD\",on=\"UPDATE_READY\",sn=\"SCANNING\",rn=\"PAIRING\",Tn=\"UNPAIRING\",In=\"DUALLINK_SCAN_DEVICE_FOUND\",On=\"UNPAIR_CONFIRM_TEXT\",An=\"PAIR\",Sn=\"UNPAIR\",ln=\"RESCAN\",Rn=\"PAIRING_FAILED\",dn=\"UNPAIRING_FAILED\",Nn=\"RADIO_SELECT_TIPS\",un=\"PAIRING_COMPLETE\",cn=\"UNPAIRING_COMPLETE\",Cn=\"HYPER_SPEED_MULTI_DEVICE_PAIRING\",Dn=\"MULTI_DEVICE_PAIRING\",Ln=\"MULTI_DEVICE_PAIRING_DESCRIPTION\",Pn=\"OPEN_PAIRING_UTILITY\",pn=\"LED_GUIDE\",Mn=\"LED_CHECK_STATUS\",mn=\"ENABLE_LAUNCH_PAIRING_UTILITY_INFO\",Un=\"HYPERPOLLING\",hn=\"HYPER_SPEED_DUALINK_PROPERTIES_TOOLTIP\",Gn=\"HYPERFLUX_DUALINK_PROPERTIES_TOOLTIP\",gn=\"MULTI__DUALINK_PROPERTIES_TOOLTIP\",Hn=\"HYPER_SPEED_MULTI_DEVICE_PAIRING_UTILITY\",fn=\"MULTI_DEVICE_PAIRING_UTILITY\",vn=\"HYPER_SPEED_MULTI_DEVICE_HEADER\",Bn=\"MULTI_DEVICE_HEADER\",Fn=\"MULTI_DEVICE_HYPER_SPEED_DONGLE\",yn=\"MULTI DEVICE DONGLE\",Yn=\"HYPER_SPEED_MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE\",bn=\"MULTI_DEVICE_DONGLE_DUALLINK_NOTE_ONE\",Vn=\"DUALLINK_NOTE_TWO\",Wn=\"DUALLINK_NOTE_THREE\",Kn=\"DUALLINK_NOTE_FOUR\",wn=\"DUALLINK_NOTE_FOUR_MOUSE_MAT\",zn=\"DUALLINK_NOTE_FIVE\",kn=\"TEXT_SEARCH_EMOJI\",xn=\"TEXT_EMOJI\",Xn=\"BACK\",jn=\"FORWARD\",Zn=\"MORE\",qn=\"REQUIRES_RAZER_SYNAPSE\",Qn=\"REQUIRES_RAZER_SYNAPSE_TOOLTIP\",Jn=\"LOW_POWER_MODE_WARN\",$n=\"PERFORMANCE\",eo=\"ADVANCED\",Eo=\"BASIC\",ao=\"CYCLE_CHROMA_LIGHTING\",to=\"TOGGLE_FAN_SPEED_MODE\",_o=\"TOGGLE_FAN_SPEED_MODE_DISABLE_MESSAGE\",io=\"POWER_ON_OFF\",no=\"INDICATOR_LED_V2\",oo=\"LED_1\",so=\"LED_2\",ro=\"LED_3\",To=\"INDICATOR_LED_V2_DESC\",Io=\"CONNECTION_STATUS\",Oo=\"DPI_STAGE\",Ao=\"POLLING_RATE\",So=\"CONNECTION_QUALITY\",lo=\"EXCELLENT\",Ro=\"GOOD\",No=\"FAIR\",uo=\"POOR\",co=\"BATTERY_LIFE\",Co=\"LESS_THAN_75\",Do=\"LESS_THAN_50\",Lo=\"LESS_THAN_25\",Po=\"SHOW_GUIDE\",po=\"SCROLL_WHEEL_STAGES\",Mo=\"CONFIGURE_SCROLL_WHEEL_STAGES_SETTINGS\",mo=\"SW_STANDARD\",Uo=\"SW_DISTINCT\",ho=\"SW_ULTRA_FINE\",Go=\"SW_ADAPTIVE\",go=\"SW_SMOOTH_SCROLL\",Ho=\"SW_CUSTOM\",fo=\"MIC\",vo=\"SPECIFIC_KEYMAP\",Bo=\"NEXT_KEYMAP\",Fo=\"PREVIOUS_KEYMAP\",yo=\"CYCLE_UP_KEYMAP\",Yo=\"CYCLE_DOWN_KEYMAP\",bo=\"STREAMER_COMPANION_APP\",Vo=\"VIRTUAL_RING_LIGHT\",Wo=\"TEXT_UNSAVED_1\",Ko=\"TEXT_UNSAVED_2\",wo=\"BTN_DISCARD_ALL\",zo=\"BTN_SAVE_ALL\",ko=\"TEXT_ADD_SECONDARY_FUNCTION\",xo=\"TEXT_ADD_SECONDARY_FUNCTION_TIP\",Xo=\"OFFLINE_HEADER\",jo=\"OFFLINE_TEXT_1\",Zo=\"OFFLINE_TEXT_2\",qo=\"RIGHT_SHIFT\",Qo=\"RIGHT_ALT\",Jo=\"RIGHT_CTRL\",$o=\"MENU\",es=\"RIGHT\",Es=\"LEFT\",as=\"UP\",ts=\"DOWN\",_s=\"BATTERY_OFF\",is=\"BATTERY_CHARGED_FULL\",ns=\"BATTERY_CHARGING\",os=\"BATTERY_PERCENT\",ss=\"BATTERY_ERROR_TIPS\",rs=\"FIRMWARE_UPDATE_AVAILABLE\",Ts=\"LATEST_VERSION\",Is=\"TEXT_WINDOW_LOGIN_WARNING_NOTE\",Os=\"TEXT_WINDOW_LOGIN_WARNING\",As=\"OK\",Ss=\"THE_NEW_APP\",ls=\"IN_APP_RATING_FEEDBACK_DIALOG\",Rs=\"DISLIKED_IN_APP_RATING_FEEDBACK_DIALOG\",ds=\"IN_APP_RATING_LIKE_DIALOG\",Ns=\"IN_APP_RATING_STAR_DIALOG\",us=\"FEEDBACK_IMPROVEMENT\",cs=\"FEEDBACK_REPORT\",Cs=\"FEEDBACK\",Ds=\"NOT_ASSIGNED\",Ls=\"SWITCH_PLAYBACK_DEVICE\",Ps=\"BRIGHTNESS_GLOBAL_DESC\",ps=\"BRIGHTNESS_GLOBAL_DESC_AT_LEAST_ONE_LED_DEVICE\",Ms=\"AUDIO_FUNCTION_DESC\",ms=\"AUDIO_FUNCTION_DESC_AT_LEAST_ONE_AUDIO_DEVICE\",Us=\"SELECT_AUDIO_DEVICE\",hs=\"SWITCH_CHROMA_EFFECT_DESC\",Gs=\"PAIRED\",gs=\"CYCLE_CHROMA_EFFECT\",Hs=\"SENSITIVITY_MATCHER\",fs=\"SENSITIVITY_MATCHER_DESC\",vs=\"SENSITIVITY_MATCHER_PROFILE_DESC\",Bs=\"SENSITIVITY_MATCHER_STEP_DESC\",Fs=\"SENSITIVITY_MATCHER_ACTION_DESC_1\",ys=\"SENSITIVITY_MATCHER_ACTION_DESC_2\",Ys=\"SENSITIVITY_MATCHER_ACTION_DESC_3\",bs=\"SENSITIVITY_MATCHER_TOOLTIP\",Vs=\"DELETE_ALL_SENSITIVITY_MATCHER_POPUP_HEADER\",Ws=\"DELETE_ALL_SENSITIVITY_MATCHER_POPUP_DESC\",Ks=\"DELETE_ALL\",ws=\"CALIBRATION_INFORMATION\",zs=\"CURRENT_DPI\",ks=\"NEW_DPI\",xs=\"TUTORIAL\",Xs=\"BOTTOMLEFT_JOYSTICK\",js=\"BOTTOMRIGHT_JOYSTICK\",Zs=\"DOWN_JOYSTICK\",qs=\"EXIT_ADJUSTMENT_MODE\",Qs=\"EXIT_ADJUSTMENT_MODE_DES\",Js=\"LEFT_JOYSTICK\",$s=\"REMOVE_SECONDARY_FUNC\",er=\"RIGHT_JOYSTICK\",Er=\"SELECTAKEY\",ar=\"TOPLEFT_JOYSTICK\",tr=\"TOPRIGHT_JOYSTICK\",_r=\"UP_JOYSTICK\",ir=\"AUDIO_FUNCTION\",nr=\"DOUBLE_PRESS\",or=\"DOUBLE_PRESS_DES\",sr=\"PRESS_AND_HOLD\",rr=\"PRESS_AND_HOLD_DES\",Tr=\"PRESS_AND_HOLD1\",Ir=\"PRESS_AND_HOLD_DES1\",Or=\"SWITCH_AUDIO_EQ\",Ar=\"ADJUST_FOOTSTEP_VOLUME_ESPORTS_EQ\",Sr=\"ADJUST_FREQ_RANGE_NO_ESPORTS_EQ_DES\",lr=\"DYNAMIC_SENSITIVITY\",Rr=\"DYNAMIC_SENSITIVITY_DESC\",dr=\"DYNAMIC_SENSITIVITY_TOOLTIP\",Nr=\"DYNAMIC_SENSITIVITY_RATIO\",ur=\"DYNAMIC_SENSITIVITY_INPUT_SPEED\",cr=\"DYNAMIC_SENSITIVITY_SELECT_TEMPLATE\",Cr=\"DYNAMIC_SENSITIVITY_RATIO_ZOOM_IN\",Dr=\"DYNAMIC_SENSITIVITY_RATIO_ZOOM_IN_SHORTCUT\",Lr=\"DYNAMIC_SENSITIVITY_RATIO_ZOOM_OUT\",Pr=\"DYNAMIC_SENSITIVITY_RATIO_ZOOM_OUT_SHORTCUT\",pr=\"CLASSIC\",Mr=\"NATURAL\",mr=\"JUMP\",Ur=\"CLOCKWISE\",hr=\"COUNTER_CLOCKWISE\",Gr=\"SINGLE_PRESS\",gr=\"NEXT_PRESET\",Hr=\"PREVIOUS_PRESET\",fr=\"NEXT_HAPTICS_PROFILE\",vr=\"PREVIOUS_HAPTICS_PROFILE\",Br=\"HAPTICS_UP\",Fr=\"HAPTICS_DOWN\",yr=\"HAPTICS_ON_OFF\",Yr=\"NEXT_INPUT_SOURCE\",br=\"PREVIOUS_INPUT_SOURCE\",Vr=\"SIDETONE_LEVEL_UP\",Wr=\"SIDETONE_LEVEL_DOWN\",Kr=\"SIDETONE_ON_OFF\",wr=\"CHAT_VOLUME_UP\",zr=\"GAME_VOLUME_UP\",kr=\"GAME_CHAT_VOLUME_BALANCED\",xr=\"LIGHTING_BRIGHNESS_UP\",Xr=\"LIGHTING_BRIGHNESS_DOWN\",jr=\"TOGGLE_LIGHTING_BRIGHNESS\",Zr=\"OLED_BRIGHNESS_UP\",qr=\"OLED_BRIGHNESS_DOWN\",Qr=\"TOGGLE_OLED_BRIGHNESS\",Jr=\"MUTE_UNMUTE_VOLUME\",$r=\"DYNAMIC_SENSITIVITY_TUTORIAL_SUBTITLE\",eT=\"DYNAMIC_SENSITIVITY_TUTORIAL_CAPTION\",ET=\"DYNAMIC_SENSITIVITY_TUTORIAL_CLASSIC_TITLE\",aT=\"DYNAMIC_SENSITIVITY_TUTORIAL_CLASSIC_DESC\",tT=\"DYNAMIC_SENSITIVITY_TUTORIAL_NATURAL_TITLE\",_T=\"DYNAMIC_SENSITIVITY_TUTORIAL_NATURAL_DESC\",iT=\"DYNAMIC_SENSITIVITY_TUTORIAL_JUMP_TITLE\",nT=\"DYNAMIC_SENSITIVITY_TUTORIAL_JUMP_DESC\",oT=\"DYNAMIC_SENSITIVITY_TUTORIAL_CUSTOM_TITLE\",sT=\"DYNAMIC_SENSITIVITY_TUTORIAL_CUSTOM_DESC\",rT=\"APP_SPECIFIC\",TT=\"SHORTCUT\",IT=\"OLED_LOADING_PROGRESS_DESC_2\",OT=\"OLED_LOADING_PROGRESS_DESC_3\",AT=\"OLED_LOADING_PROGRESS_UPDATING\",ST=\"OLED_LOADING_PROGRESS_ITEM_TRACKING\",lT=\"TOP\",RT=\"BOTTOM\",dT=\"ROTATION\",NT=\"ROTATION_DESC\",uT=\"THIS_TOOL\",cT=\"ROTATION_TOOLTIP\",CT=\"SELECT_ALL\",DT=\"CONFLICT_DETECTED\",LT=\"CONFLICT_DETECTED_DESC\",PT=\"FW_UPDATE_MESSAGE\",pT=\"FW_UPDATE_REQUIRED\",MT=\"REMOTE_SYNC_TITLE\",mT=\"REMOTE_SYNC_DESC\",UT=\"REMOTE_SYNC_LOCAL_TITLE\",hT=\"REMOTE_SYNC_LOCAL_DESC\",GT=\"REMOTE_SYNC_CLOUD_TITLE\",gT=\"REMOTE_SYNC_CLOUD_DESC\",HT=\"REMOTE_SYNC_ASK_LATER_TITLE\",fT=\"REMOTE_SYNC_ASK_LATER_DESC\",vT=\"REMOTE_SYNC_ASK_LATER_DESC2\",BT=\"REMOTE_SYNC_LAST_MODIFY\",FT=\"CONTROL_KNOB\",yT=\"QUICK_ACCESS_MODES\",YT=\"KNOB_FUNCTION_TIP1\",bT=\"KNOB_FUNCTION_TIP2\",VT=\"KNOB_FUNCTION_TIP3\",WT=\"PROFILE_MIGRATION\",KT=\"BUTTON_TEXT_CONTINUE\",wT=\"TRANSFER_ALL_SYNAPSE_PROFILES_DESC\",zT=\"LATEST\",kT=\"GRAPHICS\",xT=\"DUAL_LINK_WARNING_HEADER\",XT=\"DUAL_LINK_WARNING_DESCRIPTION_1\",jT=\"DUAL_LINK_WARNING_DESCRIPTION_2\",ZT=\"DUAL_LINK_WARNING_CONFIRM\",qT=\"CONTINUE_PAIRING\",QT=\"USE_KEYBOARD_DONGLE\",JT=\"DUAL_LINK_TWO_DEVICES_DESCRIPTION\",$T=\"NEWER\",eI=\"OLDER\",EI=\"AI_LAUNCHER\",aI=\"OPEN_PROMPT_COMPOSER\",tI=\"OPEN_AI_CHAT\",_I=\"DEVICE_NAME\",iI=\"PROCESSOR\",nI=\"INSTALLED_RAM\",oI=\"SERIAL_NUMBER\",sI=\"MODEL_NUMBER\",rI=\"OS_VERSION\",TI=\"DISPLAY_1\",II=\"DISPLAY_2\",OI=\"NVIDIA_GEFORCE_EXPERIENCE\",AI=\"COMMAND_CENTER\",SI=\"AMD_ADRENALINE\",lI=\"CORTEX\",RI=\"AXON\",dI=\"KEYBOARD_ADJUSTMENTS\",NI=\"KEYBOARD_ADJUSTMENTS_DESC\",uI=\"COMBINE_WITH_MOUSE\",cI=\"KEYBOARD_COMBINE_MOUSE_FUNCTION\",CI=\"CUSTOM_SHORTCUT\",DI=\"AI_PROMPT_MASTER\",LI=\"AI_LAUNCHER_DES1\",PI=\"AI_LAUNCHER_DES2\",pI=\"AI_LAUNCHER_DES3\",MI=\"AI_LAUNCHER_DES4\",mI=\"STEP_BACK\",UI=\"STEP_FORWARD\",hI=\"MERGE_A_COPY_OF_ALL_VISIBLE_LAYERS\",GI=\"CREAT_RELEASE_CLIPPING_MASK\",gI=\"KEYBOARD_SHORTCUTS_DIALOG\",HI=\"CREATE_A_NEW_LAYER\",fI=\"SAVE_FOR_WEB\",vI=\"IMAGE_SIZE\",BI=\"FREE_TRANSFORM\",FI=\"REAPPLY_LAST_TRANSFORMATION_IN_NEW_LAYER\",yI=\"TOGGLE_OUTLINE_VIEW\",YI=\"CREATE_NEW_LAYER\",bI=\"PASTE_IN_PLACE\",VI=\"UNLOCK_SELECTION\",WI=\"JOIN_SELECTED_PATHS\",KI=\"HIDE_ARTBOARDS\",wI=\"REPEAT_TRANSFORMING_OBJECTS_IN_PERSPECTIVE\",zI=\"TOGGLE_BETWEEN_THE_SOURCE_AND_PROGRAM_PANELS\",kI=\"SAVE_THE_PROJECT\",xI=\"TOGGLE_SOURCE_MONITOR\",XI=\"ADD_EDIT\",jI=\"APPLY_DEFAULT_TRANSITIONS_TO_SELECTION\",ZI=\"EXPORT_FRAME\",qI=\"EXPORT_MEDIA\",QI=\"TOGGLE_THE_SAFE_MARGINS\",JI=\"NUDGE_OBJECT_UP\",$I=\"NUDGE_OBJECT_RIGHT\",eO=\"NUDGE_OBJECT_LEFT\",EO=\"NUDGE_OBJECT_DOWN\",aO=\"ADD_MARKER_WITH_TEXT\",tO=\"DUPLICATE_SELECTED_LAYERS\",_O=\"PRE_COMPOSE_SELECTED_LAYERS\",iO=\"UNDO\",nO=\"REDO\",oO=\"GO_TO_BEGINNING_OF_TIMELINE\",sO=\"GO_TO_END_OF_TIMELINE\",rO=\"COMPOSITION_SETTINGS_DIALOG\",TO=\"OPEN_A_NEW_INCOGNITO_WINDOW\",IO=\"OPEN_NEW_TAB\",OO=\"REOPEN_THE_LAST_CLOSE_TAB\",AO=\"TOOGLE_BOOKMARKS_TAB\",SO=\"OPEN_DEVELOPER_TOOLS\",lO=\"OPEN_BROWSING_DATA_OPTIONS\",RO=\"SWITCH_TO_THE_NEXT_TAB\",dO=\"SWITCH_TO_THE_PREVIOUS_TAB\",NO=\"CLOSE_THE_CURRENT_TAB\",uO=\"CLOSE_THE_CURRENT_WINDOW\",cO=\"SWITCH_BETWEEN_OPEN_WINDOWS\",CO=\"FIND\",DO=\"BOLD_SELECTED_TEXT\",LO=\"ITALICIZE_SELECTED_TEXT\",PO=\"DUPLICATE_SELECTION\",pO=\"INSERT_A_NEW_SLIDE\",MO=\"OPEN_THE_FONT_DIALOG_FOR_SELECTED_TEXT\",mO=\"INSERT_NEW_CELLS\",UO=\"DELETE_SELECTED_CELLS\",hO=\"PASTE_SPECIAL_DIALOG\",GO=\"FILTER_SELECTED_CELLS\",gO=\"START_NEW_CHAT\",HO=\"OPEN_ACTIVITY\",fO=\"OPEN_CHAT\",vO=\"OPEN_TEAMS\",BO=\"OPEN_CALENDAR\",FO=\"DECLINE_CALL\",yO=\"AI_CHAT_TIP\",YO=\"LAUNCH_AI_OVERLAY\",bO=\"DESELECT_SELECTIONS\",VO=\"OPEN_PREFERENCES\",WO=\"OPEN_KEYBOARD_SHORTCUTS\",KO=\"OPEN_COLOR_SETTINGS\",wO=\"PASTE_IN_FRONT\",zO=\"PASTE_IN_BACK\",kO=\"PASTE_ON_ALL_ARTBOARDS\",xO=\"CHECK_SPELLING\",XO=\"ROTATE_BRUSH_BY_1_DEGREE_ANTI_CLOCKWISE\",jO=\"ROTATE_BRUSH_BY_1_DEGREE_CLOCKWISE\",ZO=\"ROTATE_BRUSH_BY_15_DEGREES_ANTI_CLOCKWISE\",qO=\"ROTATE_BRUSH_BY_15_DEGREES_CLOCKWISE\",QO=\"NEW_LAYER_VIA_COPY\",JO=\"NEW_LAYER_VIA_CUT\",$O=\"CLOSE_ALL_OTHER_DOCUMENTS\",eA=\"NAVIGATE_BETWEEN_FIELDS_IN_THE_OPPOSITE_DIRECTION\",EA=\"ZOOM_IN\",aA=\"ZOOM_OUT\",tA=\"GROUP\",_A=\"UNGROUP\",iA=\"INSERT_ROW_COLUMN\",nA=\"DELETE_ROW_COLUMN\",oA=\"INSERT_COMMENT\",sA=\"START_THE_SLIDE_SHOW\",rA=\"SEND_OBJECT_TO_THE_BACK\",TA=\"BRING_OBJECT_TO_THE_FRONT\",IA=\"TOGGLE_PRESENTER_VIEW\",OA=\"ACCEPT_VIDEO_CALL\",AA=\"ACCEPT_AUDIO_CALL\",SA=\"START_AUDIO_CALL\",lA=\"START_VIDEO_CALL\",RA=\"END_AUDIO_CALL\",dA=\"END_VIDEO_CALL\",NA=\"TOGGLE_MUTE\",uA=\"RAISE_OR_LOWER_YOUR_HAND\",cA=\"FIND_AND_REPLACE\",CA=\"SWITCH_PROFILE_FUNCTION_TIP\",DA=\"APP_PROFILE_ICON_TOOTIP\",LA=\"SENSITIVITY_MAPPING_INFO\",PA=\"IMPACT_SENSITIVITY_CLUTCH_WARNING_HEADER\",pA=\"IMPACT_SENSITIVITY_CLUTCH_WARNING_DESCRIPTION_1\",MA=\"IMPACT_SENSITIVITY_CLUTCH_WARNING_DESCRIPTION_2\",mA=\"CONFIRMAION_TEXT\",UA=\"SHARE_BUTTON\",hA=\"PC_MODE_ONLY\",GA=\"PC_MODE_ONLY_TIP\",gA=\"GO_TO\",HA=\"THX_SPATIAL_AUDIO_NOTICE\",fA=\"DEVICE_HEADER\",vA=\"FIRMWARE_VERSION\",BA=\"UI_VERSION\",FA=\"MW_VERSION\",yA=\"SYNAPSE_VERSION\",YA=\"VIEW_LESS\",bA=\"VIEW_MORE\",VA=\"TUTORIAL_DESC\",WA=\"VIEW_AGAIN\",KA=\"RESET_WARNING_AUTO_POWER_OFF\",wA=\"CAMO_STUDIO\",zA=\"CAMO_STUDIO_LAUNCH\",kA=\"DOWNLOAD_CAMO_STUDIO\",xA=\"CAMO_STUDIO_PRO_LICENSE_CODE\",XA=\"CAMO_STUDIO_PRO_LICENSE_CODE_DESCRIPTION\",jA=\"CAMO_STUDIO_PRO_LICENSE_CODE_TITLE\",ZA=\"ACTIVATE\",qA=\"OPEN_DOCUMENT\",QA=\"NEW_LAYER\",JA=\"FIT_ON_SCREEN\",$A=\"SWITCH_BETWEEN_OPEN_DOCUMENTS\",eS=\"MERGE_LAYERS\",ES=\"BRING_FORWARD\",aS=\"SEND_BACKWARD\",tS=\"ARTBOARD_TOOL\",_S=\"FIT_ARTBOARD_IN_WINDOW\",iS=\"NEW_SEQUENCE\",nS=\"IMPORT_MEDIA\",oS=\"RIPPLE_DELETE\",sS=\"SPLIT_LAYER\",rS=\"TRIM_LAYER_IN_TO_CURRENT_TIME\",TS=\"TRIM_LAYER_OUT_TO_CURRENT_TIME\",IS=\"TOGGLE_LAYER_CONTROLS\",OS=\"FIT_TO_COMP_IN_VIEWER\",AS=\"SELECT_TYPE_TEXT_TOOL\",SS=\"NEW_SOLID\",lS=\"INDENT_PARAGRAPH\",RS=\"ADD_HANGING_INDENT\",dS=\"REMOVE_PARAGRAPH_FORMATTING\",NS=\"ADD_COMMENT\",uS=\"INSERT_HYPERLINK\",cS=\"PRINT\",CS=\"INSERT_FOOTNOTE\",DS=\"INSERT_ENDNOTE\",LS=\"UNDERLINE\",PS=\"AUTO_SUM\",pS=\"FILL_DOWN\",MS=\"FORMAT_CELLS\",mS=\"INSERT_NEW_WORKSHEET\",US=\"HIDE_SHOW_RIBBON\",hS=\"OPEN_SETTINGS\",GS=\"TOGGLE_VIDEO_ON_OFF\",gS=\"OPEN_ACTIVITY_TAB\",HS=\"OPEN_CHAT_TAB\",fS=\"OPEN_TEAMS_TAB\",vS=\"OPEN_CALLS\",BS=\"OPEN_FILTER_FOR_SEARCHES\",FS=\"OPEN_APPS_FLYOUT\",yS=\"TOGGLE_PARTICIPANTS_PANEL\",YS=\"TOGGLE_MEETING_CHAT_PANEL\",bS=\"END_MEETING_LEAVE_CALL\",VS=\"TOGGLE_FULL_SCREEN_MODE\",WS=\"FOCUS_THE_ADDRESS_BAR\",KS=\"OPEN_BOOKMARK_MANAGER\",wS=\"VIEW_PAGE_SOURCE\",zS=\"OPEN_HISTORY\",kS=\"OPEN_DOWNLOADS\",xS=\"NAVIGATE_BACK\",XS=\"NAVIGATE_FORWARD\",jS=\"BOOKMARK_CURRENT_PAGE\",ZS=\"SWITCH_TO_MEDIA_PAGE\",qS=\"SWITCH_TO_CUT_PAGE\",QS=\"SWITCH_TO_EDIT_PAGE\",JS=\"SWITCH_TO_FUSION_PAGE\",$S=\"SWITCH_TO_COLOR_PAGE\",el=\"SWITCH_TO_FAIRLIGHT_PAGE\",El=\"EDIT_DETAILS_IN_WORKSHOP\",al=\"ARMORY_MAINTENANCE_DESC\",tl=\"CONTACT_SUPPORT\",_l=\"ERROR_SERIALNUMBER_DESC\",il=\"ERROR_SERIALNUMBER_SUBDESC\",nl=\"ERROR_SERIALNUMBER_CONTACT_SUPPORT\",ol=\"MCU\",sl=\"BIOS\",rl=\"EC\",Tl=\"VBIOS\",Il=\"ON_COMPUTER_NAME\",Ol=\"PAIRING_UNPAIR_WARNING\",Al=\"PAIRING_CONDITIONS_TITLE\",Sl=\"PAIRING_CONDITION_HYPERSPEED_MODE\",ll=\"PAIRING_CONDITION_NO_USB\",Rl=\"PAIRING_CONDITION_NO_DONGLE\",dl=\"PAIRING_CONDITION_PROXIMITY\",Nl=\"PAIRING_CONDITION_KEEP_ACTIVE\",ul=\"PAIRING_SELECT_DEVICE\",cl=\"LOADING\",Cl=\"PAIRING_UNPAIR_DEVICE_TITLE\",Dl=\"PAIRING_UNPAIR_WARNING_MESSAGE\",Ll=\"PAIRING_UNPAIR_NEED_OTHER_DEVICE\",Pl=\"PAIRING_DEVICE_NOT_FOUND\",pl=\"PAIRING_PAIR_NEW_DEVICE_WARNING\",Ml=\"PAIRING_PAIR_DEVICE_TITLE\"}"
+    }
+  ],
+  "gaps": [
+    "Host/native DPI_MATCHER command implementation and state-response chain not audited by this tool",
+    "Rust sensitivity matcher and multipairing UI/observations not implemented",
+    "No runtime verification or real device operation"
+  ]
+}

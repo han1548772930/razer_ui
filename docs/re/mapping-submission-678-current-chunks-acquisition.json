@@ -1,0 +1,31 @@
+{
+  "product_id": 678,
+  "method": "Current official HTML and declared scripts fetched as data; never executed",
+  "receipts": [
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/mw/2291.181c5368c97e4bae6916.js",
+      "url": "https://apps.razer.com/synapse/products/678/mw/2291.181c5368c97e4bae6916.js",
+      "retrieved_utc": "2026-10-10T17:15:54.405222+00:00",
+      "sha256": "8af17228243662b4bbafa03b3893015bfe375cdc465b6d9c0f4a2dc4a6372c83",
+      "bytes": 142645,
+      "http_status": 200
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/mw/6737.b4bf391c075aa0879a1d.js",
+      "url": "https://apps.razer.com/synapse/products/678/mw/6737.b4bf391c075aa0879a1d.js",
+      "retrieved_utc": "2026-10-10T17:15:56.880419+00:00",
+      "sha256": "bb6d991ed16a887b91910f6ddc82ae51770a2bbdd5d8f14aba9311142cb144e0",
+      "bytes": 1964983,
+      "http_status": 200
+    },
+    {
+      "path": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/mw/onLoad.c51b7b9398f445662cfc.js",
+      "url": "https://apps.razer.com/synapse/products/678/mw/onLoad.c51b7b9398f445662cfc.js",
+      "retrieved_utc": "2026-10-10T17:15:57.828572+00:00",
+      "sha256": "ff337b28149ef9db4b8b7790ec9d0ed3a28e32763a6e69f501f58d345194c30d",
+      "bytes": 70627,
+      "http_status": 200
+    }
+  ],
+  "shared_script_urls": []
+}

@@ -1,0 +1,907 @@
+{
+  "date": "2026-10-11",
+  "products": [
+    678,
+    679,
+    688
+  ],
+  "method": "Per-product current manifest resolution, byte comparison and inert JS/CSS reference slices",
+  "scope": "Resource identity only; surrounding reference slices do not prove mounted caller equivalence",
+  "vendor_code_executed": false,
+  "resources": [
+    {
+      "output": "assets/synapse/chroma_sync_v3_static.svg",
+      "sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/chroma_sync_v3_static.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+          "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+          "source_bytes": 310620,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                7665,
+                7939
+              ],
+              "utf16_range": [
+                7665,
+                7939
+              ],
+              "slice_sha256": "f4e5e5fa06e54a8d7d79c2fc59e4d7c61393460db2efd41a1429bf6945666cb0",
+              "source": "px;margin-right:10px;position:relative;width:26px}.chroma-studio-animate:before{background-image:url(../../static/media/chroma_sync_v3_static.c8ddf315.svg);content:\"\";display:inline-block;height:26px;left:0;position:absolute;top:0;width:26px}.chroma-studio-animate:hover,.ch"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/chroma_sync_v3_static.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+          "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+          "source_bytes": 310620,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                7665,
+                7939
+              ],
+              "utf16_range": [
+                7665,
+                7939
+              ],
+              "slice_sha256": "f4e5e5fa06e54a8d7d79c2fc59e4d7c61393460db2efd41a1429bf6945666cb0",
+              "source": "px;margin-right:10px;position:relative;width:26px}.chroma-studio-animate:before{background-image:url(../../static/media/chroma_sync_v3_static.c8ddf315.svg);content:\"\";display:inline-block;height:26px;left:0;position:absolute;top:0;width:26px}.chroma-studio-animate:hover,.ch"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/chroma_sync_v3_static.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/chroma_sync_v3_static.c8ddf315.svg",
+          "source_sha256": "46d789e9998e2f94623c74cdf5965c6bb777962b508a9bf34beb60bbcf97abca",
+          "source_bytes": 310620,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                7665,
+                7939
+              ],
+              "utf16_range": [
+                7665,
+                7939
+              ],
+              "slice_sha256": "f4e5e5fa06e54a8d7d79c2fc59e4d7c61393460db2efd41a1429bf6945666cb0",
+              "source": "px;margin-right:10px;position:relative;width:26px}.chroma-studio-animate:before{background-image:url(../../static/media/chroma_sync_v3_static.c8ddf315.svg);content:\"\";display:inline-block;height:26px;left:0;position:absolute;top:0;width:26px}.chroma-studio-animate:hover,.ch"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/controller-fill-green-icon.svg",
+      "sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller-fill-green-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+          "source_bytes": 857,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                401234,
+                401513
+              ],
+              "utf16_range": [
+                401174,
+                401453
+              ],
+              "slice_sha256": "37353ea6433f053a78ad81acd573edf74bdd70f2d12b4743b884dabe20470537",
+              "source": "d;border-radius:14px;height:27px;width:38px;z-index:100}.toggle-controller.open{background-image:url(../../static/media/controller-fill-green-icon.68e5616a.svg);border-color:#44d62c}.gamepad-tester{align-items:center;display:flex;margin-left:-10px;margin-top:-8px}.gamepad-tester"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller-fill-green-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+          "source_bytes": 857,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                399954,
+                400233
+              ],
+              "utf16_range": [
+                399894,
+                400173
+              ],
+              "slice_sha256": "37353ea6433f053a78ad81acd573edf74bdd70f2d12b4743b884dabe20470537",
+              "source": "d;border-radius:14px;height:27px;width:38px;z-index:100}.toggle-controller.open{background-image:url(../../static/media/controller-fill-green-icon.68e5616a.svg);border-color:#44d62c}.gamepad-tester{align-items:center;display:flex;margin-left:-10px;margin-top:-8px}.gamepad-tester"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller-fill-green-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller-fill-green-icon.68e5616a.svg",
+          "source_sha256": "1cda5332b70e62c4f74a65cf0bbefeabdb2fd643a77cd77ca4282455d5d72864",
+          "source_bytes": 857,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                369722,
+                370001
+              ],
+              "utf16_range": [
+                369662,
+                369941
+              ],
+              "slice_sha256": "bbb5dc02bb93509cb551fda7218cdf5da073e54616946335a1f8a5526189f475",
+              "source": "d;border-radius:14px;height:27px;width:38px;z-index:100}.toggle-controller.open{background-image:url(../../static/media/controller-fill-green-icon.68e5616a.svg);border-color:#44d62c}.quick-bind-btn{background-color:#707070;border-radius:3px;cursor:pointer;height:27px;left:1074px"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/controller-fill-grey-icon.svg",
+      "sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller-fill-grey-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+          "source_bytes": 861,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                400978,
+                401256
+              ],
+              "utf16_range": [
+                400918,
+                401196
+              ],
+              "slice_sha256": "187f1fe31a0b0b3f57201b091455271604477030a2773def7f9a31912e50f965",
+              "source": "ng-something{cursor:grabbing!important}.toggle-controller{background-color:#111;background-image:url(../../static/media/controller-fill-grey-icon.a9ec3fff.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller-fill-grey-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+          "source_bytes": 861,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                399698,
+                399976
+              ],
+              "utf16_range": [
+                399638,
+                399916
+              ],
+              "slice_sha256": "187f1fe31a0b0b3f57201b091455271604477030a2773def7f9a31912e50f965",
+              "source": "ng-something{cursor:grabbing!important}.toggle-controller{background-color:#111;background-image:url(../../static/media/controller-fill-grey-icon.a9ec3fff.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller-fill-grey-icon.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller-fill-grey-icon.a9ec3fff.svg",
+          "source_sha256": "5f7fe8b837768c8caae51c6db4666f88b0b1b61144a1e22bf0b227d4503c6504",
+          "source_bytes": 861,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                369466,
+                369744
+              ],
+              "utf16_range": [
+                369406,
+                369684
+              ],
+              "slice_sha256": "187f1fe31a0b0b3f57201b091455271604477030a2773def7f9a31912e50f965",
+              "source": "ng-something{cursor:grabbing!important}.toggle-controller{background-color:#111;background-image:url(../../static/media/controller-fill-grey-icon.a9ec3fff.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/icon_expand.svg",
+      "sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/icon_expand.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_expand.55a47b0c.svg",
+          "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+          "source_bytes": 467,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                34239,
+                34503
+              ],
+              "utf16_range": [
+                34239,
+                34503
+              ],
+              "slice_sha256": "c9853ba2fe6f7e2a7cdda5b80b2b27769c00748af6841789789572083da44fd6",
+              "source": "ht:30px;position:absolute;right:23px;top:0;width:auto}.s3-dropdown>.icon.expand{background-image:url(../../static/media/icon_expand.55a47b0c.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;height:25px;position:absolute;right:0;top:0;t"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/icon_expand.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_expand.55a47b0c.svg",
+          "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+          "source_bytes": 467,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                34239,
+                34503
+              ],
+              "utf16_range": [
+                34239,
+                34503
+              ],
+              "slice_sha256": "c9853ba2fe6f7e2a7cdda5b80b2b27769c00748af6841789789572083da44fd6",
+              "source": "ht:30px;position:absolute;right:23px;top:0;width:auto}.s3-dropdown>.icon.expand{background-image:url(../../static/media/icon_expand.55a47b0c.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;height:25px;position:absolute;right:0;top:0;t"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/icon_expand.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_expand.55a47b0c.svg",
+          "source_sha256": "eb1db88587b95be8ff747cb778ccad15c5ec608dd87d44bd400b6533b649df88",
+          "source_bytes": 467,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                34239,
+                34503
+              ],
+              "utf16_range": [
+                34239,
+                34503
+              ],
+              "slice_sha256": "c9853ba2fe6f7e2a7cdda5b80b2b27769c00748af6841789789572083da44fd6",
+              "source": "ht:30px;position:absolute;right:23px;top:0;width:auto}.s3-dropdown>.icon.expand{background-image:url(../../static/media/icon_expand.55a47b0c.svg);background-position:50%;background-repeat:no-repeat;background-size:10px;height:25px;position:absolute;right:0;top:0;t"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/controller_icon_qe.svg",
+      "sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller_icon_qe.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller_icon_qe.4b3f269f.svg",
+          "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+          "source_bytes": 2219,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                393918,
+                394189
+              ],
+              "utf16_range": [
+                393858,
+                394129
+              ],
+              "slice_sha256": "755bfea82b4f983645043b4379454696933f5cbb3bbb8301d49bbc4a39d907b7",
+              "source": "sd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{background-image:url(../../static/media/controller_icon_qe.4b3f269f.svg)}.quick-bind-title{flex:1 1 auto;padding:0 10px}.toggle-title-container{display:flex;gap:10px;padding-bottom:10px}.togg"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller_icon_qe.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller_icon_qe.4b3f269f.svg",
+          "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+          "source_bytes": 2219,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                393835,
+                394106
+              ],
+              "utf16_range": [
+                393775,
+                394046
+              ],
+              "slice_sha256": "755bfea82b4f983645043b4379454696933f5cbb3bbb8301d49bbc4a39d907b7",
+              "source": "sd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{background-image:url(../../static/media/controller_icon_qe.4b3f269f.svg)}.quick-bind-title{flex:1 1 auto;padding:0 10px}.toggle-title-container{display:flex;gap:10px;padding-bottom:10px}.togg"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller_icon_qe.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller_icon_qe.4b3f269f.svg",
+          "source_sha256": "c1317b7f585a0de44cf7b907c22d7cadf2083278275e72decc3c1903da991244",
+          "source_bytes": 2219,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                370860,
+                371131
+              ],
+              "utf16_range": [
+                370800,
+                371071
+              ],
+              "slice_sha256": "755bfea82b4f983645043b4379454696933f5cbb3bbb8301d49bbc4a39d907b7",
+              "source": "sd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{background-image:url(../../static/media/controller_icon_qe.4b3f269f.svg)}.quick-bind-title{flex:1 1 auto;padding:0 10px}.toggle-title-container{display:flex;gap:10px;padding-bottom:10px}.togg"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/controller_icon_wasd.svg",
+      "sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/controller_icon_wasd.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/controller_icon_wasd.421387bd.svg",
+          "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+          "source_bytes": 2054,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                393728,
+                394001
+              ],
+              "utf16_range": [
+                393668,
+                393941
+              ],
+              "slice_sha256": "64d64fb2b816536f68b02a7b3166d7c1f388829e8a7c4c6b7aab166d8ead841a",
+              "source": "ight:auto;width:auto}.quick-bind-qe-joystick{padding:10px 0}.joystick-icon-wasd{background-image:url(../../static/media/controller_icon_wasd.421387bd.svg)}.joystick-icon-qe,.joystick-icon-wasd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{bac"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/controller_icon_wasd.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/controller_icon_wasd.421387bd.svg",
+          "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+          "source_bytes": 2054,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                393645,
+                393918
+              ],
+              "utf16_range": [
+                393585,
+                393858
+              ],
+              "slice_sha256": "64d64fb2b816536f68b02a7b3166d7c1f388829e8a7c4c6b7aab166d8ead841a",
+              "source": "ight:auto;width:auto}.quick-bind-qe-joystick{padding:10px 0}.joystick-icon-wasd{background-image:url(../../static/media/controller_icon_wasd.421387bd.svg)}.joystick-icon-qe,.joystick-icon-wasd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{bac"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/controller_icon_wasd.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/controller_icon_wasd.421387bd.svg",
+          "source_sha256": "e89ba2d1d36df3ec5f47ae648e2840a31fe8a9cfbc9634c9dc9f7dedf292966d",
+          "source_bytes": 2054,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                370670,
+                370943
+              ],
+              "utf16_range": [
+                370610,
+                370883
+              ],
+              "slice_sha256": "64d64fb2b816536f68b02a7b3166d7c1f388829e8a7c4c6b7aab166d8ead841a",
+              "source": "ight:auto;width:auto}.quick-bind-qe-joystick{padding:10px 0}.joystick-icon-wasd{background-image:url(../../static/media/controller_icon_wasd.421387bd.svg)}.joystick-icon-qe,.joystick-icon-wasd{background-repeat:no-repeat;min-height:44px;min-width:44px}.joystick-icon-qe{bac"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/icon_sidepanel_a.svg",
+      "sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/icon_sidepanel_a.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
+          "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+          "source_bytes": 408,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                404285,
+                404554
+              ],
+              "utf16_range": [
+                404225,
+                404494
+              ],
+              "slice_sha256": "0f7baaa5d936038e05d3a3d2da3a2154617ddca96e4c80405edeb4f30105a5ef",
+              "source": "id #5d5d5d;border-radius:14px;height:27px;width:38px}.toggle-drawer.drawer-open{background-image:url(../../static/media/icon_sidepanel_a.90d67a6e.svg);border-color:#44d62c}.toggle-hyper.drawer-open.hover-btn{transition:background-color .2s,opacity .2s,color .2s;will-ch"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/icon_sidepanel_a.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
+          "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+          "source_bytes": 408,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                403005,
+                403274
+              ],
+              "utf16_range": [
+                402945,
+                403214
+              ],
+              "slice_sha256": "0f7baaa5d936038e05d3a3d2da3a2154617ddca96e4c80405edeb4f30105a5ef",
+              "source": "id #5d5d5d;border-radius:14px;height:27px;width:38px}.toggle-drawer.drawer-open{background-image:url(../../static/media/icon_sidepanel_a.90d67a6e.svg);border-color:#44d62c}.toggle-hyper.drawer-open.hover-btn{transition:background-color .2s,opacity .2s,color .2s;will-ch"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/icon_sidepanel_a.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_sidepanel_a.90d67a6e.svg",
+          "source_sha256": "524691f6cf1e62ca885672093f48cbbc6473ee4b3b670d8fdffe562bae6f9368",
+          "source_bytes": 408,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                374621,
+                374890
+              ],
+              "utf16_range": [
+                374561,
+                374830
+              ],
+              "slice_sha256": "0f7baaa5d936038e05d3a3d2da3a2154617ddca96e4c80405edeb4f30105a5ef",
+              "source": "id #5d5d5d;border-radius:14px;height:27px;width:38px}.toggle-drawer.drawer-open{background-image:url(../../static/media/icon_sidepanel_a.90d67a6e.svg);border-color:#44d62c}.toggle-hyper.drawer-open.hover-btn{transition:background-color .2s,opacity .2s,color .2s;will-ch"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/icon_sidepanel.svg",
+      "sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/icon_sidepanel.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/icon_sidepanel.e53fef93.svg",
+          "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+          "source_bytes": 402,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                404049,
+                404316
+              ],
+              "utf16_range": [
+                403989,
+                404256
+              ],
+              "slice_sha256": "77a84091addbc5edd6b6f124d4a248515a97ba6085d115134d3f1e4d2417cba6",
+              "source": "p.hypershift-mode-tip{left:auto;right:1vw}}.toggle-drawer{background-color:#111;background-image:url(../../static/media/icon_sidepanel.e53fef93.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/icon_sidepanel.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/icon_sidepanel.e53fef93.svg",
+          "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+          "source_bytes": 402,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                402769,
+                403036
+              ],
+              "utf16_range": [
+                402709,
+                402976
+              ],
+              "slice_sha256": "77a84091addbc5edd6b6f124d4a248515a97ba6085d115134d3f1e4d2417cba6",
+              "source": "p.hypershift-mode-tip{left:auto;right:1vw}}.toggle-drawer{background-color:#111;background-image:url(../../static/media/icon_sidepanel.e53fef93.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/icon_sidepanel.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/icon_sidepanel.e53fef93.svg",
+          "source_sha256": "6f164fa69b52ae693072750d84bb2be7c9944825481d1de2e3912018ca344957",
+          "source_bytes": 402,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                374385,
+                374652
+              ],
+              "utf16_range": [
+                374325,
+                374592
+              ],
+              "slice_sha256": "77a84091addbc5edd6b6f124d4a248515a97ba6085d115134d3f1e4d2417cba6",
+              "source": "p.hypershift-mode-tip{left:auto;right:1vw}}.toggle-drawer{background-color:#111;background-image:url(../../static/media/icon_sidepanel.e53fef93.svg);background-position:50%;background-repeat:no-repeat;background-size:18px;border:1px solid #5d5d5d;border-radius:14px;h"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/xbox-trigger-left.svg",
+      "sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/xbox-trigger-left.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+          "source_bytes": 2236,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
+              "file_sha256": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180",
+              "utf8_byte_range": [
+                840442,
+                840712
+              ],
+              "utf16_range": [
+                840442,
+                840712
+              ],
+              "slice_sha256": "0ca1ea28b3eaca50e5dba2f8581ae9b9629038066ca1cacf1335d1b96be90545",
+              "source": "static/media/ps-dpad-left.d522b514.svg\";const R=a.p+\"static/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";co"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                398215,
+                398485
+              ],
+              "utf16_range": [
+                398155,
+                398425
+              ],
+              "slice_sha256": "eb758ce1dce2585dbb0b974bec952008581137843ee40a4d366805961e00da3c",
+              "source": "ox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.svg)}.controller-button-drag-image .icon.right-bumper{background-image:url(../../static/media/xbox-button-right.54513544.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/xbox-trigger-left.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+          "source_bytes": 2236,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+              "file_sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+              "utf8_byte_range": [
+                829256,
+                829526
+              ],
+              "utf16_range": [
+                829256,
+                829526
+              ],
+              "slice_sha256": "0ca1ea28b3eaca50e5dba2f8581ae9b9629038066ca1cacf1335d1b96be90545",
+              "source": "static/media/ps-dpad-left.d522b514.svg\";const R=a.p+\"static/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";co"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                396935,
+                397205
+              ],
+              "utf16_range": [
+                396875,
+                397145
+              ],
+              "slice_sha256": "eb758ce1dce2585dbb0b974bec952008581137843ee40a4d366805961e00da3c",
+              "source": "ox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.svg)}.controller-button-drag-image .icon.right-bumper{background-image:url(../../static/media/xbox-button-right.54513544.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/xbox-trigger-left.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-trigger-left.4d0f408c.svg",
+          "source_sha256": "a880629f96e01c83a559e4d6f2c93684fa907f4110e1c9024ce1aa52135688c5",
+          "source_bytes": 2236,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
+              "file_sha256": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929",
+              "utf8_byte_range": [
+                1103995,
+                1104265
+              ],
+              "utf16_range": [
+                1103893,
+                1104163
+              ],
+              "slice_sha256": "0ca1ea28b3eaca50e5dba2f8581ae9b9629038066ca1cacf1335d1b96be90545",
+              "source": "static/media/ps-dpad-left.d522b514.svg\";const R=a.p+\"static/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";co"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                366703,
+                366973
+              ],
+              "utf16_range": [
+                366643,
+                366913
+              ],
+              "slice_sha256": "eb758ce1dce2585dbb0b974bec952008581137843ee40a4d366805961e00da3c",
+              "source": "ox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.svg)}.controller-button-drag-image .icon.right-bumper{background-image:url(../../static/media/xbox-button-right.54513544.sv"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "output": "assets/synapse/xbox-trigger-right.svg",
+      "sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+      "sources": [
+        {
+          "product_id": 678,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/asset-manifest.json",
+          "manifest_sha256": "eadad9ca26dcb07ac0a0fd43d39d66987b21d409dc86bfa3e2176142e65f3bab",
+          "manifest_key": "static/media/xbox-trigger-right.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+          "source_bytes": 2762,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/js/main.f78f0dcf.js",
+              "file_sha256": "8ddbd77a45fedbaad04379cd0d22855190908e1c5427c2629e269527f3a64180",
+              "utf8_byte_range": [
+                840500,
+                840771
+              ],
+              "utf16_range": [
+                840500,
+                840771
+              ],
+              "slice_sha256": "1754c56f4ff95f479e4863669c276e53e30827da460c62aee46c5ba699759302",
+              "source": "c/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";const p=a.p+\"static/media/xbox-button-right.54513544.svg\";con"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/678/ui/static/css/main.28785c66.css",
+              "file_sha256": "2c8359c87e11fadf087686fd6359e06da3b70ac4070ffda73d14de5958ccb2df",
+              "utf8_byte_range": [
+                398093,
+                398364
+              ],
+              "utf16_range": [
+                398033,
+                398304
+              ],
+              "slice_sha256": "c581ca5d896ef78f86f034c9a8dccab2e8331c58551fe98bc030de64120bd409",
+              "source": "ic/media/xbox-y.9c2fb89a.svg)}.controller-button-drag-image .icon.trigger-right{background-image:url(../../static/media/xbox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 679,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/asset-manifest.json",
+          "manifest_sha256": "6a969058fc47cdb067fe1df6c9c48f1c9529ad574a8b9d2e18ef159c0a0d097e",
+          "manifest_key": "static/media/xbox-trigger-right.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+          "source_bytes": 2762,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/js/main.194d8a7b.js",
+              "file_sha256": "3f9a9722c21dbd3b05d358218213fd4a4b57673c1ffe9da81a30128d298a3f20",
+              "utf8_byte_range": [
+                829314,
+                829585
+              ],
+              "utf16_range": [
+                829314,
+                829585
+              ],
+              "slice_sha256": "1754c56f4ff95f479e4863669c276e53e30827da460c62aee46c5ba699759302",
+              "source": "c/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";const p=a.p+\"static/media/xbox-button-right.54513544.svg\";con"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/679/ui/static/css/main.1c5a651a.css",
+              "file_sha256": "389a13a4f3419d3b2d566e5ac6a339c506aec7b5ae000735ecb5bc635d25fca8",
+              "utf8_byte_range": [
+                396813,
+                397084
+              ],
+              "utf16_range": [
+                396753,
+                397024
+              ],
+              "slice_sha256": "c581ca5d896ef78f86f034c9a8dccab2e8331c58551fe98bc030de64120bd409",
+              "source": "ic/media/xbox-y.9c2fb89a.svg)}.controller-button-drag-image .icon.trigger-right{background-image:url(../../static/media/xbox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.sv"
+            }
+          ]
+        },
+        {
+          "product_id": 688,
+          "manifest": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/asset-manifest.json",
+          "manifest_sha256": "f0d0c805f64ae3ec6bdd072ad9a56c24c77b2e276ef660c06f6db9f237447892",
+          "manifest_key": "static/media/xbox-trigger-right.svg",
+          "source": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/media/xbox-trigger-right.7dfd89a0.svg",
+          "source_sha256": "05d02efc0723242ae95bd58f599eb23c478751c5016f1d70966749343e7c542b",
+          "source_bytes": 2762,
+          "reference_slices": [
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/js/main.e09fd702.js",
+              "file_sha256": "61f64c6bad6309663f42b799c56ded8e4045ccb17a34a98b4ffbfb2792d31929",
+              "utf8_byte_range": [
+                1104053,
+                1104324
+              ],
+              "utf16_range": [
+                1103951,
+                1104222
+              ],
+              "slice_sha256": "1754c56f4ff95f479e4863669c276e53e30827da460c62aee46c5ba699759302",
+              "source": "c/media/ps-dpad-right.b17eab00.svg\";const N=a.p+\"static/media/xbox-trigger-left.4d0f408c.svg\";const D=a.p+\"static/media/xbox-trigger-right.7dfd89a0.svg\";const C=a.p+\"static/media/xbox-button-left.956f0830.svg\";const p=a.p+\"static/media/xbox-button-right.54513544.svg\";con"
+            },
+            {
+              "file": "local-ui-reverse/source/official/apps.razer.com/synapse/products/688/ui/static/css/main.00729a36.css",
+              "file_sha256": "4f3374f0a2784861241f822e29d17253d083b0177e894973e5b67366a40b243c",
+              "utf8_byte_range": [
+                366581,
+                366852
+              ],
+              "utf16_range": [
+                366521,
+                366792
+              ],
+              "slice_sha256": "c581ca5d896ef78f86f034c9a8dccab2e8331c58551fe98bc030de64120bd409",
+              "source": "ic/media/xbox-y.9c2fb89a.svg)}.controller-button-drag-image .icon.trigger-right{background-image:url(../../static/media/xbox-trigger-right.7dfd89a0.svg)}.controller-button-drag-image .icon.trigger-left{background-image:url(../../static/media/xbox-trigger-left.4d0f408c.sv"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
