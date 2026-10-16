@@ -1,6 +1,6 @@
 # razer_ui
 
-资源使用 Git LFS：`assets/` 的资源文件及全仓 JSON（包括配置、词典和测试数据）由 LFS 管理；Rust 资源索引源码及当前原生托盘／菜单直接嵌入的 9 个图标保留普通 Git。克隆后先执行 `git lfs install --local` 和 `git lfs pull` 再构建；这只是开发资源获取，不是产品运行时联网功能。生成的 `target/asset-pack/synapse.pack` 不提交，也不上传到 HF 原文件资源仓库，避免与源资源重复存储。LFS 配置不改写已有提交；仅删除并重建远程仓库不会消除本地旧历史中的大文件。
+`assets/` 下的静态资源由 `.gitignore` 排除，仅保留 Rust 资源代码表和原生托盘／菜单直接嵌入的 9 个图标。资源按原路径存放到 Hugging Face Dataset，由其独立的 Git LFS 规则管理；`tools/asset-release.json` 留在主仓库，记录文件哈希和固定资源版本。上传核验并固定版本后，可运行 `python tools/workspace.py fetch-asset-release` 恢复源资源。资源目录之外的 JSON（包括配置、词典和测试数据）继续使用主仓库 Git LFS，克隆后先执行 `git lfs install --local` 和 `git lfs pull`。这些都是开发资源准备，产品运行不联网。生成的 `target/asset-pack/synapse.pack` 不提交，也不上传到 HF 原文件资源仓库。
 
 资源按产品 PID 归档到 `assets/synapse/products/<PID>/`，产品配置在其 `configs/` 下；跨产品共用资源只保存一份，由每个产品的 `resources.json` 引用。顶层仅保留 `products/`、`shared/`、`tables/`、`manifests/`、`indexes/`，分别存放产品资源、共用资源、Rust 资源表、来源清单和资源索引。来源尚未核实的内容明确标记，不冒充已验证的产品资源。资源去重以实际字节一致和全部引用同步为前提，不按文件名或图片外观删除，也不修改原始采集证据。维护命令为 `python tools/workspace.py deduplicate-resources`，复核报告后再加 `--apply`；`python tools/workspace.py organize-resources --apply` 归档支持文件并同步引用。搬移后需重新生成并验证资源包。
 

@@ -1,0 +1,15 @@
+&[
+    ("synapse/audio-1352-camera.svg", include_bytes!("../products/1352/94be12dc0bb19def-audio-1352-camera.svg")),
+    ("synapse/audio-1352-warning.svg", include_bytes!("../shared/products/81311a2b7e05b588-warning.svg")),
+    ("synapse/audio-1352-mode-tip.svg", include_bytes!("../products/1352/ab9918c6d152de8f-audio-1352-mode-tip.svg")),
+    ("synapse/audio-1352-play.svg", include_bytes!("../products/1352/d5b00c35c640f2e0-audio-1352-play.svg")),
+    ("synapse/audio-1352-properties-external.svg", include_bytes!("../shared/products/55ee27113c83c64b8c4e26ca1dae9403375a70c9180a06cdf3492aedaeae07d3.svg")),
+    ("synapse/audio-1352-properties-external-active.svg", include_bytes!("../products/1352/4c7dc10d233cf5e1-audio-1352-properties-external-active.svg")),
+    ("synapse/audio-1352-windows-11.svg", include_bytes!("../shared/products/aa3676b09d4555db-windows-11.svg")),
+    ("synapse/audio-1352-windows.svg", include_bytes!("../shared/products/7d45f5af7cfa0bde3cadbf77d6bcb7eba95b5edb01d3ecaac76a6ff7beca98ce.svg")),
+    ("synapse/audio-1352-input-icon.svg", include_bytes!("../products/1352/50f708a7e80a51772f9a68add3382890850293c37418822d97888e0567902085.svg")),
+    ("synapse/audio-1352-demo.png", include_bytes!("../products/1352/f4d3dd8a7d95f486-audio-1352-demo.png")),
+    ("synapse/audio-1352-help.svg", include_bytes!("../shared/products/1ebcd313227a7b20-gr-help.svg")),
+    ("synapse/audio-1352-product-1x.png", include_bytes!("../products/1352/919d9d527e017764-audio-1352-product-1x.png")),
+    ("synapse/audio-1352-product-3x.png", include_bytes!("../products/1352/b876bc24b2a1e826-audio-1352-product-3x.png")),
+]

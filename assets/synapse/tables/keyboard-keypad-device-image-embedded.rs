@@ -1,0 +1,9 @@
+&[
+("synapse/keyboard-keypad-device-image/555-74cf1a96876b72c3.png",include_bytes!("../shared/products/37373ee08885560f-555-74cf1a96876b72c3.png")),
+("synapse/keyboard-keypad-device-image/555-554af3b90457bc94.png",include_bytes!("../shared/products/b482ff46f1a998fe-555-554af3b90457bc94.png")),
+("synapse/keyboard-keypad-device-image/580-74cf1a96876b72c3.png",include_bytes!("../shared/products/37373ee08885560f-555-74cf1a96876b72c3.png")),
+("synapse/keyboard-keypad-device-image/580-554af3b90457bc94.png",include_bytes!("../shared/products/b482ff46f1a998fe-555-554af3b90457bc94.png")),
+("synapse/keyboard-keypad-device-image/580-2123d60c09a9edf0.png",include_bytes!("../products/580/11951f927416bb12-580-2123d60c09a9edf0.png")),
+("synapse/keyboard-keypad-device-image/580-4d64e672c39f632c.png",include_bytes!("../products/580/a2ea01fa65697877-580-4d64e672c39f632c.png")),
+("synapse/keyboard-keypad-device-image/747-0335dc427115796f.svg",include_bytes!("../products/747/0335dc427115796f-747-0335dc427115796f.svg")),
+]

@@ -6,7 +6,24 @@
 /.work/
 *.log
 *.work
+# Resource payloads are distributed separately through Hugging Face.
+# Keep only source tables and the native tray/menu icons in the source repo.
 /assets/**
+!/assets/synapse/
+!/assets/synapse/tables/
+!/assets/synapse/tables/*.rs
+!/assets/synapse/shared/
+!/assets/synapse/shared/pending-source-audit/
+!/assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba
+!/assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba
+!/assets/synapse/shared/pending-source-audit/81851a9004a803d3-tray-icon-24.rgba
+!/assets/synapse/shared/pending-source-audit/71b354f660adb5db-tray-icon.rgba
+!/assets/synapse/shared/pending-source-audit/f8fd980e3bec82fe-tray-icon-40.rgba
+!/assets/synapse/shared/pending-source-audit/5e5df98271550aca-tray-icon-48.rgba
+!/assets/synapse/shared/pending-source-audit/afb1350c23ce2416-tray-icon-64.rgba
+!/assets/synapse/shared/pending-source-audit/7747f51f284ded65-tray-gear-dark.rgba
+!/assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba
+
 # Original analysis inputs and generated captures are local data.
 /.ref/
 /local-ui-reverse

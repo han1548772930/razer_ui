@@ -1,0 +1,17 @@
+&[
+    ("synapse/keyboard-calibration-v2-refresh-active.svg", include_bytes!("../products/756/dec05e797cffa879682973a8323f4c6e2d028b441049190d125e5dd45bfbb283.svg") as &[u8]),
+    ("synapse/keyboard-calibration-v2-refresh.svg", include_bytes!("../products/756/cb17ac7d204747472b04b7850875cc446614065952c3cad8c822f7efd9d2fd64.svg") as &[u8]),
+    ("synapse/keyboard-calibration-v2-switch.svg", include_bytes!("../products/756/a5bc3433e106280ba3a1196d095c15577744945b02af7a19a4cc5410b72421b8.svg") as &[u8]),
+    ("synapse/keyboard-calibration-v2-calibrate.svg", include_bytes!("../products/756/c89e790e86b4db2fe62a069fa5b714891e7abe2948c30b96a34d9a6ed5348c1f.svg") as &[u8]),
+    ("synapse/keyboard-maptext-close.svg", include_bytes!("../products/679/47a8044f422d5b15-keyboard-maptext-close.svg") as &[u8]),
+    ("synapse/chroma_sync_v3_static.svg", include_bytes!("../shared/products/46d789e9998e2f94-chroma_sync_v3_static.svg") as &[u8]),
+    ("synapse/controller-fill-green-icon.svg", include_bytes!("../shared/products/1cda5332b70e62c4-controller-fill-green-icon.svg") as &[u8]),
+    ("synapse/controller-fill-grey-icon.svg", include_bytes!("../shared/products/5f7fe8b837768c8c-controller-fill-grey-icon.svg") as &[u8]),
+    ("synapse/icon_expand.svg", include_bytes!("../shared/products/238cd792ac3ceebc-expand.svg") as &[u8]),
+    ("synapse/controller_icon_qe.svg", include_bytes!("../shared/products/c1317b7f585a0de4-controller_icon_qe.svg") as &[u8]),
+    ("synapse/controller_icon_wasd.svg", include_bytes!("../shared/products/e89ba2d1d36df3ec-controller_icon_wasd.svg") as &[u8]),
+    ("synapse/icon_sidepanel_a.svg", include_bytes!("../shared/products/524691f6cf1e62ca-drawer-active.svg") as &[u8]),
+    ("synapse/icon_sidepanel.svg", include_bytes!("../shared/products/6f164fa69b52ae69-drawer.svg") as &[u8]),
+    ("synapse/xbox-trigger-left.svg", include_bytes!("../shared/products/a880629f96e01c83-xbox-trigger-left.svg") as &[u8]),
+    ("synapse/xbox-trigger-right.svg", include_bytes!("../shared/products/05d02efc0723242a-xbox-trigger-right.svg") as &[u8]),
+]
