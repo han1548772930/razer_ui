@@ -12,6 +12,12 @@
 #ifndef OutputRoot
   #error OutputRoot must identify the installer output directory
 #endif
+#ifndef CatalogFilename
+  #error CatalogFilename must come from the resource installation policy
+#endif
+#ifndef CacheRelative
+  #error CacheRelative must come from the resource installation policy
+#endif
 
 [Setup]
 AppId=RazerUI-FD42CC53-D87A-421A-A65F-823EB9F9C144
@@ -58,13 +64,13 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
 Source: "{#PayloadDir}\razer_ui.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\Razer UI.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#PayloadDir}\razer-ui-installation.json"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\{#CatalogFilename}"; DestDir: "{app}"; Flags: ignoreversion
 ; This generated include enumerates explicitly supplied, verified runtime DLLs.
 #include AddBackslash(PayloadDir) + "..\runtime-files.iss"
 
 [Dirs]
 ; Caches survive upgrades. Only the scoped uninstall code may delete the cache.
-Name: "{app}\assets"; Flags: uninsneveruninstall
-Name: "{app}\assets\cache"; Flags: uninsneveruninstall
+Name: "{app}\{#CacheRelative}"; Flags: uninsneveruninstall
 
 [Icons]
 Name: "{userprograms}\Razer UI"; Filename: "{app}\razer_ui.exe"; WorkingDir: "{app}"; IconFilename: "{app}\Razer UI.ico"
@@ -72,7 +78,7 @@ Name: "{userdesktop}\Razer UI"; Filename: "{app}\razer_ui.exe"; WorkingDir: "{ap
 
 [Registry]
 Root: HKCU; Subkey: "Software\Razer UI"; ValueType: string; ValueName: "InstallLocation"; ValueData: "{app}"; Flags: uninsdeletevalue uninsdeletekeyifempty
-Root: HKCU; Subkey: "Software\Razer UI"; ValueType: string; ValueName: "CacheRelative"; ValueData: "assets\cache"; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKCU; Subkey: "Software\Razer UI"; ValueType: string; ValueName: "CacheRelative"; ValueData: "{#CacheRelative}"; Flags: uninsdeletevalue uninsdeletekeyifempty
 Root: HKCU; Subkey: "Software\Razer UI"; ValueType: string; ValueName: "Version"; ValueData: "{#AppVersion}"; Flags: uninsdeletevalue uninsdeletekeyifempty
 
 [Code]
@@ -116,7 +122,7 @@ end;
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
-  if not SafeDirectoryChain(ExpandConstant('{app}\assets\cache')) then
+  if not SafeDirectoryChain(ExpandConstant('{app}\{#CacheRelative}')) then
     Result := 'The installation or resource-cache directory contains a link or a file. Choose an ordinary writable directory.';
 end;
 
@@ -162,7 +168,7 @@ var
 begin
   if (CurUninstallStep <> usPostUninstall) or not RemoveCachedAssets then
     Exit;
-  CacheDirectory := AddBackslash(OwnedInstallDirectory) + 'assets\cache';
+  CacheDirectory := AddBackslash(OwnedInstallDirectory) + '{#CacheRelative}';
   if not OwnsInstallation or not SafeDirectoryChain(CacheDirectory) then
   begin
     Log('Cache cleanup skipped: installation ownership or plain-directory checks failed.');
@@ -176,6 +182,6 @@ begin
       MsgBox('Some downloaded resources could not be removed. Close applications using them, then remove this directory manually:'
         + #13#10 + CacheDirectory, mbInformation, MB_OK);
   end;
-  RemoveDir(AddBackslash(OwnedInstallDirectory) + 'assets');
+  RemoveDir(ExtractFileDir(CacheDirectory));
   RemoveDir(OwnedInstallDirectory);
 end;

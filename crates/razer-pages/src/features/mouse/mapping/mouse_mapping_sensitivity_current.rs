@@ -31,7 +31,7 @@ struct Policy {
 fn policy(product_id: u32) -> Option<&'static Policy> {
     static POLICIES: OnceLock<Vec<Policy>> = OnceLock::new();
     POLICIES
-        .get_or_init(|| crate::data::mouse_mapping_sensitivity_current_data!())
+        .get_or_init(|| read_mouse_mapping_sensitivity_current_catalog())
         .iter()
         .find(|p| p.product_id == product_id)
 }
@@ -457,3 +457,120 @@ impl MouseProductWorkspace {
         Some(vec![payload])
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_mapping_sensitivity_current_data.
+fn read_mouse_mapping_sensitivity_current_catalog() -> Vec<Policy> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Policy>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Policy> {
+        let value = match r.tag()? {
+            0 => Policy {
+                product_id: r.child(decode_2)?,
+                actions: r.child(decode_3)?,
+                required: r.child(decode_6)?,
+                exemptions: r.child(decode_6)?,
+                exempt_by_id: r.child(decode_7)?,
+                allow_cycle_turbo: r.child(decode_7)?,
+                minimum: r.child(decode_2)?,
+                maximum: r.child(decode_2)?,
+                step: r.child(decode_2)?,
+                support_xy: r.child(decode_7)?,
+                group: r.child(decode_5)?,
+                labels: r.child(decode_8)?,
+                target: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SensitivityAction>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SensitivityAction> {
+        let value = match r.tag()? {
+            0 => SensitivityAction {
+                id: r.child(decode_5)?,
+                content: r.child(decode_5)?,
+                payload: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_5, decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_MAPPING_SENSITIVITY_CURRENT_DATA,
+        0,
+        "b3d6412053d0e20427228295b01151b33595cb25fc92b1dd14b9499ccdf32833",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_mapping_sensitivity_current_data_decodes() {
+    let _ = read_mouse_mapping_sensitivity_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_mapping_sensitivity_current_data.

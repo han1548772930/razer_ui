@@ -29,7 +29,7 @@ pub fn binding_capability(
 ) -> Option<&'static DeviceReadCapability> {
     static DATA: OnceLock<Vec<DeviceReadCapability>> = OnceLock::new();
     DATA.get_or_init(
-        || crate::data::mouse_binding_query_capabilities::mouse_binding_query_capabilities!(),
+        || make_mouse_binding_query_capabilities_table(),
     )
     .iter()
     .find(|cap| cap.product_id == product_id && cap.direct_pids.contains(&physical_product_id))
@@ -60,7 +60,7 @@ struct SourceCapability {
 fn source_capability(product_id: u32) -> Option<&'static SourceCapability> {
     static DATA: OnceLock<Vec<SourceCapability>> = OnceLock::new();
     DATA.get_or_init(
-        || crate::data::mouse_receiver_legacy_capabilities::mouse_receiver_legacy_capabilities!(),
+        || make_mouse_receiver_legacy_capabilities_table(),
     )
     .iter()
     .find(|cap| cap.transport.product_id == product_id)
@@ -394,4 +394,147 @@ mod tests {
             .is_err()
         );
     }
+}
+
+// Generated typed table: razer-device/mouse_binding_query_capabilities.
+#[rustfmt::skip]
+fn make_mouse_binding_query_capabilities_table() -> Vec<DeviceReadCapability> {
+    vec![
+        DeviceReadCapability{
+            product_id: 192u32,
+            source_class: "rzDevice25".into(),
+            direct_pids: vec![192u32],
+            vendor_id: 5426u16,
+            claim_interface: 0u8,
+            claim_interfaces_by_pid: Default::default(),
+            physical_transports_by_pid: Default::default(),
+            report_id: 0u8,
+            report_bytes: 91usize,
+            transaction_prefix: 0u8,
+            transaction_modulus: 31u8,
+            queries: vec![],
+            polling_codes: vec![].into_iter().collect(),
+            polling_value_offset: None,
+            polling_default_hz: None,
+            polling_physical_product_id: None,
+            charging_codes: vec![].into_iter().collect(),
+            max_retry_in: 10u8,
+            max_retry_out: 20u8,
+            sleep_between_out_ms: 5u64,
+            sleep_between_out_in_ms: 5u64,
+            sleep_between_in_ms: 5u64
+        },
+        DeviceReadCapability{
+            product_id: 192u32,
+            source_class: "rzDevice25DualLinkMouse".into(),
+            direct_pids: vec![193u32],
+            vendor_id: 5426u16,
+            claim_interface: 0u8,
+            claim_interfaces_by_pid: Default::default(),
+            physical_transports_by_pid: Default::default(),
+            report_id: 0u8,
+            report_bytes: 91usize,
+            transaction_prefix: 0u8,
+            transaction_modulus: 31u8,
+            queries: vec![],
+            polling_codes: vec![].into_iter().collect(),
+            polling_value_offset: None,
+            polling_default_hz: None,
+            polling_physical_product_id: None,
+            charging_codes: vec![].into_iter().collect(),
+            max_retry_in: 10u8,
+            max_retry_out: 20u8,
+            sleep_between_out_ms: 25u64,
+            sleep_between_out_in_ms: 25u64,
+            sleep_between_in_ms: 25u64
+        }
+    ]
+}
+
+// Generated typed table: razer-device/mouse_receiver_legacy_capabilities.
+#[rustfmt::skip]
+fn make_mouse_receiver_legacy_capabilities_table() -> Vec<SourceCapability> {
+    vec![
+        SourceCapability{
+            transport: DeviceReadCapability{
+                product_id: 158u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![159u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: Default::default(),
+                physical_transports_by_pid: Default::default(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            },
+            initial_indicator_getter_enabled: true
+        },
+        SourceCapability{
+            transport: DeviceReadCapability{
+                product_id: 192u32,
+                source_class: "rzDevice25DualLinkMouse".into(),
+                direct_pids: vec![193u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: Default::default(),
+                physical_transports_by_pid: Default::default(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 25u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 25u64
+            },
+            initial_indicator_getter_enabled: true
+        },
+        SourceCapability{
+            transport: DeviceReadCapability{
+                product_id: 194u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![195u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: Default::default(),
+                physical_transports_by_pid: Default::default(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            },
+            initial_indicator_getter_enabled: false
+        }
+    ]
 }

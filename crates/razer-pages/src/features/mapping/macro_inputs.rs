@@ -117,7 +117,7 @@ struct MacroInputCatalogs {
 fn source_catalog(product_id: u32) -> Option<&'static MacroInputCatalog> {
     static CATALOGS: OnceLock<MacroInputCatalogs> = OnceLock::new();
     CATALOGS
-        .get_or_init(|| crate::data::macro_input_catalogs!())
+        .get_or_init(|| read_macro_input_catalogs_catalog())
         .products
         .iter()
         .find(|catalog| catalog.product_id == product_id)
@@ -206,3 +206,121 @@ pub fn for_device(device: &Device) -> Option<MacroInputLayout> {
 #[cfg(test)]
 #[path = "macro_inputs_tests.rs"]
 mod tests;
+
+// Generated catalog reader: razer-pages/macro_input_catalogs.
+fn read_macro_input_catalogs_catalog() -> MacroInputCatalogs {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MacroInputCatalogs> {
+        let value = match r.tag()? {
+            0 => MacroInputCatalogs {
+                products: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<MacroInputCatalog>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MacroInputCatalog> {
+        let value = match r.tag()? {
+            0 => MacroInputCatalog {
+                product_id: r.child(decode_3)?,
+                input_source: r.child(decode_4)?,
+                groups: r.child(decode_5)?,
+                viewbox: r.child(decode_7)?,
+                mouse_diagram: r.child(decode_9)?,
+            },
+            1 => MacroInputCatalog {
+                product_id: r.child(decode_3)?,
+                input_source: r.child(decode_4)?,
+                groups: Default::default(),
+                viewbox: r.child(decode_7)?,
+                mouse_diagram: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<InputSource> {
+        let value = match r.tag()? {
+            0 => InputSource::PhysicalGroups,
+            1 => InputSource::PreparedKeyboardLayout,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MACRO_INPUT_CATALOGS,
+        0,
+        "727f99b5ac08b7dba4e985ffecf02155e9bbd7ea03daac66e4c0e87ae9b69b70",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_macro_input_catalogs_decodes() {
+    let _ = read_macro_input_catalogs_catalog();
+}
+// End generated catalog reader: razer-pages/macro_input_catalogs.

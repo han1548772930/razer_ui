@@ -124,7 +124,7 @@ impl Spec {
 fn spec(pid: u32) -> &'static Spec {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::wired_argb_data!())
+        .get_or_init(|| read_wired_argb_catalog())
         .iter()
         .find(|spec| spec.product_id == pid)
         .expect("supported ARGB product")
@@ -599,3 +599,122 @@ fn local(zh: &str, en: &str) -> String {
         en.into()
     }
 }
+
+// Generated catalog reader: razer-pages/wired_argb_data.
+fn read_wired_argb_catalog() -> Vec<Spec> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Spec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                product_id: r.child(decode_2)?,
+                page: r.child(decode_3)?,
+                name: Default::default(),
+                minimum_leds: r.child(decode_2)?,
+                fan_counts: r.child(decode_4)?,
+                mainboard_ports: r.child(decode_4)?,
+                translations: r.child(decode_5)?,
+                assets: r.child(decode_7)?,
+            },
+            1 => Spec {
+                product_id: r.child(decode_2)?,
+                page: r.child(decode_3)?,
+                name: r.child(decode_3)?,
+                minimum_leds: r.child(decode_2)?,
+                fan_counts: r.child(decode_4)?,
+                mainboard_ports: r.child(decode_4)?,
+                translations: r.child(decode_5)?,
+                assets: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Asset>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Asset> {
+        let value = match r.tag()? {
+            0 => Asset {
+                name: r.child(decode_3)?,
+                output: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_WIRED_ARGB_DATA,
+        0,
+        "1d79fa65303755f05bbdb04318880678f5b17e0ff19d269f941b9dcb7d477a2e",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_wired_argb_data_decodes() {
+    let _ = read_wired_argb_catalog();
+}
+// End generated catalog reader: razer-pages/wired_argb_data.

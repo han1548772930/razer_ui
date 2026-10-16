@@ -17,6 +17,7 @@ from types import SimpleNamespace
 import urllib.parse
 
 import analysis as a
+import asset_release as resource_sources
 
 FAMILY_CANDIDATES = {
     "mouse": "MOUSE_PRODUCTS_DATA",
@@ -2623,14 +2624,14 @@ def audit_mouse_customize(args):
     selected = set(args.product or [row["product_id"] for row in surfaces])
     receipt_path = a.ROOT / ".analysis/results/frontend/mouse-main-audit.json"
     report = json.loads(receipt_path.read_bytes())
-    embedding_path = a.ROOT / "assets/synapse/tables/mouse-customize-embedded.rs"
-    aliases = {alias: embedding_path.parent / resource for alias, resource in re.findall(
+    embedding_path = resource_sources.table_path("mouse-customize-embedded.rs", root=a.ROOT)
+    aliases = {alias: resource_sources.table_reference(embedding_path, resource) for alias, resource in re.findall(
         r'\("([^"]+)",\s*include_bytes!\("([^"]+)"\)', embedding_path.read_text(encoding="utf-8"))}
     # Unified preparation may replace a source-derived alias in embedded.rs.
     # Inline PNG and React SVG resources use the acquired JS as their original,
     # so the display hash must not be searched among acquisition file hashes.
     unified_embedding = embedding_path.parent / "embedded.rs"
-    aliases.update({alias: unified_embedding.parent / resource for alias, resource in re.findall(
+    aliases.update({alias: resource_sources.table_reference(unified_embedding, resource) for alias, resource in re.findall(
         r'\("([^"]+)",\s*include_bytes!\("([^"]+)"\)', unified_embedding.read_text(encoding="utf-8"))})
     manifest_path = a.ROOT / "assets/synapse/manifests/manifest.json"
     manifest_identity = identity(manifest_path)
@@ -6126,7 +6127,7 @@ def audit_mapping_engine_literals(args):
                 menu.append({"kind": "separator"} if command is None else {
                     "kind": "action", "command": command, "label_key": ui_key(alias),
                     "disabled_when": ["profile_switch_disabled"] + disabled, "hidden_when": hidden})
-            menu_path = a.builtin_data_path("razer-pages", "SOURCE_PROFILE_MENU_DATA")
+            menu_path = a.builtin_data_path("razer-pages", "SOURCE_PROFILE_MENU_DATA", macro_name="source_profile_menu_data")
             menu_data = json.loads(menu_path.read_bytes())
             menu_data["products"] = [row for row in menu_data["products"] if row["product_id"] != pid] + [{
                 "product_id": pid, "category": "KEYBOARD", "menu": menu,
@@ -6516,7 +6517,7 @@ def prepare_audio_demo_icons(rows):
     provider += '    if path == "synapse" || path == "synapse/" || path.is_empty() {\n        vec!['
     provider += ', '.join(json.dumps(item["key"]) + '.into()' for item in generated)
     provider += ']\n    } else { Vec::new() }\n}\n'
-    target = a.ROOT / "assets/synapse/tables/audio-demo-controls-embedded.rs"
+    target = resource_sources.table_path("audio-demo-controls-embedded.rs", root=a.ROOT)
     target.write_text(provider, encoding="utf-8")
     return {"sources": [{key: value for key, value in item.items() if key != "font"} for item in fonts],
             "tool": {"fonttools": fontTools.__version__}, "glyphs": generated, "provider": identity(target)}
@@ -11719,7 +11720,7 @@ def mouse_receiver_indicator_source_review(row):
              "crates/razer-pages/src/features/workspace/product_workspace_receiver_indicator.rs",
              "crates/razer-shell/src/shell/mouse/mouse_receiver_indicator.rs",
              "crates/razer-discovery/src/direct/mouse_indicator_led.rs",
-             "crates/razer-storage/src/receiver_indicator.rs",
+             "crates/razer-storage/src/receiver/receiver_indicator.rs",
              "crates/razer-pages/src/features/mouse/polling/mouse_polling.rs",
              "crates/razer-device/src/mouse/mouse_indicator_led.rs"]
     current = []

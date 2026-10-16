@@ -38,7 +38,7 @@ pub struct AccessorySystemSpec {
 pub fn source_product(pid: u32) -> Option<&'static AccessorySystemSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<AccessorySystemSpec> =
         super::source_catalog::SourceCatalog::new(
-            || crate::data::accessory_system_products_data!(),
+            || read_accessory_system_products_catalog(),
         );
     PRODUCTS.get(pid)
 }
@@ -2884,3 +2884,126 @@ fn curve_plot(points: Vec<(f64, f64)>, min: f64, max: f64, cx: &App) -> AnyEleme
     .h(surface::css(180.))
     .into_any_element()
 }
+
+// Generated catalog reader: razer-pages/accessory_system_products_data.
+fn read_accessory_system_products_catalog() -> Vec<(u32, fn() -> AccessorySystemSpec)> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AccessorySystemSpec> {
+        let value = match r.tag()? {
+            0 => AccessorySystemSpec {
+                product_id: r.child(decode_1)?,
+                pages: r.child(decode_2)?,
+                initial: r.child(decode_4)?,
+                presets: r.child(decode_4)?,
+                enums: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn product_3858() -> AccessorySystemSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_ACCESSORY_SYSTEM_PRODUCTS_DATA,
+            3858u32,
+            "d85ee69dfe7816b7b4d6b606d925ae48362e2d7dab94f8006f840f8ea26a30ce",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3880() -> AccessorySystemSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_ACCESSORY_SYSTEM_PRODUCTS_DATA,
+            3880u32,
+            "d85ee69dfe7816b7b4d6b606d925ae48362e2d7dab94f8006f840f8ea26a30ce",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3893() -> AccessorySystemSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_ACCESSORY_SYSTEM_PRODUCTS_DATA,
+            3893u32,
+            "d85ee69dfe7816b7b4d6b606d925ae48362e2d7dab94f8006f840f8ea26a30ce",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3900() -> AccessorySystemSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_ACCESSORY_SYSTEM_PRODUCTS_DATA,
+            3900u32,
+            "d85ee69dfe7816b7b4d6b606d925ae48362e2d7dab94f8006f840f8ea26a30ce",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3907() -> AccessorySystemSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_ACCESSORY_SYSTEM_PRODUCTS_DATA,
+            3907u32,
+            "d85ee69dfe7816b7b4d6b606d925ae48362e2d7dab94f8006f840f8ea26a30ce",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3921() -> AccessorySystemSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_ACCESSORY_SYSTEM_PRODUCTS_DATA,
+            3921u32,
+            "d85ee69dfe7816b7b4d6b606d925ae48362e2d7dab94f8006f840f8ea26a30ce",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    vec![
+        (3858u32, product_3858 as fn() -> AccessorySystemSpec),
+        (3880u32, product_3880 as fn() -> AccessorySystemSpec),
+        (3893u32, product_3893 as fn() -> AccessorySystemSpec),
+        (3900u32, product_3900 as fn() -> AccessorySystemSpec),
+        (3907u32, product_3907 as fn() -> AccessorySystemSpec),
+        (3921u32, product_3921 as fn() -> AccessorySystemSpec),
+    ]
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_accessory_system_products_data_decodes() {
+    for (_, factory) in read_accessory_system_products_catalog() {
+        let _ = factory();
+    }
+}
+// End generated catalog reader: razer-pages/accessory_system_products_data.

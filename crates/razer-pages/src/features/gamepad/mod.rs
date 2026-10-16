@@ -78,7 +78,7 @@ pub struct GamepadProductSpec {
 
 pub fn source_product(pid: u32) -> Option<&'static GamepadProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<GamepadProductSpec> =
-        super::source_catalog::SourceCatalog::new(|| crate::data::gamepad_products_data!());
+        super::source_catalog::SourceCatalog::new(|| read_gamepad_products_catalog());
     PRODUCTS.get(pid)
 }
 
@@ -1298,3 +1298,259 @@ fn merge_known(target: &mut Value, saved: &Value) {
         _ => {}
     }
 }
+
+// Generated catalog reader: razer-pages/gamepad_products_data.
+fn read_gamepad_products_catalog() -> Vec<(u32, fn() -> GamepadProductSpec)> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<GamepadProductSpec> {
+        let value = match r.tag()? {
+            0 => GamepadProductSpec {
+                product_id: r.child(decode_1)?,
+                profile: r.child(decode_2)?,
+                controller: r.child(decode_2)?,
+                pages: r.child(decode_3)?,
+                button_controls: r.child(decode_5)?,
+                assignments: r.child(decode_3)?,
+                arcade: r.child(decode_6)?,
+                socd_modes: r.child(decode_7)?,
+                trigger_reset: r.child(decode_2)?,
+                analog_mode: r.child(decode_8)?,
+                digital_mode: r.child(decode_8)?,
+                standard_mode: r.child(decode_8)?,
+                circular_mode: r.child(decode_8)?,
+                deadzone_steps: r.child(decode_9)?,
+                sensitivity_steps: r.child(decode_9)?,
+                power_minutes: r.child(decode_9)?,
+                brightness_step: None,
+                controller_lighting: r.child(decode_6)?,
+                effects: r.child(decode_5)?,
+                polling_rates: r.child(decode_9)?,
+                info: r.child(decode_2)?,
+            },
+            1 => GamepadProductSpec {
+                product_id: r.child(decode_1)?,
+                profile: r.child(decode_2)?,
+                controller: r.child(decode_2)?,
+                pages: r.child(decode_3)?,
+                button_controls: r.child(decode_5)?,
+                assignments: r.child(decode_3)?,
+                arcade: r.child(decode_6)?,
+                socd_modes: r.child(decode_7)?,
+                trigger_reset: r.child(decode_2)?,
+                analog_mode: r.child(decode_8)?,
+                digital_mode: r.child(decode_8)?,
+                standard_mode: r.child(decode_8)?,
+                circular_mode: r.child(decode_8)?,
+                deadzone_steps: r.child(decode_9)?,
+                sensitivity_steps: r.child(decode_9)?,
+                power_minutes: r.child(decode_9)?,
+                brightness_step: r.child(decode_10)?,
+                controller_lighting: r.child(decode_6)?,
+                effects: r.child(decode_5)?,
+                polling_rates: r.child(decode_9)?,
+                info: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_4, decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<i64> {
+        let value = match r.tag()? {
+            0 => r.i64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<i64>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<f32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_11)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn product_2629() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            2629u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2636() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            2636u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2647() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            2647u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2650() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            2650u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2676() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            2676u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2684() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            2684u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_4115() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            4115u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_4133() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            4133u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_4144() -> GamepadProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_PRODUCTS_DATA,
+            4144u32,
+            "0a9b90529f1665b2c3a965faf03068bd0995ccfd8748c8bcb654aa882c2c1ad0",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    vec![
+        (2629u32, product_2629 as fn() -> GamepadProductSpec),
+        (2636u32, product_2636 as fn() -> GamepadProductSpec),
+        (2647u32, product_2647 as fn() -> GamepadProductSpec),
+        (2650u32, product_2650 as fn() -> GamepadProductSpec),
+        (2676u32, product_2676 as fn() -> GamepadProductSpec),
+        (2684u32, product_2684 as fn() -> GamepadProductSpec),
+        (4115u32, product_4115 as fn() -> GamepadProductSpec),
+        (4133u32, product_4133 as fn() -> GamepadProductSpec),
+        (4144u32, product_4144 as fn() -> GamepadProductSpec),
+    ]
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_gamepad_products_data_decodes() {
+    for (_, factory) in read_gamepad_products_catalog() {
+        let _ = factory();
+    }
+}
+// End generated catalog reader: razer-pages/gamepad_products_data.

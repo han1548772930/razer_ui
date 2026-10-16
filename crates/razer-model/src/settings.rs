@@ -945,7 +945,6 @@ impl Keyboard {
 }
 
 pub fn canonical_snap_key(key: &str) -> Option<String> {
-    const KEYS: &[(&str, &str, &str)] = include!("mapping_keys.rs");
     let key = key.trim().to_ascii_uppercase();
     let id = if key.starts_with("KEY_") {
         key
@@ -964,10 +963,13 @@ pub fn canonical_snap_key(key: &str) -> Option<String> {
     {
         return None;
     }
-    KEYS.iter()
+    MAPPING_KEYS.iter()
         .any(|(_, candidate, _)| *candidate == id)
         .then_some(id)
 }
+
+/// Source mapping identities shared by editors and local validation.
+pub const MAPPING_KEYS: &[(&str, &str, &str)] = include!("mapping_keys.rs");
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

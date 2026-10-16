@@ -64,7 +64,7 @@ struct Archetype {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| crate::data::hue_data!())
+    SPEC.get_or_init(|| read_hue_catalog())
 }
 fn text(key: &str) -> String {
     let spec = spec();
@@ -577,3 +577,214 @@ fn light_icon(archetype: &str) -> AnyElement {
         .object_fit(ObjectFit::Contain)
         .into_any_element()
 }
+
+// Generated catalog reader: razer-pages/hue_data.
+fn read_hue_catalog() -> Spec {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                fallback: r.child(decode_1)?,
+                translations: r.child(decode_2)?,
+                initial: r.child(decode_4)?,
+                archetypes: r.child(decode_11)?,
+                lighting: r.child(decode_13)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Initial> {
+        let value = match r.tag()? {
+            0 => Initial {
+                hue: r.child(decode_5)?,
+                brightness: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<BridgeState> {
+        let value = match r.tag()? {
+            0 => BridgeState {
+                is_paired: r.child(decode_6)?,
+                bridge_enabled: r.child(decode_6)?,
+                is_loading: r.child(decode_6)?,
+                is_control: r.child(decode_6)?,
+                groups: r.child(decode_7)?,
+                active_group: r.child(decode_1)?,
+                devices: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Group>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Light>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Brightness> {
+        let value = match r.tag()? {
+            0 => Brightness {
+                is_enabled: r.child(decode_6)?,
+                value: r.child(decode_10)?,
+                is_global_brightness: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u8> {
+        let value = match r.tag()? {
+            0 => r.u8()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Archetype>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Archetype> {
+        let value = match r.tag()? {
+            0 => Archetype {
+                name: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<LightingSpec> {
+        let value = match r.tag()? {
+            0 => LightingSpec {
+                effects: r.child(decode_14)?,
+                defaults: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<EffectChoice>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_15)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<EffectChoice> {
+        let value = match r.tag()? {
+            0 => EffectChoice {
+                name: r.child(decode_1)?,
+                id: r.child(decode_16)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_18)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_18(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_HUE_DATA,
+        0,
+        "c3a7ae189e2739e61b6be84c039b7492b1c8c18596ffe60875866d945ab8d80a",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_hue_data_decodes() {
+    let _ = read_hue_catalog();
+}
+// End generated catalog reader: razer-pages/hue_data.

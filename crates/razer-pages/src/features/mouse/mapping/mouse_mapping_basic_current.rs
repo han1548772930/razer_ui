@@ -26,7 +26,7 @@ struct Policy {
 fn policy(product_id: u32) -> Option<&'static Policy> {
     static POLICIES: OnceLock<Vec<Policy>> = OnceLock::new();
     POLICIES
-        .get_or_init(|| crate::data::mouse_mapping_basic_current_data!())
+        .get_or_init(|| read_mouse_mapping_basic_current_catalog())
         .iter()
         .find(|policy| policy.product_id == product_id)
 }
@@ -247,3 +247,104 @@ impl MouseProductWorkspace {
         }
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_mapping_basic_current_data.
+fn read_mouse_mapping_basic_current_catalog() -> Vec<Policy> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Policy>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Policy> {
+        let value = match r.tag()? {
+            0 => Policy {
+                product_id: r.child(decode_2)?,
+                hyper_labels: r.child(decode_3)?,
+                hyper_group: r.child(decode_4)?,
+                disable_group: r.child(decode_4)?,
+                media: r.child(decode_5)?,
+                media_required: r.child(decode_3)?,
+                windows: r.child(decode_5)?,
+                primary_restore: r.child(decode_7)?,
+                suppress_hyper_secondary: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<BasicAction>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<BasicAction> {
+        let value = match r.tag()? {
+            0 => BasicAction {
+                content: r.child(decode_4)?,
+                payload: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_MAPPING_BASIC_CURRENT_DATA,
+        0,
+        "9ba875b7720f11bab70d545bf7745b1801490b863e3732272f10783ad1910f01",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_mapping_basic_current_data_decodes() {
+    let _ = read_mouse_mapping_basic_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_mapping_basic_current_data.

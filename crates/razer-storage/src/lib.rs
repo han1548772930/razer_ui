@@ -1,22 +1,41 @@
 //! Local draft persistence, source-confirmed receiver binding JSON and original
 //! host process-local Map semantics. Storage does not write devices or claim
 //! Chromium database or vendor profile file formats.
+#[path = "app_features.rs"]
 pub mod app_features;
-mod data;
+#[path = "receiver/receiver_pairing_catalog.rs"]
+pub(crate) mod receiver_pairing_catalog;
+#[path = "receiver/receiver_reset_defaults.rs"]
+pub(crate) mod receiver_reset_defaults;
+#[path = "game_catalog.rs"]
 pub mod game_catalog;
+#[path = "host.rs"]
 pub mod host;
+#[path = "keyboard_analog_restore.rs"]
 pub mod keyboard_analog_restore;
+#[path = "keyboard_calibration.rs"]
 pub mod keyboard_calibration;
+#[path = "linked_profiles.rs"]
 pub mod linked_profiles;
+#[path = "macro_recorder.rs"]
 pub mod macro_recorder;
+#[path = "profile_notification.rs"]
 pub mod profile_notification;
+#[path = "receiver/receiver_defaults.rs"]
 mod receiver_defaults;
+#[path = "receiver/receiver_document.rs"]
 mod receiver_document;
+#[path = "receiver/receiver_indicator.rs"]
 pub mod receiver_indicator;
+#[path = "receiver/receiver_legacy.rs"]
 pub mod receiver_legacy;
+#[path = "receiver/receiver_pairing.rs"]
 pub mod receiver_pairing;
+#[path = "receiver/receiver_reset.rs"]
 pub mod receiver_reset;
+#[path = "source_identity.rs"]
 pub mod source_identity;
+#[path = "source_local.rs"]
 pub mod source_local;
 use std::{
     fs::{File, OpenOptions},
@@ -24,6 +43,7 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 #[cfg(test)]
+#[path = "document_tests.rs"]
 mod document_tests;
 
 /// Own only a newly created staging file. Concurrent saves and files left by

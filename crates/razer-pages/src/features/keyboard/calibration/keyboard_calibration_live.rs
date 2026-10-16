@@ -29,7 +29,7 @@ struct CaptureData {
 fn capture_keys(pid: u32) -> &'static [Value] {
     static DATA: OnceLock<Vec<CaptureData>> = OnceLock::new();
     &DATA
-        .get_or_init(|| crate::data::keyboard_calibration_capture_data!())
+        .get_or_init(|| read_keyboard_calibration_capture_catalog())
         .iter()
         .find(|row| row.product_id == pid)
         .expect("supported calibration product")
@@ -486,3 +486,68 @@ impl KeyboardProductWorkspace {
         }
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_calibration_capture_data.
+fn read_keyboard_calibration_capture_catalog() -> Vec<CaptureData> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<CaptureData>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<CaptureData> {
+        let value = match r.tag()? {
+            0 => CaptureData {
+                product_id: r.child(decode_2)?,
+                keys: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_CALIBRATION_CAPTURE_DATA,
+        0,
+        "9c93a808fe8c9104bad8e582ee917aa4e0aacceec730e2ec1c3a4f69217e7eb7",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_calibration_capture_data_decodes() {
+    let _ = read_keyboard_calibration_capture_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_calibration_capture_data.

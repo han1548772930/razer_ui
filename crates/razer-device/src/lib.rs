@@ -39,7 +39,18 @@ pub mod controller_calibration_protocol;
 pub mod controller_input;
 #[path = "gamepad/controller_triggers.rs"]
 pub mod controller_triggers;
-mod data;
+#[path = "identity/device_identity_catalog.rs"]
+pub(crate) mod device_identity_catalog;
+#[path = "transport/device_read_capabilities.rs"]
+pub(crate) mod device_read_capabilities;
+#[path = "transport/device_write_capabilities.rs"]
+pub(crate) mod device_write_capabilities;
+#[path = "receiver/receiver_pairing_capabilities.rs"]
+pub(crate) mod receiver_pairing_capabilities;
+#[path = "receiver/receiver_pairing_catalog.rs"]
+pub(crate) mod receiver_pairing_catalog;
+#[path = "receiver/receiver_query_capabilities.rs"]
+pub(crate) mod receiver_query_capabilities;
 #[path = "identity/device_identity.rs"]
 pub mod device_identity;
 #[path = "transport/device_query.rs"]
@@ -161,6 +172,7 @@ pub mod mouse_storage;
 pub mod mouse_tracking;
 #[path = "mapping/otfm.rs"]
 pub mod otfm;
+#[path = "profile_transfer.rs"]
 pub mod profile_transfer;
 #[path = "transport/protocol.rs"]
 pub mod protocol;

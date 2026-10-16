@@ -21,6 +21,7 @@ import analysis
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCK = "tools/asset-release.json"
+TABLES = ".analysis/inputs/resource-tables"
 OUTPUT = ".work/asset-releases"
 NATIVE_ICONS = (
     "a64b8a64b721fb74-tray-native.rgba", "f979021796dfd342-tray-app.rgba",
@@ -97,6 +98,30 @@ def source_path(name, root=None):
 
 def in_git(name):
     return (name.startswith("assets/synapse/tables/") and name.endswith(".rs")) or name in GIT_ICONS
+
+
+def table_path(name, *, root=None):
+    """Maintained alias/selector input, never a product include or media payload."""
+    if not re.fullmatch(r"[a-z][a-z0-9-]*\.rs", name):
+        raise ValueError("Invalid maintained resource table name")
+    root = (root or ROOT).resolve()
+    path = root / TABLES / name
+    if not path.resolve().is_relative_to(root / TABLES) or path.is_symlink():
+        raise ValueError("Maintained resource table escaped its input directory")
+    return path
+
+
+def table_reference(owner, literal, *, root=None):
+    """Resolve retained relative spellings against their original assets root."""
+    root = (root or ROOT).resolve()
+    owner = Path(owner).resolve()
+    if owner.parent != (root / TABLES).resolve():
+        raise ValueError("Resource table reference has no maintenance owner")
+    virtual = root / "assets/synapse/tables" / owner.name
+    resolved = Path(os.path.abspath(virtual.parent / literal))
+    if resolved.parent == root / "assets/synapse/tables":
+        return table_path(resolved.name, root=root)
+    return source_path(resolved.relative_to(root).as_posix(), root=root)
 
 
 def identity(name):
@@ -271,7 +296,7 @@ def load_lock():
     return validate_lock(json.loads((ROOT / LOCK).read_bytes()))
 
 
-def builtin_data_path(crate, symbol, *, root=None):
+def builtin_data_path(crate, symbol, *, root=None, macro_name=None):
     """Read the owning crate's data.rs instead of duplicating data paths."""
     if (not re.fullmatch(r"razer-[a-z][a-z0-9-]*", crate)
             or not re.fullmatch(r"[A-Z][A-Z0-9_]*", symbol)):
@@ -279,7 +304,7 @@ def builtin_data_path(crate, symbol, *, root=None):
     root = (root or ROOT).resolve()
     source = root / "crates" / crate / "src"
     registry = source / "data.rs"
-    text = registry.read_text(encoding="utf-8")
+    text = registry.read_text(encoding="utf-8") if registry.is_file() else ""
     pattern = (r'pub\(crate\)\s+const\s+' + re.escape(symbol)
                + r':\s*&str\s*=\s*include_str!\(\s*"([^"\\]+)"\s*\)\s*;')
     bindings = re.findall(pattern, text)
@@ -290,7 +315,8 @@ def builtin_data_path(crate, symbol, *, root=None):
             return root / fixed[0]
     if not bindings and (root / "tools/typed-data.json").is_file():
         recipes = json.loads((root / "tools/typed-data.json").read_bytes())["tables"]
-        paths = {item["source"] for item in recipes if item["crate"] == crate and item["symbol"] == symbol}
+        paths = {item["source"] for item in recipes if item["crate"] == crate and item["symbol"] == symbol
+                 and (macro_name is None or item["macro"] == macro_name)}
         if len(paths) == 1:
             target = root / paths.pop()
             if not target.resolve().is_relative_to((root / ".analysis/inputs/typed-tables").resolve()):
@@ -346,7 +372,12 @@ def regenerate_builtin_path(path, *, root=None):
     matches = [item for item in recipes if (root / item["source"]).resolve() == Path(path).resolve()]
     if matches:
         import rust_data
+        if any(item.get("storage") in {"sqlite", "sqlite-profile"} for item in matches):
+            import resource_database
+            resource_database.prepare()
         for item in matches:
+            if item.get("storage") in {"sqlite", "sqlite-profile"}:
+                continue
             rust_data.build_table(item["crate"], item["symbol"], item["module"], item["root_type"],
                                  source=item["source"], macro_name=item["macro"],
                                  allow_value=item.get("allow_value", False),
@@ -397,9 +428,10 @@ def runtime_metadata(lock=None, *, check_local=False, input_rows=None):
     files = {row["path"]: dict(row) for row in [*rows_for(lock), *lock["git_files"]]
              if not row["path"].startswith("assets/synapse/tables/")}
     def table_source(name):
-        raw = source_path(name).read_bytes()
+        path = table_path(Path(name).name)
+        raw = path.read_bytes()
         if input_rows is not None:
-            input_rows.append({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+            input_rows.append({"path": path.relative_to(ROOT).as_posix(), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
         return raw.decode("utf-8")
 
     tables_path = "assets/synapse/tables/asset-tables-source.rs"

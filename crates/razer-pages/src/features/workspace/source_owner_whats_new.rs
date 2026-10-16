@@ -22,7 +22,7 @@ struct Node {
 }
 fn records() -> &'static [WhatsNew] {
     static DATA: OnceLock<Vec<WhatsNew>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::source_owner_whats_new_data!())
+    DATA.get_or_init(|| read_source_owner_whats_new_catalog())
 }
 fn record(pid: u32) -> Option<&'static WhatsNew> {
     records().iter().find(|row| row.product_id == pid)
@@ -195,3 +195,121 @@ impl SourceHelpOwner {
         .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/source_owner_whats_new_data.
+fn read_source_owner_whats_new_catalog() -> Vec<WhatsNew> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<WhatsNew>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<WhatsNew> {
+        let value = match r.tag()? {
+            0 => WhatsNew {
+                product_id: r.child(decode_2)?,
+                content: r.child(decode_3)?,
+                locales: r.child(decode_7)?,
+                button_key: r.child(decode_4)?,
+                storage_key: r.child(decode_4)?,
+                image: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Node> {
+        let value = match r.tag()? {
+            0 => Node {
+                kind: r.child(decode_4)?,
+                key: r.child(decode_5)?,
+                class_name: None,
+                children: Default::default(),
+            },
+            1 => Node {
+                kind: r.child(decode_4)?,
+                key: None,
+                class_name: r.child(decode_5)?,
+                children: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_4)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Node>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_4, decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_4, decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SOURCE_OWNER_WHATS_NEW_DATA,
+        0,
+        "aa66b469dd268e1bff1c7eea5015cfe1d24ef45c34d7bc3a6aef51f877a9077d",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_source_owner_whats_new_data_decodes() {
+    let _ = read_source_owner_whats_new_catalog();
+}
+// End generated catalog reader: razer-pages/source_owner_whats_new_data.

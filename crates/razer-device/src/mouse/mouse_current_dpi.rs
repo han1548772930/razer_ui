@@ -81,7 +81,7 @@ pub fn capability(product_id: u32) -> Option<&'static Capability> {
     static CAPS: OnceLock<Vec<Capability>> = OnceLock::new();
     CAPS.get_or_init(|| {
         let mut capabilities: Vec<Capability> =
-            crate::data::mouse_current_dpi_data::mouse_current_dpi_data!();
+            make_mouse_current_dpi_table();
         // Current182 factory87887 selects ordinary wired and DualLink radio
         // senders. Retain those distinct physical branches for each exchange.
         if let Some(cap) = capabilities.iter_mut().find(|cap| cap.product_id == 182) {
@@ -749,4 +749,4205 @@ fn execute_with_capability(
     );
     report.verified = true;
     Ok(report)
+}
+
+// Generated typed table: razer-device/mouse_current_dpi_data.
+#[rustfmt::skip]
+fn make_mouse_current_dpi_table() -> Vec<Capability> {
+    vec![
+        Capability{
+            product_id: 80u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 80u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 80u32,
+                source_class: "rzDevice25LegacyNoBrightness".into(),
+                direct_pids: vec![80u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![].into_iter().collect(),
+                physical_transports_by_pid: Default::default(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 83u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 83u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 83u32,
+                source_class: "rzDevice25LegacyNoBrightness".into(),
+                direct_pids: vec![83u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![].into_iter().collect(),
+                physical_transports_by_pid: Default::default(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 89u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 89u32,
+            dongle_pid: Some(90u32),
+            transport: DeviceReadCapability{
+                product_id: 89u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![89u32,90u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("89".into(),0u8),("90".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "89".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "90".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 92u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 92u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 92u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![92u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("92".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "92".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 96u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 96u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 96u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![96u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("96".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "96".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 98u32,
+            minimum: 200u16,
+            maximum: 7200u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 98u32,
+            dongle_pid: Some(98u32),
+            transport: DeviceReadCapability{
+                product_id: 98u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![98u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("98".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "98".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 99u32,
+            minimum: 200u16,
+            maximum: 7200u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 99u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 99u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![99u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("99".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "99".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 100u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 100u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 100u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![100u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("100".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "100".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 101u32,
+            minimum: 200u16,
+            maximum: 6400u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 101u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 101u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![101u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("101".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "101".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 103u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 103u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 103u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![103u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("103".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "103".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 104u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 104u32,
+            dongle_pid: Some(105u32),
+            transport: DeviceReadCapability{
+                product_id: 104u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![104u32,105u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("104".into(),0u8),("105".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "104".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 10u64,
+                            sleep_between_out_in_ms: 10u64,
+                            sleep_between_in_ms: 10u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "105".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 10u64,
+                            sleep_between_out_in_ms: 10u64,
+                            sleep_between_in_ms: 10u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 10u64,
+                sleep_between_out_in_ms: 10u64,
+                sleep_between_in_ms: 10u64
+            }
+        },
+        Capability{
+            product_id: 106u32,
+            minimum: 200u16,
+            maximum: 7200u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 106u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 106u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![106u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("106".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "106".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 107u32,
+            minimum: 200u16,
+            maximum: 7200u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 107u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 107u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![107u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("107".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "107".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 108u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 108u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 108u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![108u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("108".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "108".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 110u32,
+            minimum: 200u16,
+            maximum: 6400u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 110u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 110u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![110u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("110".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "110".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 112u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 112u32,
+            dongle_pid: Some(111u32),
+            transport: DeviceReadCapability{
+                product_id: 112u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![111u32,112u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("112".into(),0u8),("111".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "112".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "111".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 113u32,
+            minimum: 200u16,
+            maximum: 6400u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 113u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 113u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![113u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("113".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "113".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 115u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 115u32,
+            dongle_pid: Some(114u32),
+            transport: DeviceReadCapability{
+                product_id: 115u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![114u32,115u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("114".into(),0u8),("115".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "114".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "115".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 116u32,
+            minimum: 200u16,
+            maximum: 6400u16,
+            cycle_sensitivity: false,
+            stage_level_only: true,
+            wired_pid: 116u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 116u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![116u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("116".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "116".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 117u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 117u32,
+            dongle_pid: Some(2308u32),
+            transport: DeviceReadCapability{
+                product_id: 117u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![117u32,2308u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("2308".into(),0u8),("117".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "2308".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "117".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 120u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 120u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 120u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![120u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("120".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "120".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 122u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 122u32,
+            dongle_pid: Some(123u32),
+            transport: DeviceReadCapability{
+                product_id: 122u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![122u32,123u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("122".into(),0u8),("123".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "122".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "123".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 124u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 124u32,
+            dongle_pid: Some(125u32),
+            transport: DeviceReadCapability{
+                product_id: 124u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![124u32,125u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("124".into(),0u8),("125".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "124".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "125".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 128u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 128u32,
+            dongle_pid: Some(119u32),
+            transport: DeviceReadCapability{
+                product_id: 128u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![119u32,128u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("128".into(),0u8),("119".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "128".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "119".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 131u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 131u32,
+            dongle_pid: Some(131u32),
+            transport: DeviceReadCapability{
+                product_id: 131u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![131u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("131".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "131".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 132u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 132u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 132u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![132u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("132".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "132".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 133u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 133u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 133u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![133u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("133".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "133".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 134u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 134u32,
+            dongle_pid: Some(136u32),
+            transport: DeviceReadCapability{
+                product_id: 134u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![134u32,136u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("136".into(),0u8),("134".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "136".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "134".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 138u32,
+            minimum: 200u16,
+            maximum: 8500u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 138u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 138u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![138u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("138".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "138".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 140u32,
+            minimum: 200u16,
+            maximum: 8500u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 140u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 140u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![140u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("140".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "140".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 141u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 141u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 141u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![141u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("141".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "141".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 143u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 143u32,
+            dongle_pid: Some(144u32),
+            transport: DeviceReadCapability{
+                product_id: 143u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![143u32,144u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("144".into(),0u8),("143".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "144".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    ),
+                    (
+                        "143".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 145u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 145u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 145u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![145u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("145".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "145".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 147u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 147u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 147u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![147u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("147".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "147".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 148u32,
+            minimum: 100u16,
+            maximum: 18000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 148u32,
+            dongle_pid: Some(148u32),
+            transport: DeviceReadCapability{
+                product_id: 148u32,
+                source_class: "rzDevice25DualLinkMouse".into(),
+                direct_pids: vec![148u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("148".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "148".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 25u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 25u64
+            }
+        },
+        Capability{
+            product_id: 150u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 150u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 150u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![150u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("150".into(),3u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "150".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 152u32,
+            minimum: 200u16,
+            maximum: 6400u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 152u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 152u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![152u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("152".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "152".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 153u32,
+            minimum: 100u16,
+            maximum: 26000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 153u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 153u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![153u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("153".into(),3u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "153".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 154u32,
+            minimum: 200u16,
+            maximum: 12000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 154u32,
+            dongle_pid: Some(154u32),
+            transport: DeviceReadCapability{
+                product_id: 154u32,
+                source_class: "rzDevice25DualLinkMouse".into(),
+                direct_pids: vec![154u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("154".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "154".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 25u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 25u64
+            }
+        },
+        Capability{
+            product_id: 156u32,
+            minimum: 100u16,
+            maximum: 14000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 156u32,
+            dongle_pid: Some(156u32),
+            transport: DeviceReadCapability{
+                product_id: 156u32,
+                source_class: "rzDevice25DualLinkMouse".into(),
+                direct_pids: vec![156u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("156".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "156".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 25u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 25u64
+            }
+        },
+        Capability{
+            product_id: 158u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 158u32,
+            dongle_pid: Some(159u32),
+            transport: DeviceReadCapability{
+                product_id: 158u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![158u32,159u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("158".into(),0u8),("159".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "158".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "159".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 161u32,
+            minimum: 200u16,
+            maximum: 8500u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 161u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 161u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![161u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("161".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "161".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 163u32,
+            minimum: 200u16,
+            maximum: 8500u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 163u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 163u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![163u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("163".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "163".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 165u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 165u32,
+            dongle_pid: Some(166u32),
+            transport: DeviceReadCapability{
+                product_id: 165u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![165u32,166u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("165".into(),0u8),("166".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "165".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "166".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 167u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 167u32,
+            dongle_pid: Some(168u32),
+            transport: DeviceReadCapability{
+                product_id: 167u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![167u32,168u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("168".into(),0u8),("167".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "168".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    ),
+                    (
+                        "167".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 170u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 170u32,
+            dongle_pid: Some(171u32),
+            transport: DeviceReadCapability{
+                product_id: 170u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![170u32,171u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("170".into(),0u8),("171".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "170".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "171".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 175u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 175u32,
+            dongle_pid: Some(176u32),
+            transport: DeviceReadCapability{
+                product_id: 175u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![175u32,176u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("176".into(),0u8),("175".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "176".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    ),
+                    (
+                        "175".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 178u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 178u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 178u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![178u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("178".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "178".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 180u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 180u32,
+            dongle_pid: Some(180u32),
+            transport: DeviceReadCapability{
+                product_id: 180u32,
+                source_class: "rzDevice25DualLinkMouse".into(),
+                direct_pids: vec![180u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("180".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "180".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 25u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 25u64
+            }
+        },
+        Capability{
+            product_id: 182u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 182u32,
+            dongle_pid: Some(183u32),
+            transport: DeviceReadCapability{
+                product_id: 182u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![182u32,183u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("182".into(),0u8),("183".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "182".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "183".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 184u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 184u32,
+            dongle_pid: Some(184u32),
+            transport: DeviceReadCapability{
+                product_id: 184u32,
+                source_class: "rzDevice25DualLinkMouse".into(),
+                direct_pids: vec![184u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("184".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "184".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 25u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 25u64
+            }
+        },
+        Capability{
+            product_id: 185u32,
+            minimum: 100u16,
+            maximum: 18000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 185u32,
+            dongle_pid: Some(185u32),
+            transport: DeviceReadCapability{
+                product_id: 185u32,
+                source_class: "rzDevice25DualLinkMouse".into(),
+                direct_pids: vec![185u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("185".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "185".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 25u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 25u64
+            }
+        },
+        Capability{
+            product_id: 190u32,
+            minimum: 100u16,
+            maximum: 45000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 190u32,
+            dongle_pid: Some(191u32),
+            transport: DeviceReadCapability{
+                product_id: 190u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![190u32,191u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("190".into(),0u8),("191".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "190".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "191".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 192u32,
+            minimum: 100u16,
+            maximum: 35000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 192u32,
+            dongle_pid: Some(193u32),
+            transport: DeviceReadCapability{
+                product_id: 192u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![192u32,193u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("192".into(),0u8),("193".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "192".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "193".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 194u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 194u32,
+            dongle_pid: Some(195u32),
+            transport: DeviceReadCapability{
+                product_id: 194u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![194u32,195u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("194".into(),0u8),("195".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "194".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "195".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 196u32,
+            minimum: 100u16,
+            maximum: 20000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 196u32,
+            dongle_pid: Some(197u32),
+            transport: DeviceReadCapability{
+                product_id: 196u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![196u32,197u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("196".into(),0u8),("197".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "196".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "197".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 199u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: true,
+            stage_level_only: false,
+            wired_pid: 199u32,
+            dongle_pid: Some(200u32),
+            transport: DeviceReadCapability{
+                product_id: 199u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![199u32,200u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("200".into(),0u8),("199".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "200".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "199".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 203u32,
+            minimum: 100u16,
+            maximum: 35000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 203u32,
+            dongle_pid: None,
+            transport: DeviceReadCapability{
+                product_id: 203u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![203u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("203".into(),3u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "203".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 204u32,
+            minimum: 100u16,
+            maximum: 35000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 204u32,
+            dongle_pid: Some(205u32),
+            transport: DeviceReadCapability{
+                product_id: 204u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![204u32,205u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("204".into(),0u8),("205".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "204".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "205".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 208u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: true,
+            stage_level_only: false,
+            wired_pid: 208u32,
+            dongle_pid: Some(209u32),
+            transport: DeviceReadCapability{
+                product_id: 208u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![208u32,209u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("208".into(),0u8),("209".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "208".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "209".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 211u32,
+            minimum: 100u16,
+            maximum: 18000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 211u32,
+            dongle_pid: Some(212u32),
+            transport: DeviceReadCapability{
+                product_id: 211u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![211u32,212u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("211".into(),0u8),("212".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "211".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "212".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 214u32,
+            minimum: 100u16,
+            maximum: 35000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 214u32,
+            dongle_pid: Some(215u32),
+            transport: DeviceReadCapability{
+                product_id: 214u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![214u32,215u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("214".into(),0u8),("215".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "214".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "215".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 218u32,
+            minimum: 100u16,
+            maximum: 26000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 218u32,
+            dongle_pid: Some(219u32),
+            transport: DeviceReadCapability{
+                product_id: 218u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![218u32,219u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("218".into(),0u8),("219".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "218".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "219".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 221u32,
+            minimum: 100u16,
+            maximum: 45000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 221u32,
+            dongle_pid: Some(221u32),
+            transport: DeviceReadCapability{
+                product_id: 221u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![221u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("221".into(),3u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "221".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 222u32,
+            minimum: 100u16,
+            maximum: 35000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 222u32,
+            dongle_pid: Some(223u32),
+            transport: DeviceReadCapability{
+                product_id: 222u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![222u32,223u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("222".into(),0u8),("223".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "222".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "223".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 224u32,
+            minimum: 100u16,
+            maximum: 18000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 224u32,
+            dongle_pid: Some(224u32),
+            transport: DeviceReadCapability{
+                product_id: 224u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![224u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("224".into(),0u8)].into_iter().collect(),
+                physical_transports_by_pid: vec![
+                    (
+                        "224".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 10u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 10u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 10u64,
+                sleep_between_out_in_ms: 25u64,
+                sleep_between_in_ms: 10u64
+            }
+        },
+        Capability{
+            product_id: 226u32,
+            minimum: 100u16,
+            maximum: 50000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 226u32,
+            dongle_pid: Some(227u32),
+            transport: DeviceReadCapability{
+                product_id: 226u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![226u32,227u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("226".into(),3u8),("227".into(),3u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "226".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "227".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 3u8,
+                            report_id: 3u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 229u32,
+            minimum: 100u16,
+            maximum: 50000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 229u32,
+            dongle_pid: Some(230u32),
+            transport: DeviceReadCapability{
+                product_id: 229u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![229u32,230u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("229".into(),3u8),("230".into(),3u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "229".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "230".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 231u32,
+            minimum: 100u16,
+            maximum: 30000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 231u32,
+            dongle_pid: Some(232u32),
+            transport: DeviceReadCapability{
+                product_id: 231u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![231u32,232u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("232".into(),3u8),("231".into(),3u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "232".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 3u8,
+                            report_id: 3u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    ),
+                    (
+                        "231".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 235u32,
+            minimum: 100u16,
+            maximum: 33000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 235u32,
+            dongle_pid: Some(234u32),
+            transport: DeviceReadCapability{
+                product_id: 235u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![234u32,235u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("234".into(),3u8),("235".into(),3u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "234".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 3u8,
+                            report_id: 3u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    ),
+                    (
+                        "235".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 239u32,
+            minimum: 100u16,
+            maximum: 50000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 239u32,
+            dongle_pid: Some(240u32),
+            transport: DeviceReadCapability{
+                product_id: 239u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![239u32,240u32],
+                vendor_id: 5426u16,
+                claim_interface: 3u8,
+                claim_interfaces_by_pid: vec![("240".into(),3u8),("239".into(),3u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "240".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "239".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 3u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 2594u32,
+            minimum: 100u16,
+            maximum: 16000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 2594u32,
+            dongle_pid: Some(2593u32),
+            transport: DeviceReadCapability{
+                product_id: 2594u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![2593u32,2594u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("2593".into(),0u8),("2594".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "2593".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "2594".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        },
+        Capability{
+            product_id: 45066u32,
+            minimum: 100u16,
+            maximum: 35000u16,
+            cycle_sensitivity: false,
+            stage_level_only: false,
+            wired_pid: 45066u32,
+            dongle_pid: Some(45067u32),
+            transport: DeviceReadCapability{
+                product_id: 45066u32,
+                source_class: "rzDevice25".into(),
+                direct_pids: vec![45066u32,45067u32],
+                vendor_id: 5426u16,
+                claim_interface: 0u8,
+                claim_interfaces_by_pid: vec![("45066".into(),0u8),("45067".into(),0u8)].into_iter().collect(
+                ),
+                physical_transports_by_pid: vec![
+                    (
+                        "45066".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 5u64,
+                            sleep_between_out_in_ms: 5u64,
+                            sleep_between_in_ms: 5u64,
+                            is_duallink: false
+                        }
+                    ),
+                    (
+                        "45067".into(),
+                        PhysicalFeatureTransport{
+                            source_class: "rzDevice25DualLinkMouse".into(),
+                            claim_interface: 0u8,
+                            report_id: 0u8,
+                            transaction_prefix: 0u8,
+                            transaction_modulus: 31u8,
+                            max_retry_in: 10u8,
+                            max_retry_out: 20u8,
+                            sleep_between_out_ms: 25u64,
+                            sleep_between_out_in_ms: 25u64,
+                            sleep_between_in_ms: 25u64,
+                            is_duallink: true
+                        }
+                    )
+                ].into_iter().collect(),
+                report_id: 0u8,
+                report_bytes: 91usize,
+                transaction_prefix: 0u8,
+                transaction_modulus: 31u8,
+                queries: vec![],
+                polling_codes: vec![].into_iter().collect(),
+                polling_value_offset: None,
+                polling_default_hz: None,
+                polling_physical_product_id: None,
+                charging_codes: vec![].into_iter().collect(),
+                max_retry_in: 10u8,
+                max_retry_out: 20u8,
+                sleep_between_out_ms: 5u64,
+                sleep_between_out_in_ms: 5u64,
+                sleep_between_in_ms: 5u64
+            }
+        }
+    ]
 }

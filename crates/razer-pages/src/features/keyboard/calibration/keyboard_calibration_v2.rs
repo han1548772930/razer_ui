@@ -102,7 +102,7 @@ struct Switch {
 }
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_calibration_v2_data!())
+    DATA.get_or_init(|| read_keyboard_calibration_v2_catalog())
 }
 fn label(symbol: &str) -> String {
     t(&data().labels[symbol])
@@ -1494,3 +1494,80 @@ mod tests {
         assert_eq!(state.switches.len(), 1);
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_calibration_v2_data.
+fn read_keyboard_calibration_v2_catalog() -> Data {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                labels: r.child(decode_1)?,
+                switches: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Switch>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Switch> {
+        let value = match r.tag()? {
+            0 => Switch {
+                switch_index: r.child(decode_5)?,
+                name: r.child(decode_2)?,
+                sub_label: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_CALIBRATION_V2_DATA,
+        0,
+        "2a202daef886d0b931a65d2c429b17a52bac148b852cf858d081158fd4c2ae24",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_calibration_v2_data_decodes() {
+    let _ = read_keyboard_calibration_v2_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_calibration_v2_data.

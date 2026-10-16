@@ -5,7 +5,6 @@ pub mod app_picker;
 pub mod chroma_page;
 #[path = "chroma/chroma_settings.rs"]
 pub mod chroma_settings;
-mod data;
 #[path = "firmware/firmware_update.rs"]
 pub mod firmware_update;
 #[path = "introduction/introduction_tour.rs"]

@@ -31,7 +31,7 @@ struct Data {
 pub struct RuntimeAudioDevice(BTreeMap<String, Value>);
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::control_pod_audio_data!())
+    DATA.get_or_init(|| read_control_pod_audio_catalog())
 }
 
 impl AudioProductWorkspace {
@@ -868,3 +868,93 @@ impl Render for AudioEditor {
         })
     }
 }
+
+// Generated catalog reader: razer-pages/control_pod_audio_data.
+fn read_control_pod_audio_catalog() -> Data {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                modes: r.child(decode_1)?,
+                playback: r.child(decode_1)?,
+                equalizer: r.child(decode_1)?,
+                presets: r.child(decode_1)?,
+                inputs: r.child(decode_4)?,
+                labels: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<OptionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<OptionSpec> {
+        let value = match r.tag()? {
+            0 => OptionSpec {
+                id: r.child(decode_3)?,
+                content: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_CONTROL_POD_AUDIO_DATA,
+        0,
+        "af4572a9e23bd4648f071ea90fbb04dc79c1e275683e31c3c3a5b5280eb144cf",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_control_pod_audio_data_decodes() {
+    let _ = read_control_pod_audio_catalog();
+}
+// End generated catalog reader: razer-pages/control_pod_audio_data.

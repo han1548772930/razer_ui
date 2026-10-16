@@ -73,7 +73,7 @@ struct IndicatorLayer {
 }
 fn modes() -> &'static [IndicatorMode] {
     static MODES: OnceLock<Vec<IndicatorMode>> = OnceLock::new();
-    MODES.get_or_init(|| crate::data::receiver_indicator_data!())
+    MODES.get_or_init(|| read_receiver_indicator_catalog())
 }
 fn opacity(layer: &IndicatorLayer, elapsed: f32) -> f32 {
     let duration: f32 = layer
@@ -582,3 +582,103 @@ impl RenderOnce for ReceiverSpinner {
         }
     }
 }
+
+// Generated catalog reader: razer-pages/receiver_indicator_data.
+fn read_receiver_indicator_catalog() -> Vec<IndicatorMode> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<IndicatorMode>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<IndicatorMode> {
+        let value = match r.tag()? {
+            0 => IndicatorMode {
+                mode: r.child(decode_2)?,
+                base: r.child(decode_3)?,
+                layers: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<IndicatorLayer>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<IndicatorLayer> {
+        let value = match r.tag()? {
+            0 => IndicatorLayer {
+                asset: r.child(decode_3)?,
+                values: r.child(decode_3)?,
+                begin: r.child(decode_3)?,
+                dur: r.child(decode_3)?,
+                id: None,
+                repeat: r.child(decode_6)?,
+            },
+            1 => IndicatorLayer {
+                asset: r.child(decode_3)?,
+                values: r.child(decode_3)?,
+                begin: r.child(decode_3)?,
+                dur: r.child(decode_3)?,
+                id: r.child(decode_6)?,
+                repeat: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_3)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_RECEIVER_INDICATOR_DATA,
+        0,
+        "eee5cf35a4352165b57c3079072dca821b3abad31dec973d46d28468416ca83a",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_receiver_indicator_data_decodes() {
+    let _ = read_receiver_indicator_catalog();
+}
+// End generated catalog reader: razer-pages/receiver_indicator_data.

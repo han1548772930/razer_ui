@@ -43,7 +43,7 @@ struct Spec {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| crate::data::aether_strip_data!())
+    SPEC.get_or_init(|| read_aether_strip_catalog())
 }
 fn text(key: &str) -> String {
     spec()
@@ -694,3 +694,71 @@ fn icon_button(
 ) -> source_tip::TipCommand {
     source_tip::TipCommand::icon(id, name, label, disabled)
 }
+
+// Generated catalog reader: razer-pages/aether_strip_data.
+fn read_aether_strip_catalog() -> Spec {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                product_id: r.child(decode_1)?,
+                page: r.child(decode_2)?,
+                translations: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AETHER_STRIP_DATA,
+        0,
+        "7b271a3a3099bbeebf53b8c03599f1d3891a088ae332342bcf595cc5eec57063",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_aether_strip_data_decodes() {
+    let _ = read_aether_strip_catalog();
+}
+// End generated catalog reader: razer-pages/aether_strip_data.

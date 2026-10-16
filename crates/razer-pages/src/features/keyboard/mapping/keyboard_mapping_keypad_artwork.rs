@@ -82,7 +82,7 @@ struct ProductImage {
 }
 fn product_images() -> &'static [ProductImage] {
     static IMAGES: OnceLock<Vec<ProductImage>> = OnceLock::new();
-    IMAGES.get_or_init(|| crate::data::keyboard_keypad_device_image_data!())
+    IMAGES.get_or_init(|| read_keyboard_keypad_device_image_catalog())
 }
 pub fn source_keypad_product_image(pid: u32, edition: u32, density: u32) -> Option<&'static str> {
     let density = if pid == 747 { 1 } else { density };
@@ -435,7 +435,7 @@ impl RenderOnce for ModeTip {
 }
 fn source(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_keypad_artwork_data!())
+    DATA.get_or_init(|| read_keyboard_keypad_artwork_catalog())
         .iter()
         .find(|row| row.product_id == pid)
 }
@@ -1553,3 +1553,206 @@ fn paint_circle(
         window.paint_path(path, color);
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_keypad_artwork_data.
+fn read_keyboard_keypad_artwork_catalog() -> Vec<Product> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Product>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Product> {
+        let value = match r.tag()? {
+            0 => Product {
+                product_id: r.child(decode_2)?,
+                images: r.child(decode_3)?,
+                icons: r.child(decode_6)?,
+                line_parameters: r.child(decode_7)?,
+                line_points: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Image>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Image> {
+        let value = match r.tag()? {
+            0 => Image {
+                edition_id: r.child(decode_2)?,
+                role: r.child(decode_5)?,
+                asset: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Icon>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<LinePoint>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_9)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<LinePoint> {
+        let value = match r.tag()? {
+            0 => LinePoint {
+                key: r.child(decode_5)?,
+                x: r.child(decode_10)?,
+                y: r.child(decode_10)?,
+                kind: r.child(decode_5)?,
+                direction_mode: r.child(decode_11)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Icon> {
+        let value = match r.tag()? {
+            0 => Icon {
+                role: r.child(decode_5)?,
+                asset: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_KEYPAD_ARTWORK_DATA,
+        0,
+        "3a104c700be00112356219b23e6ccaacaabf7cf442cd0f41b74945122e9e262b",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_keypad_artwork_data_decodes() {
+    let _ = read_keyboard_keypad_artwork_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_keypad_artwork_data.
+
+// Generated catalog reader: razer-pages/keyboard_keypad_device_image_data.
+fn read_keyboard_keypad_device_image_catalog() -> Vec<ProductImage> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ProductImage>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ProductImage> {
+        let value = match r.tag()? {
+            0 => ProductImage {
+                product_id: r.child(decode_2)?,
+                edition_id: r.child(decode_2)?,
+                density: r.child(decode_2)?,
+                asset: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_KEYPAD_DEVICE_IMAGE_DATA,
+        0,
+        "3016eb983753e3aac372c2c7fb106e2e97fb3fbc71cba53208b766d96a5dcf7b",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_keypad_device_image_data_decodes() {
+    let _ = read_keyboard_keypad_device_image_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_keypad_device_image_data.

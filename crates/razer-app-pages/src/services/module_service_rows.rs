@@ -6,7 +6,7 @@ struct ModuleServiceSource {
 }
 fn module_service_source() -> &'static ModuleServiceSource {
     static SOURCE: OnceLock<ModuleServiceSource> = OnceLock::new();
-    SOURCE.get_or_init(|| crate::data::module_service_source!())
+    SOURCE.get_or_init(|| read_module_service_source_catalog())
 }
 fn service_row_key(row: &Record, module: Option<&Module>) -> String {
     module
@@ -770,3 +770,50 @@ impl ModuleCatalog {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-app-pages/module_service_source.
+fn read_module_service_source_catalog() -> ModuleServiceSource {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ModuleServiceSource> {
+        let value = match r.tag()? {
+            0 => ModuleServiceSource {
+                categories: r.child(decode_1)?,
+                subcategory_parents: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_MODULE_SERVICE_SOURCE,
+        0,
+        "a959a513c78cc21189c0ccfbfc9dd94337f458b5bbe631019e8610d4d180bde0",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_module_service_source_decodes() {
+    let _ = read_module_service_source_catalog();
+}
+// End generated catalog reader: razer-app-pages/module_service_source.

@@ -19,7 +19,7 @@ fn waiting() -> crate::model::SetupStatus {
 fn policy(product_id: u32) -> Option<&'static Policy> {
     static POLICIES: OnceLock<Vec<Policy>> = OnceLock::new();
     POLICIES
-        .get_or_init(|| crate::data::runtime_setup_data!())
+        .get_or_init(|| make_runtime_setup_table())
         .iter()
         .find(|policy| {
             policy.product_id == product_id && policy.ready_before_profile_initialization
@@ -106,4 +106,1661 @@ mod startup_state_tests {
             assert!(device.current_power_status().is_none());
         }
     }
+}
+
+// Generated typed table: razer-model/runtime_setup_data.
+#[rustfmt::skip]
+fn make_runtime_setup_table() -> Vec<Policy> {
+    vec![
+        Policy{
+            product_id: 70u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 80u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 83u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 89u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 92u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 96u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 98u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 99u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 100u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 101u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 103u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 104u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: crate::model::SetupStatus::Waiting
+        },
+        Policy{
+            product_id: 106u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 107u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 108u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 110u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 112u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 113u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 115u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 116u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 117u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: crate::model::SetupStatus::Unknown
+        },
+        Policy{
+            product_id: 120u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 122u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 124u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 126u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 128u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 131u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 132u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 133u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 134u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 138u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 140u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 141u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 143u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 145u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 147u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 148u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 150u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 152u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 153u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 154u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 156u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 158u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 161u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 163u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: crate::model::SetupStatus::Waiting
+        },
+        Policy{
+            product_id: 164u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 165u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 167u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 170u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 175u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 178u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 179u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 180u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 182u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 184u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 185u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 190u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 192u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 194u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 196u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 199u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 203u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 204u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 207u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 208u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 211u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 214u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 218u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 221u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 222u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 224u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 226u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 229u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 231u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 235u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 239u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 241u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 515u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 521u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 529u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 534u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 542u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 545u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 550u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 551u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 552u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 554u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 555u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 556u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 563u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 564u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 565u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 567u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 569u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 570u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 571u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 574u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 575u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 576u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 577u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 579u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 580u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 581u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 582u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 585u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 586u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 587u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 588u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 589u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 590u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 591u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 592u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 593u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 594u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 595u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 597u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 598u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 599u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 600u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 601u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 602u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 605u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 606u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 614u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 616u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 617u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 618u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 619u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 620u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 621u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 622u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 623u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 624u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 630u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 631u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 633u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 634u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 642u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 647u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 650u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 651u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 652u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 653u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 654u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 655u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 658u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 659u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 660u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 661u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 664u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 669u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 670u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 671u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 672u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 673u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 674u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 675u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 677u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 678u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 679u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 688u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 689u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 691u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 694u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 695u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 696u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 697u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 708u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 709u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 710u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 711u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 716u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 717u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 719u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 720u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 721u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 724u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 727u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 728u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 736u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 737u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 739u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 740u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 741u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 742u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 746u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 747u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 752u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 756u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 769u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 777u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 778u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 780u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 781u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 782u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 783u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 784u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 790u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 791u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1303u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1304u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1306u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1308u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1310u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1312u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1313u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1318u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1319u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1320u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1321u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1325u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1328u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1330u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1331u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1332u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1335u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1337u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1339u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1342u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1346u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1347u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1352u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1353u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1354u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1364u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1365u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1370u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1372u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1374u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1376u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1378u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1382u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1383u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1386u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1387u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1389u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1390u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1391u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1392u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1396u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1398u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1401u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1404u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1406u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1407u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1411u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1412u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1415u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1420u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1422u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1427u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1439u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1442u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1443u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1446u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1453u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1462u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 1465u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2594u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: crate::model::SetupStatus::Unknown
+        },
+        Policy{
+            product_id: 2595u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2596u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2629u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2636u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2638u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2641u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2644u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2647u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2650u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2657u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2660u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2664u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2668u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2676u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2684u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 2689u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3072u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3073u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3074u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3076u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3077u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3078u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3080u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3331u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3334u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3337u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3587u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3589u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3590u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3592u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3594u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3595u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3596u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3848u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3849u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3853u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3858u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3859u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3863u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3866u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3867u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3869u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3871u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3872u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3873u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3878u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3879u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3880u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3883u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3884u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3886u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3893u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3894u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3900u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3907u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3909u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3921u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3922u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3929u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3932u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3940u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3942u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3946u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 3949u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 4115u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 4124u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 4126u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 4130u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 4133u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 4144u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        },
+        Policy{
+            product_id: 45066u32,
+            ready_before_profile_initialization: true,
+            initial_setup_status: waiting()
+        }
+    ]
 }

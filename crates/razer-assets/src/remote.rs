@@ -1,4 +1,5 @@
 //! Manifest lookup and a verified per-file installation cache. No product prefetch.
+use crate::native_icons::embedded;
 use anyhow::{Context as _, ensure};
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -470,39 +471,6 @@ fn verified(file: &ResourceFile, bytes: &[u8]) -> bool {
     bytes.len() as u64 == file.bytes && format!("{:x}", Sha256::digest(bytes)) == file.sha256
 }
 
-fn embedded(path: &str) -> Option<&'static [u8]> {
-    let name = path.strip_prefix("assets/synapse/shared/pending-source-audit/")?;
-    Some(match name {
-        "a64b8a64b721fb74-tray-native.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba"
-        ),
-        "f979021796dfd342-tray-app.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba"
-        ),
-        "81851a9004a803d3-tray-icon-24.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/81851a9004a803d3-tray-icon-24.rgba"
-        ),
-        "71b354f660adb5db-tray-icon.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/71b354f660adb5db-tray-icon.rgba"
-        ),
-        "f8fd980e3bec82fe-tray-icon-40.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/f8fd980e3bec82fe-tray-icon-40.rgba"
-        ),
-        "5e5df98271550aca-tray-icon-48.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/5e5df98271550aca-tray-icon-48.rgba"
-        ),
-        "afb1350c23ce2416-tray-icon-64.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/afb1350c23ce2416-tray-icon-64.rgba"
-        ),
-        "7747f51f284ded65-tray-gear-dark.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/7747f51f284ded65-tray-gear-dark.rgba"
-        ),
-        "33892a0b56b91958-tray-gear-light.rgba" => include_bytes!(
-            "../../../assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba"
-        ),
-        _ => return None,
-    })
-}
 
 fn available(path: &str) -> anyhow::Result<bool> {
     let manifest = manifest()?;

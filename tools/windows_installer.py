@@ -16,6 +16,7 @@ import struct
 import subprocess
 import tempfile
 import tomllib
+import resource_database
 
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = "target/installer/windows"
@@ -257,8 +258,13 @@ def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, 
     images = {name: pe_info(source) for name, source in sources.items()}
     check_closure(images, architecture)
     icon, icon_sources = icon_bytes()
+    policy = resource_database.installation_policy(ROOT)
+    catalog = plain_path(ROOT / policy["catalog_source"])
+    if not catalog.is_file():
+        raise ValueError("Missing packaged resource catalog")
     marker = {"source": "windows-inno", "version": version, "architecture": architecture,
-              "executable": APP_NAME, "cache_relative": "assets/cache"}
+              "executable": APP_NAME, "cache_relative": policy["cache_relative"],
+              "catalog_filename": policy["catalog_filename"]}
     destination = output_path(ROOT / (output or f"{OUTPUT}/{version}-{architecture}"))
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=".prepare-", dir=destination.parent))
@@ -271,6 +277,9 @@ def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, 
                 raise ValueError("Installer input changed while copying: " + name)
         (payload / ICO_NAME).write_bytes(icon)
         (payload / MARKER_NAME).write_bytes(encoded(marker))
+        shutil.copyfile(catalog, payload / policy["catalog_filename"])
+        if digest(catalog) != digest(payload / policy["catalog_filename"]):
+            raise ValueError("Resource catalog changed while preparing installer")
         include = temporary / "runtime-files.iss"
         include.write_bytes(runtime_include(set(sources) - {APP_NAME}))
         rows = [{"path": p.relative_to(temporary).as_posix(), "bytes": p.stat().st_size, "sha256": digest(p)}
@@ -279,7 +288,9 @@ def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, 
         receipt = {"schema": 1, "version": version, "architecture": architecture,
                    "script": {"path": SCRIPT, "sha256": digest(ROOT / SCRIPT)}, "inputs": rows,
                    "native_icons": icon_sources, "pe_images": images,
-                   "resource_payloads_included": False, "cache_relative": "assets/cache"}
+                   "resource_payloads_included": False, "cache_relative": policy["cache_relative"],
+                   "catalog_filename": policy["catalog_filename"],
+                   "installation_policy_sha256": digest(ROOT / resource_database.INSTALLATION)}
         (temporary / "installer-input.json").write_bytes(encoded(receipt))
         if destination.exists():
             current = verify(destination)
@@ -307,9 +318,13 @@ def verify(stage):
     if receipt.get("schema") != 1 or script != {"path": SCRIPT, "sha256": digest(ROOT / SCRIPT)}:
         raise ValueError("Installer recipe changed or receipt is invalid; prepare a new stage")
     images = receipt.get("pe_images", {})
-    if APP_NAME not in images or receipt.get("cache_relative") != "assets/cache" or receipt.get("resource_payloads_included") is not False:
+    policy = resource_database.installation_policy(ROOT)
+    if (APP_NAME not in images or receipt.get("cache_relative") != policy["cache_relative"]
+            or receipt.get("resource_payloads_included") is not False
+            or receipt.get("catalog_filename") != policy["catalog_filename"]
+            or receipt.get("installation_policy_sha256") != digest(ROOT / resource_database.INSTALLATION)):
         raise ValueError("Invalid installer image/cache policy")
-    allowed_payload = {APP_NAME, ICO_NAME, MARKER_NAME}
+    allowed_payload = {APP_NAME, ICO_NAME, MARKER_NAME, policy["catalog_filename"]}
     for name in images:
         if name != APP_NAME:
             if not re.fullmatch(r"[A-Za-z0-9_.-]+\.dll", name, flags=re.I):
@@ -337,10 +352,13 @@ def verify(stage):
             raise ValueError("Installer input bytes changed: " + row["path"])
     marker = json.loads((stage / "payload" / MARKER_NAME).read_bytes())
     if marker != {"source": "windows-inno", "version": version, "architecture": architecture,
-                  "executable": APP_NAME, "cache_relative": "assets/cache"}:
+                  "executable": APP_NAME, "cache_relative": policy["cache_relative"],
+                  "catalog_filename": policy["catalog_filename"]}:
         raise ValueError("Installer ownership marker differs from the payload")
     if (stage / "runtime-files.iss").read_bytes() != runtime_include(set(images) - {APP_NAME}):
         raise ValueError("Installer DLL include differs from its allowlist")
+    if digest(stage / "payload" / policy["catalog_filename"]) != digest(ROOT / policy["catalog_source"]):
+        raise ValueError("Installer resource catalog differs from maintained database")
     icon, icon_sources = icon_bytes()
     if (stage / "payload" / ICO_NAME).read_bytes() != icon or receipt.get("native_icons") != icon_sources:
         raise ValueError("Installer icon differs from retained native icon bytes")
@@ -350,7 +368,7 @@ def verify(stage):
     check_closure(current_images, architecture)
     return {"stage": stage.relative_to(ROOT).as_posix(), "version": version, "architecture": architecture,
             "payload_files": len(allowed_payload), "resource_payloads_included": False,
-            "cache_relative": "assets/cache", "passed": True,
+            "cache_relative": policy["cache_relative"], "catalog_filename": policy["catalog_filename"], "passed": True,
             "scope": "static installer inputs only; application and installer not executed"}
 
 
@@ -366,6 +384,8 @@ def compile_installer(stage, compiler=None):
     # ISCC is a compiler, not the generated installer. Never invoke its output.
     command = [str(compiler), "/Qp", "/DPayloadDir=" + str(stage / "payload"),
                "/DAppVersion=" + report["version"], "/DAppArch=" + report["architecture"],
+               "/DCatalogFilename=" + report["catalog_filename"],
+               "/DCacheRelative=" + report["cache_relative"].replace("/", "\\"),
                "/DOutputRoot=" + str(setup_output), str(ROOT / SCRIPT)]
     result = subprocess.run(command, cwd=ROOT, check=False)
     if result.returncode:

@@ -27,7 +27,7 @@ const GROUPS: &[(&str, &str)] = &[
 ];
 fn keys() -> &'static [SourceKey] {
     static KEYS: OnceLock<Vec<SourceKey>> = OnceLock::new();
-    KEYS.get_or_init(|| crate::data::mouse_mapping_keyboard_70_data!())
+    KEYS.get_or_init(|| read_mouse_mapping_keyboard_70_catalog())
 }
 fn key(id: &str) -> Option<&'static SourceKey> {
     keys()
@@ -948,3 +948,200 @@ impl MouseProductWorkspace {
         body.into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_mapping_keyboard_70_data.
+fn read_mouse_mapping_keyboard_70_catalog() -> Vec<SourceKey> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SourceKey>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceKey> {
+        let value = match r.tag()? {
+            0 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: r.child(decode_3)?,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: r.child(decode_3)?,
+                hid: r.child(decode_3)?,
+                extended_key: None,
+                modifier: None,
+                output_flag: None,
+            },
+            1 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: r.child(decode_3)?,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: None,
+                hid: None,
+                extended_key: None,
+                modifier: None,
+                output_flag: None,
+            },
+            2 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: r.child(decode_3)?,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: r.child(decode_3)?,
+                hid: r.child(decode_3)?,
+                extended_key: r.child(decode_3)?,
+                modifier: None,
+                output_flag: None,
+            },
+            3 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: r.child(decode_3)?,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: r.child(decode_3)?,
+                hid: r.child(decode_3)?,
+                extended_key: r.child(decode_3)?,
+                modifier: None,
+                output_flag: r.child(decode_5)?,
+            },
+            4 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: r.child(decode_3)?,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: r.child(decode_3)?,
+                hid: r.child(decode_3)?,
+                extended_key: None,
+                modifier: None,
+                output_flag: r.child(decode_5)?,
+            },
+            5 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: r.child(decode_3)?,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: None,
+                hid: r.child(decode_3)?,
+                extended_key: r.child(decode_3)?,
+                modifier: None,
+                output_flag: r.child(decode_5)?,
+            },
+            6 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: None,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: None,
+                hid: None,
+                extended_key: None,
+                modifier: r.child(decode_3)?,
+                output_flag: None,
+            },
+            7 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: r.child(decode_3)?,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: r.child(decode_3)?,
+                hid: r.child(decode_3)?,
+                extended_key: None,
+                modifier: r.child(decode_3)?,
+                output_flag: None,
+            },
+            8 => SourceKey {
+                name: r.child(decode_2)?,
+                input_id: None,
+                kind: r.child(decode_2)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_2)?,
+                key_code: r.child(decode_2)?,
+                flag: r.child(decode_4)?,
+                page_id: r.child(decode_3)?,
+                hid: r.child(decode_3)?,
+                extended_key: None,
+                modifier: r.child(decode_3)?,
+                output_flag: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_2)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u64>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_4)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_MAPPING_KEYBOARD_70_DATA,
+        0,
+        "0d269b7f4ec90470e99c1ef923ed2381005ffb716a680a59ec3d033091a66fe1",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_mapping_keyboard_70_data_decodes() {
+    let _ = read_mouse_mapping_keyboard_70_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_mapping_keyboard_70_data.

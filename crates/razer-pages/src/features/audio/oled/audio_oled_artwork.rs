@@ -29,7 +29,7 @@ struct ArtworkSpec {
 }
 fn artwork_spec() -> &'static ArtworkSpec {
     static SPEC: OnceLock<ArtworkSpec> = OnceLock::new();
-    SPEC.get_or_init(|| crate::data::audio_oled_artwork_data!())
+    SPEC.get_or_init(|| read_audio_oled_artwork_catalog())
 }
 fn artwork_label(symbol: &str) -> String {
     t(&artwork_spec().labels[symbol])
@@ -711,3 +711,75 @@ fn base64_encode(bytes: &[u8]) -> String {
     }
     output
 }
+
+// Generated catalog reader: razer-pages/audio_oled_artwork_data.
+fn read_audio_oled_artwork_catalog() -> ArtworkSpec {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ArtworkSpec> {
+        let value = match r.tag()? {
+            0 => ArtworkSpec {
+                labels: r.child(decode_1)?,
+                animations: r.child(decode_3)?,
+                images: r.child(decode_3)?,
+                emotes: r.child(decode_3)?,
+                default_emote: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Artwork>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Artwork> {
+        let value = match r.tag()? {
+            0 => Artwork {
+                id: r.child(decode_2)?,
+                name: r.child(decode_2)?,
+                asset: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_OLED_ARTWORK_DATA,
+        0,
+        "a6675e4f70f12ec9e981d00240eea818d8a40714931c0914d15c9b5b265a7ef6",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_oled_artwork_data_decodes() {
+    let _ = read_audio_oled_artwork_catalog();
+}
+// End generated catalog reader: razer-pages/audio_oled_artwork_data.

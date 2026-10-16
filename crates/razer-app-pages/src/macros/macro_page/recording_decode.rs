@@ -95,14 +95,15 @@ struct Key {
     #[serde(rename = "outputFlag")]
     output_flag: Option<u8>,
 }
+#[derive(Deserialize)]
+struct Data {
+    keys: Vec<Key>,
+}
+
 fn keys() -> &'static [Key] {
-    #[derive(Deserialize)]
-    struct Data {
-        keys: Vec<Key>,
-    }
     static DATA: OnceLock<Data> = OnceLock::new();
     &DATA
-        .get_or_init(|| crate::data::recording_keyboard_data!())
+        .get_or_init(|| read_recording_keyboard_catalog())
         .keys
 }
 fn makecode(vk: u16) -> u16 {
@@ -586,3 +587,116 @@ impl Decoder {
         Ok(output)
     }
 }
+
+// Generated catalog reader: razer-app-pages/recording_keyboard_data.
+fn read_recording_keyboard_catalog() -> Data {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                keys: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Key>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Key> {
+        let value = match r.tag()? {
+            0 => Key {
+                name: r.child(decode_3)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_6)?,
+                key_type: r.child(decode_3)?,
+                flag: r.child(decode_7)?,
+                output_flag: None,
+            },
+            1 => Key {
+                name: r.child(decode_3)?,
+                scancode: r.child(decode_4)?,
+                virtual_key: r.child(decode_6)?,
+                key_type: r.child(decode_3)?,
+                flag: r.child(decode_7)?,
+                output_flag: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u16>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_5)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u16> {
+        let value = match r.tag()? {
+            0 => r.u16()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_3)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u8> {
+        let value = match r.tag()? {
+            0 => r.u8()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u8>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_7)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_RECORDING_KEYBOARD_DATA,
+        0,
+        "8db186d279a5a98ae37b27020cb1a0b9ea92ae32aada2556f1477f7adfa7ade9",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_recording_keyboard_data_decodes() {
+    let _ = read_recording_keyboard_catalog();
+}
+// End generated catalog reader: razer-app-pages/recording_keyboard_data.

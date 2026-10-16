@@ -7,7 +7,7 @@ use razer_widgets::theme::DrawerColors;
 pub(super) fn supports_smart_only_calibration(product_id: u32) -> bool {
     static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
     PRODUCTS
-        .get_or_init(|| crate::data::mouse_smart_calibration_family_data!())
+        .get_or_init(|| read_mouse_smart_calibration_family_catalog())
         .contains(&product_id)
 }
 pub(super) fn smart_calibration_commits_on_release(product_id: u32) -> bool {
@@ -406,3 +406,37 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_smart_calibration_family_data.
+fn read_mouse_smart_calibration_family_catalog() -> Vec<u32> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_SMART_CALIBRATION_FAMILY_DATA,
+        0,
+        "fca6c76e6aade079c527c02416d8ea5258110eb151f126bdb524f6f209d328a1",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_smart_calibration_family_data_decodes() {
+    let _ = read_mouse_smart_calibration_family_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_smart_calibration_family_data.

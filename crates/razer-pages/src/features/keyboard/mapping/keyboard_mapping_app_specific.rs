@@ -20,7 +20,7 @@ pub(super) struct Presets {
 }
 pub(super) fn data(pid: u32) -> &'static Data {
     static DATA: OnceLock<Vec<Data>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_app_interdevice_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_app_interdevice_catalog())
         .iter()
         .find(|row| row.product_id == pid)
         .expect("current keyboard product")
@@ -327,3 +327,130 @@ impl KeyboardProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_app_interdevice_data.
+fn read_keyboard_mapping_app_interdevice_catalog() -> Vec<Data> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Data>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                product_id: r.child(decode_2)?,
+                profiles: r.child(decode_3)?,
+                fallback_app_choices: r.child(decode_6)?,
+                profile_choices: r.child(decode_6)?,
+                sensitivity_choices: r.child(decode_6)?,
+                keymap_choices: r.child(decode_6)?,
+                messages: r.child(decode_8)?,
+                dpi_defaults: r.child(decode_9)?,
+                configure_action: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, Presets>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_4, decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Presets> {
+        let value = match r.tag()? {
+            0 => Presets {
+                choices: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_4, decode_4)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, f64>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_4, decode_10)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f64> {
+        let value = match r.tag()? {
+            0 => r.f64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_APP_INTERDEVICE_DATA,
+        0,
+        "1680c3bdcaf2ade40515fea86633391c639b068197aa1bddd6f57eedbad03734",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_app_interdevice_data_decodes() {
+    let _ = read_keyboard_mapping_app_interdevice_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_app_interdevice_data.

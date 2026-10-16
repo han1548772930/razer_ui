@@ -319,7 +319,7 @@ impl MouseProductWorkspace {
 
     pub(super) fn advanced_enabled(&self) -> bool {
         static FLOORS: OnceLock<BTreeMap<String, String>> = OnceLock::new();
-        let floors = FLOORS.get_or_init(|| crate::data::mouse_advanced_data!());
+        let floors = FLOORS.get_or_init(|| read_mouse_advanced_catalog());
         floors
             .get(&self.spec.product_id.to_string())
             .is_none_or(|required| {
@@ -599,3 +599,39 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_advanced_data.
+fn read_mouse_advanced_catalog() -> BTreeMap<String, String> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_ADVANCED_DATA,
+        0,
+        "d4561f32549c1fefa5bc9910110ca7991902290ab115878516ab9f247482a8a5",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_advanced_data_decodes() {
+    let _ = read_mouse_advanced_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_advanced_data.

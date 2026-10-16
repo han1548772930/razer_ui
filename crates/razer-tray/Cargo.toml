@@ -4,6 +4,7 @@ version.workspace=true
 edition.workspace=true
 
 [dependencies]
+razer-resource-db.workspace = true
 razer-model.workspace = true
 razer-assets.workspace = true
 anyhow.workspace=true

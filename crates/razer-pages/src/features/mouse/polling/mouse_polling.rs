@@ -97,7 +97,7 @@ pub struct SourceSpec {
 pub fn source_spec(product_id: u32) -> Option<&'static SourceSpec> {
     static SOURCES: OnceLock<Vec<SourceSpec>> = OnceLock::new();
     SOURCES
-        .get_or_init(|| crate::data::mouse_polling_source_data!())
+        .get_or_init(|| read_mouse_polling_source_catalog())
         .iter()
         .find(|spec| spec.product_id == product_id)
 }
@@ -380,3 +380,167 @@ pub(super) fn source_advanced_supported(observed: Option<&str>, required: &str) 
     };
     !required.cmp_precedence(&observed).is_gt()
 }
+
+// Generated catalog reader: razer-pages/mouse_polling_source_data.
+fn read_mouse_polling_source_catalog() -> Vec<SourceSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SourceSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceSpec> {
+        let value = match r.tag()? {
+            0 => SourceSpec {
+                product_id: r.child(decode_2)?,
+                device_ids: r.child(decode_3)?,
+                pairing_dongle_id: r.child(decode_2)?,
+                pair_identity: r.child(decode_4)?,
+                master_supports_8k_flag: r.child(decode_5)?,
+                is_dongle_hyperpolling_device: r.child(decode_5)?,
+                rates: r.child(decode_6)?,
+                firmware_floor: r.child(decode_8)?,
+                hyper_master_ids: r.child(decode_3)?,
+                high_rate_threshold_hz: r.child(decode_2)?,
+                fallback_wireless_hz: r.child(decode_2)?,
+                ble_visibility: r.child(decode_9)?,
+                limits: None,
+            },
+            1 => SourceSpec {
+                product_id: r.child(decode_2)?,
+                device_ids: r.child(decode_3)?,
+                pairing_dongle_id: r.child(decode_2)?,
+                pair_identity: r.child(decode_4)?,
+                master_supports_8k_flag: r.child(decode_5)?,
+                is_dongle_hyperpolling_device: r.child(decode_5)?,
+                rates: r.child(decode_6)?,
+                firmware_floor: None,
+                hyper_master_ids: r.child(decode_3)?,
+                high_rate_threshold_hz: r.child(decode_2)?,
+                fallback_wireless_hz: r.child(decode_2)?,
+                ble_visibility: r.child(decode_9)?,
+                limits: r.child(decode_10)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PairIdentity> {
+        let value = match r.tag()? {
+            0 => PairIdentity::StrictDongleId,
+            1 => PairIdentity::CurrentDeviceIds,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, std::vec::Vec<u32>>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_7, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_7)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<BleVisibility> {
+        let value = match r.tag()? {
+            0 => BleVisibility::Hidden,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<LinkLimits>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_11)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<LinkLimits> {
+        let value = match r.tag()? {
+            0 => LinkLimits {
+                dual_link_hz: r.child(decode_2)?,
+                dock_hz: r.child(decode_2)?,
+                dock_min_devices: r.child(decode_12)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_POLLING_SOURCE_DATA,
+        0,
+        "0a75f6cc760760e4db56aa1085225306a233f6923d1c8894b107beb04cde10f9",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_polling_source_data_decodes() {
+    let _ = read_mouse_polling_source_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_polling_source_data.

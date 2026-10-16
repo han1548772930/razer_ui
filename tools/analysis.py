@@ -26,9 +26,9 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def builtin_data_path(crate, symbol):
+def builtin_data_path(crate, symbol, *, macro_name=None):
     import asset_release
-    return asset_release.builtin_data_path(crate, symbol, root=ROOT)
+    return asset_release.builtin_data_path(crate, symbol, root=ROOT, macro_name=macro_name)
 
 
 def save_builtin_data(symbol, value):
@@ -4507,9 +4507,96 @@ def audit_native_chain(args):
     return result
 
 
+def audit_reference(args):
+    """Verify a complete external Git snapshot without executing project code."""
+    import tomllib
+    directory = (ROOT / args.directory).resolve()
+    if not directory.is_relative_to((ROOT / ".analysis/references").resolve()) or directory.is_symlink():
+        raise ValueError("Architecture references must remain under .analysis/references/")
+    def git(*arguments):
+        return subprocess.run(["git", "-C", str(directory), *arguments], check=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout
+    commit = git("rev-parse", "HEAD").decode().strip()
+    if commit != args.commit or not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("Reference checkout differs from its pinned commit")
+    if git("diff", "--exit-code", "--no-ext-diff", "HEAD", "--").strip():
+        raise ValueError("Reference tracked files have been modified")
+    acquisition_path = directory / "acquisition.json"
+    previous = json.loads(acquisition_path.read_bytes())
+    latest = None
+    if args.check_upstream:
+        repository = re.fullmatch(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?", previous["url"])
+        if repository is None:
+            raise ValueError("Upstream audit requires an explicit public GitHub repository")
+        request = urllib.request.Request("https://api.github.com/repos/" + repository[1] + "/commits/HEAD",
+                                         headers={"User-Agent": "local-static-reference-audit"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            remote = json.load(response)
+        latest = {"checked_at_utc": stamp(), "commit": remote["sha"],
+                  "committed_at_utc": remote["commit"]["committer"]["date"]}
+        if latest["commit"] != commit:
+            raise ValueError("Reference is no longer the current upstream commit; reacquire before comparison")
+    files, restored = [], []
+    for entry in git("ls-tree", "-r", "-l", "-z", commit).split(b"\0"):
+        if not entry:
+            continue
+        metadata, spelling = entry.split(b"\t", 1)
+        mode, kind, blob, length = metadata.split()
+        name = spelling.decode("utf-8")
+        path = directory / name
+        if kind != b"blob" or mode not in {b"100644", b"100755", b"120000"} or not path.absolute().is_relative_to(directory):
+            raise ValueError("Unsupported reference tree entry: " + name)
+        if any(parent.is_symlink() for parent in path.parents if parent.is_relative_to(directory)):
+            raise ValueError("Reference traverses a link: " + name)
+        raw = os.readlink(path).encode("utf-8") if path.is_symlink() and mode == b"120000" else path.read_bytes()
+        actual_blob = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+        if len(raw) != int(length) or actual_blob != blob.decode():
+            if not args.restore_original_bytes:
+                raise ValueError("Reference bytes differ from committed Git object: " + name)
+            original = git("cat-file", "blob", blob.decode())
+            if hashlib.sha1(b"blob " + str(len(original)).encode() + b"\0" + original).hexdigest() != blob.decode():
+                raise ValueError("Reference Git object is corrupt: " + name)
+            restored.append({"path": rel(path), "checkout_sha256": hashlib.sha256(raw).hexdigest(),
+                             "original_sha256": hashlib.sha256(original).hexdigest()})
+            path.write_bytes(original)
+            raw, actual_blob = original, blob.decode()
+        files.append({"path": path.relative_to(ROOT).as_posix(), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(), "git_mode": mode.decode(),
+                      "git_blob": actual_blob, "kind": "external_architecture_reference"})
+    workspace = tomllib.loads((directory / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]
+    manifests = []
+    for member in workspace["members"]:
+        for owner in sorted(directory.glob(member)):
+            manifest = owner / "Cargo.toml"
+            value = tomllib.loads(manifest.read_text(encoding="utf-8"))
+            dependencies = {**value.get("dependencies", {})}
+            for target in value.get("target", {}).values():
+                dependencies.update(target.get("dependencies", {}))
+            resolved = {name: workspace.get("dependencies", {}).get(name, item) if isinstance(item, dict) and item.get("workspace") else item
+                        for name, item in dependencies.items()}
+            manifests.append({"name": value["package"]["name"], "manifest": rel(manifest),
+                              "internal_dependencies": sorted(name for name, item in resolved.items()
+                                                              if isinstance(item, dict) and "path" in item)})
+    result = {"schema_version": 1, "url": previous["url"], "commit": commit,
+              "audited_at_utc": stamp(), "method": "complete_git_tree_blob_identity_and_workspace_manifest_audit",
+              "git_version": subprocess.run(["git", "--version"], capture_output=True, text=True, check=True).stdout.strip(),
+              "upstream": latest or previous.get("upstream"), "files": files, "workspace_members": manifests,
+              "checkout_filter_restorations": restored or previous.get("checkout_filter_restorations", []),
+              "summary": {"files": len(files), "bytes": sum(row["bytes"] for row in files), "members": len(manifests)},
+              "target_execution": False,
+              "scope": "Complete acquisition/byte and dependency inventory; selected architecture call chains read separately. No device-protocol evidence or runtime acceptance is implied."}
+    save(acquisition_path, result)
+    print(json.dumps({"receipt": rel(acquisition_path), "commit": commit, **result["summary"], "passed": True}), flush=True)
+    return result
+
+
 def add_commands(parsers):
     import host
     host.add_commands(parsers)
+    reference = parsers.add_parser("audit-reference", help="Verify every tracked byte and workspace dependency in a pinned architecture reference")
+    reference.add_argument("--directory", required=True)
+    reference.add_argument("--commit", required=True)
+    reference.add_argument("--check-upstream", action="store_true")
+    reference.add_argument("--restore-original-bytes", action="store_true", help="Replace clean-checkout filter conversions with verified raw Git blobs")
     parsers.add_parser("configure-ida", help="Regenerate direct IDA MCP configuration and plugin")
     probe = parsers.add_parser("probe-ida", help="Verify static MCP metadata, function lookup, complete pseudocode and assembly")
     probe.add_argument("--input", required=True)
@@ -4573,7 +4660,7 @@ def run(args):
     if args.command in {"acquire-installed", "acquire-host", "inspect-host", "analyze-host"}:
         import host
         return host.run(args)
-    {"configure-ida": lambda _: configure_ida(), "inspect-corpus": inspect_corpus,
+    {"audit-reference": audit_reference, "configure-ida": lambda _: configure_ida(), "inspect-corpus": inspect_corpus,
      "extract-native-packages": extract_native_packages,
      "probe-ida": probe_ida,
      "refresh-gaps": lambda _: print(json.dumps({"owners": len(refresh_gaps()["owners"])}), flush=True),

@@ -5720,6 +5720,7 @@ dependencies = [
 name = "razer-app-pages"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-channel",
  "chrono",
  "gpui-kit",
@@ -5732,6 +5733,7 @@ dependencies = [
  "razer-model",
  "razer-pages",
  "razer-platform",
+ "razer-resource-db",
  "razer-settings",
  "razer-storage",
  "razer-widgets",
@@ -5848,9 +5850,11 @@ dependencies = [
 name = "razer-model"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "razer-catalog",
  "razer-device",
  "razer-i18n",
+ "razer-resource-db",
  "serde",
  "serde_json",
 ]
@@ -5873,6 +5877,7 @@ dependencies = [
  "razer-ipc",
  "razer-model",
  "razer-platform",
+ "razer-resource-db",
  "razer-state",
  "razer-widgets",
  "regex",
@@ -5903,6 +5908,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "rusqlite",
+ "serde",
+ "serde_json",
  "sha2 0.10.9",
 ]
 
@@ -5946,6 +5953,7 @@ dependencies = [
  "razer-model",
  "razer-pages",
  "razer-platform",
+ "razer-resource-db",
  "razer-state",
  "razer-storage",
  "razer-widgets",
@@ -5971,6 +5979,7 @@ dependencies = [
  "razer-model",
  "razer-pages",
  "razer-platform",
+ "razer-resource-db",
  "razer-settings",
  "razer-state",
  "razer-storage",
@@ -6018,6 +6027,7 @@ dependencies = [
  "razer-assets",
  "razer-i18n",
  "razer-model",
+ "razer-resource-db",
  "razer-widgets",
  "serde_json",
  "tray-icon",

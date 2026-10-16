@@ -41,7 +41,7 @@ struct Spec {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| crate::data::gamer_room_hotspot_data!())
+    SPEC.get_or_init(|| read_gamer_room_hotspot_catalog())
 }
 
 #[derive(IntoElement)]
@@ -136,3 +136,108 @@ impl RenderOnce for HotspotPulse {
         )
     }
 }
+
+// Generated catalog reader: razer-app-pages/gamer_room_hotspot_data.
+fn read_gamer_room_hotspot_catalog() -> Spec {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                width: r.child(decode_1)?,
+                height: r.child(decode_1)?,
+                view_box: r.child(decode_2)?,
+                center: r.child(decode_3)?,
+                stroke_rgb: r.child(decode_4)?,
+                stroke_opacity: r.child(decode_1)?,
+                radius: r.child(decode_6)?,
+                stroke_width: r.child(decode_6)?,
+                opacity: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 4]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 4>(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[u8; 3]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 3>(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u8> {
+        let value = match r.tag()? {
+            0 => r.u8()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Track> {
+        let value = match r.tag()? {
+            0 => Track {
+                duration_seconds: r.child(decode_7)?,
+                key_times: r.child(decode_2)?,
+                values: r.child(decode_2)?,
+                key_splines: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f64> {
+        let value = match r.tag()? {
+            0 => r.f64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[[f32; 4]; 3]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 3>(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_GAMER_ROOM_HOTSPOT_DATA,
+        0,
+        "b79a59fd7f10c78e00ba0185cf55e36759b74af14de9f79cec3d8c28b8c13961",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_gamer_room_hotspot_data_decodes() {
+    let _ = read_gamer_room_hotspot_catalog();
+}
+// End generated catalog reader: razer-app-pages/gamer_room_hotspot_data.

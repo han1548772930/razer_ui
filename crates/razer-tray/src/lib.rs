@@ -1,6 +1,5 @@
 //! Platform-independent systray presentation, translations, and UI commands.
 //! OS registration and native window operations belong to platform adapters.
-mod data;
 use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
@@ -43,7 +42,7 @@ struct TrayStrings {
 
 fn text(group: &str, key: &str) -> String {
     static STRINGS: OnceLock<TrayStrings> = OnceLock::new();
-    let data = STRINGS.get_or_init(|| crate::data::tray_strings!());
+    let data = STRINGS.get_or_init(|| read_tray_strings_catalog());
     let translations = match group {
         "host" => &data.host,
         "popup" => &data.popup,
@@ -322,29 +321,12 @@ fn native_menu(cx: &App) -> anyhow::Result<Menu> {
                 if let Some(icon) = icon {
                     // getCachedThemeIcon preserves the source PNG dimensions;
                     // only getCachedProductIcon requests a 20x20 application icon.
-                    let (bytes, width, height): (&[u8], u32, u32) = match icon {
-                        MenuIcon::Application => (
-                            include_bytes!(
-                                "../../../assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba"
-                            ),
-                            20,
-                            20,
-                        ),
-                        MenuIcon::Settings if dark => (
-                            include_bytes!(
-                                "../../../assets/synapse/shared/pending-source-audit/7747f51f284ded65-tray-gear-dark.rgba"
-                            ),
-                            14,
-                            14,
-                        ),
-                        MenuIcon::Settings => (
-                            include_bytes!(
-                                "../../../assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba"
-                            ),
-                            14,
-                            14,
-                        ),
+                    let icon = match icon {
+                        MenuIcon::Application => razer_assets::NativeIcon::Application,
+                        MenuIcon::Settings if dark => razer_assets::NativeIcon::SettingsDark,
+                        MenuIcon::Settings => razer_assets::NativeIcon::SettingsLight,
                     };
+                    let (bytes, width, height) = (icon.rgba(), icon.pixels(), icon.pixels());
                     let image = tray_icon::menu::Icon::from_rgba(bytes.to_vec(), width, height)?;
                     menu.append(&IconMenuItem::with_id(id, label, true, Some(image), None))?;
                 } else {
@@ -388,10 +370,69 @@ fn notification_icon() -> Result<(tray_icon::Icon, u32), tray_icon::BadIcon> {
     #[cfg(not(target_os = "windows"))]
     {
         tray_icon::Icon::from_rgba(
-            include_bytes!("../../../assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba").to_vec(),
+            razer_assets::NativeIcon::Notification16.rgba().to_vec(),
             16,
             16,
         )
         .map(|icon| (icon, 16))
     }
 }
+
+// Generated catalog reader: razer-tray/tray_strings.
+fn read_tray_strings_catalog() -> TrayStrings {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<TrayStrings> {
+        let value = match r.tag()? {
+            0 => TrayStrings {
+                host: r.child(decode_1)?,
+                popup: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_TRAY_TRAY_STRINGS,
+        0,
+        "09c63385b79313ce732472c02dc021ca5007d56754da21d24dbfba62ee4e0161",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_tray_strings_decodes() {
+    let _ = read_tray_strings_catalog();
+}
+// End generated catalog reader: razer-tray/tray_strings.

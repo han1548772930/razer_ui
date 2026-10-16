@@ -77,7 +77,7 @@ struct Loading {
 }
 fn spec() -> &'static RuntimeSpec {
     static SPEC: OnceLock<RuntimeSpec> = OnceLock::new();
-    SPEC.get_or_init(|| crate::data::audio_oled_runtime_data!())
+    SPEC.get_or_init(|| read_audio_oled_runtime_catalog())
 }
 fn text(symbol: &str) -> String {
     t(&spec().labels[symbol])
@@ -803,3 +803,120 @@ fn spinner(phase: f32) -> impl IntoElement {
     )
     .size(surface::css(100.))
 }
+
+// Generated catalog reader: razer-pages/audio_oled_runtime_data.
+fn read_audio_oled_runtime_catalog() -> RuntimeSpec {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<RuntimeSpec> {
+        let value = match r.tag()? {
+            0 => RuntimeSpec {
+                connection: r.child(decode_1)?,
+                language: r.child(decode_3)?,
+                loading: r.child(decode_6)?,
+                labels: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Connection> {
+        let value = match r.tag()? {
+            0 => Connection {
+                is_ble: r.child(decode_2)?,
+                is_dongle: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Language> {
+        let value = match r.tag()? {
+            0 => Language {
+                value: r.child(decode_4)?,
+                changed: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u8> {
+        let value = match r.tag()? {
+            0 => r.u8()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Loading> {
+        let value = match r.tag()? {
+            0 => Loading {
+                target: r.child(decode_7)?,
+                kind: r.child(decode_7)?,
+                total_items: r.child(decode_5)?,
+                current_item: r.child(decode_5)?,
+                progress: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_7, decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_OLED_RUNTIME_DATA,
+        0,
+        "413edeefc6aaf784cc42e88b5e2897c02bf4f8e30ae1df5459c23474fad2bdd4",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_oled_runtime_data_decodes() {
+    let _ = read_audio_oled_runtime_catalog();
+}
+// End generated catalog reader: razer-pages/audio_oled_runtime_data.

@@ -520,7 +520,7 @@ pub(super) fn key_groups() -> Vec<Choice> {
         ("symbols", "KB_SYMBOLS"),
     ])
 }
-const KEYS: &[(&str, &str, &str)] = include!("../../../../razer-model/src/mapping_keys.rs");
+const KEYS: &[(&str, &str, &str)] = razer_model::settings::MAPPING_KEYS;
 fn key_choices(group: &str) -> Vec<Choice> {
     if group == "record" {
         return vec![];

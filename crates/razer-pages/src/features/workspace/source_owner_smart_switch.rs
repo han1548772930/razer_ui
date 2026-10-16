@@ -52,7 +52,7 @@ struct OptionRow {
 }
 fn records() -> &'static [SmartSwitch] {
     static DATA: OnceLock<Vec<SmartSwitch>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::source_owner_smart_switch_data!())
+    DATA.get_or_init(|| read_source_owner_smart_switch_catalog())
 }
 fn record(pid: u32) -> Option<&'static SmartSwitch> {
     records().iter().find(|row| row.product_id == pid)
@@ -445,3 +445,227 @@ impl SourceHelpOwner {
         .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/source_owner_smart_switch_data.
+fn read_source_owner_smart_switch_catalog() -> Vec<SmartSwitch> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SmartSwitch>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SmartSwitch> {
+        let value = match r.tag()? {
+            0 => SmartSwitch {
+                product_id: r.child(decode_2)?,
+                header: r.child(decode_3)?,
+                description: r.child(decode_3)?,
+                note: r.child(decode_3)?,
+                headset: r.child(decode_3)?,
+                hero: r.child(decode_3)?,
+                rows: r.child(decode_4)?,
+                locales: r.child(decode_10)?,
+                navigation: r.child(decode_3)?,
+                tooltip_asset: r.child(decode_3)?,
+                card: r.child(decode_12)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Row>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Row> {
+        let value = match r.tag()? {
+            0 => Row {
+                icon: r.child(decode_3)?,
+                description: r.child(decode_3)?,
+                action: r.child(decode_6)?,
+                chips: r.child(decode_7)?,
+            },
+            1 => Row {
+                icon: r.child(decode_3)?,
+                description: r.child(decode_3)?,
+                action: None,
+                chips: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_3)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Chip>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Chip> {
+        let value = match r.tag()? {
+            0 => Chip {
+                label: r.child(decode_3)?,
+                color: r.child(decode_6)?,
+                tip: None,
+                asterisk: r.child(decode_9)?,
+                icon: None,
+            },
+            1 => Chip {
+                label: r.child(decode_3)?,
+                color: r.child(decode_6)?,
+                tip: r.child(decode_6)?,
+                asterisk: r.child(decode_9)?,
+                icon: None,
+            },
+            2 => Chip {
+                label: r.child(decode_3)?,
+                color: None,
+                tip: None,
+                asterisk: r.child(decode_9)?,
+                icon: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_11)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Card> {
+        let value = match r.tag()? {
+            0 => Card {
+                page: r.child(decode_3)?,
+                initial: r.child(decode_13)?,
+                title: r.child(decode_3)?,
+                tip: r.child(decode_3)?,
+                description: r.child(decode_3)?,
+                note: r.child(decode_3)?,
+                help: r.child(decode_3)?,
+                options: r.child(decode_14)?,
+                support_button: r.child(decode_9)?,
+                mutation: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<OptionRow>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_15)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<OptionRow> {
+        let value = match r.tag()? {
+            0 => OptionRow {
+                value: r.child(decode_16)?,
+                name: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u8> {
+        let value = match r.tag()? {
+            0 => r.u8()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SOURCE_OWNER_SMART_SWITCH_DATA,
+        0,
+        "7124267a7142bf9bb168de3c2cc8241d377a574146c42000ce080969057511a9",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_source_owner_smart_switch_data_decodes() {
+    let _ = read_source_owner_smart_switch_catalog();
+}
+// End generated catalog reader: razer-pages/source_owner_smart_switch_data.

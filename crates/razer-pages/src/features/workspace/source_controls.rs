@@ -224,9 +224,9 @@ struct ProductSpec {
 fn specs() -> &'static [ProductSpec] {
     static SPECS: OnceLock<Vec<ProductSpec>> = OnceLock::new();
     SPECS.get_or_init(|| {
-        let mut specs: Vec<ProductSpec> = crate::data::source_controls_data!();
-        specs.extend(crate::data::keyboard_oled_data!());
-        specs.extend(crate::data::accessory_controls_data!());
+        let mut specs: Vec<ProductSpec> = read_source_controls_catalog();
+        specs.extend(read_keyboard_oled_catalog());
+        specs.extend(read_accessory_controls_catalog());
         specs
     })
 }
@@ -2264,7 +2264,7 @@ impl PanTiltBox {
     }
 }
 /// Product input IDs and their source display names, module 6114.
-const KEYS: &[(&str, &str, &str)] = include!("../../../../razer-model/src/mapping_keys.rs");
+const KEYS: &[(&str, &str, &str)] = razer_model::settings::MAPPING_KEYS;
 fn is_modifier(id: &str) -> bool {
     KEYS.iter()
         .any(|(group, key, _)| *group == "modifiers" && *key == id)
@@ -2444,3 +2444,2460 @@ impl Render for SourceControls {
         view.into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/accessory_controls_data.
+fn read_accessory_controls_catalog() -> Vec<ProductSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ProductSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ProductSpec> {
+        let value = match r.tag()? {
+            0 => ProductSpec {
+                product_id: r.child(decode_2)?,
+                profile: r.child(decode_3)?,
+                camera_image_settings: Default::default(),
+                camera_focus_mode_minimum: None,
+                device_fields: Default::default(),
+                pages: r.child(decode_4)?,
+                layout: None,
+            },
+            1 => ProductSpec {
+                product_id: r.child(decode_2)?,
+                profile: r.child(decode_3)?,
+                camera_image_settings: Default::default(),
+                camera_focus_mode_minimum: None,
+                device_fields: Default::default(),
+                pages: r.child(decode_4)?,
+                layout: r.child(decode_12)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<PageSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PageSpec> {
+        let value = match r.tag()? {
+            0 => PageSpec {
+                key: r.child(decode_6)?,
+                sections: r.child(decode_7)?,
+                camera_groups: Default::default(),
+                camera_preview: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SectionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SectionSpec> {
+        let value = match r.tag()? {
+            0 => SectionSpec {
+                title: r.child(decode_6)?,
+                column: None,
+                note: None,
+                description: None,
+                controls: r.child(decode_9)?,
+            },
+            1 => SectionSpec {
+                title: r.child(decode_6)?,
+                column: None,
+                note: None,
+                description: r.child(decode_12)?,
+                controls: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ControlSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_10)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ControlSpec> {
+        let value = match r.tag()? {
+            0 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            1 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_11)?,
+                max: r.child(decode_11)?,
+                step: r.child(decode_11)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: r.child(decode_12)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: r.child(decode_12)?,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            2 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: r.child(decode_12)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            3 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_13)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            4 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_11)?,
+                max: r.child(decode_11)?,
+                step: r.child(decode_11)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: r.child(decode_15)?,
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            5 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: r.child(decode_12)?,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_13)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            6 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_11)?,
+                max: r.child(decode_11)?,
+                step: r.child(decode_11)?,
+                options: Default::default(),
+                disabled_when: r.child(decode_12)?,
+                disabled_unless: None,
+                disabled_unless_all: r.child(decode_15)?,
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            7 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_11)?,
+                max: r.child(decode_11)?,
+                step: r.child(decode_11)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: r.child(decode_12)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            8 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_11)?,
+                max: r.child(decode_11)?,
+                step: r.child(decode_11)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: r.child(decode_12)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_16)?,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: r.child(decode_12)?,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            9 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_13)?,
+                disabled_when: None,
+                disabled_unless: r.child(decode_12)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_6)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<OptionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_14)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<OptionSpec> {
+        let value = match r.tag()? {
+            0 => OptionSpec {
+                label: r.child(decode_6)?,
+                value: r.child(decode_3)?,
+                disabled_on_ble: Default::default(),
+                image: None,
+                description: None,
+            },
+            1 => OptionSpec {
+                label: r.child(decode_6)?,
+                value: r.child(decode_3)?,
+                disabled_on_ble: Default::default(),
+                image: None,
+                description: r.child(decode_12)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<ConditionSpec>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_17)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ConditionSpec> {
+        let value = match r.tag()? {
+            0 => ConditionSpec {
+                path: r.child(decode_6)?,
+                value: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_ACCESSORY_CONTROLS_DATA,
+        0,
+        "e4e8a7192bb97bbcf7ed6a754805880c37be5181f37eadfb3f60e0fb49cad031",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_accessory_controls_data_decodes() {
+    let _ = read_accessory_controls_catalog();
+}
+// End generated catalog reader: razer-pages/accessory_controls_data.
+
+// Generated catalog reader: razer-pages/keyboard_oled_data.
+fn read_keyboard_oled_catalog() -> Vec<ProductSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ProductSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ProductSpec> {
+        let value = match r.tag()? {
+            0 => ProductSpec {
+                product_id: r.child(decode_2)?,
+                profile: r.child(decode_3)?,
+                camera_image_settings: Default::default(),
+                camera_focus_mode_minimum: None,
+                device_fields: r.child(decode_4)?,
+                pages: r.child(decode_6)?,
+                layout: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<PageSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PageSpec> {
+        let value = match r.tag()? {
+            0 => PageSpec {
+                key: r.child(decode_5)?,
+                sections: r.child(decode_8)?,
+                camera_groups: Default::default(),
+                camera_preview: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SectionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_9)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SectionSpec> {
+        let value = match r.tag()? {
+            0 => SectionSpec {
+                title: r.child(decode_5)?,
+                column: None,
+                note: None,
+                description: r.child(decode_10)?,
+                controls: r.child(decode_11)?,
+            },
+            1 => SectionSpec {
+                title: r.child(decode_5)?,
+                column: r.child(decode_10)?,
+                note: None,
+                description: r.child(decode_10)?,
+                controls: r.child(decode_11)?,
+            },
+            2 => SectionSpec {
+                title: r.child(decode_5)?,
+                column: r.child(decode_10)?,
+                note: r.child(decode_10)?,
+                description: r.child(decode_10)?,
+                controls: r.child(decode_11)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_5)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ControlSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ControlSpec> {
+        let value = match r.tag()? {
+            0 => ControlSpec {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                path: r.child(decode_5)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_5)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            1 => ControlSpec {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                path: r.child(decode_5)?,
+                renderer: None,
+                hide_label: r.child(decode_13)?,
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_5)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_14)?,
+                disabled_when: None,
+                disabled_unless: r.child(decode_10)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            2 => ControlSpec {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                path: r.child(decode_5)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_5)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: r.child(decode_10)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            3 => ControlSpec {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                path: r.child(decode_5)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_5)?,
+                min: r.child(decode_16)?,
+                max: r.child(decode_16)?,
+                step: r.child(decode_16)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            4 => ControlSpec {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                path: r.child(decode_5)?,
+                renderer: None,
+                hide_label: r.child(decode_13)?,
+                apply_label: r.child(decode_10)?,
+                complemented_byte: r.child(decode_13)?,
+                disabled_on_ble: r.child(decode_13)?,
+                kind: r.child(decode_5)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_14)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            5 => ControlSpec {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                path: r.child(decode_5)?,
+                renderer: None,
+                hide_label: r.child(decode_13)?,
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_5)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_14)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            6 => ControlSpec {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                path: r.child(decode_5)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_5)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_14)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<OptionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_15)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<OptionSpec> {
+        let value = match r.tag()? {
+            0 => OptionSpec {
+                label: r.child(decode_5)?,
+                value: r.child(decode_3)?,
+                disabled_on_ble: Default::default(),
+                image: None,
+                description: None,
+            },
+            1 => OptionSpec {
+                label: r.child(decode_5)?,
+                value: r.child(decode_3)?,
+                disabled_on_ble: r.child(decode_13)?,
+                image: None,
+                description: None,
+            },
+            2 => OptionSpec {
+                label: r.child(decode_5)?,
+                value: r.child(decode_3)?,
+                disabled_on_ble: Default::default(),
+                image: r.child(decode_10)?,
+                description: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_OLED_DATA,
+        0,
+        "1cabe6042424b50ca47031b38b5c1136b49dd38900acb8a9f846d18e588144a0",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_oled_data_decodes() {
+    let _ = read_keyboard_oled_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_oled_data.
+
+// Generated catalog reader: razer-pages/source_controls_data.
+fn read_source_controls_catalog() -> Vec<ProductSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ProductSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ProductSpec> {
+        let value = match r.tag()? {
+            0 => ProductSpec {
+                product_id: r.child(decode_2)?,
+                profile: r.child(decode_3)?,
+                camera_image_settings: Default::default(),
+                camera_focus_mode_minimum: None,
+                device_fields: Default::default(),
+                pages: r.child(decode_4)?,
+                layout: r.child(decode_16)?,
+            },
+            1 => ProductSpec {
+                product_id: r.child(decode_2)?,
+                profile: r.child(decode_3)?,
+                camera_image_settings: r.child(decode_33)?,
+                camera_focus_mode_minimum: None,
+                device_fields: Default::default(),
+                pages: r.child(decode_4)?,
+                layout: r.child(decode_16)?,
+            },
+            2 => ProductSpec {
+                product_id: r.child(decode_2)?,
+                profile: r.child(decode_3)?,
+                camera_image_settings: r.child(decode_33)?,
+                camera_focus_mode_minimum: r.child(decode_16)?,
+                device_fields: r.child(decode_37)?,
+                pages: r.child(decode_4)?,
+                layout: r.child(decode_16)?,
+            },
+            3 => ProductSpec {
+                product_id: r.child(decode_2)?,
+                profile: r.child(decode_3)?,
+                camera_image_settings: r.child(decode_33)?,
+                camera_focus_mode_minimum: r.child(decode_16)?,
+                device_fields: Default::default(),
+                pages: r.child(decode_4)?,
+                layout: r.child(decode_16)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<PageSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PageSpec> {
+        let value = match r.tag()? {
+            0 => PageSpec {
+                key: r.child(decode_6)?,
+                sections: r.child(decode_7)?,
+                camera_groups: Default::default(),
+                camera_preview: None,
+            },
+            1 => PageSpec {
+                key: r.child(decode_6)?,
+                sections: r.child(decode_7)?,
+                camera_groups: r.child(decode_20)?,
+                camera_preview: None,
+            },
+            2 => PageSpec {
+                key: r.child(decode_6)?,
+                sections: r.child(decode_7)?,
+                camera_groups: r.child(decode_20)?,
+                camera_preview: r.child(decode_34)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SectionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SectionSpec> {
+        let value = match r.tag()? {
+            0 => SectionSpec {
+                title: r.child(decode_6)?,
+                column: None,
+                note: None,
+                description: None,
+                controls: r.child(decode_9)?,
+            },
+            1 => SectionSpec {
+                title: r.child(decode_6)?,
+                column: None,
+                note: None,
+                description: r.child(decode_16)?,
+                controls: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ControlSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_10)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ControlSpec> {
+        let value = match r.tag()? {
+            0 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            1 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_14)?,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            2 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            3 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            4 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: r.child(decode_16)?,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            5 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: r.child(decode_17)?,
+                allow_decimal: r.child(decode_17)?,
+                round_up_decimals: r.child(decode_17)?,
+                stepper_max_length: r.child(decode_18)?,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            6 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: r.child(decode_16)?,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: r.child(decode_17)?,
+                allow_decimal: r.child(decode_17)?,
+                round_up_decimals: r.child(decode_17)?,
+                stepper_max_length: r.child(decode_18)?,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            7 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: r.child(decode_16)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: r.child(decode_16)?,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            8 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: r.child(decode_26)?,
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: r.child(decode_16)?,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: r.child(decode_17)?,
+                allow_decimal: r.child(decode_17)?,
+                round_up_decimals: r.child(decode_17)?,
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            9 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: r.child(decode_26)?,
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: r.child(decode_16)?,
+                description: None,
+                placeholder: None,
+                tilt_path: r.child(decode_16)?,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: r.child(decode_13)?,
+                box_width: r.child(decode_13)?,
+                box_height: r.child(decode_13)?,
+            },
+            10 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: r.child(decode_26)?,
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: r.child(decode_16)?,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            11 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: r.child(decode_26)?,
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: r.child(decode_16)?,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            12 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_14)?,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            13 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_14)?,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: r.child(decode_28)?,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: r.child(decode_17)?,
+                allow_decimal: r.child(decode_17)?,
+                round_up_decimals: r.child(decode_17)?,
+                stepper_max_length: r.child(decode_18)?,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            14 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: r.child(decode_30)?,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            15 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: r.child(decode_16)?,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            16 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_14)?,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: r.child(decode_16)?,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            17 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: r.child(decode_16)?,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_14)?,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: r.child(decode_16)?,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            18 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: r.child(decode_13)?,
+                max: r.child(decode_13)?,
+                step: r.child(decode_13)?,
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_14)?,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: r.child(decode_16)?,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: r.child(decode_17)?,
+                allow_decimal: r.child(decode_17)?,
+                round_up_decimals: r.child(decode_17)?,
+                stepper_max_length: r.child(decode_18)?,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            19 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: r.child(decode_11)?,
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: r.child(decode_14)?,
+                camera_focus_mode_v2: r.child(decode_17)?,
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: None,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            20 => ControlSpec {
+                key: r.child(decode_6)?,
+                label: r.child(decode_6)?,
+                path: r.child(decode_6)?,
+                renderer: None,
+                hide_label: Default::default(),
+                apply_label: None,
+                complemented_byte: Default::default(),
+                disabled_on_ble: Default::default(),
+                kind: r.child(decode_6)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: Default::default(),
+                options: Default::default(),
+                disabled_when: None,
+                disabled_unless: None,
+                disabled_unless_all: Default::default(),
+                disabled_when_any: Default::default(),
+                visible_when: None,
+                camera_focus_mode_v2: Default::default(),
+                reset_value: None,
+                minimum_when: None,
+                enabled_from_value: None,
+                tooltip: r.child(decode_16)?,
+                description: None,
+                placeholder: None,
+                tilt_path: None,
+                has_stepper: Default::default(),
+                allow_decimal: Default::default(),
+                round_up_decimals: Default::default(),
+                stepper_max_length: None,
+                max_pan_tilt: default_max_pan_tilt(),
+                box_width: Default::default(),
+                box_height: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<OptionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<OptionSpec> {
+        let value = match r.tag()? {
+            0 => OptionSpec {
+                label: r.child(decode_6)?,
+                value: r.child(decode_3)?,
+                disabled_on_ble: Default::default(),
+                image: None,
+                description: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<ConditionSpec>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_15)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ConditionSpec> {
+        let value = match r.tag()? {
+            0 => ConditionSpec {
+                path: r.child(decode_6)?,
+                value: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_6)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_18(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<usize>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_19)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_19(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_20(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<camera_sections::CameraGroup>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_21)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_21(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<camera_sections::CameraGroup> {
+        let value = match r.tag()? {
+            0 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: r.child(decode_25)?,
+                header_switch: None,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            1 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: r.child(decode_25)?,
+                header_switch: None,
+                header_stepper: r.child(decode_25)?,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: None,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            2 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: r.child(decode_25)?,
+                header_switch: None,
+                header_stepper: r.child(decode_25)?,
+                header_checkbox: r.child(decode_25)?,
+                header_reset: None,
+                tooltip: None,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            3 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: None,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: None,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            4 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: r.child(decode_25)?,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            5 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: r.child(decode_25)?,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: None,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            6 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: None,
+                header_stepper: r.child(decode_25)?,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            7 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: r.child(decode_25)?,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: r.child(decode_25)?,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            8 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: None,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            9 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: r.child(decode_25)?,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: r.child(decode_25)?,
+                description_when_enabled: r.child(decode_25)?,
+                description_min_height: r.child(decode_31)?,
+            },
+            10 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: r.child(decode_25)?,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: r.child(decode_25)?,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            11 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: r.child(decode_25)?,
+                divider: None,
+                header_switch: None,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: r.child(decode_25)?,
+                warning: None,
+                warning_any: Default::default(),
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            12 => camera_sections::CameraGroup {
+                key: r.child(decode_22)?,
+                title: r.child(decode_22)?,
+                controls: r.child(decode_23)?,
+                collapsible: r.child(decode_24)?,
+                presentation: None,
+                divider: None,
+                header_switch: None,
+                header_stepper: None,
+                header_checkbox: None,
+                header_reset: None,
+                tooltip: None,
+                warning: r.child(decode_25)?,
+                warning_any: r.child(decode_23)?,
+                description: None,
+                description_when_enabled: None,
+                description_min_height: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_22(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_23(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_22)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_24(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_25(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_22)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_26(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<std::vec::Vec<ConditionSpec>>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_27)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_27(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ConditionSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_15)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_28(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<MinimumSpec>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_29)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_29(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MinimumSpec> {
+        let value = match r.tag()? {
+            0 => MinimumSpec {
+                path: r.child(decode_6)?,
+                value: r.child(decode_3)?,
+                min: r.child(decode_13)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_30(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_3)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_31(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u64>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_32)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_32(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_33(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_34(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<camera_preview::CameraPreviewSpec>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_35)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_35(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<camera_preview::CameraPreviewSpec> {
+        let value = match r.tag()? {
+            0 => camera_preview::CameraPreviewSpec {
+                source_title: r.child(decode_36)?,
+                preview_off: r.child(decode_36)?,
+                enable_preview: r.child(decode_36)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_36(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_37(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SOURCE_CONTROLS_DATA,
+        0,
+        "a74482c3c1b498d91f5752f74f341dd95717a474bfd629a7ad1c2cf9d1c17d7b",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_source_controls_data_decodes() {
+    let _ = read_source_controls_catalog();
+}
+// End generated catalog reader: razer-pages/source_controls_data.

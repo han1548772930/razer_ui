@@ -47,6 +47,11 @@ class WindowsInstallerTests(unittest.TestCase):
         self.root_patch.start()
         self.write("Cargo.toml", b'[package]\nversion = "0.1.0"\n')
         self.write(installer.SCRIPT, b"; inert fixture recipe\n")
+        self.write(installer.resource_database.INSTALLATION, json.dumps({
+            "schema_version": 1, "catalog_source": "assets/synapse/resource-catalog.sqlite3",
+            "catalog_filename": "resource-catalog.sqlite3", "cache_relative": "assets/cache",
+        }).encode())
+        self.write("assets/synapse/resource-catalog.sqlite3", b"inert catalog fixture")
         for pixels, name in installer.ICON_INPUTS:
             # Distinct coordinates exercise bottom-up rows and RGBA -> BGRA.
             raw = bytes(component for y in range(pixels) for x in range(pixels)
@@ -78,10 +83,10 @@ class WindowsInstallerTests(unittest.TestCase):
         self.write("runtime/vcruntime140.dll", pe_bytes(dll=True, imports=("kernel32.dll",)))
         result = self.stage(imports=("kernel32.dll", "vcruntime140.dll"), runtime_dlls=("runtime/vcruntime140.dll",))
         self.assertTrue(result["passed"])
-        self.assertEqual(result["payload_files"], 4)
+        self.assertEqual(result["payload_files"], 5)
         stage = self.root / result["stage"]
         self.assertEqual({p.name for p in (stage / "payload").iterdir()},
-                         {installer.APP_NAME, installer.ICO_NAME, installer.MARKER_NAME, "vcruntime140.dll"})
+                         {installer.APP_NAME, installer.ICO_NAME, installer.MARKER_NAME, "vcruntime140.dll", "resource-catalog.sqlite3"})
         self.assertEqual(installer.prepare(runtime_dlls=("runtime/vcruntime140.dll",)), result)
 
     def test_resource_or_pack_injection_is_rejected_before_compilation(self):

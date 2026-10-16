@@ -70,14 +70,15 @@ struct PreviewLayout {
     layout_name: String,
 }
 
+#[derive(serde::Deserialize)]
+struct Catalog {
+    layouts: Vec<PreviewLayout>,
+}
+
 fn keyboard_preview_layouts() -> &'static [PreviewLayout] {
-    #[derive(serde::Deserialize)]
-    struct Catalog {
-        layouts: Vec<PreviewLayout>,
-    }
     static LAYOUTS: std::sync::OnceLock<Vec<PreviewLayout>> = std::sync::OnceLock::new();
     LAYOUTS.get_or_init(|| {
-        let catalog: Catalog = crate::data::customize_layouts!();
+        let catalog: Catalog = read_customize_layouts_catalog();
         catalog.layouts
     })
 }
@@ -763,17 +764,18 @@ impl SettingsPage {
             .into_any_element()
     }
 }
+#[derive(serde::Deserialize)]
+struct DashboardVersion {
+    version: String,
+    #[serde(rename = "buildVersion")]
+    build_version: u64,
+}
+
 fn dashboard_source_version() -> &'static str {
-    #[derive(serde::Deserialize)]
-    struct DashboardVersion {
-        version: String,
-        #[serde(rename = "buildVersion")]
-        build_version: u64,
-    }
     static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     VERSION
         .get_or_init(|| {
-            let manifest: DashboardVersion = crate::data::settings_dashboard_manifest!();
+            let manifest: DashboardVersion = read_settings_dashboard_manifest_catalog();
             let version = &manifest.version;
             let build = manifest.build_version;
             std::iter::once("4".to_owned())
@@ -951,3 +953,113 @@ impl Render for SettingsPage {
             })
     }
 }
+
+// Generated catalog reader: razer-settings/customize_layouts.
+fn read_customize_layouts_catalog() -> Catalog {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Catalog> {
+        let value = match r.tag()? {
+            0 => Catalog {
+                layouts: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<PreviewLayout>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PreviewLayout> {
+        let value = match r.tag()? {
+            0 => PreviewLayout {
+                layout_id: r.child(decode_3)?,
+                layout_name: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_SETTINGS_CUSTOMIZE_LAYOUTS,
+        0,
+        "cc282ff70ebe083e0e4ad7c58ebf89fe6dcc612e748471e9473ad0fe00ce5090",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_customize_layouts_decodes() {
+    let _ = read_customize_layouts_catalog();
+}
+// End generated catalog reader: razer-settings/customize_layouts.
+
+// Generated catalog reader: razer-settings/settings_dashboard_manifest.
+fn read_settings_dashboard_manifest_catalog() -> DashboardVersion {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<DashboardVersion> {
+        let value = match r.tag()? {
+            0 => DashboardVersion {
+                version: r.child(decode_1)?,
+                build_version: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_SETTINGS_SETTINGS_DASHBOARD_MANIFEST,
+        0,
+        "30e91805d20a9738e2b06586f3edda42ef4cfd7bd73ab3762d83ebc49ed23070",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_settings_dashboard_manifest_decodes() {
+    let _ = read_settings_dashboard_manifest_catalog();
+}
+// End generated catalog reader: razer-settings/settings_dashboard_manifest.

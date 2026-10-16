@@ -17,7 +17,7 @@ struct AxisTexts {
 }
 fn axis_texts() -> &'static AxisTexts {
     static TEXTS: OnceLock<AxisTexts> = OnceLock::new();
-    TEXTS.get_or_init(|| crate::data::cooling_axis_data!())
+    TEXTS.get_or_init(|| read_cooling_axis_catalog())
 }
 
 #[derive(Clone, Copy)]
@@ -934,3 +934,69 @@ pub(super) fn render(device: &Device, window: &mut Window, cx: &mut App) -> AnyE
         .child(v_flex().relative().child(config).child(panel).pb(css(30.)))
         .into_any_element()
 }
+
+// Generated catalog reader: razer-pages/cooling_axis_data.
+fn read_cooling_axis_catalog() -> AxisTexts {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AxisTexts> {
+        let value = match r.tag()? {
+            0 => AxisTexts {
+                labels: r.child(decode_1)?,
+                units: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, AxisText>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AxisText> {
+        let value = match r.tag()? {
+            0 => AxisText {
+                asset: r.child(decode_2)?,
+                advance: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_COOLING_AXIS_DATA,
+        0,
+        "27fe9780e42a185a927ad1c7ba3133aa2663a0a4ad7f7a73b3d09697d002c6f5",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_cooling_axis_data_decodes() {
+    let _ = read_cooling_axis_catalog();
+}
+// End generated catalog reader: razer-pages/cooling_axis_data.

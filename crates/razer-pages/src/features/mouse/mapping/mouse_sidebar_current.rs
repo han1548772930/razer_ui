@@ -41,7 +41,7 @@ struct Policy {
 }
 fn policy(pid: u32) -> Option<&'static Policy> {
     static DATA: OnceLock<Vec<Policy>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::mouse_sidebar_current_data!())
+    DATA.get_or_init(|| read_mouse_sidebar_current_catalog())
         .iter()
         .find(|p| p.product_id == pid)
 }
@@ -53,7 +53,7 @@ struct Assets {
 }
 fn assets(pid: u32) -> &'static Assets {
     static DATA: OnceLock<Vec<Assets>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::mouse_sidebar_assets_current_data!())
+    DATA.get_or_init(|| read_mouse_sidebar_assets_current_catalog())
         .iter()
         .find(|p| p.product_id == pid)
         .expect("audited mouse sidebar assets")
@@ -70,7 +70,7 @@ struct RowGeometry {
 }
 fn row_geometry(pid: u32) -> &'static RowGeometry {
     static DATA: OnceLock<Vec<RowGeometry>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::mouse_sidebar_geometry_current_data!())
+    DATA.get_or_init(|| read_mouse_sidebar_geometry_current_catalog())
         .iter()
         .find(|geometry| geometry.product_id == pid)
         .expect("actual sidebar row geometry")
@@ -1173,3 +1173,248 @@ mod tests {
         );
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_sidebar_assets_current_data.
+fn read_mouse_sidebar_assets_current_catalog() -> Vec<Assets> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Assets>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Assets> {
+        let value = match r.tag()? {
+            0 => Assets {
+                product_id: r.child(decode_2)?,
+                close_asset: r.child(decode_3)?,
+                expand_asset: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_SIDEBAR_ASSETS_CURRENT_DATA,
+        0,
+        "b52d95b8accc063ba5b05e12a68322f37d5d9167559b7faa2555ed68760b398b",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_sidebar_assets_current_data_decodes() {
+    let _ = read_mouse_sidebar_assets_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_sidebar_assets_current_data.
+
+// Generated catalog reader: razer-pages/mouse_sidebar_current_data.
+fn read_mouse_sidebar_current_catalog() -> Vec<Policy> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Policy>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Policy> {
+        let value = match r.tag()? {
+            0 => Policy {
+                product_id: r.child(decode_2)?,
+                babel_162: r.child(decode_3)?,
+                key_toggle_render: r.child(decode_3)?,
+                localized_counter: r.child(decode_3)?,
+                split_min_utf16: r.child(decode_4)?,
+                split_slash: r.child(decode_3)?,
+                sticky_min_utf16: r.child(decode_4)?,
+                filters: r.child(decode_5)?,
+                labels: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Filter>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Filter> {
+        let value = match r.tag()? {
+            0 => Filter {
+                content: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Labels> {
+        let value = match r.tag()? {
+            0 => Labels {
+                title: r.child(decode_7)?,
+                message1: r.child(decode_7)?,
+                message2: r.child(decode_7)?,
+                save: r.child(decode_7)?,
+                dont_save: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_SIDEBAR_CURRENT_DATA,
+        0,
+        "4e9279bdfe0bce66c3e776e3ca827b7c651d27be76aef1b80e0d67283ef98dc6",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_sidebar_current_data_decodes() {
+    let _ = read_mouse_sidebar_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_sidebar_current_data.
+
+// Generated catalog reader: razer-pages/mouse_sidebar_geometry_current_data.
+fn read_mouse_sidebar_geometry_current_catalog() -> Vec<RowGeometry> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<RowGeometry>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<RowGeometry> {
+        let value = match r.tag()? {
+            0 => RowGeometry {
+                product_id: r.child(decode_2)?,
+                padding: r.child(decode_3)?,
+                height: None,
+                min_height: r.child(decode_4)?,
+                binding_line_height: r.child(decode_3)?,
+                binding_max_height: None,
+            },
+            1 => RowGeometry {
+                product_id: r.child(decode_2)?,
+                padding: r.child(decode_3)?,
+                height: r.child(decode_4)?,
+                min_height: None,
+                binding_line_height: r.child(decode_3)?,
+                binding_max_height: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<f32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_3)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_SIDEBAR_GEOMETRY_CURRENT_DATA,
+        0,
+        "3fa7415aa4904fff44a3a6084a82d6a6b1fdae69f11806de49aec3c6008b448c",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_sidebar_geometry_current_data_decodes() {
+    let _ = read_mouse_sidebar_geometry_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_sidebar_geometry_current_data.

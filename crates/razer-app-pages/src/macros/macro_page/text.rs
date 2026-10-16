@@ -131,7 +131,7 @@ pub struct TextEmojiTab {
 }
 pub fn text_source() -> &'static TextSource {
     static DATA: OnceLock<TextSource> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::text_data!())
+    DATA.get_or_init(|| read_text_catalog())
 }
 
 pub struct TextRowState {
@@ -606,3 +606,15 @@ impl MacroPage {
         self.text_input_changed(window, cx);
     }
 }
+
+// Generated catalog reader: razer-app-pages/text_data.
+fn read_text_catalog() -> TextSource {
+    TextSource::from_catalog(razer_catalog::emoji::DatasetId::Macro)
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_text_data_decodes() {
+    let _ = read_text_catalog();
+}
+// End generated catalog reader: razer-app-pages/text_data.

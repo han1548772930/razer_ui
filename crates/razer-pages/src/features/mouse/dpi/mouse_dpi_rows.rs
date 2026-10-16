@@ -54,7 +54,7 @@ fn slider_requires_visible() -> bool {
 pub(super) fn source_spec(product_id: u32) -> Option<&'static RowsSpec> {
     static SPECS: OnceLock<Vec<RowsSpec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::mouse_dpi_rows_data!())
+        .get_or_init(|| read_mouse_dpi_rows_catalog())
         .iter()
         .find(|spec| spec.product_id == product_id)
 }
@@ -973,3 +973,175 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_dpi_rows_data.
+fn read_mouse_dpi_rows_catalog() -> Vec<RowsSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<RowsSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<RowsSpec> {
+        let value = match r.tag()? {
+            0 => RowsSpec {
+                product_id: r.child(decode_2)?,
+                stages_path: r.child(decode_3)?,
+                active_path: r.child(decode_3)?,
+                enabled_path: r.child(decode_3)?,
+                x_key: r.child(decode_3)?,
+                y_key: r.child(decode_3)?,
+                independent_key: r.child(decode_3)?,
+                visible_key: r.child(decode_3)?,
+                minimum_visible_stages: r.child(decode_4)?,
+                rows_margin_x: r.child(decode_5)?,
+                description_key: r.child(decode_6)?,
+                drag_ordinal_key: None,
+                row_height: r.child(decode_5)?,
+                xy_row_height: r.child(decode_5)?,
+                control_margin_bottom: r.child(decode_5)?,
+                header_left: r.child(decode_7)?,
+                two_way_tab: r.child(decode_8)?,
+                no_header: r.child(decode_8)?,
+                single_min: None,
+                single_max: None,
+                slider_requires_visible: r.child(decode_8)?,
+            },
+            1 => RowsSpec {
+                product_id: r.child(decode_2)?,
+                stages_path: r.child(decode_3)?,
+                active_path: r.child(decode_3)?,
+                enabled_path: r.child(decode_3)?,
+                x_key: r.child(decode_3)?,
+                y_key: r.child(decode_3)?,
+                independent_key: r.child(decode_3)?,
+                visible_key: r.child(decode_3)?,
+                minimum_visible_stages: r.child(decode_4)?,
+                rows_margin_x: r.child(decode_5)?,
+                description_key: r.child(decode_6)?,
+                drag_ordinal_key: r.child(decode_6)?,
+                row_height: r.child(decode_5)?,
+                xy_row_height: r.child(decode_5)?,
+                control_margin_bottom: r.child(decode_5)?,
+                header_left: r.child(decode_7)?,
+                two_way_tab: r.child(decode_8)?,
+                no_header: r.child(decode_8)?,
+                single_min: None,
+                single_max: None,
+                slider_requires_visible: r.child(decode_8)?,
+            },
+            2 => RowsSpec {
+                product_id: r.child(decode_2)?,
+                stages_path: r.child(decode_3)?,
+                active_path: r.child(decode_3)?,
+                enabled_path: r.child(decode_3)?,
+                x_key: r.child(decode_3)?,
+                y_key: r.child(decode_3)?,
+                independent_key: r.child(decode_3)?,
+                visible_key: r.child(decode_3)?,
+                minimum_visible_stages: r.child(decode_4)?,
+                rows_margin_x: r.child(decode_5)?,
+                description_key: r.child(decode_6)?,
+                drag_ordinal_key: r.child(decode_6)?,
+                row_height: r.child(decode_5)?,
+                xy_row_height: r.child(decode_5)?,
+                control_margin_bottom: r.child(decode_5)?,
+                header_left: r.child(decode_7)?,
+                two_way_tab: r.child(decode_8)?,
+                no_header: r.child(decode_8)?,
+                single_min: r.child(decode_9)?,
+                single_max: r.child(decode_9)?,
+                slider_requires_visible: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_3)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 3]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 3>(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_2)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_DPI_ROWS_DATA,
+        0,
+        "12ba7ce01951d53090ea04a43270da34d77ebd64a6ce3e5278c75fc406ac24ab",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_dpi_rows_data_decodes() {
+    let _ = read_mouse_dpi_rows_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_dpi_rows_data.

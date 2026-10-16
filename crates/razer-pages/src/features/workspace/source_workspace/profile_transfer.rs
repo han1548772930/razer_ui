@@ -18,19 +18,21 @@ struct TransferSpec {
     height: f32,
     top: f32,
 }
+#[derive(Deserialize)]
+struct ProductSpec {
+    product_id: u32,
+    import_export: TransferSpec,
+}
+
+#[derive(Deserialize)]
+struct Data {
+    products: Vec<ProductSpec>,
+}
+
 fn spec(pid: u32) -> &'static TransferSpec {
-    #[derive(Deserialize)]
-    struct ProductSpec {
-        product_id: u32,
-        import_export: TransferSpec,
-    }
-    #[derive(Deserialize)]
-    struct Data {
-        products: Vec<ProductSpec>,
-    }
     static DATA: OnceLock<Data> = OnceLock::new();
     &DATA
-        .get_or_init(|| crate::data::source_profile_menu_data_transfer!())
+        .get_or_init(|| read_source_profile_menu_data_transfer_catalog())
         .products
         .iter()
         .find(|p| p.product_id == pid)
@@ -616,3 +618,80 @@ impl Render for SourceProfileTransfer {
             )
     }
 }
+
+// Generated catalog reader: razer-pages/source_profile_menu_data_transfer.
+fn read_source_profile_menu_data_transfer_catalog() -> Data {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                products: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ProductSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ProductSpec> {
+        let value = match r.tag()? {
+            0 => ProductSpec {
+                product_id: r.child(decode_3)?,
+                import_export: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<TransferSpec> {
+        let value = match r.tag()? {
+            0 => TransferSpec {
+                width: r.child(decode_5)?,
+                height: r.child(decode_5)?,
+                top: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SOURCE_PROFILE_MENU_DATA_TRANSFER,
+        0,
+        "dd633e13cc63d7fbcc765d21d22dc83827ccf482fcf0985ab7d3e43dfe643f24",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_source_profile_menu_data_transfer_decodes() {
+    let _ = read_source_profile_menu_data_transfer_catalog();
+}
+// End generated catalog reader: razer-pages/source_profile_menu_data_transfer.

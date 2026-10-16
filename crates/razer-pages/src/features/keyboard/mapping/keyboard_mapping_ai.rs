@@ -52,7 +52,7 @@ struct Artwork {
 }
 fn artwork(pid: u32) -> &'static Artwork {
     static DATA: OnceLock<Vec<Artwork>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_ai_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_ai_catalog())
         .iter()
         .find(|row| row.product_id == pid)
         .expect("source-mounted AI mapping")
@@ -293,3 +293,74 @@ impl KeyboardProductWorkspace {
         panel.into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_ai_data.
+fn read_keyboard_mapping_ai_catalog() -> Vec<Artwork> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Artwork>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Artwork> {
+        let value = match r.tag()? {
+            0 => Artwork {
+                product_id: r.child(decode_2)?,
+                composer_asset: r.child(decode_3)?,
+                services_asset: r.child(decode_3)?,
+            },
+            1 => Artwork {
+                product_id: r.child(decode_2)?,
+                composer_asset: None,
+                services_asset: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_4)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_AI_DATA,
+        0,
+        "200c2009cb7227b55f5a712e856ed2b62f049ce7ecaeb0a8b7ff9032cf954caa",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_ai_data_decodes() {
+    let _ = read_keyboard_mapping_ai_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_ai_data.

@@ -283,7 +283,7 @@ impl MouseProductSpec {
 
 pub fn source_product(product_id: u32) -> Option<&'static MouseProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<MouseProductSpec> =
-        super::source_catalog::SourceCatalog::new(|| crate::data::mouse_products_data!());
+        super::source_catalog::SourceCatalog::new(|| read_mouse_products_catalog());
     PRODUCTS.get(product_id)
 }
 pub(crate) fn mapping_target_info(product_id: u32) -> Option<&'static Value> {
@@ -985,7 +985,7 @@ impl MouseProductWorkspace {
         // Current product dl.isEnabled(): >1000 Hz disables the threshold;
         // source evidence is recorded per product, never inferred by category.
         static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
-        let limited = PRODUCTS.get_or_init(|| crate::data::mouse_low_power_data!());
+        let limited = PRODUCTS.get_or_init(|| read_mouse_low_power_catalog());
         !limited.contains(&self.spec.product_id)
             || if super::mouse_polling::source_spec(self.spec.product_id).is_some() {
                 self.effective_power_polling_rate() <= 1000
@@ -2542,3 +2542,1030 @@ fn effect_label(effect: &str) -> Option<&'static str> {
 fn localized_name(key: Option<&'static str>, raw: &str) -> String {
     key.map_or_else(|| raw.to_owned(), razer_i18n::t)
 }
+
+// Generated catalog reader: razer-pages/mouse_low_power_data.
+fn read_mouse_low_power_catalog() -> Vec<u32> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_LOW_POWER_DATA,
+        0,
+        "fca6c76e6aade079c527c02416d8ea5258110eb151f126bdb524f6f209d328a1",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_low_power_data_decodes() {
+    let _ = read_mouse_low_power_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_low_power_data.
+
+// Generated catalog reader: razer-pages/mouse_products_data.
+fn read_mouse_products_catalog() -> Vec<(u32, fn() -> MouseProductSpec)> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MouseProductSpec> {
+        let value = match r.tag()? {
+            0 => MouseProductSpec {
+                product_id: r.child(decode_1)?,
+                profile: r.child(decode_2)?,
+                device_profile: None,
+                profile_schema_version: None,
+                min_dpi: r.child(decode_1)?,
+                max_dpi: r.child(decode_1)?,
+                dpi_step: r.child(decode_1)?,
+                support_xy: r.child(decode_3)?,
+                rates: r.child(decode_4)?,
+                effects: r.child(decode_7)?,
+                buttons: r.child(decode_9)?,
+                dkm: r.child(decode_9)?,
+                mats: r.child(decode_9)?,
+                calibration: r.child(decode_5)?,
+                smart_lift_max: r.child(decode_1)?,
+                smart_landing_max: r.child(decode_1)?,
+                power_slider: r.child(decode_3)?,
+                performance_power: r.child(decode_3)?,
+                low_power_slider: r.child(decode_3)?,
+                low_battery_slider: r.child(decode_3)?,
+                rotation: r.child(decode_3)?,
+                dynamic: r.child(decode_3)?,
+                pages: r.child(decode_10)?,
+                image: r.child(decode_11)?,
+                groups: r.child(decode_9)?,
+                widget_column_layout: r.child(decode_11)?,
+                power_direct_widgets: Default::default(),
+            },
+            1 => MouseProductSpec {
+                product_id: r.child(decode_1)?,
+                profile: r.child(decode_2)?,
+                device_profile: None,
+                profile_schema_version: None,
+                min_dpi: r.child(decode_1)?,
+                max_dpi: r.child(decode_1)?,
+                dpi_step: r.child(decode_1)?,
+                support_xy: r.child(decode_3)?,
+                rates: r.child(decode_4)?,
+                effects: r.child(decode_7)?,
+                buttons: r.child(decode_9)?,
+                dkm: r.child(decode_9)?,
+                mats: r.child(decode_9)?,
+                calibration: r.child(decode_5)?,
+                smart_lift_max: r.child(decode_1)?,
+                smart_landing_max: r.child(decode_1)?,
+                power_slider: r.child(decode_3)?,
+                performance_power: r.child(decode_3)?,
+                low_power_slider: r.child(decode_3)?,
+                low_battery_slider: r.child(decode_3)?,
+                rotation: r.child(decode_3)?,
+                dynamic: r.child(decode_3)?,
+                pages: r.child(decode_10)?,
+                image: r.child(decode_11)?,
+                groups: r.child(decode_9)?,
+                widget_column_layout: r.child(decode_11)?,
+                power_direct_widgets: r.child(decode_3)?,
+            },
+            2 => MouseProductSpec {
+                product_id: r.child(decode_1)?,
+                profile: r.child(decode_2)?,
+                device_profile: r.child(decode_12)?,
+                profile_schema_version: r.child(decode_13)?,
+                min_dpi: r.child(decode_1)?,
+                max_dpi: r.child(decode_1)?,
+                dpi_step: r.child(decode_1)?,
+                support_xy: r.child(decode_3)?,
+                rates: r.child(decode_4)?,
+                effects: r.child(decode_7)?,
+                buttons: r.child(decode_9)?,
+                dkm: r.child(decode_9)?,
+                mats: r.child(decode_9)?,
+                calibration: r.child(decode_5)?,
+                smart_lift_max: r.child(decode_1)?,
+                smart_landing_max: r.child(decode_1)?,
+                power_slider: r.child(decode_3)?,
+                performance_power: r.child(decode_3)?,
+                low_power_slider: r.child(decode_3)?,
+                low_battery_slider: r.child(decode_3)?,
+                rotation: r.child(decode_3)?,
+                dynamic: r.child(decode_3)?,
+                pages: r.child(decode_10)?,
+                image: r.child(decode_11)?,
+                groups: r.child(decode_9)?,
+                widget_column_layout: r.child(decode_11)?,
+                power_direct_widgets: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, std::vec::Vec<u32>>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_5, decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<MouseEffect>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MouseEffect> {
+        let value = match r.tag()? {
+            0 => MouseEffect {
+                key: r.child(decode_5)?,
+                id: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_5)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_2)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_1)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn product_70() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            70u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_80() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            80u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_83() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            83u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_89() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            89u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_92() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            92u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_96() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            96u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_98() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            98u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_99() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            99u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_100() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            100u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_101() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            101u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_103() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            103u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_104() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            104u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_105() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            105u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_106() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            106u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_107() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            107u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_108() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            108u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_110() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            110u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_112() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            112u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_113() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            113u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_115() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            115u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_116() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            116u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_117() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            117u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_120() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            120u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_122() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            122u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_124() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            124u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_128() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            128u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_131() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            131u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_132() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            132u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_133() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            133u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_134() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            134u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_138() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            138u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_140() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            140u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_141() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            141u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_143() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            143u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_145() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            145u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_147() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            147u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_148() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            148u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_150() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            150u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_152() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            152u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_153() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            153u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_154() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            154u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_156() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            156u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_158() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            158u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_161() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            161u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_162() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            162u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_163() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            163u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_165() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            165u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_167() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            167u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_170() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            170u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_175() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            175u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_178() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            178u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_180() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            180u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_182() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            182u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_184() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            184u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_185() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            185u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_190() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            190u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_192() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            192u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_194() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            194u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_196() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            196u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_199() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            199u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_203() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            203u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_204() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            204u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_208() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            208u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_211() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            211u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_214() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            214u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_218() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            218u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_221() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            221u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_222() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            222u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_224() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            224u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_226() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            226u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_229() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            229u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_231() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            231u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_235() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            235u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_239() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            239u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2594() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            2594u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_45066() -> MouseProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRODUCTS_DATA,
+            45066u32,
+            "691debca9e3f9e7e77dfc090310d25a471129c06275b4979fe2c56e15c277ee6",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    vec![
+        (70u32, product_70 as fn() -> MouseProductSpec),
+        (80u32, product_80 as fn() -> MouseProductSpec),
+        (83u32, product_83 as fn() -> MouseProductSpec),
+        (89u32, product_89 as fn() -> MouseProductSpec),
+        (92u32, product_92 as fn() -> MouseProductSpec),
+        (96u32, product_96 as fn() -> MouseProductSpec),
+        (98u32, product_98 as fn() -> MouseProductSpec),
+        (99u32, product_99 as fn() -> MouseProductSpec),
+        (100u32, product_100 as fn() -> MouseProductSpec),
+        (101u32, product_101 as fn() -> MouseProductSpec),
+        (103u32, product_103 as fn() -> MouseProductSpec),
+        (104u32, product_104 as fn() -> MouseProductSpec),
+        (105u32, product_105 as fn() -> MouseProductSpec),
+        (106u32, product_106 as fn() -> MouseProductSpec),
+        (107u32, product_107 as fn() -> MouseProductSpec),
+        (108u32, product_108 as fn() -> MouseProductSpec),
+        (110u32, product_110 as fn() -> MouseProductSpec),
+        (112u32, product_112 as fn() -> MouseProductSpec),
+        (113u32, product_113 as fn() -> MouseProductSpec),
+        (115u32, product_115 as fn() -> MouseProductSpec),
+        (116u32, product_116 as fn() -> MouseProductSpec),
+        (117u32, product_117 as fn() -> MouseProductSpec),
+        (120u32, product_120 as fn() -> MouseProductSpec),
+        (122u32, product_122 as fn() -> MouseProductSpec),
+        (124u32, product_124 as fn() -> MouseProductSpec),
+        (128u32, product_128 as fn() -> MouseProductSpec),
+        (131u32, product_131 as fn() -> MouseProductSpec),
+        (132u32, product_132 as fn() -> MouseProductSpec),
+        (133u32, product_133 as fn() -> MouseProductSpec),
+        (134u32, product_134 as fn() -> MouseProductSpec),
+        (138u32, product_138 as fn() -> MouseProductSpec),
+        (140u32, product_140 as fn() -> MouseProductSpec),
+        (141u32, product_141 as fn() -> MouseProductSpec),
+        (143u32, product_143 as fn() -> MouseProductSpec),
+        (145u32, product_145 as fn() -> MouseProductSpec),
+        (147u32, product_147 as fn() -> MouseProductSpec),
+        (148u32, product_148 as fn() -> MouseProductSpec),
+        (150u32, product_150 as fn() -> MouseProductSpec),
+        (152u32, product_152 as fn() -> MouseProductSpec),
+        (153u32, product_153 as fn() -> MouseProductSpec),
+        (154u32, product_154 as fn() -> MouseProductSpec),
+        (156u32, product_156 as fn() -> MouseProductSpec),
+        (158u32, product_158 as fn() -> MouseProductSpec),
+        (161u32, product_161 as fn() -> MouseProductSpec),
+        (162u32, product_162 as fn() -> MouseProductSpec),
+        (163u32, product_163 as fn() -> MouseProductSpec),
+        (165u32, product_165 as fn() -> MouseProductSpec),
+        (167u32, product_167 as fn() -> MouseProductSpec),
+        (170u32, product_170 as fn() -> MouseProductSpec),
+        (175u32, product_175 as fn() -> MouseProductSpec),
+        (178u32, product_178 as fn() -> MouseProductSpec),
+        (180u32, product_180 as fn() -> MouseProductSpec),
+        (182u32, product_182 as fn() -> MouseProductSpec),
+        (184u32, product_184 as fn() -> MouseProductSpec),
+        (185u32, product_185 as fn() -> MouseProductSpec),
+        (190u32, product_190 as fn() -> MouseProductSpec),
+        (192u32, product_192 as fn() -> MouseProductSpec),
+        (194u32, product_194 as fn() -> MouseProductSpec),
+        (196u32, product_196 as fn() -> MouseProductSpec),
+        (199u32, product_199 as fn() -> MouseProductSpec),
+        (203u32, product_203 as fn() -> MouseProductSpec),
+        (204u32, product_204 as fn() -> MouseProductSpec),
+        (208u32, product_208 as fn() -> MouseProductSpec),
+        (211u32, product_211 as fn() -> MouseProductSpec),
+        (214u32, product_214 as fn() -> MouseProductSpec),
+        (218u32, product_218 as fn() -> MouseProductSpec),
+        (221u32, product_221 as fn() -> MouseProductSpec),
+        (222u32, product_222 as fn() -> MouseProductSpec),
+        (224u32, product_224 as fn() -> MouseProductSpec),
+        (226u32, product_226 as fn() -> MouseProductSpec),
+        (229u32, product_229 as fn() -> MouseProductSpec),
+        (231u32, product_231 as fn() -> MouseProductSpec),
+        (235u32, product_235 as fn() -> MouseProductSpec),
+        (239u32, product_239 as fn() -> MouseProductSpec),
+        (2594u32, product_2594 as fn() -> MouseProductSpec),
+        (45066u32, product_45066 as fn() -> MouseProductSpec),
+    ]
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_products_data_decodes() {
+    for (_, factory) in read_mouse_products_catalog() {
+        let _ = factory();
+    }
+}
+// End generated catalog reader: razer-pages/mouse_products_data.

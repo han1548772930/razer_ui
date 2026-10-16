@@ -2799,14 +2799,14 @@ class AssetReleaseTests(unittest.TestCase):
             self.assets.validate_lock(lock)
 
     def runtime_sources(self):
-        self.source("assets/synapse/tables/asset-tables-source.rs", b'''
+        self.source(".analysis/inputs/resource-tables/asset-tables-source.rs", b'''
 const FIRST: &[(&str, &[u8])] = include!("first.rs");
 const SECOND: &[(&str, &[u8])] = &[
     ("synapse/duplicate.svg", include_bytes!("../products/1/image.png")),
 ];
 static ASSET_TABLES: &[&[(&str, &[u8])]] = &[FIRST, SECOND];
 ''')
-        self.source("assets/synapse/tables/first.rs", b'''&[
+        self.source(".analysis/inputs/resource-tables/first.rs", b'''&[
     ("synapse/duplicate.svg", include_bytes!("../shared/common.svg") as &[u8]),
     ("synapse/other.svg", include_bytes!("../products/2/image.png")),
 ]
@@ -2816,8 +2816,8 @@ static ASSET_TABLES: &[&[(&str, &[u8])]] = &[FIRST, SECOND];
             path = "assets/synapse/products/1/control-" + name + ".svg"
             self.source(path, name.encode())
             demo.append(f'"synapse/audio-demo-control-{name}.svg" => Some(include_bytes!("../products/1/control-{name}.svg")),')
-        self.source("assets/synapse/tables/audio-demo-controls-embedded.rs", "\n".join(demo).encode())
-        self.source("assets/synapse/tables/audio-volume-sprite-embedded.rs", b'''
+        self.source(".analysis/inputs/resource-tables/audio-demo-controls-embedded.rs", "\n".join(demo).encode())
+        self.source(".analysis/inputs/resource-tables/audio-volume-sprite-embedded.rs", b'''
 const AUDIO_VOLUME_SPRITE: &str = include_str!("../products/1/sprite.svg");
 const AUDIO_VOLUME_SPRITE_PATH: &str = "synapse/audio-volume-external-sprite.svg";
 ''')
@@ -2866,12 +2866,12 @@ const AUDIO_VOLUME_SPRITE_PATH: &str = "synapse/audio-volume-external-sprite.svg
         self.source(self.assets.RUNTIME_METADATA, b"wrong metadata")
         with self.assertRaisesRegex(ValueError, "Runtime metadata differs"):
             self.assets.verify_runtime_metadata()
-        self.source("assets/synapse/tables/first.rs", b'''&[
+        self.source(".analysis/inputs/resource-tables/first.rs", b'''&[
     ("synapse/missing.svg", include_bytes!("../products/1/absent.svg")),
 ]''')
         with self.assertRaisesRegex(ValueError, "absent from the resource lock"):
             self.assets.runtime_metadata()
-        self.source("assets/synapse/tables/first.rs", b"&[unresolved_function()]")
+        self.source(".analysis/inputs/resource-tables/first.rs", b"&[unresolved_function()]")
         with self.assertRaisesRegex(ValueError, "Unparsed AssetSource table"):
             self.assets.runtime_metadata()
 

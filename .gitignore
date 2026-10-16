@@ -7,12 +7,10 @@
 *.log
 *.work
 # Resource payloads are distributed separately through Hugging Face.
-# Keep only source tables and the native tray/menu icons in the source repo.
+# Keep the standalone catalog and native tray/menu icons in product resources.
 /assets/**
 !/assets/synapse/
 !/assets/synapse/resource-catalog.sqlite3
-!/assets/synapse/tables/
-!/assets/synapse/tables/*.rs
 !/assets/synapse/shared/
 !/assets/synapse/shared/pending-source-audit/
 !/assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba
@@ -30,6 +28,10 @@
 /local-ui-reverse
 /.analysis/*
 !/.analysis/README.md
+!/.analysis/inputs/
+/.analysis/inputs/*
+!/.analysis/inputs/resource-tables/
+!/.analysis/inputs/resource-tables/*.rs
 /.analysis/inputs.json
 !/.analysis/validation.json
 

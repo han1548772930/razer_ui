@@ -86,7 +86,7 @@ impl TransferTarget {
 }
 fn data() -> &'static SourceData {
     static DATA: OnceLock<SourceData> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::transfer_data!())
+    DATA.get_or_init(|| read_transfer_catalog())
 }
 fn text(symbol: &str) -> String {
     i18n::t(&data().labels[symbol])
@@ -480,3 +480,136 @@ fn macro_rows(profile: &Value, macros: &[Value]) -> Vec<MacroRow> {
         })
         .collect()
 }
+
+// Generated catalog reader: razer-app-pages/transfer_data.
+fn read_transfer_catalog() -> SourceData {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceData> {
+        let value = match r.tag()? {
+            0 => SourceData {
+                labels: r.child(decode_1)?,
+                targets: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<u32, TransferTarget>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_4, decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<TransferTarget> {
+        let value = match r.tag()? {
+            0 => TransferTarget {
+                product_id: r.child(decode_4)?,
+                dongle_id: None,
+                ble_id: None,
+                category: r.child(decode_6)?,
+                is_eight_k_analog_device: Default::default(),
+            },
+            1 => TransferTarget {
+                product_id: r.child(decode_4)?,
+                dongle_id: r.child(decode_7)?,
+                ble_id: None,
+                category: r.child(decode_6)?,
+                is_eight_k_analog_device: Default::default(),
+            },
+            2 => TransferTarget {
+                product_id: r.child(decode_4)?,
+                dongle_id: r.child(decode_7)?,
+                ble_id: r.child(decode_7)?,
+                category: r.child(decode_6)?,
+                is_eight_k_analog_device: Default::default(),
+            },
+            3 => TransferTarget {
+                product_id: r.child(decode_4)?,
+                dongle_id: None,
+                ble_id: r.child(decode_7)?,
+                category: r.child(decode_6)?,
+                is_eight_k_analog_device: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<TransferCategory> {
+        let value = match r.tag()? {
+            0 => TransferCategory::Mouse,
+            1 => TransferCategory::Mouseplusmat,
+            2 => TransferCategory::Accessory,
+            3 => TransferCategory::Mousemat,
+            4 => TransferCategory::Keyboard,
+            5 => TransferCategory::Keypad,
+            6 => TransferCategory::System,
+            7 => TransferCategory::Hue,
+            8 => TransferCategory::Audio,
+            9 => TransferCategory::Iot,
+            10 => TransferCategory::Broadcaster,
+            11 => TransferCategory::Gamepad,
+            12 => TransferCategory::Monitor,
+            13 => TransferCategory::Case,
+            14 => TransferCategory::Egpu,
+            15 => TransferCategory::Chair,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_4)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_TRANSFER_DATA,
+        0,
+        "110f1e1dc077a622575577306fdcf7bc66194e18a2be5a75418f623a74cf4beb",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_transfer_data_decodes() {
+    let _ = read_transfer_catalog();
+}
+// End generated catalog reader: razer-app-pages/transfer_data.

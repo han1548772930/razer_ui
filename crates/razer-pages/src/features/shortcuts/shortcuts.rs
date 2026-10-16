@@ -84,7 +84,7 @@ struct SourceEmojiTab {
 }
 fn source_shortcuts() -> &'static SourceShortcutData {
     static DATA: OnceLock<SourceShortcutData> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::shortcuts_current!())
+    DATA.get_or_init(|| read_shortcuts_current_catalog())
 }
 
 /// HTML textarea maxlength counts UTF-16 units. Trim only the inserted span,
@@ -1251,3 +1251,98 @@ include!("shortcuts_macro.rs");
 #[cfg(test)]
 #[path = "shortcuts_tests.rs"]
 mod tests;
+
+// Generated catalog reader: razer-pages/shortcuts_current.
+fn read_shortcuts_current_catalog() -> SourceShortcutData {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceShortcutData> {
+        let value = match r.tag()? {
+            0 => SourceShortcutData {
+                functions: r.child(decode_1)?,
+                key_names: r.child(decode_3)?,
+                media: r.child(decode_4)?,
+                windows: r.child(decode_4)?,
+                macro_playback: r.child(decode_4)?,
+                macro_sequence_playback: r.child(decode_4)?,
+                macro_phased_playback: r.child(decode_4)?,
+                profile_actions: r.child(decode_4)?,
+                sensitivity_actions: r.child(decode_4)?,
+                excluded_keys: r.child(decode_1)?,
+                emoji: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SourceShortcutChoice>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceShortcutChoice> {
+        let value = match r.tag()? {
+            0 => SourceShortcutChoice {
+                id: r.child(decode_2)?,
+                content: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceEmojiData> {
+        let value = match r.tag()? {
+            0 => SourceEmojiData::from_catalog(razer_catalog::emoji::DatasetId::Mapping),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SHORTCUTS_CURRENT,
+        0,
+        "540f9e8fbf9cd9f3da2b4b36b61cbfa65a439a1d90404068b61e4fa79060b84a",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_shortcuts_current_decodes() {
+    let _ = read_shortcuts_current_catalog();
+}
+// End generated catalog reader: razer-pages/shortcuts_current.

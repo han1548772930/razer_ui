@@ -43,7 +43,7 @@ impl PropertiesSpec {
 pub(super) fn source_spec(product_id: u32) -> Option<&'static PropertiesSpec> {
     static SPECS: OnceLock<Vec<PropertiesSpec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::mouse_properties_data!())
+        .get_or_init(|| read_mouse_properties_catalog())
         .iter()
         .find(|spec| spec.product_id == product_id)
 }
@@ -103,3 +103,86 @@ impl MouseProductWorkspace {
         .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_properties_data.
+fn read_mouse_properties_catalog() -> Vec<PropertiesSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<PropertiesSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PropertiesSpec> {
+        let value = match r.tag()? {
+            0 => PropertiesSpec {
+                product_id: r.child(decode_2)?,
+                title: r.child(decode_3)?,
+                tooltip: r.child(decode_3)?,
+                action: r.child(decode_3)?,
+                legacy_icon: r.child(decode_3)?,
+                windows_11_icon: r.child(decode_3)?,
+                windows_11_supported: r.child(decode_4)?,
+                column_side: r.child(decode_3)?,
+                icon_width: r.child(decode_5)?,
+                icon_height: r.child(decode_5)?,
+                icon_margin: r.child(decode_5)?,
+                font_size: r.child(decode_5)?,
+                line_height: r.child(decode_5)?,
+                active_opacity: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PROPERTIES_DATA,
+        0,
+        "4b2d87774d4afa1cd5a416135ff6105f4198fb09523bb228402cf8f0f0ffdcb9",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_properties_data_decodes() {
+    let _ = read_mouse_properties_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_properties_data.

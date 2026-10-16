@@ -18,20 +18,21 @@ impl EventEmitter<KeyboardMappingLoginWarningHidden> for KeyboardProductWorkspac
 pub struct KeyboardMappingLoginWarningReadRequested;
 impl EventEmitter<KeyboardMappingLoginWarningReadRequested> for KeyboardProductWorkspace {}
 
+#[derive(Deserialize)]
+struct Source {
+    product_id: u32,
+    confirmed: bool,
+}
+
 impl KeyboardProductWorkspace {
     pub fn observe_mapping_login_warning_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
         self.mapping_login_warning.hidden = hidden;
         cx.notify();
     }
     pub(super) fn show_mapping_login_warning(&mut self) {
-        #[derive(Deserialize)]
-        struct Source {
-            product_id: u32,
-            confirmed: bool,
-        }
         static DATA: OnceLock<Vec<Source>> = OnceLock::new();
         if DATA
-            .get_or_init(|| crate::data::keyboard_mapping_login_warning_data!())
+            .get_or_init(|| read_keyboard_mapping_login_warning_catalog())
             .iter()
             .any(|row| row.product_id == self.spec.product_id && row.confirmed)
         {
@@ -146,3 +147,58 @@ impl RenderOnce for Warning {
             )
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_login_warning_data.
+fn read_keyboard_mapping_login_warning_catalog() -> Vec<Source> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Source>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Source> {
+        let value = match r.tag()? {
+            0 => Source {
+                product_id: r.child(decode_2)?,
+                confirmed: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_LOGIN_WARNING_DATA,
+        0,
+        "045af5436b48216e850b20df103e1d78b79cfccd9ceb5a75e8634602e75de71b",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_login_warning_data_decodes() {
+    let _ = read_keyboard_mapping_login_warning_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_login_warning_data.

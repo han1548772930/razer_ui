@@ -21,7 +21,7 @@ struct Choice {
 }
 fn data(pid: u32) -> &'static Product {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_joystick_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_joystick_catalog())
         .iter()
         .find(|row| row.product_id == pid)
         .expect("current joystick caller")
@@ -608,3 +608,104 @@ impl KeyboardProductWorkspace {
         }
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_joystick_data.
+fn read_keyboard_mapping_joystick_catalog() -> Vec<Product> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Product>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Product> {
+        let value = match r.tag()? {
+            0 => Product {
+                product_id: r.child(decode_2)?,
+                buttons: r.child(decode_3)?,
+                directions: r.child(decode_3)?,
+                button_label: r.child(decode_6)?,
+                direction_label: r.child(decode_6)?,
+                placeholder: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Choice>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Choice> {
+        let value = match r.tag()? {
+            0 => Choice {
+                name: r.child(decode_5)?,
+                content: None,
+                assigned_value: None,
+            },
+            1 => Choice {
+                name: None,
+                content: r.child(decode_5)?,
+                assigned_value: None,
+            },
+            2 => Choice {
+                name: r.child(decode_5)?,
+                content: r.child(decode_5)?,
+                assigned_value: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_6)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_JOYSTICK_DATA,
+        0,
+        "5aa92dcc17766b8638582ebcea50dfa60690adb7ab876e6fedec1fedd3a824d7",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_joystick_data_decodes() {
+    let _ = read_keyboard_mapping_joystick_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_joystick_data.

@@ -10,7 +10,7 @@ struct PairingText {
 }
 pub(super) fn t(key: &str) -> String {
     static TEXT: OnceLock<PairingText> = OnceLock::new();
-    let text = TEXT.get_or_init(|| crate::data::receiver_pairing_data!());
+    let text = TEXT.get_or_init(|| read_receiver_pairing_catalog());
     let locale = razer_i18n::locale();
     text.translations
         .iter()
@@ -753,16 +753,7 @@ fn category_asset(category: Category, precaution: bool) -> &'static str {
 fn peer_image(identity: (u32, u32, u32)) -> Option<&'static str> {
     // 9473/ne retries AVIF -> PNG for the same three identity fields. The
     // general dashboard helper normalizes some layouts, which is not this path.
-    const IMAGES: &[(u32, u32, u32, &str)] =
-        include!("../../../../../../assets/synapse/tables/dashboard-images.rs");
-    const ARMORY: &[(u32, u32, u32, &str)] =
-        include!("../../../../../../assets/synapse/tables/armory-dashboard-images.rs");
-    IMAGES
-        .iter()
-        .chain(ARMORY)
-        .find_map(|&(pid, edition, layout, asset)| {
-            ((pid, edition, layout) == identity).then_some(asset)
-        })
+    razer_assets::dashboard_image_exact(identity.0, identity.1, identity.2)
 }
 fn status_text(id: &'static str, text: String, color: Hsla) -> AnyElement {
     div()
@@ -880,3 +871,61 @@ fn connection_line(status: Status, cx: &App) -> AnyElement {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/receiver_pairing_data.
+fn read_receiver_pairing_catalog() -> PairingText {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PairingText> {
+        let value = match r.tag()? {
+            0 => PairingText {
+                translations: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_RECEIVER_PAIRING_DATA,
+        0,
+        "a1489aa72ce0100e13491d533fba5da0482b0b35647f7a9ec3642fe622565392",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_receiver_pairing_data_decodes() {
+    let _ = read_receiver_pairing_catalog();
+}
+// End generated catalog reader: razer-pages/receiver_pairing_data.

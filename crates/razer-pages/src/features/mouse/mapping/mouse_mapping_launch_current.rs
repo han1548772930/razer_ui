@@ -14,7 +14,7 @@ struct Policy {
 fn policy(product_id: u32) -> Option<&'static Policy> {
     static POLICIES: OnceLock<Vec<Policy>> = OnceLock::new();
     POLICIES
-        .get_or_init(|| crate::data::mouse_mapping_launch_current_data!())
+        .get_or_init(|| read_mouse_mapping_launch_current_catalog())
         .iter()
         .find(|p| p.product_id == product_id)
 }
@@ -220,3 +220,68 @@ impl MouseProductWorkspace {
         )
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_mapping_launch_current_data.
+fn read_mouse_mapping_launch_current_catalog() -> Vec<Policy> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Policy>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Policy> {
+        let value = match r.tag()? {
+            0 => Policy {
+                product_id: r.child(decode_2)?,
+                program_label: r.child(decode_3)?,
+                folder_key: r.child(decode_3)?,
+                initial_requires_synapse: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_MAPPING_LAUNCH_CURRENT_DATA,
+        0,
+        "213c29aaf268eaa6170bf75d7c002b39a0cb86a6c9129f7900eb5aea451b2978",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_mapping_launch_current_data_decodes() {
+    let _ = read_mouse_mapping_launch_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_mapping_launch_current_data.

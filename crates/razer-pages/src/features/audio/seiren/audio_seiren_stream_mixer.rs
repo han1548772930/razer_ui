@@ -208,7 +208,7 @@ struct Recipe {
 
 fn recipe(pid: u32) -> &'static Recipe {
     static RECIPES: OnceLock<BTreeMap<String, Recipe>> = OnceLock::new();
-    &RECIPES.get_or_init(|| crate::data::seiren_stream_mixer!())[&pid.to_string()]
+    &RECIPES.get_or_init(|| read_seiren_stream_mixer_catalog())[&pid.to_string()]
 }
 fn source_initial() -> Value {
     json!({"levelMeter":[],"waitingForLevelMeter":false,"inputChannels":[],
@@ -1433,3 +1433,259 @@ fn optimistic(data: &mut Value, event: &str, payload: &Value) {
         _ => unreachable!("Action validates all current stream mixer events"),
     }
 }
+
+// Generated catalog reader: razer-pages/seiren_stream_mixer.
+fn read_seiren_stream_mixer_catalog() -> BTreeMap<String, Recipe> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, Recipe>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Recipe> {
+        let value = match r.tag()? {
+            0 => Recipe {
+                native_device_ids: r.child(decode_3)?,
+                name_to_device_id: r.child(decode_5)?,
+                device_name: r.child(decode_1)?,
+                capture_keys: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, u64>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SourceKey>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceKey> {
+        let value = match r.tag()? {
+            0 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: r.child(decode_9)?,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: r.child(decode_9)?,
+                hid: r.child(decode_9)?,
+                extended_key: None,
+                modifier: None,
+                output_flag: None,
+            },
+            1 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: r.child(decode_9)?,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: None,
+                hid: None,
+                extended_key: None,
+                modifier: None,
+                output_flag: None,
+            },
+            2 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: r.child(decode_9)?,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: r.child(decode_9)?,
+                hid: r.child(decode_9)?,
+                extended_key: r.child(decode_9)?,
+                modifier: None,
+                output_flag: None,
+            },
+            3 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: r.child(decode_9)?,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: r.child(decode_9)?,
+                hid: r.child(decode_9)?,
+                extended_key: r.child(decode_9)?,
+                modifier: None,
+                output_flag: r.child(decode_11)?,
+            },
+            4 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: r.child(decode_9)?,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: r.child(decode_9)?,
+                hid: r.child(decode_9)?,
+                extended_key: None,
+                modifier: None,
+                output_flag: r.child(decode_11)?,
+            },
+            5 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: r.child(decode_9)?,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: None,
+                hid: r.child(decode_9)?,
+                extended_key: r.child(decode_9)?,
+                modifier: None,
+                output_flag: r.child(decode_11)?,
+            },
+            6 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: None,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: None,
+                hid: None,
+                extended_key: None,
+                modifier: r.child(decode_9)?,
+                output_flag: None,
+            },
+            7 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: r.child(decode_9)?,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: r.child(decode_9)?,
+                hid: r.child(decode_9)?,
+                extended_key: None,
+                modifier: r.child(decode_9)?,
+                output_flag: None,
+            },
+            8 => SourceKey {
+                name: r.child(decode_8)?,
+                input_id: None,
+                kind: r.child(decode_8)?,
+                scancode: r.child(decode_10)?,
+                virtual_key: r.child(decode_8)?,
+                key_code: r.child(decode_8)?,
+                flag: r.child(decode_10)?,
+                page_id: r.child(decode_9)?,
+                hid: r.child(decode_9)?,
+                extended_key: None,
+                modifier: r.child(decode_9)?,
+                output_flag: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_8)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u64>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_10)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SEIREN_STREAM_MIXER,
+        0,
+        "efda3ac7d7bf5ac417d7444a98ee7d3009e177c8764e373849ded8f408a0f54e",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_seiren_stream_mixer_decodes() {
+    let _ = read_seiren_stream_mixer_catalog();
+}
+// End generated catalog reader: razer-pages/seiren_stream_mixer.

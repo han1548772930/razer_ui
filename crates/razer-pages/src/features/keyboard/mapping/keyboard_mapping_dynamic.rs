@@ -63,7 +63,7 @@ mod metadata_tests {
 
 fn all_metadata() -> &'static [Metadata] {
     static DATA: OnceLock<Vec<Metadata>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_dynamic_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_dynamic_catalog())
 }
 
 fn metadata(pid: u32) -> Option<&'static Metadata> {
@@ -1403,3 +1403,122 @@ impl RenderOnce for Adjustment {
             )
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_dynamic_data.
+fn read_keyboard_mapping_dynamic_catalog() -> Vec<Metadata> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Metadata>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Metadata> {
+        let value = match r.tag()? {
+            0 => Metadata {
+                product_id: r.child(decode_2)?,
+                unit: r.child(decode_3)?,
+                defaults: r.child(decode_4)?,
+                headers: r.child(decode_7)?,
+                body_labels: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, f64>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_5, decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f64> {
+        let value = match r.tag()? {
+            0 => r.f64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Header>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Header> {
+        let value = match r.tag()? {
+            0 => Header {
+                id: r.child(decode_5)?,
+                name: r.child(decode_5)?,
+                indication_text: r.child(decode_5)?,
+                min: r.child(decode_3)?,
+                max: r.child(decode_3)?,
+                icon: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_5, decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_DYNAMIC_DATA,
+        0,
+        "8bf0f49f595004714657bf9adb2dfd928598e25c333fe0052691ed1a298d6140",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_dynamic_data_decodes() {
+    let _ = read_keyboard_mapping_dynamic_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_dynamic_data.

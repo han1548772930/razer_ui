@@ -205,7 +205,7 @@ pub struct AudioProductSpec {
 }
 pub fn source_product(pid: u32) -> Option<&'static AudioProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<AudioProductSpec> =
-        super::source_catalog::SourceCatalog::new(|| crate::data::audio_products_data!());
+        super::source_catalog::SourceCatalog::new(|| read_audio_products_catalog());
     PRODUCTS.get(pid)
 }
 pub fn supports_page(pid: u32, key: &str) -> bool {
@@ -232,7 +232,7 @@ struct ChromaLightingPage {
 fn chroma_lighting_page(pid: u32) -> Option<&'static ChromaLightingPage> {
     static PAGES: OnceLock<Vec<ChromaLightingPage>> = OnceLock::new();
     PAGES
-        .get_or_init(|| crate::data::audio_chroma_modes!())
+        .get_or_init(|| read_audio_chroma_modes_catalog())
         .iter()
         .find(|entry| entry.product_id == pid && supports_page(pid, &entry.page))
 }
@@ -2219,3 +2219,1321 @@ fn merge_known(target: &mut Value, saved: &Value) {
         _ => {}
     }
 }
+
+// Generated catalog reader: razer-pages/audio_chroma_modes.
+fn read_audio_chroma_modes_catalog() -> Vec<ChromaLightingPage> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ChromaLightingPage>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ChromaLightingPage> {
+        let value = match r.tag()? {
+            0 => ChromaLightingPage {
+                product_id: r.child(decode_2)?,
+                page: r.child(decode_3)?,
+                body_min_width: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_CHROMA_MODES,
+        0,
+        "81937cc2534015101066d09ea4cbedc9c5c7b276bdc592f36a569736c7fac517",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_chroma_modes_decodes() {
+    let _ = read_audio_chroma_modes_catalog();
+}
+// End generated catalog reader: razer-pages/audio_chroma_modes.
+
+// Generated catalog reader: razer-pages/audio_products_data.
+fn read_audio_products_catalog() -> Vec<(u32, fn() -> AudioProductSpec)> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioProductSpec> {
+        let value = match r.tag()? {
+            0 => AudioProductSpec {
+                product_id: r.child(decode_1)?,
+                draft: r.child(decode_2)?,
+                pages: r.child(decode_3)?,
+                equalizers: r.child(decode_14)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<AudioPage>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioPage> {
+        let value = match r.tag()? {
+            0 => AudioPage {
+                key: r.child(decode_5)?,
+                sections: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<AudioSection>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioSection> {
+        let value = match r.tag()? {
+            0 => AudioSection {
+                title: r.child(decode_5)?,
+                suffix: Default::default(),
+                tips: None,
+                description: None,
+                controls: r.child(decode_8)?,
+                equalizer: None,
+                visible_when: None,
+            },
+            1 => AudioSection {
+                title: r.child(decode_5)?,
+                suffix: Default::default(),
+                tips: None,
+                description: r.child(decode_11)?,
+                controls: r.child(decode_8)?,
+                equalizer: None,
+                visible_when: None,
+            },
+            2 => AudioSection {
+                title: r.child(decode_5)?,
+                suffix: Default::default(),
+                tips: None,
+                description: None,
+                controls: r.child(decode_8)?,
+                equalizer: r.child(decode_11)?,
+                visible_when: None,
+            },
+            3 => AudioSection {
+                title: r.child(decode_5)?,
+                suffix: r.child(decode_5)?,
+                tips: None,
+                description: None,
+                controls: r.child(decode_8)?,
+                equalizer: None,
+                visible_when: None,
+            },
+            4 => AudioSection {
+                title: r.child(decode_5)?,
+                suffix: Default::default(),
+                tips: r.child(decode_11)?,
+                description: r.child(decode_11)?,
+                controls: r.child(decode_8)?,
+                equalizer: None,
+                visible_when: None,
+            },
+            5 => AudioSection {
+                title: r.child(decode_5)?,
+                suffix: Default::default(),
+                tips: None,
+                description: None,
+                controls: r.child(decode_8)?,
+                equalizer: None,
+                visible_when: r.child(decode_21)?,
+            },
+            6 => AudioSection {
+                title: r.child(decode_5)?,
+                suffix: r.child(decode_5)?,
+                tips: None,
+                description: None,
+                controls: r.child(decode_8)?,
+                equalizer: None,
+                visible_when: r.child(decode_21)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<AudioControl>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_9)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioControl> {
+        let value = match r.tag()? {
+            0 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: Default::default(),
+                max: Default::default(),
+                step: one(),
+                unit: Default::default(),
+                options: Default::default(),
+                enabled_by: None,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            1 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: r.child(decode_10)?,
+                max: r.child(decode_10)?,
+                step: r.child(decode_10)?,
+                unit: r.child(decode_5)?,
+                options: Default::default(),
+                enabled_by: r.child(decode_11)?,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            2 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: Default::default(),
+                max: Default::default(),
+                step: one(),
+                unit: Default::default(),
+                options: Default::default(),
+                enabled_by: r.child(decode_11)?,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            3 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: Default::default(),
+                max: Default::default(),
+                step: one(),
+                unit: Default::default(),
+                options: r.child(decode_12)?,
+                enabled_by: None,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            4 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: r.child(decode_10)?,
+                max: r.child(decode_10)?,
+                step: r.child(decode_10)?,
+                unit: Default::default(),
+                options: Default::default(),
+                enabled_by: r.child(decode_11)?,
+                enabled_all: r.child(decode_16)?,
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            5 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: Default::default(),
+                max: Default::default(),
+                step: one(),
+                unit: Default::default(),
+                options: Default::default(),
+                enabled_by: None,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: r.child(decode_11)?,
+            },
+            6 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: r.child(decode_10)?,
+                max: r.child(decode_10)?,
+                step: r.child(decode_10)?,
+                unit: Default::default(),
+                options: Default::default(),
+                enabled_by: r.child(decode_11)?,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            7 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: Default::default(),
+                max: Default::default(),
+                step: one(),
+                unit: Default::default(),
+                options: r.child(decode_12)?,
+                enabled_by: r.child(decode_11)?,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            8 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: Default::default(),
+                max: Default::default(),
+                step: one(),
+                unit: Default::default(),
+                options: Default::default(),
+                enabled_by: None,
+                enabled_all: Default::default(),
+                exclusive_with: r.child(decode_16)?,
+                url: None,
+            },
+            9 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: r.child(decode_10)?,
+                max: r.child(decode_10)?,
+                step: r.child(decode_10)?,
+                unit: Default::default(),
+                options: Default::default(),
+                enabled_by: None,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            10 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: r.child(decode_11)?,
+                min: Default::default(),
+                max: Default::default(),
+                step: one(),
+                unit: Default::default(),
+                options: r.child(decode_12)?,
+                enabled_by: None,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            11 => AudioControl {
+                path: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                kind: r.child(decode_5)?,
+                apply_label: None,
+                min: r.child(decode_10)?,
+                max: r.child(decode_10)?,
+                step: r.child(decode_10)?,
+                unit: r.child(decode_5)?,
+                options: Default::default(),
+                enabled_by: None,
+                enabled_all: Default::default(),
+                exclusive_with: Default::default(),
+                url: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_5)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<AudioOption>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_13)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioOption> {
+        let value = match r.tag()? {
+            0 => AudioOption {
+                label: r.child(decode_5)?,
+                value: r.child(decode_2)?,
+                image: None,
+            },
+            1 => AudioOption {
+                label: r.child(decode_5)?,
+                value: r.child(decode_2)?,
+                image: r.child(decode_11)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<AudioEqualizer>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_15)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioEqualizer> {
+        let value = match r.tag()? {
+            0 => AudioEqualizer {
+                key: r.child(decode_5)?,
+                frequencies: r.child(decode_16)?,
+                presets: r.child(decode_17)?,
+                selected: r.child(decode_5)?,
+                min: r.child(decode_10)?,
+                max: r.child(decode_10)?,
+                step: r.child(decode_10)?,
+                edit_custom: r.child(decode_20)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<AudioPreset>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_18)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_18(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioPreset> {
+        let value = match r.tag()? {
+            0 => AudioPreset {
+                key: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                bands: r.child(decode_19)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_19(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<f32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_10)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_20(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_21(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<AudioCondition>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_22)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_22(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<AudioCondition> {
+        let value = match r.tag()? {
+            0 => AudioCondition {
+                path: r.child(decode_5)?,
+                value: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn product_1303() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1303u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1304() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1304u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1306() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1306u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1308() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1308u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1310() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1310u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1312() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1312u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1313() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1313u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1318() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1318u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1319() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1319u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1320() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1320u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1321() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1321u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1325() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1325u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1328() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1328u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1330() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1330u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1331() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1331u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1332() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1332u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1335() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1335u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1337() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1337u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1339() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1339u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1342() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1342u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1346() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1346u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1347() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1347u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1352() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1352u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1353() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1353u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1354() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1354u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1364() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1364u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1365() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1365u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1370() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1370u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1372() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1372u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1374() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1374u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1376() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1376u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1378() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1378u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1383() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1383u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1386() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1386u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1387() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1387u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1389() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1389u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1390() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1390u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1391() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1391u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1392() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1392u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1396() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1396u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1398() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1398u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1401() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1401u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1404() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1404u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1406() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1406u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1407() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1407u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1411() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1411u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1412() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1412u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1415() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1415u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1420() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1420u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1422() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1422u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1427() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1427u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1439() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1439u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1442() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1442u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1443() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1443u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1446() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1446u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1453() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1453u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1462() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1462u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1465() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1465u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2638() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2638u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2641() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2641u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2644() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2644u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2657() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2657u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2660() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2660u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2664() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2664u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2668() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2668u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2689() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            2689u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3867() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            3867u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_4124() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            4124u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_4126() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            4126u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_4130() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            4130u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_1382() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            1382u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3334() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            3334u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3337() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            3337u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3909() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            3909u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3942() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            3942u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_3949() -> AudioProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_AUDIO_PRODUCTS_DATA,
+            3949u32,
+            "af1e2fa43695ed83984db2b7467c6c72f446ac5ed45201bc824fcfe34823c2f9",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    vec![
+        (1303u32, product_1303 as fn() -> AudioProductSpec),
+        (1304u32, product_1304 as fn() -> AudioProductSpec),
+        (1306u32, product_1306 as fn() -> AudioProductSpec),
+        (1308u32, product_1308 as fn() -> AudioProductSpec),
+        (1310u32, product_1310 as fn() -> AudioProductSpec),
+        (1312u32, product_1312 as fn() -> AudioProductSpec),
+        (1313u32, product_1313 as fn() -> AudioProductSpec),
+        (1318u32, product_1318 as fn() -> AudioProductSpec),
+        (1319u32, product_1319 as fn() -> AudioProductSpec),
+        (1320u32, product_1320 as fn() -> AudioProductSpec),
+        (1321u32, product_1321 as fn() -> AudioProductSpec),
+        (1325u32, product_1325 as fn() -> AudioProductSpec),
+        (1328u32, product_1328 as fn() -> AudioProductSpec),
+        (1330u32, product_1330 as fn() -> AudioProductSpec),
+        (1331u32, product_1331 as fn() -> AudioProductSpec),
+        (1332u32, product_1332 as fn() -> AudioProductSpec),
+        (1335u32, product_1335 as fn() -> AudioProductSpec),
+        (1337u32, product_1337 as fn() -> AudioProductSpec),
+        (1339u32, product_1339 as fn() -> AudioProductSpec),
+        (1342u32, product_1342 as fn() -> AudioProductSpec),
+        (1346u32, product_1346 as fn() -> AudioProductSpec),
+        (1347u32, product_1347 as fn() -> AudioProductSpec),
+        (1352u32, product_1352 as fn() -> AudioProductSpec),
+        (1353u32, product_1353 as fn() -> AudioProductSpec),
+        (1354u32, product_1354 as fn() -> AudioProductSpec),
+        (1364u32, product_1364 as fn() -> AudioProductSpec),
+        (1365u32, product_1365 as fn() -> AudioProductSpec),
+        (1370u32, product_1370 as fn() -> AudioProductSpec),
+        (1372u32, product_1372 as fn() -> AudioProductSpec),
+        (1374u32, product_1374 as fn() -> AudioProductSpec),
+        (1376u32, product_1376 as fn() -> AudioProductSpec),
+        (1378u32, product_1378 as fn() -> AudioProductSpec),
+        (1383u32, product_1383 as fn() -> AudioProductSpec),
+        (1386u32, product_1386 as fn() -> AudioProductSpec),
+        (1387u32, product_1387 as fn() -> AudioProductSpec),
+        (1389u32, product_1389 as fn() -> AudioProductSpec),
+        (1390u32, product_1390 as fn() -> AudioProductSpec),
+        (1391u32, product_1391 as fn() -> AudioProductSpec),
+        (1392u32, product_1392 as fn() -> AudioProductSpec),
+        (1396u32, product_1396 as fn() -> AudioProductSpec),
+        (1398u32, product_1398 as fn() -> AudioProductSpec),
+        (1401u32, product_1401 as fn() -> AudioProductSpec),
+        (1404u32, product_1404 as fn() -> AudioProductSpec),
+        (1406u32, product_1406 as fn() -> AudioProductSpec),
+        (1407u32, product_1407 as fn() -> AudioProductSpec),
+        (1411u32, product_1411 as fn() -> AudioProductSpec),
+        (1412u32, product_1412 as fn() -> AudioProductSpec),
+        (1415u32, product_1415 as fn() -> AudioProductSpec),
+        (1420u32, product_1420 as fn() -> AudioProductSpec),
+        (1422u32, product_1422 as fn() -> AudioProductSpec),
+        (1427u32, product_1427 as fn() -> AudioProductSpec),
+        (1439u32, product_1439 as fn() -> AudioProductSpec),
+        (1442u32, product_1442 as fn() -> AudioProductSpec),
+        (1443u32, product_1443 as fn() -> AudioProductSpec),
+        (1446u32, product_1446 as fn() -> AudioProductSpec),
+        (1453u32, product_1453 as fn() -> AudioProductSpec),
+        (1462u32, product_1462 as fn() -> AudioProductSpec),
+        (1465u32, product_1465 as fn() -> AudioProductSpec),
+        (2638u32, product_2638 as fn() -> AudioProductSpec),
+        (2641u32, product_2641 as fn() -> AudioProductSpec),
+        (2644u32, product_2644 as fn() -> AudioProductSpec),
+        (2657u32, product_2657 as fn() -> AudioProductSpec),
+        (2660u32, product_2660 as fn() -> AudioProductSpec),
+        (2664u32, product_2664 as fn() -> AudioProductSpec),
+        (2668u32, product_2668 as fn() -> AudioProductSpec),
+        (2689u32, product_2689 as fn() -> AudioProductSpec),
+        (3867u32, product_3867 as fn() -> AudioProductSpec),
+        (4124u32, product_4124 as fn() -> AudioProductSpec),
+        (4126u32, product_4126 as fn() -> AudioProductSpec),
+        (4130u32, product_4130 as fn() -> AudioProductSpec),
+        (1382u32, product_1382 as fn() -> AudioProductSpec),
+        (3334u32, product_3334 as fn() -> AudioProductSpec),
+        (3337u32, product_3337 as fn() -> AudioProductSpec),
+        (3909u32, product_3909 as fn() -> AudioProductSpec),
+        (3942u32, product_3942 as fn() -> AudioProductSpec),
+        (3949u32, product_3949 as fn() -> AudioProductSpec),
+    ]
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_products_data_decodes() {
+    for (_, factory) in read_audio_products_catalog() {
+        let _ = factory();
+    }
+}
+// End generated catalog reader: razer-pages/audio_products_data.

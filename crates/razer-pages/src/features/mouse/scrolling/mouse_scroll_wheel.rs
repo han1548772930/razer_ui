@@ -87,7 +87,7 @@ pub(super) struct ScrollWheelSpec {
 fn source_specs() -> &'static [ScrollWheelSpec] {
     static DATA: OnceLock<Vec<ScrollWheelSpec>> = OnceLock::new();
     DATA.get_or_init(|| {
-        let specs: Vec<ScrollWheelSpec> = crate::data::mouse_scroll_wheel_data!();
+        let specs: Vec<ScrollWheelSpec> = read_mouse_scroll_wheel_catalog();
         for spec in &specs {
             assert!(
                 spec.presentation == Presentation::TwoModeSwitches
@@ -931,3 +931,198 @@ mod tests {
         });
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_scroll_wheel_data.
+fn read_mouse_scroll_wheel_catalog() -> Vec<ScrollWheelSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ScrollWheelSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ScrollWheelSpec> {
+        let value = match r.tag()? {
+            0 => ScrollWheelSpec {
+                product_id: r.child(decode_2)?,
+                profile_key: r.child(decode_3)?,
+                defaults: r.child(decode_4)?,
+                modes: r.child(decode_5)?,
+                level_min: r.child(decode_7)?,
+                level_max: r.child(decode_7)?,
+                level_step: r.child(decode_7)?,
+                max_disabled_modes: r.child(decode_8)?,
+                locking_mode: r.child(decode_3)?,
+                presentation: r.child(decode_9)?,
+                two_mode_style: r.child(decode_10)?,
+                help_key: r.child(decode_3)?,
+                mode_description: r.child(decode_3)?,
+                acceleration_descriptions: r.child(decode_13)?,
+                smart_reel_descriptions: r.child(decode_13)?,
+            },
+            1 => ScrollWheelSpec {
+                product_id: r.child(decode_2)?,
+                profile_key: r.child(decode_3)?,
+                defaults: r.child(decode_4)?,
+                modes: r.child(decode_5)?,
+                level_min: r.child(decode_7)?,
+                level_max: r.child(decode_7)?,
+                level_step: r.child(decode_7)?,
+                max_disabled_modes: r.child(decode_8)?,
+                locking_mode: r.child(decode_3)?,
+                presentation: Default::default(),
+                two_mode_style: None,
+                help_key: Default::default(),
+                mode_description: Default::default(),
+                acceleration_descriptions: Default::default(),
+                smart_reel_descriptions: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Mode>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Mode> {
+        let value = match r.tag()? {
+            0 => Mode {
+                id: r.child(decode_3)?,
+                label: r.child(decode_3)?,
+                disable_label: Default::default(),
+            },
+            1 => Mode {
+                id: r.child(decode_3)?,
+                label: r.child(decode_3)?,
+                disable_label: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Presentation> {
+        let value = match r.tag()? {
+            0 => Presentation::TwoModeSwitches,
+            1 => Presentation::TwoModeLevels,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<TwoModeStyle>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_11)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<TwoModeStyle> {
+        let value = match r.tag()? {
+            0 => TwoModeStyle {
+                background: r.child(decode_2)?,
+                text: r.child(decode_2)?,
+                selected_text: r.child(decode_2)?,
+                height: r.child(decode_7)?,
+                radius: r.child(decode_7)?,
+                padding: r.child(decode_7)?,
+                pill_height: r.child(decode_7)?,
+                pill_radius: r.child(decode_7)?,
+                pill_padding_x: r.child(decode_7)?,
+                pill_padding_y: r.child(decode_7)?,
+                message_margin: r.child(decode_7)?,
+                switch_margin: r.child(decode_7)?,
+                mode_margin: r.child(decode_7)?,
+                twoway_margin: r.child(decode_7)?,
+                uppercase: r.child(decode_12)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_SCROLL_WHEEL_DATA,
+        0,
+        "fcc8891b1f6fe0f597b71adcdbdf215393bb79e6b41e95ab9ae202d4b8e18679",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_scroll_wheel_data_decodes() {
+    let _ = read_mouse_scroll_wheel_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_scroll_wheel_data.

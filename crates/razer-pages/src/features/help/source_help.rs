@@ -88,7 +88,7 @@ struct HelpResetCallback {
 }
 fn records() -> &'static [Help] {
     static RECORDS: OnceLock<Vec<Help>> = OnceLock::new();
-    RECORDS.get_or_init(|| crate::data::source_help_data!())
+    RECORDS.get_or_init(|| read_source_help_catalog())
 }
 
 /// Internet-only Help mounts have no local destination after their links are removed.
@@ -1156,3 +1156,396 @@ impl Render for SourceHelp {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/source_help_data.
+fn read_source_help_catalog() -> Vec<Help> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Help>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Help> {
+        let value = match r.tag()? {
+            0 => Help {
+                product_id: r.child(decode_2)?,
+                pages: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<HelpPage>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<HelpPage> {
+        let value = match r.tag()? {
+            0 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: r.child(decode_8)?,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: r.child(decode_6)?,
+                popup_kind: None,
+                popup_message: None,
+                cooldown_ms: None,
+                obm_reset_during_ble: r.child(decode_6)?,
+                plain_columns: r.child(decode_6)?,
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            1 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: r.child(decode_8)?,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: r.child(decode_6)?,
+                popup_kind: r.child(decode_10)?,
+                popup_message: None,
+                cooldown_ms: r.child(decode_11)?,
+                obm_reset_during_ble: r.child(decode_6)?,
+                plain_columns: r.child(decode_6)?,
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            2 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: r.child(decode_8)?,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: r.child(decode_6)?,
+                popup_kind: r.child(decode_10)?,
+                popup_message: None,
+                cooldown_ms: None,
+                obm_reset_during_ble: Default::default(),
+                plain_columns: r.child(decode_6)?,
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            3 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: r.child(decode_8)?,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: r.child(decode_6)?,
+                popup_kind: None,
+                popup_message: None,
+                cooldown_ms: None,
+                obm_reset_during_ble: r.child(decode_6)?,
+                plain_columns: r.child(decode_6)?,
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: r.child(decode_6)?,
+                show_factory_reset_overlay: r.child(decode_6)?,
+                disable_factory_reset_for_ble: r.child(decode_6)?,
+            },
+            4 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: None,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: Default::default(),
+                popup_kind: None,
+                popup_message: None,
+                cooldown_ms: None,
+                obm_reset_during_ble: Default::default(),
+                plain_columns: r.child(decode_6)?,
+                support_only: r.child(decode_6)?,
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            5 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: r.child(decode_8)?,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: r.child(decode_6)?,
+                popup_kind: r.child(decode_10)?,
+                popup_message: None,
+                cooldown_ms: None,
+                obm_reset_during_ble: r.child(decode_6)?,
+                plain_columns: r.child(decode_6)?,
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            6 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: r.child(decode_8)?,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: r.child(decode_6)?,
+                popup_kind: r.child(decode_10)?,
+                popup_message: r.child(decode_10)?,
+                cooldown_ms: r.child(decode_11)?,
+                obm_reset_during_ble: r.child(decode_6)?,
+                plain_columns: r.child(decode_6)?,
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            7 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: r.child(decode_8)?,
+                firmware_reset: r.child(decode_13)?,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: r.child(decode_6)?,
+                popup_kind: r.child(decode_10)?,
+                popup_message: r.child(decode_10)?,
+                cooldown_ms: None,
+                obm_reset_during_ble: Default::default(),
+                plain_columns: r.child(decode_6)?,
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            8 => HelpPage {
+                offset: r.child(decode_5)?,
+                serial: r.child(decode_6)?,
+                firmware: r.child(decode_6)?,
+                view_more: r.child(decode_6)?,
+                reset: r.child(decode_6)?,
+                oled_reset: r.child(decode_6)?,
+                reset_title: r.child(decode_7)?,
+                obm: r.child(decode_6)?,
+                reset_callback: None,
+                firmware_reset: None,
+                system_info: r.child(decode_6)?,
+                tutorial: r.child(decode_6)?,
+                thx_instructions: r.child(decode_6)?,
+                camo: r.child(decode_6)?,
+                inline_confirmation: Default::default(),
+                popup_kind: None,
+                popup_message: None,
+                cooldown_ms: None,
+                obm_reset_during_ble: Default::default(),
+                plain_columns: Default::default(),
+                support_only: Default::default(),
+                wait_for_obm_reset_completion: Default::default(),
+                show_factory_reset_overlay: Default::default(),
+                disable_factory_reset_for_ble: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<HelpResetCallback>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_9)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<HelpResetCallback> {
+        let value = match r.tag()? {
+            0 => HelpResetCallback {
+                action: r.child(decode_7)?,
+                payload: r.child(decode_6)?,
+                payload_value: None,
+            },
+            1 => HelpResetCallback {
+                action: r.child(decode_7)?,
+                payload: r.child(decode_6)?,
+                payload_value: r.child(decode_13)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_7)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u64>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_12)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_14)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SOURCE_HELP_DATA,
+        0,
+        "06682498f4d2c498098c5ed303f2be14d00780bc4f503270959d22c5575ddf22",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_source_help_data_decodes() {
+    let _ = read_source_help_catalog();
+}
+// End generated catalog reader: razer-pages/source_help_data.

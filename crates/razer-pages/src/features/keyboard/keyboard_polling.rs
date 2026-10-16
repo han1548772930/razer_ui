@@ -16,7 +16,7 @@ pub(super) struct Mount {
 pub(super) fn mount(pid: u32) -> Option<&'static Mount> {
     static MOUNTS: OnceLock<Vec<Mount>> = OnceLock::new();
     MOUNTS
-        .get_or_init(|| crate::data::keyboard_polling_data!())
+        .get_or_init(|| read_keyboard_polling_catalog())
         .iter()
         .find(|m| m.pid == pid)
 }
@@ -231,3 +231,58 @@ impl KeyboardProductWorkspace {
         Some(panel.into_any_element())
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_polling_data.
+fn read_keyboard_polling_catalog() -> Vec<Mount> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Mount>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Mount> {
+        let value = match r.tag()? {
+            0 => Mount {
+                pid: r.child(decode_2)?,
+                left: r.child(decode_3)?,
+                hide_ble: r.child(decode_3)?,
+                keyboard_category: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_POLLING_DATA,
+        0,
+        "b12e802ac3021ccec8a0338e632868dcbe325a5d1a8871d36fe8ef6d78505f9e",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_polling_data_decodes() {
+    let _ = read_keyboard_polling_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_polling_data.

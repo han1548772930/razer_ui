@@ -107,7 +107,7 @@ fn decode_capabilities(json: &str) -> anyhow::Result<CapabilityCatalog> {
 pub fn capability(product_id: u16, category: &str) -> Option<&'static PairingCapability> {
     static CATALOG: OnceLock<Vec<PairingCapability>> = OnceLock::new();
     CATALOG
-        .get_or_init(crate::data::receiver_pairing_capabilities::products)
+        .get_or_init(crate::receiver_pairing_capabilities::products)
         .iter()
         .find(|c| c.product_id == product_id && c.category == category)
 }
@@ -358,7 +358,7 @@ fn decode_pairing_catalog(json: &str) -> anyhow::Result<PairingCatalog> {
 fn pairing_catalog() -> &'static PairingCatalog {
     static CATALOG: OnceLock<PairingCatalog> = OnceLock::new();
     CATALOG.get_or_init(|| {
-        let catalog = crate::data::receiver_pairing_catalog::catalog();
+        let catalog = crate::receiver_pairing_catalog::catalog();
         assert_eq!(catalog.schema_version, 1, "fixed pairing source schema");
         for product in &catalog.available {
             if let Some(ids) = &product.dongle_id {

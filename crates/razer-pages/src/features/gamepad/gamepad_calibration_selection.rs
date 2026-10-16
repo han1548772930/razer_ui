@@ -3,22 +3,6 @@
 use super::*;
 use razer_widgets::theme::GamepadDialogColors as Colors;
 
-pub(super) fn source_svg(pid: u32, edition: u32, kind: &str) -> Option<&'static str> {
-    const SOURCES: &[(u32, u32, &str, &str)] =
-        include!("../../../../../assets/synapse/tables/gamepad-calibration-svg-sources.rs");
-    SOURCES
-        .iter()
-        .find(|&&(product, variant, source_kind, _)| {
-            product == pid && variant == edition && source_kind == kind
-        })
-        .or_else(|| {
-            SOURCES.iter().find(|&&(product, variant, source_kind, _)| {
-                product == pid && variant == 0 && source_kind == kind
-            })
-        })
-        .map(|&(_, _, _, asset)| asset)
-}
-
 pub(super) fn render(
     pid: u32,
     edition: u32,
@@ -57,7 +41,7 @@ pub(super) fn render(
                 .text_color(description_color())
                 .child(t("CONTROLLER_CALIBRATION_DESCRIPTION")),
         );
-    if let Some(image) = source_svg(pid, edition, "prd") {
+    if let Some(image) = razer_assets::gamepad_calibration_svg(pid, edition, razer_assets::GamepadCalibrationSvg::Product) {
         panel = panel.child(
             div()
                 .absolute()

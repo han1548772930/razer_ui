@@ -1,6 +1,5 @@
 //! Device/profile contracts and explicit preview fixtures; no UI or transport I/O.
 mod controller_input;
-mod data;
 pub mod domain;
 pub mod host_window_focus;
 pub mod model;

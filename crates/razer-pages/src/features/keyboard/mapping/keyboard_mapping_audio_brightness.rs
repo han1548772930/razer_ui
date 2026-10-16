@@ -19,7 +19,7 @@ struct Metadata {
 }
 fn metadata(pid: u32) -> Option<&'static Metadata> {
     static DATA: OnceLock<Vec<Metadata>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_audio_brightness_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_audio_brightness_catalog())
         .iter()
         .find(|row| row.product_id == pid)
 }
@@ -342,3 +342,99 @@ impl KeyboardProductWorkspace {
         body.into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_audio_brightness_data.
+fn read_keyboard_mapping_audio_brightness_catalog() -> Vec<Metadata> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Metadata>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Metadata> {
+        let value = match r.tag()? {
+            0 => Metadata {
+                product_id: r.child(decode_2)?,
+                audio: r.child(decode_3)?,
+                brightness: r.child(decode_3)?,
+                is_xbox: r.child(decode_5)?,
+                brightness_in_development: r.child(decode_5)?,
+                audio_spaced: r.child(decode_5)?,
+                labels: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_7, decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_AUDIO_BRIGHTNESS_DATA,
+        0,
+        "1182e7979a7eafb0c5269bddbb6722798b9ec61c949c328717cdd310e42a215d",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_audio_brightness_data_decodes() {
+    let _ = read_keyboard_mapping_audio_brightness_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_audio_brightness_data.

@@ -29,7 +29,7 @@ struct Item {
 }
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::record_options_data!())
+    DATA.get_or_init(|| read_record_options_catalog())
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -850,3 +850,93 @@ impl MacroPage {
         })
     }
 }
+
+// Generated catalog reader: razer-app-pages/record_options_data.
+fn read_record_options_catalog() -> Data {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                groups: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Group>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Group> {
+        let value = match r.tag()? {
+            0 => Group {
+                id: r.child(decode_3)?,
+                header: r.child(decode_4)?,
+                content: Default::default(),
+            },
+            1 => Group {
+                id: r.child(decode_3)?,
+                header: r.child(decode_4)?,
+                content: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Header> {
+        let value = match r.tag()? {
+            0 => Header {
+                name: r.child(decode_3)?,
+                tip: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Item>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Item> {
+        let value = match r.tag()? {
+            0 => Item {
+                name: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_RECORD_OPTIONS_DATA,
+        0,
+        "a1c4babfa2b74965f8d34d129a0466dfcd96884bf738457a48f52776263dca53",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_record_options_data_decodes() {
+    let _ = read_record_options_catalog();
+}
+// End generated catalog reader: razer-app-pages/record_options_data.

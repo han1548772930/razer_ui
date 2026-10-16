@@ -381,7 +381,7 @@ struct SourcePathHit {
 fn source_surface(pid: u32, group_index: usize) -> Option<&'static Surface> {
     static SURFACES: OnceLock<Vec<Surface>> = OnceLock::new();
     SURFACES
-        .get_or_init(|| crate::data::mouse_customize_current_data!())
+        .get_or_init(|| read_mouse_customize_current_catalog())
         .iter()
         .find(|surface| surface.product_id == pid && surface.group_index == group_index)
 }
@@ -1685,3 +1685,1267 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_customize_current_data.
+fn read_mouse_customize_current_catalog() -> Vec<Surface> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Surface>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Surface> {
+        let value = match r.tag()? {
+            0 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: Default::default(),
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: r.child(decode_7)?,
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: None,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: r.child(decode_7)?,
+                cycle_canvas_when_active: r.child(decode_7)?,
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: r.child(decode_7)?,
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: r.child(decode_7)?,
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: None,
+                circle_mapped_active: Default::default(),
+                circle_hover_fill: Default::default(),
+                label_top: Default::default(),
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            1 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: Default::default(),
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: r.child(decode_7)?,
+                cycle: r.child(decode_15)?,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: None,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: r.child(decode_7)?,
+                cycle_canvas_when_active: r.child(decode_7)?,
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: r.child(decode_7)?,
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: r.child(decode_7)?,
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: None,
+                circle_mapped_active: Default::default(),
+                circle_hover_fill: Default::default(),
+                label_top: Default::default(),
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            2 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: Default::default(),
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: r.child(decode_7)?,
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: r.child(decode_7)?,
+                cycle_canvas_when_active: r.child(decode_7)?,
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: r.child(decode_7)?,
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: r.child(decode_7)?,
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: None,
+                circle_mapped_active: Default::default(),
+                circle_hover_fill: Default::default(),
+                label_top: Default::default(),
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            3 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: Default::default(),
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: r.child(decode_7)?,
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: None,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: r.child(decode_7)?,
+                cycle_canvas_when_active: r.child(decode_7)?,
+                control_mode: r.child(decode_19)?,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: r.child(decode_7)?,
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: r.child(decode_7)?,
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: None,
+                circle_mapped_active: Default::default(),
+                circle_hover_fill: Default::default(),
+                label_top: Default::default(),
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            4 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: Default::default(),
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: r.child(decode_7)?,
+                cycle: r.child(decode_15)?,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: r.child(decode_7)?,
+                cycle_canvas_when_active: r.child(decode_7)?,
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: r.child(decode_7)?,
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: r.child(decode_7)?,
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: None,
+                circle_mapped_active: Default::default(),
+                circle_hover_fill: Default::default(),
+                label_top: Default::default(),
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            5 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: r.child(decode_5)?,
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: Default::default(),
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: Default::default(),
+                cycle_canvas_when_active: Default::default(),
+                control_mode: None,
+                line_y_start: default_line_y_start(),
+                attachment_layers: Default::default(),
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: Default::default(),
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: r.child(decode_19)?,
+                circle_mapped_active: r.child(decode_7)?,
+                circle_hover_fill: r.child(decode_7)?,
+                label_top: Default::default(),
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            6 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: r.child(decode_5)?,
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: Default::default(),
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: Default::default(),
+                cycle_canvas_when_active: Default::default(),
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: Default::default(),
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: Default::default(),
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: None,
+                circle_mapped_active: r.child(decode_7)?,
+                circle_hover_fill: r.child(decode_7)?,
+                label_top: r.child(decode_6)?,
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            7 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: r.child(decode_5)?,
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: Default::default(),
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: Default::default(),
+                cycle_canvas_when_active: Default::default(),
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: Default::default(),
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: Default::default(),
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: r.child(decode_19)?,
+                circle_mapped_active: r.child(decode_7)?,
+                circle_hover_fill: r.child(decode_7)?,
+                label_top: r.child(decode_6)?,
+                physical_circle_covers: Default::default(),
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            8 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: r.child(decode_5)?,
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: Default::default(),
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: Default::default(),
+                cycle_canvas_when_active: Default::default(),
+                control_mode: None,
+                line_y_start: default_line_y_start(),
+                attachment_layers: Default::default(),
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: Default::default(),
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: r.child(decode_19)?,
+                circle_mapped_active: r.child(decode_7)?,
+                circle_hover_fill: r.child(decode_7)?,
+                label_top: Default::default(),
+                physical_circle_covers: r.child(decode_36)?,
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            9 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: r.child(decode_5)?,
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: Default::default(),
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: Default::default(),
+                cycle_canvas_when_active: Default::default(),
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: Default::default(),
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: Default::default(),
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: r.child(decode_19)?,
+                circle_mapped_active: r.child(decode_7)?,
+                circle_hover_fill: r.child(decode_7)?,
+                label_top: r.child(decode_6)?,
+                physical_circle_covers: r.child(decode_36)?,
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            10 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: r.child(decode_5)?,
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: Default::default(),
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: Default::default(),
+                cycle_canvas_when_active: Default::default(),
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: Default::default(),
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: Default::default(),
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: None,
+                circle_mapped_active: r.child(decode_7)?,
+                circle_hover_fill: r.child(decode_7)?,
+                label_top: r.child(decode_6)?,
+                physical_circle_covers: r.child(decode_36)?,
+                svg_button_foreground: Default::default(),
+                svg_path_hits: r.child(decode_14)?,
+            },
+            11 => Surface {
+                product_id: r.child(decode_2)?,
+                group_index: r.child(decode_5)?,
+                shapes: r.child(decode_3)?,
+                controls: r.child(decode_8)?,
+                images: r.child(decode_12)?,
+                prefer_svg: Default::default(),
+                cycle: None,
+                cycle_images: r.child(decode_12)?,
+                image_top: r.child(decode_6)?,
+                image_left: r.child(decode_6)?,
+                image_width: r.child(decode_6)?,
+                image_height: r.child(decode_21)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                footer_margin_top: r.child(decode_6)?,
+                footer_margin_bottom: r.child(decode_6)?,
+                footer_armory_height: r.child(decode_7)?,
+                separate_cycle_canvas: Default::default(),
+                cycle_canvas_when_active: Default::default(),
+                control_mode: None,
+                line_y_start: r.child(decode_6)?,
+                attachment_layers: Default::default(),
+                attachment_images: r.child(decode_12)?,
+                attachment_svg: Default::default(),
+                thumbnails: r.child(decode_12)?,
+                thumbnail_check: r.child(decode_12)?,
+                shape_mode: r.child(decode_19)?,
+                circle_mapped_active: r.child(decode_7)?,
+                circle_hover_fill: r.child(decode_7)?,
+                label_top: r.child(decode_6)?,
+                physical_circle_covers: r.child(decode_36)?,
+                svg_button_foreground: r.child(decode_12)?,
+                svg_path_hits: r.child(decode_14)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Shape>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Shape> {
+        let value = match r.tag()? {
+            0 => Shape {
+                index: r.child(decode_5)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+                left: r.child(decode_7)?,
+                active_x: None,
+                active_y: None,
+                selected_cycle_x: None,
+                selected_cycle_y: None,
+                line_y: None,
+                target_dot_requires_cycle_trigger: Default::default(),
+                target_dot_requires_cycle_display: Default::default(),
+                hide_target_when_cycle: Default::default(),
+                cycle_line_length_adjust: Default::default(),
+                hover_index: None,
+                repeat_line_y: None,
+            },
+            1 => Shape {
+                index: r.child(decode_5)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+                left: r.child(decode_7)?,
+                active_x: None,
+                active_y: None,
+                selected_cycle_x: r.child(decode_21)?,
+                selected_cycle_y: r.child(decode_21)?,
+                line_y: None,
+                target_dot_requires_cycle_trigger: Default::default(),
+                target_dot_requires_cycle_display: Default::default(),
+                hide_target_when_cycle: Default::default(),
+                cycle_line_length_adjust: Default::default(),
+                hover_index: None,
+                repeat_line_y: None,
+            },
+            2 => Shape {
+                index: r.child(decode_5)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+                left: r.child(decode_7)?,
+                active_x: None,
+                active_y: None,
+                selected_cycle_x: None,
+                selected_cycle_y: None,
+                line_y: r.child(decode_21)?,
+                target_dot_requires_cycle_trigger: r.child(decode_7)?,
+                target_dot_requires_cycle_display: Default::default(),
+                hide_target_when_cycle: r.child(decode_7)?,
+                cycle_line_length_adjust: r.child(decode_6)?,
+                hover_index: None,
+                repeat_line_y: None,
+            },
+            3 => Shape {
+                index: r.child(decode_5)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+                left: r.child(decode_7)?,
+                active_x: None,
+                active_y: None,
+                selected_cycle_x: None,
+                selected_cycle_y: None,
+                line_y: r.child(decode_21)?,
+                target_dot_requires_cycle_trigger: Default::default(),
+                target_dot_requires_cycle_display: r.child(decode_7)?,
+                hide_target_when_cycle: Default::default(),
+                cycle_line_length_adjust: Default::default(),
+                hover_index: None,
+                repeat_line_y: None,
+            },
+            4 => Shape {
+                index: r.child(decode_5)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+                left: r.child(decode_7)?,
+                active_x: None,
+                active_y: None,
+                selected_cycle_x: None,
+                selected_cycle_y: None,
+                line_y: r.child(decode_21)?,
+                target_dot_requires_cycle_trigger: Default::default(),
+                target_dot_requires_cycle_display: Default::default(),
+                hide_target_when_cycle: Default::default(),
+                cycle_line_length_adjust: Default::default(),
+                hover_index: None,
+                repeat_line_y: None,
+            },
+            5 => Shape {
+                index: r.child(decode_5)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+                left: r.child(decode_7)?,
+                active_x: None,
+                active_y: None,
+                selected_cycle_x: None,
+                selected_cycle_y: None,
+                line_y: r.child(decode_21)?,
+                target_dot_requires_cycle_trigger: Default::default(),
+                target_dot_requires_cycle_display: Default::default(),
+                hide_target_when_cycle: Default::default(),
+                cycle_line_length_adjust: Default::default(),
+                hover_index: r.child(decode_10)?,
+                repeat_line_y: None,
+            },
+            6 => Shape {
+                index: r.child(decode_5)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+                left: r.child(decode_7)?,
+                active_x: None,
+                active_y: None,
+                selected_cycle_x: None,
+                selected_cycle_y: None,
+                line_y: r.child(decode_21)?,
+                target_dot_requires_cycle_trigger: Default::default(),
+                target_dot_requires_cycle_display: Default::default(),
+                hide_target_when_cycle: Default::default(),
+                cycle_line_length_adjust: Default::default(),
+                hover_index: r.child(decode_10)?,
+                repeat_line_y: r.child(decode_21)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Control>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_9)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Control> {
+        let value = match r.tag()? {
+            0 => Control {
+                index: r.child(decode_5)?,
+                button_index: r.child(decode_10)?,
+                side: r.child(decode_11)?,
+                column_side: None,
+                margin_top: Default::default(),
+            },
+            1 => Control {
+                index: r.child(decode_5)?,
+                button_index: r.child(decode_10)?,
+                side: r.child(decode_11)?,
+                column_side: None,
+                margin_top: r.child(decode_6)?,
+            },
+            2 => Control {
+                index: r.child(decode_5)?,
+                button_index: r.child(decode_10)?,
+                side: r.child(decode_11)?,
+                column_side: r.child(decode_19)?,
+                margin_top: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<usize>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_5)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Artwork>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_13)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Artwork> {
+        let value = match r.tag()? {
+            0 => Artwork {
+                edition: r.child(decode_2)?,
+                request: r.child(decode_11)?,
+                asset: r.child(decode_11)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SourcePathHit>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_24)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<Cycle>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_16)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Cycle> {
+        let value = match r.tag()? {
+            0 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: Default::default(),
+                match_field: None,
+                match_value: None,
+                edition_zero_fallback: Default::default(),
+                visual_hover_index: None,
+                physical_cover: None,
+                width: default_image_width(),
+                height: default_image_height(),
+                fixed_edition: None,
+            },
+            1 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: r.child(decode_7)?,
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                visual_hover_index: None,
+                physical_cover: None,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: None,
+            },
+            2 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: None,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: r.child(decode_7)?,
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                visual_hover_index: None,
+                physical_cover: None,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: None,
+            },
+            3 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: None,
+                same_selected_update: None,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: r.child(decode_7)?,
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                visual_hover_index: None,
+                physical_cover: None,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: r.child(decode_20)?,
+            },
+            4 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: Default::default(),
+                match_field: None,
+                match_value: None,
+                edition_zero_fallback: Default::default(),
+                visual_hover_index: None,
+                physical_cover: None,
+                width: default_image_width(),
+                height: default_image_height(),
+                fixed_edition: r.child(decode_20)?,
+            },
+            5 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: r.child(decode_7)?,
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                visual_hover_index: r.child(decode_10)?,
+                physical_cover: None,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: r.child(decode_20)?,
+            },
+            6 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: None,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: Default::default(),
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: Default::default(),
+                visual_hover_index: r.child(decode_10)?,
+                physical_cover: r.child(decode_22)?,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: r.child(decode_20)?,
+            },
+            7 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: r.child(decode_7)?,
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                visual_hover_index: None,
+                physical_cover: None,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: r.child(decode_20)?,
+            },
+            8 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: Default::default(),
+                match_field: None,
+                match_value: None,
+                edition_zero_fallback: Default::default(),
+                visual_hover_index: None,
+                physical_cover: None,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: r.child(decode_20)?,
+            },
+            9 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: None,
+                render_idle: None,
+                render_active: None,
+                deselect_when_empty: r.child(decode_7)?,
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: r.child(decode_7)?,
+                visual_hover_index: None,
+                physical_cover: r.child(decode_22)?,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: None,
+            },
+            10 => Cycle {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                initial: r.child(decode_17)?,
+                hover: r.child(decode_17)?,
+                leave: r.child(decode_17)?,
+                leave_selected: r.child(decode_17)?,
+                click_previous_selected: r.child(decode_18)?,
+                deselect: r.child(decode_18)?,
+                same_selected_update: r.child(decode_18)?,
+                select_update: r.child(decode_18)?,
+                render_idle: r.child(decode_18)?,
+                render_active: r.child(decode_18)?,
+                deselect_when_empty: Default::default(),
+                match_field: r.child(decode_19)?,
+                match_value: r.child(decode_19)?,
+                edition_zero_fallback: Default::default(),
+                visual_hover_index: None,
+                physical_cover: None,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                fixed_edition: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<CyclePosition> {
+        let value = match r.tag()? {
+            0 => CyclePosition {
+                display: r.child(decode_7)?,
+                x: r.child(decode_6)?,
+                y: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_18(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<CyclePosition>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_17)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_19(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_11)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_20(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_2)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_21(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<f32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_6)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_22(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<PhysicalCover>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_23)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_23(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PhysicalCover> {
+        let value = match r.tag()? {
+            0 => PhysicalCover {
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_24(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourcePathHit> {
+        let value = match r.tag()? {
+            0 => SourcePathHit {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                require_enabled: r.child(decode_7)?,
+                paint: r.child(decode_7)?,
+                key: r.child(decode_25)?,
+                svg_state: None,
+            },
+            1 => SourcePathHit {
+                index: r.child(decode_5)?,
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                require_enabled: r.child(decode_7)?,
+                paint: r.child(decode_7)?,
+                key: r.child(decode_25)?,
+                svg_state: r.child(decode_38)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_25(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<razer_assets::KeyboardKey> {
+        let value = match r.tag()? {
+            0 => razer_assets::KeyboardKey {
+                id: r.child(decode_26)?,
+                label: r.child(decode_26)?,
+                enabled: r.child(decode_27)?,
+                functions: r.child(decode_28)?,
+                bounds: r.child(decode_29)?,
+                geometry: r.child(decode_31)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_26(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_27(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_28(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_29(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 4]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 4>(decode_30)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_30(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_31(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<razer_assets::KeyboardGeometry> {
+        let value = match r.tag()? {
+            0 => razer_assets::KeyboardGeometry::Path {
+                commands: r.child(decode_32)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_32(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<razer_assets::KeyboardPathCommand>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_33)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_33(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<razer_assets::KeyboardPathCommand> {
+        let value = match r.tag()? {
+            0 => razer_assets::KeyboardPathCommand::Move(r.child(decode_34)?),
+            1 => razer_assets::KeyboardPathCommand::Line(r.child(decode_34)?),
+            2 => razer_assets::KeyboardPathCommand::Curve(r.child(decode_35)?),
+            3 => razer_assets::KeyboardPathCommand::Close,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_34(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_30)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_35(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[[f32; 2]; 3]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 3>(decode_34)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_36(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<CircleCover>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_37)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_37(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<CircleCover> {
+        let value = match r.tag()? {
+            0 => CircleCover {
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                index: r.child(decode_5)?,
+                hover_index: r.child(decode_5)?,
+                rounded: Default::default(),
+                require_enabled: Default::default(),
+            },
+            1 => CircleCover {
+                left: r.child(decode_6)?,
+                top: r.child(decode_6)?,
+                width: r.child(decode_6)?,
+                height: r.child(decode_6)?,
+                index: r.child(decode_5)?,
+                hover_index: r.child(decode_5)?,
+                rounded: r.child(decode_7)?,
+                require_enabled: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_38(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<super::svg_button_motion::SvgButtonPresentation>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_39)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_39(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<super::svg_button_motion::SvgButtonPresentation> {
+        let value = match r.tag()? {
+            0 => super::svg_button_motion::SvgButtonPresentation {
+                stroke_width: r.child(decode_40)?,
+                miter_limit: r.child(decode_40)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_40(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_CUSTOMIZE_CURRENT_DATA,
+        0,
+        "62373a5f34527af8b313334e0c16eda82e42b7cf191bbcbe3b8a034dee960ad4",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_customize_current_data_decodes() {
+    let _ = read_mouse_customize_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_customize_current_data.

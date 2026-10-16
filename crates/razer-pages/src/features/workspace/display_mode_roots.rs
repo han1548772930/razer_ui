@@ -57,7 +57,7 @@ impl DisplayModeRoot {
 
 fn roots() -> &'static DisplayModeModes {
     static ROOTS: OnceLock<DisplayModeModes> = OnceLock::new();
-    ROOTS.get_or_init(|| crate::data::display_mode_roots!().modes)
+    ROOTS.get_or_init(|| read_display_mode_roots_catalog().modes)
 }
 
 impl DisplayModeRoot {
@@ -94,3 +94,60 @@ impl DisplayModeRoot {
 #[cfg(test)]
 #[path = "display_mode_roots_tests.rs"]
 mod tests;
+
+// Generated catalog reader: razer-pages/display_mode_roots.
+fn read_display_mode_roots_catalog() -> DisplayModeRoots {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<DisplayModeRoots> {
+        let value = match r.tag()? {
+            0 => DisplayModeRoots {
+                modes: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<DisplayModeModes> {
+        let value = match r.tag()? {
+            0 => DisplayModeModes {
+                armory: r.child(decode_2)?,
+                chroma_app: r.child(decode_2)?,
+                macro_root: r.child(decode_2)?,
+                multi_device_pairing: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_DISPLAY_MODE_ROOTS,
+        0,
+        "f40a1335d30112a4a83864ad9e398cfc18a3ffecbd168f9b5ae7913b8e3c0c1c",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_display_mode_roots_decodes() {
+    let _ = read_display_mode_roots_catalog();
+}
+// End generated catalog reader: razer-pages/display_mode_roots.

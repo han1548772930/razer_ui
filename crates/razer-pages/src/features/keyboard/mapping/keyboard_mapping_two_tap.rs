@@ -33,7 +33,7 @@ struct Info {
 }
 fn find_data(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_two_tap_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_two_tap_catalog())
         .iter()
         .find(|product| product.product_id == pid)
 }
@@ -501,24 +501,26 @@ pub(super) fn merge(
     }
     mappings
 }
+#[derive(Deserialize)]
+struct Entry {
+    product_id: u32,
+    pages: Vec<Page>,
+}
+
+#[derive(Deserialize)]
+struct Page {
+    page: String,
+    mapping_available: bool,
+    disable_actuation_point: bool,
+}
+
 fn actuation_visible(workspace: &KeyboardProductWorkspace, slot: usize, edit: &Edit) -> bool {
     if edit.button["inputType"] != "AnalogInput" || edit.slots[slot].category == "DISABLE" {
         return false;
     }
-    #[derive(Deserialize)]
-    struct Entry {
-        product_id: u32,
-        pages: Vec<Page>,
-    }
-    #[derive(Deserialize)]
-    struct Page {
-        page: String,
-        mapping_available: bool,
-        disable_actuation_point: bool,
-    }
     static ENTRIES: OnceLock<Vec<Entry>> = OnceLock::new();
     let entry = ENTRIES
-        .get_or_init(|| crate::data::keyboard_mapping_entry_gates_data!())
+        .get_or_init(|| read_keyboard_mapping_entry_gates_catalog())
         .iter()
         .find(|row| row.product_id == workspace.spec.product_id)
         .and_then(|row| row.pages.iter().find(|page| page.page == workspace.page));
@@ -1019,3 +1021,193 @@ mod tests {
         assert_eq!(raw(&slots[1], "1"), Some(19656.));
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_entry_gates_data.
+fn read_keyboard_mapping_entry_gates_catalog() -> Vec<Entry> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Entry>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Entry> {
+        let value = match r.tag()? {
+            0 => Entry {
+                product_id: r.child(decode_2)?,
+                pages: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Page>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Page> {
+        let value = match r.tag()? {
+            0 => Page {
+                page: r.child(decode_5)?,
+                mapping_available: r.child(decode_6)?,
+                disable_actuation_point: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_ENTRY_GATES_DATA,
+        0,
+        "4277b4229d38d763258460279444d0566d341c761aa211c96535ad2ae1722722",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_entry_gates_data_decodes() {
+    let _ = read_keyboard_mapping_entry_gates_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_entry_gates_data.
+
+// Generated catalog reader: razer-pages/keyboard_mapping_two_tap_data.
+fn read_keyboard_mapping_two_tap_catalog() -> Vec<Product> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Product>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Product> {
+        let value = match r.tag()? {
+            0 => Product {
+                product_id: r.child(decode_2)?,
+                info: r.child(decode_3)?,
+                sync_excluded: r.child(decode_5)?,
+                analog_v1: r.child(decode_7)?,
+                low_profile: r.child(decode_7)?,
+                double_mapping: r.child(decode_7)?,
+                disable_analog: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Info> {
+        let value = match r.tag()? {
+            0 => Info {
+                min: r.child(decode_4)?,
+                max: r.child(decode_4)?,
+                unit: r.child(decode_4)?,
+                default_value: r.child(decode_4)?,
+                min_break: r.child(decode_4)?,
+                display_offset: r.child(decode_4)?,
+            },
+            1 => Info {
+                min: r.child(decode_4)?,
+                max: r.child(decode_4)?,
+                unit: r.child(decode_4)?,
+                default_value: r.child(decode_4)?,
+                min_break: r.child(decode_4)?,
+                display_offset: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_TWO_TAP_DATA,
+        0,
+        "3a4de9c4f5a4ef8cb8b49df2bf2444099f1980689c47397b935c350a7c294be9",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_two_tap_data_decodes() {
+    let _ = read_keyboard_mapping_two_tap_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_two_tap_data.

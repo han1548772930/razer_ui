@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+razer-resource-db.workspace = true
 razer-ipc.workspace = true
 razer-platform.workspace = true
 raw-window-handle.workspace = true

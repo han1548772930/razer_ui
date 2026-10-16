@@ -181,7 +181,7 @@ struct Asset {
 fn catalog() -> &'static [NativeLibrary] {
     static CATALOG: OnceLock<Vec<NativeLibrary>> = OnceLock::new();
     CATALOG.get_or_init(|| {
-        let asset: Asset = crate::data::native_library_inventory!();
+        let asset: Asset = read_native_library_inventory_catalog();
         assert_eq!(asset.schema_version, 1);
         asset.libraries
     })
@@ -407,3 +407,325 @@ mod tests {
         }
     }
 }
+
+// Generated catalog reader: razer-catalog/native_library_inventory.
+fn read_native_library_inventory_catalog() -> Asset {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Asset> {
+        let value = match r.tag()? {
+            0 => Asset {
+                schema_version: r.child(decode_1)?,
+                libraries: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u8> {
+        let value = match r.tag()? {
+            0 => r.u8()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<NativeLibrary>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<NativeLibrary> {
+        let value = match r.tag()? {
+            0 => NativeLibrary {
+                id: r.child(decode_4)?,
+                kind: r.child(decode_5)?,
+                channel: r.child(decode_4)?,
+                file_names: r.child(decode_6)?,
+                path_rules: r.child(decode_6)?,
+                products: r.child(decode_7)?,
+                declared_functions: r.child(decode_9)?,
+                receipts: r.child(decode_10)?,
+                resources: r.child(decode_11)?,
+                sessions: r.child(decode_19)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<LibraryKind> {
+        let value = match r.tag()? {
+            0 => LibraryKind::Device,
+            1 => LibraryKind::LightingDriver,
+            2 => LibraryKind::Engine,
+            3 => LibraryKind::LightingEngine,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<NativeFunction>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_20)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Receipt>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_23)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<NativeResource>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_12)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<NativeResource> {
+        let value = match r.tag()? {
+            0 => NativeResource {
+                file: r.child(decode_4)?,
+                bytes: r.child(decode_13)?,
+                sha256: r.child(decode_4)?,
+                md5: r.child(decode_4)?,
+                machine: r.child(decode_14)?,
+                exports: r.child(decode_6)?,
+                bindings: r.child(decode_15)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u16> {
+        let value = match r.tag()? {
+            0 => r.u16()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<NativeResourceBinding>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_16)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<NativeResourceBinding> {
+        let value = match r.tag()? {
+            0 => NativeResourceBinding {
+                product_id: r.child(decode_17)?,
+                install_relative_path: r.child(decode_18)?,
+                install_path_template: None,
+                fallback_relative_path: None,
+            },
+            1 => NativeResourceBinding {
+                product_id: None,
+                install_relative_path: None,
+                install_path_template: r.child(decode_18)?,
+                fallback_relative_path: r.child(decode_18)?,
+            },
+            2 => NativeResourceBinding {
+                product_id: None,
+                install_relative_path: r.child(decode_18)?,
+                install_path_template: None,
+                fallback_relative_path: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_8)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_18(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_4)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_19(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<NativeSession>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.sequence(decode_24)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_20(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<NativeFunction> {
+        let value = match r.tag()? {
+            0 => NativeFunction {
+                name: r.child(decode_4)?,
+                returns: r.child(decode_4)?,
+                args: r.child(decode_6)?,
+                calls: r.child(decode_21)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_21(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<NativeCall>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_22)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_22(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<NativeCall> {
+        let value = match r.tag()? {
+            0 => NativeCall {
+                argument: r.child(decode_4)?,
+                method: r.child(decode_4)?,
+                decoder: r.child(decode_4)?,
+                class_offset: r.child(decode_13)?,
+                receipt: r.child(decode_23)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_23(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Receipt> {
+        let value = match r.tag()? {
+            0 => Receipt {
+                path: r.child(decode_4)?,
+                offset: r.child(decode_13)?,
+                end: r.child(decode_13)?,
+                sha256: r.child(decode_4)?,
+                source: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_24(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<NativeSession> {
+        let value = match r.tag()? {
+            0 => NativeSession {
+                argument: r.child(decode_4)?,
+                initialize: r.child(decode_4)?,
+                terminate: r.child(decode_4)?,
+                class_offset: r.child(decode_13)?,
+                path: r.child(decode_4)?,
+                initialize_attempts: r.child(decode_13)?,
+                retry_delay_ms: r.child(decode_25)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_25(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_CATALOG_NATIVE_LIBRARY_INVENTORY,
+        0,
+        "9032c9a732c8c0f74b317d477b31906e742466f9a2b55f230cf3f3509d12db76",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_native_library_inventory_decodes() {
+    let _ = read_native_library_inventory_catalog();
+}
+// End generated catalog reader: razer-catalog/native_library_inventory.

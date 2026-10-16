@@ -2,7 +2,9 @@
 use gpui_kit::{AssetSource, SharedString};
 use std::borrow::Cow;
 pub struct SynapseAssets;
-mod data;
+mod image_selectors;
+mod native_icons;
+pub use native_icons::NativeIcon;
 mod keyboard_source;
 pub use keyboard_source::{
     InputCounter, KeyboardSourceGroup, KeyboardSourceInput, keyboard_source_for_layout,
@@ -20,6 +22,8 @@ pub fn load_path(path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
 }
 impl SynapseAssets {
     pub fn validate(&self) -> anyhow::Result<()> {
+        razer_resource_db::initialize()?;
+        image_selectors::validate()?;
         packed::validate()
     }
 }
@@ -61,20 +65,18 @@ pub enum DeviceImage {
     Streamer,
 }
 
-type ProductAsset = (u32, u32, u32, DeviceImage, &'static str);
-const PRODUCT_IMAGES: &[ProductAsset] =
-    include!("../../../assets/synapse/tables/product-images.rs");
-const ARMORY_PRODUCT_IMAGES: &[ProductAsset] =
-    include!("../../../assets/synapse/tables/armory-product-images.rs");
+/// Exact original image request, without a caller-specific layout normalization.
+pub fn dashboard_image_exact(pid: u32, edition_id: u32, layout_id: u32) -> Option<&'static str> {
+    image_selectors::get().dashboard.iter().find_map(|image| {
+        (image.product_id == pid && image.edition_id == edition_id && image.layout_id == layout_id)
+            .then_some(image.asset.as_str())
+    })
+}
 
 /// Dashboard and pairing cards use the original PluginImages artwork. An
 /// unavailable edition/layout stays unavailable instead of changing its color
 /// or substituting Customize artwork. Old keyboard data defaults to layout one.
 pub fn dashboard_image(pid: u32, edition_id: u32, layout_id: u32) -> Option<&'static str> {
-    const IMAGES: &[(u32, u32, u32, &str)] =
-        include!("../../../assets/synapse/tables/dashboard-images.rs");
-    const ARMORY_IMAGES: &[(u32, u32, u32, &str)] =
-        include!("../../../assets/synapse/tables/armory-dashboard-images.rs");
     let layout_id = match pid {
         653 => layout_id.max(1),
         // Current DualLinkKeyboard's PluginImages path contains the real
@@ -83,17 +85,8 @@ pub fn dashboard_image(pid: u32, edition_id: u32, layout_id: u32) -> Option<&'st
         756 => layout_id,
         _ => 0,
     };
-    IMAGES
-        .iter()
-        .chain(ARMORY_IMAGES)
-        .find_map(|&(product, edition, layout, asset)| {
-            (product == pid && edition == edition_id && layout == layout_id).then_some(asset)
-        })
+    dashboard_image_exact(pid, edition_id, layout_id)
 }
-
-type DashboardPluginAsset = (u32, u32, u32, u32, bool, u32, &'static str);
-static CURRENT_DASHBOARD_IMAGES: &[DashboardPluginAsset] =
-    include!("../../../assets/synapse/tables/current-dashboard-images.rs");
 
 /// Resolves an exact local PluginImages request without changing its edition,
 /// layout, wrist variant or density. Standalone pairing image producers have
@@ -106,15 +99,15 @@ pub fn dashboard_plugin_image(
     wrist: bool,
     density: u32,
 ) -> Option<&'static str> {
-    CURRENT_DASHBOARD_IMAGES.iter().find_map(
-        |&(product, edition, image_edition, layout, image_wrist, image_density, asset)| {
-            (product == pid
-                && edition == edition_id
-                && image_edition == filename_edition_id
-                && layout == layout_id
-                && image_wrist == wrist
-                && image_density == density)
-                .then_some(asset)
+    image_selectors::get().dashboard_plugins.iter().find_map(
+        |image| {
+            (image.variant.product_id == pid
+                && image.variant.edition_id == edition_id
+                && image.filename_edition_id == filename_edition_id
+                && image.variant.layout_id == layout_id
+                && image.wrist == wrist
+                && image.density == density)
+                .then_some(image.variant.asset.as_str())
         },
     )
 }
@@ -142,13 +135,22 @@ pub fn dashboard_card_image(
 /// Current standalone `Me()` uses the exact category layout and edition.
 /// Failed explicit editions retain the original unavailable/placeholder branch.
 pub fn pairing_product_image(pid: u32, edition_id: u32, layout_id: u32) -> Option<&'static str> {
-    const IMAGES: &[(u32, u32, u32, &str)] =
-        include!("../../../assets/synapse/tables/multipairing-product-images.rs");
-    IMAGES
-        .iter()
-        .find_map(|&(product, edition, layout, asset)| {
-            (product == pid && edition == edition_id && layout == layout_id).then_some(asset)
+    image_selectors::get().pairing.iter().find_map(|image| {
+            (image.product_id == pid && image.edition_id == edition_id && image.layout_id == layout_id).then_some(image.asset.as_str())
         })
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum GamepadCalibrationSvg {
+    Product,
+    ActuationDevice,
+}
+
+pub fn gamepad_calibration_svg(pid: u32, edition: u32, kind: GamepadCalibrationSvg) -> Option<&'static str> {
+    let images = &image_selectors::get().calibration;
+    images.iter().find(|image| image.product_id == pid && image.edition_id == edition && image.kind == kind)
+        .or_else(|| images.iter().find(|image| image.product_id == pid && image.edition_id == 0 && image.kind == kind))
+        .map(|image| image.asset.as_str())
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -186,16 +188,16 @@ pub fn resolve_device_image(
         0
     };
     let lookup = |requested_edition, requested_layout| {
-        PRODUCT_IMAGES.iter().chain(ARMORY_PRODUCT_IMAGES).find_map(
-            |&(product, edition, layout, purpose, asset)| {
-                (product == pid
-                    && edition == requested_edition
-                    && layout == requested_layout
-                    && purpose == part)
+        image_selectors::get().products.iter().find_map(
+            |image| {
+                (image.variant.product_id == pid
+                    && image.variant.edition_id == requested_edition
+                    && image.variant.layout_id == requested_layout
+                    && image.part == part)
                     .then_some(ResolvedDeviceImage {
-                        asset,
-                        edition_id: edition,
-                        layout_id: layout,
+                        asset: image.variant.asset.as_str(),
+                        edition_id: image.variant.edition_id,
+                        layout_id: image.variant.layout_id,
                         is_fallback_preview: false,
                     })
             },
@@ -246,7 +248,7 @@ pub fn keyboard_keys_for_layout(layout_id: u32) -> &'static [KeyboardKey] {
     static LAYOUTS: std::sync::OnceLock<Vec<KeyboardLayout>> = std::sync::OnceLock::new();
     let layout_id = if layout_id == 0 { 1 } else { layout_id };
     LAYOUTS
-        .get_or_init(|| crate::data::layouts!())
+        .get_or_init(|| read_layouts_catalog())
         .iter()
         .find(|layout| layout.layout_id == layout_id)
         .map_or(&[], |layout| layout.keys.as_slice())
@@ -310,11 +312,12 @@ mod tests {
 
     #[test]
     fn every_current_dashboard_variant_has_a_registered_resource() {
-        type Image = (u32, u32, u32, u32, bool, u32, &'static str);
-        const IMAGES: &[Image] =
-            include!("../../../assets/synapse/tables/current-dashboard-images.rs");
-        assert!(!IMAGES.is_empty());
-        for &(pid, directory_edition, filename_edition, layout, wrist, density, alias) in IMAGES {
+        let images = &image_selectors::get().dashboard_plugins;
+        assert!(!images.is_empty());
+        for image in images {
+            let (pid, directory_edition, filename_edition, layout, wrist, density, alias) =
+                (image.variant.product_id, image.variant.edition_id, image.filename_edition_id,
+                 image.variant.layout_id, image.wrist, image.density, image.variant.asset.as_str());
             let (_, bytes, _) = remote::identity(alias).unwrap_or_else(|| {
                 panic!(
                     "missing Dashboard artwork: PID {pid}, directory edition {directory_edition}, \
@@ -489,3 +492,173 @@ mod tests {
         );
     }
 }
+
+// Generated catalog reader: razer-assets/layouts.
+fn read_layouts_catalog() -> Vec<KeyboardLayout> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<KeyboardLayout>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<KeyboardLayout> {
+        let value = match r.tag()? {
+            0 => KeyboardLayout {
+                layout_id: r.child(decode_2)?,
+                keys: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<KeyboardKey>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<KeyboardKey> {
+        let value = match r.tag()? {
+            0 => KeyboardKey {
+                id: r.child(decode_5)?,
+                label: r.child(decode_5)?,
+                enabled: r.child(decode_6)?,
+                functions: r.child(decode_7)?,
+                bounds: r.child(decode_8)?,
+                geometry: r.child(decode_10)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 4]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 4>(decode_9)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<KeyboardGeometry> {
+        let value = match r.tag()? {
+            0 => KeyboardGeometry::Path {
+                commands: r.child(decode_11)?,
+            },
+            1 => KeyboardGeometry::Rect {
+                origin: r.child(decode_13)?,
+                size: r.child(decode_13)?,
+            },
+            2 => KeyboardGeometry::Circle {
+                center: r.child(decode_13)?,
+                radius: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<KeyboardPathCommand>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<KeyboardPathCommand> {
+        let value = match r.tag()? {
+            0 => KeyboardPathCommand::Move(r.child(decode_13)?),
+            1 => KeyboardPathCommand::Line(r.child(decode_13)?),
+            2 => KeyboardPathCommand::Curve(r.child(decode_14)?),
+            3 => KeyboardPathCommand::Close,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_9)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[[f32; 2]; 3]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 3>(decode_13)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_ASSETS_LAYOUTS,
+        0,
+        "fe6e2726f3040e24fc6f1f7d4c2079f3d211afda99865025d3525ec1c3a91faf",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_layouts_decodes() {
+    let _ = read_layouts_catalog();
+}
+// End generated catalog reader: razer-assets/layouts.

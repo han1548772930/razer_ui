@@ -12,7 +12,7 @@ struct SourceModuleDetail {
 }
 fn source_module_catalog() -> &'static SourceModuleCatalog {
     static CATALOG: OnceLock<SourceModuleCatalog> = OnceLock::new();
-    CATALOG.get_or_init(|| crate::data::devices_modules_catalog!())
+    CATALOG.get_or_init(|| read_devices_modules_catalog_catalog())
 }
 fn localized_module_text(text: &BTreeMap<String, String>) -> String {
     let locale = i18n::locale().to_ascii_lowercase();
@@ -395,3 +395,128 @@ impl Render for ModuleCatalog {
             .children(groups.into_iter().flatten())
     }
 }
+
+// Generated catalog reader: razer-app-pages/devices_modules_catalog.
+fn read_devices_modules_catalog_catalog() -> SourceModuleCatalog {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceModuleCatalog> {
+        let value = match r.tag()? {
+            0 => SourceModuleCatalog {
+                ids: r.child(decode_1)?,
+                titles: r.child(decode_3)?,
+                descriptions: r.child(decode_5)?,
+                details: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<
+            String,
+            std::option::Option<std::collections::BTreeMap<String, String>>,
+        >,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<std::collections::BTreeMap<String, String>>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_4)?),
+            1 => None,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, SourceModuleDetail>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceModuleDetail> {
+        let value = match r.tag()? {
+            0 => SourceModuleDetail {
+                size: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_DEVICES_MODULES_CATALOG,
+        0,
+        "19f89f519dd8da1bfbda00634efebed43bedbd4c3ac7abf3a3cf72a394bf39af",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_devices_modules_catalog_decodes() {
+    let _ = read_devices_modules_catalog_catalog();
+}
+// End generated catalog reader: razer-app-pages/devices_modules_catalog.

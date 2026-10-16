@@ -78,7 +78,7 @@ fn one() -> u32 {
 
 fn atlas() -> &'static Atlas {
     static ATLAS: OnceLock<Atlas> = OnceLock::new();
-    ATLAS.get_or_init(|| crate::data::gamepad_artwork_current_data!())
+    ATLAS.get_or_init(|| read_gamepad_artwork_current_catalog())
 }
 
 fn product(pid: u32) -> &'static Product {
@@ -459,3 +459,211 @@ impl RenderOnce for DeviceImage {
 #[cfg(test)]
 #[path = "gamepad_customize_artwork_tests.rs"]
 mod tests;
+
+// Generated catalog reader: razer-pages/gamepad_artwork_current_data.
+fn read_gamepad_artwork_current_catalog() -> Atlas {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Atlas> {
+        let value = match r.tag()? {
+            0 => Atlas {
+                products: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Product>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Product> {
+        let value = match r.tag()? {
+            0 => Product {
+                product_id: r.child(decode_3)?,
+                geometry: r.child(decode_4)?,
+                lines: r.child(decode_6)?,
+                left_buttons: r.child(decode_9)?,
+                right_buttons: r.child(decode_9)?,
+                images: r.child(decode_10)?,
+                mkeys: r.child(decode_10)?,
+                mkeys_mode: r.child(decode_8)?,
+                normalize_to_prd: r.child(decode_13)?,
+                two_canvas_layers: r.child(decode_13)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Geometry> {
+        let value = match r.tag()? {
+            0 => Geometry {
+                wrapper_width: r.child(decode_5)?,
+                wrapper_max_width: r.child(decode_5)?,
+                height: r.child(decode_5)?,
+                image_left: r.child(decode_5)?,
+                image_height: r.child(decode_5)?,
+                canvas_left: r.child(decode_5)?,
+                canvas_width: r.child(decode_5)?,
+                mkeys_left: r.child(decode_5)?,
+                mkeys_top: r.child(decode_5)?,
+                mkeys_width: r.child(decode_5)?,
+                mkeys_height: r.child(decode_5)?,
+                left_column_right: r.child(decode_5)?,
+                right_column_left: r.child(decode_5)?,
+                top_buttons_y: r.child(decode_5)?,
+                left_bottom_y: r.child(decode_5)?,
+                right_bottom_y: r.child(decode_5)?,
+                button_height: r.child(decode_5)?,
+                button_gap: r.child(decode_5)?,
+                column_padding: r.child(decode_5)?,
+                button_padding: r.child(decode_5)?,
+                dot_radius: r.child(decode_5)?,
+                left_line_x: r.child(decode_5)?,
+                right_line_x: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Callout>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Callout> {
+        let value = match r.tag()? {
+            0 => Callout {
+                input_id: r.child(decode_8)?,
+                side: r.child(decode_8)?,
+                start_y: r.child(decode_5)?,
+                x: r.child(decode_5)?,
+                y: r.child(decode_5)?,
+                bend: r.child(decode_5)?,
+                layer_behavior: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Image>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_11)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Image> {
+        let value = match r.tag()? {
+            0 => Image {
+                edition_id: r.child(decode_3)?,
+                layout_id: r.child(decode_12)?,
+                resolution: r.child(decode_3)?,
+                asset: r.child(decode_8)?,
+                width: r.child(decode_5)?,
+                height: r.child(decode_5)?,
+            },
+            1 => Image {
+                edition_id: r.child(decode_3)?,
+                layout_id: None,
+                resolution: one(),
+                asset: r.child(decode_8)?,
+                width: r.child(decode_5)?,
+                height: r.child(decode_5)?,
+            },
+            2 => Image {
+                edition_id: r.child(decode_3)?,
+                layout_id: None,
+                resolution: r.child(decode_3)?,
+                asset: r.child(decode_8)?,
+                width: r.child(decode_5)?,
+                height: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u32>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_3)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_GAMEPAD_ARTWORK_CURRENT_DATA,
+        0,
+        "a70b5cc3e4b7d786e3b2567e6ac354c947f566b8e91622d7b2cb1ea86ba57292",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_gamepad_artwork_current_data_decodes() {
+    let _ = read_gamepad_artwork_current_catalog();
+}
+// End generated catalog reader: razer-pages/gamepad_artwork_current_data.

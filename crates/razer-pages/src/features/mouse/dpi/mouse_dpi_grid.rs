@@ -31,7 +31,7 @@ pub(super) struct GridSpec {
 pub(super) fn source_spec(product_id: u32) -> Option<&'static GridSpec> {
     static SPECS: OnceLock<Vec<GridSpec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::mouse_dpi_grid_data!())
+        .get_or_init(|| read_mouse_dpi_grid_catalog())
         .iter()
         .find(|spec| spec.product_id == product_id)
 }
@@ -444,3 +444,111 @@ impl RenderOnce for Grid {
             .child(root)
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_dpi_grid_data.
+fn read_mouse_dpi_grid_catalog() -> Vec<GridSpec> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<GridSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<GridSpec> {
+        let value = match r.tag()? {
+            0 => GridSpec {
+                product_id: r.child(decode_2)?,
+                min: r.child(decode_3)?,
+                max: r.child(decode_3)?,
+                step: r.child(decode_3)?,
+                editing_enabled_default: r.child(decode_4)?,
+                segments: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f64> {
+        let value = match r.tag()? {
+            0 => r.f64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Segment>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Segment> {
+        let value = match r.tag()? {
+            0 => Segment {
+                from: r.child(decode_3)?,
+                to: r.child(decode_3)?,
+                from_value: r.child(decode_3)?,
+                to_value: r.child(decode_3)?,
+                step: r.child(decode_3)?,
+                tracks: Default::default(),
+            },
+            1 => Segment {
+                from: r.child(decode_3)?,
+                to: r.child(decode_3)?,
+                from_value: r.child(decode_3)?,
+                to_value: r.child(decode_3)?,
+                step: r.child(decode_3)?,
+                tracks: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<f64>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_DPI_GRID_DATA,
+        0,
+        "0323e7fc673be6da37e398418068ab11d5b84aaaa917889a7441078f24b9207d",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_dpi_grid_data_decodes() {
+    let _ = read_mouse_dpi_grid_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_dpi_grid_data.

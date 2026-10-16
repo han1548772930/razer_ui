@@ -12,7 +12,7 @@ pub(super) struct Spec {
 pub(super) fn source_spec(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::mouse_preset_calibration_data!())
+        .get_or_init(|| read_mouse_preset_calibration_catalog())
         .iter()
         .find(|spec| spec.product_id == pid)
 }
@@ -281,3 +281,65 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_preset_calibration_data.
+fn read_mouse_preset_calibration_catalog() -> Vec<Spec> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Spec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                product_id: r.child(decode_2)?,
+                radio: r.child(decode_3)?,
+                initial_state: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_PRESET_CALIBRATION_DATA,
+        0,
+        "d0b4fe3a941797ef3ec941eb26849c4628f506781fbd042cb469ff882b8c2812",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_preset_calibration_data_decodes() {
+    let _ = read_mouse_preset_calibration_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_preset_calibration_data.

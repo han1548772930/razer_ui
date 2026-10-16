@@ -44,7 +44,7 @@ pub struct PresetShortcutRequest {
 impl EventEmitter<PresetShortcutRequest> for AudioProductWorkspace {}
 fn recipe() -> &'static Recipe {
     static RECIPE: OnceLock<Recipe> = OnceLock::new();
-    RECIPE.get_or_init(|| crate::data::audio_mixer_presets_current!())
+    RECIPE.get_or_init(|| read_audio_mixer_presets_current_catalog())
 }
 impl Default for Library {
     fn default() -> Self {
@@ -738,3 +738,89 @@ impl AudioProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/audio_mixer_presets_current.
+fn read_audio_mixer_presets_current_catalog() -> Recipe {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Recipe> {
+        let value = match r.tag()? {
+            0 => Recipe {
+                default_preset: r.child(decode_1)?,
+                restore_order: r.child(decode_2)?,
+                shortcut_keys: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ShortcutKey>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ShortcutKey> {
+        let value = match r.tag()? {
+            0 => ShortcutKey {
+                name: r.child(decode_3)?,
+                input_id: r.child(decode_3)?,
+                virtual_key: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_MIXER_PRESETS_CURRENT,
+        0,
+        "8f5504fd726e8dd917db23e0b77a3514498c722792e1d595ebdce0f4f25b5314",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_mixer_presets_current_decodes() {
+    let _ = read_audio_mixer_presets_current_catalog();
+}
+// End generated catalog reader: razer-pages/audio_mixer_presets_current.

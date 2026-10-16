@@ -27,7 +27,7 @@ struct Spec {
 fn spec(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::audio_nommo_effects_data!())
+        .get_or_init(|| read_audio_nommo_effects_catalog())
         .iter()
         .find(|spec| spec.product_id == pid)
 }
@@ -680,3 +680,105 @@ fn tab(
         .when(direction, |button| button.w(surface::css(40.)))
         .when(!direction, |button| button.child(label))
 }
+
+// Generated catalog reader: razer-pages/audio_nommo_effects_data.
+fn read_audio_nommo_effects_catalog() -> Vec<Spec> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Spec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                product_id: r.child(decode_2)?,
+                effects: r.child(decode_3)?,
+                wave_default_direction: r.child(decode_6)?,
+                defaults: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Effect>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Effect> {
+        let value = match r.tag()? {
+            0 => Effect {
+                id: r.child(decode_2)?,
+                name: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<i64> {
+        let value = match r.tag()? {
+            0 => r.i64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_5, decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_NOMMO_EFFECTS_DATA,
+        0,
+        "a57ca7be842eb1f64960cc107693aaabc25d4fcdbe8b4026767f353aca070775",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_nommo_effects_data_decodes() {
+    let _ = read_audio_nommo_effects_catalog();
+}
+// End generated catalog reader: razer-pages/audio_nommo_effects_data.

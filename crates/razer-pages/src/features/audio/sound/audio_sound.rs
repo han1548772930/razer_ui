@@ -8,9 +8,8 @@ use razer_widgets::theme::AudioEnhancementColors as Colors;
 mod profile_spatial;
 
 #[allow(dead_code)]
-pub(super) mod fixed {
-    include!("../../../data/audio_sound_payload_schema.rs");
-}
+#[path = "audio_sound_payload_schema.rs"]
+pub(super) mod fixed;
 use fixed::*;
 
 #[derive(Deserialize)]
@@ -35,7 +34,7 @@ struct Native {
 }
 pub(super) fn product(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::audio_sound_data!())
+    DATA.get_or_init(|| read_audio_sound_catalog())
         .iter()
         .find(|row| row.product_id == pid)
 }
@@ -929,3 +928,1457 @@ impl AudioProductWorkspace {
         )
     }
 }
+
+// Generated catalog reader: razer-pages/audio_sound_data.
+fn read_audio_sound_catalog() -> Vec<Product> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Product>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Product> {
+        let value = match r.tag()? {
+            0 => Product {
+                product_id: r.child(decode_2)?,
+                configs: r.child(decode_3)?,
+                cloud_initial: r.child(decode_79)?,
+                locales: r.child(decode_87)?,
+                media: r.child(decode_90)?,
+                actions: r.child(decode_89)?,
+                native: r.child(decode_92)?,
+                telemetry: r.child(decode_89)?,
+                initials: r.child(decode_95)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigs> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigs {
+                tutorial: r.child(decode_4)?,
+                customizer: r.child(decode_12)?,
+                thx_switch: r.child(decode_13)?,
+                equalizer: r.child(decode_14)?,
+                applications: r.child(decode_22)?,
+                volume: r.child(decode_23)?,
+                output: r.child(decode_25)?,
+                application_outputs: r.child(decode_26)?,
+                renderer_geometry: r.child(decode_28)?,
+                device_info: r.child(decode_30)?,
+                application_thx_dataset: r.child(decode_32)?,
+                customizer_groups: r.child(decode_34)?,
+                support_overhead_speaker: r.child(decode_5)?,
+                mapping_exports: r.child(decode_18)?,
+                mapping_action_types: r.child(decode_39)?,
+                mapping_audio_constants: r.child(decode_40)?,
+                mapping_audio_options: r.child(decode_49)?,
+                mapping_assignment_table: r.child(decode_51)?,
+                mapping_audio_notes: r.child(decode_39)?,
+                product_exports: r.child(decode_18)?,
+                product_defaultmappings: r.child(decode_18)?,
+                product_defaultprofile: r.child(decode_53)?,
+                product_mappings: r.child(decode_18)?,
+                product_groups: r.child(decode_18)?,
+                product_functions: r.child(decode_18)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsTutorial> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsTutorial {
+                tutorial_by_image: r.child(decode_5)?,
+                tutorial_list: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsTutorialTutoriallistitem>>
+    {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsTutorialTutoriallistitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsTutorialTutoriallistitem {
+                video_name: r.child(decode_8)?,
+                main_title: r.child(decode_8)?,
+                contents: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::vec::Vec<SoundPayloadProductsitemConfigsTutorialTutoriallistitemContentsitem>,
+    > {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_10)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsTutorialTutoriallistitemContentsitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsTutorialTutoriallistitemContentsitem {
+                head: r.child(decode_11)?,
+                body: r.child(decode_8)?,
+                r#type: r.child(decode_11)?,
+            },
+            1 => SoundPayloadProductsitemConfigsTutorialTutoriallistitemContentsitem {
+                head: r.child(decode_11)?,
+                body: r.child(decode_8)?,
+                r#type: None,
+            },
+            2 => SoundPayloadProductsitemConfigsTutorialTutoriallistitemContentsitem {
+                head: None,
+                body: r.child(decode_8)?,
+                r#type: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_8)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => Default::default(),
+            1 => r.map(decode_8, decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsThxSwitch> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsThxSwitch {
+                show_help: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsEqualizer> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsEqualizer {
+                compact_mode: r.child(decode_5)?,
+                band_data_config: r.child(decode_15)?,
+                y_axis_title: r.child(decode_18)?,
+                show_sequence_number: r.child(decode_5)?,
+                line_config: r.child(decode_19)?,
+                frequencies: r.child(decode_18)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsEqualizerBanddataconfig> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsEqualizerBanddataconfig {
+                min_value: r.child(decode_16)?,
+                max_value: r.child(decode_17)?,
+                total_steps: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<i64> {
+        let value = match r.tag()? {
+            0 => r.i64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_18(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_19(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsEqualizerLineConfigitem>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_20)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_20(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsEqualizerLineConfigitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsEqualizerLineConfigitem {
+                border_width: r.child(decode_17)?,
+                label: r.child(decode_8)?,
+                fill: r.child(decode_5)?,
+                point_border_color: r.child(decode_18)?,
+                border_color: r.child(decode_8)?,
+                point_background_color: r.child(decode_18)?,
+                point_radius: r.child(decode_17)?,
+                point_hover_radius: r.child(decode_17)?,
+                hover_radius: r.child(decode_17)?,
+                hover_border_width: r.child(decode_17)?,
+                line_tension: r.child(decode_17)?,
+                data: r.child(decode_21)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_21(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<i64>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_16)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_22(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsApplications> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsApplications {
+                follow_current_eq: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_23(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsVolume> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsVolume {
+                show_game_chat_balance: r.child(decode_5)?,
+                game_chat_balance_config: r.child(decode_24)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_24(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsVolumeGamechatbalanceconfig> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsVolumeGamechatbalanceconfig {
+                max: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_25(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsOutput> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsOutput {
+                window_big_icon: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_26(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsApplicationOutputsitem>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_27)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_27(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsApplicationOutputsitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsApplicationOutputsitem {
+                name: r.child(decode_8)?,
+                guid: r.child(decode_11)?,
+                r#type: r.child(decode_11)?,
+            },
+            1 => SoundPayloadProductsitemConfigsApplicationOutputsitem {
+                name: r.child(decode_8)?,
+                guid: None,
+                r#type: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_28(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsRendererGeometry> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsRendererGeometry {
+                cvs_h: r.child(decode_17)?,
+                cvs_w: r.child(decode_17)?,
+                dot_radius: r.child(decode_29)?,
+                circle_radius: r.child(decode_29)?,
+                x_left: r.child(decode_17)?,
+                x_right: r.child(decode_17)?,
+                y_start: r.child(decode_17)?,
+                line_length: r.child(decode_17)?,
+                dot_color: r.child(decode_8)?,
+                active_color: r.child(decode_8)?,
+                hyper_color: r.child(decode_8)?,
+                dot_gap: r.child(decode_17)?,
+                x_center: r.child(decode_29)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_29(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f64> {
+        let value = match r.tag()? {
+            0 => r.f64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_30(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsDeviceInfo> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsDeviceInfo {
+                product_id: r.child(decode_17)?,
+                ble_id: r.child(decode_31)?,
+                dongle_id: r.child(decode_31)?,
+                vendor_id: r.child(decode_17)?,
+                device_name: r.child(decode_8)?,
+                master_guide_url: r.child(decode_8)?,
+                support_page: r.child(decode_8)?,
+                virtual_route_device_name: r.child(decode_8)?,
+                is_game_chat_audio_function: r.child(decode_5)?,
+                hide_lighting_idle: r.child(decode_5)?,
+                category: r.child(decode_8)?,
+                has_default_eq_in_game_profile: r.child(decode_5)?,
+                support_overhead_speaker: r.child(decode_5)?,
+                show_competitive_mode: r.child(decode_5)?,
+                thx_version: r.child(decode_8)?,
+                feature_min_fw: r.child(decode_12)?,
+                x_box_id: None,
+                is_xbox: None,
+            },
+            1 => SoundPayloadProductsitemConfigsDeviceInfo {
+                product_id: r.child(decode_17)?,
+                ble_id: r.child(decode_31)?,
+                dongle_id: r.child(decode_31)?,
+                vendor_id: r.child(decode_17)?,
+                device_name: r.child(decode_8)?,
+                master_guide_url: r.child(decode_8)?,
+                support_page: r.child(decode_8)?,
+                virtual_route_device_name: r.child(decode_8)?,
+                is_game_chat_audio_function: r.child(decode_5)?,
+                hide_lighting_idle: r.child(decode_5)?,
+                category: r.child(decode_8)?,
+                has_default_eq_in_game_profile: r.child(decode_5)?,
+                support_overhead_speaker: r.child(decode_5)?,
+                show_competitive_mode: r.child(decode_5)?,
+                thx_version: r.child(decode_8)?,
+                feature_min_fw: r.child(decode_12)?,
+                x_box_id: r.child(decode_31)?,
+                is_xbox: r.child(decode_83)?,
+            },
+            2 => SoundPayloadProductsitemConfigsDeviceInfo {
+                product_id: r.child(decode_17)?,
+                ble_id: r.child(decode_31)?,
+                dongle_id: r.child(decode_31)?,
+                vendor_id: r.child(decode_17)?,
+                device_name: r.child(decode_8)?,
+                master_guide_url: r.child(decode_8)?,
+                support_page: r.child(decode_8)?,
+                virtual_route_device_name: r.child(decode_8)?,
+                is_game_chat_audio_function: r.child(decode_5)?,
+                hide_lighting_idle: r.child(decode_5)?,
+                category: r.child(decode_8)?,
+                has_default_eq_in_game_profile: r.child(decode_5)?,
+                support_overhead_speaker: r.child(decode_5)?,
+                show_competitive_mode: r.child(decode_5)?,
+                thx_version: r.child(decode_8)?,
+                feature_min_fw: r.child(decode_12)?,
+                x_box_id: None,
+                is_xbox: r.child(decode_83)?,
+            },
+            3 => SoundPayloadProductsitemConfigsDeviceInfo {
+                product_id: r.child(decode_17)?,
+                ble_id: None,
+                dongle_id: None,
+                vendor_id: r.child(decode_17)?,
+                device_name: r.child(decode_8)?,
+                master_guide_url: r.child(decode_8)?,
+                support_page: r.child(decode_8)?,
+                virtual_route_device_name: r.child(decode_8)?,
+                is_game_chat_audio_function: r.child(decode_5)?,
+                hide_lighting_idle: r.child(decode_5)?,
+                category: r.child(decode_8)?,
+                has_default_eq_in_game_profile: r.child(decode_5)?,
+                support_overhead_speaker: r.child(decode_5)?,
+                show_competitive_mode: r.child(decode_5)?,
+                thx_version: r.child(decode_8)?,
+                feature_min_fw: r.child(decode_12)?,
+                x_box_id: None,
+                is_xbox: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_31(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u64>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_17)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_32(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<
+            String,
+            SoundPayloadProductsitemConfigsApplicationThxDatasetentry,
+        >,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_8, decode_33)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_33(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsApplicationThxDatasetentry> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsApplicationThxDatasetentry {
+                imm: r.child(decode_11)?,
+                cmm: None,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_34(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsCustomizerGroupsitem>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_35)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_35(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsCustomizerGroupsitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsCustomizerGroupsitem {
+                group: r.child(decode_36)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_36(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsCustomizerGroupsitemGroup> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsCustomizerGroupsitemGroup {
+                group_name: r.child(decode_8)?,
+                button_list: r.child(decode_37)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_37(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::vec::Vec<SoundPayloadProductsitemConfigsCustomizerGroupsitemGroupButtonlistitem>,
+    > {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_38)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_38(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsCustomizerGroupsitemGroupButtonlistitem>
+    {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsCustomizerGroupsitemGroupButtonlistitem {
+                button_key: r.child(decode_8)?,
+                default_value: r.child(decode_8)?,
+                is_focused: r.child(decode_5)?,
+                is_mapped: r.child(decode_5)?,
+                is_enabled: r.child(decode_5)?,
+                input_type: r.child(decode_8)?,
+                mapping_type: r.child(decode_8)?,
+                input_id: r.child(decode_8)?,
+                counter: r.child(decode_8)?,
+                assignment: r.child(decode_8)?,
+                assignment_value: r.child(decode_8)?,
+                button_pos: r.child(decode_8)?,
+                function_list: r.child(decode_18)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_39(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, std::vec::Vec<String>>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_8, decode_18)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_40(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsMappingAudioConstants> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsMappingAudioConstants {
+                m: r.child(decode_8)?,
+                y: r.child(decode_8)?,
+                h: r.child(decode_8)?,
+                g: r.child(decode_8)?,
+                k: r.child(decode_5)?,
+                b: r.child(decode_41)?,
+                n: r.child(decode_16)?,
+                z: r.child(decode_43)?,
+                field_: r.child(decode_45)?,
+                i: r.child(decode_18)?,
+                e: r.child(decode_47)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_41(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsMappingAudioConstantsBitem>>
+    {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_42)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_42(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsMappingAudioConstantsBitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsMappingAudioConstantsBitem {
+                id: r.child(decode_8)?,
+                content: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_43(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsMappingAudioConstantsZitem>>
+    {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_44)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_44(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsMappingAudioConstantsZitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsMappingAudioConstantsZitem {
+                id: r.child(decode_8)?,
+                content: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_45(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsMappingAudioConstantsItem>>
+    {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_46)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_46(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsMappingAudioConstantsItem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsMappingAudioConstantsItem {
+                id: r.child(decode_8)?,
+                content: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_47(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsMappingAudioConstantsEitem>>
+    {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_48)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_48(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsMappingAudioConstantsEitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsMappingAudioConstantsEitem {
+                content: r.child(decode_8)?,
+                id: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_49(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsMappingAudioOptionsitem>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_50)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_50(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsMappingAudioOptionsitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsMappingAudioOptionsitem {
+                id: r.child(decode_8)?,
+                content: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_51(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<SoundPayloadProductsitemConfigsMappingAssignmentTableitem>>
+    {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_52)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_52(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsMappingAssignmentTableitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsMappingAssignmentTableitem {
+                id: r.child(decode_8)?,
+                content: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_53(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofile> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofile {
+                guid: r.child(decode_8)?,
+                name: r.child(decode_8)?,
+                brightness: r.child(decode_54)?,
+                switch_off_lighting: r.child(decode_55)?,
+                quick_effects: r.child(decode_56)?,
+                bass_boost: r.child(decode_57)?,
+                sound_normalization: r.child(decode_58)?,
+                voice_clarity: r.child(decode_59)?,
+                mic_side_tone: r.child(decode_60)?,
+                mic_volume_normalization: r.child(decode_61)?,
+                mic_voice_clarity: r.child(decode_62)?,
+                mic_sensitivity: r.child(decode_63)?,
+                mic_equalizer: r.child(decode_64)?,
+                mic_preview: r.child(decode_65)?,
+                audio_equalizer: r.child(decode_66)?,
+                ambient_noise_reduction: r.child(decode_67)?,
+                thx_spatial_audio: r.child(decode_69)?,
+                applications: r.child(decode_70)?,
+                calibration: r.child(decode_74)?,
+                mic_ambient_noise_reduction: None,
+            },
+            1 => SoundPayloadProductsitemConfigsProductDefaultprofile {
+                guid: r.child(decode_8)?,
+                name: r.child(decode_8)?,
+                brightness: r.child(decode_54)?,
+                switch_off_lighting: r.child(decode_55)?,
+                quick_effects: r.child(decode_56)?,
+                bass_boost: r.child(decode_57)?,
+                sound_normalization: r.child(decode_58)?,
+                voice_clarity: r.child(decode_59)?,
+                mic_side_tone: r.child(decode_60)?,
+                mic_volume_normalization: r.child(decode_61)?,
+                mic_voice_clarity: r.child(decode_62)?,
+                mic_sensitivity: r.child(decode_63)?,
+                mic_equalizer: r.child(decode_64)?,
+                mic_preview: r.child(decode_65)?,
+                audio_equalizer: r.child(decode_66)?,
+                ambient_noise_reduction: None,
+                thx_spatial_audio: r.child(decode_69)?,
+                applications: r.child(decode_70)?,
+                calibration: r.child(decode_74)?,
+                mic_ambient_noise_reduction: r.child(decode_98)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_54(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileBrightness> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileBrightness {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_55(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileSwitchofflighting> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileSwitchofflighting {
+                is_display_on: r.child(decode_5)?,
+                is_idle_enabled: r.child(decode_5)?,
+                idle_minutes: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_56(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileQuickeffects> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileQuickeffects {
+                selected_effect_id: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_57(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileBassboost> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileBassboost {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_58(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileSoundnormalization>
+    {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileSoundnormalization {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_59(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileVoiceclarity> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileVoiceclarity {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_60(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileMicsidetone> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileMicsidetone {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_61(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileMicvolumenormalization>
+    {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileMicvolumenormalization {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_62(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileMicvoiceclarity> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileMicvoiceclarity {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_63(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileMicsensitivity> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileMicsensitivity {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_64(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileMicequalizer> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileMicequalizer {
+                mode: r.child(decode_8)?,
+                custom_bands: r.child(decode_18)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_65(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileMicpreview> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileMicpreview {
+                is_enabled: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_66(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileAudioequalizer> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileAudioequalizer {
+                mode: r.child(decode_8)?,
+                custom_bands: r.child(decode_18)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_67(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::option::Option<
+            SoundPayloadProductsitemConfigsProductDefaultprofileAmbientnoisereduction,
+        >,
+    > {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_68)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_68(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileAmbientnoisereduction>
+    {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileAmbientnoisereduction {
+                is_enabled: r.child(decode_5)?,
+                value: r.child(decode_17)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_69(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileThxspatialaudio> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileThxspatialaudio {
+                is_enabled: r.child(decode_5)?,
+                mode: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_70(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileApplications> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileApplications {
+                general_input_setting: r.child(decode_71)?,
+                specific_input_setting: r.child(decode_18)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_71(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::vec::Vec<
+            SoundPayloadProductsitemConfigsProductDefaultprofileApplicationsGeneralinputsettingitem,
+        >,
+    > {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_72)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_72(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        SoundPayloadProductsitemConfigsProductDefaultprofileApplicationsGeneralinputsettingitem,
+    > {
+        let value = match r.tag()? {0 => {SoundPayloadProductsitemConfigsProductDefaultprofileApplicationsGeneralinputsettingitem{app_type:r.child(decode_8)?,output:r.child(decode_73)?}}, _ => anyhow::bail!("Invalid typed catalog alternative")};
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_73(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileApplicationsGeneralinputsettingitemOutput>{
+        let value = match r.tag()? {0 => {SoundPayloadProductsitemConfigsProductDefaultprofileApplicationsGeneralinputsettingitemOutput{r#type:r.child(decode_8)?,guid:r.child(decode_8)?}}, _ => anyhow::bail!("Invalid typed catalog alternative")};
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_74(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileCalibration> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileCalibration {
+                speakers: r.child(decode_75)?,
+                speakers_overhead: r.child(decode_77)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_75(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::vec::Vec<SoundPayloadProductsitemConfigsProductDefaultprofileCalibrationSpeakersitem>,
+    > {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_76)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_76(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileCalibrationSpeakersitem>
+    {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileCalibrationSpeakersitem {
+                id: r.child(decode_8)?,
+                angle: r.child(decode_16)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_77(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::vec::Vec<
+            SoundPayloadProductsitemConfigsProductDefaultprofileCalibrationSpeakersoverheaditem,
+        >,
+    > {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_78)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_78(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        SoundPayloadProductsitemConfigsProductDefaultprofileCalibrationSpeakersoverheaditem,
+    > {
+        let value = match r.tag()? {0 => {SoundPayloadProductsitemConfigsProductDefaultprofileCalibrationSpeakersoverheaditem{id:r.child(decode_8)?,angle:r.child(decode_16)?}}, _ => anyhow::bail!("Invalid typed catalog alternative")};
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_79(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemCloudInitial> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemCloudInitial {
+                selected_preset: r.child(decode_17)?,
+                enabled_presets: r.child(decode_18)?,
+                disabled_presets: r.child(decode_18)?,
+                temp_enabled_presets: r.child(decode_18)?,
+                temp_disabled_presets: r.child(decode_18)?,
+                temp_active_preset: r.child(decode_80)?,
+                actions_from_ui: r.child(decode_18)?,
+                actions_from_local_storage: r.child(decode_18)?,
+                error_actions: r.child(decode_18)?,
+                available_esports_presets: r.child(decode_81)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_80(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<()> {
+        let value = match r.tag()? {
+            0 => (),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_81(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::vec::Vec<SoundPayloadProductsitemCloudInitialAvailableesportspresetsitem>,
+    > {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_82)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_82(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemCloudInitialAvailableesportspresetsitem> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemCloudInitialAvailableesportspresetsitem {
+                equalizer_id: r.child(decode_17)?,
+                equalizer_category: r.child(decode_17)?,
+                equalizer_icon: r.child(decode_8)?,
+                equalizer_svg_icon: r.child(decode_8)?,
+                is_oobe: r.child(decode_5)?,
+                is_oobe_enabled: r.child(decode_83)?,
+                is_allow_swapping: r.child(decode_5)?,
+                equalizer_name: r.child(decode_12)?,
+                band_values: r.child(decode_21)?,
+                footstep_values: r.child(decode_84)?,
+                band_label_ids: r.child(decode_85)?,
+            },
+            1 => SoundPayloadProductsitemCloudInitialAvailableesportspresetsitem {
+                equalizer_id: r.child(decode_17)?,
+                equalizer_category: r.child(decode_17)?,
+                equalizer_icon: r.child(decode_8)?,
+                equalizer_svg_icon: r.child(decode_8)?,
+                is_oobe: r.child(decode_5)?,
+                is_oobe_enabled: None,
+                is_allow_swapping: r.child(decode_5)?,
+                equalizer_name: r.child(decode_12)?,
+                band_values: r.child(decode_21)?,
+                footstep_values: r.child(decode_84)?,
+                band_label_ids: r.child(decode_85)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_83(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<bool>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_5)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_84(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u64>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_17)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_85(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::vec::Vec<
+            SoundPayloadProductsitemCloudInitialAvailableesportspresetsitemBandLabelIdsitem,
+        >,
+    > {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_86)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_86(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        SoundPayloadProductsitemCloudInitialAvailableesportspresetsitemBandLabelIdsitem,
+    > {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemCloudInitialAvailableesportspresetsitemBandLabelIdsitem {
+                label_id: r.child(decode_16)?,
+                band_index: r.child(decode_84)?,
+                icon_start_index_position: r.child(decode_17)?,
+                label_icon_position: r.child(decode_8)?,
+                label_arrow_position: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_87(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_88, decode_89)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_88(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_89(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_88, decode_88)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_90(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemMedia> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemMedia {
+                editions: r.child(decode_91)?,
+                css: r.child(decode_12)?,
+                reset_link: r.child(decode_8)?,
+                eq_icons: r.child(decode_12)?,
+                sword_added_icon: r.child(decode_8)?,
+                search_empty: r.child(decode_8)?,
+                icon_add: r.child(decode_8)?,
+                placeholder_game_icon: r.child(decode_8)?,
+                icon_close_enclosed_small: r.child(decode_8)?,
+                icon_close_enclosed_a_small: r.child(decode_8)?,
+                appmix_gamemode: r.child(decode_8)?,
+                appmix_thx: r.child(decode_8)?,
+                thx_help: r.child(decode_8)?,
+                mapping_footstep: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_91(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_8, decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_92(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, Native>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_88, decode_93)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_93(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Native> {
+        let value = match r.tag()? {
+            0 => Native {
+                kind: r.child(decode_88)?,
+                timer_tick: r.child(decode_94)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_94(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_95(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemInitials> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemInitials {
+                spatial: r.child(decode_96)?,
+                volume: r.child(decode_12)?,
+                game_chat: r.child(decode_97)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_96(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemInitialsSpatial> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemInitialsSpatial {
+                is_enabled: r.child(decode_5)?,
+                mode: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_97(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemInitialsGameChat> {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemInitialsGameChat {
+                balance_mode: r.child(decode_17)?,
+                actions_from_ui: r.child(decode_18)?,
+                actions_from_local_storage: r.child(decode_18)?,
+                error_actions: r.child(decode_18)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_98(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::option::Option<
+            SoundPayloadProductsitemConfigsProductDefaultprofileMicambientnoisereduction,
+        >,
+    > {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_99)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_99(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<SoundPayloadProductsitemConfigsProductDefaultprofileMicambientnoisereduction>
+    {
+        let value = match r.tag()? {
+            0 => SoundPayloadProductsitemConfigsProductDefaultprofileMicambientnoisereduction {
+                is_enabled: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_SOUND_DATA,
+        0,
+        "d9711f5c1fd69324c175418d9256baeac1d6811ae033603817dc968f6bb73bcb",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_sound_data_decodes() {
+    let _ = read_audio_sound_catalog();
+}
+// End generated catalog reader: razer-pages/audio_sound_data.

@@ -17,7 +17,7 @@ struct Icons {
 
 fn icons() -> &'static Icons {
     static ICONS: OnceLock<Icons> = OnceLock::new();
-    ICONS.get_or_init(|| crate::data::app_picker_icons_data!())
+    ICONS.get_or_init(|| read_app_picker_icons_catalog())
 }
 
 /// Observed fields follow the source U selector, including its absent branch.
@@ -135,3 +135,89 @@ mod tests {
         }
     }
 }
+
+// Generated catalog reader: razer-app-pages/app_picker_icons_data.
+fn read_app_picker_icons_catalog() -> Icons {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Icons> {
+        let value = match r.tag()? {
+            0 => Icons {
+                subcategory_categories: r.child(decode_1)?,
+                icons: r.child(decode_3)?,
+                products: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<u32, NativeProductIcon>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_5, decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<NativeProductIcon> {
+        let value = match r.tag()? {
+            0 => NativeProductIcon {
+                asset: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_APP_PICKER_ICONS_DATA,
+        0,
+        "9bf638a075e1bb31087f45be40224dbdcbaeafa0cf98f11d4560cc5ae1a0053e",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_app_picker_icons_data_decodes() {
+    let _ = read_app_picker_icons_catalog();
+}
+// End generated catalog reader: razer-app-pages/app_picker_icons_data.

@@ -18,7 +18,7 @@ struct Rect {
 }
 fn grid() -> &'static Grid {
     static GRID: OnceLock<Grid> = OnceLock::new();
-    GRID.get_or_init(|| crate::data::chroma_studio_grid!())
+    GRID.get_or_init(|| read_chroma_studio_grid_catalog())
 }
 pub(super) fn render(zoom: f32, moving: bool) -> impl IntoElement {
     canvas(
@@ -92,3 +92,69 @@ pub(super) fn render(zoom: f32, moving: bool) -> impl IntoElement {
     )
     .size_full()
 }
+
+// Generated catalog reader: razer-pages/chroma_studio_grid.
+fn read_chroma_studio_grid_catalog() -> Grid {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Grid> {
+        let value = match r.tag()? {
+            0 => Grid {
+                rects: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Rect>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Rect> {
+        let value = match r.tag()? {
+            0 => Rect {
+                x: r.child(decode_3)?,
+                y: r.child(decode_3)?,
+                width: r.child(decode_3)?,
+                height: r.child(decode_3)?,
+                major: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_CHROMA_STUDIO_GRID,
+        0,
+        "2f652610e4b58b3de9cbb56f0b96beb649735fac2aeb3b073a4eb0e67adae1de",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_chroma_studio_grid_decodes() {
+    let _ = read_chroma_studio_grid_catalog();
+}
+// End generated catalog reader: razer-pages/chroma_studio_grid.

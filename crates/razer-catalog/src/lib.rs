@@ -1,7 +1,6 @@
 //! Product differences verified against each cached Synapse module 8193.
 //! These entries describe the UI contract, not detected hardware capabilities.
 
-mod data;
 pub mod emoji;
 mod registry;
 pub use registry::{

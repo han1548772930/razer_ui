@@ -9,7 +9,7 @@ struct Product {
 }
 fn split_min(product_id: u32) -> usize {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_panel_index_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_panel_index_catalog())
         .iter()
         .find(|row| row.product_id == product_id)
         .expect("current ButtonPanel product")
@@ -230,3 +230,58 @@ impl RenderOnce for Index {
             )
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_panel_index_data.
+fn read_keyboard_mapping_panel_index_catalog() -> Vec<Product> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Product>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Product> {
+        let value = match r.tag()? {
+            0 => Product {
+                product_id: r.child(decode_2)?,
+                split_min_utf16: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_PANEL_INDEX_DATA,
+        0,
+        "6123c67bfca9baebfdc8198e77b55c8a3370d428bc498afb920344c7f34bd265",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_panel_index_data_decodes() {
+    let _ = read_keyboard_mapping_panel_index_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_panel_index_data.

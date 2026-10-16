@@ -138,7 +138,7 @@ pub fn capability(product_id: u32) -> Option<&'static DeviceWriteCapability> {
     if product_id == crate::mouse_legacy_polling::PRODUCT_ID {
         return Some(crate::mouse_legacy_polling::write_capability());
     }
-    crate::data::device_write_capabilities::PRODUCTS
+    crate::device_write_capabilities::PRODUCTS
         .iter()
         .find(|cap| cap.product_id == product_id)
 }

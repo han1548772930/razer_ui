@@ -17,7 +17,7 @@ pub use native::{
 
 pub fn capability(product_id: u32) -> Option<&'static DeviceReadCapability> {
     static CAPS: OnceLock<Vec<DeviceReadCapability>> = OnceLock::new();
-    CAPS.get_or_init(|| crate::data::seiren_eq_data::seiren_eq_data!())
+    CAPS.get_or_init(|| make_seiren_eq_table())
         .iter()
         .find(|cap| cap.product_id == product_id)
 }
@@ -636,3 +636,58 @@ pub fn execute(
 #[cfg(test)]
 #[path = "seiren_eq_tests.rs"]
 mod tests;
+
+// Generated typed table: razer-device/seiren_eq_data.
+#[rustfmt::skip]
+fn make_seiren_eq_table() -> Vec<DeviceReadCapability> {
+    vec![
+        DeviceReadCapability{
+            product_id: 1422u32,
+            source_class: "rzDevice25AudioMarieT1".into(),
+            direct_pids: vec![1422u32],
+            vendor_id: 5426u16,
+            claim_interface: 3u8,
+            claim_interfaces_by_pid: vec![].into_iter().collect(),
+            physical_transports_by_pid: Default::default(),
+            report_id: 0u8,
+            report_bytes: 91usize,
+            transaction_prefix: 0u8,
+            transaction_modulus: 31u8,
+            queries: vec![],
+            polling_codes: vec![].into_iter().collect(),
+            polling_value_offset: None,
+            polling_default_hz: None,
+            polling_physical_product_id: None,
+            charging_codes: vec![].into_iter().collect(),
+            max_retry_in: 10u8,
+            max_retry_out: 5u8,
+            sleep_between_out_ms: 5u64,
+            sleep_between_out_in_ms: 25u64,
+            sleep_between_in_ms: 5u64
+        },
+        DeviceReadCapability{
+            product_id: 1446u32,
+            source_class: "rzDevice25AudioMarieT1".into(),
+            direct_pids: vec![1446u32],
+            vendor_id: 5426u16,
+            claim_interface: 3u8,
+            claim_interfaces_by_pid: vec![].into_iter().collect(),
+            physical_transports_by_pid: Default::default(),
+            report_id: 0u8,
+            report_bytes: 91usize,
+            transaction_prefix: 0u8,
+            transaction_modulus: 31u8,
+            queries: vec![],
+            polling_codes: vec![].into_iter().collect(),
+            polling_value_offset: None,
+            polling_default_hz: None,
+            polling_physical_product_id: None,
+            charging_codes: vec![].into_iter().collect(),
+            max_retry_in: 10u8,
+            max_retry_out: 5u8,
+            sleep_between_out_ms: 5u64,
+            sleep_between_out_in_ms: 25u64,
+            sleep_between_in_ms: 5u64
+        }
+    ]
+}

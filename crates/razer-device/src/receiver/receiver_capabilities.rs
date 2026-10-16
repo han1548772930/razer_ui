@@ -117,7 +117,7 @@ fn decode_catalog(json: &str) -> anyhow::Result<Catalog> {
 pub fn all() -> &'static [ReceiverCapability] {
     static CATALOG: OnceLock<Vec<ReceiverCapability>> = OnceLock::new();
     CATALOG.get_or_init(|| {
-        let products = crate::data::receiver_query_capabilities::products();
+        let products = crate::receiver_query_capabilities::products();
         for product in &products {
             product
                 .validate_source()

@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+razer-resource-db.workspace = true
+anyhow.workspace = true
 razer-i18n.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -39,7 +39,7 @@ struct Spec {
 fn spec(pid: u32) -> &'static Spec {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::dock_pairing_data!())
+        .get_or_init(|| read_dock_pairing_catalog())
         .iter()
         .find(|s| s.product_id == pid)
         .expect("supported dock product")
@@ -695,16 +695,7 @@ fn peer_image(peer: &Peer) -> Option<&'static str> {
     if current.is_some() {
         return current;
     }
-    const IMAGES: &[(u32, u32, u32, &str)] =
-        include!("../../../../../assets/synapse/tables/dashboard-images.rs");
-    const ARMORY: &[(u32, u32, u32, &str)] =
-        include!("../../../../../assets/synapse/tables/armory-dashboard-images.rs");
-    IMAGES
-        .iter()
-        .chain(ARMORY)
-        .find_map(|&(pid, edition, layout, asset)| {
-            ((pid, edition, layout) == identity).then_some(asset)
-        })
+    razer_assets::dashboard_image_exact(identity.0, identity.1, identity.2)
 }
 fn command(
     id: impl Into<ElementId>,
@@ -932,3 +923,88 @@ impl RenderOnce for PairingSpinner {
         })
     }
 }
+
+// Generated catalog reader: razer-pages/dock_pairing_data.
+fn read_dock_pairing_catalog() -> Vec<Spec> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Spec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                product_id: r.child(decode_2)?,
+                page: r.child(decode_3)?,
+                config: r.child(decode_4)?,
+                translations: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_DOCK_PAIRING_DATA,
+        0,
+        "a802214ea98a300a3f74ab68807eca5b540b00461e76cf1f35e4e13ace6b4953",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_dock_pairing_data_decodes() {
+    let _ = read_dock_pairing_catalog();
+}
+// End generated catalog reader: razer-pages/dock_pairing_data.

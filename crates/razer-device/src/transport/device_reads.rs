@@ -493,7 +493,7 @@ pub fn capability(product_id: u32) -> Option<&'static DeviceReadCapability> {
     static CATALOG: OnceLock<Vec<DeviceReadCapability>> = OnceLock::new();
     CATALOG
         .get_or_init(|| {
-            let products = crate::data::device_read_capabilities::products();
+            let products = crate::device_read_capabilities::products();
             for product in &products {
                 product.validate_source().expect("fixed device read table");
             }

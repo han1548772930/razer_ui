@@ -4,11 +4,18 @@ use rusqlite::{Connection, OpenFlags};
 use std::sync::{Mutex, OnceLock};
 
 mod installation;
+mod document;
+pub use document::{CatalogId, NodeReader, initialize, read_document};
+pub mod catalogs;
 pub use installation::InstallationPaths;
 
+mod packaged {
+    include!(concat!(env!("OUT_DIR"), "/installation.rs"));
+}
+pub use packaged::CACHE_RELATIVE;
+
 const APPLICATION_ID: u32 = 0x525A5549;
-const SCHEMA_VERSION: u32 = 1;
-const SEED: &[u8] = include_bytes!("../../../assets/synapse/resource-catalog.sqlite3");
+const SCHEMA_VERSION: u32 = 2;
 
 fn open(path: &std::path::Path) -> anyhow::Result<Connection> {
     let connection = Connection::open_with_flags(
@@ -54,7 +61,7 @@ pub fn read_catalog<T>(read: impl FnOnce(&Connection) -> anyhow::Result<T>) -> a
         .get_or_init(|| {
             (|| -> anyhow::Result<_> {
                 let paths = InstallationPaths::current()?;
-                let path = paths.publish_catalog(SEED)?;
+                let path = paths.catalog()?;
                 Ok(Mutex::new(open(&path)?))
             })()
             .map_err(|error| format!("{error:#}"))

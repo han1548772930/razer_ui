@@ -112,54 +112,8 @@ pub mod native {
         // Match the Windows small-icon metric with the ICO's original small
         // raster. Never reduce its 512px preview to 32px and then again in Explorer.
         let requested = unsafe { GetSystemMetrics(SM_CXSMICON) }.max(16) as u32;
-        let variants: &[(u32, &[u8])] = &[
-            (
-                16,
-                include_bytes!(
-                    "../../../assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba"
-                ),
-            ),
-            (
-                20,
-                include_bytes!(
-                    "../../../assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba"
-                ),
-            ),
-            (
-                24,
-                include_bytes!(
-                    "../../../assets/synapse/shared/pending-source-audit/81851a9004a803d3-tray-icon-24.rgba"
-                ),
-            ),
-            (
-                32,
-                include_bytes!(
-                    "../../../assets/synapse/shared/pending-source-audit/71b354f660adb5db-tray-icon.rgba"
-                ),
-            ),
-            (
-                40,
-                include_bytes!(
-                    "../../../assets/synapse/shared/pending-source-audit/f8fd980e3bec82fe-tray-icon-40.rgba"
-                ),
-            ),
-            (
-                48,
-                include_bytes!(
-                    "../../../assets/synapse/shared/pending-source-audit/5e5df98271550aca-tray-icon-48.rgba"
-                ),
-            ),
-            (
-                64,
-                include_bytes!(
-                    "../../../assets/synapse/shared/pending-source-audit/afb1350c23ce2416-tray-icon-64.rgba"
-                ),
-            ),
-        ];
-        let &(size, bytes) = variants
-            .iter()
-            .find(|(size, _)| *size >= requested)
-            .unwrap_or_else(|| variants.last().expect("tray icon variants"));
+        let icon = razer_assets::NativeIcon::for_notification_size(requested);
+        let (size, bytes) = (icon.pixels(), icon.rgba());
         tray_icon::Icon::from_rgba(bytes.to_vec(), size, size).map(|icon| (icon, size))
     }
     pub fn log_registration_context(tray: HWND) {

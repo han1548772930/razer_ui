@@ -90,7 +90,7 @@ struct Supported {
 }
 fn records() -> &'static [Supported] {
     static SUPPORTED: OnceLock<Vec<Supported>> = OnceLock::new();
-    SUPPORTED.get_or_init(|| crate::data::source_help_runtime_versions_data!())
+    SUPPORTED.get_or_init(|| read_source_help_runtime_versions_catalog())
 }
 pub(super) fn supported(product_id: u32, offset: usize) -> bool {
     records()
@@ -141,3 +141,67 @@ impl SourceHelp {
         true
     }
 }
+
+// Generated catalog reader: razer-pages/source_help_runtime_versions_data.
+fn read_source_help_runtime_versions_catalog() -> Vec<Supported> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Supported>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Supported> {
+        let value = match r.tag()? {
+            0 => Supported {
+                product_id: r.child(decode_2)?,
+                offset: r.child(decode_3)?,
+                retains_serial: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SOURCE_HELP_RUNTIME_VERSIONS_DATA,
+        0,
+        "d4f2e0520a719394f5edd1bb89b1b44198294c107449e5143eb2e3450a6724c4",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_source_help_runtime_versions_data_decodes() {
+    let _ = read_source_help_runtime_versions_catalog();
+}
+// End generated catalog reader: razer-pages/source_help_runtime_versions_data.

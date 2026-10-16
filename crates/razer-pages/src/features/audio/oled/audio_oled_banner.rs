@@ -53,7 +53,7 @@ struct Spec {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| crate::data::audio_oled_banner_data!())
+    SPEC.get_or_init(|| read_audio_oled_banner_catalog())
 }
 fn label(symbol: &str) -> String {
     t(&spec().labels[symbol])
@@ -1060,3 +1060,159 @@ impl Render for BannerEditor {
 fn resume_epoch(this: &mut BannerEditor) {
     this.epoch = this.epoch.max(Instant::now());
 }
+
+// Generated catalog reader: razer-pages/audio_oled_banner_data.
+fn read_audio_oled_banner_catalog() -> Spec {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                labels: r.child(decode_1)?,
+                fonts: r.child(decode_3)?,
+                sizes: r.child(decode_3)?,
+                defaults: r.child(decode_5)?,
+                images: r.child(decode_6)?,
+                icons: r.child(decode_1)?,
+                limits: r.child(decode_8)?,
+                motion: r.child(decode_10)?,
+                textarea: r.child(decode_12)?,
+                placeholder: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Named>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Named> {
+        let value = match r.tag()? {
+            0 => Named {
+                name: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<ImagePreset>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ImagePreset> {
+        let value = match r.tag()? {
+            0 => ImagePreset {
+                id: r.child(decode_2)?,
+                src: r.child(decode_2)?,
+                asset: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Limits> {
+        let value = match r.tag()? {
+            0 => Limits {
+                horizontal_width: r.child(decode_9)?,
+                vertical_with_image: r.child(decode_9)?,
+                vertical_without_image: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Motion> {
+        let value = match r.tag()? {
+            0 => Motion {
+                horizontal_base_ms: r.child(decode_9)?,
+                horizontal_width_ms: r.child(decode_9)?,
+                vertical_ms: r.child(decode_9)?,
+                restart_ms: r.child(decode_11)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u64> {
+        let value = match r.tag()? {
+            0 => r.u64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<TextareaMetrics> {
+        let value = match r.tag()? {
+            0 => TextareaMetrics {
+                outer_width: r.child(decode_9)?,
+                outer_height: r.child(decode_9)?,
+                padding: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_OLED_BANNER_DATA,
+        0,
+        "ea12fb5b4ee4aea257ac2c3fac97c63d78b695f76f07b326da4f0bc098e64403",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_oled_banner_data_decodes() {
+    let _ = read_audio_oled_banner_catalog();
+}
+// End generated catalog reader: razer-pages/audio_oled_banner_data.

@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+razer-resource-db.workspace = true
+anyhow.workspace = true
 chrono.workspace = true
 razer-catalog.workspace = true
 razer-settings.workspace = true

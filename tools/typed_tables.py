@@ -12,11 +12,11 @@ import re
 
 ROOT = Path(__file__).resolve().parent.parent
 WRITE_INPUT = ".analysis/inputs/typed-tables/razer-device/device-write-capabilities.json"
-WRITE_OUTPUT = "crates/razer-device/src/data/device_write_capabilities.rs"
+WRITE_OUTPUT = "crates/razer-device/src/transport/device_write_capabilities.rs"
 PAIRING_INPUT = ".analysis/inputs/typed-tables/razer-storage/receiver-pairing-catalog.json"
 RESET_INPUT = ".analysis/inputs/typed-tables/razer-storage/receiver-reset-defaults.json"
-PAIRING_OUTPUT = "crates/razer-storage/src/data/receiver_pairing_catalog.rs"
-RESET_OUTPUT = "crates/razer-storage/src/data/receiver_reset_defaults.rs"
+PAIRING_OUTPUT = "crates/razer-storage/src/receiver/receiver_pairing_catalog.rs"
+RESET_OUTPUT = "crates/razer-storage/src/receiver/receiver_reset_defaults.rs"
 KINDS = {"dpi": "Dpi", "polling": "Polling", "idle": "Idle"}
 METHODS = {
     "setDpiLevel": ("DpiLevel", "dpi", 7),
@@ -380,11 +380,11 @@ IDENTITY_INPUT = ".analysis/inputs/typed-tables/razer-device/discovery-catalog.j
 QUERY_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-query-capabilities.json"
 PAIR_CAP_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-pairing-capabilities.json"
 PAIR_CATALOG_INPUT = ".analysis/inputs/typed-tables/razer-device/receiver-pairing-catalog.json"
-READ_OUTPUT = "crates/razer-device/src/data/device_read_capabilities.rs"
-IDENTITY_OUTPUT = "crates/razer-device/src/data/device_identity_catalog.rs"
-QUERY_OUTPUT = "crates/razer-device/src/data/receiver_query_capabilities.rs"
-PAIR_CAP_OUTPUT = "crates/razer-device/src/data/receiver_pairing_capabilities.rs"
-PAIR_CATALOG_OUTPUT = "crates/razer-device/src/data/receiver_pairing_catalog.rs"
+READ_OUTPUT = "crates/razer-device/src/transport/device_read_capabilities.rs"
+IDENTITY_OUTPUT = "crates/razer-device/src/identity/device_identity_catalog.rs"
+QUERY_OUTPUT = "crates/razer-device/src/receiver/receiver_query_capabilities.rs"
+PAIR_CAP_OUTPUT = "crates/razer-device/src/receiver/receiver_pairing_capabilities.rs"
+PAIR_CATALOG_OUTPUT = "crates/razer-device/src/receiver/receiver_pairing_catalog.rs"
 
 READ_METHODS = {
     "getExtendedFirmwareVersion": ("ExtendedFirmware", "firmware", [4, 0, 135], [], 4),

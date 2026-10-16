@@ -1,4 +1,34 @@
 PRAGMA foreign_keys = ON;
+CREATE TABLE typed_catalog (
+    id TEXT PRIMARY KEY, codec TEXT NOT NULL CHECK(length(codec)=64),
+    sha256 TEXT NOT NULL CHECK(length(sha256)=64), payload BLOB NOT NULL
+) STRICT;
+
+CREATE TABLE product_image_selector (
+    position INTEGER PRIMARY KEY CHECK(position>=0), product_id INTEGER NOT NULL CHECK(product_id>0),
+    edition_id INTEGER NOT NULL CHECK(edition_id>=0), layout_id INTEGER NOT NULL CHECK(layout_id>=0),
+    part TEXT NOT NULL CHECK(part IN ('Product','MouseBottom','KeyboardWrist','KeyboardDial','Streamer')),
+    asset TEXT NOT NULL
+) STRICT;
+CREATE TABLE dashboard_image_selector (
+    position INTEGER PRIMARY KEY CHECK(position>=0), product_id INTEGER NOT NULL CHECK(product_id>0),
+    edition_id INTEGER NOT NULL CHECK(edition_id>=0), layout_id INTEGER NOT NULL CHECK(layout_id>=0), asset TEXT NOT NULL
+) STRICT;
+CREATE TABLE dashboard_plugin_image_selector (
+    position INTEGER PRIMARY KEY CHECK(position>=0), product_id INTEGER NOT NULL CHECK(product_id>0),
+    edition_id INTEGER NOT NULL CHECK(edition_id>=0), filename_edition_id INTEGER NOT NULL CHECK(filename_edition_id>=0),
+    layout_id INTEGER NOT NULL CHECK(layout_id>=0), wrist INTEGER NOT NULL CHECK(wrist IN (0,1)),
+    density INTEGER NOT NULL CHECK(density IN (1,3)), asset TEXT NOT NULL
+) STRICT;
+CREATE TABLE pairing_image_selector (
+    position INTEGER PRIMARY KEY CHECK(position>=0), product_id INTEGER NOT NULL CHECK(product_id>0),
+    edition_id INTEGER NOT NULL CHECK(edition_id>=0), layout_id INTEGER NOT NULL CHECK(layout_id>=0), asset TEXT NOT NULL
+) STRICT;
+CREATE TABLE gamepad_calibration_svg_selector (
+    position INTEGER PRIMARY KEY CHECK(position>=0), product_id INTEGER NOT NULL CHECK(product_id>0),
+    edition_id INTEGER NOT NULL CHECK(edition_id>=0),
+    kind TEXT NOT NULL CHECK(kind IN ('prd','ActuationDevice')), asset TEXT NOT NULL
+) STRICT;
 CREATE TABLE resource_storage (
     id INTEGER PRIMARY KEY CHECK(id=1), schema_version INTEGER NOT NULL CHECK(schema_version=1),
     provider TEXT NOT NULL, repository TEXT NOT NULL, revision TEXT

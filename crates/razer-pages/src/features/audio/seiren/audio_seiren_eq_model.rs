@@ -274,7 +274,7 @@ pub(super) struct Data {
 }
 pub(super) fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::audio_seiren_eq_data!())
+    DATA.get_or_init(|| read_audio_seiren_eq_catalog())
 }
 pub(super) fn label(alias: &str) -> String {
     razer_i18n::t(&data().labels[alias])
@@ -337,3 +337,193 @@ pub(super) fn q_from_handle_distance(distance: f64) -> f64 {
 #[cfg(test)]
 #[path = "audio_seiren_eq_tests.rs"]
 mod tests;
+
+// Generated catalog reader: razer-pages/audio_seiren_eq_data.
+fn read_audio_seiren_eq_catalog() -> Data {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                defaults: r.child(decode_1)?,
+                flat: r.child(decode_8)?,
+                labels: r.child(decode_12)?,
+                filters: r.child(decode_13)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Model> {
+        let value = match r.tag()? {
+            0 => Model {
+                selected: r.child(decode_2)?,
+                data: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Preset>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_4)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Preset> {
+        let value = match r.tag()? {
+            0 => Preset {
+                preset: r.child(decode_2)?,
+                selected: r.child(decode_5)?,
+                high_pass: r.child(decode_6)?,
+                bands: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u8> {
+        let value = match r.tag()? {
+            0 => r.u8()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<HighPass> {
+        let value = match r.tag()? {
+            0 => HighPass {
+                enabled: r.child(decode_7)?,
+                value: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Band>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_9)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Band> {
+        let value = match r.tag()? {
+            0 => Band {
+                id: r.child(decode_5)?,
+                frequency: r.child(decode_10)?,
+                gain: r.child(decode_10)?,
+                q: r.child(decode_10)?,
+                kind: r.child(decode_2)?,
+                status: None,
+            },
+            1 => Band {
+                id: r.child(decode_5)?,
+                frequency: r.child(decode_10)?,
+                gain: r.child(decode_10)?,
+                q: r.child(decode_10)?,
+                kind: r.child(decode_2)?,
+                status: r.child(decode_11)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f64> {
+        let value = match r.tag()? {
+            0 => r.f64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<u8>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_5)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<FilterAsset>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_14)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<FilterAsset> {
+        let value = match r.tag()? {
+            0 => FilterAsset {
+                kind: r.child(decode_2)?,
+                asset: r.child(decode_2)?,
+                width: r.child(decode_15)?,
+                height: r.child(decode_15)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_SEIREN_EQ_DATA,
+        0,
+        "5a1558e6e0a34a58c1ab2c06829b4bd430a1413c432b928cfe868007a9ed6192",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_seiren_eq_data_decodes() {
+    let _ = read_audio_seiren_eq_catalog();
+}
+// End generated catalog reader: razer-pages/audio_seiren_eq_data.

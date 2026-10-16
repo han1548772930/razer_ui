@@ -39,7 +39,7 @@ enum PosterFit {
 fn specification(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| crate::data::audio_demo_data!())
+        .get_or_init(|| read_audio_demo_catalog())
         .iter()
         .find(|spec| spec.product_id == pid)
 }
@@ -235,3 +235,99 @@ impl AudioDemo {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/audio_demo_data.
+fn read_audio_demo_catalog() -> Vec<Spec> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<Spec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                product_id: r.child(decode_2)?,
+                asset: r.child(decode_3)?,
+                width: r.child(decode_4)?,
+                height: r.child(decode_4)?,
+                presentation: r.child(decode_5)?,
+                object_fit: r.child(decode_6)?,
+                title: r.child(decode_3)?,
+                floating_label: r.child(decode_3)?,
+                floating_default: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Presentation> {
+        let value = match r.tag()? {
+            0 => Presentation {
+                button_width: r.child(decode_4)?,
+                glyph_size: r.child(decode_4)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PosterFit> {
+        let value = match r.tag()? {
+            0 => PosterFit::Fill,
+            1 => PosterFit::Cover,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_DEMO_DATA,
+        0,
+        "baa3cb69adbebb9f13a552fc8209e5b128f85ad6d6d87a153a587fad725ccdc5",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_demo_data_decodes() {
+    let _ = read_audio_demo_catalog();
+}
+// End generated catalog reader: razer-pages/audio_demo_data.

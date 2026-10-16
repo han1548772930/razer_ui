@@ -26,7 +26,7 @@ use razer_widgets::surface::SynapseSwitch;
 use razer_widgets::theme::ProfileAlertColors;
 use std::collections::BTreeMap;
 
-const KEY_NAMES: &[(&str, &str, &str)] = include!("../../../../razer-model/src/mapping_keys.rs");
+const KEY_NAMES: &[(&str, &str, &str)] = razer_model::settings::MAPPING_KEYS;
 
 struct SnapCapture {
     pair: usize,

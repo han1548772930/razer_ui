@@ -36,7 +36,7 @@ struct Source {
 fn source(product_id: u32) -> Option<&'static Source> {
     static SOURCE: OnceLock<Vec<Source>> = OnceLock::new();
     SOURCE
-        .get_or_init(|| crate::data::mouse_receiver_indicator_data!())
+        .get_or_init(|| read_mouse_receiver_indicator_catalog())
         .iter()
         .find(|source| source.product_id == product_id)
 }
@@ -1169,3 +1169,62 @@ fn help_gradient() -> Arc<Image> {
         br##"<svg width="4" height="85" viewBox="0 0 4 85" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox" color-interpolation="sRGB"><stop offset="0" stop-color="#00ff00"/><stop offset=".325" stop-color="#e3b617"/><stop offset=".985" stop-color="#ff3d00"/></linearGradient></defs><rect width="4" height="85" fill="url(#g)"/></svg>"##.to_vec(),
     ))).clone()
 }
+
+// Generated catalog reader: razer-pages/mouse_receiver_indicator_data.
+fn read_mouse_receiver_indicator_catalog() -> Vec<Source> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Source>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Source> {
+        let value = match r.tag()? {
+            0 => Source {
+                product_id: r.child(decode_2)?,
+                image: r.child(decode_3)?,
+                guide_icon: r.child(decode_3)?,
+                show_guide: r.child(decode_3)?,
+                guide_title: r.child(decode_3)?,
+                guide_description: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_RECEIVER_INDICATOR_DATA,
+        0,
+        "634acfa81b5de2f1e5ef483e95922d79d020c729e5d38cd430bea1e73e52323d",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_receiver_indicator_data_decodes() {
+    let _ = read_mouse_receiver_indicator_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_receiver_indicator_data.

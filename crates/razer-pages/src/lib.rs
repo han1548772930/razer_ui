@@ -1,5 +1,4 @@
 //! Device workspaces, product pages and editor controllers.
-mod data;
 #[path = "features/mod.rs"]
 pub mod features;
 #[path = "keyboard_geometry.rs"]

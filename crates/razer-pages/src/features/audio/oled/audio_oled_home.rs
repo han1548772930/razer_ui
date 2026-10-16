@@ -33,7 +33,7 @@ struct Spec {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| crate::data::audio_oled_home_data!())
+    SPEC.get_or_init(|| read_audio_oled_home_catalog())
 }
 fn label(symbol: &str) -> String {
     t(&spec().labels[symbol])
@@ -519,3 +519,80 @@ fn card_action(
         )
         .child(label(label_symbol).to_uppercase())
 }
+
+// Generated catalog reader: razer-pages/audio_oled_home_data.
+fn read_audio_oled_home_catalog() -> Spec {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Spec> {
+        let value = match r.tag()? {
+            0 => Spec {
+                labels: r.child(decode_1)?,
+                home: r.child(decode_3)?,
+                media: r.child(decode_3)?,
+                visualizers: r.child(decode_4)?,
+                headset: r.child(decode_4)?,
+                battery_default: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_OLED_HOME_DATA,
+        0,
+        "e68acf0d188c94605fc67083496dbbf4b91804feaaccee5b00c2b81ea6f53e0d",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_oled_home_data_decodes() {
+    let _ = read_audio_oled_home_catalog();
+}
+// End generated catalog reader: razer-pages/audio_oled_home_data.

@@ -12,7 +12,7 @@ struct TwoTapPosition {
 }
 fn two_tap_position(product_id: u32) -> Option<&'static TwoTapPosition> {
     static DATA: OnceLock<Vec<TwoTapPosition>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_position_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_position_catalog())
         .iter()
         .find(|row| row.product_id == product_id)
 }
@@ -173,3 +173,58 @@ impl Element for PopupPosition {
         self.child.paint(window, cx);
     }
 }
+
+// Generated catalog reader: razer-pages/keyboard_mapping_position_data.
+fn read_keyboard_mapping_position_catalog() -> Vec<TwoTapPosition> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<TwoTapPosition>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<TwoTapPosition> {
+        let value = match r.tag()? {
+            0 => TwoTapPosition {
+                product_id: r.child(decode_2)?,
+                guards_hidden_target: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_POSITION_DATA,
+        0,
+        "7dc2167db85b906eb97e86e5b814413703e5dbda51b71524c6ce47f8de24dbfe",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_position_data_decodes() {
+    let _ = read_keyboard_mapping_position_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_position_data.

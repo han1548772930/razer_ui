@@ -59,7 +59,7 @@ struct EmojiTab {
 }
 fn data() -> &'static EmojiData {
     static DATA: OnceLock<EmojiData> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::keyboard_mapping_text_emoji_data!())
+    DATA.get_or_init(|| read_keyboard_mapping_text_emoji_catalog())
 }
 
 #[derive(Deserialize)]
@@ -77,7 +77,7 @@ struct Policies {
 
 fn mouse_policies() -> &'static Policies {
     static DATA: OnceLock<Policies> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::mouse_mapping_text_current_data!())
+    DATA.get_or_init(|| read_mouse_mapping_text_current_catalog())
 }
 
 pub(crate) fn mouse_text_policy(product_id: u32) -> Option<&'static Policy> {
@@ -1045,3 +1045,118 @@ impl Element for MappingEmojiPosition {
         self.child.paint(window, cx);
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_mapping_text_current_data.
+fn read_mouse_mapping_text_current_catalog() -> Policies {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Policies> {
+        let value = match r.tag()? {
+            0 => Policies {
+                products: r.child(decode_1)?,
+                datasets: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Policy>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Policy> {
+        let value = match r.tag()? {
+            0 => Policy {
+                product_id: r.child(decode_3)?,
+                group: r.child(decode_4)?,
+                version_filter: r.child(decode_5)?,
+                data_index: r.child(decode_6)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<EmojiData>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<EmojiData> {
+        let value = match r.tag()? {
+            0 => EmojiData::from_catalog(razer_catalog::emoji::DatasetId::Mapping),
+            1 => EmojiData::from_catalog(razer_catalog::emoji::DatasetId::MappingWithoutExclusions),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_MAPPING_TEXT_CURRENT_DATA,
+        0,
+        "d8b069cfe362a39b4fb3540b376bce254874ff4a3a70f2a09d16515eac4081d1",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_mapping_text_current_data_decodes() {
+    let _ = read_mouse_mapping_text_current_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_mapping_text_current_data.
+
+// Generated catalog reader: razer-pages/keyboard_mapping_text_emoji_data.
+fn read_keyboard_mapping_text_emoji_catalog() -> EmojiData {
+    EmojiData::from_catalog(razer_catalog::emoji::DatasetId::Mapping)
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_mapping_text_emoji_data_decodes() {
+    let _ = read_keyboard_mapping_text_emoji_catalog();
+}
+// End generated catalog reader: razer-pages/keyboard_mapping_text_emoji_data.

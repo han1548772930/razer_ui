@@ -1,7 +1,7 @@
 """Emit Rust domain constructors from audited inputs and their actual Rust schema.
 
-This maintenance module is never imported by Cargo or the product. Generated
-macros expand at the owning consumer, where private domain types are visible.
+This maintenance module is never imported by Cargo or the product. Typed
+constructors live in their domain owners; large UI catalogs use SQLite readers.
 """
 from __future__ import annotations
 
@@ -641,9 +641,71 @@ class RustData:
         return name + "()"
 
 
+def owned_constructor(schema, module, marker, function, fragment):
+    """Keep a generated function and its private schema in the same module."""
+    import textwrap
+    path = ROOT / module
+    raw = path.read_bytes().replace(b"\r\n", b"\n")
+    source = raw.decode("utf-8")
+    changes, declarations = [], {}
+    def visit(node):
+        if node.type in {"struct_item", "enum_item"}:
+            name = node.child_by_field_name("name").text.decode("utf-8")
+            owner = node
+            while owner.parent.type != "source_file":
+                owner = owner.parent
+            if owner != node and re.search(r"\b" + re.escape(name) + r"\b", fragment):
+                start, previous = node.start_byte, node.prev_named_sibling
+                while previous is not None and previous.type == "attribute_item":
+                    start, previous = previous.start_byte, previous.prev_named_sibling
+                start = raw.rfind(b"\n", 0, start) + 1
+                end = raw.find(b"\n", node.end_byte) + 1
+                changes.append((start, end, b""))
+                declarations.setdefault(owner.start_byte, []).append(textwrap.dedent(raw[start:end].decode()).strip() + "\n\n")
+        for child in node.named_children:
+            visit(child)
+    visit(schema.parser.parse(raw).root_node)
+    for at, blocks in declarations.items():
+        changes.append((at, at, "".join(blocks).encode("utf-8")))
+    for start, end, value in sorted(changes, reverse=True):
+        raw = raw[:start] + value + raw[end:]
+    source = raw.decode("utf-8")
+    if marker in source:
+        source, count = re.subn(re.escape(marker) + r".*?\n}\n", lambda _: fragment, source, flags=re.S)
+        if count != 1:
+            raise ValueError("Repeated generated constructor identity")
+    else:
+        if re.search(r"\bfn\s+" + re.escape(function) + r"\b", source):
+            raise ValueError("Generated constructor conflicts with handwritten code")
+        source = source.rstrip() + "\n\n" + fragment
+    return source.encode("utf-8")
+
+
 def build_table(crate, symbol, module, root_type, *, source=None, check=False,
                 macro_name=None, allow_value=False, product_factory=False, schema=None):
     import asset_release
+    macro_name = macro_name or symbol.lower()
+    registry_path = ROOT / "tools/typed-data.json"
+    recipes = json.loads(registry_path.read_bytes()) if registry_path.is_file() else {"tables": []}
+    registered = next((row for row in recipes["tables"]
+                       if (row["crate"], row["macro"]) == (crate, macro_name)), None)
+    if registered and registered.get("storage") in {"sqlite", "sqlite-profile"}:
+        import catalog_data
+        import resource_database
+        maintained = ROOT / registered["source"]
+        if source:
+            original = ROOT / source
+            raw = original.read_bytes()
+            if registered["storage"] == "sqlite":
+                catalog_data.Codec(ROOT / "crates" / crate).document(registered, json.loads(raw))
+            else:
+                resource_database.emoji_dataset_identity(json.loads(raw))
+            if check and maintained.read_bytes() != raw:
+                raise ValueError("SQLite catalog maintenance input differs")
+            if not check and maintained.read_bytes() != raw:
+                maintained.write_bytes(raw)
+        report = resource_database.prepare(check=check)
+        return next(row for row in report["typed_catalogs"] if row["id"] == registered["catalog_id"]) if registered["storage"] == "sqlite" else registered
     crate_root = ROOT / "crates" / crate
     original = Path(source) if source else asset_release.builtin_data_path(crate, symbol)
     original = original if original.is_absolute() else ROOT / original
@@ -676,61 +738,54 @@ def build_table(crate, symbol, module, root_type, *, source=None, check=False,
     macro_name = macro_name or symbol.lower()
     if not re.fullmatch(r"[a-z][a-z0-9_]*", macro_name):
         raise ValueError("Invalid Rust table macro name")
-    output = crate_root / "src/data" / (macro_name + ".rs")
-    maintained = ROOT / INPUTS / crate / (symbol.lower() + ".json")
-    helper_blocks = ["        fn " + name + "() -> " + typ + " {\n"
-                     + pretty_expression(body, indent=12) + "\n        }\n"
-                     for name, typ, body in schema.shared_constructors]
-    parts, includes, calls = {}, "", ""
-    if sum(len(block) for block in helper_blocks) > 8 * 1024 * 1024:
-        batches, batch, length = [], [], 0
-        for block in helper_blocks:
-            if batch and length + len(block) > 8 * 1024 * 1024:
-                batches.append(batch)
-                batch, length = [], 0
-            batch.append(block)
-            length += len(block)
-        if batch:
-            batches.append(batch)
-        for index, batch in enumerate(batches):
-            name = macro_name + "_part_" + str(index)
-            part = output.with_name(name + ".rs")
-            parts[part] = ("// Generated typed constructor partition.\n#[rustfmt::skip]\n"
-                           + "macro_rules! " + name + " {\n    () => {\n" + "".join(batch)
-                           + "    };\n}\npub(crate) use " + name + ";\n").encode("utf-8")
-            includes += 'include!("' + part.name + '");\n'
-            calls += "        $crate::data::" + name + "!();\n"
-        helper_blocks = []
-    helpers = "".join(helper_blocks)
-    content = ("// Generated by tools/workspace.py prepare-typed-data.\n"
-               "#[rustfmt::skip]\n"
-               + includes + f"macro_rules! {macro_name} {{\n    () => {{{{\n"
-               + calls + helpers + pretty_expression(expression, indent=8) + "\n    }};\n}\n"
-               f"pub(crate) use {macro_name};\n").encode("utf-8")
-    outputs = {output: content, **parts}
-    if any(len(body) >= 90 * 1024 * 1024 for body in outputs.values()):
-        raise ValueError("Generated Rust partition exceeds the repository size budget")
+    output = ROOT / module
+    maintained = ROOT / INPUTS / crate / (macro_name + ".json")
+    function = "make_" + macro_name.removesuffix("_data") + "_table"
+    marker = "// Generated typed table: " + crate + "/" + macro_name + ".\n"
+    helpers = "".join("    fn " + name + "() -> " + typ + " {\n"
+                      + pretty_expression(body, indent=8) + "\n    }\n"
+                      for name, typ, body in schema.shared_constructors)
+    return_type = "Vec<(u32, fn() -> " + match[1] + ")>" if product_factory else root_type
+    content = (marker + "#[rustfmt::skip]\nfn " + function + "() -> " + return_type + " {\n"
+               + helpers + pretty_expression(expression, indent=4) + "\n}\n").encode("utf-8")
+    body = owned_constructor(schema, module, marker, function, content.decode("utf-8"))
+    pattern = r"crate::data::(?:" + re.escape(macro_name) + r"::)?" + re.escape(macro_name) + r"!\(\s*\)"
+    body = re.sub(pattern, function + "()", body.decode("utf-8")).encode("utf-8")
+    outputs = {output: content}
+    stale_root = crate_root / "src/data"
+    stale = [stale_root / (macro_name + ".rs"), *stale_root.glob(macro_name + "_part_*.rs")]
     if check:
-        for path, body in outputs.items():
-            if path.read_bytes() != body:
-                raise ValueError("Typed Rust table differs from its schema or maintenance input")
+        if output.read_bytes() != body or any(path.exists() for path in stale):
+            raise ValueError("Typed Rust constructor differs from its schema or maintenance input")
     else:
         maintained.parent.mkdir(parents=True, exist_ok=True)
         if maintained.exists() and maintained.read_bytes() != raw:
             raise ValueError("Maintenance input already exists with different bytes")
-        maintained.write_bytes(raw)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        for path, body in outputs.items():
-            path.write_bytes(body)
-        for stale in output.parent.glob(macro_name + "_part_*.rs"):
-            if stale not in outputs:
-                stale.unlink()
+        if not maintained.is_file():
+            maintained.write_bytes(raw)
+        output.write_bytes(body)
+        for path in stale:
+            if path.is_file():
+                if path.resolve().parent != stale_root.resolve() or not path.read_bytes().startswith(b"// Generated"):
+                    raise ValueError("Superseded constructor is not an owned generated file")
+                path.unlink()
+        registry = crate_root / "src/data.rs"
+        if registry.is_file():
+            text = registry.read_text(encoding="utf-8")
+            text = re.sub(r'^include!\("data/' + re.escape(macro_name) + r'\.rs"\);\n', '', text, flags=re.M)
+            text = re.sub(r'^#\[path = "data/' + re.escape(macro_name) + r'\.rs"\]\npub\(crate\) mod ' + re.escape(macro_name) + r';\n', '', text, flags=re.M)
+            registry.write_text(text, encoding="utf-8", newline="\n")
+        if stale_root.is_dir() and not any(stale_root.iterdir()):
+            stale_root.rmdir()
+            registry.unlink(missing_ok=True)
+            lib = crate_root / "src/lib.rs"
+            lib.write_bytes(lib.read_bytes().replace(b"mod data;\r\n", b"").replace(b"mod data;\n", b""))
     report = {"crate": crate, "symbol": symbol, "module": str(Path(module)).replace("\\", "/"),
-            "root_type": root_type, "macro": macro_name,
+            "root_type": root_type, "macro": macro_name, "storage": "rust", "reader": function,
             "source": maintained.relative_to(ROOT).as_posix(),
             "source_sha256": hashlib.sha256(raw).hexdigest(),
             "output": output.relative_to(ROOT).as_posix(),
-            "outputs": [{"path": path.relative_to(ROOT).as_posix(), "sha256": hashlib.sha256(body).hexdigest()}
+            "outputs": [{"path": path.relative_to(ROOT).as_posix(), "reader": function, "sha256": hashlib.sha256(body).hexdigest()}
                         for path, body in outputs.items()],
             "excluded_evidence_fields": sorted(schema.excluded),
             "external_json_boundaries": sorted(schema.value_fields), "allow_value": allow_value,
@@ -838,7 +893,11 @@ def infer_domain_schema(crate, symbol, root_name, *, map_paths=()):
     generated_root = infer([value], "")
     if generated_root != root_name:
         raise ValueError("Domain root must be an object")
-    output = ROOT / "crates" / crate / "src/data" / (symbol.lower() + "_schema.rs")
+    registry = json.loads((ROOT / "tools/typed-data.json").read_bytes())
+    owners = {item["module"] for item in registry["tables"] if item["crate"] == crate and item["symbol"] == symbol}
+    if len(owners) != 1:
+        raise ValueError("A domain schema requires one explicit owning module")
+    output = (ROOT / owners.pop()).with_name(symbol.lower() + "_schema.rs")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("// Explicit domain schema for source-derived fixed data.\n" + "\n".join(definitions),
                       encoding="utf-8", newline="\n")
@@ -850,6 +909,7 @@ def add_commands(commands):
     parser.add_argument("--crate", action="append", help="Restrict to owning crates")
     parser.add_argument("--symbol", action="append", help="Restrict to registered source symbols")
     parser.add_argument("--check", action="store_true", help="Compare without modifying tables")
+    parser.add_argument("--recover-maintenance", action="store_true", help="Recover missing maintained inputs from complete current Rust constructors and verify AST equivalence")
     emoji = commands.add_parser("prepare-emoji-search", help="Share identical emoji entries while preserving the complete source order")
     emoji.add_argument("--check", action="store_true", help="Compare without modifying the shared table")
     emoji.add_argument("--source", action="append", help="Retained original JS; verify the entire ordered vocabulary and register its byte identity")
@@ -865,9 +925,34 @@ def run(args):
     missing = set(args.symbol or ()) - {item["symbol"] for item in rows}
     if not rows or missing:
         raise ValueError("No matching typed tables for requested crate/symbol filters: " + ", ".join(sorted(missing)))
+    sqlite_rows = [item for item in rows if item.get("storage") in {"sqlite", "sqlite-profile"}]
+    rows = [item for item in rows if item.get("storage") not in {"sqlite", "sqlite-profile"}]
+    if args.recover_maintenance:
+        if args.check:
+            raise ValueError("Maintenance recovery cannot run in check-only mode")
+        import analysis
+        import catalog_data
+        missing_rows = [item for item in rows if not item.get("maintenance_recovery")]
+        for item in missing_rows:
+            item["source"] = INPUTS + "/" + item["crate"] + "/" + item["macro"] + ".json"
+        catalog_data.recover_inputs(missing_rows)
+        analysis.save(ROOT / "tools/typed-data.json", registry)
+        fingerprints = {}
+        for item in rows:
+            if item.get("maintenance_recovery", {}).get("full_constructor_fingerprint"):
+                continue
+            fingerprint = fingerprints.get(item["crate"])
+            if fingerprint is None:
+                fingerprint = fingerprints[item["crate"]] = catalog_data.Fingerprint(ROOT / "crates" / item["crate"])
+            value = json.loads((ROOT / item["source"]).read_bytes())
+            item["maintenance_recovery"]["full_constructor_fingerprint"] = catalog_data.verify_constructors(item, value, fingerprint)
+        analysis.save(ROOT / "tools/typed-data.json", registry)
+    if sqlite_rows:
+        import resource_database
+        resource_database.prepare(check=args.check)
     schemas = {crate: RustData(ROOT / "crates" / crate) for crate in {item["crate"] for item in rows}}
     reports = [build_table(item["crate"], item["symbol"], item["module"], item["root_type"],
                            source=item["source"], macro_name=item["macro"], check=args.check,
                            allow_value=item.get("allow_value", False),
                            product_factory=item.get("product_factory", False), schema=schemas[item["crate"]]) for item in rows]
-    return {"tables": len(reports), "check_only": args.check, "passed": True}
+    return {"tables": len(reports) + len(sqlite_rows), "check_only": args.check, "passed": True}

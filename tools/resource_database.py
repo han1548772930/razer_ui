@@ -7,16 +7,153 @@ from pathlib import Path
 import sqlite3
 
 ROOT = Path(__file__).resolve().parent.parent
-OUTPUT = "assets/synapse/resource-catalog.sqlite3"
+INSTALLATION = "crates/razer-resource-db/installation.json"
+
+
+def installation_policy(root=None):
+    import re
+    policy = json.loads(((root or ROOT) / INSTALLATION).read_bytes())
+    if (type(policy) is not dict or set(policy) != {"schema_version", "catalog_source", "catalog_filename", "cache_relative"}
+            or policy["schema_version"] != 1):
+        raise ValueError("Invalid resource installation policy")
+    for key in ("catalog_source", "catalog_filename", "cache_relative"):
+        value = policy[key]
+        if (type(value) is not str or not re.fullmatch(r"[A-Za-z0-9_./-]+", value)
+                or Path(value).is_absolute() or any(part in {"", ".", ".."} for part in value.split("/"))):
+            raise ValueError("Invalid installation path: " + key)
+    if "/" in policy["catalog_filename"]:
+        raise ValueError("Installed catalog must be a basename")
+    return policy
+
+
+OUTPUT = installation_policy()["catalog_source"]
 SCHEMA = "crates/razer-resource-db/src/schema.sql"
 APPLICATION_ID = 0x525A5549
-VERSION = 1
+VERSION = 2
 INPUTS = {
     "mapping": ".analysis/inputs/typed-tables/razer-pages/keyboard_mapping_text_emoji_data.json",
     "mouse": ".analysis/inputs/typed-tables/razer-pages/mouse_mapping_text_current_data.json",
     "shortcuts": ".analysis/inputs/typed-tables/razer-pages/shortcuts_current.json",
     "macro": ".analysis/inputs/typed-tables/razer-app-pages/text_data.json",
 }
+SELECTORS = {
+    "product_image_selector": (("product-images.rs", "armory-product-images.rs"), ("u32", "u32", "u32", "part", "text")),
+    "dashboard_image_selector": (("dashboard-images.rs", "armory-dashboard-images.rs"), ("u32", "u32", "u32", "text")),
+    "dashboard_plugin_image_selector": (("current-dashboard-images.rs",), ("u32", "u32", "u32", "u32", "bool", "density", "text")),
+    "pairing_image_selector": (("multipairing-product-images.rs",), ("u32", "u32", "u32", "text")),
+    "gamepad_calibration_svg_selector": (("gamepad-calibration-svg-sources.rs",), ("u32", "u32", "kind", "text")),
+}
+
+
+def migrate_resource_tables():
+    import analysis
+    import asset_release
+    source_root = (ROOT / "assets/synapse/tables").resolve()
+    destination_root = (ROOT / asset_release.TABLES).resolve()
+    destination_root.mkdir(parents=True, exist_ok=True)
+    moved = []
+    for source in sorted(source_root.glob("*.rs")):
+        destination = asset_release.table_path(source.name)
+        if (source.is_symlink() or source.resolve().parent != source_root
+                or destination.resolve().parent != destination_root):
+            raise ValueError("Resource maintenance cleanup escaped its owned directories")
+        raw = source.read_bytes()
+        if destination.exists() and destination.read_bytes() != raw:
+            raise ValueError("Conflicting resource maintenance input: " + source.name)
+        destination.write_bytes(raw)
+        if source.read_bytes() != destination.read_bytes():
+            raise ValueError("Resource table changed during maintenance migration")
+        moved.append({"original": source.relative_to(ROOT).as_posix(), "path": destination.relative_to(ROOT).as_posix(),
+                      "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+        source.unlink()
+    if source_root.exists() and not any(source_root.iterdir()):
+        source_root.rmdir()
+    lock = asset_release.load_lock()
+    retained = [row for row in lock["git_files"] if not row["path"].startswith("assets/synapse/tables/")]
+    if retained != lock["git_files"]:
+        lock["git_files"] = retained
+        lock["source_sha256"] = asset_release.content_hash({"groups": lock["groups"], "git_files": retained})
+        lock["tag"] = "assets-" + lock["source_sha256"][:20]
+        asset_release.validate_lock(lock)
+        analysis.save(ROOT / asset_release.LOCK, lock)
+    if moved:
+        path = ROOT / ".analysis/results/typed-data.json"
+        report = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
+        report["resource_table_maintenance_migration"] = {"files": moved, "byte_identity_verified": True}
+        analysis.save(path, report)
+    return moved
+
+
+def selector_rows(manifest, input_rows=None):
+    import re
+    import asset_release
+    aliases = {row["key"] for row in manifest["entries"]}
+    token = re.compile(r'\s*(\d+|true|false|DeviceImage::[A-Za-z]+|"(?:[^"\\]|\\.)*")\s*')
+    tables = {}
+    for table, (sources, types) in SELECTORS.items():
+        rows = []
+        for filename in sources:
+            path = asset_release.table_path(filename)
+            raw = path.read_bytes()
+            if input_rows is not None:
+                input_rows.append({"path": path.relative_to(ROOT).as_posix(), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+            body = re.sub(r"(?m)^\s*//[^\n]*", "", raw.decode("utf-8")).strip()
+            if not body.startswith("&[") or not body.endswith("]"):
+                raise ValueError("Selector source must be one complete array: " + filename)
+            cursor = 2
+            while body[cursor:].strip() != "]":
+                start = re.match(r"\s*\(\s*", body[cursor:])
+                if start is None:
+                    raise ValueError("Unparsed selector row: " + filename)
+                cursor += start.end()
+                fields = []
+                for index, typ in enumerate(types):
+                    match = token.match(body, cursor)
+                    if match is None:
+                        raise ValueError("Unparsed selector field: " + filename)
+                    literal = match[1]
+                    cursor = match.end()
+                    if typ in {"text", "kind"}:
+                        value = json.loads(literal)
+                        if type(value) is not str or (typ == "kind" and value not in {"prd", "ActuationDevice"}):
+                            raise ValueError("Invalid selector text")
+                    elif typ == "part":
+                        value = literal.removeprefix("DeviceImage::")
+                        if value not in {"Product", "MouseBottom", "KeyboardWrist", "KeyboardDial", "Streamer"}:
+                            raise ValueError("Unknown device image part")
+                    elif typ == "bool":
+                        if literal not in {"true", "false"}:
+                            raise ValueError("Invalid selector wrist flag")
+                        value = int(literal == "true")
+                    else:
+                        if not literal.isdecimal() or not 0 <= int(literal) < 2**32:
+                            raise ValueError("Invalid selector identity")
+                        value = int(literal)
+                        if typ == "density" and value not in {1, 3}:
+                            raise ValueError("Invalid selector density")
+                    fields.append(value)
+                    if index < len(types) - 1:
+                        if body[cursor:cursor + 1] != ",":
+                            raise ValueError("Incomplete selector fields")
+                        cursor += 1
+                end = re.match(r"\s*,?\s*\)\s*,?\s*", body[cursor:])
+                if end is None or fields[-1] not in aliases or fields[0] <= 0:
+                    raise ValueError("Invalid selector closure or unregistered asset: " + filename)
+                cursor += end.end()
+                rows.append((len(rows), *fields))
+        if not rows:
+            raise ValueError("Empty maintained selector table: " + table)
+        tables[table] = rows
+    return tables
+
+
+def fill_selectors(connection, tables):
+    for name, rows in tables.items():
+        placeholders = ",".join("?" for _ in rows[0])
+        connection.executemany("INSERT INTO " + name + " VALUES (" + placeholders + ")", rows)
+        restored = connection.execute("SELECT * FROM " + name + " ORDER BY position").fetchall()
+        if restored != rows:
+            raise ValueError("Selector fields, order or duplicates changed: " + name)
 
 
 def emoji_datasets():
@@ -184,12 +321,18 @@ def verify_rows(connection, manifest, datasets, search):
         raise ValueError("Resource database integrity/foreign keys failed")
 
 
-def prepare(*, check=False, sources=None, check_local=False):
+def prepare(*, check=False, sources=None, check_local=False, migrate_data=False):
     import analysis
     import asset_release
     import rust_data
+    import catalog_data
+    if migrate_data:
+        if check:
+            raise ValueError("A migration cannot run in check-only mode")
+        migrate_resource_tables()
     registry = ROOT / "tools/typed-data.json"
     recipes = json.loads(registry.read_bytes())
+    documents, adapters, typed_reports = catalog_data.prepare_documents(recipes, migrate=migrate_data, check=check)
     sources = sources or recipes.get("emoji_search", {}).get("original_sources", [])
     if not sources:
         raise ValueError("Register retained original emoji JS with --source")
@@ -197,13 +340,23 @@ def prepare(*, check=False, sources=None, check_local=False):
     evidence = rust_data.verify_emoji_search_sources(sources, search)
     table_inputs = []
     manifest = asset_release.runtime_metadata(check_local=check_local, input_rows=table_inputs)
+    selectors = selector_rows(manifest, table_inputs)
     with sqlite3.connect(":memory:") as connection:
         connection.execute("PRAGMA page_size=4096")
         connection.execute("PRAGMA foreign_keys=ON")
         fill(connection, manifest, datasets, search)
+        fill_selectors(connection, selectors)
+        connection.executemany("INSERT INTO typed_catalog VALUES (?, ?, ?, ?)",
+                               ((doc["id"], doc["codec"], hashlib.sha256(doc["raw"]).hexdigest(), doc["raw"]) for doc in documents))
+        connection.commit()
+        restored_documents = connection.execute("SELECT id, codec, sha256, payload FROM typed_catalog ORDER BY id").fetchall()
+        expected_documents = sorted((doc["id"], doc["codec"], hashlib.sha256(doc["raw"]).hexdigest(), doc["raw"]) for doc in documents)
+        if restored_documents != expected_documents:
+            raise ValueError("Complete typed catalog byte roundtrip differs")
         verify_rows(connection, manifest, datasets, search)
         connection.execute("VACUUM")
         raw = connection.serialize()
+    catalog_data.publish_adapters(adapters, recipes, check=check)
     output = ROOT / OUTPUT
     if check:
         if output.read_bytes() != raw:
@@ -222,15 +375,17 @@ def prepare(*, check=False, sources=None, check_local=False):
               "emoji_profiles": list(datasets), "aliases": len(manifest["entries"]),
               "list_entries": len(manifest["list_entries"]), "files": len(manifest["files"]),
               "fonts": len(manifest["fonts"]), "original_sources": sources,
+              "typed_catalogs": typed_reports,
+              "selectors": {name: len(rows) for name, rows in selectors.items()},
               "inputs": [{"path": path, "bytes": (ROOT / path).stat().st_size,
                           "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest()}
-                         for path in [SCHEMA, rust_data.EMOJI_SEARCH_INPUT, *INPUTS.values(), asset_release.LOCK,
-                                      "tools/resource_database.py", "tools/asset_release.py", "tools/rust_data.py"]]
+                         for path in [SCHEMA, INSTALLATION, rust_data.EMOJI_SEARCH_INPUT, *INPUTS.values(), asset_release.LOCK,
+                                      "tools/resource_database.py", "tools/asset_release.py", "tools/rust_data.py", "tools/catalog_data.py",
+                                      *[item["source"] for item in recipes["tables"] if catalog_data.selected(item)]]]
                         + table_inputs,
               "full_ordered_roundtrip_verified": True, "passed": True}
     if not check:
         with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
-            recipes = json.loads(registry.read_bytes())
             recipes["emoji_search"] = {"source": rust_data.EMOJI_SEARCH_INPUT, "output": OUTPUT,
                                         "original_sources": sources, "passed": True}
             analysis.save(registry, recipes)
@@ -245,7 +400,8 @@ def prepare(*, check=False, sources=None, check_local=False):
 def add_commands(commands):
     command = commands.add_parser("prepare-resource-database", help="Prepare/verify packaged emoji profiles and resource index without media downloads")
     command.add_argument("--check", action="store_true")
+    command.add_argument("--migrate-data", action="store_true", help="Recover and verify complete current typed constructors before replacing them with SQLite adapters")
 
 
 def run(args):
-    return prepare(check=args.check)
+    return prepare(check=args.check, migrate_data=args.migrate_data)

@@ -26,7 +26,7 @@ struct HapticPreset {
 
 fn presets(pid: u32, stage: &str) -> Option<&'static HapticPreset> {
     static DATA: OnceLock<BTreeMap<String, BTreeMap<String, HapticPreset>>> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::mouse_haptic_data!())
+    DATA.get_or_init(|| read_mouse_haptic_catalog())
         .get(&pid.to_string())?
         .get(stage)
 }
@@ -705,3 +705,100 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_haptic_data.
+fn read_mouse_haptic_catalog() -> BTreeMap<String, BTreeMap<String, HapticPreset>> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, HapticPreset>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, HapticPreset>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<HapticPreset> {
+        let value = match r.tag()? {
+            0 => HapticPreset {
+                scroll_tension: r.child(decode_4)?,
+                scroll_steps: r.child(decode_4)?,
+                coordinates: r.child(decode_5)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<i64> {
+        let value = match r.tag()? {
+            0 => r.i64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<PresetPoint>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_6)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<PresetPoint> {
+        let value = match r.tag()? {
+            0 => PresetPoint {
+                x: r.child(decode_7)?,
+                y: r.child(decode_7)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f64> {
+        let value = match r.tag()? {
+            0 => r.f64()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_HAPTIC_DATA,
+        0,
+        "b787590367ab543a15e891f8e6cd014a281818a445b441a921743a06c6bb4f10",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_haptic_data_decodes() {
+    let _ = read_mouse_haptic_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_haptic_data.

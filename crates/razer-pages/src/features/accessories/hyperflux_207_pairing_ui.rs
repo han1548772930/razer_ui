@@ -6,7 +6,7 @@ use razer_widgets::theme::HyperfluxColors as Colors;
 
 fn message(key: &str) -> String {
     static STRINGS: OnceLock<BTreeMap<String, BTreeMap<String, String>>> = OnceLock::new();
-    let strings = STRINGS.get_or_init(|| crate::data::hyperflux_207_pairing_strings!());
+    let strings = STRINGS.get_or_init(|| read_hyperflux_207_pairing_strings_catalog());
     let locale = razer_i18n::locale();
     strings
         .iter()
@@ -834,3 +834,51 @@ impl SourceControls {
         root.into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/hyperflux_207_pairing_strings.
+fn read_hyperflux_207_pairing_strings_catalog() -> BTreeMap<String, BTreeMap<String, String>> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_HYPERFLUX_207_PAIRING_STRINGS,
+        0,
+        "25f6e47ca020ed308b78c2a0c69ed7935963bd8ca72819108beea4306f3240c7",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_hyperflux_207_pairing_strings_decodes() {
+    let _ = read_hyperflux_207_pairing_strings_catalog();
+}
+// End generated catalog reader: razer-pages/hyperflux_207_pairing_strings.

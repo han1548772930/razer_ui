@@ -11,7 +11,7 @@ struct Data {
 }
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::kitsune_data!())
+    DATA.get_or_init(|| read_kitsune_catalog())
 }
 fn label(symbol: &str) -> String {
     t(&data().labels[symbol])
@@ -233,3 +233,50 @@ impl GamepadProductWorkspace {
             .into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/kitsune_data.
+fn read_kitsune_catalog() -> Data {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Data> {
+        let value = match r.tag()? {
+            0 => Data {
+                labels: r.child(decode_1)?,
+                assets: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_KITSUNE_DATA,
+        0,
+        "ed56d7dc9d803080c53c0e7ebcb22fefaa64fca422c4110a2a838e459ca8ba3b",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_kitsune_data_decodes() {
+    let _ = read_kitsune_catalog();
+}
+// End generated catalog reader: razer-pages/kitsune_data.

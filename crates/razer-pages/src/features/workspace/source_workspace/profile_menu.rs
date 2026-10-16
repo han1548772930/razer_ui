@@ -74,13 +74,14 @@ struct ProfileShell {
     sync_excluded_pages: Vec<String>,
 }
 
+#[derive(Deserialize)]
+struct MenuData {
+    products: Vec<MenuSpec>,
+}
+
 pub(super) fn spec(pid: u32) -> Option<&'static MenuSpec> {
-    #[derive(Deserialize)]
-    struct MenuData {
-        products: Vec<MenuSpec>,
-    }
     static DATA: OnceLock<MenuData> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::source_profile_menu_data!())
+    DATA.get_or_init(|| read_source_profile_menu_catalog())
         .products
         .iter()
         .find(|product| product.product_id == pid)
@@ -640,3 +641,204 @@ impl RenderOnce for CommandRow {
             )
     }
 }
+
+// Generated catalog reader: razer-pages/source_profile_menu_data.
+fn read_source_profile_menu_catalog() -> MenuData {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MenuData> {
+        let value = match r.tag()? {
+            0 => MenuData {
+                products: r.child(decode_1)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<MenuSpec>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MenuSpec> {
+        let value = match r.tag()? {
+            0 => MenuSpec {
+                product_id: r.child(decode_3)?,
+                menu: r.child(decode_4)?,
+                menu_width: r.child(decode_9)?,
+                rename: r.child(decode_10)?,
+                confirmations: r.child(decode_12)?,
+                profile_shell: None,
+            },
+            1 => MenuSpec {
+                product_id: r.child(decode_3)?,
+                menu: r.child(decode_4)?,
+                menu_width: r.child(decode_9)?,
+                rename: r.child(decode_10)?,
+                confirmations: r.child(decode_12)?,
+                profile_shell: r.child(decode_14)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<MenuItem>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<MenuItem> {
+        let value = match r.tag()? {
+            0 => MenuItem::Action {
+                command: r.child(decode_6)?,
+                label_key: r.child(decode_7)?,
+                disabled_when: r.child(decode_8)?,
+                hidden_when: r.child(decode_8)?,
+            },
+            1 => MenuItem::Separator,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ProfileAction> {
+        let value = match r.tag()? {
+            0 => ProfileAction::Add,
+            1 => ProfileAction::Import,
+            2 => ProfileAction::LinkedGames,
+            3 => ProfileAction::LinkGames,
+            4 => ProfileAction::Rename,
+            5 => ProfileAction::Duplicate,
+            6 => ProfileAction::Export,
+            7 => ProfileAction::Reset,
+            8 => ProfileAction::Delete,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<RenameSpec> {
+        let value = match r.tag()? {
+            0 => RenameSpec {
+                max_length: r.child(decode_11)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<usize> {
+        let value = match r.tag()? {
+            0 => r.usize()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_13)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<ProfileShell>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_15)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<ProfileShell> {
+        let value = match r.tag()? {
+            0 => ProfileShell {
+                always_mounted: r.child(decode_16)?,
+                sync_excluded_pages: r.child(decode_8)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_SOURCE_PROFILE_MENU_DATA,
+        0,
+        "c0d8bbf4901a9adf2ff4ab9589648a848888d2b9c72db6b350dc826647ec3128",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_source_profile_menu_data_decodes() {
+    let _ = read_source_profile_menu_catalog();
+}
+// End generated catalog reader: razer-pages/source_profile_menu_data.

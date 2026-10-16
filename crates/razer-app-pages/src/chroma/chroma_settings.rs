@@ -33,7 +33,7 @@ struct Source {
 }
 fn source() -> &'static Source {
     static SOURCE: OnceLock<Source> = OnceLock::new();
-    SOURCE.get_or_init(|| crate::data::chroma_settings_data!())
+    SOURCE.get_or_init(|| read_chroma_settings_catalog())
 }
 pub fn text(key: &str) -> String {
     source()
@@ -966,3 +966,95 @@ mod source_state_tests {
         assert_eq!(restored.dynamic_lighting, Some(true));
     }
 }
+
+// Generated catalog reader: razer-app-pages/chroma_settings_data.
+fn read_chroma_settings_catalog() -> Source {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Source> {
+        let value = match r.tag()? {
+            0 => Source {
+                translations: r.child(decode_1)?,
+                languages: r.child(decode_4)?,
+                tutorial_keys: r.child(decode_6)?,
+                version: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<
+        std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>>,
+    > {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<Language>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Language> {
+        let value = match r.tag()? {
+            0 => Language {
+                name: r.child(decode_2)?,
+                code: r.child(decode_2)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_APP_PAGES_CHROMA_SETTINGS_DATA,
+        0,
+        "d3f99c6d91ff46c4d7a9b3f23ca0b8d138204fa0594949a347a0b18e40267f4f",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_chroma_settings_data_decodes() {
+    let _ = read_chroma_settings_catalog();
+}
+// End generated catalog reader: razer-app-pages/chroma_settings_data.

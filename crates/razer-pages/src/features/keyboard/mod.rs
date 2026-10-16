@@ -156,7 +156,7 @@ impl KeyboardProductSpec {
 }
 pub fn source_product(pid: u32) -> Option<&'static KeyboardProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<KeyboardProductSpec> =
-        super::source_catalog::SourceCatalog::new(|| crate::data::keyboard_products_data!());
+        super::source_catalog::SourceCatalog::new(|| read_keyboard_products_catalog());
     PRODUCTS.get(pid)
 }
 pub(crate) fn mapping_target_info(product_id: u32) -> Option<&'static Value> {
@@ -1579,3 +1579,1008 @@ impl Render for KeyboardProductWorkspace {
 pub use analog_gamepad::{
     KeyboardMappingBrightnessObservation, KeyboardMappingBrightnessReadRequested,
 };
+
+// Generated catalog reader: razer-pages/keyboard_products_data.
+fn read_keyboard_products_catalog() -> Vec<(u32, fn() -> KeyboardProductSpec)> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<KeyboardProductSpec> {
+        let value = match r.tag()? {
+            0 => KeyboardProductSpec {
+                product_id: r.child(decode_1)?,
+                source_layout: None,
+                source_mod_tap: Default::default(),
+                source_keyboard_top_padding_percent: Default::default(),
+                source_keyboard_top_padding_px: Default::default(),
+                name: r.child(decode_2)?,
+                config: r.child(decode_3)?,
+                pages: r.child(decode_4)?,
+                keys: r.child(decode_5)?,
+                shapes: r.child(decode_6)?,
+                viewbox: r.child(decode_18)?,
+                image: r.child(decode_20)?,
+                image_size: r.child(decode_18)?,
+                controls: r.child(decode_3)?,
+            },
+            1 => KeyboardProductSpec {
+                product_id: r.child(decode_1)?,
+                source_layout: r.child(decode_20)?,
+                source_mod_tap: Default::default(),
+                source_keyboard_top_padding_percent: r.child(decode_19)?,
+                source_keyboard_top_padding_px: r.child(decode_19)?,
+                name: r.child(decode_2)?,
+                config: r.child(decode_3)?,
+                pages: r.child(decode_4)?,
+                keys: r.child(decode_5)?,
+                shapes: r.child(decode_6)?,
+                viewbox: r.child(decode_18)?,
+                image: r.child(decode_20)?,
+                image_size: r.child(decode_18)?,
+                controls: r.child(decode_3)?,
+            },
+            2 => KeyboardProductSpec {
+                product_id: r.child(decode_1)?,
+                source_layout: r.child(decode_20)?,
+                source_mod_tap: r.child(decode_21)?,
+                source_keyboard_top_padding_percent: r.child(decode_19)?,
+                source_keyboard_top_padding_px: r.child(decode_19)?,
+                name: r.child(decode_2)?,
+                config: r.child(decode_3)?,
+                pages: r.child(decode_4)?,
+                keys: r.child(decode_5)?,
+                shapes: r.child(decode_6)?,
+                viewbox: r.child(decode_18)?,
+                image: r.child(decode_20)?,
+                image_size: r.child(decode_18)?,
+                controls: r.child(decode_3)?,
+            },
+            3 => KeyboardProductSpec {
+                product_id: r.child(decode_1)?,
+                source_layout: None,
+                source_mod_tap: r.child(decode_21)?,
+                source_keyboard_top_padding_percent: Default::default(),
+                source_keyboard_top_padding_px: Default::default(),
+                name: r.child(decode_2)?,
+                config: r.child(decode_3)?,
+                pages: r.child(decode_4)?,
+                keys: r.child(decode_5)?,
+                shapes: r.child(decode_6)?,
+                viewbox: r.child(decode_18)?,
+                image: r.child(decode_20)?,
+                image_size: r.child(decode_18)?,
+                controls: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
+        let value = match r.tag()? {
+            0 => r.external_value()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<razer_assets::KeyboardKey>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<razer_assets::KeyboardKey> {
+        let value = match r.tag()? {
+            0 => razer_assets::KeyboardKey {
+                id: r.child(decode_8)?,
+                label: r.child(decode_8)?,
+                enabled: r.child(decode_9)?,
+                functions: r.child(decode_10)?,
+                bounds: r.child(decode_11)?,
+                geometry: r.child(decode_13)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_10(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_8)?,
+            1 => Default::default(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_11(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 4]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 4>(decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_12(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_13(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<razer_assets::KeyboardGeometry> {
+        let value = match r.tag()? {
+            0 => razer_assets::KeyboardGeometry::Path {
+                commands: r.child(decode_14)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_14(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<razer_assets::KeyboardPathCommand>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_15)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_15(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<razer_assets::KeyboardPathCommand> {
+        let value = match r.tag()? {
+            0 => razer_assets::KeyboardPathCommand::Move(r.child(decode_16)?),
+            1 => razer_assets::KeyboardPathCommand::Line(r.child(decode_16)?),
+            2 => razer_assets::KeyboardPathCommand::Curve(r.child(decode_17)?),
+            3 => razer_assets::KeyboardPathCommand::Close,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_16(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_12)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_17(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[[f32; 2]; 3]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 3>(decode_16)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_18(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[f32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_19)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_19(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+        let value = match r.tag()? {
+            0 => r.f32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_20(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::option::Option<String>> {
+        let value = match r.tag()? {
+            0 => Some(r.child(decode_2)?),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_21(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<bool> {
+        let value = match r.tag()? {
+            0 => r.boolean()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn product_515() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            515u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_521() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            521u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_529() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            529u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_534() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            534u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_542() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            542u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_545() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            545u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_550() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            550u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_551() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            551u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_552() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            552u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_554() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            554u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_555() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            555u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_556() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            556u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_565() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            565u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_567() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            567u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_574() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            574u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_575() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            575u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_577() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            577u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_579() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            579u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_580() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            580u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_585() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            585u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_590() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            590u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_591() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            591u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_592() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            592u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_593() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            593u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_599() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            599u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_600() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            600u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_602() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            602u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_605() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            605u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_606() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            606u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_614() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            614u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_617() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            617u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_619() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            619u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_620() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            620u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_631() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            631u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_642() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            642u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_647() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            647u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_654() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            654u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_655() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            655u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_658() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            658u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_659() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            659u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_660() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            660u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_661() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            661u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_664() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            664u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_673() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            673u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_674() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            674u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_675() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            675u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_677() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            677u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_678() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            678u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_679() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            679u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_688() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            688u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_689() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            689u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_691() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            691u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_697() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            697u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_708() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            708u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_716() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            716u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_717() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            717u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_719() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            719u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_720() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            720u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_721() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            721u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_724() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            724u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_727() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            727u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_728() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            728u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_739() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            739u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_740() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            740u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_741() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            741u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_742() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            742u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_746() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            746u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_747() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            747u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_752() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            752u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_756() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            756u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2595() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            2595u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    fn product_2596() -> KeyboardProductSpec {
+        razer_resource_db::read_document(
+            razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_PRODUCTS_DATA,
+            2596u32,
+            "af74d74ada0ba2b06efc23a930a8047001a2abdcbcd1bea5517e3d96f62dbc8b",
+            decode_0,
+        )
+        .expect("Packaged typed catalog must match its domain schema")
+    }
+    vec![
+        (515u32, product_515 as fn() -> KeyboardProductSpec),
+        (521u32, product_521 as fn() -> KeyboardProductSpec),
+        (529u32, product_529 as fn() -> KeyboardProductSpec),
+        (534u32, product_534 as fn() -> KeyboardProductSpec),
+        (542u32, product_542 as fn() -> KeyboardProductSpec),
+        (545u32, product_545 as fn() -> KeyboardProductSpec),
+        (550u32, product_550 as fn() -> KeyboardProductSpec),
+        (551u32, product_551 as fn() -> KeyboardProductSpec),
+        (552u32, product_552 as fn() -> KeyboardProductSpec),
+        (554u32, product_554 as fn() -> KeyboardProductSpec),
+        (555u32, product_555 as fn() -> KeyboardProductSpec),
+        (556u32, product_556 as fn() -> KeyboardProductSpec),
+        (565u32, product_565 as fn() -> KeyboardProductSpec),
+        (567u32, product_567 as fn() -> KeyboardProductSpec),
+        (574u32, product_574 as fn() -> KeyboardProductSpec),
+        (575u32, product_575 as fn() -> KeyboardProductSpec),
+        (577u32, product_577 as fn() -> KeyboardProductSpec),
+        (579u32, product_579 as fn() -> KeyboardProductSpec),
+        (580u32, product_580 as fn() -> KeyboardProductSpec),
+        (585u32, product_585 as fn() -> KeyboardProductSpec),
+        (590u32, product_590 as fn() -> KeyboardProductSpec),
+        (591u32, product_591 as fn() -> KeyboardProductSpec),
+        (592u32, product_592 as fn() -> KeyboardProductSpec),
+        (593u32, product_593 as fn() -> KeyboardProductSpec),
+        (599u32, product_599 as fn() -> KeyboardProductSpec),
+        (600u32, product_600 as fn() -> KeyboardProductSpec),
+        (602u32, product_602 as fn() -> KeyboardProductSpec),
+        (605u32, product_605 as fn() -> KeyboardProductSpec),
+        (606u32, product_606 as fn() -> KeyboardProductSpec),
+        (614u32, product_614 as fn() -> KeyboardProductSpec),
+        (617u32, product_617 as fn() -> KeyboardProductSpec),
+        (619u32, product_619 as fn() -> KeyboardProductSpec),
+        (620u32, product_620 as fn() -> KeyboardProductSpec),
+        (631u32, product_631 as fn() -> KeyboardProductSpec),
+        (642u32, product_642 as fn() -> KeyboardProductSpec),
+        (647u32, product_647 as fn() -> KeyboardProductSpec),
+        (654u32, product_654 as fn() -> KeyboardProductSpec),
+        (655u32, product_655 as fn() -> KeyboardProductSpec),
+        (658u32, product_658 as fn() -> KeyboardProductSpec),
+        (659u32, product_659 as fn() -> KeyboardProductSpec),
+        (660u32, product_660 as fn() -> KeyboardProductSpec),
+        (661u32, product_661 as fn() -> KeyboardProductSpec),
+        (664u32, product_664 as fn() -> KeyboardProductSpec),
+        (673u32, product_673 as fn() -> KeyboardProductSpec),
+        (674u32, product_674 as fn() -> KeyboardProductSpec),
+        (675u32, product_675 as fn() -> KeyboardProductSpec),
+        (677u32, product_677 as fn() -> KeyboardProductSpec),
+        (678u32, product_678 as fn() -> KeyboardProductSpec),
+        (679u32, product_679 as fn() -> KeyboardProductSpec),
+        (688u32, product_688 as fn() -> KeyboardProductSpec),
+        (689u32, product_689 as fn() -> KeyboardProductSpec),
+        (691u32, product_691 as fn() -> KeyboardProductSpec),
+        (697u32, product_697 as fn() -> KeyboardProductSpec),
+        (708u32, product_708 as fn() -> KeyboardProductSpec),
+        (716u32, product_716 as fn() -> KeyboardProductSpec),
+        (717u32, product_717 as fn() -> KeyboardProductSpec),
+        (719u32, product_719 as fn() -> KeyboardProductSpec),
+        (720u32, product_720 as fn() -> KeyboardProductSpec),
+        (721u32, product_721 as fn() -> KeyboardProductSpec),
+        (724u32, product_724 as fn() -> KeyboardProductSpec),
+        (727u32, product_727 as fn() -> KeyboardProductSpec),
+        (728u32, product_728 as fn() -> KeyboardProductSpec),
+        (739u32, product_739 as fn() -> KeyboardProductSpec),
+        (740u32, product_740 as fn() -> KeyboardProductSpec),
+        (741u32, product_741 as fn() -> KeyboardProductSpec),
+        (742u32, product_742 as fn() -> KeyboardProductSpec),
+        (746u32, product_746 as fn() -> KeyboardProductSpec),
+        (747u32, product_747 as fn() -> KeyboardProductSpec),
+        (752u32, product_752 as fn() -> KeyboardProductSpec),
+        (756u32, product_756 as fn() -> KeyboardProductSpec),
+        (2595u32, product_2595 as fn() -> KeyboardProductSpec),
+        (2596u32, product_2596 as fn() -> KeyboardProductSpec),
+    ]
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_keyboard_products_data_decodes() {
+    for (_, factory) in read_keyboard_products_catalog() {
+        let _ = factory();
+    }
+}
+// End generated catalog reader: razer-pages/keyboard_products_data.

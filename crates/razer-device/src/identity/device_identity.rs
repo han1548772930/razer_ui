@@ -172,7 +172,7 @@ fn contains(ids: &Option<Ids>, raw: u32) -> bool {
 }
 fn catalog() -> &'static [CatalogProduct] {
     static CATALOG: OnceLock<Vec<CatalogProduct>> = OnceLock::new();
-    CATALOG.get_or_init(crate::data::device_identity_catalog::products)
+    CATALOG.get_or_init(crate::device_identity_catalog::products)
 }
 
 #[cfg(test)]

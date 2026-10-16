@@ -28,7 +28,7 @@ struct Presentation {
 }
 fn presentation(pid: u32) -> &'static Presentation {
     static DATA: OnceLock<BTreeMap<String, Presentation>> = OnceLock::new();
-    &DATA.get_or_init(|| crate::data::audio_seiren_microphone_data!())[&pid.to_string()]
+    &DATA.get_or_init(|| read_audio_seiren_microphone_catalog())[&pid.to_string()]
 }
 fn text(pid: u32, key: &str) -> SharedString {
     t(presentation(pid)
@@ -687,3 +687,60 @@ impl AudioProductWorkspace {
         }
     }
 }
+
+// Generated catalog reader: razer-pages/audio_seiren_microphone_data.
+fn read_audio_seiren_microphone_catalog() -> BTreeMap<String, Presentation> {
+    fn decode_0(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, Presentation>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<Presentation> {
+        let value = match r.tag()? {
+            0 => Presentation {
+                labels: r.child(decode_3)?,
+                assets: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_1, decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_AUDIO_SEIREN_MICROPHONE_DATA,
+        0,
+        "0ea352da1f899bc8bbee0b91c313be422613a20bc12e49ada0445afd0d9126de",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_audio_seiren_microphone_data_decodes() {
+    let _ = read_audio_seiren_microphone_catalog();
+}
+// End generated catalog reader: razer-pages/audio_seiren_microphone_data.

@@ -132,7 +132,7 @@ fn product(pid: u32) -> Option<&'static Product> {
     static PRODUCTS: OnceLock<Vec<Product>> = OnceLock::new();
     PRODUCTS
         .get_or_init(|| {
-            crate::data::controller_calibration_current_params::controller_calibration_current_params!()
+            make_controller_calibration_current_params_table()
         })
         .iter()
         .find(|p| p.product_id == pid && p.params.version == 3)
@@ -448,3 +448,42 @@ fn js_round(value: f64) -> f64 {
 #[cfg(test)]
 #[path = "controller_calibration_tests.rs"]
 mod tests;
+
+// Generated typed table: razer-device/controller_calibration_current_params.
+#[rustfmt::skip]
+fn make_controller_calibration_current_params_table() -> Vec<Product> {
+    vec![
+        Product{
+            product_id: 2676u32,
+            params: Params{
+                version: 3u8,
+                range: Range{min:0.0f64,max:8192.0f64},
+                trigger: TriggerParams{
+                    threshold_percent: Range{min:5.0f64,max:2.0f64},
+                    trigger_max: 2048.0f64,
+                    left: Limits{press_threshold:500.0f64,release_threshold:1490.0f64},
+                    right: Limits{press_threshold:600.0f64,release_threshold:1600.0f64},
+                    validation_range: 300.0f64,
+                    press_validity_percent: 18.0f64,
+                    release_validity_percent: 11.0f64
+                }
+            }
+        },
+        Product{
+            product_id: 2684u32,
+            params: Params{
+                version: 3u8,
+                range: Range{min:0.0f64,max:8192.0f64},
+                trigger: TriggerParams{
+                    threshold_percent: Range{min:5.0f64,max:2.0f64},
+                    trigger_max: 2048.0f64,
+                    left: Limits{press_threshold:400.0f64,release_threshold:1400.0f64},
+                    right: Limits{press_threshold:500.0f64,release_threshold:1500.0f64},
+                    validation_range: 300.0f64,
+                    press_validity_percent: 18.0f64,
+                    release_validity_percent: 11.0f64
+                }
+            }
+        }
+    ]
+}

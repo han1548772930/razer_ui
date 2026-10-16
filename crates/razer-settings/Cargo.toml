@@ -4,6 +4,7 @@ version.workspace=true
 edition.workspace=true
 
 [dependencies]
+razer-resource-db.workspace = true
 razer-device.workspace = true
 anyhow.workspace=true
 gpui-kit.workspace=true

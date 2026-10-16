@@ -22,6 +22,7 @@ import sys
 import tempfile
 import urllib.request
 import xml.etree.ElementTree as ET
+import asset_release as resource_sources
 
 ROOT = Path(__file__).resolve().parent.parent
 GENERATED_ASSET_PACK = "target/asset-pack/synapse.pack"
@@ -65,6 +66,8 @@ def source_layout_destination(path):
     if len(parts) < 4 or parts[0] != "crates" or parts[2] != "src":
         return path
     crate, rest = parts[1], Path(*parts[3:])
+    if crate in {"razer-device", "razer-storage"} and len(rest.parts) == 2 and rest.parts[0] == "data":
+        rest = Path(rest.name)
     name = rest.parts[0]
     if name in ("lib.rs", "main.rs"):
         return path
@@ -77,10 +80,13 @@ def source_layout_destination(path):
             ("receiver", ("receiver_",)), ("mapping", ("mapping_", "macro_engine")),
             ("identity", ("device_identity", "discovery_catalog")),
             ("transport", ("backend", "device_query", "device_reads", "device_writes", "feature_exchange", "protocol")),
+            ("transport", ("device_read_capabilities", "device_write_capabilities")),
             ("power", ("battery_threshold",)), ("host", ("user_app_files",)),
             ("lighting", ("lighting_driver",)),
         )
         group = next((folder for folder, prefixes in groups if name.startswith(prefixes)), None)
+    elif crate == "razer-storage" and name.startswith("receiver_"):
+        group = "receiver"
     elif crate == "razer-service":
         if name == "runtime" and len(rest.parts) >= 3 and rest.parts[1] == "windows":
             inner = Path(*rest.parts[2:])
@@ -184,6 +190,7 @@ def source_layout_destination(path):
 def source_layout_plan():
     """Resolve complete Rust module/include paths before moving any bytes."""
     from importlib.metadata import version
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
     import tree_sitter
     import tree_sitter_rust
     parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_rust.language()))
@@ -789,7 +796,7 @@ def reconcile_resource_layout():
     missing_aliases = {alias for row in missing for alias in row.get("runtime_keys", [])}
     referenced = set()
     pattern = re.compile("|".join(re.escape(alias) for alias in sorted(missing_aliases, key=len, reverse=True)))
-    for folder in ("app", "crates", "assets/synapse/tables"):
+    for folder in ("app", "crates", resource_sources.TABLES):
         for path in sorted((ROOT / folder).rglob("*")):
             if path.is_file() and path.suffix in {".rs", ".json", ".toml"}:
                 referenced.update(pattern.findall(path.read_text(encoding="utf-8-sig")))
@@ -831,7 +838,7 @@ def reconcile_resource_layout():
             data["resources"] = rows
             write_json(path, data)
     return {"obsolete_records": obsolete, "rebound_aliases": rebound, "physical_files": len(active),
-            "source_search_roots": ["app", "crates", "assets/synapse/tables"],
+            "source_search_roots": ["app", "crates", resource_sources.TABLES],
             "physical_files_deleted": 0, "original_inputs_modified": False}
 
 
@@ -1511,7 +1518,9 @@ def rust_inputs(*, include_asset_pack=True):
     include would miss a changed image and would not prove a portable checkout.
     Provenance JSON source fields are descriptions, never filesystem edges.
     """
-    files = {ROOT / "Cargo.toml", ROOT / "Cargo.lock"}
+    import resource_database
+    files = {ROOT / "Cargo.toml", ROOT / "Cargo.lock", ROOT / resource_database.INSTALLATION,
+             ROOT / resource_database.OUTPUT}
     for folder in ("app", "crates"):
         for path in (ROOT / folder).rglob("*"):
             if not path.is_file():
@@ -1526,6 +1535,13 @@ def rust_inputs(*, include_asset_pack=True):
             continue
         visited.add(path)
         text = path.read_text(encoding="utf-8")
+        if path == ROOT / "crates/razer-resource-db/src/lib.rs":
+            # build.rs derives only small installation constants from the
+            # policy and database already captured in this input closure.
+            generated = 'include!(concat!(env!("OUT_DIR"), "/installation.rs"));'
+            if text.count(generated) != 1:
+                raise ValueError("Resource installation constants need a new build-output audit")
+            text = text.replace(generated, "")
         for kind, literal in rust_embed_references(text):
             if re.match(r"(?:[A-Za-z]:|[/\\])", literal):
                 raise ValueError(f"Nonportable include in {relative(path)}: {literal}")
@@ -2452,7 +2468,7 @@ def resource_ownership(pool):
     manifest = json.loads(manifest_path.read_bytes())
     registered = registered_resource_products()
     aliases = {}
-    dashboard_path = ROOT / "assets/synapse/tables/current-dashboard-images.rs"
+    dashboard_path = resource_sources.table_path("current-dashboard-images.rs", root=ROOT)
     for match in re.finditer(r'\(\s*(\d+),[^\n]*?"([^"]+)"\)', dashboard_path.read_text(encoding="utf-8")):
         aliases.setdefault(match[2], set()).add(int(match[1]))
     previews_path = analysis.builtin_data_path("razer-pages", "KEYBOARD_PREVIEW_CURRENT_DATA")
@@ -2990,7 +3006,7 @@ def prepare_resources_locked(acquisition, resources=None):
                 request = request if isinstance(request, dict) else {"display": request}
                 requests.append((source_name, {**request, "_acquisition": acquired}))
     manifest_path = ROOT / "assets/synapse/manifests/manifest.json"
-    embedded_path = ROOT / "assets/synapse/tables/embedded.rs"
+    embedded_path = resource_sources.table_path("embedded.rs", root=ROOT)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     embedded = embedded_path.read_text(encoding="utf-8")
     content_pool = resource_payload_index()
@@ -4118,7 +4134,7 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
                                                "usage": "Exact current resource-context literals locate request parameters only"})
     for atlas in ("dashboard-images.rs", "armory-dashboard-images.rs"):
         for match in re.finditer(r'\(\s*(\d+),\s*(\d+),\s*(\d+),',
-                                 (ROOT / "assets/synapse/tables" / atlas).read_text(encoding="utf-8")):
+                                 resource_sources.table_path(atlas, root=ROOT).read_text(encoding="utf-8")):
             pid, edition, layout = map(int, match.groups())
             if pid in scope:
                 keys.add((pid, edition, edition, layout, "product"))
@@ -4278,7 +4294,7 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
             raise ValueError("Current Dashboard artwork preparation is incomplete")
         rows.append(f'    ({request["product_id"]}, {request["edition_id"]}, {request["filename_edition_id"]}, {request["layout_id"]}, '
                     f'{str(request["variant"] == "wrist").lower()}, {request["density"]}, {json.dumps(display)}),')
-    (ROOT / "assets/synapse/tables/current-dashboard-images.rs").write_text(
+    resource_sources.table_path("current-dashboard-images.rs", root=ROOT).write_text(
         "// Current App.tt and BoxItemDevice image requests; verified acquired originals.\n&[\n"
         + "\n".join(rows) + "\n]\n", encoding="utf-8")
     print(json.dumps({"dashboard_artwork_prepared": len(rows), "failed_requests": len(failures),
@@ -4594,6 +4610,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("emoji-search", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "emoji::tests"]),
         ("resource-database", ["cargo", "test", "--locked", "--offline", "-p", "razer-resource-db", "--lib"]),
         ("resource-database-index", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "remote::database_tests"]),
+        ("packaged-catalogs", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "-p", "razer-app-pages", "-p", "razer-assets", "-p", "razer-model", "-p", "razer-catalog", "-p", "razer-shell", "-p", "razer-tray", "-p", "razer-settings", "--lib", "packaged_catalog_"]),
         ("model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
         ("i18n", ["cargo", "test", "--locked", "--offline", "-p", "razer-i18n", "--lib"]),
         ("discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib"]),
@@ -4739,9 +4756,7 @@ def asset_pack_manifest(*, prepare=False):
     import families
     owner = ROOT / "crates/razer-assets/src/lib.rs"
     owner_text = owner.read_text(encoding="utf-8")
-    tables_owner = ROOT / "assets/synapse/tables/asset-tables-source.rs"
-    if not tables_owner.exists():
-        tables_owner = owner
+    tables_owner = resource_sources.table_path("asset-tables-source.rs", root=ROOT)
     table_text = tables_owner.read_text(encoding="utf-8")
     source_inputs = {}
     payloads = {}
@@ -4779,7 +4794,7 @@ def asset_pack_manifest(*, prepare=False):
             include = re.match(r'include!\("([^"]+)"\)', table_text[match.end():])
             if include is None:
                 raise ValueError("Nonliteral asset table include")
-            path = product_input(tables_owner.parent / include[1], tables_owner)
+            path = resource_sources.table_reference(tables_owner, include[1])
             snapshot(path)
             definitions[match[1]] = (path, path.read_text(encoding="utf-8"))
         elif table_text.startswith("&[", match.end()):
@@ -4800,15 +4815,15 @@ def asset_pack_manifest(*, prepare=False):
         if remaining.strip("&[], \t\r\n"):
             raise ValueError("Unparsed content in asset table: " + name)
         for match in matches:
-            table_entries.append(payload(match[1], path.parent / match[2], name))
+            table_entries.append(payload(match[1], resource_sources.table_reference(path, match[2]), name))
 
-    demo_path = ROOT / "assets/synapse/tables/audio-demo-controls-embedded.rs"
-    sprite_path = ROOT / "assets/synapse/tables/audio-volume-sprite-embedded.rs"
+    demo_path = resource_sources.table_path("audio-demo-controls-embedded.rs", root=ROOT)
+    sprite_path = resource_sources.table_path("audio-volume-sprite-embedded.rs", root=ROOT)
     snapshot(demo_path)
     snapshot(sprite_path)
     demo_body = demo_path.read_text(encoding="utf-8")
     sprite_body = sprite_path.read_text(encoding="utf-8")
-    demo_entries = [payload(match[1], demo_path.parent / match[2], "audio_demo_controls")
+    demo_entries = [payload(match[1], resource_sources.table_reference(demo_path, match[2]), "audio_demo_controls")
                     for match in re.finditer(r'"([^"\\]+)"\s*=>\s*Some\(include_bytes!\("([^"\\]+)"\)\)', demo_body)]
     sprite_input = re.search(r'const AUDIO_VOLUME_SPRITE: &str = include_str!\("([^"\\]+)"\);', sprite_body)
     sprite_alias = re.search(r'const AUDIO_VOLUME_SPRITE_PATH: &str = "([^"\\]+)";', sprite_body)
@@ -4817,7 +4832,7 @@ def asset_pack_manifest(*, prepare=False):
             "synapse/audio-demo-control-fullscreen.svg", "synapse/audio-demo-control-fullscreen-exit.svg"
     } or sprite_input is None or sprite_alias is None:
         raise ValueError("Special AssetSource providers changed; audit their load/list semantics")
-    sprite = payload(sprite_alias[1], sprite_path.parent / sprite_input[1], "audio_volume_sprite_base")
+    sprite = payload(sprite_alias[1], resource_sources.table_reference(sprite_path, sprite_input[1]), "audio_volume_sprite_base")
     all_entries = [sprite, *demo_entries, *table_entries]
     first = {}
     duplicates, conflicts = [], []

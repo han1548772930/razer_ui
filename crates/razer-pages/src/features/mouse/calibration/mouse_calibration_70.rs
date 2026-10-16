@@ -21,7 +21,7 @@ pub(super) fn supports_surface_calibration(product_id: u32) -> bool {
     }
     static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
     PRODUCTS
-        .get_or_init(|| crate::data::mouse_calibration_family_data!())
+        .get_or_init(|| read_mouse_calibration_family_catalog())
         .contains(&product_id)
 }
 
@@ -47,10 +47,10 @@ struct CalibrationMat {
 fn calibration_artwork(product_id: u32) -> &'static CalibrationArtwork {
     if product_id == 162 {
         static BABEL_ARTWORK: OnceLock<CalibrationArtwork> = OnceLock::new();
-        return BABEL_ARTWORK.get_or_init(|| crate::data::mouse_calibration_162_data!());
+        return BABEL_ARTWORK.get_or_init(|| read_mouse_calibration_162_catalog());
     }
     static ARTWORK: OnceLock<CalibrationArtwork> = OnceLock::new();
-    ARTWORK.get_or_init(|| crate::data::mouse_calibration_70_data!())
+    ARTWORK.get_or_init(|| read_mouse_calibration_70_catalog())
 }
 
 fn artwork(product_id: u32, surface_id: &str) -> &'static CalibrationMat {
@@ -942,3 +942,267 @@ impl MouseProductWorkspace {
         step.into_any_element()
     }
 }
+
+// Generated catalog reader: razer-pages/mouse_calibration_162_data.
+fn read_mouse_calibration_162_catalog() -> CalibrationArtwork {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<CalibrationArtwork> {
+        let value = match r.tag()? {
+            0 => CalibrationArtwork {
+                mats: r.child(decode_1)?,
+                date_formats: r.child(decode_4)?,
+                date_parse_patterns: r.child(decode_6)?,
+                images: r.child(decode_9)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<CalibrationMat>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<CalibrationMat> {
+        let value = match r.tag()? {
+            0 => CalibrationMat {
+                surface_id: r.child(decode_3)?,
+                name: r.child(decode_3)?,
+                edition: r.child(decode_3)?,
+                image: r.child(decode_3)?,
+                url: r.child(decode_3)?,
+                source_image: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, std::vec::Vec<String>>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, [u32; 2]>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[u32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_9(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_CALIBRATION_162_DATA,
+        0,
+        "fab00105079a6bd301bb5cfed0897aa23a54f25c3dd6406993bc9e157494f886",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_calibration_162_data_decodes() {
+    let _ = read_mouse_calibration_162_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_calibration_162_data.
+
+// Generated catalog reader: razer-pages/mouse_calibration_70_data.
+fn read_mouse_calibration_70_catalog() -> CalibrationArtwork {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<CalibrationArtwork> {
+        let value = match r.tag()? {
+            0 => CalibrationArtwork {
+                mats: r.child(decode_1)?,
+                date_formats: r.child(decode_4)?,
+                date_parse_patterns: r.child(decode_6)?,
+                images: Default::default(),
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<CalibrationMat>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<CalibrationMat> {
+        let value = match r.tag()? {
+            0 => CalibrationMat {
+                surface_id: r.child(decode_3)?,
+                name: r.child(decode_3)?,
+                edition: r.child(decode_3)?,
+                image: r.child(decode_3)?,
+                url: r.child(decode_3)?,
+                source_image: r.child(decode_3)?,
+            },
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_3(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
+        let value = match r.tag()? {
+            0 => r.string()?.into(),
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_4(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, std::vec::Vec<String>>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_5)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_5(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::vec::Vec<String>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_3)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_6(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, [u32; 2]>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_3, decode_7)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<[u32; 2]> {
+        let value = match r.tag()? {
+            0 => r.array::<_, 2>(decode_8)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_8(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_CALIBRATION_70_DATA,
+        0,
+        "2d2883cbde9be856c5408b8260823c6784ba2b27c310a63504746690736f3672",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_calibration_70_data_decodes() {
+    let _ = read_mouse_calibration_70_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_calibration_70_data.
+
+// Generated catalog reader: razer-pages/mouse_calibration_family_data.
+fn read_mouse_calibration_family_catalog() -> Vec<u32> {
+    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<std::vec::Vec<u32>> {
+        let value = match r.tag()? {
+            0 => r.sequence(decode_1)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    fn decode_1(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<u32> {
+        let value = match r.tag()? {
+            0 => r.u32()?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
+    razer_resource_db::read_document(
+        razer_resource_db::catalogs::RAZER_PAGES_MOUSE_CALIBRATION_FAMILY_DATA,
+        0,
+        "fca6c76e6aade079c527c02416d8ea5258110eb151f126bdb524f6f209d328a1",
+        decode_0,
+    )
+    .expect("Packaged typed catalog must match its domain schema")
+}
+
+#[cfg(test)]
+#[test]
+fn packaged_catalog_mouse_calibration_family_data_decodes() {
+    let _ = read_mouse_calibration_family_catalog();
+}
+// End generated catalog reader: razer-pages/mouse_calibration_family_data.
