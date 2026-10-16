@@ -94,7 +94,8 @@ fn inline_svg_codec_preserves_clips_and_rejects_invalid_input() {
     let rendered = renderer.render_single_frame(svg, 1.).unwrap();
     assert_eq!(rendered.frame_count(), 1);
     let size = rendered.size(0);
-    assert_eq!((size.width.0, size.height.0), (2, 2));
+    // GPUI rasterizes scaled SVGs at twice the requested density for smoothing.
+    assert_eq!((size.width.0, size.height.0), (4, 4));
     let pixels = rendered.as_bytes(0).unwrap();
     assert!(pixels.chunks_exact(4).any(|pixel| pixel[3] > 0));
     assert!(pixels.chunks_exact(4).any(|pixel| pixel[3] == 0));

@@ -199,6 +199,8 @@ class RustData:
         self.external_roots = set()
         self.expression_pool = None
         self.shared_constructors = []
+        self.module_sources = {}
+        self.resolved_definitions = {}
         for path in sorted((self.crate_root / "src").rglob("*.rs")):
             if "/src/data/" in path.as_posix() and not path.name.endswith("_schema.rs"):
                 continue
@@ -244,14 +246,20 @@ class RustData:
         scan(root)
 
     def definition(self, name, module, value):
+        key = (name, module)
+        if key in self.resolved_definitions:
+            return self.resolved_definitions[key]
+        source = self.module_sources.get(module)
+        if source is None:
+            source = module.read_text(encoding="utf-8")
+            self.module_sources[module] = source
         namespace = name.split("::", 1)[0] if "::" in name else None
         if namespace is None:
-            imported = re.search(r"use\s+([\w_]+)::" + re.escape(name) + r"\s*;", module.read_text(encoding="utf-8"))
+            imported = re.search(r"use\s+([\w_]+)::" + re.escape(name) + r"\s*;", source)
             if imported:
                 namespace = imported[1]
         if namespace:
             original_namespace = namespace
-            source = module.read_text(encoding="utf-8")
             alias = re.search(r"use\s+([\w_]+)\s+as\s+" + re.escape(namespace) + r"\s*;", source)
             if alias:
                 namespace = alias[1]
@@ -264,9 +272,11 @@ class RustData:
         candidates = self.definitions.get(name.rsplit("::", 1)[-1], [])
         local = [item for item in candidates if item.module == module]
         if len(local) == 1:
+            self.resolved_definitions[key] = local[0]
             return local[0]
         candidates = local or candidates
         if len(candidates) == 1:
+            self.resolved_definitions[key] = candidates[0]
             return candidates[0]
         if isinstance(value, dict) and candidates:
             scored = [(len(set(value) & {attribute(f[2], "rename") or f[0] for f in item.fields}), ix, item)
