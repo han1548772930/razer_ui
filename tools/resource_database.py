@@ -1,0 +1,251 @@
+"""Prepare the single packaged SQLite catalog; never run vendor code or fetch media."""
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+import sqlite3
+
+ROOT = Path(__file__).resolve().parent.parent
+OUTPUT = "assets/synapse/resource-catalog.sqlite3"
+SCHEMA = "crates/razer-resource-db/src/schema.sql"
+APPLICATION_ID = 0x525A5549
+VERSION = 1
+INPUTS = {
+    "mapping": ".analysis/inputs/typed-tables/razer-pages/keyboard_mapping_text_emoji_data.json",
+    "mouse": ".analysis/inputs/typed-tables/razer-pages/mouse_mapping_text_current_data.json",
+    "shortcuts": ".analysis/inputs/typed-tables/razer-pages/shortcuts_current.json",
+    "macro": ".analysis/inputs/typed-tables/razer-app-pages/text_data.json",
+}
+
+
+def emoji_datasets():
+    import rust_data
+    data = {name: json.loads((ROOT / path).read_bytes()) for name, path in INPUTS.items()}
+    mapping = data["mapping"]
+    alternate = data["mouse"]["datasets"]
+    if len(alternate) != 2 or alternate[0] != mapping or data["shortcuts"]["emoji"] != mapping:
+        raise ValueError("Reaudit emoji consumer branches: shared mapping data changed")
+    datasets = {"mapping": mapping, "mapping_without_exclusions": alternate[1], "macro": data["macro"]}
+    _, search = rust_data.emoji_search_input()
+    for name, value in datasets.items():
+        macro = name == "macro"
+        exclusion = "excluded_windows_11" if macro else "excluded_without_windows_10"
+        if set(value) != {"groups", "tabs", "search", "variants", exclusion}:
+            raise ValueError("Unknown emoji dataset fields: " + name)
+        if value["search"] != search or len(value["groups"]) != len(value["tabs"]) or not value["groups"]:
+            raise ValueError("Emoji search or category branches differ: " + name)
+        for group in value["groups"]:
+            if set(group) != ({"label", "name", "values"} if macro else {"values"}):
+                raise ValueError("Unknown emoji group fields")
+            if not isinstance(group["values"], list) or not all(type(v) is str for v in group["values"]):
+                raise ValueError("Invalid ordered emoji group")
+            if macro and not all(type(group[k]) is str for k in ("label", "name")):
+                raise ValueError("Invalid macro category label")
+        for tab in value["tabs"]:
+            if set(tab) != ({"emo", "name", "pos"} if macro else {"emo", "name"}):
+                raise ValueError("Unknown emoji tab fields")
+            if not all(type(tab[k]) is str for k in ("emo", "name")):
+                raise ValueError("Invalid emoji tab")
+            if macro and (type(tab["pos"]) is not int or not 0 <= tab["pos"] < len(value["groups"])):
+                raise ValueError("Invalid macro tab position")
+        if (type(value["variants"]) is not dict
+                or any(type(k) is not str or type(v) is not list or not v
+                       or any(type(s) is not str for s in v) for k, v in value["variants"].items())
+                or type(value[exclusion]) is not list or any(type(s) is not str for s in value[exclusion])):
+            raise ValueError("Invalid emoji variants/exclusions")
+    return datasets, search
+
+
+def emoji_dataset_identity(value):
+    datasets, _ = emoji_datasets()
+    names = {"mapping": "Mapping", "mapping_without_exclusions": "MappingWithoutExclusions", "macro": "Macro"}
+    for name, dataset in datasets.items():
+        if value == dataset:
+            return names[name]
+    raise ValueError("Emoji dataset does not match a complete audited database profile")
+
+
+def fill(connection, manifest, datasets, search):
+    connection.executescript((ROOT / SCHEMA).read_text(encoding="utf-8"))
+    connection.execute("PRAGMA application_id = " + str(APPLICATION_ID))
+    connection.execute("PRAGMA user_version = " + str(VERSION))
+    storage = manifest["storage"]
+    connection.execute("INSERT INTO resource_storage VALUES (1, ?, ?, ?, ?)",
+                       (manifest["schema_version"], storage["provider"], storage["repository"], storage["revision"]))
+    files = {}
+    for position, row in enumerate(manifest["files"]):
+        path = row["path"]
+        identity = (row["bytes"], row["sha256"])
+        if path in files and files[path][1] != identity:
+            raise ValueError("Conflicting resource identity: " + path)
+        if path not in files:
+            file_id = len(files)
+            files[path] = (file_id, identity)
+            connection.execute("INSERT INTO resource_file VALUES (?, ?, ?, ?)", (file_id, path, *identity))
+        connection.execute("INSERT INTO resource_file_order VALUES (?, ?)", (position, files[path][0]))
+    for position, row in enumerate(manifest["entries"]):
+        file_id, identity = files[row["path"]]
+        if identity != (row["bytes"], row["sha256"]):
+            raise ValueError("Resource alias identity differs from file")
+        connection.execute("INSERT INTO resource_alias VALUES (?, ?, ?, ?, ?, ?)",
+                           (position, row["key"], file_id, row.get("view_box"), row.get("width"), row.get("height")))
+    connection.executemany("INSERT INTO resource_list VALUES (?, ?, ?)",
+                           ((i, row["key"], row["provider"]) for i, row in enumerate(manifest["list_entries"])))
+    connection.executemany("INSERT INTO resource_font VALUES (?, ?)",
+                           ((i, files[row["path"]][0]) for i, row in enumerate(manifest["fonts"])))
+    unique = {}
+    for position, row in enumerate(search):
+        entry = (row["emo"], row["name"])
+        if entry not in unique:
+            unique[entry] = len(unique)
+            connection.execute("INSERT INTO emoji_entry VALUES (?, ?, ?)", (unique[entry], *entry))
+        connection.execute("INSERT INTO emoji_search VALUES (?, ?)", (position, unique[entry]))
+    groups, variants, exclusions = {}, {}, {}
+    for name, value in datasets.items():
+        macro = name == "macro"
+        variant_key = tuple((key, tuple(items)) for key, items in sorted(value["variants"].items()))
+        if variant_key not in variants:
+            variant_id = len(variants)
+            variants[variant_key] = variant_id
+            connection.execute("INSERT INTO emoji_variant_set VALUES (?)", (variant_id,))
+            connection.executemany("INSERT INTO emoji_variant VALUES (?, ?, ?, ?)",
+                                   ((variant_id, base, i, item) for base, items in variant_key for i, item in enumerate(items)))
+        exclusion_key = tuple(value["excluded_windows_11" if macro else "excluded_without_windows_10"])
+        if exclusion_key not in exclusions:
+            exclusion_id = len(exclusions)
+            exclusions[exclusion_key] = exclusion_id
+            connection.execute("INSERT INTO emoji_exclusion_set VALUES (?)", (exclusion_id,))
+            connection.executemany("INSERT INTO emoji_exclusion VALUES (?, ?, ?)",
+                                   ((exclusion_id, i, item) for i, item in enumerate(exclusion_key)))
+        connection.execute("INSERT INTO emoji_dataset VALUES (?, ?, ?, ?)",
+                           (name, variants[variant_key], exclusions[exclusion_key],
+                            "windows_11" if macro else "without_windows_10"))
+        for position, group in enumerate(value["groups"]):
+            group_key = tuple(group["values"])
+            if group_key not in groups:
+                groups[group_key] = len(groups)
+                connection.execute("INSERT INTO emoji_group_list VALUES (?)", (groups[group_key],))
+                connection.executemany("INSERT INTO emoji_group_value VALUES (?, ?, ?)",
+                                       ((groups[group_key], i, item) for i, item in enumerate(group_key)))
+            connection.execute("INSERT INTO emoji_group VALUES (?, ?, ?, ?, ?)",
+                               (name, position, groups[group_key], group.get("label"), group.get("name")))
+        connection.executemany("INSERT INTO emoji_tab VALUES (?, ?, ?, ?, ?)",
+                               ((name, i, tab["emo"], tab["name"], tab.get("pos")) for i, tab in enumerate(value["tabs"])))
+    connection.commit()
+
+
+def verify_rows(connection, manifest, datasets, search):
+    """Full roundtrip comparison, preserving every duplicate and source order."""
+    row = connection.execute("SELECT schema_version, provider, repository, revision FROM resource_storage").fetchone()
+    restored = {"schema_version": row[0], "storage": dict(zip(("provider", "repository", "revision"), row[1:]))}
+    files = "f.path, f.bytes, f.sha256"
+    restored["files"] = [dict(zip(("path", "bytes", "sha256"), row)) for row in connection.execute(
+        "SELECT " + files + " FROM resource_file_order o JOIN resource_file f ON f.id=o.file_id ORDER BY o.position")]
+    restored["fonts"] = [dict(zip(("path", "bytes", "sha256"), row)) for row in connection.execute(
+        "SELECT " + files + " FROM resource_font o JOIN resource_file f ON f.id=o.file_id ORDER BY o.position")]
+    restored["entries"] = []
+    for row in connection.execute("SELECT a.key, " + files + ", a.view_box, a.width, a.height "
+                                  "FROM resource_alias a JOIN resource_file f ON f.id=a.file_id ORDER BY a.position"):
+        restored["entries"].append({key: item for key, item in zip(
+            ("key", "path", "bytes", "sha256", "view_box", "width", "height"), row) if item is not None})
+    restored["list_entries"] = [dict(zip(("key", "provider"), row)) for row in connection.execute(
+        "SELECT key, provider FROM resource_list ORDER BY position")]
+    if restored != manifest:
+        raise ValueError("Complete database resource index differs from source semantics")
+    recovered = [dict(zip(("emo", "name"), row)) for row in connection.execute(
+        "SELECT e.emoji, e.name FROM emoji_search s JOIN emoji_entry e ON e.id=s.entry_id ORDER BY s.position")]
+    if recovered != search:
+        raise ValueError("Database emoji vocabulary changed order, duplicates or text")
+    for name, original in datasets.items():
+        variant_set, exclusion_set, rule = connection.execute(
+            "SELECT variant_set, exclusion_set, exclusion_rule FROM emoji_dataset WHERE id=?", (name,)).fetchone()
+        macro = rule == "windows_11"
+        groups = []
+        for values_id, label, label_key in connection.execute(
+                "SELECT values_id, label, name FROM emoji_group WHERE dataset_id=? ORDER BY position", (name,)):
+            group = {"values": [row[0] for row in connection.execute(
+                "SELECT value FROM emoji_group_value WHERE list_id=? ORDER BY position", (values_id,))]}
+            if macro:
+                group.update(label=label, name=label_key)
+            groups.append(group)
+        tabs = [{key: item for key, item in zip(("emo", "name", "pos"), row) if item is not None}
+                for row in connection.execute("SELECT emoji, name, target_position FROM emoji_tab "
+                                               "WHERE dataset_id=? ORDER BY position", (name,))]
+        variants = {}
+        for base, item in connection.execute("SELECT base, value FROM emoji_variant WHERE set_id=? ORDER BY base, position", (variant_set,)):
+            variants.setdefault(base, []).append(item)
+        value = {"groups": groups, "tabs": tabs, "search": recovered, "variants": variants,
+                 "excluded_windows_11" if macro else "excluded_without_windows_10": [row[0] for row in connection.execute(
+                     "SELECT value FROM emoji_exclusion WHERE set_id=? ORDER BY position", (exclusion_set,))]}
+        if value != original:
+            raise ValueError("Complete database emoji profile differs: " + name)
+    if connection.execute("PRAGMA integrity_check").fetchall() != [("ok",)] or connection.execute("PRAGMA foreign_key_check").fetchall():
+        raise ValueError("Resource database integrity/foreign keys failed")
+
+
+def prepare(*, check=False, sources=None, check_local=False):
+    import analysis
+    import asset_release
+    import rust_data
+    registry = ROOT / "tools/typed-data.json"
+    recipes = json.loads(registry.read_bytes())
+    sources = sources or recipes.get("emoji_search", {}).get("original_sources", [])
+    if not sources:
+        raise ValueError("Register retained original emoji JS with --source")
+    datasets, search = emoji_datasets()
+    evidence = rust_data.verify_emoji_search_sources(sources, search)
+    table_inputs = []
+    manifest = asset_release.runtime_metadata(check_local=check_local, input_rows=table_inputs)
+    with sqlite3.connect(":memory:") as connection:
+        connection.execute("PRAGMA page_size=4096")
+        connection.execute("PRAGMA foreign_keys=ON")
+        fill(connection, manifest, datasets, search)
+        verify_rows(connection, manifest, datasets, search)
+        connection.execute("VACUUM")
+        raw = connection.serialize()
+    output = ROOT / OUTPUT
+    if check:
+        if output.read_bytes() != raw:
+            raise ValueError("Packaged resource database differs; regenerate through workspace.py")
+    elif not output.is_file() or output.read_bytes() != raw:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        temporary = output.with_suffix(".sqlite3.partial")
+        try:
+            temporary.write_bytes(raw)
+            temporary.replace(output)
+        finally:
+            temporary.unlink(missing_ok=True)
+    report = {"output": OUTPUT, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+              "schema_version": VERSION, "sqlite_generator": sqlite3.sqlite_version,
+              "emoji_search_entries": len(search), "emoji_unique_entries": len({(r['emo'], r['name']) for r in search}),
+              "emoji_profiles": list(datasets), "aliases": len(manifest["entries"]),
+              "list_entries": len(manifest["list_entries"]), "files": len(manifest["files"]),
+              "fonts": len(manifest["fonts"]), "original_sources": sources,
+              "inputs": [{"path": path, "bytes": (ROOT / path).stat().st_size,
+                          "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest()}
+                         for path in [SCHEMA, rust_data.EMOJI_SEARCH_INPUT, *INPUTS.values(), asset_release.LOCK,
+                                      "tools/resource_database.py", "tools/asset_release.py", "tools/rust_data.py"]]
+                        + table_inputs,
+              "full_ordered_roundtrip_verified": True, "passed": True}
+    if not check:
+        with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+            recipes = json.loads(registry.read_bytes())
+            recipes["emoji_search"] = {"source": rust_data.EMOJI_SEARCH_INPUT, "output": OUTPUT,
+                                        "original_sources": sources, "passed": True}
+            analysis.save(registry, recipes)
+        result = ROOT / ".analysis/results/typed-data.json"
+        previous = json.loads(result.read_bytes()) if result.is_file() else {"schema_version": 1}
+        previous["emoji_search_sources"] = evidence
+        previous["resource_database"] = report
+        analysis.save(result, previous)
+    return {**report, "check_only": check}
+
+
+def add_commands(commands):
+    command = commands.add_parser("prepare-resource-database", help="Prepare/verify packaged emoji profiles and resource index without media downloads")
+    command.add_argument("--check", action="store_true")
+
+
+def run(args):
+    return prepare(check=args.check)

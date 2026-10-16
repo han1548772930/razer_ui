@@ -11,12 +11,106 @@ import json
 import math
 from pathlib import Path
 import re
-
-from tree_sitter import Language, Parser
-import tree_sitter_rust
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 INPUTS = ".analysis/inputs/typed-tables"
+EMOJI_SEARCH_INPUT = INPUTS + "/razer-catalog/emoji_search.json"
+
+
+def emoji_search_input():
+    raw = (ROOT / EMOJI_SEARCH_INPUT).read_bytes()
+    value = json.loads(raw)
+    if (type(value) is not dict or set(value) != {"schema_version", "search"}
+            or type(value["schema_version"]) is not int or value["schema_version"] != 1):
+        raise ValueError("Invalid shared emoji search schema")
+    validate_emoji_search(value["search"])
+    return raw, value["search"]
+
+
+def validate_emoji_search(rows):
+    if type(rows) is not list or not rows:
+        raise ValueError("Emoji search must be a nonempty source-ordered array")
+    for index, row in enumerate(rows):
+        if (type(row) is not dict or set(row) != {"emo", "name"}
+                or any(type(row[key]) is not str for key in ("emo", "name"))):
+            raise ValueError(f"Emoji search entry {index} must contain emo and name strings")
+
+
+def verify_emoji_search_sources(sources, expected):
+    """Compare original JS literals without executing the source or callbacks."""
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from importlib.metadata import version
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    import json5
+
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    reports = []
+    for source in sources:
+        path = (ROOT / source).resolve()
+        if not path.is_relative_to(ROOT / ".analysis/inputs/frontend") or path.suffix != ".js":
+            raise ValueError("Emoji evidence must be a retained frontend JS original")
+        raw = path.read_bytes()
+        receipt = next((parent / "acquisition.json" for parent in path.parents
+                        if parent.is_relative_to(ROOT / ".analysis/inputs/frontend")
+                        and (parent / "acquisition.json").is_file()), None)
+        if receipt is None:
+            raise ValueError("Emoji source has no acquisition receipt")
+        acquisition = json.loads(receipt.read_bytes())
+        relative = path.relative_to(ROOT).as_posix()
+        acquired = [row for row in acquisition["files"] if row.get("path") == relative]
+        digest = hashlib.sha256(raw).hexdigest()
+        if (len(acquired) != 1 or acquired[0].get("sha256") != digest
+                or acquired[0].get("bytes") != len(raw)
+                or not acquired[0].get("url", "").startswith("https://apps.razer.com/")):
+            raise ValueError("Emoji original differs from its official acquisition identity")
+        tree = parser.parse(raw)
+        if tree.root_node.has_error:
+            raise ValueError("Emoji JS original contains unresolved syntax")
+        literals, pending = [], [tree.root_node]
+        while pending:
+            node = pending.pop()
+            if node.type == "string":
+                text = node.text.decode("utf-8")
+                if "Grinning Face,😃 Grinning Face with Big Eyes," in text:
+                    literal = json5.loads(text)
+                    rows = []
+                    for item in literal.split(","):
+                        parts = item.split(" ")
+                        rows.append({"emo": parts[0], "name": " ".join(parts[1:])})
+                    if rows != expected:
+                        raise ValueError("Complete ordered emoji search differs from original JS: " + relative)
+                    literals.append(node)
+            pending.extend(node.named_children)
+        if len(literals) != 1:
+            raise ValueError("Emoji source search literal is not unique: " + relative)
+        literal = literals[0]
+        owner = next((node for node in ancestors(literal) if node.type in {
+            "arrow_function", "function_expression", "function_declaration"}), None)
+        if owner is None:
+            raise ValueError("Emoji literal lacks a complete callable owner")
+        body = owner.text
+        reports.append({"path": relative, "bytes": len(raw), "sha256": digest,
+                        "acquisition": receipt.relative_to(ROOT).as_posix(),
+                        "acquisition_sha256": hashlib.sha256(receipt.read_bytes()).hexdigest(),
+                        "acquisition_kind": acquired[0].get("kind"),
+                        "source_current_during_acquisition": acquisition.get("source_current_during_acquisition"),
+                        "deployment_current_verified": acquired[0].get("deployment_current_verified"),
+                        "ordered_entries_verified": len(expected),
+                        "literal": {"byte_start": literal.start_byte, "byte_end": literal.end_byte,
+                                    "sha256": hashlib.sha256(literal.text).hexdigest()},
+                        "owner": {"node_type": owner.type, "byte_start": owner.start_byte,
+                                  "byte_end": owner.end_byte, "sha256": hashlib.sha256(body).hexdigest(),
+                                  "body": body.decode("utf-8")}})
+    return {"analyzers": {name: version(name) for name in ("tree-sitter", "tree-sitter-javascript", "json5")},
+            "originals": reports, "target_execution": False,
+            "limits": ["Literal equality does not establish deployment stability or complete product dependency closure"]}
+
+
+def prepare_emoji_search(*, check=False, sources=None):
+    import resource_database
+    return resource_database.prepare(check=check, sources=sources)
 
 
 def ancestors(node):
@@ -87,7 +181,10 @@ def json_boundary(value, render=None):
         low, high = (-2**63, 2**63 - 1) if value < 0 else (0, 2**64 - 1)
         if not low <= value <= high:
             raise ValueError("Interchange integer is outside serde_json::Number")
-        return "serde_json::Value::Number(" + str(value) + kind + ".into())"
+        number = str(value) + kind
+        if value < 0:
+            number = "(" + number + ")"
+        return "serde_json::Value::Number(" + number + ".into())"
     if type(value) is float:
         if not math.isfinite(value):
             raise ValueError("Interchange number must be finite")
@@ -190,6 +287,10 @@ class Definition:
 
 class RustData:
     def __init__(self, crate_root):
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "analyzers/python-static"))
+        from tree_sitter import Language, Parser
+        import tree_sitter_rust
+
         self.crate_root = Path(crate_root).resolve()
         self.parser = Parser(Language(tree_sitter_rust.language()))
         self.definitions = {}
@@ -201,6 +302,7 @@ class RustData:
         self.shared_constructors = []
         self.module_sources = {}
         self.resolved_definitions = {}
+        self.shared_inputs = {}
         for path in sorted((self.crate_root / "src").rglob("*.rs")):
             if "/src/data/" in path.as_posix() and not path.name.endswith("_schema.rs"):
                 continue
@@ -318,6 +420,8 @@ class RustData:
         return owner.replace("-", "_") + "::" + typ if owner != self.crate_root.name and "::" not in typ else typ
 
     def _render(self, value, typ, module, path, allow_value):
+        if typ.strip() == "&'static EmojiSearchTable":
+            return self._render_inner(value, typ, module, path, allow_value)
         if self.expression_pool is None or not isinstance(value, (dict, list, str)):
             return self._render_inner(value, typ, module, path, allow_value)
         encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
@@ -349,6 +453,19 @@ class RustData:
         typ = typ.strip()
         typ = self.aliases.get((module, typ), typ)
         short = typ.rsplit("::", 1)[-1]
+        if short in {"EmojiData", "SourceEmojiData", "TextSource"}:
+            import resource_database
+            profile = resource_database.emoji_dataset_identity(value)
+            for input_path in resource_database.INPUTS.values():
+                self.shared_inputs[input_path] = hashlib.sha256((ROOT / input_path).read_bytes()).hexdigest()
+            return typ + "::from_catalog(razer_catalog::emoji::DatasetId::" + profile + ")"
+        if typ == "&'static EmojiSearchTable":
+            validate_emoji_search(value)
+            raw, shared = emoji_search_input()
+            if value != shared:
+                raise ValueError(f"{path}: source emoji search differs from the shared vocabulary")
+            self.shared_inputs[EMOJI_SEARCH_INPUT] = hashlib.sha256(raw).hexdigest()
+            return "razer_catalog::emoji::search()"
         if typ == "()":
             if value is not None:
                 raise ValueError(f"{path}: expected null")
@@ -535,6 +652,7 @@ def build_table(crate, symbol, module, root_type, *, source=None, check=False,
     schema = schema or RustData(crate_root)
     schema.expression_pool = {} if len(raw) > 1024 * 1024 else None
     schema.shared_constructors = []
+    schema.shared_inputs = {}
     if product_factory:
         match = re.fullmatch(r"Vec<(.*)>", root_type)
         if not match or not isinstance(value, list):
@@ -617,11 +735,18 @@ def build_table(crate, symbol, module, root_type, *, source=None, check=False,
             "excluded_evidence_fields": sorted(schema.excluded),
             "external_json_boundaries": sorted(schema.value_fields), "allow_value": allow_value,
             "product_factory": product_factory, "passed": True}
+    if schema.shared_inputs:
+        report["shared_inputs"] = [{"path": path, "sha256": digest}
+                                   for path, digest in sorted(schema.shared_inputs.items())]
     if not check:
         import analysis
         registry = ROOT / "tools/typed-data.json"
         with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
             recipes = json.loads(registry.read_bytes()) if registry.exists() else {"schema_version": 1, "tables": []}
+            previous = next((item for item in recipes["tables"]
+                             if (item["crate"], item["macro"]) == (crate, macro_name)), None)
+            if previous and "maintenance_recovery" in previous:
+                report["maintenance_recovery"] = previous["maintenance_recovery"]
             recipes["tables"] = [item for item in recipes["tables"]
                                  if (item["crate"], item["macro"]) != (crate, macro_name)] + [report]
             recipes["tables"].sort(key=lambda item: (item["crate"], item["macro"]))
@@ -723,12 +848,23 @@ def infer_domain_schema(crate, symbol, root_name, *, map_paths=()):
 def add_commands(commands):
     parser = commands.add_parser("prepare-typed-data", help="Regenerate code-owned Rust tables from explicit maintenance inputs")
     parser.add_argument("--crate", action="append", help="Restrict to owning crates")
+    parser.add_argument("--symbol", action="append", help="Restrict to registered source symbols")
     parser.add_argument("--check", action="store_true", help="Compare without modifying tables")
+    emoji = commands.add_parser("prepare-emoji-search", help="Share identical emoji entries while preserving the complete source order")
+    emoji.add_argument("--check", action="store_true", help="Compare without modifying the shared table")
+    emoji.add_argument("--source", action="append", help="Retained original JS; verify the entire ordered vocabulary and register its byte identity")
 
 
 def run(args):
+    if args.command == "prepare-emoji-search":
+        return prepare_emoji_search(check=args.check, sources=args.source)
     registry = json.loads((ROOT / "tools/typed-data.json").read_bytes())
-    rows = [item for item in registry["tables"] if not args.crate or item["crate"] in args.crate]
+    rows = [item for item in registry["tables"]
+            if (not args.crate or item["crate"] in args.crate)
+            and (not args.symbol or item["symbol"] in args.symbol)]
+    missing = set(args.symbol or ()) - {item["symbol"] for item in rows}
+    if not rows or missing:
+        raise ValueError("No matching typed tables for requested crate/symbol filters: " + ", ".join(sorted(missing)))
     schemas = {crate: RustData(ROOT / "crates" / crate) for crate in {item["crate"] for item in rows}}
     reports = [build_table(item["crate"], item["symbol"], item["module"], item["root_type"],
                            source=item["source"], macro_name=item["macro"], check=args.check,

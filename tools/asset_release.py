@@ -33,7 +33,7 @@ GIT_ICONS = {"assets/synapse/shared/pending-source-audit/" + n for n in NATIVE_I
 META_FILES = {".gitattributes", "README.md", "release-index.json"}
 LFS_ATTRIBUTES = (b"* -filter -diff -merge -text\n"
                   b"assets/** filter=lfs diff=lfs merge=lfs -text\n")
-RUNTIME_METADATA = "assets/synapse/tables/remote-assets.rs"
+RUNTIME_METADATA = "assets/synapse/resource-catalog.sqlite3"
 REMOTE_FONT_PATHS = tuple("assets/synapse/shared/fonts/" + name for name in (
     "104d76669a1810f2-Roboto-Light.ttf", "202d2e67f0ed60f1-Roboto-LightItalic.ttf",
     "179ca811a216df59-Roboto-Regular.ttf", "4bd8affd7aecd848-Roboto-Italic.ttf",
@@ -119,6 +119,7 @@ def group_name(name):
 def inventory():
     paths = sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "assets").rglob("*")
                    if p.is_file() and p != ROOT / "assets/synapse.pack"
+                   and p not in (ROOT / RUNTIME_METADATA, ROOT / (RUNTIME_METADATA + ".partial"))
                    and not (p.parent == ROOT / "assets" and p.name.startswith("synapse.pack.")
                             and p.name.endswith(".tmp")))
     if not paths or len({p.casefold() for p in paths}) != len(paths):
@@ -253,6 +254,8 @@ def validate_lock(lock):
         if not in_git(canonical(row["path"])):
             raise ValueError("Invalid retained Git resource")
     for row in rows_for(lock) + lock.get("git_files", []):
+        if row["path"] == RUNTIME_METADATA:
+            raise ValueError("The generated local catalog must not become a remote resource input")
         path = row["path"]
         if (path.casefold() in seen or type(row.get("bytes")) is not int or row["bytes"] < 0
                 or not re.fullmatch(r"[a-f0-9]{64}", row.get("sha256", ""))):
@@ -383,7 +386,7 @@ def rust_array(text, start):
     raise ValueError("Unterminated Rust resource array")
 
 
-def runtime_metadata(lock=None, *, check_local=False):
+def runtime_metadata(lock=None, *, check_local=False, input_rows=None):
     """Resolve current alias semantics from source and immutable file identities.
 
     This does not consume analysis reports or require ignored payload files.
@@ -393,8 +396,14 @@ def runtime_metadata(lock=None, *, check_local=False):
     lock = load_lock() if lock is None else validate_lock(lock)
     files = {row["path"]: dict(row) for row in [*rows_for(lock), *lock["git_files"]]
              if not row["path"].startswith("assets/synapse/tables/")}
+    def table_source(name):
+        raw = source_path(name).read_bytes()
+        if input_rows is not None:
+            input_rows.append({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+        return raw.decode("utf-8")
+
     tables_path = "assets/synapse/tables/asset-tables-source.rs"
-    table_text = source_path(tables_path).read_text(encoding="utf-8")
+    table_text = table_source(tables_path)
     order = re.search(r'static ASSET_TABLES:[^=]+=\s*&\[', table_text)
     if order is None:
         raise ValueError("AssetSource table order is unresolved")
@@ -431,7 +440,7 @@ def runtime_metadata(lock=None, *, check_local=False):
             if include is None:
                 raise ValueError("Nonliteral asset table include")
             name = relative_input(tables_path, include[1])
-            definitions[match[1]] = (name, source_path(name).read_text(encoding="utf-8"))
+            definitions[match[1]] = (name, table_source(name))
         elif expression.startswith("&["):
             definitions[match[1]] = (tables_path, rust_array(table_text, match.end() + 1))
         else:
@@ -450,14 +459,14 @@ def runtime_metadata(lock=None, *, check_local=False):
 
     demo_path = "assets/synapse/tables/audio-demo-controls-embedded.rs"
     sprite_path = "assets/synapse/tables/audio-volume-sprite-embedded.rs"
-    demo_body = source_path(demo_path).read_text(encoding="utf-8")
+    demo_body = table_source(demo_path)
     demo_entries = [entry(match[1], demo_path, match[2]) for match in re.finditer(
         r'"([^"\\]+)"\s*=>\s*Some\(include_bytes!\("([^"\\]+)"\)\)', demo_body)]
     if {row["key"] for row in demo_entries} != {
             "synapse/audio-demo-control-play.svg", "synapse/audio-demo-control-pause.svg",
             "synapse/audio-demo-control-fullscreen.svg", "synapse/audio-demo-control-fullscreen-exit.svg"}:
         raise ValueError("Audio demo AssetSource aliases require a source audit")
-    sprite_body = source_path(sprite_path).read_text(encoding="utf-8")
+    sprite_body = table_source(sprite_path)
     sprite_input = re.search(r'const AUDIO_VOLUME_SPRITE: &str = include_str!\("([^"\\]+)"\);', sprite_body)
     sprite_alias = re.search(r'const AUDIO_VOLUME_SPRITE_PATH: &str = "([^"\\]+)";', sprite_body)
     if sprite_input is None or sprite_alias is None:
@@ -485,61 +494,14 @@ def runtime_metadata(lock=None, *, check_local=False):
             "files": list(files.values())}
 
 
-def runtime_metadata_bytes(value):
-    from rust_data import ROOT as schema_root, RustData, pretty_expression
-    schema = RustData(schema_root / "crates/razer-assets")
-    owner = schema_root / "crates/razer-assets/src/remote.rs"
-
-    def render(data, root_type):
-        expression = schema.render(data, root_type, owner)
-        if schema.excluded or schema.value_fields:
-            raise ValueError("Resource metadata must have a complete typed representation")
-        return expression
-
-    fields = (("entries", "Entry"), ("list_entries", "ListEntry"),
-              ("fonts", "ResourceFile"), ("files", "ResourceFile"))
-    expression = render({**value, **{field: [] for field, _ in fields}}, "Manifest")
-    constructors = []
-    for field, item_type in fields:
-        rows = value[field]
-        if not isinstance(rows, list):
-            raise ValueError("Resource metadata field must be an array: " + field)
-        expression, count = re.subn(r"\b" + field + r":vec!\[\]", field + ":" + field + "()", expression)
-        if count != 1:
-            raise ValueError("Resource metadata array constructor is unresolved: " + field)
-        chunks = []
-        calls = []
-        for offset in range(0, len(rows), 128):
-            name = field + "_chunk_" + str(offset // 128)
-            body = render(rows[offset:offset + 128], "Vec<" + item_type + ">")
-            chunks.append("#[inline(never)]\n#[rustfmt::skip]\nfn " + name + "() -> Vec<" + item_type + "> {\n"
-                          + pretty_expression(body, indent=4) + "\n}\n")
-            calls.append("    values.extend(" + name + "());\n")
-        constructors.append("#[inline(never)]\nfn " + field + "() -> Vec<" + item_type + "> {\n"
-                            + "    let mut values = Vec::with_capacity(" + str(len(rows)) + ");\n"
-                            + "".join(calls) + "    values\n}\n" + "\n".join(chunks))
-    return ("// Generated by tools/workspace.py prepare-runtime-assets.\n"
-            "// File hashes verify resource integrity, never source-code compatibility.\n"
-            "// Bounded constructors keep compiler optimization independent of the complete index size.\n"
-            "use super::{Entry, ListEntry, Manifest, ResourceFile, Storage};\n"
-            "#[rustfmt::skip]\n"
-            "pub(super) fn manifest() -> Manifest {\n" + pretty_expression(expression, indent=4) + "\n}\n\n"
-            + "\n".join(constructors)).encode("utf-8")
-
-
 def prepare_runtime_metadata(*, check_local=False):
-    value = runtime_metadata(check_local=check_local)
-    path = source_path(RUNTIME_METADATA)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(runtime_metadata_bytes(value))
-    return runtime_metadata_summary(value)
+    import resource_database
+    return resource_database.prepare(check_local=check_local)
 
 
 def verify_runtime_metadata(*, check_local=False):
-    value = runtime_metadata(check_local=check_local)
-    if source_path(RUNTIME_METADATA).read_bytes() != runtime_metadata_bytes(value):
-        raise ValueError("Runtime metadata differs from the source aliases or resource lock")
-    return runtime_metadata_summary(value)
+    import resource_database
+    return resource_database.prepare(check=True, check_local=check_local)
 
 
 def runtime_metadata_summary(value):

@@ -230,6 +230,10 @@ pub fn run() {
         eprintln!("资源索引无法加载：{error:#}");
         std::process::exit(1);
     }
+    if let Err(error) = razer_catalog::emoji::validate() {
+        eprintln!("本地表情数据库无法加载：{error:#}");
+        std::process::exit(1);
+    }
     let application = gpui_kit::application().with_assets(resources::SynapseAssets);
 
     application.run(move |cx| {

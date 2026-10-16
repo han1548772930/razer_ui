@@ -32,6 +32,7 @@ razer-app-pages = { path = "crates/razer-app-pages" }
 razer-app = { path = "crates/razer-app" }
 razer-assets = { path = "crates/razer-assets" }
 razer-catalog = { path = "crates/razer-catalog" }
+razer-resource-db = { path = "crates/razer-resource-db" }
 razer-device = { path = "crates/razer-device" }
 razer-hid = { path = "crates/razer-hid" }
 razer-i18n = { path = "crates/razer-i18n" }

@@ -8,6 +8,7 @@ use gpui_kit::component::input::{Input, InputEvent, InputState, Textarea, Textar
 use gpui_kit::component::*;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
+use razer_catalog::emoji::EmojiSearchTable;
 use razer_i18n::t;
 use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
@@ -15,13 +16,37 @@ use serde::Deserialize;
 use std::time::{Duration, Instant};
 use std::{collections::BTreeMap, sync::OnceLock};
 
-#[derive(Deserialize)]
 pub(crate) struct EmojiData {
     groups: Vec<EmojiGroup>,
     tabs: Vec<EmojiTab>,
-    search: Vec<EmojiSearch>,
+    search: &'static EmojiSearchTable,
     variants: BTreeMap<String, Vec<String>>,
     excluded_without_windows_10: Vec<String>,
+}
+impl EmojiData {
+    fn from_catalog(id: razer_catalog::emoji::DatasetId) -> Self {
+        let source = razer_catalog::emoji::dataset(id);
+        Self {
+            groups: source
+                .groups()
+                .iter()
+                .map(|group| EmojiGroup {
+                    values: group.values().to_vec(),
+                })
+                .collect(),
+            tabs: source
+                .tabs()
+                .iter()
+                .map(|tab| EmojiTab {
+                    emo: tab.emoji().to_owned(),
+                    name: tab.name().to_owned(),
+                })
+                .collect(),
+            search: razer_catalog::emoji::search(),
+            variants: source.variants().clone(),
+            excluded_without_windows_10: source.exclusions().to_vec(),
+        }
+    }
 }
 #[derive(Deserialize)]
 struct EmojiGroup {
@@ -32,14 +57,46 @@ struct EmojiTab {
     emo: String,
     name: String,
 }
-#[derive(Deserialize)]
-struct EmojiSearch {
-    emo: String,
-    name: String,
-}
 fn data() -> &'static EmojiData {
     static DATA: OnceLock<EmojiData> = OnceLock::new();
     DATA.get_or_init(|| crate::data::keyboard_mapping_text_emoji_data!())
+}
+
+#[derive(Deserialize)]
+pub(crate) struct Policy {
+    product_id: u32,
+    group: String,
+    version_filter: bool,
+    data_index: usize,
+}
+
+struct Policies {
+    products: Vec<Policy>,
+    datasets: Vec<EmojiData>,
+}
+
+fn mouse_policies() -> &'static Policies {
+    static DATA: OnceLock<Policies> = OnceLock::new();
+    DATA.get_or_init(|| crate::data::mouse_mapping_text_current_data!())
+}
+
+pub(crate) fn mouse_text_policy(product_id: u32) -> Option<&'static Policy> {
+    mouse_policies()
+        .products
+        .iter()
+        .find(|policy| policy.product_id == product_id)
+}
+
+impl Policy {
+    pub(crate) fn group(&self) -> &str {
+        &self.group
+    }
+    pub(crate) fn version_filter(&self) -> bool {
+        self.version_filter
+    }
+    pub(crate) fn emoji_data(&self) -> &'static EmojiData {
+        &mouse_policies().datasets[self.data_index]
+    }
 }
 pub(crate) struct CharacterMapRequested;
 impl EventEmitter<CharacterMapRequested> for MappingTextEditor {}
@@ -299,17 +356,22 @@ impl MappingTextEditor {
             return vec![];
         }
         let data = self.data;
-        let allowed = |emoji: &String| {
+        let allowed = |emoji: &str| {
             self.windows_version.as_deref().is_some_and(|v| v != "11")
-                || !data.excluded_without_windows_10.contains(emoji)
+                || !data
+                    .excluded_without_windows_10
+                    .iter()
+                    .any(|excluded| excluded == emoji)
         };
         let query = self.emoji_search.read(cx).value().to_lowercase();
         if !query.is_empty() {
             return vec![
                 data.search
                     .iter()
-                    .filter(|item| item.name.to_lowercase().contains(&query) && allowed(&item.emo))
-                    .map(|item| item.emo.clone())
+                    .filter(|item| {
+                        item.name().to_lowercase().contains(&query) && allowed(item.emoji())
+                    })
+                    .map(|item| item.emoji().to_owned())
                     .collect(),
             ];
         }

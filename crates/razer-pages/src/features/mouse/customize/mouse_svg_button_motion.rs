@@ -10,8 +10,8 @@ use std::time::Duration;
 
 #[derive(Deserialize)]
 pub(super) struct SvgButtonPresentation {
-    stroke_width: f32,
-    miter_limit: f32,
+    pub(super) stroke_width: f32,
+    pub(super) miter_limit: f32,
 }
 
 /// Interpolate premultiplied sRGB channels, including transparent source colors.

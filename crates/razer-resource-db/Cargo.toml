@@ -1,0 +1,9 @@
+[package]
+name = "razer-resource-db"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+sha2 = "=0.10.9"
+rusqlite = { version = "=0.40.2", default-features = false, features = ["bundled", "fallible_uint"] }

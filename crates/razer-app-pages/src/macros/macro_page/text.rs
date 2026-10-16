@@ -1,6 +1,7 @@
 //! Current 58190.dn text modal. Draft text is committed only by its own Save.
 use super::text_overlay::{TextAnchor, TextOverlay};
 use super::*;
+use razer_catalog::emoji::EmojiSearchTable;
 use razer_widgets::surface;
 use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::OnceLock, time::Instant};
@@ -77,13 +78,44 @@ pub fn text_button(
         .child(label.to_uppercase())
 }
 
-#[derive(Deserialize)]
+#[non_exhaustive]
 pub struct TextSource {
     pub groups: Vec<TextEmojiGroup>,
     pub tabs: Vec<TextEmojiTab>,
-    pub search: Vec<TextEmojiSearch>,
+    pub search: &'static EmojiSearchTable,
     pub variants: std::collections::BTreeMap<String, Vec<String>>,
     pub excluded_windows_11: Vec<String>,
+}
+impl TextSource {
+    fn from_catalog(id: razer_catalog::emoji::DatasetId) -> Self {
+        let source = razer_catalog::emoji::dataset(id);
+        Self {
+            groups: source
+                .groups()
+                .iter()
+                .map(|group| TextEmojiGroup {
+                    label: group
+                        .label()
+                        .expect("validated macro group label")
+                        .to_owned(),
+                    name: group.name().expect("validated macro group name").to_owned(),
+                    values: group.values().to_vec(),
+                })
+                .collect(),
+            tabs: source
+                .tabs()
+                .iter()
+                .map(|tab| TextEmojiTab {
+                    emo: tab.emoji().to_owned(),
+                    name: tab.name().to_owned(),
+                    pos: tab.position().expect("validated macro category target"),
+                })
+                .collect(),
+            search: razer_catalog::emoji::search(),
+            variants: source.variants().clone(),
+            excluded_windows_11: source.exclusions().to_vec(),
+        }
+    }
 }
 #[derive(Deserialize)]
 pub struct TextEmojiGroup {
@@ -96,11 +128,6 @@ pub struct TextEmojiTab {
     pub emo: String,
     pub name: String,
     pub pos: usize,
-}
-#[derive(Deserialize)]
-pub struct TextEmojiSearch {
-    pub emo: String,
-    pub name: String,
 }
 pub fn text_source() -> &'static TextSource {
     static DATA: OnceLock<TextSource> = OnceLock::new();

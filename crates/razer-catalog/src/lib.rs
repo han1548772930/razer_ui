@@ -2,6 +2,7 @@
 //! These entries describe the UI contract, not detected hardware capabilities.
 
 mod data;
+pub mod emoji;
 mod registry;
 pub use registry::{
     ProductNavigation, ProductPage, ProductPageId, ProductPageRole, registered, registry,

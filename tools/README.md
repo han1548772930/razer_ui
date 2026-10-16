@@ -8,6 +8,7 @@
 | [analysis.py](analysis.py) | 前端获取／恢复、原生输入索引、IDA 配置与批量函数导出 |
 | [families.py](families.py) | 全产品族 UI／middleware 获取、独立版本配对、native 资源来源闭包与静态恢复矩阵 |
 | [asset_release.py](asset_release.py) | 私有资源仓库快照、上传核验、固定提交与有类型运行时索引 |
+| [resource_database.py](resource_database.py) | 生成／回读核验随程序交付的 SQLite 表情词表、页面分支与资源索引 |
 | [rust_data.py](rust_data.py)、[typed_tables.py](typed_tables.py) | 按实际 Rust schema 校验并生成可读 Rust 数据表、协议能力与本地默认值 |
 | [windows_installer.py](windows_installer.py) | Windows 安装包静态输入准备、PE 依赖闭包和封装校验 |
 | `analyzers/wakaru-1.14.0/` | 专业静态前端恢复工具及动态 SHA／获取来源记录；可执行文件不入 Git |
@@ -42,7 +43,11 @@ python tools/workspace.py capture-native --input PROJECTREL
 python tools/workspace.py supplement-native --input PROJECTREL --pointer-table-rva 0x1000 --pointer-count 7 --no-refresh-gaps
 python tools/workspace.py verify-resources
 python tools/workspace.py verify-runtime-assets
+python tools/workspace.py prepare-static-python
+python tools/workspace.py prepare-emoji-search --check
+python tools/workspace.py prepare-resource-database --check
 python tools/workspace.py prepare-typed-data --check
+python tools/workspace.py prepare-typed-data --symbol TEXT_DATA --symbol KEYBOARD_MAPPING_TEXT_EMOJI_DATA --symbol MOUSE_MAPPING_TEXT_CURRENT_DATA --symbol SHORTCUTS_CURRENT --check
 python tools/workspace.py prepare-device-write-table --check
 python tools/workspace.py prepare-local-protocol-tables --check
 python tools/workspace.py prepare-storage-tables --check
@@ -53,6 +58,12 @@ python tools/workspace.py validate-rust --suite asset-pack-core
 ```
 
 `PROJECTREL` 为 `.analysis/inputs/` 下已登记的 DLL／NODE／EXE。`capture-native` 使用 IDA 批处理与 Hex-Rays 保存全函数、汇编、CFG、xref、类型、字符串、导出／导入和失败；结束后正常退出。`--resume` 补齐同一输入的缺失结果，`--mcp-only` 使用独立私有副本启动查询会话。
+
+`prepare-static-python` 按当前 Python ABI 恢复项目内固定版本的 JavaScript／Rust 解析器，校验发行元数据、wheel 字节及两种语法的静态解析。`prepare-typed-data` 支持重复的 `--crate`／`--symbol` 定向选择；选项不匹配时失败，不能把零张表记为验证通过。
+
+`prepare-resource-database` 生成唯一的 `assets/synapse/resource-catalog.sqlite3`；`prepare-emoji-search` 和 `prepare-runtime-assets` 使用同一实现。四份原始 JS 核验获取收据、实际字节和完整搜索字符串，数据库保存 1,857 条唯一记录与 1,936 项原始顺序。分组值、变体和排除列表分别去重，Mapping、无排除项的 Mouse 分支和 Macro 保留各自的标签、分组顺序、tab 目标及系统版本规则。工具逐字段回读所有表情与完整资源索引，记录 SQLite 实际版本、输入／输出 SHA；`--check` 校验同一数据库。旧重复词表和生成 Rust 资源索引不再保留。新 JS 来源由 `prepare-emoji-search --source PROJECTREL` 重复登记；完整 callable owner、解析器版本和等价性记录位于 `.analysis/results/typed-data.json`。产品不读取分析目录或远程词表。
+
+四份表的维护输入由现有 Rust 构造数据恢复生产字段投影，`tools/typed-data.json` 的 `maintenance_recovery` 保留原文件字节摘要、缺失维护输入的旧摘要和未恢复的证据字段。该恢复不代表找回原始证据 JSON；搜索字符串另与实际原始 JS 全序列比较，其他字段通过迁移前后 Rust token 等价性核对。原件部署稳定性、完整来源闭包和运行验收仍分别判断。
 
 `audit-host-local --query macro-recorder` 复用并核对当前 PID192／756 middleware、Macro 和 background-manager 完整 Wakaru 捕获的全部输入、输出与工具字节，保留原 validate 失败；从原始 JS 的实际 UTF-8 AST 区间保存完整 An／q、软件录制和 OTFM set/remove、全局锁与订阅／清理、接收器布局与功能配置 owners，统一写入 `.analysis/results/host-current/local-audit.json`。PID756 的预触发对象没有 exclusive mode，和 background 随后写入的独占记录分开；初始扫描和实时事件的字段层级差异、JSON 记录没有硬件 getter、运行时缓存最后匹配语义也分别保留。实际原生 transport、产品接线、完整页面与真实验收仍须独立完成。
 
@@ -116,7 +127,7 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `keyboard-metadata` 复用当前 middleware 获取收据，逐产品校验原件字节并保留完整注册、DeviceInfo、继承类、getEdition／getSerialNumber、命令／解码器、传输默认值、物理路由工厂及身份缓存／runtimeData 默认值所有者。结果追加至 `keyboard-mw-audit.json`；通过检查的有线、自有无线接收器及 BLE 产品生成 `razer-device` 元数据传输描述，双链路共享接收器另保留 cached-master 工厂及命令命名空间证据。原始依赖闭包缺项独立保留，不把厂商 UI 的布局／版本默认值视为硬件读取成功。该查询不执行厂商代码或设备操作。
 
-应用资源按“私有 HF 仓库 → 当前实际文件请求 → 安装目录 `assets/cache/` → 当前产品界面”流转。`tools/asset-release.json` 固定仓库提交、文件长度／SHA-256 和产品依赖；`prepare-runtime-assets` 解析代码维护表并生成 `assets/synapse/tables/remote-assets.rs`，`verify-runtime-assets` 检查输出一致性。两者无需本地图片，也不下载资源；`--check-local` 仅用于明确恢复了原文件的维护工作区。运行时异步请求去重、限制并发、验证并原子缓存；缓存命中不联网，编译不准备 pack。凭据仅从本机配置读取。
+应用媒体资源按“私有 HF 仓库 → 当前实际文件请求 → 安装目录 `assets/cache/` → 当前产品界面”流转。`tools/asset-release.json` 固定仓库提交、文件长度／SHA-256 和产品依赖；`prepare-runtime-assets` 解析维护表并生成上述 SQLite 目录库，`verify-runtime-assets` 检查相同输出。无需本地图片，也不下载资源；`--check-local` 仅用于明确恢复了原文件的维护工作区。`razer-resource-db::InstallationPaths` 统一定位安装缓存与其 `catalogs/` 子目录；种子在打开 UI 前离线原子发布，缺失／损坏可从自带字节恢复。目录库只读打开、校验 schema 和完整性，领域 owner 保留有类型快照；媒体保留异步去重、并发限制、内容验证及原子缓存，缓存命中不联网。凭据仅从本机配置读取。
 
 `verify-asset-release --remote` 核对已固定远端清单及 LFS 文件身份；`publish-asset-release` 在核验后固定新提交；`pin-asset-release --revision COMMIT` 核验已上传版本。`fetch-asset-release --product PID` 仅为维护人员显式恢复选定产品与共享依赖，普通编译和产品启动均不调用。完整原图核验须明确使用维护来源，不将其复制到 crate 测试夹具。
 

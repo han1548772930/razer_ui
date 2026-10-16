@@ -53,7 +53,7 @@ macro_rules! audio_mixer_presets_current {
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(false)),
                                 ("value".into(),serde_json::Value::Number(1u64.into())),
-                                ("min".into(),serde_json::Value::Number(-12i64.into())),
+                                ("min".into(),serde_json::Value::Number((-12i64).into())),
                                 ("max".into(),serde_json::Value::Number(12u64.into())),
                                 ("step".into(),serde_json::Value::Number(1u64.into()))
                             ].into_iter().collect()

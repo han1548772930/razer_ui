@@ -9,10 +9,10 @@ pub(crate) mod audio_mixer_mic_eq_current;
 pub(crate) mod audio_mixer_protocol;
 #[path = "data/controller_calibration_current_params.rs"]
 pub(crate) mod controller_calibration_current_params;
-#[path = "data/device_read_capabilities.rs"]
-pub(crate) mod device_read_capabilities;
 #[path = "data/device_identity_catalog.rs"]
 pub(crate) mod device_identity_catalog;
+#[path = "data/device_read_capabilities.rs"]
+pub(crate) mod device_read_capabilities;
 #[path = "data/device_write_capabilities.rs"]
 pub(crate) mod device_write_capabilities;
 #[path = "data/keyboard_analog_keys.rs"]

@@ -160,14 +160,14 @@ impl Shortcuts {
             return vec![];
         }
         let data = &source_shortcuts().emoji;
-        let allowed = |emoji: &String| !data.excluded_without_windows_10.contains(emoji);
+        let allowed = |emoji: &str| !data.excluded_without_windows_10.iter().any(|excluded| excluded == emoji);
         let query = self.emoji_search.read(cx).value().to_lowercase();
         if !query.is_empty() {
             return vec![
                 data.search
                     .iter()
-                    .filter(|item| item.name.to_lowercase().contains(&query) && allowed(&item.emo))
-                    .map(|item| item.emo.clone())
+                    .filter(|item| item.name().to_lowercase().contains(&query) && allowed(item.emoji()))
+                    .map(|item| item.emoji().to_owned())
                     .collect(),
             ];
         }

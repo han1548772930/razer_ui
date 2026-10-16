@@ -1,7 +1,7 @@
 //! App navigation and persistence. Device feature state lives in DeviceWorkspace.
 use crate::store;
 use gpui_kit::component::{
-    button::{ButtonCustomVariant, ButtonRounded, ButtonVariants},
+    button::{Button, ButtonCustomVariant, ButtonRounded, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};

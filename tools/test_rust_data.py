@@ -6,6 +6,9 @@ import unittest
 from unittest.mock import patch
 
 import rust_data
+import resource_database
+import sqlite3
+from copy import deepcopy
 
 
 class RustDataTests(unittest.TestCase):
@@ -87,7 +90,7 @@ class RustDataTests(unittest.TestCase):
             schema.render(value, "Device", self.module)
         result = schema.render(value, "Device", self.module, allow_value=True)
         self.assertNotIn("json!", result)
-        self.assertIn("Value::Number(-2i64.into())", result)
+        self.assertIn("Value::Number((-2i64).into())", result)
         self.assertIn("Value::Number(3u64.into())", result)
         self.assertEqual(schema.value_fields, {"$.payload"})
         with self.assertRaises(ValueError):
@@ -146,6 +149,64 @@ class RustDataTests(unittest.TestCase):
             updated = json.loads((self.root / "tools/typed-data.json").read_bytes())["tables"][0]
             self.assertNotEqual(updated["source_sha256"], report["source_sha256"])
             rust_data.build_table("razer-fixture", "PRODUCTS", self.module, "Product", source=source, schema=schema, check=True)
+
+
+class ResourceDatabaseTests(unittest.TestCase):
+    def test_packaged_catalog_is_excluded_from_remote_release_inventory(self):
+        import asset_release
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name, raw in ((asset_release.RUNTIME_METADATA, b"local seed"),
+                              (asset_release.RUNTIME_METADATA + ".partial", b"unpublished seed"),
+                              ("assets/synapse/products/70/icon.png", b"media")):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(raw)
+            with patch.object(asset_release, "ROOT", root):
+                groups, retained = asset_release.inventory()
+            self.assertFalse(retained)
+            self.assertEqual([row["path"] for group in groups for row in group["files"]],
+                             ["assets/synapse/products/70/icon.png"])
+
+    def fixture(self):
+        search = [{"emo": "😀", "name": "Grinning Face"}, {"emo": "", "name": "Man"},
+                  {"emo": "😀", "name": "Grinning Face"}]
+        mapping = {"groups": [{"values": ["😀", "", "😀"]}], "tabs": [{"emo": "😀", "name": "Smileys"}],
+                   "search": search, "variants": {"👋": ["👋🏻", "👋🏼"]}, "excluded_without_windows_10": ["😀"]}
+        alternate = deepcopy(mapping)
+        alternate["excluded_without_windows_10"] = []
+        macro = deepcopy(mapping)
+        macro["groups"][0].update(label="SMILEYS", name="TEXT_EMOJI_SMILEYS")
+        macro["tabs"][0].update(name="TEXT_EMOJI_SMILEYS", pos=0)
+        macro["excluded_windows_11"] = macro.pop("excluded_without_windows_10")
+        first = {"path": "assets/test/first.svg", "bytes": 7, "sha256": "a" * 64}
+        second = {"path": "assets/test/second.svg", "bytes": 8, "sha256": "b" * 64}
+        manifest = {"schema_version": 1, "storage": {"provider": "huggingface", "repository": "owner/data", "revision": "c" * 40},
+                    "entries": [{"key": "synapse/same", **first}, {"key": "synapse/same", **second, "view_box": "0 0 20 20", "width": 20, "height": 20}],
+                    "list_entries": [{"key": "synapse/same", "provider": "tables"}] * 2,
+                    "fonts": [first], "files": [first, second]}
+        datasets = {"mapping": mapping, "mapping_without_exclusions": alternate, "macro": macro}
+        connection = sqlite3.connect(":memory:")
+        self.addCleanup(connection.close)
+        resource_database.fill(connection, manifest, datasets, search)
+        return connection, manifest, datasets, search
+
+    def test_complete_roundtrip_keeps_duplicates_and_profile_branches(self):
+        connection, manifest, datasets, search = self.fixture()
+        resource_database.verify_rows(connection, manifest, datasets, search)
+        self.assertEqual(connection.execute("SELECT count(*) FROM emoji_entry").fetchone()[0], 2)
+        self.assertEqual(connection.execute("SELECT count(*) FROM emoji_group_list").fetchone()[0], 1)
+        self.assertEqual(connection.execute("SELECT count(*) FROM emoji_variant_set").fetchone()[0], 1)
+        aliases = connection.execute("SELECT key, file_id FROM resource_alias ORDER BY position").fetchall()
+        self.assertEqual(aliases, [("synapse/same", 0), ("synapse/same", 1)])
+
+    def test_changed_order_or_text_is_rejected_and_foreign_keys_are_enforced(self):
+        connection, manifest, datasets, search = self.fixture()
+        with self.assertRaises(sqlite3.IntegrityError):
+            connection.execute("INSERT INTO emoji_search VALUES (3, 999)")
+        connection.execute("UPDATE emoji_search SET entry_id=1 WHERE position=0")
+        with self.assertRaisesRegex(ValueError, "order, duplicates or text"):
+            resource_database.verify_rows(connection, manifest, datasets, search)
 
 
 if __name__ == "__main__":

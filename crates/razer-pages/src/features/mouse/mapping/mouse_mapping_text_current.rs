@@ -1,32 +1,10 @@
 //! Current mounted MapText factories and independently extracted emoji policies.
 use super::*;
 use crate::features::mapping_text_editor::{
-    CharacterMapRequested, EmojiData, MappingTextEditor, TextChanged,
+    CharacterMapRequested, MappingTextEditor, TextChanged, mouse_text_policy,
 };
 use gpui_kit::component::input::{InputEvent, TextareaState};
 
-#[derive(Deserialize)]
-struct Policy {
-    product_id: u32,
-    group: String,
-    version_filter: bool,
-    data_index: usize,
-}
-#[derive(Deserialize)]
-struct Policies {
-    products: Vec<Policy>,
-    datasets: Vec<EmojiData>,
-}
-fn policies() -> &'static Policies {
-    static DATA: OnceLock<Policies> = OnceLock::new();
-    DATA.get_or_init(|| crate::data::mouse_mapping_text_current_data!())
-}
-fn policy(product_id: u32) -> Option<&'static Policy> {
-    policies()
-        .products
-        .iter()
-        .find(|p| p.product_id == product_id)
-}
 pub struct MouseCharacterMapRequested;
 impl EventEmitter<MouseCharacterMapRequested> for MouseProductWorkspace {}
 
@@ -37,7 +15,7 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let Some(policy) = policy(self.spec.product_id) else {
+        let Some(policy) = mouse_text_policy(self.spec.product_id) else {
             return;
         };
         let value = if button["assignment"] == "TEXT_FUNCTION"
@@ -56,8 +34,8 @@ impl MouseProductWorkspace {
         let editor = cx.new(|cx| {
             MappingTextEditor::new_with_data(
                 input.clone(),
-                &policies().datasets[policy.data_index],
-                policy.version_filter,
+                policy.emoji_data(),
+                policy.version_filter(),
                 window,
                 cx,
             )
@@ -128,10 +106,10 @@ impl MouseProductWorkspace {
         )
     }
     pub(super) fn current_mouse_text_payload(&self, button: &Value) -> Option<Vec<Value>> {
-        let policy = policy(self.spec.product_id)?;
+        let policy = mouse_text_policy(self.spec.product_id)?;
         let state = &self.mapping_current_state;
-        let mut payload = json!({"inputID":button["inputID"],"inputType":button["inputType"],"isHyperShift":self.hypershift,"outputType":policy.group});
-        payload[&policy.group] = json!({"text":state.text_value});
+        let mut payload = json!({"inputID":button["inputID"],"inputType":button["inputType"],"isHyperShift":self.hypershift,"outputType":policy.group()});
+        payload[policy.group()] = json!({"text":state.text_value});
         Some(vec![payload])
     }
 }

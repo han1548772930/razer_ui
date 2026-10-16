@@ -40,9 +40,9 @@ pub enum CameraLocalActionRequested {
 
 #[derive(Deserialize)]
 pub(super) struct CameraPreviewSpec {
-    source_title: String,
-    preview_off: String,
-    enable_preview: String,
+    pub(super) source_title: String,
+    pub(super) preview_off: String,
+    pub(super) enable_preview: String,
 }
 
 fn settings_blocked(product_id: u32, observation: &CameraPreviewObservation) -> bool {

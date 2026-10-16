@@ -1,4 +1,5 @@
 //! Pure source selection/resource closure coverage; no window or device runs.
+use super::super::resource_fixtures as fixtures;
 use super::*;
 use gpui_kit::AssetSource;
 use razer_assets::SynapseAssets;
@@ -8,9 +9,6 @@ fn all_current_controller_images_have_manifest_entries_and_source_dimensions() {
     // Only original PNG IHDR bytes/SVG root tags are needed for these geometry
     // assertions. Full resource closure is checked by the resource manifest;
     // pure tests never queue a runtime download or inspect an installation cache.
-    mod fixtures {
-        include!("../../../testdata/resource_cases.rs");
-    }
     let entries = SynapseAssets
         .list("synapse/")
         .unwrap()

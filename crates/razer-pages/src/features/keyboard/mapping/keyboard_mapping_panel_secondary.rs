@@ -4,11 +4,11 @@ use std::{cell::RefCell, time::Duration};
 
 #[derive(Deserialize)]
 pub(super) struct Metadata {
-    group_field: String,
-    assignment_field: String,
-    default_assignment: String,
-    label: String,
-    asset: String,
+    pub(super) group_field: String,
+    pub(super) assignment_field: String,
+    pub(super) default_assignment: String,
+    pub(super) label: String,
+    pub(super) asset: String,
 }
 #[derive(Default)]
 pub(super) struct State {

@@ -10,6 +10,7 @@
 # Keep only source tables and the native tray/menu icons in the source repo.
 /assets/**
 !/assets/synapse/
+!/assets/synapse/resource-catalog.sqlite3
 !/assets/synapse/tables/
 !/assets/synapse/tables/*.rs
 !/assets/synapse/shared/
@@ -43,6 +44,8 @@
 !/tools/analyzers/ilspycmd-9.1.0.7988/acquisition.json
 /tools/analyzers/innounp-2.71.1/*
 !/tools/analyzers/innounp-2.71.1/acquisition.json
+/tools/analyzers/python-static/*
+!/tools/analyzers/python-static/acquisition.json
 /tools/ida/analysis-current/
 /tools/ida/idausr/*.cfg
 /tools/ida/idausr/proccache64.lst

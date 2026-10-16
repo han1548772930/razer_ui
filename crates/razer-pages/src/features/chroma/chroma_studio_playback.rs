@@ -7,11 +7,11 @@ use std::time::Duration;
 
 #[derive(Deserialize)]
 pub(super) struct PlaybackSource {
-    start: Vec<String>,
-    end: Vec<String>,
-    labels: BTreeMap<String, String>,
-    min: i64,
-    max: i64,
+    pub(super) start: Vec<String>,
+    pub(super) end: Vec<String>,
+    pub(super) labels: BTreeMap<String, String>,
+    pub(super) min: i64,
+    pub(super) max: i64,
 }
 pub(super) struct PlaybackChanged(pub(super) Value);
 impl EventEmitter<PlaybackChanged> for StudioPlayback {}

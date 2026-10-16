@@ -11,33 +11,33 @@ use std::time::Duration;
 #[derive(Deserialize)]
 pub(super) struct CameraGroup {
     pub(super) key: String,
-    title: String,
+    pub(super) title: String,
     pub(super) controls: Vec<String>,
-    collapsible: bool,
+    pub(super) collapsible: bool,
     #[serde(default)]
-    presentation: Option<String>,
+    pub(super) presentation: Option<String>,
     #[serde(default)]
-    divider: Option<String>,
+    pub(super) divider: Option<String>,
     #[serde(default)]
-    header_switch: Option<String>,
+    pub(super) header_switch: Option<String>,
     #[serde(default)]
-    header_stepper: Option<String>,
+    pub(super) header_stepper: Option<String>,
     #[serde(default)]
-    header_checkbox: Option<String>,
+    pub(super) header_checkbox: Option<String>,
     #[serde(default)]
-    header_reset: Option<String>,
+    pub(super) header_reset: Option<String>,
     #[serde(default)]
-    tooltip: Option<String>,
+    pub(super) tooltip: Option<String>,
     #[serde(default)]
-    warning: Option<String>,
+    pub(super) warning: Option<String>,
     #[serde(default)]
-    warning_any: Vec<String>,
+    pub(super) warning_any: Vec<String>,
     #[serde(default)]
-    description: Option<String>,
+    pub(super) description: Option<String>,
     #[serde(default)]
-    description_when_enabled: Option<String>,
+    pub(super) description_when_enabled: Option<String>,
     #[serde(default)]
-    description_min_height: Option<u64>,
+    pub(super) description_min_height: Option<u64>,
 }
 
 pub(super) fn help(id: SharedString, text: String, warning: bool) -> AnyElement {

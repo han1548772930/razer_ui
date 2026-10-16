@@ -13,9 +13,12 @@ impl MacroPage {
             return vec![];
         }
         let source = text_source();
-        let allowed = |value: &&String| {
+        let allowed = |value: &str| {
             self.text_ui.windows_version.as_deref() != Some("11")
-                || !source.excluded_windows_11.contains(value)
+                || !source
+                    .excluded_windows_11
+                    .iter()
+                    .any(|excluded| excluded == value)
         };
         let query = row.applied_query.to_lowercase();
         if query.is_empty() {
@@ -29,7 +32,12 @@ impl MacroPage {
                         } else {
                             tr(&group.name)
                         },
-                        group.values.iter().filter(allowed).cloned().collect(),
+                        group
+                            .values
+                            .iter()
+                            .filter(|value| allowed(value))
+                            .cloned()
+                            .collect(),
                     )
                 })
                 .collect()
@@ -39,8 +47,10 @@ impl MacroPage {
                 source
                     .search
                     .iter()
-                    .filter(|item| item.name.to_lowercase().contains(&query) && allowed(&&item.emo))
-                    .map(|item| item.emo.clone())
+                    .filter(|item| {
+                        item.name().to_lowercase().contains(&query) && allowed(item.emoji())
+                    })
+                    .map(|item| item.emoji().to_owned())
                     .collect(),
             )]
         }

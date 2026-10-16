@@ -2,7 +2,7 @@
 
 程序以安装包交付。`packaging/windows/RazerUI.iss` 使用 Inno Setup，默认安装到当前用户的 `%LOCALAPPDATA%\Programs\Razer UI`，无需管理员权限。可以选择其他可写目录；安装路径及缓存路径不能穿过符号链接或目录联接。最低系统设为 Windows 10 1703（15063），对应已存在的 GPUI EXE 静态导入的系统 ICU C API。
 
-安装内容只包括 Windows GUI 程序、必要且显式指定的运行库、原生图标及安装凭据。安装包不会包含产品资源目录、分析文件、`synapse.pack` 或 HF 访问令牌，也不会在安装时下载产品资源。
+安装内容包括 Windows GUI 程序、必要且显式指定的运行库、原生图标及安装凭据。程序中自带一份 SQLite 资源目录种子和静态编入的 SQLite，无需另装数据库或 SQLite DLL；首次使用可离线发布表情数据与资源索引。安装包不包含整套产品图片／视频／字体、分析文件、`synapse.pack` 或 HF 访问令牌，也不会在安装时下载产品资源。
 
 ## 目录和生命周期
 
@@ -13,8 +13,9 @@
 | `{app}/Razer UI.ico` | 从 Git 保留的原生 RGBA 尺寸无损封装，供快捷方式及卸载列表使用 |
 | `{app}/razer-ui-installation.json` | 安装方式、版本、体系结构、主程序及相对缓存位置 |
 | `{app}/assets/cache/` | 程序按需获取的资源缓存；升级保留，后续启动和离线可复用 |
+| `{app}/assets/cache/catalogs/<内容SHA>.sqlite3` | 从程序自带字节原子发布的只读表情与资源目录；缺失或损坏离线恢复，升级使用新内容版本并保留已有缓存 |
 
-缓存位置按当前主程序所在目录计算，不依赖工作目录、源码仓库的 `assets/` 或机器上的另一份安装。具体按需读取和失败处理由资源运行时负责，安装器不预先取回完整资源集。
+缓存位置通过 `razer-resource-db::InstallationPaths` 按当前主程序所在目录统一计算，不依赖工作目录、源码仓库的 `assets/` 或机器上的另一份安装。目录库在 UI 构造前发布、核验并打开，权限、文件或数据库错误会阻止初始化，不返回空词表。媒体仍按需读取和验证，安装器不预先取回完整资源集。目录库副本属于同一缓存生命周期；卸载保留缓存时保留它们，选择清理时一起限定在本安装的 `assets/cache/` 内删除，重新安装可再次从程序内恢复目录库。
 
 开始菜单始终创建入口，桌面快捷方式由用户选择；安装完成不自动运行程序。更新使用 Inno Setup 的文件占用检测，保留缓存，不强制终止进程。安装凭据同时记入 HKCU `Software\Razer UI` 的 `InstallLocation`、`CacheRelative`、`Version`。x64 与 arm64 共用稳定 AppId，同一安装位置升级，不注册成两份互相覆盖的应用。
 
@@ -47,7 +48,7 @@ python tools/workspace.py compile-windows-installer --stage target/installer/win
 
 ## 静态验证边界
 
-安装路径归属、当前用户权限、缓存保留和卸载边界属于安装架构；Razer 设备协议仍需当前原始源码与二进制证据。资源仓库和固定提交由 `tools/asset-release.json` 及其生成的 Rust 索引管理，程序按实际请求取得单个文件，长度与 SHA-256 校验通过后才发布到缓存。有效缓存无需凭据或网络即可复用。
+安装路径归属、当前用户权限、缓存保留和卸载边界属于安装架构；Razer 设备协议仍需当前原始源码与二进制证据。资源仓库和固定提交由 `tools/asset-release.json` 及其生成的 SQLite 索引管理，程序按实际请求取得单个媒体文件，长度与 SHA-256 校验通过后才发布到缓存。有效缓存无需凭据或网络即可复用。
 
 Inno Setup 行为对照官方文档：[最低权限](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm)、[体系结构](https://jrsoftware.org/ishelp/topic_setup_architecturesallowed.htm)、[文件占用](https://jrsoftware.org/ishelp/topic_setup_closeapplications.htm)、[卸载事件](https://jrsoftware.org/ishelp/topic_scriptevents.htm)、[限定删除](https://jrsoftware.org/ishelp/topic_isxfunc_deltree.htm)。系统 ICU 最低版本对照 [Microsoft ICU 说明](https://learn.microsoft.com/en-us/windows/win32/intl/international-components-for-unicode--icu-)。参考源码只用于静态阅读。
 

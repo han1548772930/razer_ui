@@ -11,6 +11,7 @@ use gpui_kit::component::{
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_catalog::emoji::EmojiSearchTable;
 use razer_i18n as i18n;
 use razer_widgets::source_alert::AlertAction;
 use razer_widgets::source_alert::AlertPlacement;
@@ -27,7 +28,6 @@ struct SourceShortcutChoice {
     id: String,
     content: String,
 }
-#[derive(Deserialize)]
 struct SourceShortcutData {
     functions: Vec<String>,
     key_names: std::collections::BTreeMap<String, String>,
@@ -41,13 +41,37 @@ struct SourceShortcutData {
     excluded_keys: Vec<String>,
     emoji: SourceEmojiData,
 }
-#[derive(Deserialize)]
 struct SourceEmojiData {
     groups: Vec<SourceEmojiGroup>,
     tabs: Vec<SourceEmojiTab>,
-    search: Vec<SourceEmojiSearch>,
+    search: &'static EmojiSearchTable,
     variants: std::collections::BTreeMap<String, Vec<String>>,
     excluded_without_windows_10: Vec<String>,
+}
+impl SourceEmojiData {
+    fn from_catalog(id: razer_catalog::emoji::DatasetId) -> Self {
+        let source = razer_catalog::emoji::dataset(id);
+        Self {
+            groups: source
+                .groups()
+                .iter()
+                .map(|group| SourceEmojiGroup {
+                    values: group.values().to_vec(),
+                })
+                .collect(),
+            tabs: source
+                .tabs()
+                .iter()
+                .map(|tab| SourceEmojiTab {
+                    emo: tab.emoji().to_owned(),
+                    name: tab.name().to_owned(),
+                })
+                .collect(),
+            search: razer_catalog::emoji::search(),
+            variants: source.variants().clone(),
+            excluded_without_windows_10: source.exclusions().to_vec(),
+        }
+    }
 }
 #[derive(Deserialize)]
 struct SourceEmojiGroup {
@@ -55,11 +79,6 @@ struct SourceEmojiGroup {
 }
 #[derive(Deserialize)]
 struct SourceEmojiTab {
-    emo: String,
-    name: String,
-}
-#[derive(Deserialize)]
-struct SourceEmojiSearch {
     emo: String,
     name: String,
 }

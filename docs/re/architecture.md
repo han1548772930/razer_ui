@@ -5,7 +5,7 @@
 | 层 | 现有 crate | 责任 |
 | --- | --- | --- |
 | 应用与页面 | `razer-app`、`razer-shell`、`razer-pages`、`razer-app-pages`、`razer-dashboard`、`razer-settings`、`razer-tray` | 窗口、页面挂载与本地动作协调；不直接承担设备协议 |
-| 表达与本地状态 | `razer-widgets`、`razer-assets`、`razer-i18n`、`razer-model`、`razer-state`、`razer-storage`、`razer-catalog` | 来源资源、类型、状态及本地持久化；草稿与设备状态区分 |
+| 表达与本地状态 | `razer-widgets`、`razer-assets`、`razer-resource-db`、`razer-i18n`、`razer-model`、`razer-state`、`razer-storage`、`razer-catalog` | 来源资源、只读 SQLite 目录、类型、状态及本地持久化；草稿与设备状态区分 |
 | 本地通信与服务 | `razer-ipc`、`razer-agent`、`razer-service` | 类型化请求／响应、后台操作、生命周期、取消和失败 |
 | 协议与系统适配 | `razer-device`、`razer-hid`、`razer-discovery`、`razer-platform` | 协议编解码、身份与能力、transport、设备发现及平台集成 |
 
@@ -25,7 +25,11 @@ crate 内按功能组织源码、相关测试和配套数据。`razer-device` �
 
 ## OpenLogi 源码参考
 
-旧文档记录 2026-10-13 参考提交 `74d243fcf1a86007df9401499bff3716663d54d8`；2026-10-15 本轮盘点未找到 `.analysis/references/OpenLogi-current/acquisition.json`，因此不能沿用 37 个文件已完整保留的结论。以下列出原参考的定位和设计边界，需恢复固定提交原件并核对获取收据与字节身份后再作源码证据使用。OpenLogi 仅作架构参考，不使用其 HID++／UVC 实现推断 Razer 协议，也未运行 OpenLogi。
+本轮静态读取 [OpenLogi 固定提交 42af6f45](https://github.com/AprilNEA/OpenLogi/tree/42af6f45ef0d6659ebfdcc2ccb476dc4e6cc0340)，原件保留于 `.analysis/references/openlogi-current/`。该提交的 Cargo 依赖和资源模块没有使用 SQLite：`docs/CONFIGURATION.md` 定义共享 TOML 用户配置；`openlogi-assets/src/index.rs` 使用有类型的 `index.json`；`http.rs::fetch_entry_if_stale` 在缓存 SHA 命中时跳过下载，下载验证后原子替换；桌面 `services/assets/paths.rs` 区分 macOS 包内资源与用户缓存。Windows WiX 是当前用户安装，不能从 macOS 包内读取分支推断所有 Windows 资源始终离线交付。完整原文件及实际字节身份见该目录的 `acquisition.json`。
+
+本项目参考安装内容、用户配置和媒体缓存各自的生命周期，按用户明确选择将静态表情与完整资源索引存入随程序交付的 SQLite；协议表保留 Rust 类型。`razer-resource-db` 集中定位安装缓存、原子发布自带种子并只读打开；`razer-catalog::emoji` 与 `razer-assets::remote` 分别负责 typed 解码和稳定快照。升级采用内容版本文件名并保留既有缓存，卸载遵循同一安装缓存范围。OpenLogi 的缺图 silhouette 和启动索引同步策略不作为本项目行为依据；Razer 资源失败和按需请求仍遵守当前来源链及本项目 MD。未执行 OpenLogi 或真实应用验收。
+
+旧参考提交 `74d243fcf1a86007df9401499bff3716663d54d8` 的获取收据仍缺失；下表保留它的待恢复定位，不能沿用旧文件数量或将其作为本轮已核验事实。OpenLogi 仅作架构参考，不使用其 HID++／UVC 实现推断 Razer 协议。
 
 | 待恢复的参考源码 | 项目设计边界 |
 | --- | --- |

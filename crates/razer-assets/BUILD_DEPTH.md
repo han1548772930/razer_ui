@@ -1,6 +1,6 @@
 # 资源索引与编译边界
 
-产品只编译有类型的资源索引和必需的 9 个原生 RGBA 图标，避免把整套图片放入 PE。`assets/synapse/tables/asset-tables-source.rs` 供维护工具解析，不作为携带图片的 Rust 模块编译；`remote-assets.rs` 由固定资源清单生成。[src/lib.rs](src/lib.rs) 保留原资源 alias、加载优先级和列表语义，载荷由资源运行时按单个文件获取。
+产品编入一份 SQLite 资源目录种子和必需的 9 个原生 RGBA 图标，避免把整套媒体放入 PE。`assets/synapse/tables/asset-tables-source.rs` 供维护工具解析，不作为携带图片的 Rust 模块编译；`assets/synapse/resource-catalog.sqlite3` 由统一入口生成，保存完整表情数据及固定资源索引。`razer-resource-db` 统一管理种子的离线原子发布、安装缓存位置与只读连接；[src/remote.rs](src/remote.rs) 解码并验证有类型索引，保留原 alias、加载优先级和列表语义，render 不执行 SQL，媒体由运行时按单个文件获取。
 
 索引保留源表顺序、重复 alias、sprite fragment 和本地音频 demo 控件的优先级，未注册的键仍交给 GPUI Kit `AllAssets`。已声明而加载失败的文件保持真实错误，不能伪装为缺失键或空图。
 
@@ -10,6 +10,7 @@
 
 ```powershell
 python tools/workspace.py verify-runtime-assets
+python tools/workspace.py prepare-resource-database --check
 python tools/workspace.py prepare-typed-data --check --crate razer-assets
 cargo check --locked --offline -p razer-assets --all-targets
 ```

@@ -95,7 +95,7 @@ macro_rules! chroma_studio_data {
                             ("duration".into(),serde_json::Value::Number(14000u64.into())),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     paint_params: serde_json::Value::Object(
@@ -106,7 +106,7 @@ macro_rules! chroma_studio_data {
                             ("duration".into(),serde_json::Value::Number(14000u64.into())),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     duration_values: vec![28000u64,14000u64,6000u64]
@@ -123,7 +123,7 @@ macro_rules! chroma_studio_data {
                                 serde_json::Value::Object([].into_iter().collect())
                             ),
                             ("effectConfigList".into(),serde_json::Value::Array(vec![])),
-                            ("currentConfigId".into(),serde_json::Value::Number(-1i64.into()))
+                            ("currentConfigId".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     paint_params: serde_json::Value::Object(
@@ -134,7 +134,7 @@ macro_rules! chroma_studio_data {
                                 serde_json::Value::Object([].into_iter().collect())
                             ),
                             ("effectConfigList".into(),serde_json::Value::Array(vec![])),
-                            ("currentConfigId".into(),serde_json::Value::Number(-1i64.into()))
+                            ("currentConfigId".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     duration_values: vec![]
@@ -575,7 +575,7 @@ macro_rules! chroma_studio_data {
                             ("split".into(),serde_json::Value::Bool(true)),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     paint_params: serde_json::Value::Object(
@@ -588,7 +588,7 @@ macro_rules! chroma_studio_data {
                             ("split".into(),serde_json::Value::Bool(true)),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     duration_values: vec![]
@@ -607,7 +607,7 @@ macro_rules! chroma_studio_data {
                             ("split".into(),serde_json::Value::Bool(false)),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     paint_params: serde_json::Value::Object(
@@ -711,7 +711,7 @@ macro_rules! chroma_studio_data {
                             ("split".into(),serde_json::Value::Bool(false)),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     duration_values: vec![]
@@ -726,7 +726,7 @@ macro_rules! chroma_studio_data {
                             ("speed".into(),serde_json::Value::Number(60u64.into())),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     paint_params: serde_json::Value::Object(
@@ -826,7 +826,7 @@ macro_rules! chroma_studio_data {
                             ("speed".into(),serde_json::Value::Number(60u64.into())),
                             ("playbackStart".into(),serde_json::Value::String("random".into())),
                             ("playbackEnd".into(),serde_json::Value::String("never".into())),
-                            ("cycles".into(),serde_json::Value::Number(-1i64.into()))
+                            ("cycles".into(),serde_json::Value::Number((-1i64).into()))
                         ].into_iter().collect()
                     ),
                     duration_values: vec![]

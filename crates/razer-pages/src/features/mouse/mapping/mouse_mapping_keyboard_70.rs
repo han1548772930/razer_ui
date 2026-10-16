@@ -202,7 +202,7 @@ impl MouseProductWorkspace {
                         id.and_then(key)
                             .is_some_and(|key| key.key_code == candidate.key_code)
                     } else {
-                        candidate["inputID"].as_str() == id
+                        candidate.input_id.as_deref() == id
                     }
                 })
                 .or_else(|| candidates.into_iter().next())

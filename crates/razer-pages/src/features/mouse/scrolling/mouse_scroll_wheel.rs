@@ -84,7 +84,7 @@ pub(super) struct ScrollWheelSpec {
     #[serde(default)]
     smart_reel_descriptions: Vec<String>,
 }
-pub(super) fn source_spec(product_id: u32) -> Option<&'static ScrollWheelSpec> {
+fn source_specs() -> &'static [ScrollWheelSpec] {
     static DATA: OnceLock<Vec<ScrollWheelSpec>> = OnceLock::new();
     DATA.get_or_init(|| {
         let specs: Vec<ScrollWheelSpec> = crate::data::mouse_scroll_wheel_data!();
@@ -105,8 +105,12 @@ pub(super) fn source_spec(product_id: u32) -> Option<&'static ScrollWheelSpec> {
         }
         specs
     })
-    .iter()
-    .find(|spec| spec.product_id == product_id)
+}
+
+pub(super) fn source_spec(product_id: u32) -> Option<&'static ScrollWheelSpec> {
+    source_specs()
+        .iter()
+        .find(|spec| spec.product_id == product_id)
 }
 
 /// Projections of the six current reducer observation actions, not UI write acknowledgements.
@@ -800,7 +804,7 @@ impl Render for ScrollWheelEditor {
 mod tests {
     use super::{
         Feature, Presentation, ScrollWheelEditor, ScrollWheelObservation, ScrollWheelSpec,
-        source_spec,
+        source_spec, source_specs,
     };
     use gpui_kit::component::Root;
     use gpui_kit::test::TestWindowExt;
@@ -816,7 +820,7 @@ mod tests {
             gpui_kit::init(cx);
             cx.set_reduce_motion(true);
         });
-        let catalog: Vec<ScrollWheelSpec> = crate::data::mouse_scroll_wheel_data!();
+        let catalog = source_specs();
         for presentation in [Presentation::TwoModeLevels, Presentation::TwoModeSwitches] {
             let pid = catalog
                 .iter()

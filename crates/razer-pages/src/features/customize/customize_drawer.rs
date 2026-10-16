@@ -167,13 +167,17 @@ fn keyboard_inputs(layout: u32) -> &'static [SourceInput] {
             (1..=18)
                 .filter_map(|layout| {
                     razer_assets::keyboard_source_for_layout(layout).map(|source| {
-                        let inputs = source.iter().flat_map(razer_assets::KeyboardSourceGroup::inputs)
+                        let inputs = source
+                            .iter()
+                            .flat_map(razer_assets::KeyboardSourceGroup::inputs)
                             .map(|input| SourceInput {
                                 id: input.id().into(),
                                 button_key: input.button_key().into(),
                                 input_type: input.input_type().into(),
                                 counter: match input.counter() {
-                                    razer_assets::InputCounter::Label(value) => value.clone().into(),
+                                    razer_assets::InputCounter::Label(value) => {
+                                        value.clone().into()
+                                    }
                                     razer_assets::InputCounter::Number(value) => (*value).into(),
                                 },
                                 default_value: input.default_value().into(),

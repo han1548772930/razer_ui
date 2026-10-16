@@ -16,7 +16,19 @@ impl TemporaryDirectory {
 }
 impl Drop for TemporaryDirectory {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
+        let actual = self.0.canonicalize().unwrap();
+        assert_eq!(
+            actual.parent(),
+            Some(std::env::temp_dir().canonicalize().unwrap().as_path())
+        );
+        assert!(
+            actual
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .starts_with("razer-resource-tests-")
+        );
+        let _ = fs::remove_dir_all(actual);
     }
 }
 
@@ -30,7 +42,9 @@ fn file(path: &str, bytes: &[u8]) -> ResourceFile {
 
 #[test]
 fn cache_is_beside_the_installation_and_scoped_by_product_and_content() {
-    let cache = Cache::alongside(Path::new("installation/razer_ui.exe")).unwrap();
+    let installation = std::env::temp_dir().join("razer-resource-installation");
+    let cache = Cache::alongside(&installation.join("razer_ui.exe")).unwrap();
+    assert!(Cache::alongside(Path::new("installation/razer_ui.exe")).is_err());
     let first = file("assets/synapse/products/182/icon.svg", b"one");
     let next = file("assets/synapse/products/182/icon.svg", b"two");
     let other = file("assets/synapse/products/214/icon.svg", b"one");
@@ -38,7 +52,7 @@ fn cache_is_beside_the_installation_and_scoped_by_product_and_content() {
         cache
             .path(&first)
             .unwrap()
-            .starts_with("installation/assets/cache/synapse/products/182")
+            .starts_with(installation.join("assets/cache/synapse/products/182"))
     );
     assert_ne!(cache.path(&first).unwrap(), cache.path(&next).unwrap());
     assert_ne!(cache.path(&first).unwrap(), cache.path(&other).unwrap());

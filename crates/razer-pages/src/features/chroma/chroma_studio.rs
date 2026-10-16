@@ -46,7 +46,7 @@ mod studio_region_preset;
 mod studio_slider;
 #[path = "chroma_studio_theme.rs"]
 mod theme;
-use studio_gradient_data::GradientDefinition;
+use studio_gradient_data::{GradientDefinition, GradientPoint};
 use studio_playback::PlaybackSource;
 use theme::Colors;
 

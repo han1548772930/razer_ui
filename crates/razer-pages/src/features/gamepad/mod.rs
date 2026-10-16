@@ -38,10 +38,14 @@ pub use trigger_runtime::ControllerTriggerRequested;
 mod calibration_selection;
 #[path = "gamepad_customize_artwork.rs"]
 mod customize_artwork;
+
 #[path = "gamepad_deadzone_dialog.rs"]
 mod deadzone_dialog;
 #[path = "kitsune.rs"]
 mod kitsune;
+#[cfg(test)]
+#[path = "../../../testdata/resource_cases.rs"]
+mod resource_fixtures;
 #[path = "gamepad_thumbsticks.rs"]
 mod thumbsticks;
 #[path = "gamepad_trigger_calibration_renderer.rs"]

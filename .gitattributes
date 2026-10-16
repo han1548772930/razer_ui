@@ -11,6 +11,7 @@ assets/**/*.woff -text
 assets/**/*.woff2 -text
 assets/**/*.ttf -text
 assets/**/*.otf -text
+assets/synapse/resource-catalog.sqlite3 -filter -diff -merge -text
 tools/analyzers/ccl-chromium-reader/** -text
 tools/analyzers/python-static/tree_sitter*/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 tools/analyzers/pillow/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

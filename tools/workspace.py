@@ -945,7 +945,9 @@ def prepare_static_python():
     wheel_root = safe(ROOT / ".analysis/references/python-static-wheels")
     wheel_root.mkdir(parents=True, exist_ok=True)
     wheels, files, indexed = [], [], []
-    for pinned in previous["wheels"]:
+    pins = {row["name"]: row for row in previous["wheels"]}
+    pins["tree-sitter-rust"] = {"name": "tree-sitter-rust", "version": "0.24.2"}
+    for pinned in pins.values():
         name, version = pinned["name"], pinned["version"]
         metadata_url = f"https://pypi.org/pypi/{name}/{version}/json"
         with urllib.request.urlopen(metadata_url, timeout=40) as response:
@@ -998,7 +1000,7 @@ def prepare_static_python():
                 files.append({"path": relative(target), "bytes": len(content), "sha256": digest(target),
                               "wheel": relative(wheel_path), "member": member.filename})
     receipt = {"schema_version": 1, "acquired_at_utc": analysis.stamp(), "python_abi": abi + "-" + platform,
-               "target_execution": False, "scope": "Static JavaScript parsing analyzers only; project-local installation",
+               "target_execution": False, "scope": "Static JavaScript and Rust parsing analyzers; project-local installation",
                "wheels": wheels, "files": files}
     write_json(receipt_path, receipt)
     analysis.index_files(indexed)
@@ -1008,6 +1010,10 @@ def prepare_static_python():
     tree = Parser(Language(tree_sitter_javascript.language())).parse(b"export const value = {enabled: true};")
     if tree.root_node.has_error:
         raise ValueError("Restored static parser failed its syntax smoke check")
+    import tree_sitter_rust
+    tree = Parser(Language(tree_sitter_rust.language())).parse(b"pub struct SourceEntry { name: &'static str }")
+    if tree.root_node.has_error:
+        raise ValueError("Restored Rust parser failed its syntax smoke check")
     return {"receipt": relative(receipt_path), "sha256": digest(receipt_path),
             "python_abi": receipt["python_abi"], "files_verified": len(files), "static_parse_passed": True}
 
@@ -4585,6 +4591,9 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib"]),
         ("shell-store-migration", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "store::tests"]),
         ("catalog-registry", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "registry::tests"]),
+        ("emoji-search", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "emoji::tests"]),
+        ("resource-database", ["cargo", "test", "--locked", "--offline", "-p", "razer-resource-db", "--lib"]),
+        ("resource-database-index", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "remote::database_tests"]),
         ("model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
         ("i18n", ["cargo", "test", "--locked", "--offline", "-p", "razer-i18n", "--lib"]),
         ("discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib"]),
@@ -4898,9 +4907,10 @@ def main():
     import windows_installer
     import typed_tables
     import rust_data
+    import resource_database
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
+    for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
     pack_audit = commands.add_parser("audit-asset-pack")
     pack_audit.add_argument("--prepare", action="store_true", help="Generate the exact ordered production asset-list.json")
@@ -4942,6 +4952,7 @@ def main():
     windows_installer.add_commands(commands)
     typed_tables.add_commands(commands)
     rust_data.add_commands(commands)
+    resource_database.add_commands(commands)
     for name in ("prepare-runtime-assets", "verify-runtime-assets"):
         runtime_assets = commands.add_parser(name)
         runtime_assets.add_argument("--check-local", action="store_true", help="Verify existing local bytes without fetching")
@@ -5001,8 +5012,12 @@ def main():
         print(json.dumps(asset_release.run(args), ensure_ascii=False), flush=True)
     elif args.command in {"prepare-device-write-table", "prepare-storage-tables", "prepare-local-protocol-tables"}:
         print(json.dumps(typed_tables.run(args), ensure_ascii=False), flush=True)
-    elif args.command == "prepare-typed-data":
+    elif args.command in {"prepare-typed-data", "prepare-emoji-search"}:
         print(json.dumps(rust_data.run(args), ensure_ascii=False), flush=True)
+    elif args.command == "prepare-resource-database":
+        print(json.dumps(resource_database.run(args), ensure_ascii=False), flush=True)
+    elif args.command == "prepare-static-python":
+        print(json.dumps(prepare_static_python(), ensure_ascii=False), flush=True)
     elif args.command == "prepare-runtime-assets":
         print(json.dumps(asset_release.prepare_runtime_metadata(check_local=args.check_local), ensure_ascii=False), flush=True)
     elif args.command == "verify-runtime-assets":

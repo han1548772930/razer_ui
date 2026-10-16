@@ -339,6 +339,7 @@ impl GamepadProductWorkspace {
 
 #[cfg(test)]
 mod tests {
+    use super::super::resource_fixtures as fixtures;
     use super::{Meter, decode_artwork, dynamic_svg, media_scale};
     use gpui_kit::AssetSource;
     use razer_assets::SynapseAssets;
@@ -396,9 +397,6 @@ mod tests {
 
     #[test]
     fn original_svg_trigger_elements_accept_observations_without_resource_io() {
-        mod fixtures {
-            include!("../../../testdata/resource_cases.rs");
-        }
         for &(pid, source) in fixtures::GAMEPAD_TRIGGER_ELEMENTS {
             let art = decode_artwork(pid, 0, source.as_bytes()).unwrap();
             assert!(art.width > 0. && art.height > 0.);

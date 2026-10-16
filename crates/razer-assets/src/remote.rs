@@ -35,10 +35,6 @@ pub fn is_resource_pending(error: &anyhow::Error) -> bool {
     error.is::<ResourcePending>()
 }
 
-mod metadata {
-    include!("../../../assets/synapse/tables/remote-assets.rs");
-}
-
 #[derive(Clone, Deserialize)]
 pub(super) struct ResourceFile {
     pub path: String,
@@ -190,12 +186,128 @@ pub(super) fn manifest() -> anyhow::Result<&'static Manifest> {
     static MANIFEST: OnceLock<Result<Manifest, String>> = OnceLock::new();
     MANIFEST
         .get_or_init(|| {
-            metadata::manifest()
-                .validate()
+            read_manifest()
+                .and_then(Manifest::validate)
                 .map_err(|error| format!("{error:#}"))
         })
         .as_ref()
         .map_err(|error| anyhow::anyhow!("{error}"))
+}
+
+fn read_manifest() -> anyhow::Result<Manifest> {
+    razer_resource_db::read_catalog(|connection| {
+        let (schema_version, storage) = connection.query_row(
+            "SELECT schema_version, provider, repository, revision FROM resource_storage WHERE id=1", [],
+            |row| Ok((row.get(0)?, Storage { provider: row.get(1)?, repository: row.get(2)?, revision: row.get(3)? })),
+        )?;
+        let mut statement = connection.prepare(
+            "SELECT a.key, f.path, f.bytes, f.sha256, a.view_box, a.width, a.height \
+             FROM resource_alias a JOIN resource_file f ON f.id=a.file_id ORDER BY a.position",
+        )?;
+        let entries = statement
+            .query_map([], |row| {
+                Ok(Entry {
+                    key: row.get(0)?,
+                    file: ResourceFile {
+                        path: row.get(1)?,
+                        bytes: row.get(2)?,
+                        sha256: row.get(3)?,
+                    },
+                    view_box: row.get(4)?,
+                    width: row.get(5)?,
+                    height: row.get(6)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut statement =
+            connection.prepare("SELECT key, provider FROM resource_list ORDER BY position")?;
+        let list_entries = statement
+            .query_map([], |row| {
+                Ok(ListEntry {
+                    key: row.get(0)?,
+                    provider: row.get(1)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut statement = connection.prepare(
+            "SELECT f.path, f.bytes, f.sha256 FROM resource_font o JOIN resource_file f ON f.id=o.file_id ORDER BY o.position",
+        )?;
+        let fonts = statement
+            .query_map([], |row| {
+                Ok(ResourceFile {
+                    path: row.get(0)?,
+                    bytes: row.get(1)?,
+                    sha256: row.get(2)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut statement = connection.prepare(
+            "SELECT f.path, f.bytes, f.sha256 FROM resource_file_order o JOIN resource_file f ON f.id=o.file_id ORDER BY o.position",
+        )?;
+        let files = statement
+            .query_map([], |row| {
+                Ok(ResourceFile {
+                    path: row.get(0)?,
+                    bytes: row.get(1)?,
+                    sha256: row.get(2)?,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Manifest {
+            schema_version,
+            storage,
+            entries,
+            list_entries,
+            fonts,
+            files,
+            keys: BTreeMap::new(),
+            paths: BTreeMap::new(),
+        })
+    })
+}
+
+#[cfg(test)]
+mod database_tests {
+    use super::*;
+
+    #[test]
+    fn database_index_retains_duplicate_priority_list_order_and_svg_viewports() {
+        let manifest = manifest().unwrap();
+        assert_eq!(manifest.entries.len(), 11973);
+        assert_eq!(manifest.files.len(), 7777);
+        assert_eq!(manifest.fonts.len(), 14);
+        let duplicate = "synapse/mouse-customize/f4f5f13b5ea47e5816fbf38f.png";
+        let positions = manifest
+            .entries
+            .iter()
+            .enumerate()
+            .filter_map(|(index, entry)| (entry.key == duplicate).then_some(index))
+            .collect::<Vec<_>>();
+        assert_eq!(positions, [1255, 11861]);
+        assert_eq!(manifest.keys[duplicate], positions[0]);
+        assert_eq!(
+            list("synapse/mouse-customize/")
+                .unwrap()
+                .iter()
+                .filter(|&&key| key == duplicate)
+                .count(),
+            2
+        );
+        let hover =
+            &manifest.entries[manifest.keys["synapse/audio-volume-external-sprite.svg#hover"]];
+        assert_eq!(hover.view_box.as_deref(), Some("0 20 20 20"));
+        assert_eq!((hover.width, hover.height), (Some(20), Some(20)));
+        assert!(list("synapse/audio-demo-control-").unwrap().is_empty());
+        assert_eq!(
+            &list("synapse/").unwrap()[..4],
+            &[
+                "synapse/audio-demo-control-play.svg",
+                "synapse/audio-demo-control-pause.svg",
+                "synapse/audio-demo-control-fullscreen.svg",
+                "synapse/audio-demo-control-fullscreen-exit.svg",
+            ]
+        );
+    }
 }
 
 pub(super) fn list(prefix: &str) -> anyhow::Result<Vec<&'static str>> {
@@ -270,11 +382,10 @@ pub(super) struct Cache {
 
 impl Cache {
     fn alongside(executable: &Path) -> anyhow::Result<Self> {
-        let directory = executable
-            .parent()
-            .context("Executable has no installation directory")?;
         Ok(Self {
-            root: directory.join("assets/cache"),
+            root: razer_resource_db::InstallationPaths::from_executable(executable)?
+                .cache_directory()
+                .to_owned(),
         })
     }
 
@@ -360,25 +471,35 @@ fn verified(file: &ResourceFile, bytes: &[u8]) -> bool {
 }
 
 fn embedded(path: &str) -> Option<&'static [u8]> {
-    macro_rules! native {
-        ($name:literal) => {
-            include_bytes!(concat!(
-                "../../../assets/synapse/shared/pending-source-audit/",
-                $name
-            )) as &[u8]
-        };
-    }
     let name = path.strip_prefix("assets/synapse/shared/pending-source-audit/")?;
     Some(match name {
-        "a64b8a64b721fb74-tray-native.rgba" => native!("a64b8a64b721fb74-tray-native.rgba"),
-        "f979021796dfd342-tray-app.rgba" => native!("f979021796dfd342-tray-app.rgba"),
-        "81851a9004a803d3-tray-icon-24.rgba" => native!("81851a9004a803d3-tray-icon-24.rgba"),
-        "71b354f660adb5db-tray-icon.rgba" => native!("71b354f660adb5db-tray-icon.rgba"),
-        "f8fd980e3bec82fe-tray-icon-40.rgba" => native!("f8fd980e3bec82fe-tray-icon-40.rgba"),
-        "5e5df98271550aca-tray-icon-48.rgba" => native!("5e5df98271550aca-tray-icon-48.rgba"),
-        "afb1350c23ce2416-tray-icon-64.rgba" => native!("afb1350c23ce2416-tray-icon-64.rgba"),
-        "7747f51f284ded65-tray-gear-dark.rgba" => native!("7747f51f284ded65-tray-gear-dark.rgba"),
-        "33892a0b56b91958-tray-gear-light.rgba" => native!("33892a0b56b91958-tray-gear-light.rgba"),
+        "a64b8a64b721fb74-tray-native.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba"
+        ),
+        "f979021796dfd342-tray-app.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba"
+        ),
+        "81851a9004a803d3-tray-icon-24.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/81851a9004a803d3-tray-icon-24.rgba"
+        ),
+        "71b354f660adb5db-tray-icon.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/71b354f660adb5db-tray-icon.rgba"
+        ),
+        "f8fd980e3bec82fe-tray-icon-40.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/f8fd980e3bec82fe-tray-icon-40.rgba"
+        ),
+        "5e5df98271550aca-tray-icon-48.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/5e5df98271550aca-tray-icon-48.rgba"
+        ),
+        "afb1350c23ce2416-tray-icon-64.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/afb1350c23ce2416-tray-icon-64.rgba"
+        ),
+        "7747f51f284ded65-tray-gear-dark.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/7747f51f284ded65-tray-gear-dark.rgba"
+        ),
+        "33892a0b56b91958-tray-gear-light.rgba" => include_bytes!(
+            "../../../assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba"
+        ),
         _ => return None,
     })
 }

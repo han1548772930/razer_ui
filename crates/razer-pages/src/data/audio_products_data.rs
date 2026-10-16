@@ -3467,16 +3467,16 @@ macro_rules! audio_products_data {
                                 "default".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-1i64.into())
+                                        serde_json::Value::Number((-1i64).into())
                                     ]
                                 )
                             ),
@@ -3484,16 +3484,16 @@ macro_rules! audio_products_data {
                                 "current".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-1i64.into())
+                                        serde_json::Value::Number((-1i64).into())
                                     ]
                                 )
                             )
@@ -3510,8 +3510,8 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -3527,8 +3527,8 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -3629,11 +3629,11 @@ macro_rules! audio_products_data {
                                 "default".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -3646,11 +3646,11 @@ macro_rules! audio_products_data {
                                 "current".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -3674,10 +3674,10 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-5i64.into())
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-5i64).into())
                                     ]
                                 )
                             ),
@@ -3691,10 +3691,10 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-5i64.into())
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-5i64).into())
                                     ]
                                 )
                             )
@@ -3707,16 +3707,16 @@ macro_rules! audio_products_data {
                                 "default".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(3u64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
+                                        serde_json::Value::Number((-2i64).into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(4u64.into()),
-                                        serde_json::Value::Number(-4i64.into())
+                                        serde_json::Value::Number((-4i64).into())
                                     ]
                                 )
                             ),
@@ -3724,16 +3724,16 @@ macro_rules! audio_products_data {
                                 "current".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-5i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
+                                        serde_json::Value::Number((-5i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(3u64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
+                                        serde_json::Value::Number((-2i64).into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(4u64.into()),
-                                        serde_json::Value::Number(-4i64.into())
+                                        serde_json::Value::Number((-4i64).into())
                                     ]
                                 )
                             )
@@ -3746,7 +3746,7 @@ macro_rules! audio_products_data {
                                 "default".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-4i64.into()),
+                                        serde_json::Value::Number((-4i64).into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -3754,7 +3754,7 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(4u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(4u64.into())
                                     ]
                                 )
@@ -3763,7 +3763,7 @@ macro_rules! audio_products_data {
                                 "current".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-4i64.into()),
+                                        serde_json::Value::Number((-4i64).into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(5u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -3771,7 +3771,7 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(4u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(4u64.into())
                                     ]
                                 )
@@ -3794,7 +3794,7 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(4u64.into()),
-                                        serde_json::Value::Number(-3i64.into())
+                                        serde_json::Value::Number((-3i64).into())
                                     ]
                                 )
                             ),
@@ -3811,7 +3811,7 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(4u64.into()),
-                                        serde_json::Value::Number(-3i64.into())
+                                        serde_json::Value::Number((-3i64).into())
                                     ]
                                 )
                             )
@@ -6037,7 +6037,7 @@ macro_rules! audio_products_data {
                             ("state".into(),serde_json::Value::Number(1u64.into())),
                             ("angle".into(),serde_json::Value::Number(0u64.into())),
                             ("defaultAngle".into(),serde_json::Value::Number(0u64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-15i64.into())),
+                            ("minAngle".into(),serde_json::Value::Number((-15i64).into())),
                             ("maxAngle".into(),serde_json::Value::Number(15u64.into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
@@ -6048,10 +6048,10 @@ macro_rules! audio_products_data {
                             ("id".into(),serde_json::Value::String("A1".into())),
                             ("name".into(),serde_json::Value::String("Front Right".into())),
                             ("state".into(),serde_json::Value::Number(1u64.into())),
-                            ("angle".into(),serde_json::Value::Number(-30i64.into())),
-                            ("defaultAngle".into(),serde_json::Value::Number(-30i64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-60i64.into())),
-                            ("maxAngle".into(),serde_json::Value::Number(-15i64.into())),
+                            ("angle".into(),serde_json::Value::Number((-30i64).into())),
+                            ("defaultAngle".into(),serde_json::Value::Number((-30i64).into())),
+                            ("minAngle".into(),serde_json::Value::Number((-60i64).into())),
+                            ("maxAngle".into(),serde_json::Value::Number((-15i64).into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
                         ].into_iter().collect()
@@ -6061,10 +6061,10 @@ macro_rules! audio_products_data {
                             ("id".into(),serde_json::Value::String("A6".into())),
                             ("name".into(),serde_json::Value::String("Side Right".into())),
                             ("state".into(),serde_json::Value::Number(1u64.into())),
-                            ("angle".into(),serde_json::Value::Number(-90i64.into())),
-                            ("defaultAngle".into(),serde_json::Value::Number(-90i64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-120i64.into())),
-                            ("maxAngle".into(),serde_json::Value::Number(-60i64.into())),
+                            ("angle".into(),serde_json::Value::Number((-90i64).into())),
+                            ("defaultAngle".into(),serde_json::Value::Number((-90i64).into())),
+                            ("minAngle".into(),serde_json::Value::Number((-120i64).into())),
+                            ("maxAngle".into(),serde_json::Value::Number((-60i64).into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
                         ].into_iter().collect()
@@ -6074,10 +6074,10 @@ macro_rules! audio_products_data {
                             ("id".into(),serde_json::Value::String("A4".into())),
                             ("name".into(),serde_json::Value::String("Rear Right".into())),
                             ("state".into(),serde_json::Value::Number(1u64.into())),
-                            ("angle".into(),serde_json::Value::Number(-150i64.into())),
-                            ("defaultAngle".into(),serde_json::Value::Number(-150i64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-180i64.into())),
-                            ("maxAngle".into(),serde_json::Value::Number(-120i64.into())),
+                            ("angle".into(),serde_json::Value::Number((-150i64).into())),
+                            ("defaultAngle".into(),serde_json::Value::Number((-150i64).into())),
+                            ("minAngle".into(),serde_json::Value::Number((-180i64).into())),
+                            ("maxAngle".into(),serde_json::Value::Number((-120i64).into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
                         ].into_iter().collect()
@@ -6140,16 +6140,16 @@ macro_rules! audio_products_data {
                                             serde_json::Value::String("Side Right".into())
                                         ),
                                         ("state".into(),serde_json::Value::Number(1u64.into())),
-                                        ("angle".into(),serde_json::Value::Number(-90i64.into())),
+                                        ("angle".into(),serde_json::Value::Number((-90i64).into())),
                                         (
                                             "defaultAngle".into(),
-                                            serde_json::Value::Number(-90i64.into())
+                                            serde_json::Value::Number((-90i64).into())
                                         ),
                                         (
                                             "minAngle".into(),
-                                            serde_json::Value::Number(-120i64.into())
+                                            serde_json::Value::Number((-120i64).into())
                                         ),
-                                        ("maxAngle".into(),serde_json::Value::Number(-60i64.into())),
+                                        ("maxAngle".into(),serde_json::Value::Number((-60i64).into())),
                                         ("range".into(),serde_json::Value::Number(100u64.into())),
                                         ("volume".into(),serde_json::Value::Number(1u64.into()))
                                     ].into_iter().collect()
@@ -7950,7 +7950,7 @@ macro_rules! audio_products_data {
                             ("state".into(),serde_json::Value::Number(1u64.into())),
                             ("angle".into(),serde_json::Value::Number(0u64.into())),
                             ("defaultAngle".into(),serde_json::Value::Number(0u64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-15i64.into())),
+                            ("minAngle".into(),serde_json::Value::Number((-15i64).into())),
                             ("maxAngle".into(),serde_json::Value::Number(15u64.into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
@@ -7960,10 +7960,10 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::String("frontLeft".into())),
                             ("state".into(),serde_json::Value::Number(1u64.into())),
-                            ("angle".into(),serde_json::Value::Number(-30i64.into())),
-                            ("defaultAngle".into(),serde_json::Value::Number(-30i64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-15i64.into())),
-                            ("maxAngle".into(),serde_json::Value::Number(-60i64.into())),
+                            ("angle".into(),serde_json::Value::Number((-30i64).into())),
+                            ("defaultAngle".into(),serde_json::Value::Number((-30i64).into())),
+                            ("minAngle".into(),serde_json::Value::Number((-15i64).into())),
+                            ("maxAngle".into(),serde_json::Value::Number((-60i64).into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
                         ].into_iter().collect()
@@ -7972,10 +7972,10 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::String("sideLeft".into())),
                             ("state".into(),serde_json::Value::Number(1u64.into())),
-                            ("angle".into(),serde_json::Value::Number(-90i64.into())),
-                            ("defaultAngle".into(),serde_json::Value::Number(-90i64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-60i64.into())),
-                            ("maxAngle".into(),serde_json::Value::Number(-120i64.into())),
+                            ("angle".into(),serde_json::Value::Number((-90i64).into())),
+                            ("defaultAngle".into(),serde_json::Value::Number((-90i64).into())),
+                            ("minAngle".into(),serde_json::Value::Number((-60i64).into())),
+                            ("maxAngle".into(),serde_json::Value::Number((-120i64).into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
                         ].into_iter().collect()
@@ -7996,10 +7996,10 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::String("rearLeft".into())),
                             ("state".into(),serde_json::Value::Number(1u64.into())),
-                            ("angle".into(),serde_json::Value::Number(-150i64.into())),
-                            ("defaultAngle".into(),serde_json::Value::Number(-150i64.into())),
-                            ("minAngle".into(),serde_json::Value::Number(-120i64.into())),
-                            ("maxAngle".into(),serde_json::Value::Number(-180i64.into())),
+                            ("angle".into(),serde_json::Value::Number((-150i64).into())),
+                            ("defaultAngle".into(),serde_json::Value::Number((-150i64).into())),
+                            ("minAngle".into(),serde_json::Value::Number((-120i64).into())),
+                            ("maxAngle".into(),serde_json::Value::Number((-180i64).into())),
                             ("range".into(),serde_json::Value::Number(100u64.into())),
                             ("volume".into(),serde_json::Value::Number(1u64.into()))
                         ].into_iter().collect()
@@ -11986,7 +11986,7 @@ macro_rules! audio_products_data {
                                         )
                                     )
                                 ),
-                                ("min".into(),serde_json::Value::Number(-45i64.into())),
+                                ("min".into(),serde_json::Value::Number((-45i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 (
                                     "step".into(),
@@ -12012,7 +12012,7 @@ macro_rules! audio_products_data {
                                         )
                                     )
                                 ),
-                                ("min".into(),serde_json::Value::Number(-45i64.into())),
+                                ("min".into(),serde_json::Value::Number((-45i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 (
                                     "step".into(),
@@ -12038,7 +12038,7 @@ macro_rules! audio_products_data {
                                         )
                                     )
                                 ),
-                                ("min".into(),serde_json::Value::Number(-45i64.into())),
+                                ("min".into(),serde_json::Value::Number((-45i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 (
                                     "step".into(),
@@ -12064,7 +12064,7 @@ macro_rules! audio_products_data {
                                         )
                                     )
                                 ),
-                                ("min".into(),serde_json::Value::Number(-45i64.into())),
+                                ("min".into(),serde_json::Value::Number((-45i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 (
                                     "step".into(),
@@ -12082,8 +12082,8 @@ macro_rules! audio_products_data {
                         serde_json::Value::Object(
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(true)),
-                                ("value".into(),serde_json::Value::Number(-4i64.into())),
-                                ("min".into(),serde_json::Value::Number(-10i64.into())),
+                                ("value".into(),serde_json::Value::Number((-4i64).into())),
+                                ("min".into(),serde_json::Value::Number((-10i64).into())),
                                 ("max".into(),serde_json::Value::Number(2u64.into())),
                                 (
                                     "step".into(),
@@ -12109,7 +12109,7 @@ macro_rules! audio_products_data {
                                         )
                                     )
                                 ),
-                                ("min".into(),serde_json::Value::Number(-45i64.into())),
+                                ("min".into(),serde_json::Value::Number((-45i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 (
                                     "step".into(),
@@ -12237,8 +12237,8 @@ macro_rules! audio_products_data {
                         serde_json::Value::Object(
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(true)),
-                                ("value".into(),serde_json::Value::Number(-6i64.into())),
-                                ("min".into(),serde_json::Value::Number(-12i64.into())),
+                                ("value".into(),serde_json::Value::Number((-6i64).into())),
+                                ("min".into(),serde_json::Value::Number((-12i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 (
                                     "step".into(),
@@ -12429,8 +12429,8 @@ macro_rules! audio_products_data {
                         serde_json::Value::Object(
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(true)),
-                                ("value".into(),serde_json::Value::Number(-6i64.into())),
-                                ("min".into(),serde_json::Value::Number(-12i64.into())),
+                                ("value".into(),serde_json::Value::Number((-6i64).into())),
+                                ("min".into(),serde_json::Value::Number((-12i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 (
                                     "step".into(),
@@ -12519,8 +12519,8 @@ macro_rules! audio_products_data {
                         "basic".into(),
                         serde_json::Value::Object(
                             [
-                                ("value".into(),serde_json::Value::Number(-15i64.into())),
-                                ("min".into(),serde_json::Value::Number(-60i64.into())),
+                                ("value".into(),serde_json::Value::Number((-15i64).into())),
+                                ("min".into(),serde_json::Value::Number((-60i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 ("step".into(),serde_json::Value::Number(1u64.into()))
                             ].into_iter().collect()
@@ -12530,8 +12530,8 @@ macro_rules! audio_products_data {
                         "threshold".into(),
                         serde_json::Value::Object(
                             [
-                                ("value".into(),serde_json::Value::Number(-15i64.into())),
-                                ("min".into(),serde_json::Value::Number(-60i64.into())),
+                                ("value".into(),serde_json::Value::Number((-15i64).into())),
+                                ("min".into(),serde_json::Value::Number((-60i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 ("step".into(),serde_json::Value::Number(1u64.into()))
                             ].into_iter().collect()
@@ -12541,8 +12541,8 @@ macro_rules! audio_products_data {
                         "targetGain".into(),
                         serde_json::Value::Object(
                             [
-                                ("value".into(),serde_json::Value::Number(-20i64.into())),
-                                ("min".into(),serde_json::Value::Number(-60i64.into())),
+                                ("value".into(),serde_json::Value::Number((-20i64).into())),
+                                ("min".into(),serde_json::Value::Number((-60i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 ("step".into(),serde_json::Value::Number(1u64.into()))
                             ].into_iter().collect()
@@ -12582,8 +12582,8 @@ macro_rules! audio_products_data {
                         "basic".into(),
                         serde_json::Value::Object(
                             [
-                                ("value".into(),serde_json::Value::Number(-15i64.into())),
-                                ("min".into(),serde_json::Value::Number(-38i64.into())),
+                                ("value".into(),serde_json::Value::Number((-15i64).into())),
+                                ("min".into(),serde_json::Value::Number((-38i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 ("step".into(),serde_json::Value::Number(1u64.into()))
                             ].into_iter().collect()
@@ -12593,8 +12593,8 @@ macro_rules! audio_products_data {
                         "threshold".into(),
                         serde_json::Value::Object(
                             [
-                                ("value".into(),serde_json::Value::Number(-15i64.into())),
-                                ("min".into(),serde_json::Value::Number(-38i64.into())),
+                                ("value".into(),serde_json::Value::Number((-15i64).into())),
+                                ("min".into(),serde_json::Value::Number((-38i64).into())),
                                 ("max".into(),serde_json::Value::Number(0u64.into())),
                                 ("step".into(),serde_json::Value::Number(1u64.into()))
                             ].into_iter().collect()
@@ -26866,13 +26866,13 @@ macro_rules! audio_products_data {
                     serde_json::Value::Object(
                         [
                             ("id".into(),serde_json::Value::String("A6".into())),
-                            ("angle".into(),serde_json::Value::Number(-90i64.into()))
+                            ("angle".into(),serde_json::Value::Number((-90i64).into()))
                         ].into_iter().collect()
                     ),
                     serde_json::Value::Object(
                         [
                             ("id".into(),serde_json::Value::String("A1".into())),
-                            ("angle".into(),serde_json::Value::Number(-30i64.into()))
+                            ("angle".into(),serde_json::Value::Number((-30i64).into()))
                         ].into_iter().collect()
                     ),
                     serde_json::Value::Object(
@@ -26896,7 +26896,7 @@ macro_rules! audio_products_data {
                     serde_json::Value::Object(
                         [
                             ("id".into(),serde_json::Value::String("A4".into())),
-                            ("angle".into(),serde_json::Value::Number(-145i64.into()))
+                            ("angle".into(),serde_json::Value::Number((-145i64).into()))
                         ].into_iter().collect()
                     ),
                     serde_json::Value::Object(
@@ -26914,7 +26914,7 @@ macro_rules! audio_products_data {
                     serde_json::Value::Object(
                         [
                             ("id".into(),serde_json::Value::String("A9".into())),
-                            ("angle".into(),serde_json::Value::Number(-45i64.into()))
+                            ("angle".into(),serde_json::Value::Number((-45i64).into()))
                         ].into_iter().collect()
                     ),
                     serde_json::Value::Object(
@@ -26926,7 +26926,7 @@ macro_rules! audio_products_data {
                     serde_json::Value::Object(
                         [
                             ("id".into(),serde_json::Value::String("A11".into())),
-                            ("angle".into(),serde_json::Value::Number(-135i64.into()))
+                            ("angle".into(),serde_json::Value::Number((-135i64).into()))
                         ].into_iter().collect()
                     )
                 ]
@@ -26949,7 +26949,7 @@ macro_rules! audio_products_data {
                                 serde_json::Value::Object(
                                     [
                                         ("id".into(),serde_json::Value::String("A9".into())),
-                                        ("angle".into(),serde_json::Value::Number(-45i64.into()))
+                                        ("angle".into(),serde_json::Value::Number((-45i64).into()))
                                     ].into_iter().collect()
                                 ),
                                 serde_json::Value::Object(
@@ -26961,7 +26961,7 @@ macro_rules! audio_products_data {
                                 serde_json::Value::Object(
                                     [
                                         ("id".into(),serde_json::Value::String("A11".into())),
-                                        ("angle".into(),serde_json::Value::Number(-135i64.into()))
+                                        ("angle".into(),serde_json::Value::Number((-135i64).into()))
                                     ].into_iter().collect()
                                 )
                             ]
@@ -28931,7 +28931,7 @@ macro_rules! audio_products_data {
                                 "default".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -28948,7 +28948,7 @@ macro_rules! audio_products_data {
                                 "current".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -28973,8 +28973,8 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -28990,8 +28990,8 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -29012,9 +29012,9 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -29029,9 +29029,9 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(0u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -30563,7 +30563,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(1u64.into())),
                             ("frequency".into(),serde_json::Value::Number(350u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-4i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-4i64).into())),
                             ("q".into(),serde_json::Value::Number(2u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30572,7 +30572,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(2u64.into())),
                             ("frequency".into(),serde_json::Value::Number(600u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-3i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-3i64).into())),
                             ("q".into(),serde_json::Value::Number(3u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30581,7 +30581,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(3u64.into())),
                             ("frequency".into(),serde_json::Value::Number(1500u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-2i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-2i64).into())),
                             ("q".into(),serde_json::Value::Number(2u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30599,7 +30599,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(5u64.into())),
                             ("frequency".into(),serde_json::Value::Number(7000u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-3i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-3i64).into())),
                             ("q".into(),serde_json::Value::Number(4u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30660,7 +30660,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(1u64.into())),
                             ("frequency".into(),serde_json::Value::Number(400u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-5i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-5i64).into())),
                             ("q".into(),serde_json::Value::Number(2u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30669,7 +30669,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(2u64.into())),
                             ("frequency".into(),serde_json::Value::Number(900u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-2i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-2i64).into())),
                             ("q".into(),serde_json::Value::Number(2u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30710,7 +30710,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(5u64.into())),
                             ("frequency".into(),serde_json::Value::Number(7500u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-4i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-4i64).into())),
                             ("q".into(),serde_json::Value::Number(4u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30762,7 +30762,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(0u64.into())),
                             ("frequency".into(),serde_json::Value::Number(200u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-2i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-2i64).into())),
                             ("q".into(),serde_json::Value::Number(1u64.into())),
                             ("type".into(),serde_json::Value::String("lowshelf".into()))
                         ].into_iter().collect()
@@ -30771,7 +30771,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(1u64.into())),
                             ("frequency".into(),serde_json::Value::Number(450u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-2i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-2i64).into())),
                             ("q".into(),serde_json::Value::Number(2u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30780,7 +30780,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(2u64.into())),
                             ("frequency".into(),serde_json::Value::Number(800u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-4i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-4i64).into())),
                             ("q".into(),serde_json::Value::Number(3u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30805,7 +30805,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(4u64.into())),
                             ("frequency".into(),serde_json::Value::Number(4500u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-3i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-3i64).into())),
                             ("q".into(),serde_json::Value::Number(4u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30814,7 +30814,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(5u64.into())),
                             ("frequency".into(),serde_json::Value::Number(7500u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-3i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-3i64).into())),
                             ("q".into(),serde_json::Value::Number(3u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30866,7 +30866,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(0u64.into())),
                             ("frequency".into(),serde_json::Value::Number(250u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-3i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-3i64).into())),
                             ("q".into(),serde_json::Value::Number(2u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30875,7 +30875,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(1u64.into())),
                             ("frequency".into(),serde_json::Value::Number(600u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-3i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-3i64).into())),
                             ("q".into(),serde_json::Value::Number(2u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30884,7 +30884,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(2u64.into())),
                             ("frequency".into(),serde_json::Value::Number(1200u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-2i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-2i64).into())),
                             ("q".into(),serde_json::Value::Number(3u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -30911,7 +30911,7 @@ macro_rules! audio_products_data {
                         [
                             ("id".into(),serde_json::Value::Number(5u64.into())),
                             ("frequency".into(),serde_json::Value::Number(8000u64.into())),
-                            ("gain".into(),serde_json::Value::Number(-3i64.into())),
+                            ("gain".into(),serde_json::Value::Number((-3i64).into())),
                             ("q".into(),serde_json::Value::Number(4u64.into())),
                             ("type".into(),serde_json::Value::String("peaking".into()))
                         ].into_iter().collect()
@@ -31091,7 +31091,7 @@ macro_rules! audio_products_data {
                         serde_json::Value::Object(
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(true)),
-                                ("thresholdDB".into(),serde_json::Value::Number(-50i64.into())),
+                                ("thresholdDB".into(),serde_json::Value::Number((-50i64).into())),
                                 ("atTime".into(),serde_json::Value::Number(1u64.into())),
                                 ("rlTime".into(),serde_json::Value::Number(1u64.into())),
                                 ("holdTime".into(),serde_json::Value::Number(10u64.into())),
@@ -31104,7 +31104,7 @@ macro_rules! audio_products_data {
                         serde_json::Value::Object(
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(true)),
-                                ("db".into(),serde_json::Value::Number(-6i64.into())),
+                                ("db".into(),serde_json::Value::Number((-6i64).into())),
                                 ("ratio".into(),serde_json::Value::Number(10u64.into())),
                                 ("atTime".into(),serde_json::Value::Number(100u64.into())),
                                 ("rlTime".into(),serde_json::Value::Number(10u64.into()))
@@ -35433,7 +35433,7 @@ macro_rules! audio_products_data {
                         serde_json::Value::Object(
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(true)),
-                                ("thresholdDB".into(),serde_json::Value::Number(-50i64.into())),
+                                ("thresholdDB".into(),serde_json::Value::Number((-50i64).into())),
                                 ("atTime".into(),serde_json::Value::Number(1u64.into())),
                                 ("rlTime".into(),serde_json::Value::Number(1u64.into())),
                                 ("holdTime".into(),serde_json::Value::Number(10u64.into())),
@@ -35446,7 +35446,7 @@ macro_rules! audio_products_data {
                         serde_json::Value::Object(
                             [
                                 ("isEnabled".into(),serde_json::Value::Bool(true)),
-                                ("db".into(),serde_json::Value::Number(-6i64.into())),
+                                ("db".into(),serde_json::Value::Number((-6i64).into())),
                                 ("ratio".into(),serde_json::Value::Number(10u64.into())),
                                 ("atTime".into(),serde_json::Value::Number(100u64.into())),
                                 ("rlTime".into(),serde_json::Value::Number(10u64.into()))
@@ -36816,9 +36816,9 @@ macro_rules! audio_products_data {
                                     vec![
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(3u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -36833,9 +36833,9 @@ macro_rules! audio_products_data {
                                     vec![
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(3u64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-1i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(2u64.into()),
@@ -36853,9 +36853,9 @@ macro_rules! audio_products_data {
                                 "default".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(1u64.into()),
@@ -36870,9 +36870,9 @@ macro_rules! audio_products_data {
                                 "current".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(1u64.into()),
                                         serde_json::Value::Number(1u64.into()),
@@ -36892,11 +36892,11 @@ macro_rules! audio_products_data {
                                 "default".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-4i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-4i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -36909,11 +36909,11 @@ macro_rules! audio_products_data {
                                 "current".into(),
                                 serde_json::Value::Array(
                                     vec![
-                                        serde_json::Value::Number(-4i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
-                                        serde_json::Value::Number(-1i64.into()),
+                                        serde_json::Value::Number((-4i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
+                                        serde_json::Value::Number((-1i64).into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(2u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -36934,9 +36934,9 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(3u64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(3u64.into()),
@@ -36951,9 +36951,9 @@ macro_rules! audio_products_data {
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(4u64.into()),
                                         serde_json::Value::Number(3u64.into()),
-                                        serde_json::Value::Number(-3i64.into()),
-                                        serde_json::Value::Number(-4i64.into()),
-                                        serde_json::Value::Number(-2i64.into()),
+                                        serde_json::Value::Number((-3i64).into()),
+                                        serde_json::Value::Number((-4i64).into()),
+                                        serde_json::Value::Number((-2i64).into()),
                                         serde_json::Value::Number(0u64.into()),
                                         serde_json::Value::Number(3u64.into()),
                                         serde_json::Value::Number(3u64.into()),

@@ -40,7 +40,7 @@ struct Header {
 
 #[cfg(test)]
 mod metadata_tests {
-    use super::Metadata;
+    use super::all_metadata;
 
     // The glob imports above also carry GPUI's `test` macro; name the
     // built-in attribute so this remains an ordinary Rust test.
@@ -49,11 +49,11 @@ mod metadata_tests {
     fn all_current_dynamic_mapping_metadata_loads() {
         // Source header descriptors contain actuation values and bounds.
         // startX belongs to the live action-trigger drag, not these descriptors.
-        let rows: Vec<Metadata> = crate::data::keyboard_mapping_dynamic_data!();
+        let rows = all_metadata();
         assert!(!rows.is_empty());
         for row in rows {
             assert_eq!(row.headers.len(), 4, "product {}", row.product_id);
-            for header in row.headers {
+            for header in &row.headers {
                 assert!(row.defaults[&header.id].is_finite());
                 assert!(header.min < header.max);
             }
@@ -61,11 +61,13 @@ mod metadata_tests {
     }
 }
 
-fn metadata(pid: u32) -> Option<&'static Metadata> {
+fn all_metadata() -> &'static [Metadata] {
     static DATA: OnceLock<Vec<Metadata>> = OnceLock::new();
     DATA.get_or_init(|| crate::data::keyboard_mapping_dynamic_data!())
-        .iter()
-        .find(|row| row.product_id == pid)
+}
+
+fn metadata(pid: u32) -> Option<&'static Metadata> {
+    all_metadata().iter().find(|row| row.product_id == pid)
 }
 fn empty_action() -> Value {
     json!({"keyboardGroup":{"key":"","keyGroup":0,"modifiers":[]},"triggers":TRIGGERS.into_iter().map(|id|(id.to_owned(),json!("NONE"))).collect::<serde_json::Map<_,_>>()})
@@ -338,7 +340,7 @@ impl KeyboardProductWorkspace {
                         .collect::<serde_json::Map<_, _>>()
                 )
             } else {
-                m.defaults.clone()
+                json!(m.defaults)
             };
             for action in ACTIONS {
                 group[action] = existing.get(action).cloned().unwrap_or_else(empty_action);

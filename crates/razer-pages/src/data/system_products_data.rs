@@ -36496,7 +36496,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -36511,10 +36511,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -36533,7 +36533,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -36548,10 +36548,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -36583,10 +36583,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -36620,10 +36620,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -36670,10 +36670,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -36707,10 +36707,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -36748,10 +36748,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -36766,7 +36766,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -36785,10 +36785,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -36803,7 +36803,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -36914,19 +36914,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -36951,19 +36951,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -37007,13 +37007,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -37044,13 +37044,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -37166,10 +37166,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -37193,7 +37193,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -37203,10 +37203,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -37230,7 +37230,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -38658,7 +38658,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -38673,10 +38673,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -38695,7 +38695,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -38710,10 +38710,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -38745,10 +38745,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -38782,10 +38782,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -38832,10 +38832,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -38869,10 +38869,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -38910,10 +38910,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -38928,7 +38928,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -38947,10 +38947,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -38965,7 +38965,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -39076,19 +39076,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -39113,19 +39113,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -39169,13 +39169,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -39206,13 +39206,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -39328,10 +39328,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -39355,7 +39355,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -39365,10 +39365,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -39392,7 +39392,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -40761,7 +40761,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -40776,10 +40776,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -40798,7 +40798,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -40813,10 +40813,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -40848,10 +40848,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -40885,10 +40885,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -40935,10 +40935,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -40972,10 +40972,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -41013,10 +41013,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -41031,7 +41031,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -41050,10 +41050,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -41068,7 +41068,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -41179,19 +41179,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -41216,19 +41216,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -41272,13 +41272,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -41309,13 +41309,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -41431,10 +41431,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -41458,7 +41458,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -41468,10 +41468,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -41495,7 +41495,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -45951,7 +45951,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -45966,10 +45966,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -45988,7 +45988,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -46003,10 +46003,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -46038,10 +46038,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -46075,10 +46075,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -46125,10 +46125,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -46162,10 +46162,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -46203,10 +46203,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -46221,7 +46221,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -46240,10 +46240,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -46258,7 +46258,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -46369,19 +46369,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -46406,19 +46406,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -46462,13 +46462,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -46499,13 +46499,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -46621,10 +46621,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -46648,7 +46648,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -46658,10 +46658,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -46685,7 +46685,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -51243,7 +51243,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -51258,10 +51258,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -51280,7 +51280,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -51295,10 +51295,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -51330,10 +51330,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -51367,10 +51367,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -51417,10 +51417,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -51454,10 +51454,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -51495,10 +51495,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -51513,7 +51513,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -51532,10 +51532,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -51550,7 +51550,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -51661,19 +51661,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -51698,19 +51698,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -51754,13 +51754,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -51791,13 +51791,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -51913,10 +51913,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -51940,7 +51940,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -51950,10 +51950,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -51977,7 +51977,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -56701,7 +56701,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -56716,10 +56716,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -56738,7 +56738,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -56753,10 +56753,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -56788,10 +56788,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -56825,10 +56825,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -56875,10 +56875,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -56912,10 +56912,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -56953,10 +56953,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -56971,7 +56971,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -56990,10 +56990,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -57008,7 +57008,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -57119,19 +57119,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -57156,19 +57156,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -57212,13 +57212,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -57249,13 +57249,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -57371,10 +57371,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -57398,7 +57398,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -57408,10 +57408,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -57435,7 +57435,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -62545,7 +62545,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -62560,10 +62560,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -62582,7 +62582,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -62597,10 +62597,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -62632,10 +62632,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -62669,10 +62669,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -62719,10 +62719,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -62756,10 +62756,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -62797,10 +62797,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -62815,7 +62815,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -62834,10 +62834,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -62852,7 +62852,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -62963,19 +62963,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -63000,19 +63000,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -63056,13 +63056,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -63093,13 +63093,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -63215,10 +63215,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -63242,7 +63242,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -63252,10 +63252,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -63279,7 +63279,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -67966,7 +67966,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -67981,10 +67981,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -68003,7 +68003,7 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -68018,10 +68018,10 @@ macro_rules! system_products_data {
                                                                                 1u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -68053,10 +68053,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -68090,10 +68090,10 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -68140,10 +68140,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -68177,10 +68177,10 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -68218,10 +68218,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -68236,7 +68236,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -68255,10 +68255,10 @@ macro_rules! system_products_data {
                                                                                 0u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -2i64.into()
+                                                                                (-2i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -68273,7 +68273,7 @@ macro_rules! system_products_data {
                                                                                 2u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -68384,19 +68384,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -68421,19 +68421,19 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -3i64.into()
+                                                                                (-3i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 2u64.into()
@@ -68477,13 +68477,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -68514,13 +68514,13 @@ macro_rules! system_products_data {
                                                                                 3u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -4i64.into()
+                                                                                (-4i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -5i64.into()
+                                                                                (-5i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -1i64.into()
+                                                                                (-1i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 3u64.into()
@@ -68636,10 +68636,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -68663,7 +68663,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )
@@ -68673,10 +68673,10 @@ macro_rules! system_products_data {
                                                                     serde_json::Value::Array(
                                                                         vec![
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -6i64.into()
+                                                                                (-6i64).into()
                                                                             ),
                                                                             serde_json::Value::Number(
                                                                                 4u64.into()
@@ -68700,7 +68700,7 @@ macro_rules! system_products_data {
                                                                                 4u64.into()
                                                                             ),
                                                                             serde_json::Value::Number(
-                                                                                -12i64.into()
+                                                                                (-12i64).into()
                                                                             )
                                                                         ]
                                                                     )

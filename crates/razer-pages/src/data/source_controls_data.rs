@@ -2017,7 +2017,7 @@ macro_rules! source_controls_data {
                                                 ),
                                                 (
                                                     "exposureValue".into(),
-                                                    serde_json::Value::Number(-2i64.into())
+                                                    serde_json::Value::Number((-2i64).into())
                                                 )
                                             ].into_iter().collect()
                                         )
@@ -4616,7 +4616,7 @@ macro_rules! source_controls_data {
                                                     ),
                                                     (
                                                         "exposureValue".into(),
-                                                        serde_json::Value::Number(-2i64.into())
+                                                        serde_json::Value::Number((-2i64).into())
                                                     )
                                                 ].into_iter().collect()
                                             )
@@ -12393,7 +12393,7 @@ macro_rules! source_controls_data {
                                                 ),
                                                 (
                                                     "exposureValue".into(),
-                                                    serde_json::Value::Number(-2i64.into())
+                                                    serde_json::Value::Number((-2i64).into())
                                                 )
                                             ].into_iter().collect()
                                         )
