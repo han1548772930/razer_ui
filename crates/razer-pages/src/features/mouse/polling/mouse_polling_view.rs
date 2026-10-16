@@ -630,8 +630,10 @@ fn read_mouse_advanced_catalog() -> BTreeMap<String, String> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_advanced_data_decodes() {
-    let _ = read_mouse_advanced_catalog();
+mod mouse_advanced_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_advanced_data_decodes() {
+        let _ = super::read_mouse_advanced_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_advanced_data.

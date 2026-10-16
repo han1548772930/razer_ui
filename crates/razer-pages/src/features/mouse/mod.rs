@@ -2571,9 +2571,11 @@ fn read_mouse_low_power_catalog() -> Vec<u32> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_low_power_data_decodes() {
-    let _ = read_mouse_low_power_catalog();
+mod mouse_low_power_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_low_power_data_decodes() {
+        let _ = super::read_mouse_low_power_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_low_power_data.
 
@@ -3562,10 +3564,12 @@ fn read_mouse_products_catalog() -> Vec<(u32, fn() -> MouseProductSpec)> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_products_data_decodes() {
-    for (_, factory) in read_mouse_products_catalog() {
-        let _ = factory();
+mod mouse_products_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_products_data_decodes() {
+        for (_, factory) in super::read_mouse_products_catalog() {
+            let _ = factory();
+        }
     }
 }
 // End generated catalog reader: razer-pages/mouse_products_data.

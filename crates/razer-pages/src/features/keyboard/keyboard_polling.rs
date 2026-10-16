@@ -281,8 +281,10 @@ fn read_keyboard_polling_catalog() -> Vec<Mount> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_polling_data_decodes() {
-    let _ = read_keyboard_polling_catalog();
+mod keyboard_polling_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_polling_data_decodes() {
+        let _ = super::read_keyboard_polling_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_polling_data.

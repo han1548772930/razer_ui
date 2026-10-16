@@ -3017,9 +3017,11 @@ fn read_accessory_controls_catalog() -> Vec<ProductSpec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_accessory_controls_data_decodes() {
-    let _ = read_accessory_controls_catalog();
+mod accessory_controls_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_accessory_controls_data_decodes() {
+        let _ = super::read_accessory_controls_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/accessory_controls_data.
 
@@ -3482,9 +3484,11 @@ fn read_keyboard_oled_catalog() -> Vec<ProductSpec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_oled_data_decodes() {
-    let _ = read_keyboard_oled_catalog();
+mod keyboard_oled_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_oled_data_decodes() {
+        let _ = super::read_keyboard_oled_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_oled_data.
 
@@ -4896,8 +4900,10 @@ fn read_source_controls_catalog() -> Vec<ProductSpec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_source_controls_data_decodes() {
-    let _ = read_source_controls_catalog();
+mod source_controls_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_source_controls_data_decodes() {
+        let _ = super::read_source_controls_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/source_controls_data.

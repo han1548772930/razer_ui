@@ -563,8 +563,10 @@ fn read_automation_catalog() -> Spec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_automation_data_decodes() {
-    let _ = read_automation_catalog();
+mod automation_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_automation_data_decodes() {
+        let _ = super::read_automation_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/automation_data.

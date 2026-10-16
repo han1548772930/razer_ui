@@ -12,6 +12,8 @@
 !/assets/synapse/
 !/assets/synapse/resource-catalog.sqlite3
 !/assets/synapse/shared/
+!/assets/synapse/shared/window-controls/
+!/assets/synapse/shared/window-controls/*.svg
 !/assets/synapse/shared/pending-source-audit/
 !/assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba
 !/assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba

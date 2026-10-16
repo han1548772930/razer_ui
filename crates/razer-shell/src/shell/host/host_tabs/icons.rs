@@ -86,8 +86,10 @@ fn read_host_device_favicons_catalog() -> BTreeMap<u32, Option<String>> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_host_device_favicons_decodes() {
-    let _ = read_host_device_favicons_catalog();
+mod host_device_favicons_catalog_tests {
+    #[test]
+    fn packaged_catalog_host_device_favicons_decodes() {
+        let _ = super::read_host_device_favicons_catalog();
+    }
 }
 // End generated catalog reader: razer-shell/host_device_favicons.

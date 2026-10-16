@@ -724,8 +724,10 @@ fn read_native_library_inventory_catalog() -> Asset {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_native_library_inventory_decodes() {
-    let _ = read_native_library_inventory_catalog();
+mod native_library_inventory_catalog_tests {
+    #[test]
+    fn packaged_catalog_native_library_inventory_decodes() {
+        let _ = super::read_native_library_inventory_catalog();
+    }
 }
 // End generated catalog reader: razer-catalog/native_library_inventory.

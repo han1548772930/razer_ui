@@ -1057,9 +1057,11 @@ fn read_mouse_calibration_162_catalog() -> CalibrationArtwork {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_calibration_162_data_decodes() {
-    let _ = read_mouse_calibration_162_catalog();
+mod mouse_calibration_162_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_calibration_162_data_decodes() {
+        let _ = super::read_mouse_calibration_162_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_calibration_162_data.
 
@@ -1167,9 +1169,11 @@ fn read_mouse_calibration_70_catalog() -> CalibrationArtwork {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_calibration_70_data_decodes() {
-    let _ = read_mouse_calibration_70_catalog();
+mod mouse_calibration_70_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_calibration_70_data_decodes() {
+        let _ = super::read_mouse_calibration_70_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_calibration_70_data.
 
@@ -1201,8 +1205,10 @@ fn read_mouse_calibration_family_catalog() -> Vec<u32> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_calibration_family_data_decodes() {
-    let _ = read_mouse_calibration_family_catalog();
+mod mouse_calibration_family_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_calibration_family_data_decodes() {
+        let _ = super::read_mouse_calibration_family_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_calibration_family_data.

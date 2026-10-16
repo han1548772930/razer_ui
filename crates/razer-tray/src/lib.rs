@@ -431,8 +431,10 @@ fn read_tray_strings_catalog() -> TrayStrings {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_tray_strings_decodes() {
-    let _ = read_tray_strings_catalog();
+mod tray_strings_catalog_tests {
+    #[test]
+    fn packaged_catalog_tray_strings_decodes() {
+        let _ = super::read_tray_strings_catalog();
+    }
 }
 // End generated catalog reader: razer-tray/tray_strings.

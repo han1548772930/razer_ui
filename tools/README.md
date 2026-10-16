@@ -8,6 +8,7 @@
 | [analysis.py](analysis.py) | 前端获取／恢复、原生输入索引、IDA 配置与批量函数导出 |
 | [families.py](families.py) | 全产品族 UI／middleware 获取、独立版本配对、native 资源来源闭包与静态恢复矩阵 |
 | [asset_release.py](asset_release.py) | 私有资源仓库快照、上传核验、固定提交与有类型运行时索引 |
+| [catalog_data.py](catalog_data.py) | 完整构造 AST 等价校验、去重目录编码及所属模块的普通有类型读取函数 |
 | [resource_database.py](resource_database.py) | 生成／回读核验随程序交付的 SQLite 表情词表、页面分支与资源索引 |
 | [rust_data.py](rust_data.py)、[typed_tables.py](typed_tables.py) | 按实际 Rust schema 校验并生成可读 Rust 数据表、协议能力与本地默认值 |
 | [windows_installer.py](windows_installer.py) | Windows 安装包静态输入准备、PE 依赖闭包和封装校验 |
@@ -85,7 +86,7 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `inspect-corpus` 中的 `cached_download_fragments` 从当前 installer HTML 实际声明的 JS 静态解析完整下载 owner、常量和 `pindex`／Range 绑定，逐份比较源码定义的偏移与完整官方资源实际 bytes。本轮 15 份 104,857 字节缓存均通过区间核对并独立保留，从完整 PE／其他模块分类排除；不重建原件或转移完整文件身份。父资源的当前官方来源另行验证，策略／字节／快照失败及未证明的父来源均由同一 corpus gaps owner 保留。
 
-`organize-sources` 用 Rust AST 解析现有模块，再按功能生成物理目录迁移计划，同时核对 `include!`、嵌入数据和维护工具引用。默认只写计划；`--apply` 在确认源字节和目标路径未变后逐文件搬移、同步路径，仅移除已经为空的原目录，不操作 Git 索引。完整映射和摘要保存在 `.analysis/results/source-organization.json`，重复规划应没有迁移或路径改写。它保留原模块接口，不替代编译及功能验证。
+`organize-sources` 用 Rust AST 解析现有模块，再按功能生成物理目录迁移计划，同时核对 `include!`、嵌入数据和维护工具引用。默认只写计划；`--apply` 在确认源字节和目标路径未变后逐文件搬移、同步路径，仅移除已经为空的原目录，不操作 Git 索引。完整映射和摘要保存在 `.analysis/results/source-organization.json`，重复规划应没有迁移或路径改写。它同时记录全部工作区 manifest、各目标／构建／测试依赖、源码规模、实际嵌入资源和独立安装库，保留原模块接口，不替代编译及功能验证。
 
 `audit-lfs` 只读核对 Git 属性、索引中的 LFS 指针和本机对象的实际 SHA-256／长度，同时列出尚未暂存的新增或修改、缺失对象和超过 100 MiB 的普通文件。结果保存在 `.analysis/results/git-lfs-audit.json`，验证前后索引与属性必须不变；不会 stage、commit、push，也不代表远端对象已上传。
 
@@ -117,7 +118,7 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 前端恢复使用固定 Wakaru 1.14.0，IDA 路径为 `E:/IDA`（9.1）或 `D:/ida/IDA Pro 8.3`（8.3）。每份捕获核验实际工具版本、输入和产物字节，保留反编译失败。全量提取需保存所有输入、完整函数体、模块／资源引用和失败项；调用、状态、持久化与清理语义逐链核对。结果存 `.analysis/results/`，缺项集中于同一清单。详见 [工具说明](../docs/re/tooling.md)。
 
-`prepare-resources` 核验获取收据和原始 bytes 后准备实际嵌入资源，支持静态 AVIF 转换、受限字面量 React SVG 和已实现的 SMIL 动画采样。`prepare-dashboard-images` 按当前完整 Dashboard 图片调用方，对全部产品 ID 及版本／布局／腕托／鼠标垫请求进行获取和稳定性核验；参数 locator 不提供图片或当前语义。资源失败保持失败，不能生成虚假替代图。全族 scope 合并 registry 与产品候选共 332 个唯一 PID；`--stage report` 从实际获取／probe 收据恢复矩阵字段，分别核对原件与分析产物，不依赖缺失的旧汇总字段。
+`prepare-resources` 核验获取收据和原始 bytes 后准备实际媒体文件并更新统一资源映射，支持静态 AVIF 转换、受限字面量 React SVG 和已实现的 SMIL 动画采样。`prepare-dashboard-images` 按当前完整 Dashboard 图片调用方，对全部产品 ID 及版本／布局／腕托／鼠标垫请求进行获取和稳定性核验；参数 locator 不提供图片或当前语义。资源失败保持失败，不能生成虚假替代图。全族 scope 合并 registry 与产品候选共 332 个唯一 PID；`--stage report` 从实际获取／probe 收据恢复矩阵字段，分别核对原件与分析产物，不依赖缺失的旧汇总字段。
 
 `python -B tools/workspace.py deduplicate-resources` 只生成 `.analysis/results/resource-deduplication.json`，不移动资源。检查归属、逐字节共享关系、全部生产引用及历史 provenance 差异后，`--apply` 仅接受未变化的完整 dry-run 快照；异常会恢复被改写和删除的文件。单产品图片及配置归入 `products/<PID>/`，跨产品内容显式共享，无可证归属的内容隔离至 `shared/source-unverified/`。迁移保持逻辑 alias 顺序、实际 bytes、各来源记录及历史 `original_paths`；源码未核验与物理去重分别记录。资源准备与迁移共用 OS 文件锁和实际内容索引，后续准备复用已有相同 bytes；准备引入新的跨产品使用后，应再次运行此布局核对。apply 后须明确重新准备资源发布快照、固定提交与运行时索引，复做相关族审计及适用纯测试；该工具不修改 Git 索引、历史或 LFS 配置，也不执行应用或厂商代码。
 
@@ -127,14 +128,14 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `keyboard-metadata` 复用当前 middleware 获取收据，逐产品校验原件字节并保留完整注册、DeviceInfo、继承类、getEdition／getSerialNumber、命令／解码器、传输默认值、物理路由工厂及身份缓存／runtimeData 默认值所有者。结果追加至 `keyboard-mw-audit.json`；通过检查的有线、自有无线接收器及 BLE 产品生成 `razer-device` 元数据传输描述，双链路共享接收器另保留 cached-master 工厂及命令命名空间证据。原始依赖闭包缺项独立保留，不把厂商 UI 的布局／版本默认值视为硬件读取成功。该查询不执行厂商代码或设备操作。
 
-应用媒体资源按“私有 HF 仓库 → 当前实际文件请求 → 安装目录 `assets/cache/` → 当前产品界面”流转。`tools/asset-release.json` 固定仓库提交、文件长度／SHA-256 和产品依赖；`prepare-runtime-assets` 解析维护表并生成上述 SQLite 目录库，`verify-runtime-assets` 检查相同输出。无需本地图片，也不下载资源；`--check-local` 仅用于明确恢复了原文件的维护工作区。`razer-resource-db::InstallationPaths` 统一定位安装缓存与其 `catalogs/` 子目录；种子在打开 UI 前离线原子发布，缺失／损坏可从自带字节恢复。目录库只读打开、校验 schema 和完整性，领域 owner 保留有类型快照；媒体保留异步去重、并发限制、内容验证及原子缓存，缓存命中不联网。凭据仅从本机配置读取。
+应用媒体资源按“私有 HF 仓库 → 当前实际文件请求 → 安装目录 `assets/cache/` → 当前产品界面”流转。`tools/asset-release.json` 固定仓库提交、文件长度／SHA-256 和产品依赖；`prepare-runtime-assets` 解析 `tools/resource-mappings.json`并生成上述 SQLite 目录库，`verify-runtime-assets` 检查相同输出。无需本地图片，也不下载资源；`--check-local` 仅用于明确恢复了原文件的维护工作区。`razer-resource-db::InstallationPaths` 统一定位安装缓存与其 `catalogs/` 子目录；独立目录库在打开 UI 前核验并离线原子发布，缺失／损坏从 EXE 旁安装文件恢复；缺少有效文件明确失败。目录库只读打开、校验 schema 和完整性，领域 owner 保留有类型快照；媒体保留异步去重、并发限制、内容验证及原子缓存，缓存命中不联网。凭据仅从本机配置读取。
 
 `verify-asset-release --remote` 核对已固定远端清单及 LFS 文件身份；`publish-asset-release` 在核验后固定新提交；`pin-asset-release --revision COMMIT` 核验已上传版本。`fetch-asset-release --product PID` 仅为维护人员显式恢复选定产品与共享依赖，普通编译和产品启动均不调用。完整原图核验须明确使用维护来源，不将其复制到 crate 测试夹具。
 
-`prepare-typed-data [--check] [--crate CRATE]` 使用 `tools/typed-data.json` 和 `.analysis/inputs/typed-tables/` 的维护输入，按实际 Rust struct／enum 与字段、值域、产品分支生成可读构造表；专用设备写入、读取／身份／接收器、存储默认值分别由 `prepare-device-write-table`、`prepare-local-protocol-tables`、`prepare-storage-tables` 维护。生成物随程序编译，产品不解析这些固定 JSON；外部报文、动态扩展和用户配置只在有类型的边界读写。原 JSON 不在 crates 中保留第二份生产数据。
+`prepare-typed-data [--check] [--crate CRATE]` 使用 `tools/typed-data.json` 和 `.analysis/inputs/typed-tables/` 的维护输入，按实际 Rust struct／enum、字段、值域和产品分支生成普通有类型构造函数；界面目录由 `catalog_data.py` 路由到同一 SQLite，并在领域所有者中生成普通读取函数；专用设备写入、读取／身份／接收器、存储默认值分别由 `prepare-device-write-table`、`prepare-local-protocol-tables`、`prepare-storage-tables` 维护。固定协议构造函数随程序编译，界面目录随独立数据库安装，产品不解析这些维护 JSON；外部报文、动态扩展和用户配置只在有类型的边界读写。原 JSON 不在 crates 中保留第二份生产数据。
 
 `prepare-windows-installer` 从已存在的 GUI EXE 和显式 DLL 准备严格载荷，`verify-windows-installer --stage DIRECTORY` 复核实际 SHA、PE 架构、普通／延迟导入闭包和图标；`compile-windows-installer` 仅调用已有 ISCC 生成安装包。当前缺 release EXE 与 ISCC，没有生成或运行安装包。输入、缓存、升级与卸载语义见 [Windows 安装交付](../docs/windows-installation.md)。
 
 独立 `asset-pack-core` suite 只验证容器 wire fixture 与错误处理。保留的 `audit-asset-pack`／`prepare-asset-pack`／`verify-asset-pack` 属于显式本地容器维护，需要完整原文件与相符清单；生成的 `target/asset-pack/synapse.pack` 不属于当前应用运行或安装依赖。旧全量 `SynapseAssets.list/load` pack 回环已移除；当前资源纯测试验证索引闭包、产品选择、缓存和模拟请求，只用必要的内联合成 codec 样本，不下载全套图片。格式和边界见 [资源交付与容器格式](../docs/asset-pack-format.md)。
 
-`python tools/workspace.py organize-resources --apply` 将资源表归入 `tables/`，来源清单归入 `manifests/`，索引归入 `indexes/`，同步 Rust include、JSON 物理路径和文档引用；产品配置保留在 `products/<PID>/configs/`。目录索引只保留实际输出：被更新的活跃 alias 绑定到当前已核验文件，已无生产引用的悬空记录从当前索引移除，其完整旧记录与判定保留于同一 `resource-deduplication.json`。逻辑 alias 不改名。
+`python tools/workspace.py organize-resources --apply` 将来源清单归入 `manifests/`，索引归入 `indexes/`，同步物理路径和文档引用；资源 alias 及全部图片选择条件只由 `tools/resource-mappings.json` 维护，发现旧 Rust 资源片段则拒绝静默搬回生产路径；产品配置保留在 `products/<PID>/configs/`。目录索引只保留实际输出：被更新的活跃 alias 绑定到当前已核验文件，已无生产引用的悬空记录从当前索引移除，其完整旧记录与判定保留于同一 `resource-deduplication.json`。逻辑 alias 不改名。

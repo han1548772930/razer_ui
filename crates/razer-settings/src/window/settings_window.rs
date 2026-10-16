@@ -524,8 +524,10 @@ fn read_settings_window_catalog() -> Source {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_settings_window_data_decodes() {
-    let _ = read_settings_window_catalog();
+mod settings_window_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_settings_window_data_decodes() {
+        let _ = super::read_settings_window_catalog();
+    }
 }
 // End generated catalog reader: razer-settings/settings_window_data.

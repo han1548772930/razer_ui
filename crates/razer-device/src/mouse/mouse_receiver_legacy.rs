@@ -28,11 +28,9 @@ pub fn binding_capability(
     physical_product_id: u32,
 ) -> Option<&'static DeviceReadCapability> {
     static DATA: OnceLock<Vec<DeviceReadCapability>> = OnceLock::new();
-    DATA.get_or_init(
-        || make_mouse_binding_query_capabilities_table(),
-    )
-    .iter()
-    .find(|cap| cap.product_id == product_id && cap.direct_pids.contains(&physical_product_id))
+    DATA.get_or_init(|| make_mouse_binding_query_capabilities_table())
+        .iter()
+        .find(|cap| cap.product_id == product_id && cap.direct_pids.contains(&physical_product_id))
 }
 pub fn change_capability(
     product_id: u32,
@@ -59,11 +57,9 @@ struct SourceCapability {
 }
 fn source_capability(product_id: u32) -> Option<&'static SourceCapability> {
     static DATA: OnceLock<Vec<SourceCapability>> = OnceLock::new();
-    DATA.get_or_init(
-        || make_mouse_receiver_legacy_capabilities_table(),
-    )
-    .iter()
-    .find(|cap| cap.transport.product_id == product_id)
+    DATA.get_or_init(|| make_mouse_receiver_legacy_capabilities_table())
+        .iter()
+        .find(|cap| cap.transport.product_id == product_id)
 }
 pub fn capability(product_id: u32) -> Option<&'static DeviceReadCapability> {
     source_capability(product_id).map(|cap| &cap.transport)

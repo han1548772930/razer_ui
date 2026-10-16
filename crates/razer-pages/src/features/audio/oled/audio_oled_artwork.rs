@@ -778,8 +778,10 @@ fn read_audio_oled_artwork_catalog() -> ArtworkSpec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_oled_artwork_data_decodes() {
-    let _ = read_audio_oled_artwork_catalog();
+mod audio_oled_artwork_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_oled_artwork_data_decodes() {
+        let _ = super::read_audio_oled_artwork_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_oled_artwork_data.

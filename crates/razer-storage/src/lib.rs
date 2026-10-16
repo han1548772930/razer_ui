@@ -3,10 +3,6 @@
 //! Chromium database or vendor profile file formats.
 #[path = "app_features.rs"]
 pub mod app_features;
-#[path = "receiver/receiver_pairing_catalog.rs"]
-pub(crate) mod receiver_pairing_catalog;
-#[path = "receiver/receiver_reset_defaults.rs"]
-pub(crate) mod receiver_reset_defaults;
 #[path = "game_catalog.rs"]
 pub mod game_catalog;
 #[path = "host.rs"]
@@ -31,8 +27,12 @@ pub mod receiver_indicator;
 pub mod receiver_legacy;
 #[path = "receiver/receiver_pairing.rs"]
 pub mod receiver_pairing;
+#[path = "receiver/receiver_pairing_catalog.rs"]
+pub(crate) mod receiver_pairing_catalog;
 #[path = "receiver/receiver_reset.rs"]
 pub mod receiver_reset;
+#[path = "receiver/receiver_reset_defaults.rs"]
+pub(crate) mod receiver_reset_defaults;
 #[path = "source_identity.rs"]
 pub mod source_identity;
 #[path = "source_local.rs"]

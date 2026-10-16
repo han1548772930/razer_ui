@@ -1341,8 +1341,10 @@ fn read_shortcuts_current_catalog() -> SourceShortcutData {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_shortcuts_current_decodes() {
-    let _ = read_shortcuts_current_catalog();
+mod shortcuts_current_catalog_tests {
+    #[test]
+    fn packaged_catalog_shortcuts_current_decodes() {
+        let _ = super::read_shortcuts_current_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/shortcuts_current.

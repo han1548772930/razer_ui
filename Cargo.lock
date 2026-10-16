@@ -5760,10 +5760,12 @@ dependencies = [
  "async-channel",
  "futures",
  "gpui-kit",
+ "gpui-pre-reqwest",
  "razer-resource-db",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "tokio",
  "windows-sys 0.61.2",
 ]
 

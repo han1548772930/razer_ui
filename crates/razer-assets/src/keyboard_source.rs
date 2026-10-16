@@ -614,8 +614,10 @@ fn read_keyboard_sources_catalog() -> Vec<KeyboardSourceLayout> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_sources_decodes() {
-    let _ = read_keyboard_sources_catalog();
+mod keyboard_sources_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_sources_decodes() {
+        let _ = super::read_keyboard_sources_catalog();
+    }
 }
 // End generated catalog reader: razer-assets/keyboard_sources.

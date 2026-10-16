@@ -1223,8 +1223,10 @@ fn read_mouse_receiver_indicator_catalog() -> Vec<Source> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_receiver_indicator_data_decodes() {
-    let _ = read_mouse_receiver_indicator_catalog();
+mod mouse_receiver_indicator_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_receiver_indicator_data_decodes() {
+        let _ = super::read_mouse_receiver_indicator_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_receiver_indicator_data.

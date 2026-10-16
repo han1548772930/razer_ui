@@ -757,8 +757,10 @@ fn read_aether_strip_catalog() -> Spec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_aether_strip_data_decodes() {
-    let _ = read_aether_strip_catalog();
+mod aether_strip_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_aether_strip_data_decodes() {
+        let _ = super::read_aether_strip_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/aether_strip_data.

@@ -677,8 +677,10 @@ fn read_receiver_indicator_catalog() -> Vec<IndicatorMode> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_receiver_indicator_data_decodes() {
-    let _ = read_receiver_indicator_catalog();
+mod receiver_indicator_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_receiver_indicator_data_decodes() {
+        let _ = super::read_receiver_indicator_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/receiver_indicator_data.

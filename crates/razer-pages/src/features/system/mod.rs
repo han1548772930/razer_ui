@@ -1876,10 +1876,12 @@ fn read_system_products_catalog() -> Vec<(u32, fn() -> SystemProductSpec)> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_system_products_data_decodes() {
-    for (_, factory) in read_system_products_catalog() {
-        let _ = factory();
+mod system_products_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_system_products_data_decodes() {
+        for (_, factory) in super::read_system_products_catalog() {
+            let _ = factory();
+        }
     }
 }
 // End generated catalog reader: razer-pages/system_products_data.

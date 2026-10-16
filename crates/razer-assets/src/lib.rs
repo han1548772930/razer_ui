@@ -4,6 +4,7 @@ use std::borrow::Cow;
 pub struct SynapseAssets;
 mod image_selectors;
 mod native_icons;
+mod window_icons;
 pub use native_icons::NativeIcon;
 mod keyboard_source;
 pub use keyboard_source::{
@@ -29,6 +30,9 @@ impl SynapseAssets {
 }
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
+        if let Some(bytes) = window_icons::load(path) {
+            return Ok(Some(Cow::Borrowed(bytes)));
+        }
         if path.starts_with("assets/") {
             return load_path(path);
         }
@@ -99,8 +103,10 @@ pub fn dashboard_plugin_image(
     wrist: bool,
     density: u32,
 ) -> Option<&'static str> {
-    image_selectors::get().dashboard_plugins.iter().find_map(
-        |image| {
+    image_selectors::get()
+        .dashboard_plugins
+        .iter()
+        .find_map(|image| {
             (image.variant.product_id == pid
                 && image.variant.edition_id == edition_id
                 && image.filename_edition_id == filename_edition_id
@@ -108,8 +114,7 @@ pub fn dashboard_plugin_image(
                 && image.wrist == wrist
                 && image.density == density)
                 .then_some(image.variant.asset.as_str())
-        },
-    )
+        })
 }
 
 /// Exact current App.tt requests, with BoxItemDevice.onBoxImageError's final
@@ -136,8 +141,9 @@ pub fn dashboard_card_image(
 /// Failed explicit editions retain the original unavailable/placeholder branch.
 pub fn pairing_product_image(pid: u32, edition_id: u32, layout_id: u32) -> Option<&'static str> {
     image_selectors::get().pairing.iter().find_map(|image| {
-            (image.product_id == pid && image.edition_id == edition_id && image.layout_id == layout_id).then_some(image.asset.as_str())
-        })
+        (image.product_id == pid && image.edition_id == edition_id && image.layout_id == layout_id)
+            .then_some(image.asset.as_str())
+    })
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -146,10 +152,20 @@ pub enum GamepadCalibrationSvg {
     ActuationDevice,
 }
 
-pub fn gamepad_calibration_svg(pid: u32, edition: u32, kind: GamepadCalibrationSvg) -> Option<&'static str> {
+pub fn gamepad_calibration_svg(
+    pid: u32,
+    edition: u32,
+    kind: GamepadCalibrationSvg,
+) -> Option<&'static str> {
     let images = &image_selectors::get().calibration;
-    images.iter().find(|image| image.product_id == pid && image.edition_id == edition && image.kind == kind)
-        .or_else(|| images.iter().find(|image| image.product_id == pid && image.edition_id == 0 && image.kind == kind))
+    images
+        .iter()
+        .find(|image| image.product_id == pid && image.edition_id == edition && image.kind == kind)
+        .or_else(|| {
+            images.iter().find(|image| {
+                image.product_id == pid && image.edition_id == 0 && image.kind == kind
+            })
+        })
         .map(|image| image.asset.as_str())
 }
 
@@ -188,20 +204,18 @@ pub fn resolve_device_image(
         0
     };
     let lookup = |requested_edition, requested_layout| {
-        image_selectors::get().products.iter().find_map(
-            |image| {
-                (image.variant.product_id == pid
-                    && image.variant.edition_id == requested_edition
-                    && image.variant.layout_id == requested_layout
-                    && image.part == part)
-                    .then_some(ResolvedDeviceImage {
-                        asset: image.variant.asset.as_str(),
-                        edition_id: image.variant.edition_id,
-                        layout_id: image.variant.layout_id,
-                        is_fallback_preview: false,
-                    })
-            },
-        )
+        image_selectors::get().products.iter().find_map(|image| {
+            (image.variant.product_id == pid
+                && image.variant.edition_id == requested_edition
+                && image.variant.layout_id == requested_layout
+                && image.part == part)
+                .then_some(ResolvedDeviceImage {
+                    asset: image.variant.asset.as_str(),
+                    edition_id: image.variant.edition_id,
+                    layout_id: image.variant.layout_id,
+                    is_fallback_preview: false,
+                })
+        })
     };
     lookup(edition_id, layout_id).or_else(|| lookup(0, layout_id))
 }
@@ -315,9 +329,15 @@ mod tests {
         let images = &image_selectors::get().dashboard_plugins;
         assert!(!images.is_empty());
         for image in images {
-            let (pid, directory_edition, filename_edition, layout, wrist, density, alias) =
-                (image.variant.product_id, image.variant.edition_id, image.filename_edition_id,
-                 image.variant.layout_id, image.wrist, image.density, image.variant.asset.as_str());
+            let (pid, directory_edition, filename_edition, layout, wrist, density, alias) = (
+                image.variant.product_id,
+                image.variant.edition_id,
+                image.filename_edition_id,
+                image.variant.layout_id,
+                image.wrist,
+                image.density,
+                image.variant.asset.as_str(),
+            );
             let (_, bytes, _) = remote::identity(alias).unwrap_or_else(|| {
                 panic!(
                     "missing Dashboard artwork: PID {pid}, directory edition {directory_edition}, \
@@ -657,8 +677,10 @@ fn read_layouts_catalog() -> Vec<KeyboardLayout> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_layouts_decodes() {
-    let _ = read_layouts_catalog();
+mod layouts_catalog_tests {
+    #[test]
+    fn packaged_catalog_layouts_decodes() {
+        let _ = super::read_layouts_catalog();
+    }
 }
 // End generated catalog reader: razer-assets/layouts.

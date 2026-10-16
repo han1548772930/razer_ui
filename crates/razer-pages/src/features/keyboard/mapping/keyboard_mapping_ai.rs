@@ -359,8 +359,10 @@ fn read_keyboard_mapping_ai_catalog() -> Vec<Artwork> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_mapping_ai_data_decodes() {
-    let _ = read_keyboard_mapping_ai_catalog();
+mod keyboard_mapping_ai_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_mapping_ai_data_decodes() {
+        let _ = super::read_keyboard_mapping_ai_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_mapping_ai_data.

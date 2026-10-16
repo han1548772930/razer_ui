@@ -694,8 +694,10 @@ fn read_corex_fan_catalog() -> FanPresentation {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_corex_fan_data_decodes() {
-    let _ = read_corex_fan_catalog();
+mod corex_fan_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_corex_fan_data_decodes() {
+        let _ = super::read_corex_fan_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/corex_fan_data.

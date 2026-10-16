@@ -131,9 +131,7 @@ struct Limits {
 fn product(pid: u32) -> Option<&'static Product> {
     static PRODUCTS: OnceLock<Vec<Product>> = OnceLock::new();
     PRODUCTS
-        .get_or_init(|| {
-            make_controller_calibration_current_params_table()
-        })
+        .get_or_init(|| make_controller_calibration_current_params_table())
         .iter()
         .find(|p| p.product_id == pid && p.params.version == 3)
 }

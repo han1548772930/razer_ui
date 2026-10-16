@@ -1412,8 +1412,10 @@ fn read_wireless_argb_catalog() -> Vec<Spec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_wireless_argb_data_decodes() {
-    let _ = read_wireless_argb_catalog();
+mod wireless_argb_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_wireless_argb_data_decodes() {
+        let _ = super::read_wireless_argb_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/wireless_argb_data.

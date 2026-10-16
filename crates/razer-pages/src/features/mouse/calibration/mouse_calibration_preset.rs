@@ -338,8 +338,10 @@ fn read_mouse_preset_calibration_catalog() -> Vec<Spec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_preset_calibration_data_decodes() {
-    let _ = read_mouse_preset_calibration_catalog();
+mod mouse_preset_calibration_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_preset_calibration_data_decodes() {
+        let _ = super::read_mouse_preset_calibration_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_preset_calibration_data.

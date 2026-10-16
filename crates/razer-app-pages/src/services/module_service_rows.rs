@@ -812,8 +812,10 @@ fn read_module_service_source_catalog() -> ModuleServiceSource {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_module_service_source_decodes() {
-    let _ = read_module_service_source_catalog();
+mod module_service_source_catalog_tests {
+    #[test]
+    fn packaged_catalog_module_service_source_decodes() {
+        let _ = super::read_module_service_source_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/module_service_source.

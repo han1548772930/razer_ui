@@ -216,8 +216,10 @@ fn read_app_picker_icons_catalog() -> Icons {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_app_picker_icons_data_decodes() {
-    let _ = read_app_picker_icons_catalog();
+mod app_picker_icons_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_app_picker_icons_data_decodes() {
+        let _ = super::read_app_picker_icons_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/app_picker_icons_data.

@@ -319,8 +319,10 @@ fn read_macro_input_catalogs_catalog() -> MacroInputCatalogs {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_macro_input_catalogs_decodes() {
-    let _ = read_macro_input_catalogs_catalog();
+mod macro_input_catalogs_catalog_tests {
+    #[test]
+    fn packaged_catalog_macro_input_catalogs_decodes() {
+        let _ = super::read_macro_input_catalogs_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/macro_input_catalogs.

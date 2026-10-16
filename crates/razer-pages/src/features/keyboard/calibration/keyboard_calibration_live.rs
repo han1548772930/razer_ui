@@ -546,8 +546,10 @@ fn read_keyboard_calibration_capture_catalog() -> Vec<CaptureData> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_calibration_capture_data_decodes() {
-    let _ = read_keyboard_calibration_capture_catalog();
+mod keyboard_calibration_capture_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_calibration_capture_data_decodes() {
+        let _ = super::read_keyboard_calibration_capture_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_calibration_capture_data.

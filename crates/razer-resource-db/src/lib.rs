@@ -3,8 +3,8 @@ use anyhow::{Context as _, ensure};
 use rusqlite::{Connection, OpenFlags};
 use std::sync::{Mutex, OnceLock};
 
-mod installation;
 mod document;
+mod installation;
 pub use document::{CatalogId, NodeReader, initialize, read_document};
 pub mod catalogs;
 pub use installation::InstallationPaths;

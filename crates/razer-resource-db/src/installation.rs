@@ -39,11 +39,17 @@ impl InstallationPaths {
     }
 
     pub(super) fn catalog(&self) -> anyhow::Result<PathBuf> {
-        self.catalog_with_identity(crate::packaged::CATALOG_LENGTH, &crate::packaged::CATALOG_SHA256)
+        self.catalog_with_identity(
+            crate::packaged::CATALOG_LENGTH,
+            &crate::packaged::CATALOG_SHA256,
+        )
     }
 
     fn catalog_with_identity(&self, length: u64, digest: &[u8; 32]) -> anyhow::Result<PathBuf> {
-        let path = self.cache.join("catalogs").join(format!("{}.sqlite3", hex(&digest)));
+        let path = self
+            .cache
+            .join("catalogs")
+            .join(format!("{}.sqlite3", hex(&digest)));
         reject_links(&path)?;
         if matches_identity(&path, length, &digest)? {
             return Ok(path);
@@ -55,8 +61,10 @@ impl InstallationPaths {
             .take(length + 1)
             .read_to_end(&mut bytes)?;
         let actual: [u8; 32] = Sha256::digest(&bytes).into();
-        ensure!(bytes.len() as u64 == length && &actual == digest,
-                "Packaged resource catalog differs from this application version");
+        ensure!(
+            bytes.len() as u64 == length && &actual == digest,
+            "Packaged resource catalog differs from this application version"
+        );
         self.publish_catalog(&bytes)
     }
 
@@ -206,26 +214,55 @@ mod tests {
 
     #[test]
     fn external_catalog_is_required_on_cache_miss_and_valid_cache_works_without_it() {
-        let root = std::env::temp_dir().join(format!("razer-catalog-external-{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("razer-catalog-external-{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
         let paths = InstallationPaths::from_executable(&root.join("razer_ui.exe")).unwrap();
         let seed = b"packaged offline catalog";
         let digest: [u8; 32] = Sha256::digest(seed).into();
-        assert!(paths.catalog_with_identity(seed.len() as u64, &digest).unwrap_err().to_string().contains("missing"));
+        assert!(
+            paths
+                .catalog_with_identity(seed.len() as u64, &digest)
+                .unwrap_err()
+                .to_string()
+                .contains("missing")
+        );
         fs::write(&paths.seed, b"a different application version").unwrap();
-        assert!(paths.catalog_with_identity(seed.len() as u64, &digest).is_err());
+        assert!(
+            paths
+                .catalog_with_identity(seed.len() as u64, &digest)
+                .is_err()
+        );
         fs::write(&paths.seed, seed).unwrap();
-        let cache = paths.catalog_with_identity(seed.len() as u64, &digest).unwrap();
+        let cache = paths
+            .catalog_with_identity(seed.len() as u64, &digest)
+            .unwrap();
         assert_eq!(fs::read(&cache).unwrap(), seed);
         fs::write(&cache, b"corrupt cached catalog").unwrap();
-        assert_eq!(paths.catalog_with_identity(seed.len() as u64, &digest).unwrap(), cache);
+        assert_eq!(
+            paths
+                .catalog_with_identity(seed.len() as u64, &digest)
+                .unwrap(),
+            cache
+        );
         assert_eq!(fs::read(&cache).unwrap(), seed);
         fs::remove_file(&paths.seed).unwrap();
-        assert_eq!(paths.catalog_with_identity(seed.len() as u64, &digest).unwrap(), cache);
+        assert_eq!(
+            paths
+                .catalog_with_identity(seed.len() as u64, &digest)
+                .unwrap(),
+            cache
+        );
         let next: [u8; 32] = Sha256::digest(b"new version").into();
         assert!(paths.catalog_with_identity(11, &next).is_err());
         assert_eq!(fs::read(&cache).unwrap(), seed);
-        assert!(!cache.parent().unwrap().read_dir().unwrap().any(|entry| entry.unwrap().path().extension().is_some_and(|extension| extension == "partial")));
+        assert!(!cache.parent().unwrap().read_dir().unwrap().any(|entry| {
+            entry
+                .unwrap()
+                .path()
+                .extension()
+                .is_some_and(|extension| extension == "partial")
+        }));
         remove_test_directory(&root);
     }
 }

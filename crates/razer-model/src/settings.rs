@@ -963,7 +963,8 @@ pub fn canonical_snap_key(key: &str) -> Option<String> {
     {
         return None;
     }
-    MAPPING_KEYS.iter()
+    MAPPING_KEYS
+        .iter()
         .any(|(_, candidate, _)| *candidate == id)
         .then_some(id)
 }

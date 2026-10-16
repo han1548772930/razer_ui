@@ -967,9 +967,11 @@ fn read_audio_oled_system_asset_sizes_catalog() -> SystemAssetSizes {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_oled_system_asset_sizes_decodes() {
-    let _ = read_audio_oled_system_asset_sizes_catalog();
+mod audio_oled_system_asset_sizes_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_oled_system_asset_sizes_decodes() {
+        let _ = super::read_audio_oled_system_asset_sizes_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_oled_system_asset_sizes.
 
@@ -1065,8 +1067,10 @@ fn read_audio_oled_system_catalog() -> SystemSpec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_oled_system_data_decodes() {
-    let _ = read_audio_oled_system_catalog();
+mod audio_oled_system_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_oled_system_data_decodes() {
+        let _ = super::read_audio_oled_system_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_oled_system_data.

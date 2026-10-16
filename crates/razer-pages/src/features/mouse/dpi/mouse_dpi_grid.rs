@@ -547,8 +547,10 @@ fn read_mouse_dpi_grid_catalog() -> Vec<GridSpec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_dpi_grid_data_decodes() {
-    let _ = read_mouse_dpi_grid_catalog();
+mod mouse_dpi_grid_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_dpi_grid_data_decodes() {
+        let _ = super::read_mouse_dpi_grid_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_dpi_grid_data.

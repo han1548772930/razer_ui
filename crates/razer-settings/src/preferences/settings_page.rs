@@ -1013,9 +1013,11 @@ fn read_customize_layouts_catalog() -> Catalog {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_customize_layouts_decodes() {
-    let _ = read_customize_layouts_catalog();
+mod customize_layouts_catalog_tests {
+    #[test]
+    fn packaged_catalog_customize_layouts_decodes() {
+        let _ = super::read_customize_layouts_catalog();
+    }
 }
 // End generated catalog reader: razer-settings/customize_layouts.
 
@@ -1058,8 +1060,10 @@ fn read_settings_dashboard_manifest_catalog() -> DashboardVersion {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_settings_dashboard_manifest_decodes() {
-    let _ = read_settings_dashboard_manifest_catalog();
+mod settings_dashboard_manifest_catalog_tests {
+    #[test]
+    fn packaged_catalog_settings_dashboard_manifest_decodes() {
+        let _ = super::read_settings_dashboard_manifest_catalog();
+    }
 }
 // End generated catalog reader: razer-settings/settings_dashboard_manifest.

@@ -877,8 +877,10 @@ fn read_hyperflux_207_pairing_strings_catalog() -> BTreeMap<String, BTreeMap<Str
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_hyperflux_207_pairing_strings_decodes() {
-    let _ = read_hyperflux_207_pairing_strings_catalog();
+mod hyperflux_207_pairing_strings_catalog_tests {
+    #[test]
+    fn packaged_catalog_hyperflux_207_pairing_strings_decodes() {
+        let _ = super::read_hyperflux_207_pairing_strings_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/hyperflux_207_pairing_strings.

@@ -613,8 +613,10 @@ fn read_text_catalog() -> TextSource {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_text_data_decodes() {
-    let _ = read_text_catalog();
+mod text_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_text_data_decodes() {
+        let _ = super::read_text_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/text_data.

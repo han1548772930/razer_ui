@@ -924,8 +924,10 @@ fn read_receiver_pairing_catalog() -> PairingText {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_receiver_pairing_data_decodes() {
-    let _ = read_receiver_pairing_catalog();
+mod receiver_pairing_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_receiver_pairing_data_decodes() {
+        let _ = super::read_receiver_pairing_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/receiver_pairing_data.

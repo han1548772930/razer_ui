@@ -608,8 +608,10 @@ fn read_transfer_catalog() -> SourceData {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_transfer_data_decodes() {
-    let _ = read_transfer_catalog();
+mod transfer_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_transfer_data_decodes() {
+        let _ = super::read_transfer_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/transfer_data.

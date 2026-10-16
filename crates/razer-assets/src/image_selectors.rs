@@ -43,10 +43,14 @@ fn snapshot() -> anyhow::Result<&'static Selectors> {
         .get_or_init(|| {
             razer_resource_db::read_catalog(|connection| {
                 let mut products = Vec::new();
-                let mut statement = connection.prepare("SELECT * FROM product_image_selector ORDER BY position")?;
+                let mut statement =
+                    connection.prepare("SELECT * FROM product_image_selector ORDER BY position")?;
                 let mut rows = statement.query([])?;
                 while let Some(row) = rows.next()? {
-                    ensure!(row.get::<_, usize>(0)? == products.len(), "Invalid product selector order");
+                    ensure!(
+                        row.get::<_, usize>(0)? == products.len(),
+                        "Invalid product selector order"
+                    );
                     let part: String = row.get(4)?;
                     let part = match part.as_str() {
                         "Product" => DeviceImage::Product,
@@ -57,54 +61,113 @@ fn snapshot() -> anyhow::Result<&'static Selectors> {
                         _ => anyhow::bail!("Unknown product image part"),
                     };
                     products.push(ProductImage {
-                        variant: ImageVariant { product_id: row.get(1)?, edition_id: row.get(2)?, layout_id: row.get(3)?, asset: row.get(5)? },
+                        variant: ImageVariant {
+                            product_id: row.get(1)?,
+                            edition_id: row.get(2)?,
+                            layout_id: row.get(3)?,
+                            asset: row.get(5)?,
+                        },
                         part,
                     });
                 }
                 let mut dashboard = Vec::new();
-                let mut statement = connection.prepare("SELECT * FROM dashboard_image_selector ORDER BY position")?;
+                let mut statement = connection
+                    .prepare("SELECT * FROM dashboard_image_selector ORDER BY position")?;
                 let mut rows = statement.query([])?;
                 while let Some(row) = rows.next()? {
-                    ensure!(row.get::<_, usize>(0)? == dashboard.len(), "Invalid dashboard selector order");
-                    dashboard.push(ImageVariant { product_id: row.get(1)?, edition_id: row.get(2)?, layout_id: row.get(3)?, asset: row.get(4)? });
+                    ensure!(
+                        row.get::<_, usize>(0)? == dashboard.len(),
+                        "Invalid dashboard selector order"
+                    );
+                    dashboard.push(ImageVariant {
+                        product_id: row.get(1)?,
+                        edition_id: row.get(2)?,
+                        layout_id: row.get(3)?,
+                        asset: row.get(4)?,
+                    });
                 }
                 let mut dashboard_plugins = Vec::new();
-                let mut statement = connection.prepare("SELECT * FROM dashboard_plugin_image_selector ORDER BY position")?;
+                let mut statement = connection
+                    .prepare("SELECT * FROM dashboard_plugin_image_selector ORDER BY position")?;
                 let mut rows = statement.query([])?;
                 while let Some(row) = rows.next()? {
-                    ensure!(row.get::<_, usize>(0)? == dashboard_plugins.len(), "Invalid plugin image selector order");
+                    ensure!(
+                        row.get::<_, usize>(0)? == dashboard_plugins.len(),
+                        "Invalid plugin image selector order"
+                    );
                     let wrist: u32 = row.get(5)?;
                     let density: u32 = row.get(6)?;
-                    ensure!(wrist <= 1 && matches!(density, 1 | 3), "Invalid plugin image variant");
+                    ensure!(
+                        wrist <= 1 && matches!(density, 1 | 3),
+                        "Invalid plugin image variant"
+                    );
                     dashboard_plugins.push(DashboardPluginImage {
-                        variant: ImageVariant { product_id: row.get(1)?, edition_id: row.get(2)?, layout_id: row.get(4)?, asset: row.get(7)? },
-                        filename_edition_id: row.get(3)?, wrist: wrist == 1, density,
+                        variant: ImageVariant {
+                            product_id: row.get(1)?,
+                            edition_id: row.get(2)?,
+                            layout_id: row.get(4)?,
+                            asset: row.get(7)?,
+                        },
+                        filename_edition_id: row.get(3)?,
+                        wrist: wrist == 1,
+                        density,
                     });
                 }
                 let mut pairing = Vec::new();
-                let mut statement = connection.prepare("SELECT * FROM pairing_image_selector ORDER BY position")?;
+                let mut statement =
+                    connection.prepare("SELECT * FROM pairing_image_selector ORDER BY position")?;
                 let mut rows = statement.query([])?;
                 while let Some(row) = rows.next()? {
-                    ensure!(row.get::<_, usize>(0)? == pairing.len(), "Invalid pairing selector order");
-                    pairing.push(ImageVariant { product_id: row.get(1)?, edition_id: row.get(2)?, layout_id: row.get(3)?, asset: row.get(4)? });
+                    ensure!(
+                        row.get::<_, usize>(0)? == pairing.len(),
+                        "Invalid pairing selector order"
+                    );
+                    pairing.push(ImageVariant {
+                        product_id: row.get(1)?,
+                        edition_id: row.get(2)?,
+                        layout_id: row.get(3)?,
+                        asset: row.get(4)?,
+                    });
                 }
                 let mut calibration = Vec::new();
-                let mut statement = connection.prepare("SELECT * FROM gamepad_calibration_svg_selector ORDER BY position")?;
+                let mut statement = connection
+                    .prepare("SELECT * FROM gamepad_calibration_svg_selector ORDER BY position")?;
                 let mut rows = statement.query([])?;
                 while let Some(row) = rows.next()? {
-                    ensure!(row.get::<_, usize>(0)? == calibration.len(), "Invalid calibration selector order");
+                    ensure!(
+                        row.get::<_, usize>(0)? == calibration.len(),
+                        "Invalid calibration selector order"
+                    );
                     let kind: String = row.get(3)?;
                     let kind = match kind.as_str() {
                         "prd" => GamepadCalibrationSvg::Product,
                         "ActuationDevice" => GamepadCalibrationSvg::ActuationDevice,
                         _ => anyhow::bail!("Unknown calibration SVG kind"),
                     };
-                    calibration.push(CalibrationSvg { product_id: row.get(1)?, edition_id: row.get(2)?, kind, asset: row.get(4)? });
+                    calibration.push(CalibrationSvg {
+                        product_id: row.get(1)?,
+                        edition_id: row.get(2)?,
+                        kind,
+                        asset: row.get(4)?,
+                    });
                 }
-                ensure!(!products.is_empty() && !dashboard.is_empty() && !dashboard_plugins.is_empty()
-                        && !pairing.is_empty() && !calibration.is_empty(), "Packaged image selectors are missing");
-                Ok(Selectors { products, dashboard, dashboard_plugins, pairing, calibration })
-            }).map_err(|error| format!("{error:#}"))
+                ensure!(
+                    !products.is_empty()
+                        && !dashboard.is_empty()
+                        && !dashboard_plugins.is_empty()
+                        && !pairing.is_empty()
+                        && !calibration.is_empty(),
+                    "Packaged image selectors are missing"
+                );
+                Ok(Selectors {
+                    products,
+                    dashboard,
+                    dashboard_plugins,
+                    pairing,
+                    calibration,
+                })
+            })
+            .map_err(|error| format!("{error:#}"))
         })
         .as_ref()
         .map_err(|error| anyhow::anyhow!("{error}"))

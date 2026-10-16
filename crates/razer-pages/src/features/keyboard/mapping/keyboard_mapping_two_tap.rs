@@ -1097,9 +1097,11 @@ fn read_keyboard_mapping_entry_gates_catalog() -> Vec<Entry> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_mapping_entry_gates_data_decodes() {
-    let _ = read_keyboard_mapping_entry_gates_catalog();
+mod keyboard_mapping_entry_gates_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_mapping_entry_gates_data_decodes() {
+        let _ = super::read_keyboard_mapping_entry_gates_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_mapping_entry_gates_data.
 
@@ -1206,8 +1208,10 @@ fn read_keyboard_mapping_two_tap_catalog() -> Vec<Product> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_mapping_two_tap_data_decodes() {
-    let _ = read_keyboard_mapping_two_tap_catalog();
+mod keyboard_mapping_two_tap_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_mapping_two_tap_data_decodes() {
+        let _ = super::read_keyboard_mapping_two_tap_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_mapping_two_tap_data.

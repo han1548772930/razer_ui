@@ -1003,8 +1003,10 @@ fn read_dock_pairing_catalog() -> Vec<Spec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_dock_pairing_data_decodes() {
-    let _ = read_dock_pairing_catalog();
+mod dock_pairing_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_dock_pairing_data_decodes() {
+        let _ = super::read_dock_pairing_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/dock_pairing_data.

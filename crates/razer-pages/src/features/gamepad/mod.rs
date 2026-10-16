@@ -1547,10 +1547,12 @@ fn read_gamepad_products_catalog() -> Vec<(u32, fn() -> GamepadProductSpec)> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_gamepad_products_data_decodes() {
-    for (_, factory) in read_gamepad_products_catalog() {
-        let _ = factory();
+mod gamepad_products_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_gamepad_products_data_decodes() {
+        for (_, factory) in super::read_gamepad_products_catalog() {
+            let _ = factory();
+        }
     }
 }
 // End generated catalog reader: razer-pages/gamepad_products_data.

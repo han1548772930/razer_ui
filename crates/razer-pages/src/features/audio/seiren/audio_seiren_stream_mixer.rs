@@ -1684,8 +1684,10 @@ fn read_seiren_stream_mixer_catalog() -> BTreeMap<String, Recipe> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_seiren_stream_mixer_decodes() {
-    let _ = read_seiren_stream_mixer_catalog();
+mod seiren_stream_mixer_catalog_tests {
+    #[test]
+    fn packaged_catalog_seiren_stream_mixer_decodes() {
+        let _ = super::read_seiren_stream_mixer_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/seiren_stream_mixer.

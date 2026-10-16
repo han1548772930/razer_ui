@@ -1725,8 +1725,10 @@ fn read_audio_seiren_stream_mixer_catalog() -> BTreeMap<String, Presentation> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_seiren_stream_mixer_data_decodes() {
-    let _ = read_audio_seiren_stream_mixer_catalog();
+mod audio_seiren_stream_mixer_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_seiren_stream_mixer_data_decodes() {
+        let _ = super::read_audio_seiren_stream_mixer_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_seiren_stream_mixer_data.

@@ -1257,8 +1257,10 @@ fn read_keyboard_snap_tap_catalog() -> SnapTapData {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_snap_tap_data_decodes() {
-    let _ = read_keyboard_snap_tap_catalog();
+mod keyboard_snap_tap_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_snap_tap_data_decodes() {
+        let _ = super::read_keyboard_snap_tap_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_snap_tap_data.

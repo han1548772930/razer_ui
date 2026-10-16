@@ -797,8 +797,10 @@ fn read_mouse_haptic_catalog() -> BTreeMap<String, BTreeMap<String, HapticPreset
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_haptic_data_decodes() {
-    let _ = read_mouse_haptic_catalog();
+mod mouse_haptic_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_haptic_data_decodes() {
+        let _ = super::read_mouse_haptic_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_haptic_data.

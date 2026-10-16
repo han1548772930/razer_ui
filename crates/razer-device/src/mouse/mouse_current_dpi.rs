@@ -80,8 +80,7 @@ impl Capability {
 pub fn capability(product_id: u32) -> Option<&'static Capability> {
     static CAPS: OnceLock<Vec<Capability>> = OnceLock::new();
     CAPS.get_or_init(|| {
-        let mut capabilities: Vec<Capability> =
-            make_mouse_current_dpi_table();
+        let mut capabilities: Vec<Capability> = make_mouse_current_dpi_table();
         // Current182 factory87887 selects ordinary wired and DualLink radio
         // senders. Retain those distinct physical branches for each exchange.
         if let Some(cap) = capabilities.iter_mut().find(|cap| cap.product_id == 182) {

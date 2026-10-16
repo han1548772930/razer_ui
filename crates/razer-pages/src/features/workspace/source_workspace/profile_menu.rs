@@ -837,8 +837,10 @@ fn read_source_profile_menu_catalog() -> MenuData {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_source_profile_menu_data_decodes() {
-    let _ = read_source_profile_menu_catalog();
+mod source_profile_menu_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_source_profile_menu_data_decodes() {
+        let _ = super::read_source_profile_menu_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/source_profile_menu_data.

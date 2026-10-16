@@ -915,8 +915,10 @@ fn read_audio_oled_runtime_catalog() -> RuntimeSpec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_oled_runtime_data_decodes() {
-    let _ = read_audio_oled_runtime_catalog();
+mod audio_oled_runtime_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_oled_runtime_data_decodes() {
+        let _ = super::read_audio_oled_runtime_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_oled_runtime_data.

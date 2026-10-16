@@ -367,7 +367,9 @@ pub(super) fn load_path(path: &str) -> anyhow::Result<Option<Vec<u8>>> {
 }
 
 pub(super) fn cached_or_request(file: &ResourceFile) -> anyhow::Result<Option<Vec<u8>>> {
-    runtime::service()?.read_or_request(file)
+    runtime::service()?
+        .read_or_request(file)
+        .map(|bytes| bytes.map(|bytes| bytes.to_vec()))
 }
 
 static GENERATION: AtomicU64 = AtomicU64::new(0);
@@ -471,8 +473,10 @@ fn verified(file: &ResourceFile, bytes: &[u8]) -> bool {
     bytes.len() as u64 == file.bytes && format!("{:x}", Sha256::digest(bytes)) == file.sha256
 }
 
-
 fn available(path: &str) -> anyhow::Result<bool> {
+    if crate::window_icons::load(path).is_some() {
+        return Ok(true);
+    }
     let manifest = manifest()?;
     let file = manifest
         .keys
@@ -480,7 +484,9 @@ fn available(path: &str) -> anyhow::Result<bool> {
         .map(|&ix| &manifest.entries[ix].file)
         .or_else(|| manifest.paths.get(path).map(|&ix| &manifest.files[ix]));
     file.map_or(Ok(true), |file| {
-        cached_or_request(file).map(|bytes| bytes.is_some())
+        runtime::service()?
+            .read_or_request(file)
+            .map(|bytes| bytes.is_some())
     })
 }
 

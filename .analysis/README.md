@@ -6,7 +6,7 @@
 | --- | --- |
 | [inputs.json](inputs.json) | 本轮已从保留证据恢复并重新审计；记录相对路径、原始字节长度与 SHA-256，缺失和身份不符仍保留，不能把已存在文件扫描当作原始来源证明 |
 | `inputs/` | 保留的原始源码、二进制和获取记录；当前版本与完整性待核对 |
-| `references/` | OpenLogi 等外部参考，只用于其明确用途；不能作为 Razer 协议证据 |
+| `references/` | 外部架构与工具参考，只用于其明确用途；不能作为 Razer 协议证据 |
 | `results/` | 原生函数体、前端模块／资源引用、工具诊断、MCP 连接核验和统一 [缺项清单](results/gaps.json) |
 | [validation.json](validation.json) | 静态检查和纯／模拟测试结果、命令及代码身份 |
 | `verification/` | 当前验证命令的完整输出，身份由验证记录核对 |
@@ -20,6 +20,8 @@ Dashboard 已保存官方原始 HTML／JS／CSS／资源及获取前后入口／
 本轮 [installed-current 静态获取](inputs/installed-current/acquisition.json) 已重新完成：564 个安装文件、5,093 个官方公共静态缓存容器及其响应资源，获取／解析失败为 0；6 个前端缓存组无同 URL 字节冲突，当前部署与完整资源闭包仍须独立核验。当前 IDA 为用户指定的 `E:/IDA` 中 9.1／Hex-Rays 9.1.0.250226；原生完整函数、反编译失败及汇编以各 SHA 的 capture 为准，全函数捕获不表示语义或产品接线完成。工具身份与未完成的 AppEngine／全语料捕获见 [工具说明](../docs/re/tooling.md)。
 
 宿主 native 应用资源沿实际稳定 HTML manifest 与设备资源统一获取；本轮静态提取 16 个容器、676 个文件。corpus 另保存当前 installer 的完整下载策略，并以完整官方文件的精确区间证明 15 份 `pindex` 缓存属于分片；原分片保持独立，不当作完整模块。8 个官方资源与清单的实际字节差异及未证明来源保留，完整依赖、安装分支、ABI 与产品实现继续逐链推进。
+
+固定表的维护投影保存在 `inputs/typed-tables/`，与原始厂商证据分开标记；资源映射统一维护于 `tools/resource-mappings.json`，不保留旧 Rust 资源片段目录。产品和 Cargo 不读取这些分析维护输入。
 
 构建／测试样本位于所属 crate 的 `testdata/`，其来源语义需单独核对。构建不得依赖 `.work/` 或分析报告。
 

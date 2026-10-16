@@ -777,8 +777,10 @@ fn read_audio_nommo_effects_catalog() -> Vec<Spec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_nommo_effects_data_decodes() {
-    let _ = read_audio_nommo_effects_catalog();
+mod audio_nommo_effects_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_nommo_effects_data_decodes() {
+        let _ = super::read_audio_nommo_effects_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_nommo_effects_data.

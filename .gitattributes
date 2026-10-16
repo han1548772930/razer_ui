@@ -24,13 +24,11 @@ tools/analyzers/pillow/** -text whitespace=blank-at-eol,blank-at-eof,space-befor
 # The resource lock is reviewable source metadata, including its immutable HF commit.
 tools/asset-release.json -filter diff merge text eol=lf
 
-# Generated Rust lookup tables remain ordinary source code.
-assets/**/*.rs -filter diff merge text=auto
-
 # Native tray and menu icons required by the platform integration stay in Git.
-# These exact paths are embedded by crates/razer-tray/src/{lib,windows}.rs.
+# Their single byte owner is razer-assets::NativeIcon.
 # Other UI icons, including tray-user artwork, are external resource payloads.
 # Add any future installer icon only after a packaging caller requires it.
+assets/synapse/shared/window-controls/*.svg -filter -diff -merge -text
 assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba -filter -diff -merge -text
 assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba -filter -diff -merge -text
 assets/synapse/shared/pending-source-audit/81851a9004a803d3-tray-icon-24.rgba -filter -diff -merge -text

@@ -4,6 +4,9 @@ use futures::AsyncReadExt as _;
 use gpui_kit::http_client::{HttpClient, HttpRequestExt as _, RedirectPolicy, Request};
 use std::{sync::Arc, time::Duration};
 
+mod client;
+pub(super) use client::Client;
+
 pub(super) async fn download(
     client: Arc<dyn HttpClient>,
     file: &ResourceFile,

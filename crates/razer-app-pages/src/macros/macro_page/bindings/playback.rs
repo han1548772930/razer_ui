@@ -82,8 +82,10 @@ fn read_playback_182_catalog() -> PlaybackLists {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_playback_182_decodes() {
-    let _ = read_playback_182_catalog();
+mod playback_182_catalog_tests {
+    #[test]
+    fn packaged_catalog_playback_182_decodes() {
+        let _ = super::read_playback_182_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/playback_182.

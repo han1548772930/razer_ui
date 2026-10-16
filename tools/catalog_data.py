@@ -520,8 +520,9 @@ def format_reader(row, body, return_type):
     marker = "// Generated catalog reader: " + row["crate"] + "/" + row["macro"] + ".\n"
     source = marker + "fn " + reader_name(row) + "() -> " + return_type + " {\n" + body + "\n}\n"
     test = "packaged_catalog_" + row["macro"] + "_decodes"
-    verification = ("for (_, factory) in " + reader_name(row) + "() { let _ = factory(); }") if row.get("product_factory") else ("let _ = " + reader_name(row) + "();")
-    source += "\n#[cfg(test)]\n#[test]\nfn " + test + "() { " + verification + " }\n"
+    verification = ("for (_, factory) in super::" + reader_name(row) + "() { let _ = factory(); }") if row.get("product_factory") else ("let _ = super::" + reader_name(row) + "();")
+    source += ("\n#[cfg(test)]\nmod " + row["macro"] + "_catalog_tests {\n"
+               + "#[test]\nfn " + test + "() { " + verification + " }\n}\n")
     source += "// End generated catalog reader: " + row["crate"] + "/" + row["macro"] + ".\n"
     formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
                                input=source.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ROOT, check=False)

@@ -1211,8 +1211,10 @@ fn read_audio_oled_banner_catalog() -> Spec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_oled_banner_data_decodes() {
-    let _ = read_audio_oled_banner_catalog();
+mod audio_oled_banner_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_oled_banner_data_decodes() {
+        let _ = super::read_audio_oled_banner_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_oled_banner_data.

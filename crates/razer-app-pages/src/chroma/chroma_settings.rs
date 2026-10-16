@@ -1053,8 +1053,10 @@ fn read_chroma_settings_catalog() -> Source {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_chroma_settings_data_decodes() {
-    let _ = read_chroma_settings_catalog();
+mod chroma_settings_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_chroma_settings_data_decodes() {
+        let _ = super::read_chroma_settings_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/chroma_settings_data.

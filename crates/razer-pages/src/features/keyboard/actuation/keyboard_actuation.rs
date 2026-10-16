@@ -1537,9 +1537,11 @@ fn read_keyboard_actuation_catalog() -> Vec<Spec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_actuation_data_decodes() {
-    let _ = read_keyboard_actuation_catalog();
+mod keyboard_actuation_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_actuation_data_decodes() {
+        let _ = super::read_keyboard_actuation_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_actuation_data.
 
@@ -1622,8 +1624,10 @@ fn read_keyboard_actuation_presentation_catalog() -> Vec<Presentation> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_actuation_presentation_data_decodes() {
-    let _ = read_keyboard_actuation_presentation_catalog();
+mod keyboard_actuation_presentation_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_actuation_presentation_data_decodes() {
+        let _ = super::read_keyboard_actuation_presentation_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_actuation_presentation_data.

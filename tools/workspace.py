@@ -4734,6 +4734,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("asset-pack-core", ["cargo", "test", "--locked", "--offline", "-p", "razer-asset-pack", "--lib"]),
         ("assets-resource-identity", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests"]),
         ("assets-resource-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "remote::"]),
+        ("assets-fixed-icons", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "icons::tests"]),
         ("workspace", ["cargo", "check", "--locked", "--offline", "--workspace", "--all-targets"]),
     ]
     available = {name for name, _ in commands}

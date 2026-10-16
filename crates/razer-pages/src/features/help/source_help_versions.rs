@@ -79,8 +79,10 @@ fn read_source_help_versions_catalog() -> Vec<UiVersion> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_source_help_versions_data_decodes() {
-    let _ = read_source_help_versions_catalog();
+mod source_help_versions_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_source_help_versions_data_decodes() {
+        let _ = super::read_source_help_versions_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/source_help_versions_data.

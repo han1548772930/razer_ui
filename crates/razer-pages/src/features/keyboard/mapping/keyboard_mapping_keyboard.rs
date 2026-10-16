@@ -1022,8 +1022,10 @@ fn read_keyboard_mapping_recording_catalog() -> Vec<RecordingSource> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_mapping_recording_data_decodes() {
-    let _ = read_keyboard_mapping_recording_catalog();
+mod keyboard_mapping_recording_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_mapping_recording_data_decodes() {
+        let _ = super::read_keyboard_mapping_recording_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_mapping_recording_data.

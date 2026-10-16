@@ -690,8 +690,10 @@ fn read_source_profile_menu_data_transfer_catalog() -> Data {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_source_profile_menu_data_transfer_decodes() {
-    let _ = read_source_profile_menu_data_transfer_catalog();
+mod source_profile_menu_data_transfer_catalog_tests {
+    #[test]
+    fn packaged_catalog_source_profile_menu_data_transfer_decodes() {
+        let _ = super::read_source_profile_menu_data_transfer_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/source_profile_menu_data_transfer.

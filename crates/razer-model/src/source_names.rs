@@ -345,8 +345,10 @@ fn read_catalog_catalog() -> Catalog {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_catalog_decodes() {
-    let _ = read_catalog_catalog();
+mod catalog_catalog_tests {
+    #[test]
+    fn packaged_catalog_catalog_decodes() {
+        let _ = super::read_catalog_catalog();
+    }
 }
 // End generated catalog reader: razer-model/catalog.

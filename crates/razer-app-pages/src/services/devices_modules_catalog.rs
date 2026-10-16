@@ -515,8 +515,10 @@ fn read_devices_modules_catalog_catalog() -> SourceModuleCatalog {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_devices_modules_catalog_decodes() {
-    let _ = read_devices_modules_catalog_catalog();
+mod devices_modules_catalog_catalog_tests {
+    #[test]
+    fn packaged_catalog_devices_modules_catalog_decodes() {
+        let _ = super::read_devices_modules_catalog_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/devices_modules_catalog.

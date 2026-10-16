@@ -275,8 +275,10 @@ fn read_kitsune_catalog() -> Data {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_kitsune_data_decodes() {
-    let _ = read_kitsune_catalog();
+mod kitsune_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_kitsune_data_decodes() {
+        let _ = super::read_kitsune_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/kitsune_data.

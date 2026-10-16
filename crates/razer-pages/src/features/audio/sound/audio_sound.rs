@@ -2377,8 +2377,10 @@ fn read_audio_sound_catalog() -> Vec<Product> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_sound_data_decodes() {
-    let _ = read_audio_sound_catalog();
+mod audio_sound_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_sound_data_decodes() {
+        let _ = super::read_audio_sound_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_sound_data.

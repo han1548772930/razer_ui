@@ -153,8 +153,10 @@ fn read_chroma_studio_grid_catalog() -> Grid {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_chroma_studio_grid_decodes() {
-    let _ = read_chroma_studio_grid_catalog();
+mod chroma_studio_grid_catalog_tests {
+    #[test]
+    fn packaged_catalog_chroma_studio_grid_decodes() {
+        let _ = super::read_chroma_studio_grid_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/chroma_studio_grid.

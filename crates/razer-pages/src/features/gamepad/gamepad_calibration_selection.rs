@@ -41,7 +41,11 @@ pub(super) fn render(
                 .text_color(description_color())
                 .child(t("CONTROLLER_CALIBRATION_DESCRIPTION")),
         );
-    if let Some(image) = razer_assets::gamepad_calibration_svg(pid, edition, razer_assets::GamepadCalibrationSvg::Product) {
+    if let Some(image) = razer_assets::gamepad_calibration_svg(
+        pid,
+        edition,
+        razer_assets::GamepadCalibrationSvg::Product,
+    ) {
         panel = panel.child(
             div()
                 .absolute()

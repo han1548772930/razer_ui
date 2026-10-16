@@ -1399,8 +1399,10 @@ fn read_chroma_studio_catalog() -> Source {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_chroma_studio_data_decodes() {
-    let _ = read_chroma_studio_catalog();
+mod chroma_studio_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_chroma_studio_data_decodes() {
+        let _ = super::read_chroma_studio_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/chroma_studio_data.

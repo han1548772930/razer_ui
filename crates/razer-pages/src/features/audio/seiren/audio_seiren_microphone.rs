@@ -739,8 +739,10 @@ fn read_audio_seiren_microphone_catalog() -> BTreeMap<String, Presentation> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_seiren_microphone_data_decodes() {
-    let _ = read_audio_seiren_microphone_catalog();
+mod audio_seiren_microphone_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_seiren_microphone_data_decodes() {
+        let _ = super::read_audio_seiren_microphone_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_seiren_microphone_data.

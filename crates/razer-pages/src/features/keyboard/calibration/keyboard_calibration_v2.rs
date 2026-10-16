@@ -1566,8 +1566,10 @@ fn read_keyboard_calibration_v2_catalog() -> Data {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_calibration_v2_data_decodes() {
-    let _ = read_keyboard_calibration_v2_catalog();
+mod keyboard_calibration_v2_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_calibration_v2_data_decodes() {
+        let _ = super::read_keyboard_calibration_v2_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_calibration_v2_data.

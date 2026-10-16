@@ -558,8 +558,10 @@ fn read_keyboard_mapping_keypad_panel_catalog() -> Vec<Product> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_mapping_keypad_panel_data_decodes() {
-    let _ = read_keyboard_mapping_keypad_panel_catalog();
+mod keyboard_mapping_keypad_panel_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_mapping_keypad_panel_data_decodes() {
+        let _ = super::read_keyboard_mapping_keypad_panel_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_mapping_keypad_panel_data.

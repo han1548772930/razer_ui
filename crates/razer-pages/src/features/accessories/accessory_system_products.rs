@@ -37,9 +37,7 @@ pub struct AccessorySystemSpec {
 
 pub fn source_product(pid: u32) -> Option<&'static AccessorySystemSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<AccessorySystemSpec> =
-        super::source_catalog::SourceCatalog::new(
-            || read_accessory_system_products_catalog(),
-        );
+        super::source_catalog::SourceCatalog::new(|| read_accessory_system_products_catalog());
     PRODUCTS.get(pid)
 }
 
@@ -3000,10 +2998,12 @@ fn read_accessory_system_products_catalog() -> Vec<(u32, fn() -> AccessorySystem
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_accessory_system_products_data_decodes() {
-    for (_, factory) in read_accessory_system_products_catalog() {
-        let _ = factory();
+mod accessory_system_products_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_accessory_system_products_data_decodes() {
+        for (_, factory) in super::read_accessory_system_products_catalog() {
+            let _ = factory();
+        }
     }
 }
 // End generated catalog reader: razer-pages/accessory_system_products_data.

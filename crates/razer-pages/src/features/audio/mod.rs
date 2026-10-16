@@ -2278,9 +2278,11 @@ fn read_audio_chroma_modes_catalog() -> Vec<ChromaLightingPage> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_chroma_modes_decodes() {
-    let _ = read_audio_chroma_modes_catalog();
+mod audio_chroma_modes_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_chroma_modes_decodes() {
+        let _ = super::read_audio_chroma_modes_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/audio_chroma_modes.
 
@@ -3530,10 +3532,12 @@ fn read_audio_products_catalog() -> Vec<(u32, fn() -> AudioProductSpec)> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_audio_products_data_decodes() {
-    for (_, factory) in read_audio_products_catalog() {
-        let _ = factory();
+mod audio_products_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_audio_products_data_decodes() {
+        for (_, factory) in super::read_audio_products_catalog() {
+            let _ = factory();
+        }
     }
 }
 // End generated catalog reader: razer-pages/audio_products_data.

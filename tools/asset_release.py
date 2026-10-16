@@ -31,6 +31,8 @@ NATIVE_ICONS = (
     "33892a0b56b91958-tray-gear-light.rgba",
 )
 GIT_ICONS = {"assets/synapse/shared/pending-source-audit/" + n for n in NATIVE_ICONS}
+GIT_ICONS.update("assets/synapse/shared/window-controls/" + name + ".svg"
+                 for name in ("minimize", "maximize", "restore", "close"))
 META_FILES = {".gitattributes", "README.md", "release-index.json"}
 LFS_ATTRIBUTES = (b"* -filter -diff -merge -text\n"
                   b"assets/** filter=lfs diff=lfs merge=lfs -text\n")

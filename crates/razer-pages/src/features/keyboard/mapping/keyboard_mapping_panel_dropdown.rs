@@ -432,8 +432,10 @@ fn read_keyboard_mapping_panel_dropdown_catalog() -> Vec<Product> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_mapping_panel_dropdown_data_decodes() {
-    let _ = read_keyboard_mapping_panel_dropdown_catalog();
+mod keyboard_mapping_panel_dropdown_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_mapping_panel_dropdown_data_decodes() {
+        let _ = super::read_keyboard_mapping_panel_dropdown_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_mapping_panel_dropdown_data.

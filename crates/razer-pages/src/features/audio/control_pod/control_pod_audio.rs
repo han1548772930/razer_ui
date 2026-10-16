@@ -953,8 +953,10 @@ fn read_control_pod_audio_catalog() -> Data {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_control_pod_audio_data_decodes() {
-    let _ = read_control_pod_audio_catalog();
+mod control_pod_audio_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_control_pod_audio_data_decodes() {
+        let _ = super::read_control_pod_audio_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/control_pod_audio_data.

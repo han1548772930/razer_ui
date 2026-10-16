@@ -186,8 +186,10 @@ fn read_keyboard_properties_catalog() -> Vec<Spec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_properties_data_decodes() {
-    let _ = read_keyboard_properties_catalog();
+mod keyboard_properties_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_properties_data_decodes() {
+        let _ = super::read_keyboard_properties_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_properties_data.

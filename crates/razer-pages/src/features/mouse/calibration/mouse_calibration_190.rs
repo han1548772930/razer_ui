@@ -435,8 +435,10 @@ fn read_mouse_smart_calibration_family_catalog() -> Vec<u32> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_smart_calibration_family_data_decodes() {
-    let _ = read_mouse_smart_calibration_family_catalog();
+mod mouse_smart_calibration_family_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_smart_calibration_family_data_decodes() {
+        let _ = super::read_mouse_smart_calibration_family_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_smart_calibration_family_data.

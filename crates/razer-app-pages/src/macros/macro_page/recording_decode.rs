@@ -102,9 +102,7 @@ struct Data {
 
 fn keys() -> &'static [Key] {
     static DATA: OnceLock<Data> = OnceLock::new();
-    &DATA
-        .get_or_init(|| read_recording_keyboard_catalog())
-        .keys
+    &DATA.get_or_init(|| read_recording_keyboard_catalog()).keys
 }
 fn makecode(vk: u16) -> u16 {
     match vk {
@@ -695,8 +693,10 @@ fn read_recording_keyboard_catalog() -> Data {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_recording_keyboard_data_decodes() {
-    let _ = read_recording_keyboard_catalog();
+mod recording_keyboard_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_recording_keyboard_data_decodes() {
+        let _ = super::read_recording_keyboard_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/recording_keyboard_data.

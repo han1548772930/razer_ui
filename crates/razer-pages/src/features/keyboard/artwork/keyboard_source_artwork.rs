@@ -2078,9 +2078,11 @@ fn read_keyboard_artwork_current_catalog() -> FamilyAtlas {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_artwork_current_data_decodes() {
-    let _ = read_keyboard_artwork_current_catalog();
+mod keyboard_artwork_current_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_artwork_current_data_decodes() {
+        let _ = super::read_keyboard_artwork_current_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_artwork_current_data.
 
@@ -2200,9 +2202,11 @@ fn read_keyboard_preview_current_catalog() -> PreviewAtlas {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_preview_current_data_decodes() {
-    let _ = read_keyboard_preview_current_catalog();
+mod keyboard_preview_current_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_preview_current_data_decodes() {
+        let _ = super::read_keyboard_preview_current_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_preview_current_data.
 
@@ -2471,8 +2475,10 @@ fn read_keyboard_source_artwork_catalog() -> Spec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_source_artwork_data_decodes() {
-    let _ = read_keyboard_source_artwork_catalog();
+mod keyboard_source_artwork_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_source_artwork_data_decodes() {
+        let _ = super::read_keyboard_source_artwork_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_source_artwork_data.

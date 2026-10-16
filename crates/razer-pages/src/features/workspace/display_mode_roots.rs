@@ -146,8 +146,10 @@ fn read_display_mode_roots_catalog() -> DisplayModeRoots {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_display_mode_roots_decodes() {
-    let _ = read_display_mode_roots_catalog();
+mod display_mode_roots_catalog_tests {
+    #[test]
+    fn packaged_catalog_display_mode_roots_decodes() {
+        let _ = super::read_display_mode_roots_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/display_mode_roots.

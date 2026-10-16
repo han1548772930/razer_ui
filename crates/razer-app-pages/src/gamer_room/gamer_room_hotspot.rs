@@ -236,8 +236,10 @@ fn read_gamer_room_hotspot_catalog() -> Spec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_gamer_room_hotspot_data_decodes() {
-    let _ = read_gamer_room_hotspot_catalog();
+mod gamer_room_hotspot_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_gamer_room_hotspot_data_decodes() {
+        let _ = super::read_gamer_room_hotspot_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/gamer_room_hotspot_data.

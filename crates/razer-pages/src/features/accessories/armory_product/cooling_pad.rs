@@ -995,8 +995,10 @@ fn read_cooling_axis_catalog() -> AxisTexts {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_cooling_axis_data_decodes() {
-    let _ = read_cooling_axis_catalog();
+mod cooling_axis_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_cooling_axis_data_decodes() {
+        let _ = super::read_cooling_axis_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/cooling_axis_data.

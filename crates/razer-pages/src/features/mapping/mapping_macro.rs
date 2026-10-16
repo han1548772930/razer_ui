@@ -624,8 +624,10 @@ fn read_mapping_macro_catalog() -> ProductMacroData {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mapping_macro_data_decodes() {
-    let _ = read_mapping_macro_catalog();
+mod mapping_macro_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mapping_macro_data_decodes() {
+        let _ = super::read_mapping_macro_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mapping_macro_data.

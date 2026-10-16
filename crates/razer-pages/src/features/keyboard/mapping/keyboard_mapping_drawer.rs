@@ -1617,9 +1617,11 @@ fn read_keyboard_all_mapping_catalog() -> Vec<Source> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_all_mapping_data_decodes() {
-    let _ = read_keyboard_all_mapping_catalog();
+mod keyboard_all_mapping_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_all_mapping_data_decodes() {
+        let _ = super::read_keyboard_all_mapping_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_all_mapping_data.
 
@@ -1673,8 +1675,10 @@ fn read_keyboard_mapping_navigation_catalog() -> Vec<Navigation> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_mapping_navigation_data_decodes() {
-    let _ = read_keyboard_mapping_navigation_catalog();
+mod keyboard_mapping_navigation_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_mapping_navigation_data_decodes() {
+        let _ = super::read_keyboard_mapping_navigation_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_mapping_navigation_data.

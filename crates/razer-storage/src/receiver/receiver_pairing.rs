@@ -2,9 +2,9 @@
 //! document. Only caller-confirmed hardware outcomes may add/remove bindings.
 //! Runtime serial state is observation-only and is never persisted as a read.
 use crate::{
-    receiver_pairing_catalog::{MASTERS, RADIO_IDS},
     receiver_defaults::PairingMaster,
     receiver_document::{Field, PairingCategory, PairingRecord},
+    receiver_pairing_catalog::{MASTERS, RADIO_IDS},
 };
 use anyhow::{Context as _, ensure};
 use serde::{

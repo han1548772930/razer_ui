@@ -15,15 +15,18 @@ pub fn clip(
         .w_full()
         .aspect_ratio(ratio)
         .flex_shrink_0()
-        // Key the cache by clip, not by tutorial. RetainAll's release observer
-        // drops decoded frames and GPU images when this subtree unmounts.
+        // The clip owns decoded frames and GPU images until this subtree unmounts.
+        // Pending downloads must remain retryable before decoding begins.
         // GPUI owns timing, looping, inactive-window pause and reduced motion.
         .child(
-            image_cache(retain_all(asset)).absolute().inset_0().child(
-                img(asset)
-                    .id("tutorial-frames")
-                    .size_full()
-                    .object_fit(ObjectFit::Contain),
-            ),
+            image_cache(razer_assets::resource_image_cache())
+                .absolute()
+                .inset_0()
+                .child(
+                    img(asset)
+                        .id("tutorial-frames")
+                        .size_full()
+                        .object_fit(ObjectFit::Contain),
+                ),
         )
 }

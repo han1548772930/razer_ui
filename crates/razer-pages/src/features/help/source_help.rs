@@ -1544,8 +1544,10 @@ fn read_source_help_catalog() -> Vec<Help> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_source_help_data_decodes() {
-    let _ = read_source_help_catalog();
+mod source_help_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_source_help_data_decodes() {
+        let _ = super::read_source_help_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/source_help_data.

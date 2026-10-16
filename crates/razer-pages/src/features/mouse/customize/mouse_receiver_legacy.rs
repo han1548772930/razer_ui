@@ -732,8 +732,10 @@ fn read_mouse_receiver_legacy_catalog() -> Vec<LegacySource> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_receiver_legacy_data_decodes() {
-    let _ = read_mouse_receiver_legacy_catalog();
+mod mouse_receiver_legacy_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_receiver_legacy_data_decodes() {
+        let _ = super::read_mouse_receiver_legacy_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_receiver_legacy_data.

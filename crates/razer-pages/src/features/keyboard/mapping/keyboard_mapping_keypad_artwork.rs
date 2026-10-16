@@ -1694,9 +1694,11 @@ fn read_keyboard_keypad_artwork_catalog() -> Vec<Product> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_keypad_artwork_data_decodes() {
-    let _ = read_keyboard_keypad_artwork_catalog();
+mod keyboard_keypad_artwork_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_keypad_artwork_data_decodes() {
+        let _ = super::read_keyboard_keypad_artwork_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_keypad_artwork_data.
 
@@ -1751,8 +1753,10 @@ fn read_keyboard_keypad_device_image_catalog() -> Vec<ProductImage> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_keypad_device_image_data_decodes() {
-    let _ = read_keyboard_keypad_device_image_catalog();
+mod keyboard_keypad_device_image_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_keypad_device_image_data_decodes() {
+        let _ = super::read_keyboard_keypad_device_image_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_keypad_device_image_data.

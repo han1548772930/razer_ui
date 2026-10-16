@@ -13,8 +13,7 @@ use std::sync::LazyLock;
 mod source_data;
 use source_data::*;
 
-static SOURCE: LazyLock<LegacyMouseSource> =
-    LazyLock::new(|| make_mouse_legacy_mapping_table());
+static SOURCE: LazyLock<LegacyMouseSource> = LazyLock::new(|| make_mouse_legacy_mapping_table());
 
 /// Convert the UI's retained sensitivity field names to the middleware's
 /// normalized profile. Active is already one-based in the current UI adapter.

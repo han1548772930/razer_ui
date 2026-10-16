@@ -19,7 +19,7 @@
 
 应用启动、编译和安装均不依赖 `synapse.pack`；独立 pack 工具仅用于维护验证。无人调用的 `assets/native/razer-hid-0.0.31.node` 已删除，字节相同的静态分析原件保留在 `.analysis/inputs/`。固定设备能力、配对规则和默认值随 Rust 类型化表交付，不依赖远程资源。
 
-固定表转换由 `prepare-typed-data` 及专用协议表生成器维护；真实 Rust 字段、数值类型和产品分支在生成时校验，原始输入保留于 `.analysis/inputs/typed-tables/`。宏生成器输出多行代码，`razer-app-pages/src/data/keyboard_data.rs` 已重新生成，不再将整个表压成一行。`razer-pages/testdata` 的完整图片和生产 JSON 已删除，仅保留验证具体行为所需的三个小型 Rust 夹具。所有转换仍须通过调用接线、等价性测试与编译；文件／服务报文和导入导出的动态 JSON 边界单独保留。
+固定设备表由 `prepare-typed-data` 及专用协议表生成器维护，使用所属能力模块的普通构造函数；界面静态目录由 `prepare-resource-database` 生成独立 SQLite，使用普通有类型读取函数。生成时校验真实 Rust 字段、值域、可选字段和产品分支，维护投影保留于 `.analysis/inputs/typed-tables/` 并标明其与原始证据的区别。旧 `src/data/`、分区、读取宏、重复 JSON 和空注册模块已清理。`razer-pages/testdata` 的完整图片和生产 JSON 已删除，仅保留验证具体行为所需的三个小型 Rust 夹具。所有转换仍须通过调用接线、等价性测试与编译；文件／服务报文和导入导出的动态 JSON 边界单独保留。
 
 验证须区分范围：鼠标子任务报告 123 项纯 Rust／模拟测试通过；gamepad 的协议、i18n、保存回归和摄像头 MIC 的局部测试通过，完整合并后测试未完成。最新统一入口收据 [validation.json](../../.analysis/validation.json) 为 `2026-10-16T06:57:15.697066+00:00`，仅运行 `mouse-scroll-persistence` 四项，命令通过但 `inputs_unchanged=false`、整体 `passed=false`，不代表当前全工作区通过。逐命令日志在 `.analysis/verification/`。资源包迁移后的定向 `cargo check` 与包校验已通过，仍不能替代全工作区检查。应用、安装程序、厂商代码、真实窗口及设备验收均未运行。
 
@@ -70,7 +70,7 @@ PID182 休眠的接收器链已连接页面、discovery、typed IPC 和 service�
 
 生产 `razer-model::demo` 与壳层合成设备注入已移除。离线 `product_preview` 只从真实注册表构造本地草稿，设置状态未知，不编造固件、电池、连接观察或已初始化功能；测试数据归 owning crate 的 `testdata/`。历史持久化只清除同时匹配旧 PID、serial 和 container 的精确合成记录，不误删真实或未知设备。
 
-全量资源内嵌触发了 Windows 链接器 2 GiB 镜像上限，而非页面布局错误。静态表已转为维护输入 `assets/synapse/tables/asset-tables-source.rs`，运行时只内嵌轻量有序 alias 表、小型特殊 provider 与字体，通过外部只读 `assets/synapse.pack` 读取大资源。原有 first-match、重复 list 顺序、动态图标和 GPUI fallback 语义保留；声明资源缺失或损坏不能降级成空图片。当前 pack 仅去重、不压缩，完整资源准备、真实 codec 解码和纯 Rust 回环须分别验证，不能把容器生成当作全产品图片或页面完成。
+全量媒体与巨量字面量不再进入编译：固定窗口控制 SVG 和 9 个原生 RGBA 图标内嵌；界面目录、表情和资源索引在 EXE 旁独立 SQLite，所有实际打开的界面按文件加载媒体并缓存。`tools/resource-mappings.json` 替代旧 Rust 资源片段，保留 first-match、重复 list 顺序、图片选择条件、sprite 与 GPUI fallback。缺失或损坏保留真实错误；未打开的页面或产品不预取。转换等价、完整原件解析、纯／模拟测试和真实 UI 验收分别记录，不能把数据库生成当作全页面完成。
 
 本轮改动仍在合并，旧的 1,115 项测试结论不适用于当前代码；当前 [validation.json](../../.analysis/validation.json) 尚未通过新一轮检查。待本批 Rust／资源冻结后，通过维护入口统一执行 `cargo check --locked --offline --workspace --all-targets` 与适用的纯 Rust／模拟 transport 测试，记录实际测试数量、失败和验证期间输入身份。窗口测试不在允许执行范围内。
 

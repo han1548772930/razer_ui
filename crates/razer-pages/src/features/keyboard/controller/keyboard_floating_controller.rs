@@ -944,8 +944,10 @@ fn read_keyboard_floating_controller_catalog() -> Vec<Source> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_floating_controller_data_decodes() {
-    let _ = read_keyboard_floating_controller_catalog();
+mod keyboard_floating_controller_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_floating_controller_data_decodes() {
+        let _ = super::read_keyboard_floating_controller_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/keyboard_floating_controller_data.

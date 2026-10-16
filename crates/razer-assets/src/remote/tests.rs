@@ -1,9 +1,9 @@
 use super::*;
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
-struct TemporaryDirectory(PathBuf);
+pub(super) struct TemporaryDirectory(pub(super) PathBuf);
 impl TemporaryDirectory {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let directory = std::env::temp_dir().join(format!(
             "razer-resource-tests-{}-{}",
@@ -32,7 +32,7 @@ impl Drop for TemporaryDirectory {
     }
 }
 
-fn file(path: &str, bytes: &[u8]) -> ResourceFile {
+pub(super) fn file(path: &str, bytes: &[u8]) -> ResourceFile {
     ResourceFile {
         path: path.into(),
         bytes: bytes.len() as u64,
@@ -106,6 +106,9 @@ fn untrusted_paths_cannot_escape_or_address_alternate_streams() {
 
 #[test]
 fn metadata_keeps_first_alias_original_list_order_and_native_fallback() {
+    for (key, _) in crate::window_icons::ICONS {
+        assert!(available(key).unwrap());
+    }
     let manifest = manifest().unwrap();
     assert!(manifest.entries.len() > 11_000);
     assert_eq!(manifest.fonts.len(), 14);

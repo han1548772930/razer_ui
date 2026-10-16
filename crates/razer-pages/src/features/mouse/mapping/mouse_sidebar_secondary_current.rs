@@ -325,8 +325,10 @@ fn read_mouse_sidebar_secondary_current_catalog() -> Vec<Metadata> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_sidebar_secondary_current_data_decodes() {
-    let _ = read_mouse_sidebar_secondary_current_catalog();
+mod mouse_sidebar_secondary_current_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_sidebar_secondary_current_data_decodes() {
+        let _ = super::read_mouse_sidebar_secondary_current_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_sidebar_secondary_current_data.

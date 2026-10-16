@@ -1121,8 +1121,10 @@ fn read_mouse_scroll_wheel_catalog() -> Vec<ScrollWheelSpec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_scroll_wheel_data_decodes() {
-    let _ = read_mouse_scroll_wheel_catalog();
+mod mouse_scroll_wheel_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_scroll_wheel_data_decodes() {
+        let _ = super::read_mouse_scroll_wheel_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_scroll_wheel_data.

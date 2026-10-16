@@ -181,8 +181,10 @@ fn read_mouse_properties_catalog() -> Vec<PropertiesSpec> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_mouse_properties_data_decodes() {
-    let _ = read_mouse_properties_catalog();
+mod mouse_properties_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_mouse_properties_data_decodes() {
+        let _ = super::read_mouse_properties_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/mouse_properties_data.

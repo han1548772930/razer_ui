@@ -378,8 +378,10 @@ fn read_record_shortcut_catalog() -> Data {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_record_shortcut_data_decodes() {
-    let _ = read_record_shortcut_catalog();
+mod record_shortcut_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_record_shortcut_data_decodes() {
+        let _ = super::read_record_shortcut_catalog();
+    }
 }
 // End generated catalog reader: razer-app-pages/record_shortcut_data.

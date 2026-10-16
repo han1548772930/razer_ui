@@ -2577,10 +2577,12 @@ fn read_keyboard_products_catalog() -> Vec<(u32, fn() -> KeyboardProductSpec)> {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_keyboard_products_data_decodes() {
-    for (_, factory) in read_keyboard_products_catalog() {
-        let _ = factory();
+mod keyboard_products_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_keyboard_products_data_decodes() {
+        for (_, factory) in super::read_keyboard_products_catalog() {
+            let _ = factory();
+        }
     }
 }
 // End generated catalog reader: razer-pages/keyboard_products_data.

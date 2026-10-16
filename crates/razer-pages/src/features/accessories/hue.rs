@@ -783,8 +783,10 @@ fn read_hue_catalog() -> Spec {
 }
 
 #[cfg(test)]
-#[test]
-fn packaged_catalog_hue_data_decodes() {
-    let _ = read_hue_catalog();
+mod hue_data_catalog_tests {
+    #[test]
+    fn packaged_catalog_hue_data_decodes() {
+        let _ = super::read_hue_catalog();
+    }
 }
 // End generated catalog reader: razer-pages/hue_data.

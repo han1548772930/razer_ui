@@ -467,8 +467,7 @@ struct Recipe {
 
 pub fn mic_eq_values(bands: &[i32; 10]) -> anyhow::Result<[MixerValue; 10]> {
     static RECIPE: OnceLock<Recipe> = OnceLock::new();
-    let recipe = RECIPE
-        .get_or_init(|| make_audio_mixer_mic_eq_current_table());
+    let recipe = RECIPE.get_or_init(|| make_audio_mixer_mic_eq_current_table());
     ensure!(
         recipe.product_id == 1342
             && recipe.enable_before_bands
