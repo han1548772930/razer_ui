@@ -1093,7 +1093,7 @@ impl LightingColorView {
 }
 
 impl Render for LightingColorView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.editor_only {
             return self.render_editor(cx);
         }

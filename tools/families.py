@@ -11465,9 +11465,12 @@ def audit_registry_identity(prepare=False, products=None):
                 headers.pop(pid, None)
             else:
                 headers[pid] = replacement
-        a.save(registry, {"schema_version": 1, "products": [headers[pid] for pid in sorted(headers)]})
-        resource_database.product_registry()
+        document = {"schema_version": 1, "products": [headers[pid] for pid in sorted(headers)]}
+        resource_database.validate_product_registry(document)
+        a.save(registry, document)
         a.index_files([{**identity(registry), "kind": "product_registry_maintenance_source"}])
+        catalog = resource_database.prepare()
+        report["prepared_catalog"] = {key: catalog[key] for key in ("output", "bytes", "sha256", "product_registry", "passed")}
     report["prepared"] = prepare and not report["failures"]
     report["registry_after"] = identity(registry)
     a.save(destination, report)

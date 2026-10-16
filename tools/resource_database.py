@@ -43,6 +43,10 @@ INPUTS = {
 def product_registry(path=None):
     """Validated maintenance source; the installed product only reads SQLite."""
     document = json.loads((path or ROOT / PRODUCT_REGISTRY).read_bytes())
+    return validate_product_registry(document)
+
+
+def validate_product_registry(document):
     if type(document) is not dict or set(document) != {"schema_version", "products"} or document["schema_version"] != 1:
         raise ValueError("Invalid product registry maintenance schema")
     products = document["products"]
@@ -79,7 +83,7 @@ def product_registry(path=None):
                         or type(page["key"]) is not str or not page["key"] or page["key"] in page_keys
                         or type(page["kind"]) is not str or not page["kind"]
                         or page["role"] not in {"Page", "Help", "StandaloneMode"}
-                        or type(page["help_selector"]) is not int or not 0 <= page["help_selector"] <= 0xFFFFFFFFFFFFFFFF):
+                        or type(page["help_selector"]) is not int or not 0 <= page["help_selector"] <= 0x7FFFFFFFFFFFFFFF):
                     raise ValueError("Invalid or duplicate product page")
                 page_keys.add(page["key"])
         if primary_count != 1:

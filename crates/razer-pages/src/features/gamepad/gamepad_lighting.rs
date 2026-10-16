@@ -5,6 +5,7 @@ use super::*;
 use crate::features::lighting_color::{CustomColorEditor, CustomColorEditorEvent};
 use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::base::{Popover, Radio};
+use gpui_kit::component::ActiveTheme;
 use gpui_kit::component::button::{ButtonCustomVariant, ButtonVariants};
 use razer_widgets::{
     source_slider::SourceSlider,
@@ -126,6 +127,7 @@ impl GamepadProductWorkspace {
             .settings
             .as_ref()
             .is_some_and(|settings| settings.effect_id == effect);
+        let owner = cx.entity().downgrade();
         Radio::new(("controller-lighting-effect", u8::from(effect) as u64))
             .checked(checked)
             .accessibility_label(t(label))
@@ -153,13 +155,15 @@ impl GamepadProductWorkspace {
                     ),
             )
             .child(div().ml(surface::css(10.)).child(t(label)))
-            .on_change(cx.listener(move |this, _, _, cx| {
-                this.lighting_ui.cancel(cx);
-                if let Some(settings) = &mut this.lighting_runtime.settings {
-                    settings.effect_id = effect;
-                    this.submit_controller_effect(cx);
-                }
-            }))
+            .on_change(move |_, _, _, cx| {
+                let _ = owner.update(cx, |this, cx| {
+                    this.lighting_ui.cancel(cx);
+                    if let Some(settings) = &mut this.lighting_runtime.settings {
+                        settings.effect_id = effect;
+                        this.submit_controller_effect(cx);
+                    }
+                });
+            })
     }
     fn controller_palette(&self, cx: &mut Context<Self>) -> AnyElement {
         let Some(settings) = &self.lighting_runtime.settings else {
@@ -209,6 +213,7 @@ impl GamepadProductWorkspace {
                                         blur_radius: px(0.),
                                         spread_radius: surface::css(2.)
                                             .to_pixels(cx.theme().font_size),
+                                        inset: false,
                                     }])
                             })
                             .when(selected, |button| {
@@ -219,6 +224,7 @@ impl GamepadProductWorkspace {
                                         blur_radius: px(0.),
                                         spread_radius: surface::css(2.)
                                             .to_pixels(cx.theme().font_size),
+                                        inset: false,
                                     }])
                                     .child(
                                         div()
@@ -338,7 +344,12 @@ impl GamepadProductWorkspace {
                             cx.notify();
                         }
                     }))
-                    .trigger(div().h_0().w_0())
+                    .trigger(
+                        BaseButton::new("controller-editor-anchor")
+                            .tab_stop(false)
+                            .h_0()
+                            .w_0(),
+                    )
                     .when(self.lighting_ui.editor_open, |popover| {
                         let content = div().child(editor).on_mouse_down_out(cx.listener(
                             |this, event: &MouseDownEvent, _, cx| {
@@ -372,7 +383,7 @@ impl GamepadProductWorkspace {
         let slider = &self.sliders["/profile/brightness/value"];
         let value = self.number("/profile/brightness/value") as f32;
         let opacity = motion::transition(
-            ("controller-brightness-enabled", cx.entity_id()),
+            ElementId::from(("controller-brightness-enabled", cx.entity_id())),
             if available { 1_f32 } else { 0.3 },
             Transition::new(Duration::from_millis(300)).easing(Easing::Ease),
             window,
