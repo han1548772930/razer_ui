@@ -1,0 +1,159 @@
+//! Audited root props and their consumers, rather than treating
+//! `isEnableProfileBar` as visibility. See the current accessory audits.
+use super::*;
+
+impl SourceProductWorkspace {
+    pub(super) fn profile_bar_visible(&self) -> bool {
+        if self.device.product_id==756&&self.keyboard_latest_ble {return false;}
+        if let Some(always_mounted) =
+            profile_menu::spec(self.device.product_id).and_then(|spec| spec.always_mounted())
+        {
+            return always_mounted;
+        }
+        match self.device.product_id {
+            179 | 769 => false,
+            164 | 241 | 691 | 778 | 784 | 3871 | 3884 | 3886 | 3946 => true,
+            _ => !self
+                .current_page()
+                .is_some_and(|p| p.role() == ProductPageRole::Help),
+        }
+    }
+
+    pub(super) fn profile_switch_enabled(&self) -> bool {
+        let key = self.current_page().map(|p| p.kind().key()).unwrap_or("");
+        match self.device.product_id {
+            // These roots explicitly dispatch setProfileDropdownState.
+            784 => key != "CUSTOMIZED",
+            3884 => key == "TAB_LIGHTING",
+            _ => true,
+        }
+    }
+
+    fn profile_sync_enabled(&self) -> bool {
+        let key = self.current_page().map(|p| p.kind().key()).unwrap_or("");
+        if let Some(enabled) =
+            profile_menu::spec(self.device.product_id).and_then(|spec| spec.sync_enabled(key))
+        {
+            return enabled;
+        }
+        match self.device.product_id {
+            // 691 Ca -> Kt: only the sync glyph changes on these pages.
+            691 => !matches!(key, "OLED" | "TAB_POWER" | "HELP"),
+            778 | 3871 | 3884 | 3886 => key == "TAB_LIGHTING",
+            784 => !matches!(key, "CUSTOMIZED" | "HELP"),
+            3946 => !matches!(key, "TAB_CALIBRATION" | "HELP"),
+            _ => key != "HELP",
+        }
+    }
+
+    pub(super) fn profile_bar_width(&self) -> f32 {
+        if !self.profile_bar_visible() {
+            0.
+        } else if profile_menu::spec(self.device.product_id).is_some() {
+            surface::PROFILE_BAR_WIDTH
+        } else {
+            286.
+        }
+    }
+
+    pub(super) fn profile_bar(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        if !self.profile_bar_visible() {
+            return div().into_any_element();
+        }
+        h_flex()
+            .id("source-profile-bar")
+            .h(surface::css(26.))
+            .w(surface::css(self.profile_bar_width()))
+            .font_family("Roboto")
+            .text_size(surface::css(14.))
+            .when(!self.profile_switch_enabled(), |v| v.opacity(0.3))
+            .child(
+                div()
+                    .size(surface::css(26.))
+                    .ml(surface::css(10.))
+                    .flex_shrink_0()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        img(if self.profile_sync_enabled() {
+                            "synapse/profile.svg"
+                        } else {
+                            "synapse/profile-unsupported.svg"
+                        })
+                        .size(surface::css(20.)),
+                    ),
+            )
+            .child(
+                div()
+                    .id("source-profile-dropdown-area")
+                    .w(surface::css(250.))
+                    .px(surface::css(10.))
+                    .child(if self.profile_rename.is_some() {
+                        div()
+                            .id("source-profile-name-editor")
+                            .w_full()
+                            .on_action(cx.listener(
+                                |this, _: &gpui_kit::component::input::Escape, window, cx| {
+                                    this.profile_rename = None;
+                                    this.profile.update(cx, |state, cx| state.focus(window, cx));
+                                    cx.notify();
+                                },
+                            ))
+                            .child(
+                                gpui_kit::component::input::Input::new(&self.profile_name)
+                                    .id("source-profile-name")
+                                    .aria_label(razer_i18n::t("PROFILE"))
+                                    .h(surface::css(27.))
+                                    .w_full()
+                                    .rounded_none()
+                                    .focus_bordered(false)
+                                    .border_1()
+                                    .border_color(cx.theme().primary)
+                                    .bg(cx.theme().group_box)
+                                    .px(surface::css(5.))
+                                    .py(surface::css(5.))
+                                    .text_size(surface::css(14.))
+                                    .line_height(surface::css(17.)),
+                            )
+                            .into_any_element()
+                    } else {
+                        surface::select(&self.profile)
+                            .id("source-profile-select")
+                            .accessibility_label(razer_i18n::t("PROFILE"))
+                            .on_trigger_click(cx.listener(|this, _, window, cx| {
+                                // The source document-click bridge runs for
+                                // the .s3-dropdown trigger. Options are
+                                // detached and use the raw-text.option
+                                // exemption, so only the trigger reaches it.
+                                if let FamilyBody::Mouse(mouse) = &this.body {
+                                    mouse.update(cx, |mouse, cx| {
+                                        mouse.current_mapping_document_click(
+                                            &["s3-dropdown"],
+                                            &["dropdown-area"],
+                                            &[],
+                                            false,
+                                            window,
+                                            cx,
+                                        )
+                                    });
+                                }
+                            }))
+                            .items(
+                                self.device
+                                    .profiles
+                                    .iter()
+                                    .map(|p| Choice::new(&p.id, &p.name))
+                                    .collect(),
+                            )
+                            .disabled(!self.profile_switch_enabled())
+                            .opacity(1.)
+                            .w_full()
+                            .into_any_element()
+                    }),
+            )
+            .child(self.profile_more(window, cx))
+            .text_color(cx.theme().foreground)
+            .into_any_element()
+    }
+}

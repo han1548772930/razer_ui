@@ -1,0 +1,13 @@
+[package]
+name="razer-discovery"
+version.workspace=true
+edition.workspace=true
+
+[dependencies]
+uuid.workspace = true
+razer-catalog.workspace = true
+anyhow.workspace=true
+serde_json.workspace=true
+razer-device.workspace=true
+razer-model.workspace=true
+razer-ipc.workspace=true

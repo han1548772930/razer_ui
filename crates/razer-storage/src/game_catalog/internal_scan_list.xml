@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<GameSignatureList xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+	<GameListInfo>
+		<MinimumCompatibleServerVersion>2.0.20.29</MinimumCompatibleServerVersion>
+		<Version>1.0.0</Version>
+	</GameListInfo>
+	<GameSignatureList>
+		<GameSignature>
+			<DefaultExe>GamecasterViewer.exe</DefaultExe>
+			<DefaultFolder>%ProgramFiles%\Razer\Razer Cortex\</DefaultFolder>
+			<DefaultFolderExe>\Razer\Razer Cortex\GamecasterViewer.exe</DefaultFolderExe>
+			<DisplayName>Razer Gamecaster Viewer</DisplayName>
+			<EntryGUID>D172C8AD-D798-4F29-8790-108944D3E705</EntryGUID>
+			<GameGUID>00000000-0000-0000-0000-000000000000</GameGUID>
+			<GameID i:nil="true" />
+			<GameInfoRIG>32768</GameInfoRIG>
+			<HWBoostEnabled>false</HWBoostEnabled>
+			<OverlayEnabled>true</OverlayEnabled>
+			<PlatForm>WINDOWS</PlatForm>
+			<RegistryKey>HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Razer Cortex_is1</RegistryKey>
+			<RegistryPathKeyName>InstallLocation</RegistryPathKeyName>
+		</GameSignature>
+	</GameSignatureList>
+</GameSignatureList> 

@@ -1,0 +1,24 @@
+//! Windows-only host and system adapters.
+#[path = "device_changes.rs"]
+pub(crate) mod device_changes;
+#[path = "foreground_monitor.rs"]
+pub(crate) mod foreground_monitor;
+#[path = "game_monitor.rs"]
+pub(crate) mod game_monitor;
+#[path = "global_shortcuts.rs"]
+pub(crate) mod global_shortcuts;
+#[path = "keyboard_capture.rs"]
+pub(crate) mod keyboard_capture;
+#[path = "keyboard_layout.rs"]
+pub(crate) mod keyboard_layout;
+#[path = "keyboard_layout_monitor.rs"]
+pub(crate) mod keyboard_layout_monitor;
+#[path = "services.rs"]
+pub(crate) mod services;
+#[path = "session_changes.rs"]
+pub(crate) mod session_changes;
+#[path = "system.rs"]
+pub(crate) mod system;
+pub(crate) mod startup;
+#[path = "wheel_scroll.rs"]
+pub(crate) mod wheel_scroll;

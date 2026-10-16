@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<GameSignatureList xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+  <GameListInfo><Version>synthetic-fixture</Version></GameListInfo>
+  <GameSignatureList>
+    <GameSignature>
+      <EntryGUID>11111111-2222-3333-4444-555555555555</EntryGUID>
+      <DisplayName>Synthetic &amp; Local</DisplayName>
+      <DefaultExe>game.exe</DefaultExe><DefaultExe32>game32.exe</DefaultExe32><DefaultExe64>game64.exe</DefaultExe64>
+      <AlternativeExe>alternate.exe|other.exe</AlternativeExe>
+      <DefaultFolderExe>Synthetic\bin\game.exe|Synthetic*client.exe</DefaultFolderExe>
+      <DefaultFolderExe32>Synthetic32\game32.exe</DefaultFolderExe32>
+      <RunningExe>Synthetic\game-client.exe</RunningExe><LaunchExe>C:\Games\Synthetic\game.exe</LaunchExe>
+      <LaunchHelper>launcher.exe|skip.exe</LaunchHelper><LaunchHelperExcludables>skip.exe</LaunchHelperExcludables>
+      <OverlayTrackingOption01>C:\Games\Synthetic\overlay.exe; C:\Games\Synthetic\game.exe</OverlayTrackingOption01>
+      <SourceEx>DIRECT</SourceEx>
+      <UnknownField>ignored without losing matching fields</UnknownField>
+    </GameSignature>
+    <GameSignature><EntryGUID>AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE</EntryGUID><DisplayName>Second</DisplayName><DefaultExe>second.exe</DefaultExe><SourceEx>MIHOYO</SourceEx><RunningExe>second-client.exe</RunningExe></GameSignature>
+    <GameSignature><DisplayName i:nil="true"/><DefaultExe>unknown.exe</DefaultExe></GameSignature>
+  </GameSignatureList>
+  <UserId>synthetic-offline-fixture</UserId>
+</GameSignatureList>

@@ -1,0 +1,21 @@
+[package]
+name = "razer-app"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+razer-storage.workspace = true
+razer-ipc.workspace = true
+razer-platform.workspace = true
+razer-i18n.workspace = true
+gpui-kit.workspace = true
+serde_json.workspace = true
+razer-assets.workspace = true
+razer-catalog.workspace = true
+razer-model.workspace = true
+razer-service.workspace = true
+razer-shell.workspace = true
+razer-pages.workspace = true
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }

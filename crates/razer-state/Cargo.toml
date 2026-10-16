@@ -1,0 +1,12 @@
+[package]
+name = "razer-state"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gpui-kit.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+gpui-kit = { workspace = true, features = ["test-support"] }

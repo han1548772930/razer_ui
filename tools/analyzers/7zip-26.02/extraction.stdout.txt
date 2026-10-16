@@ -1,0 +1,22 @@
+
+7-Zip 24.02 (x64) : Copyright (c) 1999-2024 Igor Pavlov : 2024-03-22
+
+Scanning the drive for archives:
+1 file, 1657896 bytes (1620 KiB)
+
+Extracting archive: tools\analyzers\7zip-26.02\7z2602-x64.exe
+--
+Path = tools\analyzers\7zip-26.02\7z2602-x64.exe
+Type = 7z
+Offset = 45568
+Physical Size = 1612328
+Headers Size = 1396
+Method = LZMA:5m BCJ2
+Solid = +
+Blocks = 2
+
+Everything is Ok
+
+Files: 102
+Size:       3758943
+Compressed: 1657896

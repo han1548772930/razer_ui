@@ -1,0 +1,165 @@
+//! Runtime-only pairing state. Requests never manufacture a service response.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Lane {
+    Keyboard,
+    Mouse,
+}
+impl Lane {
+    pub(super) fn key(self) -> &'static str {
+        match self {
+            Self::Keyboard => "KEYBOARD",
+            Self::Mouse => "MOUSE",
+        }
+    }
+    pub(super) fn ix(self) -> usize {
+        match self {
+            Self::Keyboard => 0,
+            Self::Mouse => 1,
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(super) enum Status {
+    #[default]
+    Loading,
+    Ready,
+    Scanning,
+    Scanned,
+    Pairing,
+    Paired,
+    PairFailed,
+    ConfirmUnpair,
+    Unpairing,
+    Unpaired,
+    UnpairFailed,
+    JustPaired,
+}
+#[derive(Clone, Debug)]
+pub(super) struct Peer {
+    pub(super) id: String,
+    pub(super) name: String,
+    pub(super) product_id: u32,
+    pub(super) dongle_id: Option<u32>,
+    pub(super) edition: Option<u32>,
+    pub(super) layout: Option<u32>,
+    pub(super) lane: Lane,
+    /// Exact middleware candidate payload; preview fixtures leave this absent.
+    pub(super) payload: Option<serde_json::Value>,
+}
+#[derive(Clone, Default)]
+pub(super) struct Channel {
+    pub(super) status: Status,
+    pub(super) peer: Option<Peer>,
+    pub(super) candidates: Vec<Peer>,
+    pub(super) selected: Option<String>,
+}
+impl Channel {
+    fn blocks_other(&self) -> bool {
+        matches!(
+            self.status,
+            Status::Scanning | Status::Pairing | Status::Unpairing
+        ) || self.status == Status::Scanned && !self.candidates.is_empty()
+    }
+}
+#[derive(Clone, Default)]
+pub(super) struct PairingState {
+    pub(super) channels: [Channel; 2],
+    /// Source `scanedInfo` contains the full scan response before lane filtering.
+    pub(super) scanned: Vec<Peer>,
+    pub(super) pending: Option<super::DockPairingEvent>,
+    pub(super) active: Option<super::DockPairingEvent>,
+    pub(super) recovery: Option<FailureRecovery>,
+    pub(super) success_close: Option<SuccessClose>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct FailureRecovery {
+    pub(super) session: u64,
+    pub(super) lane: Lane,
+    pub(super) status: Status,
+}
+impl FailureRecovery {
+    pub(super) fn delay(self) -> std::time::Duration {
+        std::time::Duration::from_secs(4)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct SuccessClose {
+    pub(super) session: u64,
+    pub(super) statuses: [Status; 2],
+}
+impl SuccessClose {
+    pub(super) fn delay(self) -> std::time::Duration {
+        std::time::Duration::from_secs(1)
+    }
+}
+impl PairingState {
+    pub(super) fn recover_failure(&mut self, ticket: FailureRecovery) -> bool {
+        if self.recovery != Some(ticket)
+            || self.active.is_some()
+            || self.channel(ticket.lane).status != ticket.status
+        {
+            return false;
+        }
+        match ticket.status {
+            // Current 164/Pe and 241/ds clear the entire reducer on bind
+            // failure, while an unbind failure keeps the observed peer.
+            Status::PairFailed => {
+                self.channels = Default::default();
+                self.scanned.clear();
+                for channel in &mut self.channels {
+                    channel.status = Status::Ready;
+                }
+            }
+            Status::UnpairFailed => self.channel_mut(ticket.lane).status = Status::Paired,
+            _ => return false,
+        }
+        self.recovery = None;
+        true
+    }
+
+    pub(super) fn can_close_success(&self, ticket: SuccessClose) -> bool {
+        self.success_close == Some(ticket)
+            && self.active.is_none()
+            && self.channels.each_ref().map(|channel| channel.status) == ticket.statuses
+    }
+
+    pub(super) fn channel(&self, lane: Lane) -> &Channel {
+        &self.channels[lane.ix()]
+    }
+    pub(super) fn channel_mut(&mut self, lane: Lane) -> &mut Channel {
+        &mut self.channels[lane.ix()]
+    }
+    pub(super) fn modifiable(&self, lane: Lane, dual: bool) -> bool {
+        self.pending.is_none() && (!dual || !self.channels[1 - lane.ix()].blocks_other())
+    }
+    pub(super) fn peers(&self) -> Vec<&Peer> {
+        self.channels
+            .iter()
+            .filter_map(|c| c.peer.as_ref())
+            .collect()
+    }
+    pub(super) fn selected(&self, lane: Lane) -> Option<&Peer> {
+        let channel = self.channel(lane);
+        channel
+            .candidates
+            .iter()
+            .find(|peer| Some(&peer.id) == channel.selected.as_ref() && peer.lane == lane)
+    }
+    pub(super) fn scan_payload(lane: Lane, dual: bool) -> serde_json::Value {
+        if dual {
+            serde_json::json!({"status":1,"category":lane.key()})
+        } else {
+            serde_json::json!({"status":1})
+        }
+    }
+    pub(super) fn unpair_payload(&self, lane: Lane, dual: bool) -> Option<serde_json::Value> {
+        let peer = self.channel(lane).peer.as_ref()?;
+        let mut payload = serde_json::json!({"productId":peer.dongle_id.filter(|id| *id != 0).unwrap_or(peer.product_id)});
+        if dual {
+            payload["category"] = serde_json::json!(lane.key());
+        }
+        Some(payload)
+    }
+}

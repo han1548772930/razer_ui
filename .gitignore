@@ -1,0 +1,46 @@
+# Build outputs and disposable scratch
+/target/
+/cargo-check-target/
+/assets/synapse.pack
+**/target/
+/.work/
+*.log
+*.work
+/assets/**
+# Original analysis inputs and generated captures are local data.
+/.ref/
+/local-ui-reverse
+/.analysis/*
+!/.analysis/README.md
+/.analysis/inputs.json
+!/.analysis/validation.json
+
+# Tool dependencies and caches; maintained tools/configuration remain tracked.
+**/node_modules/
+**/__pycache__/
+*.py[cod]
+/tools/analyzers/**/wakaru.exe
+/tools/analyzers/python-3.11.9/*
+!/tools/analyzers/python-3.11.9/acquisition.json
+/tools/analyzers/ilspycmd-9.1.0.7988/*
+!/tools/analyzers/ilspycmd-9.1.0.7988/acquisition.json
+/tools/analyzers/innounp-2.71.1/*
+!/tools/analyzers/innounp-2.71.1/acquisition.json
+/tools/ida/analysis-current/
+/tools/ida/idausr/*.cfg
+/tools/ida/idausr/proccache64.lst
+/tools/ida/idausr/proccache.lst
+/tools/ida/idausr/plugins/ida_mcp.py
+/tools/ida/idausr/plugins/ida_mcp/
+
+# IDA working databases
+*.i64
+*.idb
+*.id0
+*.id1
+*.id2
+
+# Editor and operating-system scratch
+.DS_Store
+Thumbs.db
+*.tmp

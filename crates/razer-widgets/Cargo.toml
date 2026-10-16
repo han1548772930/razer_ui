@@ -1,0 +1,19 @@
+[package]
+name = "razer-widgets"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+razer-i18n.workspace = true
+gpui-kit.workspace = true
+razer-assets.workspace = true
+razer-model.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+raw-window-handle.workspace = true
+windows-sys = { workspace = true, features = [
+  "Win32_Foundation", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }

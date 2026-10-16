@@ -1,0 +1,41 @@
+# Preserve resource bytes used by acquisition and embedding manifests.
+assets/**/*.svg -text
+assets/**/*.png -text
+assets/**/*.avif -text
+assets/**/*.jpg -text
+assets/**/*.jpeg -text
+assets/**/*.gif -text
+assets/**/*.webp -text
+assets/**/*.ico -text
+assets/**/*.woff -text
+assets/**/*.woff2 -text
+assets/**/*.ttf -text
+assets/**/*.otf -text
+tools/analyzers/ccl-chromium-reader/** -text
+tools/analyzers/python-static/tree_sitter*/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+tools/analyzers/pillow/** -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+
+# Resource payloads and JSON configuration use LFS, regardless of file size.
+# The basename pattern also covers JSON in crates, testdata, tools and .analysis.
+assets/** filter=lfs diff=lfs merge=lfs -text
+*.json filter=lfs diff=lfs merge=lfs -text
+
+# The resource lock is reviewable source metadata, including its immutable HF commit.
+tools/asset-release.json -filter diff merge text eol=lf
+
+# Generated Rust lookup tables remain ordinary source code.
+assets/**/*.rs -filter diff merge text=auto
+
+# Native tray and menu icons required by the platform integration stay in Git.
+# These exact paths are embedded by crates/razer-tray/src/{lib,windows}.rs.
+# Other UI icons, including tray-user artwork, remain resource payloads in LFS.
+# Add any future installer icon only after a packaging caller requires it.
+assets/synapse/shared/pending-source-audit/a64b8a64b721fb74-tray-native.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/f979021796dfd342-tray-app.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/81851a9004a803d3-tray-icon-24.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/71b354f660adb5db-tray-icon.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/f8fd980e3bec82fe-tray-icon-40.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/5e5df98271550aca-tray-icon-48.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/afb1350c23ce2416-tray-icon-64.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/7747f51f284ded65-tray-gear-dark.rgba -filter -diff -merge -text
+assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba -filter -diff -merge -text
