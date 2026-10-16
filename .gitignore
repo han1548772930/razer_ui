@@ -28,10 +28,6 @@
 /local-ui-reverse
 /.analysis/*
 !/.analysis/README.md
-!/.analysis/inputs/
-/.analysis/inputs/*
-!/.analysis/inputs/resource-tables/
-!/.analysis/inputs/resource-tables/*.rs
 /.analysis/inputs.json
 !/.analysis/validation.json
 

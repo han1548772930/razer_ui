@@ -2624,15 +2624,11 @@ def audit_mouse_customize(args):
     selected = set(args.product or [row["product_id"] for row in surfaces])
     receipt_path = a.ROOT / ".analysis/results/frontend/mouse-main-audit.json"
     report = json.loads(receipt_path.read_bytes())
-    embedding_path = resource_sources.table_path("mouse-customize-embedded.rs", root=a.ROOT)
-    aliases = {alias: resource_sources.table_reference(embedding_path, resource) for alias, resource in re.findall(
-        r'\("([^"]+)",\s*include_bytes!\("([^"]+)"\)', embedding_path.read_text(encoding="utf-8"))}
-    # Unified preparation may replace a source-derived alias in embedded.rs.
-    # Inline PNG and React SVG resources use the acquired JS as their original,
-    # so the display hash must not be searched among acquisition file hashes.
-    unified_embedding = embedding_path.parent / "embedded.rs"
-    aliases.update({alias: resource_sources.table_reference(unified_embedding, resource) for alias, resource in re.findall(
-        r'\("([^"]+)",\s*include_bytes!\("([^"]+)"\)', unified_embedding.read_text(encoding="utf-8"))})
+    mappings = resource_sources.load_resource_mappings(root=a.ROOT)
+    aliases = {row["key"]: a.ROOT / row["path"]
+               for row in resource_sources.resource_table("MOUSE_CUSTOMIZE_ASSETS", mappings=mappings)}
+    aliases.update({row["key"]: a.ROOT / row["path"]
+                    for row in resource_sources.resource_table("ASSETS", mappings=mappings)})
     manifest_path = a.ROOT / "assets/synapse/manifests/manifest.json"
     manifest_identity = identity(manifest_path)
     manifest = json.loads(manifest_path.read_bytes())
@@ -6498,7 +6494,7 @@ def prepare_audio_demo_icons(rows):
     font = fonts[0]["font"]
     glyphs, cmap = font.getGlyphSet(), font.getBestCmap()
     units, ascent = font['head'].unitsPerEm, font['hhea'].ascent
-    generated, arms = [], []
+    generated, entries = [], []
     for name, code in [("play",0xf200),("pause",0xf203),("fullscreen",0xf215),("fullscreen-exit",0xf216)]:
         glyph = glyphs[cmap[code]]
         pen = SVGPathPen(glyphs)
@@ -6508,19 +6504,15 @@ def prepare_audio_demo_icons(rows):
         target = a.ROOT / f"assets/synapse/products/1392/audio-demo-control-{name}.svg"
         target.write_bytes(svg)
         key = f"synapse/audio-demo-control-{name}.svg"
-        arms.append(f'        "{key}" => Some(include_bytes!("../products/1392/{target.name}")),')
+        entries.append({"key": key, "path": target.relative_to(a.ROOT).as_posix()})
         generated.append({"key": key, "codepoint": code, "glyph": cmap[code], "prepared": identity(target)})
-    provider = '// Prepared from all four current video-react EOT font outlines.\n'
-    provider += 'pub(super) fn audio_demo_controls_load(path: &str) -> Option<&\'static [u8]> {\n    match path {\n'
-    provider += '\n'.join(arms) + '\n        _ => None,\n    }\n}\n'
-    provider += 'pub(super) fn audio_demo_controls_list(path: &str) -> Vec<gpui_kit::SharedString> {\n'
-    provider += '    if path == "synapse" || path == "synapse/" || path.is_empty() {\n        vec!['
-    provider += ', '.join(json.dumps(item["key"]) + '.into()' for item in generated)
-    provider += ']\n    } else { Vec::new() }\n}\n'
-    target = resource_sources.table_path("audio-demo-controls-embedded.rs", root=a.ROOT)
-    target.write_text(provider, encoding="utf-8")
+    mappings = resource_sources.load_resource_mappings(root=a.ROOT)
+    mappings["audio_demo_controls"] = entries
+    resource_sources.save_resource_mappings(mappings, root=a.ROOT)
     return {"sources": [{key: value for key, value in item.items() if key != "font"} for item in fonts],
-            "tool": {"fonttools": fontTools.__version__}, "glyphs": generated, "provider": identity(target)}
+            "tool": {"fonttools": fontTools.__version__}, "glyphs": generated,
+            "provider": identity(a.ROOT / resource_sources.MAPPINGS)}
+
 
 
 def prepare_audible_demo(original):

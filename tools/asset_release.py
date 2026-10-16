@@ -21,7 +21,7 @@ import analysis
 
 ROOT = Path(__file__).resolve().parent.parent
 LOCK = "tools/asset-release.json"
-TABLES = ".analysis/inputs/resource-tables"
+MAPPINGS = "tools/resource-mappings.json"
 OUTPUT = ".work/asset-releases"
 NATIVE_ICONS = (
     "a64b8a64b721fb74-tray-native.rgba", "f979021796dfd342-tray-app.rgba",
@@ -48,6 +48,13 @@ REMOTE_FONT_PATHS = tuple("assets/synapse/shared/fonts/" + name for name in (
 # These are presentation values; the lock separately identifies the original
 # bytes used for integrity checking, including both fragment aliases.
 SPRITE_VIEWS = (("link", "0 0 20 20"), ("hover", "0 20 20 20"))
+SELECTOR_FIELDS = {
+    "product_image_selector": ("product_id", "edition_id", "layout_id", "part", "key"),
+    "dashboard_image_selector": ("product_id", "edition_id", "layout_id", "key"),
+    "dashboard_plugin_image_selector": ("product_id", "folder_edition_id", "filename_edition_id", "layout_id", "wrist", "density", "key"),
+    "pairing_image_selector": ("product_id", "edition_id", "view_id", "key"),
+    "gamepad_calibration_svg_selector": ("product_id", "edition_id", "kind", "key"),
+}
 
 
 def encoded(value):
@@ -97,31 +104,103 @@ def source_path(name, root=None):
 
 
 def in_git(name):
-    return (name.startswith("assets/synapse/tables/") and name.endswith(".rs")) or name in GIT_ICONS
+    return name in GIT_ICONS
 
 
-def table_path(name, *, root=None):
-    """Maintained alias/selector input, never a product include or media payload."""
-    if not re.fullmatch(r"[a-z][a-z0-9-]*\.rs", name):
-        raise ValueError("Invalid maintained resource table name")
+def validate_resource_mappings(value, *, root=None):
+    """Validate complete maintenance records without loading media or vendor code."""
+    def fields(record, expected, label):
+        if type(record) is not dict or set(record) != set(expected):
+            raise ValueError("Invalid resource mapping fields: " + label)
+
+    def alias(key):
+        if (type(key) is not str or not key.startswith("synapse/")
+                or any(ord(c) < 32 for c in key) or "\\" in key
+                or any(p in ("", ".", "..") for p in key.split("/"))):
+            raise ValueError("Invalid runtime asset alias: " + repr(key))
+
+    def entries(rows):
+        if type(rows) is not list:
+            raise ValueError("Resource mapping entries must be ordered lists")
+        for row in rows:
+            fields(row, ("key", "path"), "alias")
+            alias(row["key"])
+            source_path(row["path"], root=root)
+
+    fields(value, ("schema_version", "tables", "audio_demo_controls", "audio_volume_sprite", "selectors"), "root")
+    if type(value["schema_version"]) is not int or value["schema_version"] != 1:
+        raise ValueError("Unknown resource mapping schema version")
+    if type(value["tables"]) is not list or not value["tables"]:
+        raise ValueError("Missing ordered resource tables")
+    names = set()
+    for table in value["tables"]:
+        fields(table, ("name", "entries"), "table")
+        name = table["name"]
+        if type(name) is not str or not re.fullmatch(r"[A-Z][A-Z_0-9]+", name) or name in names:
+            raise ValueError("Invalid or repeated resource table identity")
+        names.add(name)
+        entries(table["entries"])
+    entries(value["audio_demo_controls"])
+    if {row["key"] for row in value["audio_demo_controls"]} != {
+            "synapse/audio-demo-control-play.svg", "synapse/audio-demo-control-pause.svg",
+            "synapse/audio-demo-control-fullscreen.svg", "synapse/audio-demo-control-fullscreen-exit.svg"} or len(value["audio_demo_controls"]) != 4:
+        raise ValueError("Audio demo AssetSource aliases require a source audit")
+    entries([value["audio_volume_sprite"]])
+    fields(value["selectors"], SELECTOR_FIELDS, "selectors")
+    aliases = {row["key"] for table in value["tables"] for row in table["entries"]}
+    aliases.update(row["key"] for row in value["audio_demo_controls"])
+    aliases.add(value["audio_volume_sprite"]["key"])
+    for table, columns in SELECTOR_FIELDS.items():
+        rows = value["selectors"][table]
+        if type(rows) is not list or not rows:
+            raise ValueError("Empty maintained selector table: " + table)
+        for row in rows:
+            fields(row, columns, table)
+            for column, field in row.items():
+                if column == "key":
+                    alias(field)
+                    if field not in aliases:
+                        raise ValueError("Selector references an unregistered asset: " + field)
+                elif column == "part":
+                    if field not in ("Product", "MouseBottom", "KeyboardWrist", "KeyboardDial", "Streamer"):
+                        raise ValueError("Unknown device image part")
+                elif column == "kind":
+                    if field not in ("prd", "ActuationDevice"):
+                        raise ValueError("Unknown gamepad SVG kind")
+                elif column == "wrist":
+                    if type(field) is not bool:
+                        raise ValueError("Invalid selector wrist flag")
+                elif type(field) is not int or not 0 <= field < 2**32 or (column == "product_id" and field == 0):
+                    raise ValueError("Invalid selector identity: " + column)
+                elif column == "density" and field not in (1, 3):
+                    raise ValueError("Invalid selector density")
+    return value
+
+
+def load_resource_mappings(*, root=None, input_rows=None):
     root = (root or ROOT).resolve()
-    path = root / TABLES / name
-    if not path.resolve().is_relative_to(root / TABLES) or path.is_symlink():
-        raise ValueError("Maintained resource table escaped its input directory")
-    return path
+    path = root / MAPPINGS
+    if path.is_symlink() or not path.resolve().is_relative_to(root):
+        raise ValueError("Resource maintenance input escaped the workspace")
+    raw = path.read_bytes()
+    value = validate_resource_mappings(json.loads(raw), root=root)
+    if input_rows is not None:
+        input_rows.append({"path": MAPPINGS, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+    return value
 
 
-def table_reference(owner, literal, *, root=None):
-    """Resolve retained relative spellings against their original assets root."""
+def save_resource_mappings(value, *, root=None):
     root = (root or ROOT).resolve()
-    owner = Path(owner).resolve()
-    if owner.parent != (root / TABLES).resolve():
-        raise ValueError("Resource table reference has no maintenance owner")
-    virtual = root / "assets/synapse/tables" / owner.name
-    resolved = Path(os.path.abspath(virtual.parent / literal))
-    if resolved.parent == root / "assets/synapse/tables":
-        return table_path(resolved.name, root=root)
-    return source_path(resolved.relative_to(root).as_posix(), root=root)
+    validate_resource_mappings(value, root=root)
+    analysis.save(root / MAPPINGS, value)
+
+
+def resource_table(name, *, root=None, mappings=None):
+    value = load_resource_mappings(root=root) if mappings is None else mappings
+    found = [table["entries"] for table in value["tables"] if table["name"] == name]
+    if len(found) != 1:
+        raise ValueError("Resource table owner is missing or repeated: " + name)
+    return found[0]
 
 
 def identity(name):
@@ -384,126 +463,23 @@ def regenerate_builtin_path(path, *, root=None):
                                  product_factory=item.get("product_factory", False))
 
 
-def rust_array(text, start):
-    """Read one literal Rust array without executing or compiling its source."""
-    if text[start] != "[":
-        raise ValueError("Expected a Rust array")
-    depth, position = 0, start
-    while position < len(text):
-        token = text[position]
-        if token == '"':
-            position += 1
-            while position < len(text) and text[position] != '"':
-                position += 2 if text[position] == "\\" else 1
-            if position >= len(text):
-                raise ValueError("Unterminated string in Rust resource table")
-        elif text.startswith("//", position):
-            newline = text.find("\n", position)
-            position = len(text) if newline == -1 else newline
-            continue
-        elif text.startswith("/*", position):
-            closing = text.find("*/", position + 2)
-            if closing == -1:
-                raise ValueError("Unterminated comment in Rust resource table")
-            position = closing + 2
-            continue
-        elif token == "[":
-            depth += 1
-        elif token == "]":
-            depth -= 1
-            if depth == 0:
-                return text[start:position + 1]
-        position += 1
-    raise ValueError("Unterminated Rust resource array")
-
-
 def runtime_metadata(lock=None, *, check_local=False, input_rows=None):
-    """Resolve current alias semantics from source and immutable file identities.
-
-    This does not consume analysis reports or require ignored payload files.
-    check_local additionally verifies original bytes and sprite viewports when
-    preparing a release from a fully hydrated developer workspace.
-    """
+    """Resolve ordered mappings against pinned identities; media is optional."""
     lock = load_lock() if lock is None else validate_lock(lock)
-    files = {row["path"]: dict(row) for row in [*rows_for(lock), *lock["git_files"]]
-             if not row["path"].startswith("assets/synapse/tables/")}
-    def table_source(name):
-        path = table_path(Path(name).name)
-        raw = path.read_bytes()
-        if input_rows is not None:
-            input_rows.append({"path": path.relative_to(ROOT).as_posix(), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
-        return raw.decode("utf-8")
-
-    tables_path = "assets/synapse/tables/asset-tables-source.rs"
-    table_text = table_source(tables_path)
-    order = re.search(r'static ASSET_TABLES:[^=]+=\s*&\[', table_text)
-    if order is None:
-        raise ValueError("AssetSource table order is unresolved")
-    names = re.findall(r'\b[A-Z][A-Z_0-9]+\b', rust_array(table_text, order.end() - 1))
-    if not names or len(set(names)) != len(names):
-        raise ValueError("Missing or repeated AssetSource table")
-
-    def relative_input(owner, literal):
-        path = Path(os.path.abspath(ROOT / owner / ".." / literal))
-        try:
-            name = path.relative_to(ROOT).as_posix()
-        except ValueError as error:
-            raise ValueError("Resource table input escaped the workspace") from error
-        source_path(name)  # Validate spelling and links even when payload is absent.
-        return name
+    mappings = load_resource_mappings(input_rows=input_rows)
+    files = {row["path"]: dict(row) for row in [*rows_for(lock), *lock["git_files"]]}
 
     def row_for(name):
         if name not in files:
             raise ValueError("Runtime asset is absent from the resource lock: " + name)
         return dict(files[name])
 
-    def entry(key, owner, literal):
-        if (not key.startswith("synapse/") or any(ord(c) < 32 for c in key)
-                or "\\" in key or any(p in ("", ".", "..") for p in key.split("/"))):
-            raise ValueError("Invalid runtime asset alias: " + key)
-        return {"key": key, **row_for(relative_input(owner, literal))}
+    def entry(row):
+        return {"key": row["key"], **row_for(row["path"])}
 
-    definitions = {}
-    pattern = r'const ([A-Z][A-Z_0-9]+):\s*&\[\(&str,\s*&\[u8\]\)\]\s*=\s*'
-    for match in re.finditer(pattern, table_text):
-        expression = table_text[match.end():]
-        if expression.startswith("include!"):
-            include = re.match(r'include!\("([^"\\]+)"\)', expression)
-            if include is None:
-                raise ValueError("Nonliteral asset table include")
-            name = relative_input(tables_path, include[1])
-            definitions[match[1]] = (name, table_source(name))
-        elif expression.startswith("&["):
-            definitions[match[1]] = (tables_path, rust_array(table_text, match.end() + 1))
-        else:
-            raise ValueError("Unresolved AssetSource table: " + match[1])
-    tuples = re.compile(r'\(\s*"([^"\\]+)"\s*,\s*include_bytes!\(\s*"([^"\\]+)"\s*\)\s*(?:as\s*&\[u8\]|\.as_slice\(\))?\s*,?\s*\)')
-    table_entries = []
-    for name in names:
-        if name not in definitions:
-            raise ValueError("Missing AssetSource table: " + name)
-        owner, body = definitions[name]
-        clean = re.sub(r'(?m)^\s*//[^\n]*', '', body)
-        found_tuples = list(tuples.finditer(clean))
-        if tuples.sub('', clean).strip("&[], \t\r\n"):
-            raise ValueError("Unparsed AssetSource table content: " + name)
-        table_entries.extend(entry(match[1], owner, match[2]) for match in found_tuples)
-
-    demo_path = "assets/synapse/tables/audio-demo-controls-embedded.rs"
-    sprite_path = "assets/synapse/tables/audio-volume-sprite-embedded.rs"
-    demo_body = table_source(demo_path)
-    demo_entries = [entry(match[1], demo_path, match[2]) for match in re.finditer(
-        r'"([^"\\]+)"\s*=>\s*Some\(include_bytes!\("([^"\\]+)"\)\)', demo_body)]
-    if {row["key"] for row in demo_entries} != {
-            "synapse/audio-demo-control-play.svg", "synapse/audio-demo-control-pause.svg",
-            "synapse/audio-demo-control-fullscreen.svg", "synapse/audio-demo-control-fullscreen-exit.svg"}:
-        raise ValueError("Audio demo AssetSource aliases require a source audit")
-    sprite_body = table_source(sprite_path)
-    sprite_input = re.search(r'const AUDIO_VOLUME_SPRITE: &str = include_str!\("([^"\\]+)"\);', sprite_body)
-    sprite_alias = re.search(r'const AUDIO_VOLUME_SPRITE_PATH: &str = "([^"\\]+)";', sprite_body)
-    if sprite_input is None or sprite_alias is None:
-        raise ValueError("Audio sprite AssetSource requires a source audit")
-    sprite = entry(sprite_alias[1], sprite_path, sprite_input[1])
+    table_entries = [entry(row) for table in mappings["tables"] for row in table["entries"]]
+    demo_entries = [entry(row) for row in mappings["audio_demo_controls"]]
+    sprite = entry(mappings["audio_volume_sprite"])
     sprite_entries = [sprite] + [
         {**sprite, "key": sprite["key"] + "#" + view, "view_box": viewport, "width": 20, "height": 20}
         for view, viewport in SPRITE_VIEWS]

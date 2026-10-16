@@ -2657,7 +2657,7 @@ class AssetReleaseTests(unittest.TestCase):
         self.root = Path(self.directory.name).resolve()
         self.root_patch = patch.object(asset_release, "ROOT", self.root)
         self.root_patch.start()
-        self.source("assets/synapse/tables/source.rs", b"// retained code\n")
+        self.source(sorted(self.assets.GIT_ICONS)[0], b"retained icon")
         self.source("assets/synapse/shared/common.svg", b"shared bytes")
         for pid in (1, 2, 3):
             self.source(f"assets/synapse/products/{pid}/image.png", bytes([pid]) * 257)
@@ -2710,7 +2710,7 @@ class AssetReleaseTests(unittest.TestCase):
             self.assets.restore([3], self.release)
         self.assets.restore([3], self.release, replace=True)
         self.assertTrue(self.assets.verify(self.release, check_local=True)["passed"])
-        self.source("assets/synapse/tables/source.rs", b"different checkout")
+        self.source(sorted(self.assets.GIT_ICONS)[0], b"different checkout")
         with self.assertRaisesRegex(ValueError, "matching checkout"):
             self.assets.restore([3], self.release)
 
@@ -2799,39 +2799,36 @@ class AssetReleaseTests(unittest.TestCase):
             self.assets.validate_lock(lock)
 
     def runtime_sources(self):
-        self.source(".analysis/inputs/resource-tables/asset-tables-source.rs", b'''
-const FIRST: &[(&str, &[u8])] = include!("first.rs");
-const SECOND: &[(&str, &[u8])] = &[
-    ("synapse/duplicate.svg", include_bytes!("../products/1/image.png")),
-];
-static ASSET_TABLES: &[&[(&str, &[u8])]] = &[FIRST, SECOND];
-''')
-        self.source(".analysis/inputs/resource-tables/first.rs", b'''&[
-    ("synapse/duplicate.svg", include_bytes!("../shared/common.svg") as &[u8]),
-    ("synapse/other.svg", include_bytes!("../products/2/image.png")),
-]
-''')
+        entries = [{"key": "synapse/duplicate.svg", "path": "assets/synapse/shared/common.svg"},
+                   {"key": "synapse/other.svg", "path": "assets/synapse/products/2/image.png"}]
         demo = []
         for name in ("play", "pause", "fullscreen", "fullscreen-exit"):
             path = "assets/synapse/products/1/control-" + name + ".svg"
             self.source(path, name.encode())
-            demo.append(f'"synapse/audio-demo-control-{name}.svg" => Some(include_bytes!("../products/1/control-{name}.svg")),')
-        self.source(".analysis/inputs/resource-tables/audio-demo-controls-embedded.rs", "\n".join(demo).encode())
-        self.source(".analysis/inputs/resource-tables/audio-volume-sprite-embedded.rs", b'''
-const AUDIO_VOLUME_SPRITE: &str = include_str!("../products/1/sprite.svg");
-const AUDIO_VOLUME_SPRITE_PATH: &str = "synapse/audio-volume-external-sprite.svg";
-''')
-        self.source("assets/synapse/products/1/sprite.svg", b'''<svg>
-<view id="link" viewBox="0 0 20 20" /><view id="hover" viewBox="0 20 20 20" /></svg>''')
+            demo.append({"key": "synapse/audio-demo-control-" + name + ".svg", "path": path})
+        sprite = {"key": "synapse/audio-volume-external-sprite.svg", "path": "assets/synapse/products/1/sprite.svg"}
+        self.source(sprite["path"], b'<svg><view id="link" viewBox="0 0 20 20" /><view id="hover" viewBox="0 20 20 20" /></svg>')
         for name in self.assets.REMOTE_FONT_PATHS:
             self.source(name, name.encode())
+        selectors = {}
+        for table, columns in self.assets.SELECTOR_FIELDS.items():
+            row = {column: 1 for column in columns}
+            row["key"] = entries[0]["key"]
+            if "part" in row: row["part"] = "Product"
+            if "kind" in row: row["kind"] = "prd"
+            if "wrist" in row:
+                row.update(folder_edition_id=128, filename_edition_id=0, wrist=False, density=3)
+            selectors[table] = [dict(row), dict(row)]
+        self.assets.save_resource_mappings({"schema_version": 1,
+            "tables": [{"name": "FIRST", "entries": entries},
+                       {"name": "SECOND", "entries": [{"key": entries[0]["key"], "path": "assets/synapse/products/1/image.png"}]}],
+            "audio_demo_controls": demo, "audio_volume_sprite": sprite, "selectors": selectors})
         self.assets.prepare("test/assets")
 
     def test_runtime_metadata_keeps_alias_precedence_list_duplicates_and_sprite_views(self):
         self.runtime_sources()
-        result = self.assets.prepare_runtime_metadata(check_local=True)
-        self.assertEqual(result["fonts"], 14)
-        value = self.assets.runtime_metadata()
+        value = self.assets.runtime_metadata(check_local=True)
+        self.assertEqual(self.assets.runtime_metadata_summary(value)["fonts"], 14)
         duplicate = [row for row in value["entries"] if row["key"] == "synapse/duplicate.svg"]
         self.assertEqual([row["path"] for row in duplicate], [
             "assets/synapse/shared/common.svg", "assets/synapse/products/1/image.png"])
@@ -2848,32 +2845,49 @@ const AUDIO_VOLUME_SPRITE_PATH: &str = "synapse/audio-volume-external-sprite.svg
 
     def test_runtime_metadata_verifies_without_resource_payloads_or_analysis(self):
         self.runtime_sources()
-        self.assets.prepare_runtime_metadata(check_local=True)
+        before = self.assets.runtime_metadata(check_local=True)
         lock_before = (self.root / self.assets.LOCK).read_bytes()
-        metadata_before = (self.root / self.assets.RUNTIME_METADATA).read_bytes()
         for row in self.assets.rows_for(self.assets.load_lock()):
             (self.root / row["path"]).unlink()
-        self.assertTrue(self.assets.verify_runtime_metadata()["passed"])
-        self.assets.prepare_runtime_metadata()
-        self.assertEqual((self.root / self.assets.RUNTIME_METADATA).read_bytes(), metadata_before)
+        self.assertEqual(self.assets.runtime_metadata(), before)
         self.assertEqual((self.root / self.assets.LOCK).read_bytes(), lock_before)
         with self.assertRaisesRegex(ValueError, "Runtime source length or SHA-256 differs"):
-            self.assets.verify_runtime_metadata(check_local=True)
+            self.assets.runtime_metadata(check_local=True)
 
-    def test_runtime_metadata_rejects_changed_output_unknown_files_and_unparsed_tables(self):
+    def test_runtime_metadata_rejects_unknown_files_and_unparsed_fields(self):
         self.runtime_sources()
-        self.assets.prepare_runtime_metadata()
-        self.source(self.assets.RUNTIME_METADATA, b"wrong metadata")
-        with self.assertRaisesRegex(ValueError, "Runtime metadata differs"):
-            self.assets.verify_runtime_metadata()
-        self.source(".analysis/inputs/resource-tables/first.rs", b'''&[
-    ("synapse/missing.svg", include_bytes!("../products/1/absent.svg")),
-]''')
+        value = self.assets.load_resource_mappings()
+        value["tables"][0]["entries"][0]["path"] = "assets/synapse/products/1/absent.svg"
+        self.assets.save_resource_mappings(value)
         with self.assertRaisesRegex(ValueError, "absent from the resource lock"):
             self.assets.runtime_metadata()
-        self.source(".analysis/inputs/resource-tables/first.rs", b"&[unresolved_function()]")
-        with self.assertRaisesRegex(ValueError, "Unparsed AssetSource table"):
-            self.assets.runtime_metadata()
+        value["tables"][0]["entries"][0]["unresolved_function"] = True
+        with self.assertRaisesRegex(ValueError, "mapping fields"):
+            self.assets.save_resource_mappings(value)
+
+    def test_selector_fields_duplicates_and_folder_filename_editions_roundtrip(self):
+        import resource_database
+        import sqlite3
+        self.runtime_sources()
+        value = self.assets.runtime_metadata()
+        rows = resource_database.selector_rows(value)
+        self.assertEqual(rows["dashboard_plugin_image_selector"], [
+            (0, 1, 128, 0, 1, 0, 3, "synapse/duplicate.svg"),
+            (1, 1, 128, 0, 1, 0, 3, "synapse/duplicate.svg")])
+        schema = Path(__file__).resolve().parent.parent / resource_database.SCHEMA
+        with sqlite3.connect(":memory:") as connection:
+            connection.executescript(schema.read_text(encoding="utf-8"))
+            resource_database.fill_selectors(connection, rows)
+        mappings = self.assets.load_resource_mappings()
+        row = mappings["selectors"]["dashboard_plugin_image_selector"][0]
+        for key, invalid in (("wrist", 0), ("density", 2), ("product_id", 0),
+                             ("folder_edition_id", -1), ("filename_edition_id", 2**32),
+                             ("key", "synapse/missing.svg")):
+            original = row[key]
+            row[key] = invalid
+            with self.assertRaises(ValueError, msg=key):
+                self.assets.save_resource_mappings(mappings)
+            row[key] = original
 
     def test_compiled_data_paths_and_shared_regeneration_use_owner_tables(self):
         for crate, literal in (("razer-device", "data/shared.json"),

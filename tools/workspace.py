@@ -187,6 +187,46 @@ def source_layout_destination(path):
     return path
 
 
+def source_structure_inventory():
+    """Inventory every workspace owner, dependency and embedded product input."""
+    import tomllib
+    root_manifest = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
+    shared = root_manifest.get("workspace", {}).get("dependencies", {})
+    manifests = [ROOT / "Cargo.toml", *sorted((ROOT / "crates").glob("*/Cargo.toml"))]
+    packages = []
+    for path in manifests:
+        manifest = tomllib.loads(path.read_text(encoding="utf-8"))
+        if "package" not in manifest:
+            continue
+        sections = [("normal", manifest.get("dependencies", {})), ("build", manifest.get("build-dependencies", {})),
+                    ("test", manifest.get("dev-dependencies", {}))]
+        for target, value in manifest.get("target", {}).items():
+            sections.extend((target + ":" + kind, value.get(key, {})) for kind, key in
+                            (("normal", "dependencies"), ("build", "build-dependencies"), ("test", "dev-dependencies")))
+        dependencies = []
+        for kind, items in sections:
+            for alias, specification in items.items():
+                specification = shared[alias] if isinstance(specification, dict) and specification.get("workspace") else specification
+                if isinstance(specification, dict) and "path" in specification:
+                    dependencies.append({"name": specification.get("package", alias), "kind": kind})
+        source = ROOT / "app" if path.parent == ROOT else path.parent / "src"
+        files = sorted(source.rglob("*.rs"))
+        packages.append({"name": manifest["package"]["name"], "manifest": relative(path),
+                         "internal_dependencies": dependencies,
+                         "rust_files": len(files), "rust_bytes": sum(item.stat().st_size for item in files),
+                         "largest_sources": [{"path": relative(item), "bytes": item.stat().st_size}
+                                             for item in sorted(files, key=lambda item: item.stat().st_size, reverse=True)[:3]]})
+    embedded = [row for row in rust_inputs() if row["path"].startswith("assets/")]
+    sources = [path for package in (ROOT / "crates").iterdir() if package.is_dir() for path in (package / "src").rglob("*.rs")]
+    obsolete = [relative(path) for path in sources if "/src/data/" in path.as_posix() or path.name == "data.rs"]
+    stale_calls = [relative(path) for path in sources if re.search(r"crate::data::\w+(?:::\w+)?!\s*\(", path.read_text(encoding="utf-8"))]
+    return {"packages": packages, "packages_scanned": len(packages), "product_asset_inputs": embedded,
+            "compiled_asset_inputs": [row for row in embedded if row["path"] != resource_sources.RUNTIME_METADATA],
+            "installed_catalog_input": next((row for row in embedded if row["path"] == resource_sources.RUNTIME_METADATA), None),
+            "obsolete_data_files": obsolete, "resource_macro_callers": stale_calls,
+            "scope": "All workspace manifests, Rust source files, module/include closure and embedded input identities; not a source-to-device acceptance claim"}
+
+
 def source_layout_plan():
     """Resolve complete Rust module/include paths before moving any bytes."""
     from importlib.metadata import version
@@ -194,7 +234,7 @@ def source_layout_plan():
     import tree_sitter
     import tree_sitter_rust
     parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_rust.language()))
-    files = sorted(path for path in (ROOT / "crates").rglob("*")
+    files = sorted(path for folder in ("app", "crates") for path in (ROOT / folder).rglob("*")
                    if path.is_file() and ("src" in path.relative_to(ROOT).parts
                                           or path.suffix == ".rs"))
     mapping = {}
@@ -406,6 +446,8 @@ def organize_sources(apply=False):
         plan["validation"] = "Pending locked workspace check and affected pure/simulated tests"
     else:
         plan["applied"] = False
+    if (ROOT / "Cargo.toml").is_file():
+        plan["workspace_inventory"] = source_structure_inventory()
     write_json(receipt, plan)
     print(json.dumps({"receipt": relative(receipt), "moves": len(plan["moves"]),
                       "rewrite_files": len(rewrites), "unresolved": plan["unresolved"],
@@ -561,7 +603,10 @@ def asset_support_archive_plan():
     import ast
     mapping, originals, writes, references = {}, {}, {}, []
     base = ROOT / "assets/synapse"
-    candidates = [(path, "tables/" + path.name) for path in sorted(base.glob("*.rs"))]
+    obsolete = list(base.glob("*.rs")) + list((base / "mouse-products").glob("*.rs"))
+    if obsolete:
+        raise ValueError("Rust resource fragments require audited conversion into " + resource_sources.MAPPINGS)
+    candidates = []
     indexes = {"asset-list.json", "resource-layout.json", "dashboard-image-map.json", "product-image-map.json", "keyboard-svg-ids.json"}
     candidates.extend((path, ("indexes/" if path.name in indexes else "manifests/") + path.name) for path in sorted(base.glob("*.json"))
                       if not path.name.startswith("keyboard-653-"))
@@ -572,9 +617,6 @@ def asset_support_archive_plan():
     lighting_manifest = base / "mouse-lighting/manifest.json"
     if lighting_manifest.is_file():
         candidates.append((lighting_manifest, "manifests/mouse-lighting.json"))
-    mouse_table = base / "mouse-products/embedded.rs"
-    if mouse_table.exists():
-        candidates.append((mouse_table, "tables/mouse-products-embedded.rs"))
     for source, destination in candidates:
         source_name = relative(source)
         target = base / destination
@@ -709,7 +751,7 @@ def apply_asset_support_archive(plan):
         if path.stat().st_size != row["bytes"] or digest(path) != row["sha256"]:
             raise ValueError("Asset support archive input changed: " + row["path"])
     for source, target in mapping.items():
-        if source not in snapshots or not target.startswith(("assets/synapse/tables/", "assets/synapse/manifests/",
+        if source not in snapshots or not target.startswith(("assets/synapse/manifests/",
                                                             "assets/synapse/indexes/", "assets/synapse/products/")):
             raise ValueError("Invalid asset support archive mapping")
         path = checked(target)
@@ -796,7 +838,10 @@ def reconcile_resource_layout():
     missing_aliases = {alias for row in missing for alias in row.get("runtime_keys", [])}
     referenced = set()
     pattern = re.compile("|".join(re.escape(alias) for alias in sorted(missing_aliases, key=len, reverse=True)))
-    for folder in ("app", "crates", resource_sources.TABLES):
+    mapping_path = ROOT / resource_sources.MAPPINGS
+    if mapping_path.is_file():
+        referenced.update(pattern.findall(mapping_path.read_text(encoding="utf-8")))
+    for folder in ("app", "crates"):
         for path in sorted((ROOT / folder).rglob("*")):
             if path.is_file() and path.suffix in {".rs", ".json", ".toml"}:
                 referenced.update(pattern.findall(path.read_text(encoding="utf-8-sig")))
@@ -838,7 +883,7 @@ def reconcile_resource_layout():
             data["resources"] = rows
             write_json(path, data)
     return {"obsolete_records": obsolete, "rebound_aliases": rebound, "physical_files": len(active),
-            "source_search_roots": ["app", "crates", resource_sources.TABLES],
+            "source_search_roots": ["app", "crates", resource_sources.MAPPINGS],
             "physical_files_deleted": 0, "original_inputs_modified": False}
 
 
@@ -1519,8 +1564,9 @@ def rust_inputs(*, include_asset_pack=True):
     Provenance JSON source fields are descriptions, never filesystem edges.
     """
     import resource_database
-    files = {ROOT / "Cargo.toml", ROOT / "Cargo.lock", ROOT / resource_database.INSTALLATION,
-             ROOT / resource_database.OUTPUT}
+    files = {ROOT / "Cargo.toml", ROOT / "Cargo.lock"}
+    if (ROOT / "crates/razer-resource-db/Cargo.toml").is_file():
+        files.update({ROOT / resource_database.INSTALLATION, ROOT / resource_database.OUTPUT})
     for folder in ("app", "crates"):
         for path in (ROOT / folder).rglob("*"):
             if not path.is_file():
@@ -2468,9 +2514,9 @@ def resource_ownership(pool):
     manifest = json.loads(manifest_path.read_bytes())
     registered = registered_resource_products()
     aliases = {}
-    dashboard_path = resource_sources.table_path("current-dashboard-images.rs", root=ROOT)
-    for match in re.finditer(r'\(\s*(\d+),[^\n]*?"([^"]+)"\)', dashboard_path.read_text(encoding="utf-8")):
-        aliases.setdefault(match[2], set()).add(int(match[1]))
+    mappings = resource_sources.load_resource_mappings(root=ROOT)
+    for row in mappings["selectors"]["dashboard_plugin_image_selector"]:
+        aliases.setdefault(row["key"], set()).add(row["product_id"])
     previews_path = analysis.builtin_data_path("razer-pages", "KEYBOARD_PREVIEW_CURRENT_DATA")
     for row in json.loads(previews_path.read_bytes())["products"]:
         for image in row["images"]:
@@ -2985,7 +3031,7 @@ def prepare_resources(acquisition, resources=None):
 
 
 def prepare_resources_locked(acquisition, resources=None):
-    """Embed verified original images without making analysis a runtime dependency.
+    """Prepare verified original media and maintain explicit display mappings.
 
     Resource mappings are original project-relative paths to display aliases.
     Exact shared bytes may reuse a product output after its actual hash matches.
@@ -3006,9 +3052,9 @@ def prepare_resources_locked(acquisition, resources=None):
                 request = request if isinstance(request, dict) else {"display": request}
                 requests.append((source_name, {**request, "_acquisition": acquired}))
     manifest_path = ROOT / "assets/synapse/manifests/manifest.json"
-    embedded_path = resource_sources.table_path("embedded.rs", root=ROOT)
+    mappings = resource_sources.load_resource_mappings(root=ROOT)
+    aliases = resource_sources.resource_table("ASSETS", mappings=mappings)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    embedded = embedded_path.read_text(encoding="utf-8")
     content_pool = resource_payload_index()
     registered_products = registered_resource_products()
     favicon_cache = {}
@@ -3302,13 +3348,8 @@ def prepare_resources_locked(acquisition, resources=None):
         manifest["entries"] = [known for known in manifest["entries"]
                                if display not in known.get("display_paths", [])]
         manifest["entries"].append(entry)
-        include = os.path.relpath(output, embedded_path.parent).replace("\\", "/")
-        display_literal = json.dumps(display)
-        embedded = re.sub(r"^\s*\(" + re.escape(display_literal) + r",.*\n", "", embedded, flags=re.M)
-        embedded = embedded.rstrip()
-        if not embedded.endswith("]"):
-            raise ValueError("Embedded resource array has an unexpected closing seam")
-        embedded = embedded[:-1] + f'    ({display_literal}, include_bytes!("{include}") as &[u8]),\n]\n'
+        aliases[:] = [row for row in aliases if row["key"] != display]
+        aliases.append({"key": display, "path": relative(output)})
         prepared.append({"display": display, "source_sha256": source_hash,
                          "output_sha256": output_hash, "output": relative(output),
                          "conversion": conversion,
@@ -3316,7 +3357,7 @@ def prepare_resources_locked(acquisition, resources=None):
                                              if key not in {"producer", "source_regions", "source_buttons", "complete_css_rules", "source_css"}}
                             if transformation else None})
     write_json(manifest_path, manifest)
-    embedded_path.write_text(embedded, encoding="utf-8")
+    resource_sources.save_resource_mappings(mappings, root=ROOT)
     return prepared
 
 
@@ -4132,12 +4173,11 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
                                                "asset_manifest": manifest_source,
                                                "acquisition": relative(source_receipt), "routes": routes,
                                                "usage": "Exact current resource-context literals locate request parameters only"})
-    for atlas in ("dashboard-images.rs", "armory-dashboard-images.rs"):
-        for match in re.finditer(r'\(\s*(\d+),\s*(\d+),\s*(\d+),',
-                                 resource_sources.table_path(atlas, root=ROOT).read_text(encoding="utf-8")):
-            pid, edition, layout = map(int, match.groups())
-            if pid in scope:
-                keys.add((pid, edition, edition, layout, "product"))
+    mappings = resource_sources.load_resource_mappings(root=ROOT)
+    for row in mappings["selectors"]["dashboard_image_selector"]:
+        pid, edition, layout = row["product_id"], row["edition_id"], row["layout_id"]
+        if pid in scope:
+            keys.add((pid, edition, edition, layout, "product"))
     input_index_path = ROOT / ".analysis/inputs.json"
     input_index = json.loads(input_index_path.read_bytes())
     retained_routes = []
@@ -4292,11 +4332,12 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
         display = mappings[request["original"]["path"]]
         if display not in aliases:
             raise ValueError("Current Dashboard artwork preparation is incomplete")
-        rows.append(f'    ({request["product_id"]}, {request["edition_id"]}, {request["filename_edition_id"]}, {request["layout_id"]}, '
-                    f'{str(request["variant"] == "wrist").lower()}, {request["density"]}, {json.dumps(display)}),')
-    resource_sources.table_path("current-dashboard-images.rs", root=ROOT).write_text(
-        "// Current App.tt and BoxItemDevice image requests; verified acquired originals.\n&[\n"
-        + "\n".join(rows) + "\n]\n", encoding="utf-8")
+        rows.append({"product_id": request["product_id"], "folder_edition_id": request["edition_id"],
+                     "filename_edition_id": request["filename_edition_id"], "layout_id": request["layout_id"],
+                     "wrist": request["variant"] == "wrist", "density": request["density"], "key": display})
+    mappings = resource_sources.load_resource_mappings(root=ROOT)
+    mappings["selectors"]["dashboard_plugin_image_selector"] = rows
+    resource_sources.save_resource_mappings(mappings, root=ROOT)
     print(json.dumps({"dashboard_artwork_prepared": len(rows), "failed_requests": len(failures),
                       "receipt": relative(receipt_path)}), flush=True)
     favicon_result = prepare_host_favicons()
@@ -4755,9 +4796,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
 def asset_pack_manifest(*, prepare=False):
     import families
     owner = ROOT / "crates/razer-assets/src/lib.rs"
-    owner_text = owner.read_text(encoding="utf-8")
-    tables_owner = resource_sources.table_path("asset-tables-source.rs", root=ROOT)
-    table_text = tables_owner.read_text(encoding="utf-8")
+    tables_owner = ROOT / resource_sources.MAPPINGS
+    mappings = resource_sources.load_resource_mappings(root=ROOT)
     source_inputs = {}
     payloads = {}
 
@@ -4780,59 +4820,14 @@ def asset_pack_manifest(*, prepare=False):
     snapshot(tables_owner)
     snapshot(Path(__file__))
     snapshot(Path(families.__file__))
-    table_order = re.search(r'static ASSET_TABLES:[^=]+=\s*&\[', table_text)
-    if table_order is None:
-        raise ValueError("AssetSource table order is unresolved")
-    order_start = table_order.end() - 1
-    order_end = families.javascript_delimited(table_text, order_start)
-    names = re.findall(r'\b[A-Z][A-Z_0-9]+\b', table_text[order_start:order_end])
-    if len(set(names)) != len(names):
-        raise ValueError("Repeated asset table must be audited explicitly")
-    definitions = {}
-    for match in re.finditer(r'const ([A-Z][A-Z_0-9]+):\s*&\[\(&str,\s*&\[u8\]\)\]\s*=\s*', table_text):
-        if table_text.startswith("include!", match.end()):
-            include = re.match(r'include!\("([^"]+)"\)', table_text[match.end():])
-            if include is None:
-                raise ValueError("Nonliteral asset table include")
-            path = resource_sources.table_reference(tables_owner, include[1])
-            snapshot(path)
-            definitions[match[1]] = (path, path.read_text(encoding="utf-8"))
-        elif table_text.startswith("&[", match.end()):
-            start = match.end() + 1
-            end = families.javascript_delimited(table_text, start)
-            definitions[match[1]] = (tables_owner, table_text[start:end])
-        else:
-            raise ValueError("Asset table expression is unresolved: " + match[1])
-    tuples = re.compile(r'\(\s*"([^"\\]+)"\s*,\s*include_bytes!\(\s*"([^"\\]+)"\s*\)\s*(?:as\s*&\[u8\]|\.as_slice\(\))?\s*,?\s*\)')
-    table_entries = []
-    for name in names:
-        if name not in definitions:
-            raise ValueError("Missing declared asset table: " + name)
-        path, body = definitions[name]
-        clean = re.sub(r'//[^\n]*', '', body)
-        matches = list(tuples.finditer(clean))
-        remaining = tuples.sub('', clean)
-        if remaining.strip("&[], \t\r\n"):
-            raise ValueError("Unparsed content in asset table: " + name)
-        for match in matches:
-            table_entries.append(payload(match[1], resource_sources.table_reference(path, match[2]), name))
-
-    demo_path = resource_sources.table_path("audio-demo-controls-embedded.rs", root=ROOT)
-    sprite_path = resource_sources.table_path("audio-volume-sprite-embedded.rs", root=ROOT)
-    snapshot(demo_path)
-    snapshot(sprite_path)
-    demo_body = demo_path.read_text(encoding="utf-8")
-    sprite_body = sprite_path.read_text(encoding="utf-8")
-    demo_entries = [payload(match[1], resource_sources.table_reference(demo_path, match[2]), "audio_demo_controls")
-                    for match in re.finditer(r'"([^"\\]+)"\s*=>\s*Some\(include_bytes!\("([^"\\]+)"\)\)', demo_body)]
-    sprite_input = re.search(r'const AUDIO_VOLUME_SPRITE: &str = include_str!\("([^"\\]+)"\);', sprite_body)
-    sprite_alias = re.search(r'const AUDIO_VOLUME_SPRITE_PATH: &str = "([^"\\]+)";', sprite_body)
-    if {entry["key"] for entry in demo_entries} != {
-            "synapse/audio-demo-control-play.svg", "synapse/audio-demo-control-pause.svg",
-            "synapse/audio-demo-control-fullscreen.svg", "synapse/audio-demo-control-fullscreen-exit.svg"
-    } or sprite_input is None or sprite_alias is None:
-        raise ValueError("Special AssetSource providers changed; audit their load/list semantics")
-    sprite = payload(sprite_alias[1], resource_sources.table_reference(sprite_path, sprite_input[1]), "audio_volume_sprite_base")
+    names = [table["name"] for table in mappings["tables"]]
+    table_entries = [payload(row["key"], ROOT / row["path"], table["name"])
+                     for table in mappings["tables"] for row in table["entries"]]
+    demo_entries = [payload(row["key"], ROOT / row["path"], "audio_demo_controls")
+                    for row in mappings["audio_demo_controls"]]
+    sprite_path = tables_owner
+    row = mappings["audio_volume_sprite"]
+    sprite = payload(row["key"], ROOT / row["path"], "audio_volume_sprite_base")
     all_entries = [sprite, *demo_entries, *table_entries]
     first = {}
     duplicates, conflicts = [], []
@@ -4854,10 +4849,7 @@ def asset_pack_manifest(*, prepare=False):
     table_list_matches = table_list_path.exists() and json.loads(table_list_path.read_bytes()) == table_list
     if table_list_path.exists():
         snapshot(table_list_path)
-    font_start = owner_text.index("pub fn register_fonts(")
-    font_end = families.javascript_delimited(owner_text, owner_text.index("{", font_start))
-    fonts = [snapshot(product_input(owner.parent / literal, owner))
-             for kind, literal in rust_embed_references(owner_text[font_start:font_end]) if kind == "include_bytes"]
+    fonts = [snapshot(product_input(ROOT / name, owner)) for name in resource_sources.REMOTE_FONT_PATHS]
     runtime_inputs, fixture_inputs, mixed_inputs = [], [], []
     rust_snapshot = rust_inputs(include_asset_pack=False)
     for entry in rust_snapshot:
@@ -4887,7 +4879,7 @@ def asset_pack_manifest(*, prepare=False):
                 "ordered_load_entries": ordered,
                 "list_entries": [entry["key"] for entry in demo_entries] + [sprite["key"], sprite["key"] + "#link", sprite["key"] + "#hover"] + [entry["key"] for entry in table_entries],
                 "list_semantics": {"prefix": "Dependency gpui_kit::assets::AllAssets.list(path) remains first and is not repackaged",
-                                   "audio_demo_controls": "Only empty, synapse, or synapse/ prefix returns these two aliases",
+                                   "audio_demo_controls": "Only empty, synapse, or synapse/ prefix returns these four aliases",
                                    "sprite_and_tables": "starts_with(path); retains duplicate aliases in original order"},
                 "load_semantics": ["audio_volume_sprite", "audio_demo_controls", "ASSET_TABLES ordered first match", "gpui_kit::assets::AllAssets fallback"],
                 "special_providers": [{"provider": "audio_volume_sprite", "source": relative(sprite_path),

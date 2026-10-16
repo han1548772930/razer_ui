@@ -36,113 +36,17 @@ INPUTS = {
     "shortcuts": ".analysis/inputs/typed-tables/razer-pages/shortcuts_current.json",
     "macro": ".analysis/inputs/typed-tables/razer-app-pages/text_data.json",
 }
-SELECTORS = {
-    "product_image_selector": (("product-images.rs", "armory-product-images.rs"), ("u32", "u32", "u32", "part", "text")),
-    "dashboard_image_selector": (("dashboard-images.rs", "armory-dashboard-images.rs"), ("u32", "u32", "u32", "text")),
-    "dashboard_plugin_image_selector": (("current-dashboard-images.rs",), ("u32", "u32", "u32", "u32", "bool", "density", "text")),
-    "pairing_image_selector": (("multipairing-product-images.rs",), ("u32", "u32", "u32", "text")),
-    "gamepad_calibration_svg_selector": (("gamepad-calibration-svg-sources.rs",), ("u32", "u32", "kind", "text")),
-}
-
-
-def migrate_resource_tables():
-    import analysis
-    import asset_release
-    source_root = (ROOT / "assets/synapse/tables").resolve()
-    destination_root = (ROOT / asset_release.TABLES).resolve()
-    destination_root.mkdir(parents=True, exist_ok=True)
-    moved = []
-    for source in sorted(source_root.glob("*.rs")):
-        destination = asset_release.table_path(source.name)
-        if (source.is_symlink() or source.resolve().parent != source_root
-                or destination.resolve().parent != destination_root):
-            raise ValueError("Resource maintenance cleanup escaped its owned directories")
-        raw = source.read_bytes()
-        if destination.exists() and destination.read_bytes() != raw:
-            raise ValueError("Conflicting resource maintenance input: " + source.name)
-        destination.write_bytes(raw)
-        if source.read_bytes() != destination.read_bytes():
-            raise ValueError("Resource table changed during maintenance migration")
-        moved.append({"original": source.relative_to(ROOT).as_posix(), "path": destination.relative_to(ROOT).as_posix(),
-                      "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
-        source.unlink()
-    if source_root.exists() and not any(source_root.iterdir()):
-        source_root.rmdir()
-    lock = asset_release.load_lock()
-    retained = [row for row in lock["git_files"] if not row["path"].startswith("assets/synapse/tables/")]
-    if retained != lock["git_files"]:
-        lock["git_files"] = retained
-        lock["source_sha256"] = asset_release.content_hash({"groups": lock["groups"], "git_files": retained})
-        lock["tag"] = "assets-" + lock["source_sha256"][:20]
-        asset_release.validate_lock(lock)
-        analysis.save(ROOT / asset_release.LOCK, lock)
-    if moved:
-        path = ROOT / ".analysis/results/typed-data.json"
-        report = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
-        report["resource_table_maintenance_migration"] = {"files": moved, "byte_identity_verified": True}
-        analysis.save(path, report)
-    return moved
-
-
 def selector_rows(manifest, input_rows=None):
-    import re
     import asset_release
+    mappings = asset_release.load_resource_mappings(input_rows=input_rows)
     aliases = {row["key"] for row in manifest["entries"]}
-    token = re.compile(r'\s*(\d+|true|false|DeviceImage::[A-Za-z]+|"(?:[^"\\]|\\.)*")\s*')
     tables = {}
-    for table, (sources, types) in SELECTORS.items():
+    for table, columns in asset_release.SELECTOR_FIELDS.items():
         rows = []
-        for filename in sources:
-            path = asset_release.table_path(filename)
-            raw = path.read_bytes()
-            if input_rows is not None:
-                input_rows.append({"path": path.relative_to(ROOT).as_posix(), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
-            body = re.sub(r"(?m)^\s*//[^\n]*", "", raw.decode("utf-8")).strip()
-            if not body.startswith("&[") or not body.endswith("]"):
-                raise ValueError("Selector source must be one complete array: " + filename)
-            cursor = 2
-            while body[cursor:].strip() != "]":
-                start = re.match(r"\s*\(\s*", body[cursor:])
-                if start is None:
-                    raise ValueError("Unparsed selector row: " + filename)
-                cursor += start.end()
-                fields = []
-                for index, typ in enumerate(types):
-                    match = token.match(body, cursor)
-                    if match is None:
-                        raise ValueError("Unparsed selector field: " + filename)
-                    literal = match[1]
-                    cursor = match.end()
-                    if typ in {"text", "kind"}:
-                        value = json.loads(literal)
-                        if type(value) is not str or (typ == "kind" and value not in {"prd", "ActuationDevice"}):
-                            raise ValueError("Invalid selector text")
-                    elif typ == "part":
-                        value = literal.removeprefix("DeviceImage::")
-                        if value not in {"Product", "MouseBottom", "KeyboardWrist", "KeyboardDial", "Streamer"}:
-                            raise ValueError("Unknown device image part")
-                    elif typ == "bool":
-                        if literal not in {"true", "false"}:
-                            raise ValueError("Invalid selector wrist flag")
-                        value = int(literal == "true")
-                    else:
-                        if not literal.isdecimal() or not 0 <= int(literal) < 2**32:
-                            raise ValueError("Invalid selector identity")
-                        value = int(literal)
-                        if typ == "density" and value not in {1, 3}:
-                            raise ValueError("Invalid selector density")
-                    fields.append(value)
-                    if index < len(types) - 1:
-                        if body[cursor:cursor + 1] != ",":
-                            raise ValueError("Incomplete selector fields")
-                        cursor += 1
-                end = re.match(r"\s*,?\s*\)\s*,?\s*", body[cursor:])
-                if end is None or fields[-1] not in aliases or fields[0] <= 0:
-                    raise ValueError("Invalid selector closure or unregistered asset: " + filename)
-                cursor += end.end()
-                rows.append((len(rows), *fields))
-        if not rows:
-            raise ValueError("Empty maintained selector table: " + table)
+        for position, row in enumerate(mappings["selectors"][table]):
+            if row["key"] not in aliases:
+                raise ValueError("Selector references an unregistered asset: " + row["key"])
+            rows.append((position, *(int(row[column]) if column == "wrist" else row[column] for column in columns)))
         tables[table] = rows
     return tables
 
@@ -329,7 +233,6 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
     if migrate_data:
         if check:
             raise ValueError("A migration cannot run in check-only mode")
-        migrate_resource_tables()
     registry = ROOT / "tools/typed-data.json"
     recipes = json.loads(registry.read_bytes())
     documents, adapters, typed_reports = catalog_data.prepare_documents(recipes, migrate=migrate_data, check=check)
