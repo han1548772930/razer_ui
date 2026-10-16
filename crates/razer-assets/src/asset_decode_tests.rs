@@ -1,191 +1,125 @@
-//! CPU-only checks of the actual embedded bytes through the locked GPUI codecs.
-//! These tests create no App, Window, platform service, or device connection.
+//! Resource identity and CPU codec checks without network or product payloads.
 use super::*;
 use gpui_kit::{Image, ImageFormat, SvgRenderer};
-use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, HashSet};
-use std::sync::Arc;
-
-fn image_format(alias: &str) -> Option<ImageFormat> {
-    match alias.split('#').next().unwrap().rsplit('.').next()? {
-        "png" => Some(ImageFormat::Png),
-        "jpg" | "jpeg" => Some(ImageFormat::Jpeg),
-        "webp" => Some(ImageFormat::Webp),
-        "gif" => Some(ImageFormat::Gif),
-        "svg" => Some(ImageFormat::Svg),
-        "bmp" => Some(ImageFormat::Bmp),
-        "tiff" | "tif" => Some(ImageFormat::Tiff),
-        "ico" => Some(ImageFormat::Ico),
-        "pnm" | "pbm" | "pgm" | "ppm" => Some(ImageFormat::Pnm),
-        "avif" => panic!("AVIF must be prepared as PNG for the locked GPUI decoder: {alias}"),
-        _ => None,
-    }
-}
+use std::{collections::BTreeSet, sync::Arc};
 
 #[test]
-fn listed_aliases_load_and_duplicate_entries_keep_identical_content() {
-    let mut aliases = BTreeMap::new();
-    for alias in SynapseAssets.list("").unwrap() {
-        let bytes = SynapseAssets.load(&alias).unwrap().expect(&alias);
-        let hash: [u8; 32] = Sha256::digest(bytes.as_ref()).into();
-        if let Some(previous) = aliases.insert(alias.clone(), (bytes.len(), hash)) {
-            assert_eq!(
-                previous,
-                (bytes.len(), hash),
-                "Duplicate alias changed source output: {alias}"
-            );
-        }
+fn listed_product_aliases_have_complete_file_identities() {
+    let aliases = SynapseAssets.list("synapse/").unwrap();
+    let mut files = BTreeSet::new();
+    for alias in &aliases {
+        let (path, bytes, hash) = remote::identity(alias)
+            .unwrap_or_else(|| panic!("Listed resource has no file identity: {alias}"));
+        assert!(path.starts_with("assets/synapse/"), "{alias}: {path}");
+        assert!(bytes > 0, "Empty product resource: {alias}");
+        assert_eq!(hash.len(), 64, "{alias}");
+        assert!(hash.bytes().all(|byte| byte.is_ascii_hexdigit()), "{alias}");
+        files.insert(path);
     }
     assert!(aliases.len() > 1_000);
+    assert!(files.len() > 1_000);
+    assert_eq!(SynapseAssets.list("synapse/").unwrap(), aliases);
+    assert!(remote::identity("synapse/absent-resource-for-identity-test").is_none());
 }
 
 #[test]
-fn every_embedded_image_decodes_with_locked_gpui_codecs() {
-    let renderer = SvgRenderer::new(Arc::new(SynapseAssets));
-    let mut verified = HashSet::new();
-    let mut images = 0;
-    for alias in SynapseAssets.list("synapse/").unwrap() {
-        let Some(format) = image_format(&alias) else {
-            continue;
-        };
-        let bytes = SynapseAssets.load(&alias).unwrap().expect(&alias);
-        let hash: [u8; 32] = Sha256::digest(bytes.as_ref()).into();
-        if !verified.insert((hash, format)) {
-            continue;
+fn sprite_views_share_one_download_and_special_providers_keep_list_rules() {
+    let base = "synapse/audio-volume-external-sprite.svg";
+    let identity = remote::identity(base).unwrap();
+    for view in ["link", "hover"] {
+        assert_eq!(remote::identity(&format!("{base}#{view}")), Some(identity));
+    }
+    assert!(remote::identity(&format!("{base}#unknown")).is_none());
+    let controls = [
+        "synapse/audio-demo-control-play.svg",
+        "synapse/audio-demo-control-pause.svg",
+        "synapse/audio-demo-control-fullscreen.svg",
+        "synapse/audio-demo-control-fullscreen-exit.svg",
+    ];
+    for prefix in ["", "synapse", "synapse/"] {
+        let listed = SynapseAssets.list(prefix).unwrap();
+        for control in controls {
+            assert!(listed.iter().any(|key| key == control));
+            assert!(remote::identity(control).is_some());
         }
-        if format == ImageFormat::Svg {
-            renderer
-                .parse_svg(&bytes)
-                .unwrap_or_else(|error| panic!("{alias}: {error}"));
-        } else {
-            let decoded = Image::from_bytes(format, bytes.into_owned())
-                .to_image_data(renderer.clone())
-                .unwrap_or_else(|error| panic!("{alias}: {error:#}"));
-            assert!(decoded.frame_count() > 0, "no decoded frames: {alias}");
-            let size = decoded.size(0);
-            assert!(
-                size.width.0 > 0 && size.height.0 > 0,
-                "empty image: {alias}"
-            );
-        }
-        images += 1;
     }
     assert!(
-        images > 1_000,
-        "the complete embedded image tables must be checked"
+        SynapseAssets
+            .list("synapse/audio-demo-control-")
+            .unwrap()
+            .is_empty()
     );
-}
-
-#[test]
-fn current_mouse_inline_svg_clips_retain_visible_pixels() {
-    let renderer = SvgRenderer::new(Arc::new(SynapseAssets));
-    for alias in [
-        "synapse/mouse-customize/930024c1c6c7047513f8f644.svg",
-        "synapse/mouse-customize/eba716ff296fcdb4441672f7.svg",
-    ] {
-        let bytes = SynapseAssets.load(alias).unwrap().expect(alias);
-        let image = renderer.render_single_frame(&bytes, 1.).expect(alias);
-        assert!(
-            image
-                .as_bytes(0)
-                .unwrap()
-                .chunks_exact(4)
-                .any(|pixel| pixel[3] > 0),
-            "SVG clipping removed the complete image: {alias}"
-        );
+    let fallback = gpui_kit::assets::AllAssets.list("").unwrap();
+    let listed = SynapseAssets.list("").unwrap();
+    assert!(!fallback.is_empty());
+    for key in fallback {
+        assert!(listed.contains(&key), "GPUI fallback omitted: {key}");
     }
 }
 
 #[test]
-fn current_gamepad_trigger_resources_decode_with_source_dimensions() {
-    // Seven independent current product receipts select these aliases. The
-    // PNG dimensions come from the original AVIF images; SVGs retain their
-    // original root geometry. No analysis paths are used by this test.
-    let renderer = SvgRenderer::new(Arc::new(SynapseAssets));
-    let mut identities = HashSet::new();
-    let mut resources = vec![
-        (
-            "synapse/gamepad-trigger-device/2629/0.png".to_owned(),
-            (1500, 690),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2629/128.png".to_owned(),
-            (1500, 670),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2636/0.png".to_owned(),
-            (1500, 690),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2636/128.png".to_owned(),
-            (2000, 894),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2636/129.png".to_owned(),
-            (1500, 690),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2647/0.png".to_owned(),
-            (1500, 690),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2647/128.png".to_owned(),
-            (1500, 690),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2676/0.svg".to_owned(),
-            (371, 156),
-        ),
-        (
-            "synapse/gamepad-trigger-device/2684/0.svg".to_owned(),
-            (372, 156),
-        ),
-        (
-            "synapse/gamepad-trigger-device/4133/0.png".to_owned(),
-            (1390, 580),
-        ),
-        (
-            "synapse/gamepad-trigger-device/4133/128.png".to_owned(),
-            (1389, 580),
-        ),
-        (
-            "synapse/gamepad-trigger-device/4133/129.png".to_owned(),
-            (1390, 580),
-        ),
-        (
-            "synapse/gamepad-trigger-device/4144/0.svg".to_owned(),
-            (479, 185),
-        ),
+fn current_gamepad_trigger_resources_have_source_identities() {
+    let mut aliases = vec![
+        "synapse/gamepad-trigger-device/2629/0.png".to_owned(),
+        "synapse/gamepad-trigger-device/2629/128.png".to_owned(),
+        "synapse/gamepad-trigger-device/2636/0.png".to_owned(),
+        "synapse/gamepad-trigger-device/2636/128.png".to_owned(),
+        "synapse/gamepad-trigger-device/2636/129.png".to_owned(),
+        "synapse/gamepad-trigger-device/2647/0.png".to_owned(),
+        "synapse/gamepad-trigger-device/2647/128.png".to_owned(),
+        "synapse/gamepad-trigger-device/2676/0.svg".to_owned(),
+        "synapse/gamepad-trigger-device/2684/0.svg".to_owned(),
+        "synapse/gamepad-trigger-device/4133/0.png".to_owned(),
+        "synapse/gamepad-trigger-device/4133/128.png".to_owned(),
+        "synapse/gamepad-trigger-device/4133/129.png".to_owned(),
+        "synapse/gamepad-trigger-device/4144/0.svg".to_owned(),
     ];
-    resources.extend(
+    aliases.extend(
         [2629, 2636, 2647, 2676, 2684, 4133, 4144]
-            .map(|pid| (format!("synapse/gamepad-trigger-reset/{pid}.svg"), (20, 20))),
+            .map(|pid| format!("synapse/gamepad-trigger-reset/{pid}.svg")),
     );
-    for (alias, dimensions) in resources {
-        let bytes = SynapseAssets.load(&alias).unwrap().expect(&alias);
-        let identity: [u8; 32] = Sha256::digest(bytes.as_ref()).into();
-        identities.insert(identity);
-        let decoded = if alias.ends_with(".svg") {
-            renderer.parse_svg(&bytes).expect(&alias);
-            renderer.render_single_frame(&bytes, 1.).expect(&alias)
-        } else {
-            Image::from_bytes(ImageFormat::Png, bytes.into_owned())
-                .to_image_data(renderer.clone())
-                .unwrap_or_else(|error| panic!("{alias}: {error:#}"))
-        };
-        assert_eq!(decoded.frame_count(), 1, "{alias}");
-        let size = decoded.size(0);
-        assert_eq!((size.width.0, size.height.0), dimensions, "{alias}");
-        assert!(
-            decoded
-                .as_bytes(0)
-                .unwrap()
-                .chunks_exact(4)
-                .any(|pixel| pixel[3] > 0),
-            "resource has no visible pixels: {alias}"
-        );
+    let mut payloads = BTreeSet::new();
+    for alias in aliases {
+        let (_, bytes, hash) = remote::identity(&alias).expect(&alias);
+        assert!(bytes > 0, "{alias}");
+        payloads.insert((bytes, hash));
     }
-    // Twelve artwork payloads plus the reset icon; equal bytes may be shared
-    // while all twenty product aliases remain independently resolvable.
-    assert_eq!(identities.len(), 13);
+    assert_eq!(payloads.len(), 13);
+}
+
+#[test]
+fn inline_svg_codec_preserves_clips_and_rejects_invalid_input() {
+    let renderer = SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets));
+    let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2" viewBox="0 0 2 2"><defs><clipPath id="clip"><rect width="1" height="2"/></clipPath></defs><rect width="2" height="2" fill="#44d62c" clip-path="url(#clip)"/></svg>"##;
+    let rendered = renderer.render_single_frame(svg, 1.).unwrap();
+    assert_eq!(rendered.frame_count(), 1);
+    let size = rendered.size(0);
+    assert_eq!((size.width.0, size.height.0), (2, 2));
+    let pixels = rendered.as_bytes(0).unwrap();
+    assert!(pixels.chunks_exact(4).any(|pixel| pixel[3] > 0));
+    assert!(pixels.chunks_exact(4).any(|pixel| pixel[3] == 0));
+    assert!(renderer.parse_svg(b"not an SVG").is_err());
+}
+
+#[test]
+fn inline_bitmap_codec_checks_pixels_and_rejects_truncation() {
+    let renderer = SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets));
+    // A synthetic 1x1 RGBA PNG with one opaque green pixel.
+    const PNG: &[u8] = &[
+        137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0, 0, 0, 1, 8, 6,
+        0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84, 120, 156, 99, 112, 185, 166, 243,
+        31, 0, 4, 238, 2, 70, 90, 206, 191, 50, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+    ];
+    let decoded = Image::from_bytes(ImageFormat::Png, PNG.to_vec())
+        .to_image_data(renderer.clone())
+        .unwrap();
+    let size = decoded.size(0);
+    assert_eq!((size.width.0, size.height.0), (1, 1));
+    assert_eq!(decoded.frame_count(), 1);
+    assert_eq!(decoded.as_bytes(0).unwrap()[3], 255);
+    assert!(
+        Image::from_bytes(ImageFormat::Png, PNG[..30].to_vec())
+            .to_image_data(renderer)
+            .is_err()
+    );
 }

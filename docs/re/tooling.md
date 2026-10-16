@@ -15,6 +15,7 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 | IDAPython／Python | IDA 8.3 捕获实际使用 Python 3.11.6；9.1 配置保留固定 Python 3.11.9 embed | 与产品依赖分开，按各份捕获核验实际运行时，不跨版本沿用身份 |
 | Wakaru 1.14.0 | 全量显式 JS 输入，静态拆包、provenance、输出 map、diagnostics | validate、chunk 枚举和 source map 缺失独立记录；成功退出不证明依赖闭合 |
 | Tree-sitter 0.25.2／JavaScript 0.25.0 | 按 Python ABI 使用项目内解析器，静态定位完整源码 AST 和原始字节范围 | ERROR／missing node 不允许当成功提取；禁止执行 JS |
+| Rust 固定表生成器 | 当前 Python Tree-sitter 0.26.0／Rust grammar 0.24.2，`prepare-typed-data` 按实际 Rust 字段和枚举生成多行构造代码；`tools/typed-data.json` 保留原始输入 SHA-256、字段投影及格式边界 | 仅解析维护输入；不执行厂商代码。协议表另作字段、值域、产品分支校验；生成成功不代替编译、行为等价性或设备验收 |
 | ccl_chromium_reader 0.24 | 固定提交 `ef840de30221c4d65bc96d2f4d9057e9ef2f526d`，8 个文件按收据校验 | 只读取公共官方静态缓存，不读取账户、cookie、浏览历史；缓存不是当前部署证明 |
 | 7-Zip | 新提取使用 24.02 x64，已有 26.02 收据保留各自身份；版本及 EXE／DLL SHA 随静态提取记录 | 仅识别为 PE 的安装器不能记成已提取全部载荷 |
 | ILSpyCmd 9.1.0.7988 | 固定 NuGet 包与 59 个文件，.NET 8 上静态导出 C# 项目和完整 IL | 不执行输入程序集；保留 unresolved 注释、stderr、两阶段退出码；native C++ 使用 IDA |

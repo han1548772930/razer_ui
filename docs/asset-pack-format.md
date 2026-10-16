@@ -1,37 +1,38 @@
-# Local asset pack format
+# Resource delivery and optional container format
 
-`razer-asset-pack` is an OS-independent, read-only asset container core. Production `SynapseAssets` delegates its large static resource tables to the indexed package reader rather than compiling those image bytes into the executable. The change does not convert images, package original analysis inputs, or replace GPUI fallback behavior. Version 1 stores unmodified bytes: it deduplicates identical content but does not compress it. Source coverage, full-resource verification and application runtime acceptance remain separate checks; a loader implementation alone does not complete the migration.
+## Application resource delivery
 
-## Production loading and preparation
+`SynapseAssets` resolves aliases against a compiled, typed Rust index and obtains individual files from the private Hugging Face Dataset `han1548772930/razer-ui-assets`. The dataset preserves product/shared paths and original file bytes through its own Git LFS rules. It contains no required ZIP or runtime pack. `tools/asset-release.json` pins an immutable dataset commit and each file's length/SHA-256; `assets/synapse/tables/remote-assets.rs` carries the generated runtime metadata. The dataset's own `release-index.json` omits its storage commit to avoid a self-referential hash.
 
-Original resource files can also be restored from the private Hugging Face Dataset
-`han1548772930/razer-ui-assets`. The dataset uses Git LFS and preserves the complete
-`assets/` paths, without ZIP archives or the generated runtime pack. Rust resource
-tables and the nine native tray/menu RGBA files remain owned by the source checkout.
-`tools/asset-release.json` records every file's length/SHA-256, product dependencies
-and a verified immutable dataset commit. The storage commit is omitted from the
-dataset's own `release-index.json` to avoid a self-referential hash.
+Requests follow the current UI's actual file use. Startup does not fetch every product or restore the source checkout's `assets/`. Four asynchronous workers deduplicate pending file requests, read a valid installation cache before networking, validate downloaded lengths and SHA-256, and atomically publish verified bytes. Cached files are under the current executable's `assets/cache/`, named with their content hash to keep valid versions distinct. Cache hits need no network or credential. An uncached file remains unavailable offline; load failures and retries do not imply device state changes.
 
-Configure Git LFS and Git Credential Manager access to the private dataset, then run
-`python tools/workspace.py fetch-asset-release` before the offline preparation below.
-`--product PID` restores that product's source files plus shared/transitive dependencies;
-full workspace compilation and pack preparation require all products. A prepared raw
-snapshot can be restored offline with `--from-dir DIRECTORY`. Modified local files are
-preserved unless `--replace-existing` is explicit. All requested changes are staged
-and hashed before replacement; failed replacement rolls back previous changes, and
-failed rollback retains original backups under `.work/asset-recovery/`.
+Private access credentials are read from explicit `HF_TOKEN`, the local Windows credential store, or the local `hf auth login` token file. They do not belong in the source, manifest, installation package or logs. The installation directory must be writable by the ordinary user. Upgrades preserve caches; uninstall offers retention or cleanup limited to this application's cache. See [Windows installation](windows-installation.md).
 
-Maintainers use `prepare-asset-release --repository OWNER/DATASET`,
-`verify-asset-release --check-local`, and `publish-asset-release` through the same
-`tools/workspace.py` entry point. Publication verifies the remote file set, every LFS
-SHA-256/length and the manifest before pinning the commit. `verify-asset-release --remote`
-repeats that verification. These commands do not push or rewrite the source repository.
+The source checkout retains Rust lookup/maintenance tables and nine mandatory native RGBA icons. Image, video and font payloads are ignored by the source repository. Fixed protocol capabilities, pairing rules, defaults and page data are code-owned Rust types and constructors, independent of remote media or analysis inputs. Cargo has no asset downloading or pack staging build script; compilation and installation do not require `synapse.pack`.
 
-The source declarations remain in `assets/synapse/tables/asset-tables-source.rs` for the maintained tool to parse; they are not compiled into the application. `assets/synapse/indexes/asset-list.json` preserves the original table enumeration order and duplicate aliases. The loader retains the dynamic SVG fragment selection and small demo-control provider ahead of static lookup, plus GPUI's fallback for genuinely unregistered keys. Missing/corrupt declared package entries are errors, not fallback placeholders. Font registration and direct JSON/locale consumers retain their original owners rather than receiving invented package keys.
+Alias lookup keeps source priority and list order, including duplicates, audio-demo controls, dynamic SVG fragments, and GPUI fallback for unregistered keys. Declared files in pending or failed states are not silently replaced with fallback artwork. Resource completion notifies the owning views so source-derived presentation can refresh.
 
-`python tools/workspace.py audit-asset-pack --prepare` captures the complete static source graph and emits its list contract. `prepare-asset-pack` requires stable input identities and no conflicting aliases, writes a new temporary pack in 1 MiB chunks, validates all unique blobs and alias mappings, rechecks source snapshots, then atomically publishes `target/asset-pack/synapse.pack`. This generated build resource stays outside the source `assets/` tree and the HF raw-file snapshot. `verify-asset-pack` repeats the stream checks independently. Analysis receipts stay in `.analysis/results/`; production reads neither those receipts nor scratch paths. The Python wire writer is checked against the crate-owned `testdata/store-v1.hex` also tested by Rust.
+## Maintenance and verification
 
-The production loader opens `assets/synapse.pack` relative to the executable, validates its complete key set and index once, retains the file/index behind a mutex, and reads/hashes only requested entries. Application startup validates availability without unpacking the entire container. Cargo's `razer-assets/build.rs` stages `target/asset-pack/synapse.pack` to the profile's `assets/` directory using bounded byte comparisons and temporary-file replacement; a missing generated pack is a build error with preparation instructions. Test binaries in `deps/` use the profile's staged pack. Installed distributions must include the same relative `assets/synapse.pack`; no Internet fallback is provided. These build/test paths perform resource preparation only and do not launch the application.
+Run commands through `tools/workspace.py`:
+
+```powershell
+python tools/workspace.py verify-runtime-assets
+python tools/workspace.py prepare-typed-data --check
+python tools/workspace.py verify-asset-release --remote
+```
+
+`prepare-runtime-assets` regenerates readable Rust metadata from the source tables and pinned lock; `verify-runtime-assets` compares those exact outputs. Neither requires media payloads in the checkout. `--check-local` additionally verifies payload bytes when a maintainer has explicitly hydrated the originals. Source acquisition, original-image decoding, metadata closure, pure runtime tests, UI behavior and real-device acceptance are separate checks.
+
+Maintainers can use `prepare-asset-release --repository OWNER/DATASET`, `verify-asset-release --check-local`, and `publish-asset-release` to publish an explicit resource update. Publication verifies the remote file set, every LFS length/SHA-256 and the manifest before pinning a commit; `pin-asset-release --revision COMMIT` verifies an existing upload without publishing payloads. These commands do not push or rewrite the source repository.
+
+`fetch-asset-release --product PID` is an explicit maintenance restore of that product and its shared/transitive dependencies, not a product startup or compilation step. `--from-dir DIRECTORY` uses an existing raw snapshot offline. Modified files are preserved unless `--replace-existing` is explicit. Replacement is staged and hashed; failed replacement rolls back previous changes, and failed rollback retains original backups under `.work/asset-recovery/`. Normal application use does not invoke these commands.
+
+## Independent container core
+
+`razer-asset-pack` remains an OS-independent container core for deterministic format and corruption tests. The application resource crate does not depend on it. The retained `audit-asset-pack`, `prepare-asset-pack` and `verify-asset-pack` tools describe explicit local container maintenance using fully available originals and matching manifests. Their output `target/asset-pack/synapse.pack` is excluded from Git and the HF raw-file dataset and is not installed or opened by the application.
+
+Version 1 below stores unmodified bytes with identical-content deduplication and no compression. The Rust/Python wire fixture is `crates/razer-asset-pack/testdata/store-v1.hex`; it does not contain the production image set. Container tests do not validate the current product resource runtime or complete any page's acceptance.
 
 ## Layout
 

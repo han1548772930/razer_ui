@@ -7,6 +7,9 @@
 | [workspace.py](workspace.py) | 目录盘点、清理、输入／文档校验和 Rust 验证 |
 | [analysis.py](analysis.py) | 前端获取／恢复、原生输入索引、IDA 配置与批量函数导出 |
 | [families.py](families.py) | 全产品族 UI／middleware 获取、独立版本配对、native 资源来源闭包与静态恢复矩阵 |
+| [asset_release.py](asset_release.py) | 私有资源仓库快照、上传核验、固定提交与有类型运行时索引 |
+| [rust_data.py](rust_data.py)、[typed_tables.py](typed_tables.py) | 按实际 Rust schema 校验并生成可读 Rust 数据表、协议能力与本地默认值 |
+| [windows_installer.py](windows_installer.py) | Windows 安装包静态输入准备、PE 依赖闭包和封装校验 |
 | `analyzers/wakaru-1.14.0/` | 专业静态前端恢复工具及动态 SHA／获取来源记录；可执行文件不入 Git |
 | `ida/` | IDA Pro／Hex-Rays MCP 主分析器的项目配置与插件；只做静态分析，配置放项目内，不能放 `.work/` |
 
@@ -38,13 +41,15 @@ python tools/workspace.py configure-ida
 python tools/workspace.py capture-native --input PROJECTREL
 python tools/workspace.py supplement-native --input PROJECTREL --pointer-table-rva 0x1000 --pointer-count 7 --no-refresh-gaps
 python tools/workspace.py verify-resources
-python tools/workspace.py audit-asset-pack --prepare
-python tools/workspace.py prepare-asset-pack
-python tools/workspace.py verify-asset-pack
+python tools/workspace.py verify-runtime-assets
+python tools/workspace.py prepare-typed-data --check
+python tools/workspace.py prepare-device-write-table --check
+python tools/workspace.py prepare-local-protocol-tables --check
+python tools/workspace.py prepare-storage-tables --check
 python tools/workspace.py organize-sources
 python tools/workspace.py audit-lfs
 python tools/workspace.py prepare-dashboard-images --source-preview-only --no-refresh-gaps
-python tools/workspace.py validate-rust --suite asset-pack-core --suite asset-pack-roundtrip
+python tools/workspace.py validate-rust --suite asset-pack-core
 ```
 
 `PROJECTREL` 为 `.analysis/inputs/` 下已登记的 DLL／NODE／EXE。`capture-native` 使用 IDA 批处理与 Hex-Rays 保存全函数、汇编、CFG、xref、类型、字符串、导出／导入和失败；结束后正常退出。`--resume` 补齐同一输入的缺失结果，`--mcp-only` 使用独立私有副本启动查询会话。
@@ -103,16 +108,22 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `prepare-resources` 核验获取收据和原始 bytes 后准备实际嵌入资源，支持静态 AVIF 转换、受限字面量 React SVG 和已实现的 SMIL 动画采样。`prepare-dashboard-images` 按当前完整 Dashboard 图片调用方，对全部产品 ID 及版本／布局／腕托／鼠标垫请求进行获取和稳定性核验；参数 locator 不提供图片或当前语义。资源失败保持失败，不能生成虚假替代图。全族 scope 合并 registry 与产品候选共 332 个唯一 PID；`--stage report` 从实际获取／probe 收据恢复矩阵字段，分别核对原件与分析产物，不依赖缺失的旧汇总字段。
 
-`python -B tools/workspace.py deduplicate-resources` 只生成 `.analysis/results/resource-deduplication.json`，不移动资源。检查归属、逐字节共享关系、全部生产引用及历史 provenance 差异后，`--apply` 仅接受未变化的完整 dry-run 快照；异常会恢复被改写和删除的文件。单产品图片及配置归入 `products/<PID>/`，跨产品内容显式共享，无可证归属的内容隔离至 `shared/source-unverified/`。迁移保持逻辑 alias 顺序、实际 bytes、各来源记录及历史 `original_paths`；源码未核验与物理去重分别记录。资源准备与迁移共用 OS 文件锁和实际内容索引，后续准备复用已有相同 bytes；准备引入新的跨产品使用后，应再次运行此布局核对。apply 后必须重新生成资源、资源包及相关族审计，并运行适用纯测试；该工具不修改 Git 索引、历史或 LFS 配置，也不执行应用或厂商代码。
+`python -B tools/workspace.py deduplicate-resources` 只生成 `.analysis/results/resource-deduplication.json`，不移动资源。检查归属、逐字节共享关系、全部生产引用及历史 provenance 差异后，`--apply` 仅接受未变化的完整 dry-run 快照；异常会恢复被改写和删除的文件。单产品图片及配置归入 `products/<PID>/`，跨产品内容显式共享，无可证归属的内容隔离至 `shared/source-unverified/`。迁移保持逻辑 alias 顺序、实际 bytes、各来源记录及历史 `original_paths`；源码未核验与物理去重分别记录。资源准备与迁移共用 OS 文件锁和实际内容索引，后续准备复用已有相同 bytes；准备引入新的跨产品使用后，应再次运行此布局核对。apply 后须明确重新准备资源发布快照、固定提交与运行时索引，复做相关族审计及适用纯测试；该工具不修改 Git 索引、历史或 LFS 配置，也不执行应用或厂商代码。
 
-`verify-resources` 沿真实 Rust `include` 闭包核验全部产品图片：SVG 解析完整 XML，检查遗留 React 属性和 `<use>` 的内部目标；位图使用固定 Pillow 验证结构并完整解码像素。输入摘要、逐文件结果、失败及验证期间的图片身份保存在 `.analysis/results/resource-audit.json`，失败与过期收据进入统一 gaps。`validate-rust` 的 `assets` suite 另用项目锁定 GPUI 解码器在 CPU 上解析全部 SVG、解码位图，并检查重复 alias 是否遮蔽不同字节；AVIF 必须先从当前原件准备为 PNG。两类检查均不打开窗口，不能代替布局、交互或设备验收。
+完整原图的 `verify-resources` 属于显式准备原文件后的维护校验：SVG 解析完整 XML，检查遗留 React 属性和 `<use>` 的内部目标；位图使用固定 Pillow 验证结构并完整解码像素。输入摘要、逐文件结果、失败及验证期间的图片身份保存在 `.analysis/results/resource-audit.json`，失败与过期收据进入统一 gaps。它不属于 Cargo 前置步骤。资源纯测试通过编译索引检查当前 alias 与产品分支，使用必要的内联合成 SVG／PNG 检查锁定 GPUI codec；真实产品图片不放进 `testdata/`，也不在测试中全量加载或下载。AVIF 的维护转换仍须从核验过的原件准备，两类检查均不能代替布局、交互或设备验收。
 
 工具路径相对项目根，证据哈希从原始字节生成。所有目标只作静态数据处理；禁止执行厂商应用／JavaScript／DLL／helper／installer、真实服务和真实设备。允许的 Rust 检查与纯／模拟测试见 [AGENTS.md](../AGENTS.md)。
 
 `keyboard-metadata` 复用当前 middleware 获取收据，逐产品校验原件字节并保留完整注册、DeviceInfo、继承类、getEdition／getSerialNumber、命令／解码器、传输默认值、物理路由工厂及身份缓存／runtimeData 默认值所有者。结果追加至 `keyboard-mw-audit.json`；通过检查的有线、自有无线接收器及 BLE 产品生成 `razer-device` 元数据传输描述，双链路共享接收器另保留 cached-master 工厂及命令命名空间证据。原始依赖闭包缺项独立保留，不把厂商 UI 的布局／版本默认值视为硬件读取成功。该查询不执行厂商代码或设备操作。
 
-`audit-asset-pack --prepare` 按真实加载优先级解析维护源表，校验全部静态 alias、特殊 provider、字体及直嵌入资源，并保留重复 `list` 顺序；同 key 异字节冲突或快照变化会阻止打包。`prepare-asset-pack` 仅在清单门禁通过后，以 1 MiB 分块写临时 store-only 包，复核每个原文件和 alias 的 SHA-256，再原子发布至 `target/asset-pack/synapse.pack`；不会转换图片、改写原文件或一次将全包读入内存。`verify-asset-pack` 默认核对该生成路径，独立流式验证所有唯一 payload、完整 key 集与发布清单及输入快照。原始分析证据、测试 fixture 不进入包；动态 SVG fragment 和 GPUI fallback 保持其独立行为。格式见 `docs/asset-pack-format.md`。
+应用资源按“私有 HF 仓库 → 当前实际文件请求 → 安装目录 `assets/cache/` → 当前产品界面”流转。`tools/asset-release.json` 固定仓库提交、文件长度／SHA-256 和产品依赖；`prepare-runtime-assets` 解析代码维护表并生成 `assets/synapse/tables/remote-assets.rs`，`verify-runtime-assets` 检查输出一致性。两者无需本地图片，也不下载资源；`--check-local` 仅用于明确恢复了原文件的维护工作区。运行时异步请求去重、限制并发、验证并原子缓存；缓存命中不联网，编译不准备 pack。凭据仅从本机配置读取。
 
-`asset-pack-core` 使用 crate 自有 fixture 验证 Rust／Python wire 一致性及损坏处理；`asset-pack-roundtrip` 通过实际 `SynapseAssets.list/load` 枚举所有 alias（含特殊控件、动态 fragment 和 GPUI fallback），以 callback 双遍 writer 写临时包并逐条读回。回环不会保留整个资源集，且不依赖分析报告或 scratch 输入；两项均为无窗口、无设备的纯 Rust 测试，不替代应用运行验收。
+`verify-asset-release --remote` 核对已固定远端清单及 LFS 文件身份；`publish-asset-release` 在核验后固定新提交；`pin-asset-release --revision COMMIT` 核验已上传版本。`fetch-asset-release --product PID` 仅为维护人员显式恢复选定产品与共享依赖，普通编译和产品启动均不调用。完整原图核验须明确使用维护来源，不将其复制到 crate 测试夹具。
+
+`prepare-typed-data [--check] [--crate CRATE]` 使用 `tools/typed-data.json` 和 `.analysis/inputs/typed-tables/` 的维护输入，按实际 Rust struct／enum 与字段、值域、产品分支生成可读构造表；专用设备写入、读取／身份／接收器、存储默认值分别由 `prepare-device-write-table`、`prepare-local-protocol-tables`、`prepare-storage-tables` 维护。生成物随程序编译，产品不解析这些固定 JSON；外部报文、动态扩展和用户配置只在有类型的边界读写。原 JSON 不在 crates 中保留第二份生产数据。
+
+`prepare-windows-installer` 从已存在的 GUI EXE 和显式 DLL 准备严格载荷，`verify-windows-installer --stage DIRECTORY` 复核实际 SHA、PE 架构、普通／延迟导入闭包和图标；`compile-windows-installer` 仅调用已有 ISCC 生成安装包。当前缺 release EXE 与 ISCC，没有生成或运行安装包。输入、缓存、升级与卸载语义见 [Windows 安装交付](../docs/windows-installation.md)。
+
+独立 `asset-pack-core` suite 只验证容器 wire fixture 与错误处理。保留的 `audit-asset-pack`／`prepare-asset-pack`／`verify-asset-pack` 属于显式本地容器维护，需要完整原文件与相符清单；生成的 `target/asset-pack/synapse.pack` 不属于当前应用运行或安装依赖。旧全量 `SynapseAssets.list/load` pack 回环已移除；当前资源纯测试验证索引闭包、产品选择、缓存和模拟请求，只用必要的内联合成 codec 样本，不下载全套图片。格式和边界见 [资源交付与容器格式](../docs/asset-pack-format.md)。
 
 `python tools/workspace.py organize-resources --apply` 将资源表归入 `tables/`，来源清单归入 `manifests/`，索引归入 `indexes/`，同步 Rust include、JSON 物理路径和文档引用；产品配置保留在 `products/<PID>/configs/`。目录索引只保留实际输出：被更新的活跃 alias 绑定到当前已核验文件，已无生产引用的悬空记录从当前索引移除，其完整旧记录与判定保留于同一 `resource-deduplication.json`。逻辑 alias 不改名。

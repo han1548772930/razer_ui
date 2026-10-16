@@ -4,7 +4,9 @@ use std::borrow::Cow;
 pub struct SynapseAssets;
 mod data;
 mod keyboard_source;
-pub use keyboard_source::{InputCounter, KeyboardSourceGroup, KeyboardSourceInput, keyboard_source_for_layout};
+pub use keyboard_source::{
+    InputCounter, KeyboardSourceGroup, KeyboardSourceInput, keyboard_source_for_layout,
+};
 mod packed;
 mod remote;
 pub use remote::{
@@ -254,13 +256,10 @@ pub fn keyboard_keys_for_layout(layout_id: u32) -> &'static [KeyboardKey] {
 mod asset_decode_tests;
 
 #[cfg(test)]
-mod asset_pack_tests;
-
-#[cfg(test)]
 mod tests {
     use super::*;
 
-    fn embedded_image(
+    fn registered_image(
         pid: u32,
         edition: u32,
         layout: u32,
@@ -268,14 +267,7 @@ mod tests {
     ) -> ResolvedDeviceImage {
         let image = resolve_device_image(pid, edition, layout, part)
             .expect("the device variant should have an image");
-        assert!(
-            SynapseAssets
-                .load(image.asset)
-                .unwrap()
-                .is_some_and(|bytes| !bytes.is_empty()),
-            "resolved image must be packaged: {}",
-            image.asset
-        );
+        assert!(remote::identity(image.asset).is_some(), "{}", image.asset);
         assert_eq!(device_image(pid, edition, layout, part), Some(image.asset));
         image
     }
@@ -312,96 +304,58 @@ mod tests {
                 if density > 1. { 3 } else { 1 }
             );
             assert_eq!(wrist, expected);
-            let bytes = SynapseAssets.load(wrist).unwrap().unwrap();
-            assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
+            assert!(remote::identity(wrist).is_some());
         }
     }
 
     #[test]
-    fn every_current_dashboard_variant_loads_from_the_product_asset_source() {
+    fn every_current_dashboard_variant_has_a_registered_resource() {
         type Image = (u32, u32, u32, u32, bool, u32, &'static str);
         const IMAGES: &[Image] =
             include!("../../../assets/synapse/tables/current-dashboard-images.rs");
         assert!(!IMAGES.is_empty());
         for &(pid, directory_edition, filename_edition, layout, wrist, density, alias) in IMAGES {
-            let bytes = SynapseAssets
-                .load(alias)
-                .unwrap_or_else(|error| panic!("{alias}: {error}"))
-                .unwrap_or_else(|| {
-                    panic!(
-                        "missing Dashboard artwork: PID {pid}, directory edition {directory_edition}, \
+            let (_, bytes, _) = remote::identity(alias).unwrap_or_else(|| {
+                panic!(
+                    "missing Dashboard artwork: PID {pid}, directory edition {directory_edition}, \
                          filename edition {filename_edition}, layout {layout}, wrist {wrist}, \
                          density {density}: {alias}"
-                    )
-                });
-            assert!(bytes.len() >= 33, "truncated PNG: {alias}");
-            assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n", "{alias}");
-            assert_eq!(&bytes[12..16], b"IHDR", "{alias}");
-            let width = u32::from_be_bytes(bytes[16..20].try_into().unwrap());
-            let height = u32::from_be_bytes(bytes[20..24].try_into().unwrap());
-            assert!(width > 0 && height > 0, "empty image dimensions: {alias}");
+                )
+            });
+            assert!(bytes >= 33, "truncated PNG identity: {alias}");
         }
     }
 
     #[test]
-    fn footstep_animation_frames_load_and_preserve_source_motion_keyframes() {
+    fn footstep_animation_frames_have_distinct_source_keyframe_identities() {
         for frame in 0..330 {
             let alias = format!("synapse/audio-footstep-{frame:03}.svg");
-            let image = SynapseAssets.load(&alias).unwrap().expect("prepared frame");
-            let svg = std::str::from_utf8(&image).unwrap();
-            assert!(svg.contains("viewBox=\"0 0 400 208\""));
-            assert!(!svg.contains("<animate"), "SMIL must be sampled for GPUI");
+            assert!(remote::identity(&alias).is_some(), "{alias}");
         }
-        for (frame, position, color) in [
-            (0, "translate(169.5 120)", "#008900"),
-            (150, "translate(169.5 60)", "#44d62c"),
-            (210, "translate(169.5 160)", "#44d62c"),
-            (240, "translate(169.5 120)", "#44d62c"),
-        ] {
-            let image = SynapseAssets
-                .load(&format!("synapse/audio-footstep-{frame:03}.svg"))
-                .unwrap()
-                .unwrap();
-            let svg = std::str::from_utf8(&image).unwrap();
-            assert!(svg.contains(position), "source motion at frame {frame}");
-            assert!(svg.contains(color), "source color at frame {frame}");
-        }
+        let keyframes = [0, 150, 210, 240]
+            .map(|frame| {
+                remote::identity(&format!("synapse/audio-footstep-{frame:03}.svg"))
+                    .unwrap()
+                    .2
+            })
+            .into_iter()
+            .collect::<std::collections::BTreeSet<_>>();
+        assert_eq!(keyframes.len(), 4);
     }
 
     #[test]
-    fn keyboard691_customize_uses_only_the_source_product_roots() {
-        let original = SynapseAssets
-            .load("synapse/keyboard-product-691.svg")
-            .unwrap()
-            .unwrap();
-        let customize = SynapseAssets
-            .load("synapse/keyboard-customize-691.svg")
-            .unwrap()
-            .unwrap();
-        let original = std::str::from_utf8(&original).unwrap();
-        let customize = std::str::from_utf8(&customize).unwrap();
-        for removed in [
-            "US_LED",
-            "US_Selection",
-            "Underglow_LED",
-            "Underglow_Selection",
-        ] {
-            let root = format!("id=\"{removed}\"");
-            assert!(original.contains(&root));
-            assert!(!customize.contains(&root));
-        }
-        assert!(customize.contains("<svg"));
-        assert!(customize.contains("<path"));
+    fn keyboard691_customize_has_a_separate_prepared_resource() {
+        let original = remote::identity("synapse/keyboard-product-691.svg").unwrap();
+        let customize = remote::identity("synapse/keyboard-customize-691.svg").unwrap();
+        assert_ne!(original.0, customize.0);
+        assert_ne!(original.2, customize.2);
     }
 
     #[test]
-    fn receiver_dashboard_artwork_resolves_current_embedded_bytes_and_exact_keyboard_layout() {
+    fn receiver_dashboard_artwork_resolves_current_identities_and_exact_keyboard_layout() {
         for (pid, layout) in [(164, 0), (241, 0), (756, 1)] {
             let asset = dashboard_image(pid, 0, layout).unwrap();
-            let bytes = SynapseAssets.load(asset).unwrap().unwrap();
-            assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n");
-            assert!(u32::from_be_bytes(bytes[16..20].try_into().unwrap()) > 0);
-            assert!(u32::from_be_bytes(bytes[20..24].try_into().unwrap()) > 0);
+            assert!(remote::identity(asset).is_some());
         }
         assert!(dashboard_image(756, 0, 0).is_none());
         assert!(dashboard_image(756, 0, 99).is_none());
@@ -410,10 +364,10 @@ mod tests {
 
     #[test]
     fn mouse_editions_select_distinct_front_and_bottom_images() {
-        let front = embedded_image(182, 0, 0, DeviceImage::Product);
-        let edition_front = embedded_image(182, 128, 999, DeviceImage::Product);
-        let bottom = embedded_image(182, 0, 0, DeviceImage::MouseBottom);
-        let edition_bottom = embedded_image(182, 128, 999, DeviceImage::MouseBottom);
+        let front = registered_image(182, 0, 0, DeviceImage::Product);
+        let edition_front = registered_image(182, 128, 999, DeviceImage::Product);
+        let bottom = registered_image(182, 0, 0, DeviceImage::MouseBottom);
+        let edition_bottom = registered_image(182, 128, 999, DeviceImage::MouseBottom);
 
         assert_eq!(edition_front.edition_id, 128);
         assert_eq!(edition_front.layout_id, 0);
@@ -422,17 +376,17 @@ mod tests {
         assert_ne!(edition_front.asset, edition_bottom.asset);
         // The original edition 130 deliberately reuses the standard bottom.
         assert_eq!(
-            embedded_image(182, 130, 0, DeviceImage::MouseBottom).asset,
+            registered_image(182, 130, 0, DeviceImage::MouseBottom).asset,
             bottom.asset
         );
     }
 
     #[test]
     fn keyboard_prefers_the_exact_edition_and_layout() {
-        let standard = embedded_image(653, 0, 1, DeviceImage::Product);
-        let white = embedded_image(653, 130, 1, DeviceImage::Product);
-        let second_layout = embedded_image(653, 0, 2, DeviceImage::Product);
-        let edition_second_layout = embedded_image(653, 128, 2, DeviceImage::Product);
+        let standard = registered_image(653, 0, 1, DeviceImage::Product);
+        let white = registered_image(653, 130, 1, DeviceImage::Product);
+        let second_layout = registered_image(653, 0, 2, DeviceImage::Product);
+        let edition_second_layout = registered_image(653, 128, 2, DeviceImage::Product);
 
         assert_eq!(standard.asset, "synapse/keyboard-653.png");
         assert_eq!((white.edition_id, white.layout_id), (130, 1));
@@ -446,15 +400,15 @@ mod tests {
 
     #[test]
     fn missing_keyboard_edition_keeps_the_requested_supported_layout() {
-        let standard_second_layout = embedded_image(653, 0, 2, DeviceImage::Product);
+        let standard_second_layout = registered_image(653, 0, 2, DeviceImage::Product);
 
         // ProductImage retries edition zero while retaining the same layout.
         assert_eq!(
-            embedded_image(653, 130, 2, DeviceImage::Product),
+            registered_image(653, 130, 2, DeviceImage::Product),
             standard_second_layout
         );
         assert_eq!(
-            embedded_image(653, 999, 2, DeviceImage::Product),
+            registered_image(653, 999, 2, DeviceImage::Product),
             standard_second_layout
         );
         assert!(!standard_second_layout.is_fallback_preview);
@@ -463,8 +417,8 @@ mod tests {
     #[test]
     fn explicit_unknown_keyboard_layout_does_not_display_different_geometry() {
         for edition in [0, 130] {
-            let first_layout = embedded_image(653, edition, 1, DeviceImage::Product);
-            let legacy_default = embedded_image(653, edition, 0, DeviceImage::Product);
+            let first_layout = registered_image(653, edition, 1, DeviceImage::Product);
+            let legacy_default = registered_image(653, edition, 0, DeviceImage::Product);
 
             assert_eq!(legacy_default, first_layout);
             assert!(!legacy_default.is_fallback_preview);
@@ -475,17 +429,18 @@ mod tests {
     #[test]
     fn every_supported_product_layout_has_its_original_inputs() {
         for layout in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18] {
-            let image = embedded_image(653, 0, layout, DeviceImage::Product);
+            let image = registered_image(653, 0, layout, DeviceImage::Product);
             assert_eq!(image.layout_id, layout);
             assert!(!image.is_fallback_preview);
             let keys = keyboard_keys_for_layout(image.layout_id);
-            let inputs = keyboard_source_for_layout(layout).unwrap().iter().flat_map(KeyboardSourceGroup::inputs);
+            let inputs = keyboard_source_for_layout(layout)
+                .unwrap()
+                .iter()
+                .flat_map(KeyboardSourceGroup::inputs);
             assert!(keys.len() >= 118, "layout {layout}");
             for input in inputs {
                 let shaped = input.has_geometry();
-                let key = keys
-                    .iter()
-                    .find(|key| key.id == input.id());
+                let key = keys.iter().find(|key| key.id == input.id());
                 assert_eq!(
                     key.is_some(),
                     shaped,
@@ -496,7 +451,8 @@ mod tests {
                     assert_eq!(key.enabled, input.enabled());
                     let functions = input.functions();
                     assert_eq!(
-                        key.functions.as_slice(), functions,
+                        key.functions.as_slice(),
+                        functions,
                         "layout {layout}, input {}",
                         key.id
                     );
@@ -504,7 +460,10 @@ mod tests {
             }
         }
         assert!(std::ptr::eq(keyboard_keys_for_layout(0), keyboard_keys()));
-        assert!(std::ptr::eq(keyboard_source_for_layout(0).unwrap(), keyboard_source_for_layout(1).unwrap()));
+        assert!(std::ptr::eq(
+            keyboard_source_for_layout(0).unwrap(),
+            keyboard_source_for_layout(1).unwrap()
+        ));
         for unknown in [13, 14, 19, 999] {
             assert!(keyboard_keys_for_layout(unknown).is_empty());
             assert!(keyboard_source_for_layout(unknown).is_none());
@@ -513,16 +472,16 @@ mod tests {
 
     #[test]
     fn headset_ignores_layout_and_unknown_products_stay_unavailable() {
-        let headset = embedded_image(777, 0, 0, DeviceImage::Product);
-        assert_eq!(embedded_image(777, 0, 999, DeviceImage::Product), headset);
+        let headset = registered_image(777, 0, 0, DeviceImage::Product);
+        assert_eq!(registered_image(777, 0, 999, DeviceImage::Product), headset);
         assert!(!headset.is_fallback_preview);
         assert!(resolve_device_image(12345, 0, 1, DeviceImage::Product).is_none());
         assert!(device_image(12345, 0, 999, DeviceImage::Product).is_none());
     }
 
     #[test]
-    fn accessory_179_has_embedded_product_and_dashboard_images() {
-        let product = embedded_image(179, 0, 0, DeviceImage::Product);
+    fn accessory_179_has_registered_product_and_dashboard_images() {
+        let product = registered_image(179, 0, 0, DeviceImage::Product);
         assert_eq!(product.asset, "synapse/product-179-prd-1x.c84b6fdf.png");
         assert_eq!(
             dashboard_image(179, 0, 0),

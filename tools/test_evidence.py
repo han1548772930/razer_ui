@@ -2928,6 +2928,8 @@ class RustValidationTests(unittest.TestCase):
 
 def run():
     suite = unittest.defaultTestLoader.loadTestsFromModule(__import__(__name__))
+    for module in ("test_rust_data", "test_typed_tables", "test_windows_installer"):
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromName(module))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     path = analysis.ROOT / ".analysis/results/tool-verification.json"
     report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(), "tests_run": result.testsRun,
@@ -2935,6 +2937,10 @@ def run():
               "inputs": [{"path": name, "sha256": analysis.sha(analysis.ROOT / name)}
                          for name in ("tools/evidence.py", "tools/test_evidence.py", "tools/analysis.py",
                                       "tools/host.py", "tools/families.py", "tools/workspace.py",
+                                      "tools/asset_release.py", "tools/asset-release.json",
+                                      "tools/rust_data.py", "tools/typed_tables.py", "tools/typed-data.json",
+                                      "tools/windows_installer.py", "tools/test_rust_data.py",
+                                      "tools/test_typed_tables.py", "tools/test_windows_installer.py",
                                       "tools/ida/capture.py", "tools/ida/capture_io.py")],
               "target_execution": False, "real_device_operations": False}
     analysis.save(path, report)

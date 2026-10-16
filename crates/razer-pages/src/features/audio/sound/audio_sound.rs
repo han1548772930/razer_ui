@@ -7,20 +7,25 @@ use razer_widgets::theme::AudioEnhancementColors as Colors;
 #[path = "audio_sound_profile.rs"]
 mod profile_spatial;
 
+#[allow(dead_code)]
+pub(super) mod fixed {
+    include!("../../../data/audio_sound_payload_schema.rs");
+}
+use fixed::*;
+
 #[derive(Deserialize)]
 pub(super) struct Product {
     product_id: u32,
-    pub(super) configs: Value,
-    cloud_initial: Value,
+    pub(super) configs: SoundPayloadProductsitemConfigs,
+    cloud_initial: SoundPayloadProductsitemCloudInitial,
     pub(super) locales: BTreeMap<String, BTreeMap<String, String>>,
-    pub(super) media: Value,
+    pub(super) media: SoundPayloadProductsitemMedia,
     pub(super) actions: BTreeMap<String, String>,
     native: BTreeMap<String, Native>,
-    // Historical extraction called these helpers "queue"; current complete
-    // helper receipts establish they construct telemetry, not device tasks.
+    // These source helpers construct telemetry separately from native requests.
     #[serde(alias = "queue")]
     telemetry: BTreeMap<String, String>,
-    initials: Value,
+    initials: SoundPayloadProductsitemInitials,
 }
 #[derive(Deserialize)]
 struct Native {
@@ -68,7 +73,7 @@ pub(super) struct State {
     game_pressed: bool,
     thx_help_hovered: bool,
     pub(super) image_edition: Option<u64>,
-    pub(super) image_assets: Option<Value>,
+    pub(super) image_assets: Option<BTreeMap<String, String>>,
     pub(super) customizer_hover: Option<usize>,
     pub(super) mapping: super::sound_mapping::MappingState,
     retained_device: Option<Value>,
@@ -110,10 +115,10 @@ impl AudioProductWorkspace {
         let Some(row) = product(self.spec.product_id) else {
             return;
         };
-        self.draft["device"]["volume"] = row.initials["volume"].clone();
+        self.draft["device"]["volume"] = json!(row.initials.volume);
         self.draft["sound"] = json!({
-            "thxSpatialAudio":row.initials["spatial"],
-            "gameChatBalance":row.initials["game_chat"],
+            "thxSpatialAudio":row.initials.spatial,
+            "gameChatBalance":row.initials.game_chat,
             "cloudEQ":row.cloud_initial,
             "applicationList":[],"generalApplications":[],
             "installedAppList":[],"specificInputSetting":[],
@@ -132,9 +137,7 @@ impl AudioProductWorkspace {
         self.add_slider(
             "/sound/gameChatBalance/balanceMode",
             0.,
-            row.configs["volume"]["gameChatBalanceConfig"]["max"]
-                .as_f64()
-                .unwrap_or(20.) as f32,
+            row.configs.volume.game_chat_balance_config.max as f32,
             1.,
             window,
             cx,
@@ -292,7 +295,7 @@ impl AudioProductWorkspace {
             // must not dispatch a device write after releasing outside it.
             if let SliderEvent::Change(value) = event {
                 let maximum = product(self.spec.product_id)
-                    .and_then(|row| row.configs["volume"]["gameChatBalanceConfig"]["max"].as_f64())
+                    .map(|row| row.configs.volume.game_chat_balance_config.max as f64)
                     .unwrap_or(20.) as f32;
                 let old = self
                     .sound
@@ -377,7 +380,7 @@ impl AudioProductWorkspace {
             }
             "audioApplicationList" if payload.is_array() => {
                 let fallback = product(self.spec.product_id)
-                    .and_then(|row| row.media["placeholder_game_icon"].as_str())
+                    .and_then(|row| Some(row.media.placeholder_game_icon.as_str()))
                     .unwrap_or_default();
                 let mut rows = Vec::new();
                 for source in payload
@@ -512,9 +515,7 @@ impl AudioProductWorkspace {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let state = &self.sliders["/sound/gameChatBalance/balanceMode"];
-        let maximum = row.configs["volume"]["gameChatBalanceConfig"]["max"]
-            .as_f64()
-            .unwrap_or(20.) as f32;
+        let maximum = row.configs.volume.game_chat_balance_config.max as f32;
         let progress = (state.read(cx).value().start() / maximum).clamp(0., 1.);
         div()
             .id("current-game-chat-keyboard-guard")
@@ -589,20 +590,14 @@ impl AudioProductWorkspace {
                     )
                     .child(
                         div().absolute().left_0().top(surface::css(37.)).child(
-                            img(row.media["css"]["chat-more"]
-                                .as_str()
-                                .unwrap_or_default()
-                                .to_string())
-                            .size(surface::css(24.)),
+                            img(row.media.css.get("chat-more").cloned().unwrap_or_default())
+                                .size(surface::css(24.)),
                         ),
                     )
                     .child(
                         div().absolute().right_0().top(surface::css(37.)).child(
-                            img(row.media["css"]["game-more"]
-                                .as_str()
-                                .unwrap_or_default()
-                                .to_string())
-                            .size(surface::css(24.)),
+                            img(row.media.css.get("game-more").cloned().unwrap_or_default())
+                                .size(surface::css(24.)),
                         ),
                     )
                     .child(
@@ -758,12 +753,9 @@ impl AudioProductWorkspace {
             h_flex()
                 .gap(surface::css(20.))
                 .child(
-                    img(row.media["css"][icon]
-                        .as_str()
-                        .unwrap_or_default()
-                        .to_string())
-                    .size(surface::css(44.))
-                    .object_fit(ObjectFit::Contain),
+                    img(row.media.css.get(icon).cloned().unwrap_or_default())
+                        .size(surface::css(44.))
+                        .object_fit(ObjectFit::Contain),
                 )
                 .child(self.sound_windows_link(
                     "current-sound-properties-link",
@@ -777,7 +769,7 @@ impl AudioProductWorkspace {
     }
     fn current_thx_toggle(&self, row: &Product, cx: &Context<Self>) -> AnyElement {
         let active = self.draft["sound"]["thxSpatialAudio"]["isEnabled"] == json!(true);
-        let overhead = row.configs["support_overhead_speaker"] == json!(true);
+        let overhead = row.configs.support_overhead_speaker;
         let mut help = v_flex()
             .max_w(surface::css(300.))
             .gap(surface::css(14.))
@@ -790,7 +782,7 @@ impl AudioProductWorkspace {
                 },
             ));
         if overhead {
-            if let Some(image) = row.media["thx_help"].as_str() {
+            if let Some(image) = Some(row.media.thx_help.as_str()) {
                 help = help.child(img(image.to_string()).size(surface::css(180.)));
             }
         } else {

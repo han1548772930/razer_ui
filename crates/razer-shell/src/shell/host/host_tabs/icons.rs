@@ -2,13 +2,10 @@
 use std::{collections::BTreeMap, sync::OnceLock};
 
 pub(super) fn device_favicon(pid: u32) -> Option<&'static str> {
-    static ICONS: OnceLock<BTreeMap<String, Option<String>>> = OnceLock::new();
+    static ICONS: OnceLock<BTreeMap<u32, Option<String>>> = OnceLock::new();
     ICONS
-        .get_or_init(|| {
-            serde_json::from_str(crate::data::HOST_DEVICE_FAVICONS)
-                .expect("current product HTML favicon receipts")
-        })
-        .get(&pid.to_string())
+        .get_or_init(|| crate::data::host_device_favicons::host_device_favicons!())
+        .get(&pid)
         .and_then(|icon| icon.as_deref())
 }
 

@@ -10,10 +10,12 @@ use razer_widgets::{scroll::SourceScrollable as _, theme::AudioEnhancementColors
 
 impl AudioProductWorkspace {
     fn source_app_outputs(&self, row: &Product) -> Vec<Value> {
-        let mut outputs = row.configs["application_outputs"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let mut outputs = row
+            .configs
+            .application_outputs
+            .iter()
+            .map(|output| json!(output))
+            .collect::<Vec<_>>();
         let enabled = self.draft["sound"]["cloudEQ"]["enabledPresets"]
             .as_array()
             .cloned()
@@ -35,8 +37,13 @@ impl AudioProductWorkspace {
         }
         outputs
     }
-    fn sound_app_thx_support<'a>(&self, app: &Value, row: &'a Product) -> Option<&'a Value> {
-        let dataset = row.configs["application_thx_dataset"].as_object()?;
+    fn sound_app_thx_support<'a>(
+        &self,
+        app: &Value,
+        row: &'a Product,
+    ) -> Option<&'a super::sound::fixed::SoundPayloadProductsitemConfigsApplicationThxDatasetentry>
+    {
+        let dataset = &row.configs.application_thx_dataset;
         let names = if let Some(names) = app["exeName"].as_array() {
             names.iter().filter_map(Value::as_str).collect::<Vec<_>>()
         } else {
@@ -49,8 +56,8 @@ impl AudioProductWorkspace {
     fn sound_app_outputs(&self, app: &Value, row: &Product) -> Vec<Value> {
         let mut outputs = self.source_app_outputs(row);
         if let Some(support) = self.sound_app_thx_support(app, row) {
-            let immersive = support.get("imm").is_some();
-            let competitive = support.get("cmm").is_some();
+            let immersive = support.imm.is_some();
+            let competitive = support.cmm.is_some();
             if immersive || competitive {
                 outputs.push(json!({"name":"divider"}));
             }
@@ -202,11 +209,7 @@ impl AudioProductWorkspace {
         let icon = app["icon"]
             .as_str()
             .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| {
-                row.media["placeholder_game_icon"]
-                    .as_str()
-                    .unwrap_or_default()
-            })
+            .unwrap_or_else(|| row.media.placeholder_game_icon.as_str())
             .to_string();
         let name = app["name"].as_str().unwrap_or_default();
         let utf16 = name.encode_utf16().collect::<Vec<_>>();
@@ -243,14 +246,11 @@ impl AudioProductWorkspace {
                                 .child(img(icon).size_full().object_fit(ObjectFit::Contain))
                                 .when(hover_name || hover_icon, |body| {
                                     body.child(
-                                        img(row.media[if hover_name {
-                                            "icon_close_enclosed_small"
+                                        img(if hover_name {
+                                            row.media.icon_close_enclosed_small.clone()
                                         } else {
-                                            "icon_close_enclosed_a_small"
-                                        }]
-                                        .as_str()
-                                        .unwrap_or_default()
-                                        .to_string())
+                                            row.media.icon_close_enclosed_a_small.clone()
+                                        })
                                         .absolute()
                                         .inset_0()
                                         .size_full(),
@@ -275,11 +275,8 @@ impl AudioProductWorkspace {
                                             "current-app-thx-supported-{index}"
                                         )))
                                         .child(
-                                            img(row.media["appmix_thx"]
-                                                .as_str()
-                                                .unwrap_or_default()
-                                                .to_string())
-                                            .size(surface::css(16.)),
+                                            img(row.media.appmix_thx.clone())
+                                                .size(surface::css(16.)),
                                         )
                                         .on_hover(cx.listener(
                                             move |this, hovered: &bool, _, cx| {
@@ -414,13 +411,7 @@ impl AudioProductWorkspace {
                     gpui_kit::base::Button::new("current-audio-add-app")
                         .h(surface::css(48.))
                         .p_0()
-                        .child(
-                            img(row.media["icon_add"]
-                                .as_str()
-                                .unwrap_or_default()
-                                .to_string())
-                            .size(surface::css(30.)),
-                        )
+                        .child(img(row.media.icon_add.clone()).size(surface::css(30.)))
                         .child(message(row, "ADD_GAME_AND_PROGRAM"))
                         .on_click(
                             cx.listener(|this, _, window, cx| this.open_sound_apps(window, cx)),
@@ -474,14 +465,16 @@ impl AudioProductWorkspace {
                 .p_0()
                 .active(|style| style.opacity(0.7))
                 .child(
-                    img(row.media["css"][if self.sound.apps_search_hovered {
-                        "icon_search.green"
-                    } else {
-                        "icon_search"
-                    }]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_string())
+                    img(row
+                        .media
+                        .css
+                        .get(if self.sound.apps_search_hovered {
+                            "icon_search.green"
+                        } else {
+                            "icon_search"
+                        })
+                        .cloned()
+                        .unwrap_or_default())
                     .size(surface::css(20.)),
                 )
                 .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
@@ -512,10 +505,12 @@ impl AudioProductWorkspace {
                 body.child(Input::new(input).w_full())
             })
             .child(
-                img(row.media["css"]["icon_search.grey"]
-                    .as_str()
-                    .unwrap_or_default()
-                    .to_string())
+                img(row
+                    .media
+                    .css
+                    .get("icon_search.grey")
+                    .cloned()
+                    .unwrap_or_default())
                 .absolute()
                 .left(surface::css(3.))
                 .top(surface::css(2.))
@@ -530,14 +525,16 @@ impl AudioProductWorkspace {
                         .p_0()
                         .size(surface::css(25.))
                         .child(
-                            img(row.media["css"][if self.sound.apps_clear_hovered {
-                                "icon_close_enclosed_a"
-                            } else {
-                                "icon_close_enclosed"
-                            }]
-                            .as_str()
-                            .unwrap_or_default()
-                            .to_string())
+                            img(row
+                                .media
+                                .css
+                                .get(if self.sound.apps_clear_hovered {
+                                    "icon_close_enclosed_a"
+                                } else {
+                                    "icon_close_enclosed"
+                                })
+                                .cloned()
+                                .unwrap_or_default())
                             .size(surface::css(20.)),
                         )
                         .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
@@ -585,8 +582,7 @@ impl AudioProductWorkspace {
                     .child(gpui_kit::base::Button::new("current-installed-apps-refresh").size(surface::css(26.)).p_0()
                         .active(|style| style.opacity(0.7))
                         .when(self.sound.apps_refresh, |body| body.child(Spinner::new().small()))
-                        .when(!self.sound.apps_refresh, |body| body.child(img(row.media["css"][if self.sound.apps_refresh_hovered {"icon_refresh.green"} else {"icon_refresh"}]
-                            .as_str().unwrap_or_default().to_string()).size(surface::css(20.))))
+                        .when(!self.sound.apps_refresh, |body| body.child(img(row.media.css.get(if self.sound.apps_refresh_hovered {"icon_refresh.green"} else {"icon_refresh"}).cloned().unwrap_or_default()).size(surface::css(20.))))
                         .on_hover(cx.listener(|this,hovered,_,cx| {this.sound.apps_refresh_hovered=*hovered;cx.notify();}))
                         .on_click(cx.listener(|this,_,window,cx|this.refresh_sound_apps(window,cx))))
                     .child(self.current_sound_apps_search(row,cx))

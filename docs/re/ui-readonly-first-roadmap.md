@@ -13,11 +13,13 @@
 | `accessories_camera_system`：Kiyo V2 PID3595 MIC | [MIC 控件](../../crates/razer-pages/src/features/workspace/source_controls/camera_mic.rs)：`CAMERA_MIC_SETTINGS`→`setAudioFunction(1/0)`→10ms→flash save→10ms→reboot；保留 dirty／pending／reboot 状态及取消／清理；刷新当前 native 静态捕获并保留反编译失败 | 新增编译测试及统一测试仍待复跑，继续其余摄像头／附件／系统页面。当前 [摄像头报告](../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 对应 gaps 仍有未解语义／失败及整页待验收项 |
 | 主任务：音频／视频 | [平台播放后端](../../crates/razer-platform/src/media.rs) 及 [页面播放器文件](../../crates/razer-pages/src/features/audio/audio_media.rs) 已写入；原始示例已转为保留时序、帧及原八通道 PCM 的 RZAV；GPUI 视频参考留在 `.analysis/inputs/references/gpui-video/` | `audio_media.rs` 尚未挂载到音频模块／demo／Leviathan，播放器控制、全屏、seek 过期结果、循环偏好及生命周期仍须接线；不宣称播放功能完成；见 [音频 demo 证据](../../.analysis/results/frontend/audio-demo-audit.json) |
 
-资源迁移此前完成了原文件 HF／Git LFS 工具和清单：私有 Dataset `han1548772930/razer-ui-assets`，332 个产品分组、7,768 个资源文件、1,513,885,677 字节；主仓库保留 71 张 Rust 表和 9 个原生托盘／菜单图标。用户正在通过网页上传，自动上传已停止，[资源锁](../../tools/asset-release.json) 的 `storage.revision` 仍为空，远程完整性与不可变提交尚未确认。不要重新启动批量下载、上传或推送 GitHub。
+私有 Dataset `han1548772930/razer-ui-assets` 已完成网页上传，[资源锁](../../tools/asset-release.json) 固定提交 `bf645f811bd14e5ab654eb64f835a79d6a69b2df`。332 个产品分组、7,768 个载荷文件、1,513,885,677 字节已逐项核对：5,275 个 LFS 对象核对 SHA-256 和长度；2,493 个普通 Git 对象以维护快照的 SHA-256、长度及 Git blob OID 交叉验证。主仓库仅保留 Rust 元数据表及 9 个原生托盘／菜单图标。不要重新启动批量下载、上传或推送 GitHub。
 
-本次用户进一步明确的资源交付要求：程序运行时从 HF 按使用的产品获取所需静态资源，允许缓存并离线复用，不将整套文件下载回项目 `assets/`；缓存放程序安装位置，交付安装程序。此为用户明确提出的资源下载例外，其余账户／云同步／联网业务仍排除。运行时接线、安装包配置、统一数据入口与类型化访问正在处理，尚未完成；Razer 行为仍须以当前 Razer 原件为准。后续开发须遵循 [集中配置、类型化数据与安装资源规则](../../AGENTS.md)。
+资源运行时通过统一 manifest、安装目录 `assets/cache` 和 4 个异步 worker 按实际请求获取单个文件；相同文件去重，先验证缓存、长度与 SHA-256，缓存命中不联网；下载后原子发布。页面订阅加载完成事件，保留失败及重试，生命周期结束取消任务；不预取其他产品，不恢复源码 `assets/`。共享字体按实际依赖请求，本机凭据不写入源码、清单、安装包或日志。安装生命周期统一在 [安装配置](../../packaging/windows/RazerUI.iss) 和 [维护工具](../../tools/windows_installer.py)；当前尚无 release EXE／ISCC，未生成或执行安装包。其余账户／云同步／联网业务仍排除，遵循 [集中配置、类型化数据与安装资源规则](../../AGENTS.md)。
 
-此前生成包已由 `assets/synapse.pack` 移到 `target/asset-pack/synapse.pack`，HF 原文件快照不含该包；原安装读取路径仍为可执行文件旁 `assets/synapse.pack`，将随上述运行时方案调整。无人调用的 `assets/native/razer-hid-0.0.31.node` 已删除，字节相同的静态分析原件保留在 `.analysis/inputs/`。
+应用启动、编译和安装均不依赖 `synapse.pack`；独立 pack 工具仅用于维护验证。无人调用的 `assets/native/razer-hid-0.0.31.node` 已删除，字节相同的静态分析原件保留在 `.analysis/inputs/`。固定设备能力、配对规则和默认值随 Rust 类型化表交付，不依赖远程资源。
+
+固定表转换由 `prepare-typed-data` 及专用协议表生成器维护；真实 Rust 字段、数值类型和产品分支在生成时校验，原始输入保留于 `.analysis/inputs/typed-tables/`。宏生成器输出多行代码，`razer-app-pages/src/data/keyboard_data.rs` 已重新生成，不再将整个表压成一行。`razer-pages/testdata` 的完整图片和生产 JSON 已删除，仅保留验证具体行为所需的三个小型 Rust 夹具。所有转换仍须通过调用接线、等价性测试与编译；文件／服务报文和导入导出的动态 JSON 边界单独保留。
 
 验证须区分范围：鼠标子任务报告 123 项纯 Rust／模拟测试通过；gamepad 的协议、i18n、保存回归和摄像头 MIC 的局部测试通过，完整合并后测试未完成。最新统一入口收据 [validation.json](../../.analysis/validation.json) 为 `2026-10-16T06:57:15.697066+00:00`，仅运行 `mouse-scroll-persistence` 四项，命令通过但 `inputs_unchanged=false`、整体 `passed=false`，不代表当前全工作区通过。逐命令日志在 `.analysis/verification/`。资源包迁移后的定向 `cargo check` 与包校验已通过，仍不能替代全工作区检查。应用、安装程序、厂商代码、真实窗口及设备验收均未运行。
 

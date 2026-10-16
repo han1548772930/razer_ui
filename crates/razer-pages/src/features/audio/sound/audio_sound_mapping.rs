@@ -53,14 +53,13 @@ impl SelectItem for MappingChoice {
 }
 
 fn mapping_choices(row: &Product, firmware: &Value) -> Vec<MappingChoice> {
-    row.configs["mapping_audio_options"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter_map(|option| {
-            let id = option["id"].as_str()?;
-            let key = option["content"].as_str()?;
-            Some(MappingChoice {
+    row.configs
+        .mapping_audio_options
+        .iter()
+        .map(|option| {
+            let id = option.id.as_str();
+            let key = option.content.as_str();
+            MappingChoice {
                 choice: Choice::localized_with_translations(
                     id,
                     key,
@@ -69,7 +68,7 @@ fn mapping_choices(row: &Product, firmware: &Value) -> Vec<MappingChoice> {
                         .map(|locale| (locale.clone(), message_for_locale(row, key, locale))),
                 ),
                 disabled: firmware_disabled(row, id, firmware),
-            })
+            }
         })
         .collect()
 }
@@ -108,8 +107,12 @@ fn footstep_animation(cx: &App) -> AnyElement {
 // Current shared ju/compareVersions: an absent firmware disables a gated
 // function, segments compare numerically and missing segments are zero.
 fn firmware_disabled(row: &Product, function: &str, current: &Value) -> bool {
-    let Some(minimum) = row.configs["device_info"]["featureMinFw"][function]
-        .as_str()
+    let Some(minimum) = row
+        .configs
+        .device_info
+        .feature_min_fw
+        .get(function)
+        .map(String::as_str)
         .filter(|value| !value.is_empty())
     else {
         return false;
@@ -146,7 +149,7 @@ impl AudioProductWorkspace {
             .into_any_element()
     }
     pub(super) fn sound_mapping_button(&self, row: &Product) -> Value {
-        let mut button = row.configs["customizer_groups"][0]["group"]["buttonList"][0].clone();
+        let mut button = json!(row.configs.customizer_groups[0].group.button_list[0]);
         if !button.is_object() {
             return Value::Null;
         }
@@ -174,12 +177,12 @@ impl AudioProductWorkspace {
                 button["assignment"] = json!("AUDIO_FUNCTION");
                 button["assignmentGroup"] = mapping["audioGroup"].clone();
                 let assignment = &mapping["audioGroup"]["audioAssignment"];
-                button["assignmentValue"] = row.configs["mapping_assignment_table"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .find(|option| option["id"] == *assignment)
-                    .map_or_else(|| assignment.clone(), |option| option["content"].clone());
+                button["assignmentValue"] = row
+                    .configs
+                    .mapping_assignment_table
+                    .iter()
+                    .find(|option| assignment.as_str() == Some(option.id.as_str()))
+                    .map_or_else(|| assignment.clone(), |option| json!(option.content));
             }
             // Current AUDIO's supported functions do not invent presentations
             // for unresolved foreign mappings.
@@ -192,11 +195,7 @@ impl AudioProductWorkspace {
         let Some(row) = product(self.spec.product_id) else {
             return;
         };
-        let types = row.configs["mapping_action_types"]["updateMappingChanged"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str);
+        let types = row.configs.mapping_action_types["updateMappingChanged"].iter();
         self.emit_sound(
             types
                 .map(|kind| json!({"redux":{"type":kind,"payload":changed}}))
@@ -258,13 +257,10 @@ impl AudioProductWorkspace {
         self.sound.mapping.selector = None;
         self.emit_sound_mapping_changed(false, cx);
         if self.sound.mapping.function == "AUDIO_FUNCTION" {
-            let options = row.configs["mapping_audio_options"]
-                .as_array()
-                .cloned()
-                .unwrap_or_default();
+            let options = row.configs.mapping_audio_options.clone();
             let found = options.iter().position(|option| {
-                option["content"] == button["assignmentValue"]
-                    || option["id"] == button["assignmentValue"]
+                button["assignmentValue"].as_str() == Some(option.content.as_str())
+                    || button["assignmentValue"].as_str() == Some(option.id.as_str())
             });
             self.sound.mapping.option = found.unwrap_or(0);
             if options
@@ -272,7 +268,7 @@ impl AudioProductWorkspace {
                 .is_some_and(|option| {
                     firmware_disabled(
                         row,
-                        option["id"].as_str().unwrap_or_default(),
+                        option.id.as_str(),
                         &self.draft["sound"]["currentFWVersion"],
                     )
                 })
@@ -282,7 +278,7 @@ impl AudioProductWorkspace {
                     .position(|option| {
                         !firmware_disabled(
                             row,
-                            option["id"].as_str().unwrap_or_default(),
+                            option.id.as_str(),
                             &self.draft["sound"]["currentFWVersion"],
                         )
                     })
@@ -315,14 +311,11 @@ impl AudioProductWorkspace {
                 {
                     return;
                 }
-                let Some(index) =
-                    row.configs["mapping_audio_options"]
-                        .as_array()
-                        .and_then(|options| {
-                            options
-                                .iter()
-                                .position(|option| option["id"] == value.as_str())
-                        })
+                let Some(index) = row
+                    .configs
+                    .mapping_audio_options
+                    .iter()
+                    .position(|option| option.id == value.as_str())
                 else {
                     return;
                 };
@@ -405,19 +398,22 @@ impl AudioProductWorkspace {
             "DEFAULT" => mapping["isDefault"] = json!(true),
             "DISABLE" => mapping["outputType"] = json!("disableGroup"),
             "AUDIO_FUNCTION" => {
-                let option = &row.configs["mapping_audio_options"][self.sound.mapping.option];
-                if !option.is_object()
-                    || firmware_disabled(
-                        row,
-                        option["id"].as_str().unwrap_or_default(),
-                        &self.draft["sound"]["currentFWVersion"],
-                    )
-                {
+                let Some(option) = row
+                    .configs
+                    .mapping_audio_options
+                    .get(self.sound.mapping.option)
+                else {
+                    return;
+                };
+                if firmware_disabled(
+                    row,
+                    option.id.as_str(),
+                    &self.draft["sound"]["currentFWVersion"],
+                ) {
                     return;
                 }
                 mapping["outputType"] = json!("audioGroup");
-                mapping["audioGroup"] =
-                    json!({"audioMode":option["id"],"audioAssignment":option["id"]});
+                mapping["audioGroup"] = json!({"audioMode":option.id,"audioAssignment":option.id});
             }
             _ => return,
         }
@@ -458,14 +454,11 @@ impl AudioProductWorkspace {
     ) -> AnyElement {
         let function = self.sound.mapping.function.clone();
         let button = self.sound_mapping_button(row);
-        let options = row.configs["mapping_audio_options"]
-            .as_array()
-            .cloned()
-            .unwrap_or_default();
+        let options = row.configs.mapping_audio_options.clone();
         let selected = options.get(self.sound.mapping.option);
         let notes = selected
-            .and_then(|option| option["id"].as_str())
-            .and_then(|mode| row.configs["mapping_audio_notes"][mode].as_array())
+            .map(|option| option.id.as_str())
+            .and_then(|mode| row.configs.mapping_audio_notes.get(mode))
             .cloned()
             .unwrap_or_default();
         let functions = button["functionList"]
@@ -521,8 +514,8 @@ impl AudioProductWorkspace {
                                 .accessibility_label(message(row, "AUDIO_FUNCTION"))
                                 .w(surface::css(210.)).mb(surface::css(20.)))
                         })
-                        .children(notes.iter().filter_map(Value::as_str).map(|key|div().mb(surface::css(20.)).child(message(row,key))))
-                        .when(selected.is_some_and(|option|option["id"]==json!("FootstepScaling")),|body|body.child(footstep_animation(cx)))))
+                        .children(notes.iter().map(String::as_str).map(|key|div().mb(surface::css(20.)).child(message(row,key))))
+                        .when(selected.is_some_and(|option|option.id=="FootstepScaling"),|body|body.child(footstep_animation(cx)))))
                     .child(h_flex().gap(surface::css(10.)).text_size(surface::css(12.))
                         .child(mapping_action("sound-mapping-cancel", message(row,"CANCEL"), false)
                             .on_click(cx.listener(|this,_,_,cx|this.close_sound_mapping(true,cx))))
@@ -745,13 +738,13 @@ mod tests {
             assert!(!choices.is_empty());
             for choice in &choices {
                 let id = choice.value().clone();
-                let option = row.configs["mapping_audio_options"]
-                    .as_array()
-                    .unwrap()
+                let option = row
+                    .configs
+                    .mapping_audio_options
                     .iter()
-                    .find(|option| option["id"] == id)
+                    .find(|option| option.id == id)
                     .unwrap();
-                let content_key = option["content"].as_str().unwrap();
+                let content_key = option.content.as_str();
                 let disabled = choice.disabled;
                 for locale in ["en", "zh-CN", "ja", "de"] {
                     assert_eq!(
@@ -782,7 +775,7 @@ mod tests {
             assert!(!firmware_disabled(
                 row,
                 "DISABLE",
-                &row.configs["device_info"]["featureMinFw"]["DISABLE"]
+                &json!(row.configs.device_info.feature_min_fw["DISABLE"])
             ));
             assert!(!firmware_disabled(row, "BluetoothVolume", &json!("1.10.0")));
             assert!(!firmware_disabled(row, "SidetoneLevel", &Value::Null));

@@ -613,36 +613,29 @@ impl AudioProductWorkspace {
                 .size_full(),
             )
             .when(bands.is_some(), |body| {
-                body.children(
-                    row.configs["equalizer"]["frequencies"]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .enumerate()
-                        .map(|(index, label)| {
-                            let range_hovered = self.sound.eq_hover.is_none()
-                                && self.sound.eq_hover_range.as_ref().is_some_and(|range| {
-                                    range["band_index"]
-                                        .as_array()
-                                        .is_some_and(|indices| indices.contains(&json!(index)))
-                                });
-                            div()
-                                .absolute()
-                                .left(surface::css(109.55 * index as f32))
-                                .top(surface::css(300.))
-                                .w(surface::css(16.))
-                                .text_size(surface::css(12.))
-                                .text_center()
-                                .text_color(
-                                    if self.sound.eq_hover == Some(index) || range_hovered {
-                                        Colors::selected()
-                                    } else {
-                                        Hsla::from(rgb(0xcccccc))
-                                    },
-                                )
-                                .child(label.as_str().unwrap_or_default().to_string())
-                        }),
-                )
+                body.children(row.configs.equalizer.frequencies.iter().enumerate().map(
+                    |(index, label)| {
+                        let range_hovered = self.sound.eq_hover.is_none()
+                            && self.sound.eq_hover_range.as_ref().is_some_and(|range| {
+                                range["band_index"]
+                                    .as_array()
+                                    .is_some_and(|indices| indices.contains(&json!(index)))
+                            });
+                        div()
+                            .absolute()
+                            .left(surface::css(109.55 * index as f32))
+                            .top(surface::css(300.))
+                            .w(surface::css(16.))
+                            .text_size(surface::css(12.))
+                            .text_center()
+                            .text_color(if self.sound.eq_hover == Some(index) || range_hovered {
+                                Colors::selected()
+                            } else {
+                                Hsla::from(rgb(0xcccccc))
+                            })
+                            .child(label.clone())
+                    },
+                ))
             })
             .on_mouse_down(
                 MouseButton::Left,
@@ -699,19 +692,11 @@ impl AudioProductWorkspace {
                 h_flex()
                     .w(surface::css(100.))
                     .items_start()
-                    .child(
-                        v_flex().h(surface::css(300.)).justify_between().children(
-                            row.configs["equalizer"]["yAxisTitle"]
-                                .as_array()
-                                .into_iter()
-                                .flatten()
-                                .map(|label| {
-                                    div()
-                                        .text_color(Colors::secondary())
-                                        .child(label.as_str().unwrap_or_default().to_string())
-                                }),
-                        ),
-                    )
+                    .child(v_flex().h(surface::css(300.)).justify_between().children(
+                        row.configs.equalizer.y_axis_title.iter().map(|label| {
+                            div().text_color(Colors::secondary()).child(label.clone())
+                        }),
+                    ))
                     .child(
                         div()
                             .w(surface::css(20.))
@@ -752,16 +737,18 @@ impl AudioProductWorkspace {
                                         }),
                                     )
                                     .child(
-                                        img(row.media["css"][if self.sound.eq_zero_pressed {
-                                            "eq_reset_active"
-                                        } else if self.sound.eq_zero_hovered {
-                                            "eq_reset_hover"
-                                        } else {
-                                            "eq_reset"
-                                        }]
-                                        .as_str()
-                                        .unwrap_or_default()
-                                        .to_string())
+                                        img(row
+                                            .media
+                                            .css
+                                            .get(if self.sound.eq_zero_pressed {
+                                                "eq_reset_active"
+                                            } else if self.sound.eq_zero_hovered {
+                                                "eq_reset_hover"
+                                            } else {
+                                                "eq_reset"
+                                            })
+                                            .cloned()
+                                            .unwrap_or_default())
                                         .size_full(),
                                     )
                                     .on_click(cx.listener(|this, _, _, cx| {
@@ -789,11 +776,12 @@ impl AudioProductWorkspace {
         let disabled = self.cloud_thx() && preset["isAllowSwapping"] == json!(true);
         let selected = preset_id == self.cloud()["selectedPreset"];
         let icon = if preset["isAllowSwapping"] == json!(true) {
-            row.media["sword-added-icon"].as_str()
+            Some(row.media.sword_added_icon.as_str())
         } else {
-            row.media["eq_icons"]
-                .get(preset_id.to_string())
-                .and_then(Value::as_str)
+            row.media
+                .eq_icons
+                .get(&preset_id.to_string())
+                .map(String::as_str)
         };
         let card = gpui_kit::base::Button::new(SharedString::from(format!(
             "current-eq-preset-{preset_id}"
@@ -933,12 +921,9 @@ impl AudioProductWorkspace {
                 .text_size(surface::css(12.))
                 .hover(|style| style.opacity(0.8))
                 .child(
-                    img(row.media["reset_link"]
-                        .as_str()
-                        .unwrap_or_default()
-                        .to_string())
-                    .size(surface::css(20.))
-                    .mr(surface::css(5.)),
+                    img(row.media.reset_link.clone())
+                        .size(surface::css(20.))
+                        .mr(surface::css(5.)),
                 )
                 .child(message(row, "RESET_CURRENT_EQ").to_uppercase())
                 .on_click(cx.listener(|this, _, _, cx| {
@@ -1127,12 +1112,9 @@ impl AudioProductWorkspace {
                                             "No presets found. Try searching for something else.",
                                         )
                                         .child(
-                                            img(row.media["search-empty"]
-                                                .as_str()
-                                                .unwrap_or_default()
-                                                .to_string())
-                                            .object_fit(ObjectFit::Contain)
-                                            .size(surface::css(100.)),
+                                            img(row.media.search_empty.clone())
+                                                .object_fit(ObjectFit::Contain)
+                                                .size(surface::css(100.)),
                                         ),
                                 )
                             }),

@@ -5735,7 +5735,6 @@ dependencies = [
  "async-channel",
  "futures",
  "gpui-kit",
- "razer-asset-pack",
  "serde",
  "serde_json",
  "sha2 0.10.9",

@@ -7,14 +7,13 @@ use razer_widgets::theme::AudioEnhancementColors as Colors;
 impl AudioProductWorkspace {
     fn sound_wheel_canvas(&self, row: &Product) -> AnyElement {
         // Current six tm.drawLines/drawLine: one right-hand button at (205,165).
-        let config = &row.configs["renderer_geometry"];
-        let number = |name: &str| config[name].as_f64().expect("audited renderer geometry") as f32;
+        let config = &row.configs.renderer_geometry;
         let (x, y, length, dot, ring) = (
-            number("xRight"),
-            number("yStart"),
-            number("lineLength"),
-            number("dotRadius"),
-            number("circleRadius"),
+            config.x_right as f32,
+            config.y_start as f32,
+            config.line_length as f32,
+            config.dot_radius as f32,
+            config.circle_radius as f32,
         );
         let selected = self.sound.mapping.open || self.sound.customizer_hover == Some(0);
         let color = if selected {
@@ -69,7 +68,7 @@ impl AudioProductWorkspace {
         .left(surface::css(213.))
         .bottom(surface::css(-23.))
         .w(surface::css(500.))
-        .h(surface::css(number("cvsH")))
+        .h(surface::css(config.cvs_h as f32))
         .into_any_element()
     }
     pub(super) fn refresh_sound_images(&mut self) {
@@ -81,31 +80,32 @@ impl AudioProductWorkspace {
             return;
         }
         self.sound.image_edition = Some(edition);
-        if let Some(images) = row.media["editions"].get(edition.to_string()) {
+        if let Some(images) = row.media.editions.get(&edition.to_string()) {
             // Source Promise.all installs all three together. Its rejection
             // retains previous successful resources, never another edition.
             if ["prd", "wheel-cutout", "smart-switch-button"]
                 .iter()
-                .all(|key| images[*key].as_str().is_some())
+                .all(|key| images.contains_key(*key))
             {
                 self.sound.image_assets = Some(images.clone());
             }
         }
     }
     fn sound_smart_switch_canvas(&self, row: &Product) -> AnyElement {
-        let config = &row.configs["renderer_geometry"];
-        let number = |name: &str| config[name].as_f64().expect("audited renderer geometry") as f32;
-        let height = number("cvsH");
-        let x = number("xRight");
-        let length = number("lineLength");
-        let dot = number("dotRadius");
-        let ring = number("circleRadius");
+        let config = &row.configs.renderer_geometry;
+        let height = config.cvs_h as f32;
+        let x = config.x_right as f32;
+        let length = config.line_length as f32;
+        let dot = config.dot_radius as f32;
+        let ring = config.circle_radius as f32;
         let hovered = self.sound.customizer_hover == Some(1);
         let endpoint = if hovered { (220., 145.) } else { (230., 138.) };
-        let color = config[if hovered { "activeColor" } else { "dotColor" }]
-            .as_str()
-            .expect("audited renderer color")
-            .trim_start_matches('#');
+        let color = (if hovered {
+            &config.active_color
+        } else {
+            &config.dot_color
+        })
+        .trim_start_matches('#');
         let color = rgb(u32::from_str_radix(color, 16).expect("audited renderer hex"));
         canvas(
             |_, _, _| {},
@@ -170,7 +170,7 @@ impl AudioProductWorkspace {
             .h(surface::css(250.))
             .mx_auto()
             .when_some(
-                assets.and_then(|images| images["prd"].as_str()),
+                assets.and_then(|images| images.get("prd").map(String::as_str)),
                 |body, image| {
                     body.child(
                         img(image.to_string())
@@ -186,7 +186,7 @@ impl AudioProductWorkspace {
                 self.sound.customizer_hover == Some(0) || self.sound.mapping.open,
                 |body| {
                     body.when_some(
-                        assets.and_then(|images| images["wheel-cutout"].as_str()),
+                        assets.and_then(|images| images.get("wheel-cutout").map(String::as_str)),
                         |body, image| {
                             body.child(
                                 img(image.to_string())
@@ -202,7 +202,7 @@ impl AudioProductWorkspace {
             )
             .when(self.sound.customizer_hover == Some(1), |body| {
                 body.when_some(
-                    assets.and_then(|images| images["smart-switch-button"].as_str()),
+                    assets.and_then(|images| images.get("smart-switch-button").map(String::as_str)),
                     |body, image| {
                         body.child(
                             img(image.to_string())
@@ -272,10 +272,12 @@ impl AudioProductWorkspace {
                             h_flex()
                                 .gap(surface::css(5.))
                                 .child(
-                                    img(row.media["css"]["icon-info"]
-                                        .as_str()
-                                        .unwrap_or_default()
-                                        .to_string())
+                                    img(row
+                                        .media
+                                        .css
+                                        .get("icon-info")
+                                        .cloned()
+                                        .unwrap_or_default())
                                     .size(surface::css(16.)),
                                 )
                                 .child(message(row, "VIEW_SMART_SWITCH_SHORTCUTS")),

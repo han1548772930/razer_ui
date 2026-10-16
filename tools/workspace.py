@@ -2441,6 +2441,7 @@ def current_product_favicon(product_id, acquisition, cache):
 
 
 def resource_ownership(pool):
+    import analysis
     manifest_path = ROOT / "assets/synapse/manifests/manifest.json"
     manifest = json.loads(manifest_path.read_bytes())
     registered = registered_resource_products()
@@ -2448,16 +2449,16 @@ def resource_ownership(pool):
     dashboard_path = ROOT / "assets/synapse/tables/current-dashboard-images.rs"
     for match in re.finditer(r'\(\s*(\d+),[^\n]*?"([^"]+)"\)', dashboard_path.read_text(encoding="utf-8")):
         aliases.setdefault(match[2], set()).add(int(match[1]))
-    previews_path = ROOT / "crates/razer-pages/src/features/keyboard/artwork/keyboard_preview_current_data.json"
+    previews_path = analysis.builtin_data_path("razer-pages", "KEYBOARD_PREVIEW_CURRENT_DATA")
     for row in json.loads(previews_path.read_bytes())["products"]:
         for image in row["images"]:
             aliases.setdefault(image["asset"], set()).add(row["product_id"])
-    picker_path = ROOT / "crates/razer-app-pages/src/app_picker/app_picker_icons_data.json"
+    picker_path = analysis.builtin_data_path("razer-app-pages", "APP_PICKER_ICONS_DATA")
     if picker_path.is_file():
         for product, row in json.loads(picker_path.read_bytes())["products"].items():
             aliases.setdefault(row["asset"], set()).add(int(product))
     favicon_aliases = {}
-    favicon_metadata = json.loads((ROOT / "crates/razer-shell/src/shell/host/host_device_favicons.json").read_bytes())
+    favicon_metadata = json.loads(analysis.builtin_data_path("razer-shell", "HOST_DEVICE_FAVICONS").read_bytes())
     for product, alias in favicon_metadata.items():
         if alias and int(product) in registered:
             favicon_aliases.setdefault(alias, set()).add(int(product))
@@ -2969,6 +2970,7 @@ def prepare_resources_locked(acquisition, resources=None):
     AVIF is decoded statically to RGBA PNG; both byte hashes and codec versions
     remain in the provenance manifest, separately from the original acquisition.
     """
+    import analysis
     groups = acquisition if isinstance(acquisition, list) else [{"acquisition": acquisition, "resources": resources}]
     contexts, requests = {}, []
     for group in groups:
@@ -2988,7 +2990,7 @@ def prepare_resources_locked(acquisition, resources=None):
     content_pool = resource_payload_index()
     registered_products = registered_resource_products()
     favicon_cache = {}
-    favicon_metadata = json.loads((ROOT / "crates/razer-shell/src/shell/host/host_device_favicons.json").read_bytes())
+    favicon_metadata = json.loads(analysis.builtin_data_path("razer-shell", "HOST_DEVICE_FAVICONS").read_bytes())
     prepared = []
     expanded = []
     muted_animation_cache = {}
@@ -3302,7 +3304,7 @@ def prepare_host_favicons():
     import families
     with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
         registered = registered_resource_products()
-        metadata_path = ROOT / "crates/razer-shell/src/shell/host/host_device_favicons.json"
+        metadata_path = analysis.builtin_data_path("razer-shell", "HOST_DEVICE_FAVICONS")
         metadata = json.loads(metadata_path.read_bytes())
         layout = json.loads((ROOT / "assets/synapse/indexes/resource-layout.json").read_bytes())
         resources = {key: row for row in layout["resources"] for key in row["runtime_keys"]}
@@ -3387,7 +3389,7 @@ def prepare_app_picker():
                    for name in shapes}
         registered = registered_resource_products()
         manifest = json.loads((ROOT / "assets/synapse/manifests/manifest.json").read_bytes())
-        host_alias_set = set(json.loads((ROOT / "crates/razer-shell/src/shell/host/host_device_favicons.json").read_bytes()).values())
+        host_alias_set = set(json.loads(analysis.builtin_data_path("razer-shell", "HOST_DEVICE_FAVICONS").read_bytes()).values())
         products, proofs, cache = {}, [], {}
         for entry in manifest["entries"]:
             sources = entry.get("host_favicon_sources", [])
@@ -3441,7 +3443,7 @@ def prepare_app_picker():
             "runtime_acceptance": "unverified; no application/window/vendor execution"}
         report_path = ROOT / ".analysis/results/frontend/rz-app-menu-current/device-artwork.json"
         write_json(report_path, report)
-        output = ROOT / "crates/razer-app-pages/src/app_picker/app_picker_icons_data.json"
+        output = analysis.builtin_data_path("razer-app-pages", "APP_PICKER_ICONS_DATA")
         write_json(output, {"subcategory_categories": list(categories), "icons": aliases, "products": products})
         prepared = prepare_resources_locked(relative(receipt_path), {root_row["path"]: [
             {"display": alias, "app_picker_category": category} for category, alias in aliases.items()]})
@@ -3469,6 +3471,7 @@ def verification_environment(name):
 
 
 def prepare_keyboard_identity():
+    import analysis
     audit_path = ROOT / ".analysis/results/frontend/keyboard-mw-audit.json"
     audit = json.loads(audit_path.read_bytes())["keyboard_metadata"]
     products, sources = [], []
@@ -3507,7 +3510,7 @@ def prepare_keyboard_identity():
                         "complete_owners": owners, "dependency_closure": row["dependency_closure"]})
     if not products:
         raise ValueError("No current keyboard identity cache sources verified")
-    output = ROOT / "crates/razer-model/src/source_identity_data.json"
+    output = analysis.builtin_data_path("razer-model", "SOURCE_IDENTITY_DATA")
     write_json(output, products)
     report = {"recorded_at_utc": datetime.now(timezone.utc).isoformat(), "products": sources,
               "audit": {"path": relative(audit_path), "sha256": digest(audit_path)},
@@ -3528,7 +3531,7 @@ def prepare_product_names():
         match = re.fullmatch(r"https://apps\.razer\.com/synapse/products/(\d+)/mw/index\.html", receipt.get("entry_url", ""))
         if match:
             manifests.append(receipt_path.parent / f"raw/apps.razer.com/synapse/products/{match[1]}/mw/manifest.json")
-    output = ROOT / "crates/razer-model/src/source_names/catalog.json"
+    output = analysis.builtin_data_path("razer-model", "CATALOG")
     report_path = ROOT / ".analysis/results/product-names-current.json"
     catalog, sources, failures, indexed, excluded_endpoints = {}, [], [], [], []
     index = {row["path"]: row for row in json.loads(INDEX.read_bytes())["inputs"]}
@@ -3674,7 +3677,7 @@ def prepare_source_preview_domains(parameter_locators, *, prepare=False):
     retry_producers = {}
     integration_previews = []
     source_cache = {}
-    family_atlas = json.loads((ROOT / "crates/razer-pages/src/features/keyboard/artwork/keyboard_artwork_current_data.json").read_bytes())
+    family_atlas = json.loads(analysis.builtin_data_path("razer-pages", "KEYBOARD_ARTWORK_CURRENT_DATA").read_bytes())
     family_pids = {product["product_id"] for product in family_atlas["products"]}
     module_literal = families.JAVASCRIPT_INTEGER_LITERAL
     export_pattern = re.compile(r'\b(' + module_literal + r'):(?:\([\w$,]*\)=>|[\w$]+=>|function\([\w$,]*\))\{([^{}]{0,1000})\}')
@@ -3881,7 +3884,7 @@ def prepare_source_preview_domains(parameter_locators, *, prepare=False):
                                      "asset": alias})
     except (OSError, ValueError, KeyError, AttributeError, TypeError) as error:
         failures.append({"product_id": 769, "reason": str(error), "kind": "integration-preview"})
-    destination = ROOT / "crates/razer-pages/src/features/keyboard/artwork/keyboard_preview_current_data.json"
+    destination = analysis.builtin_data_path("razer-pages", "KEYBOARD_PREVIEW_CURRENT_DATA")
     runtime = {"products": [{"product_id": pid,
                               "images": images.get(pid, []),
                               "edition_zero_retry": pid in retry_producers,
@@ -4628,7 +4631,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("keyboard-dynamic-metadata", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "all_current_dynamic_mapping_metadata_loads"]),
         ("keyboard-source-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_artwork::tests"]),
         ("gamepad-source-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::customize_artwork::tests"]),
-        ("gamepad-trigger-assets", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests::current_gamepad_trigger_resources_decode_with_source_dimensions"]),
+        ("gamepad-trigger-assets", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests::current_gamepad_trigger_resources_have_source_identities"]),
         ("gamepad-trigger-tooltip", ["cargo", "test", "--locked", "--offline", "-p", "razer-widgets", "--lib", "source_tooltip::tests::gamepad_rapid_trigger_help_uses_source_measured_vertical_fallback"]),
         ("hyperflux-pairing-artwork", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "hyperflux_207::artwork::tests"]),
         ("keyboard-analog-controls", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "keyboard_products::analog_controls::tests"]),
@@ -4662,7 +4665,8 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-canvas-projection", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "pid70_canvas_projection"]),
         ("assets", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib"]),
         ("asset-pack-core", ["cargo", "test", "--locked", "--offline", "-p", "razer-asset-pack", "--lib"]),
-        ("asset-pack-roundtrip", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_pack_tests", "--", "--nocapture"]),
+        ("assets-resource-identity", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests"]),
+        ("assets-resource-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "remote::"]),
         ("workspace", ["cargo", "check", "--locked", "--offline", "--workspace", "--all-targets"]),
     ]
     available = {name for name, _ in commands}
