@@ -37,9 +37,9 @@ pub struct AccessorySystemSpec {
 
 pub fn source_product(pid: u32) -> Option<&'static AccessorySystemSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<AccessorySystemSpec> =
-        super::source_catalog::SourceCatalog::new(include_str!(
-            "accessory_system_products_data.json"
-        ));
+        super::source_catalog::SourceCatalog::new(
+            || crate::data::accessory_system_products_data!(),
+        );
     PRODUCTS.get(pid)
 }
 

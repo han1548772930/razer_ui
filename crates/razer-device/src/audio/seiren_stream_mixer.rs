@@ -4,10 +4,153 @@ use crate::seiren_eq::NativeOperation;
 use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::sync::OnceLock;
+use std::{collections::BTreeMap, sync::OnceLock};
 
 pub const STORAGE_KEY: &str = "stream-mixer";
 pub const ACTIVE_KEY: &str = "activeStreamMixer";
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct MixerDefaults {
+    version: u64,
+    user_id: String,
+    #[serde(rename = "preset_name")]
+    preset_name: String,
+    input_channels: Vec<DefaultInputChannel>,
+    output_channel: DefaultOutputChannel,
+    shortcut_mapping: EmptyShortcutMapping,
+    is_stream_mixer_enabled: bool,
+    native_device_ids: BTreeMap<NativeEndpoint, u32>,
+    name_to_device_id: BTreeMap<String, NativeEndpoint>,
+    device_name: String,
+    #[serde(rename = "nonExistentPhysicalInputChannels")]
+    _nonexistent_inputs: Vec<String>,
+    shortcut_modifier_bits: BTreeMap<String, u32>,
+    shortcut_keys: Vec<ShortcutKey>,
+    #[serde(rename = "captureKeys")]
+    _capture_keys: Vec<CaptureKey>,
+    product_names: BTreeMap<u32, BTreeMap<String, String>>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DefaultInputChannel {
+    name: String,
+    input_channel_type: InputChannelType,
+    is_visible: bool,
+    is_linked: bool,
+    stream_mixer_input_volume: DefaultVolume,
+    playback_mix_input_volume: DefaultVolume,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    exter_input_device: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum InputChannelType {
+    Fixed,
+    Configurable,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DefaultOutputChannel {
+    is_stream_mix_monitor: bool,
+    playback_mix_device: String,
+    stream_mix_volume: DefaultVolume,
+    playback_mix_volume: DefaultVolume,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DefaultVolume {
+    is_enabled: bool,
+    value: u8,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct EmptyShortcutMapping {}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct ShortcutKey {
+    #[serde(rename = "inputID")]
+    input_id: String,
+    #[serde(rename = "keyCode")]
+    key_code: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CaptureKey {
+    name: String,
+    #[serde(rename = "type")]
+    key_type: String,
+    scancode: u32,
+    virtual_key: String,
+    key_code: String,
+    flag: u32,
+    #[serde(rename = "inputID", default, skip_serializing_if = "Option::is_none")]
+    input_id: Option<String>,
+    #[serde(rename = "pageID", default, skip_serializing_if = "Option::is_none")]
+    page_id: Option<String>,
+    #[serde(rename = "HID", default, skip_serializing_if = "Option::is_none")]
+    hid: Option<String>,
+    #[serde(
+        rename = "ExtendedKey",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    extended_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    output_flag: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    modifier: Option<String>,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
+enum NativeEndpoint {
+    #[serde(rename = "DeviceId_Headphones")]
+    Headphones,
+    #[serde(rename = "DeviceId_System")]
+    System,
+    #[serde(rename = "DeviceId_Music")]
+    Music,
+    #[serde(rename = "DeviceId_Game")]
+    Game,
+    #[serde(rename = "DeviceId_VoiceChat")]
+    VoiceChat,
+    #[serde(rename = "DeviceId_Browser")]
+    Browser,
+    #[serde(rename = "DeviceId_SoundEffects")]
+    SoundEffects,
+    #[serde(rename = "DeviceId_Aux1")]
+    Aux1,
+    #[serde(rename = "DeviceId_Aux2")]
+    Aux2,
+    #[serde(rename = "DeviceId_Aux3")]
+    Aux3,
+    #[serde(rename = "DeviceId_Microphone")]
+    Microphone,
+    #[serde(rename = "DeviceId_StreamMix")]
+    StreamMix,
+    #[serde(rename = "DeviceId_PlaybackMix")]
+    PlaybackMix,
+    #[serde(rename = "DeviceId_MarieMic")]
+    MarieMic,
+    #[serde(rename = "DeviceId_MarieHP")]
+    MarieHeadphones,
+}
+
+impl MixerDefaults {
+    fn endpoint_id(&self, endpoint: NativeEndpoint) -> Result<u32> {
+        self.native_device_ids
+            .get(&endpoint)
+            .copied()
+            .context("Mixer native endpoint ID is absent")
+    }
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Action {
@@ -100,33 +243,27 @@ pub fn next_device_version(previous: Option<&Value>) -> Result<u64> {
         .as_u64()
         .context("Invalid next mixer device version")
 }
-fn defaults(product_id: u32) -> Result<&'static Value> {
-    static DATA: OnceLock<Value> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../assets/data/seiren-stream-mixer.json"
-        ))
-        .expect("prepared current Seiren literals")
-    })
-    .get(product_id.to_string())
-    .context("Current Seiren stream-mixer product is absent")
+fn defaults(product_id: u32) -> Result<&'static MixerDefaults> {
+    static DATA: OnceLock<BTreeMap<u32, MixerDefaults>> = OnceLock::new();
+    DATA.get_or_init(|| crate::data::seiren_stream_mixer::seiren_stream_mixer!())
+        .get(&product_id)
+        .context("Current Seiren stream-mixer product is absent")
 }
 pub fn device_name(product_id: u32) -> Result<&'static str> {
-    defaults(product_id)?["deviceName"]
-        .as_str()
-        .context("Source Seiren device name is absent")
+    Ok(&defaults(product_id)?.device_name)
 }
 /// MW44857 L lowercases its dictionary keys; the notification writer indexes
 /// that map with the exact localStorage `currentLanguage` value. Neither the
 /// source edition context nor this lookup supplies an English/name fallback.
 pub fn product_name(product_id: u32, edition: u32, locale: &str) -> Result<&'static str> {
-    defaults(product_id)?["productNames"]
-        .get(edition.to_string())
+    defaults(product_id)?
+        .product_names
+        .get(&edition)
         .with_context(|| {
             format!("Current Seiren PRODUCT edition {product_id}_{edition} is absent")
         })?
         .get(locale)
-        .and_then(Value::as_str)
+        .map(String::as_str)
         .with_context(|| {
             format!("Current Seiren PRODUCT locale {locale:?} for {product_id}_{edition} is absent")
         })
@@ -139,24 +276,27 @@ pub fn shortcut_binding(product_id: u32, mapping: &Value) -> Result<Option<(u32,
     let input = mapping["inputID"]
         .as_str()
         .context("Mixer shortcut input ID is absent")?;
-    let key = source["shortcutKeys"]
-        .as_array()
-        .context("Mixer shortcut source keys are absent")?
+    let key = source
+        .shortcut_keys
         .iter()
-        .find(|key| key["inputID"] == input)
-        .and_then(|key| key["keyCode"].as_str())
+        .find(|key| key.input_id == input)
         .context("Mixer shortcut input has no source keyCode")?
+        .key_code
         .parse::<u32>()?;
     let mut modifiers = 0;
     for modifier in mapping["inputModifiers"]
         .as_array()
         .context("Mixer shortcut inputModifiers is not an array")?
     {
-        modifiers |= source["shortcutModifierBits"][modifier
-            .as_str()
-            .context("Mixer shortcut modifier is not a string")?]
-        .as_u64()
-        .unwrap_or(0) as u32;
+        modifiers |= source
+            .shortcut_modifier_bits
+            .get(
+                modifier
+                    .as_str()
+                    .context("Mixer shortcut modifier is not a string")?,
+            )
+            .copied()
+            .unwrap_or(0);
     }
     Ok(Some((key, modifiers)))
 }
@@ -164,7 +304,7 @@ pub fn default_preset(product_id: u32, guid: &str) -> Result<Value> {
     ensure!(!guid.is_empty(), "Mixer preset UUID is absent");
     let source = defaults(product_id)?;
     Ok(
-        json!({"name":source["preset_name"],"guid":guid,"inputChannels":source["inputChannels"],"outputChannel":source["outputChannel"],"shortcutMapping":source["shortcutMapping"]}),
+        json!({"name":source.preset_name,"guid":guid,"inputChannels":source.input_channels,"outputChannel":source.output_channel,"shortcutMapping":source.shortcut_mapping}),
     )
 }
 pub fn prepare_cache(value: Option<Value>, product_id: u32, guid: &str) -> Result<(Value, bool)> {
@@ -174,7 +314,7 @@ pub fn prepare_cache(value: Option<Value>, product_id: u32, guid: &str) -> Resul
         Some(value) => value,
         None => {
             changed = true;
-            json!({"activePresetGuid":guid,"version":source["version"],"presets":[default_preset(product_id,guid)?],"devices":[],"userId":source["userId"]})
+            json!({"activePresetGuid":guid,"version":source.version,"presets":[default_preset(product_id,guid)?],"devices":[],"userId":source.user_id})
         }
     };
     let devices = cache["devices"]
@@ -185,7 +325,7 @@ pub fn prepare_cache(value: Option<Value>, product_id: u32, guid: &str) -> Resul
         .any(|device| device["productId"] == product_id)
     {
         devices.push(
-            json!({"isStreamMixerEnabled":source["isStreamMixerEnabled"],"productId":product_id}),
+            json!({"isStreamMixerEnabled":source.is_stream_mixer_enabled,"productId":product_id}),
         );
         changed = true;
     }
@@ -451,23 +591,18 @@ fn flag(value: &Value) -> Result<bool> {
 }
 fn input_id(product_id: u32, name: &str) -> Result<u32> {
     let source = defaults(product_id)?;
-    let key = source["nameToDeviceId"][name]
-        .as_str()
+    let key = source
+        .name_to_device_id
+        .get(name)
         .context("Mixer input name has no source native ID")?;
-    Ok(source["nativeDeviceIds"][key]
-        .as_u64()
-        .context("Mixer input native ID is absent")? as u32)
+    source.endpoint_id(*key)
 }
 /// Source initDevice uses playbackMixInputVolume for StreamMix and the reverse
 /// for PlaybackMix. Preserve this observed source ordering, including its swap.
 pub fn preset_operations(product_id: u32, preset: &Value) -> Result<Vec<Operation>> {
     let source = defaults(product_id)?;
-    let stream = source["nativeDeviceIds"]["DeviceId_StreamMix"]
-        .as_u64()
-        .unwrap() as u32;
-    let playback = source["nativeDeviceIds"]["DeviceId_PlaybackMix"]
-        .as_u64()
-        .unwrap() as u32;
+    let stream = source.endpoint_id(NativeEndpoint::StreamMix)?;
+    let playback = source.endpoint_id(NativeEndpoint::PlaybackMix)?;
     let output = &preset["outputChannel"];
     let mut operations = vec![Operation::Native(NativeOperation::SetStreamMixMonitor {
         enabled: flag(&output["isStreamMixMonitor"])?,
@@ -529,9 +664,9 @@ pub fn preset_operations(product_id: u32, preset: &Value) -> Result<Vec<Operatio
 pub fn action_operations(product_id: u32, action: &Action) -> Result<Vec<Operation>> {
     let value = action.argument()?;
     let mut operations = Vec::new();
-    let ids = &defaults(product_id)?["nativeDeviceIds"];
-    let stream = ids["DeviceId_StreamMix"].as_u64().unwrap() as u32;
-    let playback = ids["DeviceId_PlaybackMix"].as_u64().unwrap() as u32;
+    let source = defaults(product_id)?;
+    let stream = source.endpoint_id(NativeEndpoint::StreamMix)?;
+    let playback = source.endpoint_id(NativeEndpoint::PlaybackMix)?;
     match action.event() {
         "ON_SET_STREAM_MIX_VOLUME" | "ON_SET_PLAYBACK_MIX_VOLUME" => {
             let device_id = if action.event() == "ON_SET_STREAM_MIX_VOLUME" {

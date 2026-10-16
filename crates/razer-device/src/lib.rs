@@ -1,7 +1,4 @@
 //! Razer protocol, capabilities and logical identity; no OS API or vendor DLL.
-pub mod profile_transfer;
-#[path = "audio/leviathan.rs"]
-pub mod leviathan;
 #[path = "audio/audio_mixer.rs"]
 pub mod audio_mixer;
 #[path = "audio/audio_mixer_hardware.rs"]
@@ -14,8 +11,6 @@ pub mod audio_notification;
 pub mod audio_router;
 #[path = "audio/audio_util.rs"]
 pub mod audio_util;
-#[path = "audio/seiren_stream_mixer.rs"]
-pub mod seiren_stream_mixer;
 #[path = "transport/backend.rs"]
 pub mod backend;
 #[path = "power/battery_threshold.rs"]
@@ -44,14 +39,13 @@ pub mod controller_calibration_protocol;
 pub mod controller_input;
 #[path = "gamepad/controller_triggers.rs"]
 pub mod controller_triggers;
+mod data;
 #[path = "identity/device_identity.rs"]
 pub mod device_identity;
 #[path = "transport/device_query.rs"]
 pub mod device_query;
 #[path = "transport/device_reads.rs"]
 pub mod device_reads;
-#[path = "receiver/receiver_session.rs"]
-pub mod receiver_session;
 #[path = "transport/device_writes.rs"]
 pub mod device_writes;
 #[path = "mouse/dpi_matcher.rs"]
@@ -62,14 +56,6 @@ pub mod dpi_matcher_storage;
 mod feature_exchange;
 #[path = "keyboard/keyboard_analog.rs"]
 pub mod keyboard_analog;
-#[path = "keyboard/keyboard_latest_restore.rs"]
-pub mod keyboard_latest_restore;
-#[path = "keyboard/keyboard_latest_mapping.rs"]
-pub mod keyboard_latest_mapping;
-#[path = "keyboard/keyboard_latest_gaming.rs"]
-pub mod keyboard_latest_gaming;
-#[path = "keyboard/keyboard_latest_protocol.rs"]
-pub mod keyboard_latest_protocol;
 #[cfg(test)]
 #[path = "keyboard/keyboard_control_test_transport.rs"]
 mod keyboard_control_test_transport;
@@ -85,10 +71,18 @@ pub mod keyboard_gaming_mode;
 pub mod keyboard_indicator;
 #[path = "keyboard/keyboard_knob.rs"]
 pub mod keyboard_knob;
-#[path = "keyboard/keyboard_legacy_mapping.rs"]
-pub mod keyboard_legacy_mapping;
+#[path = "keyboard/keyboard_latest_gaming.rs"]
+pub mod keyboard_latest_gaming;
+#[path = "keyboard/keyboard_latest_mapping.rs"]
+pub mod keyboard_latest_mapping;
+#[path = "keyboard/keyboard_latest_protocol.rs"]
+pub mod keyboard_latest_protocol;
+#[path = "keyboard/keyboard_latest_restore.rs"]
+pub mod keyboard_latest_restore;
 #[path = "keyboard/keyboard_legacy_calibration.rs"]
 pub mod keyboard_legacy_calibration;
+#[path = "keyboard/keyboard_legacy_mapping.rs"]
+pub mod keyboard_legacy_mapping;
 #[path = "keyboard/keyboard_metadata.rs"]
 pub mod keyboard_metadata;
 #[path = "keyboard/keyboard_settings.rs"]
@@ -97,12 +91,12 @@ pub mod keyboard_settings;
 pub mod keyboard_submission;
 #[path = "keyboard/keyboard_wristrest.rs"]
 pub mod keyboard_wristrest;
+#[path = "audio/leviathan.rs"]
+pub mod leviathan;
 #[path = "lighting/lighting_driver.rs"]
 pub mod lighting_driver;
 #[path = "mapping/macro_engine.rs"]
 pub mod macro_engine;
-#[path = "mapping/otfm.rs"]
-pub mod otfm;
 #[path = "mapping/mapping_engine.rs"]
 pub mod mapping_engine;
 #[path = "mapping/mapping_engine_hash.rs"]
@@ -141,8 +135,6 @@ pub mod mouse_dpi_stages;
 pub mod mouse_haptic;
 #[path = "mouse/mouse_indicator_led.rs"]
 pub mod mouse_indicator_led;
-#[path = "mouse/mouse_receiver_legacy.rs"]
-pub mod mouse_receiver_legacy;
 #[path = "mouse/mouse_legacy_mapping.rs"]
 pub mod mouse_legacy_mapping;
 #[path = "mouse/mouse_legacy_polling.rs"]
@@ -153,6 +145,8 @@ pub mod mouse_macro;
 pub mod mouse_onboard;
 #[path = "mouse/mouse_profile_polling.rs"]
 pub mod mouse_profile_polling;
+#[path = "mouse/mouse_receiver_legacy.rs"]
+pub mod mouse_receiver_legacy;
 #[path = "mouse/mouse_receiver_polling.rs"]
 pub mod mouse_receiver_polling;
 #[path = "mouse/mouse_runtime_artwork.rs"]
@@ -165,6 +159,9 @@ pub mod mouse_sensor;
 pub mod mouse_storage;
 #[path = "mouse/mouse_tracking.rs"]
 pub mod mouse_tracking;
+#[path = "mapping/otfm.rs"]
+pub mod otfm;
+pub mod profile_transfer;
 #[path = "transport/protocol.rs"]
 pub mod protocol;
 #[path = "receiver/receiver_brightness.rs"]
@@ -183,12 +180,16 @@ pub mod receiver_pairing;
 pub mod receiver_protocol;
 #[path = "receiver/receiver_reconnect.rs"]
 pub mod receiver_reconnect;
+#[path = "receiver/receiver_session.rs"]
+pub mod receiver_session;
 #[path = "audio/seiren_audio_capture.rs"]
 pub mod seiren_audio_capture;
-#[path = "audio/seiren_microphone.rs"]
-pub mod seiren_microphone;
 #[path = "audio/seiren_eq.rs"]
 pub mod seiren_eq;
+#[path = "audio/seiren_microphone.rs"]
+pub mod seiren_microphone;
+#[path = "audio/seiren_stream_mixer.rs"]
+pub mod seiren_stream_mixer;
 #[path = "audio/simple_audio.rs"]
 pub mod simple_audio;
 #[path = "audio/simple_audio_volume.rs"]

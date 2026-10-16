@@ -14,12 +14,9 @@ struct Policy {
 }
 fn policy(pid: u32) -> Option<&'static Policy> {
     static DATA: OnceLock<Vec<Policy>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_controller_drop_data.json"))
-            .expect("current controller drop policies")
-    })
-    .iter()
-    .find(|p| p.product_id == pid)
+    DATA.get_or_init(|| crate::data::keyboard_controller_drop_data!())
+        .iter()
+        .find(|p| p.product_id == pid)
 }
 
 fn occupied(list: &[Value], assignment: &str, shift: Option<bool>) -> bool {

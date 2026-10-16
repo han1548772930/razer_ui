@@ -16,12 +16,9 @@ struct Source {
 
 fn source(product_id: u32) -> Option<&'static Source> {
     static DATA: OnceLock<Vec<Source>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("source_identity_data.json"))
-            .expect("verified current keyboard identity source")
-    })
-    .iter()
-    .find(|source| source.product_id == product_id)
+    DATA.get_or_init(|| crate::data::source_identity_data!())
+        .iter()
+        .find(|source| source.product_id == product_id)
 }
 
 pub fn variant(product_id: u32, edition: u32, layout: u32, previous_layout: u32) -> (u32, u32) {

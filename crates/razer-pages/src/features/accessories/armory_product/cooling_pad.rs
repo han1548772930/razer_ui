@@ -17,10 +17,7 @@ struct AxisTexts {
 }
 fn axis_texts() -> &'static AxisTexts {
     static TEXTS: OnceLock<AxisTexts> = OnceLock::new();
-    TEXTS.get_or_init(|| {
-        serde_json::from_str(include_str!("cooling_axis_data.json"))
-            .expect("validated source axis outlines")
-    })
+    TEXTS.get_or_init(|| crate::data::cooling_axis_data!())
 }
 
 #[derive(Clone, Copy)]

@@ -792,7 +792,10 @@ fn malformed_report_and_correlation_are_rejected() {
 
 #[test]
 fn returned_prefix_is_stripped_before_knob_decoding() {
-    let device = Mock::new([Reply { report_id: 1, ..reply(&current_payload(current())) }]);
+    let device = Mock::new([Reply {
+        report_id: 1,
+        ..reply(&current_payload(current()))
+    }]);
     let observed = read_current_with_cap(&device, &cap(), 1, 39, 0, &|| Ok(())).unwrap();
     assert_eq!(observed, current());
     assert_eq!(device.sent().len(), 1);

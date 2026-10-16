@@ -64,9 +64,7 @@ struct Archetype {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| {
-        serde_json::from_str(include_str!("hue_data.json")).expect("audited Hue literals")
-    })
+    SPEC.get_or_init(|| crate::data::hue_data!())
 }
 fn text(key: &str) -> String {
     let spec = spec();

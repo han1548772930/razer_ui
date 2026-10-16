@@ -67,10 +67,7 @@ struct Spec {
 }
 fn spec(pid: u32) -> Option<&'static Spec> {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    let source = SPEC.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_source_artwork_data.json"))
-            .expect("validated current artwork source literals")
-    });
+    let source = SPEC.get_or_init(|| crate::data::keyboard_source_artwork_data!());
     (source.product_id == pid).then_some(source)
 }
 
@@ -172,18 +169,12 @@ fn preview_products() -> &'static [PreviewProduct] {
     }
     static PREVIEW: OnceLock<PreviewAtlas> = OnceLock::new();
     &PREVIEW
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_preview_current_data.json"))
-                .expect("verified current numeric resource context domains")
-        })
+        .get_or_init(|| crate::data::keyboard_preview_current_data!())
         .products
 }
 fn atlas() -> &'static FamilyAtlas {
     static ATLAS: OnceLock<FamilyAtlas> = OnceLock::new();
-    ATLAS.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_artwork_current_data.json"))
-            .expect("validated current keyboard image and layout producers")
-    })
+    ATLAS.get_or_init(|| crate::data::keyboard_artwork_current_data!())
 }
 fn family_product(pid: u32) -> Option<&'static FamilyProduct> {
     atlas()

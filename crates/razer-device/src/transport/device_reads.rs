@@ -2,7 +2,10 @@
 //! No local profile, route default or registry history supplies these values.
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::OnceLock};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::OnceLock,
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -26,9 +29,77 @@ impl DeviceReadKind {
             Self::Idle => "idle",
         }
     }
+
+    fn minimum_payload_bytes(self) -> usize {
+        match self {
+            Self::Firmware => 4,
+            Self::Battery | Self::Charging | Self::Idle => 2,
+            Self::Polling => 1,
+            Self::Dpi => 5,
+        }
+    }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub(crate) enum SourceReadMethod {
+    #[serde(rename = "getExtendedFirmwareVersion")]
+    ExtendedFirmware,
+    #[serde(rename = "getBatteryLevel")]
+    BatteryLevel,
+    #[serde(rename = "getChargingStatus")]
+    ChargingStatus,
+    #[serde(rename = "getPollingRate")]
+    PollingRate,
+    #[serde(rename = "getProfilePollingRate")]
+    ProfilePollingRate,
+    #[serde(rename = "getUSBHighSpeedPollingRate")]
+    UsbHighSpeedPollingRate,
+    #[serde(rename = "getDpiLevel")]
+    DpiLevel,
+    #[serde(rename = "getTimeToSleep")]
+    TimeToSleep,
+}
+
+impl SourceReadMethod {
+    fn kind(self) -> DeviceReadKind {
+        match self {
+            Self::ExtendedFirmware => DeviceReadKind::Firmware,
+            Self::BatteryLevel => DeviceReadKind::Battery,
+            Self::ChargingStatus => DeviceReadKind::Charging,
+            Self::PollingRate | Self::ProfilePollingRate | Self::UsbHighSpeedPollingRate => {
+                DeviceReadKind::Polling
+            }
+            Self::DpiLevel => DeviceReadKind::Dpi,
+            Self::TimeToSleep => DeviceReadKind::Idle,
+        }
+    }
+
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            Self::ExtendedFirmware => "getExtendedFirmwareVersion",
+            Self::BatteryLevel => "getBatteryLevel",
+            Self::ChargingStatus => "getChargingStatus",
+            Self::PollingRate => "getPollingRate",
+            Self::ProfilePollingRate => "getProfilePollingRate",
+            Self::UsbHighSpeedPollingRate => "getUSBHighSpeedPollingRate",
+            Self::DpiLevel => "getDpiLevel",
+            Self::TimeToSleep => "getTimeToSleep",
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SourceReadCommand {
+    name: DeviceReadKind,
+    method: SourceReadMethod,
+    command: [u8; 3],
+    payload: Vec<u8>,
+    min_response_bytes: usize,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(try_from = "SourceReadCommand")]
 pub struct ReadCommand {
     pub name: DeviceReadKind,
     pub method: String,
@@ -37,7 +108,93 @@ pub struct ReadCommand {
     pub min_response_bytes: usize,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+impl TryFrom<SourceReadCommand> for ReadCommand {
+    type Error = anyhow::Error;
+
+    fn try_from(source: SourceReadCommand) -> anyhow::Result<Self> {
+        ensure!(
+            source.name == source.method.kind(),
+            "Read method and response kind differ"
+        );
+        let command = Self {
+            name: source.name,
+            method: source.method.name().into(),
+            command: source.command,
+            payload: source.payload,
+            min_response_bytes: source.min_response_bytes,
+        };
+        command.validate_shape()?;
+        Ok(command)
+    }
+}
+
+impl ReadCommand {
+    fn validate_shape(&self) -> anyhow::Result<()> {
+        ensure!(
+            self.command[0] <= 80
+                && self.payload.len() <= usize::from(self.command[0])
+                && self.min_response_bytes <= 80,
+            "Read command or response exceeds the source report payload"
+        );
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SourceChargingStatus {
+    NoChargeBatteryFull,
+    Charging,
+    ChargingFailed,
+    ForeignObjectDetection,
+    FastCharging,
+    FullCharging,
+    ReachChargingLimit,
+}
+
+impl SourceChargingStatus {
+    fn parse(value: &str) -> anyhow::Result<Self> {
+        Ok(match value {
+            "NoCharge_BatteryFull" => Self::NoChargeBatteryFull,
+            "Charging" => Self::Charging,
+            "ChargingFailed" => Self::ChargingFailed,
+            "ForeignObjectDetection" => Self::ForeignObjectDetection,
+            "FastCharging" => Self::FastCharging,
+            "FullCharging" => Self::FullCharging,
+            "ReachChargingLimit" => Self::ReachChargingLimit,
+            _ => anyhow::bail!("Unknown source charging status: {value}"),
+        })
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::NoChargeBatteryFull => "NoCharge_BatteryFull",
+            Self::Charging => "Charging",
+            Self::ChargingFailed => "ChargingFailed",
+            Self::ForeignObjectDetection => "ForeignObjectDetection",
+            Self::FastCharging => "FastCharging",
+            Self::FullCharging => "FullCharging",
+            Self::ReachChargingLimit => "ReachChargingLimit",
+        }
+    }
+}
+
+fn polling_hz(name: &str) -> anyhow::Result<u32> {
+    Ok(match name {
+        "RATE_100Hz" => 100,
+        "RATE_125Hz" => 125,
+        "RATE_200Hz" => 200,
+        "RATE_250Hz" => 250,
+        "RATE_333Hz" => 333,
+        "RATE_500Hz" => 500,
+        "RATE_1000Hz" => 1000,
+        "RATE_2000Hz" => 2000,
+        "RATE_4000Hz" => 4000,
+        "RATE_8000Hz" => 8000,
+        _ => anyhow::bail!("Unknown source polling rate: {name}"),
+    })
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DeviceReadCapability {
     pub product_id: u32,
     pub source_class: String,
@@ -76,7 +233,7 @@ pub struct DeviceReadCapability {
     pub sleep_between_in_ms: u64,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PhysicalFeatureTransport {
     pub source_class: String,
     pub claim_interface: u8,
@@ -92,6 +249,88 @@ pub struct PhysicalFeatureTransport {
 }
 
 impl DeviceReadCapability {
+    fn validate_source(&self) -> anyhow::Result<()> {
+        ensure!(
+            self.product_id > 0
+                && self.product_id <= u32::from(u16::MAX)
+                && self.vendor_id != 0
+                && !self.direct_pids.is_empty()
+                && self
+                    .direct_pids
+                    .iter()
+                    .all(|pid| *pid > 0 && *pid <= u32::from(u16::MAX))
+                && self.report_bytes == 91
+                && self.transaction_modulus > 0
+                && self.max_retry_in > 0
+                && self.max_retry_out > 0
+                && !self.queries.is_empty(),
+            "Invalid source read capability identity or transport"
+        );
+        let counter_bits = (0..self.transaction_modulus).fold(0, |bits, counter| bits | counter);
+        ensure!(
+            self.transaction_prefix & counter_bits == 0,
+            "Read transaction prefix overlaps its counter"
+        );
+        for key in self
+            .claim_interfaces_by_pid
+            .keys()
+            .chain(self.physical_transports_by_pid.keys())
+        {
+            let pid: u16 = key
+                .parse()
+                .context("Physical transport PID is not numeric")?;
+            ensure!(
+                pid != 0 && pid.to_string() == *key,
+                "Physical transport PID is not canonical"
+            );
+        }
+        for branch in self.physical_transports_by_pid.values() {
+            ensure!(
+                !branch.source_class.is_empty()
+                    && branch.transaction_modulus > 0
+                    && branch.max_retry_in > 0
+                    && branch.max_retry_out > 0,
+                "Invalid physical source transport"
+            );
+            let bits = (0..branch.transaction_modulus).fold(0, |bits, counter| bits | counter);
+            ensure!(
+                branch.transaction_prefix & bits == 0,
+                "Physical transaction namespace overlaps its counter"
+            );
+        }
+        let mut queries = BTreeSet::new();
+        for query in &self.queries {
+            query.validate_shape()?;
+            ensure!(
+                queries.insert(query.name.name()),
+                "Repeated read response kind"
+            );
+            let required = if query.name == DeviceReadKind::Polling {
+                self.polling_value_offset
+                    .unwrap_or(1)
+                    .checked_add(1)
+                    .context("Polling value offset exceeds the response address space")?
+            } else {
+                query.name.minimum_payload_bytes()
+            };
+            ensure!(
+                query.min_response_bytes >= required,
+                "Read response contract omits decoder fields"
+            );
+        }
+        let mut codes = BTreeSet::new();
+        for (name, code) in &self.polling_codes {
+            polling_hz(name)?;
+            ensure!(codes.insert(code), "Ambiguous source polling code");
+        }
+        codes.clear();
+        for (name, code) in &self.charging_codes {
+            SourceChargingStatus::parse(name)?;
+            ensure!(codes.insert(code), "Ambiguous source charging code");
+        }
+        Ok(())
+    }
+
     /// UsbRzDeviceAction's GET uses a truthy reportId fallback, independently
     /// of SET's nullish fallback. The caller binds the physical interface first.
     pub fn get_report_id(&self) -> u8 {
@@ -216,6 +455,32 @@ impl DeviceReadCapability {
     }
 }
 
+#[cfg(test)]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ReadCatalog {
+    schema_version: u8,
+    products: Vec<DeviceReadCapability>,
+}
+
+#[cfg(test)]
+fn decode_catalog(json: &str) -> anyhow::Result<ReadCatalog> {
+    let catalog: ReadCatalog = serde_json::from_str(json).context("Invalid device read catalog")?;
+    ensure!(
+        catalog.schema_version == 1 && !catalog.products.is_empty(),
+        "Invalid device read catalog schema"
+    );
+    let mut products = BTreeSet::new();
+    for capability in &catalog.products {
+        ensure!(
+            products.insert(capability.product_id),
+            "Repeated device read product"
+        );
+        capability.validate_source()?;
+    }
+    Ok(catalog)
+}
+
 pub fn capability(product_id: u32) -> Option<&'static DeviceReadCapability> {
     if matches!(product_id, 164 | 179 | 241) {
         return receiver_firmware_capabilities()
@@ -225,22 +490,15 @@ pub fn capability(product_id: u32) -> Option<&'static DeviceReadCapability> {
     if product_id == crate::mouse_legacy_polling::PRODUCT_ID {
         return Some(crate::mouse_legacy_polling::read_capability());
     }
-    #[derive(Deserialize)]
-    struct Catalog {
-        schema_version: u8,
-        products: Vec<DeviceReadCapability>,
-    }
-    static CATALOG: OnceLock<Catalog> = OnceLock::new();
+    static CATALOG: OnceLock<Vec<DeviceReadCapability>> = OnceLock::new();
     CATALOG
         .get_or_init(|| {
-            let catalog: Catalog = serde_json::from_str(include_str!(
-                "../../../../assets/data/device-read-capabilities.json"
-            ))
-            .expect("source-derived device read capabilities");
-            assert_eq!(catalog.schema_version, 1);
-            catalog
+            let products = crate::data::device_read_capabilities::products();
+            for product in &products {
+                product.validate_source().expect("fixed device read table");
+            }
+            products
         })
-        .products
         .iter()
         .find(|capability| capability.product_id == product_id)
 }
@@ -371,6 +629,7 @@ pub fn query_report(
     command: &ReadCommand,
     transaction: u8,
 ) -> anyhow::Result<Vec<u8>> {
+    command.validate_shape()?;
     ensure!(
         cap.report_bytes == 91
             && command.command[0] <= 80
@@ -398,6 +657,7 @@ pub fn decode_report(
     command: &ReadCommand,
     transaction: u8,
 ) -> anyhow::Result<ReadReply> {
+    command.validate_shape()?;
     ensure!(
         report.len() == cap.report_bytes && report.len() == 91,
         "设备查询响应长度不匹配"
@@ -419,6 +679,18 @@ pub fn decode_report(
         length >= command.min_response_bytes && length <= 80,
         "设备查询响应字段截断"
     );
+    let required = if command.name == DeviceReadKind::Polling {
+        cap.polling_value_offset
+            .unwrap_or(1)
+            .checked_add(1)
+            .context("Polling value offset exceeds the response address space")?
+    } else {
+        command.name.minimum_payload_bytes()
+    };
+    ensure!(
+        length >= required,
+        "Device query response omits its typed value fields"
+    );
     let data = &packet[8..8 + length];
     if let Some(expected) = command.payload.first() {
         ensure!(
@@ -438,7 +710,9 @@ pub fn decode_report(
                 .charging_codes
                 .iter()
                 .find(|(_, code)| **code == data[1])
-                .map(|(name, _)| name.clone())
+                .map(|(name, _)| SourceChargingStatus::parse(name))
+                .transpose()?
+                .map(|status| status.name().to_owned())
                 .context("未知充电状态编码")?,
         },
         DeviceReadKind::Polling => {
@@ -451,10 +725,7 @@ pub fn decode_report(
                 .find(|(_, value)| *value == code)
                 .map(|(name, _)| name);
             let hz = if let Some(name) = name {
-                name.strip_prefix("RATE_")
-                    .and_then(|name| name.strip_suffix("Hz"))
-                    .context("源回报率名称无效")?
-                    .parse()?
+                polling_hz(name)?
             } else {
                 cap.polling_default_hz.context("未知回报率编码")?
             };
@@ -487,6 +758,54 @@ mod tests {
         report[6] = data.len() as u8;
         report[9..9 + data.len()].copy_from_slice(data);
         (report, command)
+    }
+
+    #[test]
+    fn source_catalog_rejects_mismatched_methods_short_responses_and_duplicate_products() {
+        let source = serde_json::json!({"schema_version":1,"products":[capability(182).unwrap()]});
+        assert!(decode_catalog(&source.to_string()).is_ok());
+        for mutation in 0..5 {
+            let mut value = source.clone();
+            match mutation {
+                0 => value["products"][0]["queries"][0]["method"] = "getBatteryLevel".into(),
+                1 => value["products"][0]["queries"][0]["min_response_bytes"] = 1.into(),
+                2 => value["products"][0]["transaction_modulus"] = 0.into(),
+                3 => {
+                    let repeated = value["products"][0].clone();
+                    value["products"].as_array_mut().unwrap().push(repeated);
+                }
+                4 => value["schema_version"] = 2.into(),
+                _ => unreachable!(),
+            }
+            assert!(
+                decode_catalog(&value.to_string()).is_err(),
+                "mutation {mutation}"
+            );
+        }
+        assert!(
+            serde_json::from_str::<ReadCommand>(
+                r#"{
+            "name":"firmware","method":"getUnverifiedFirmware",
+            "command":[4,0,135],"payload":[],"min_response_bytes":4
+        }"#
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn explicit_response_contract_cannot_bypass_typed_decoder_fields() {
+        let cap = capability(182).unwrap();
+        let (report, mut command) = {
+            let (report, command) = reply(DeviceReadKind::Firmware, &[]);
+            (report, command.clone())
+        };
+        command.min_response_bytes = 0;
+        assert!(decode_report(&report, cap, &command, 7).is_err());
+        let (report, command) = reply(DeviceReadKind::Polling, &[1, 8]);
+        let mut cap = cap.clone();
+        cap.polling_value_offset = Some(usize::MAX);
+        assert!(decode_report(&report, &cap, command, 7).is_err());
     }
 
     #[test]

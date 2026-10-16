@@ -42,10 +42,17 @@ pub fn resolve(
     }
 }
 impl DirectRoute {
-    pub fn leviathan_event_target(&self)->anyhow::Result<leviathan::EventTarget> {
+    pub fn leviathan_event_target(&self) -> anyhow::Result<leviathan::EventTarget> {
         Ok(match self {
-            Self::Collection{node,product_id}=>{ensure!(*product_id==1352,"Noa event product differs");leviathan::EventTarget::Collection(node.clone())},
-            #[cfg(windows)]Self::Container(target)=>{ensure!(target.product_id==1352,"Noa event product differs");leviathan::EventTarget::WindowsContainer(target.clone())},
+            Self::Collection { node, product_id } => {
+                ensure!(*product_id == 1352, "Noa event product differs");
+                leviathan::EventTarget::Collection(node.clone())
+            }
+            #[cfg(windows)]
+            Self::Container(target) => {
+                ensure!(target.product_id == 1352, "Noa event product differs");
+                leviathan::EventTarget::WindowsContainer(target.clone())
+            }
         })
     }
     pub fn leviathan(

@@ -30,10 +30,7 @@ impl Spec {
 fn specification(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_calibration_data.json"))
-                .expect("validated current calibration sources")
-        })
+        .get_or_init(|| crate::data::keyboard_calibration_data!())
         .iter()
         .find(|spec| spec.product_id == pid)
 }

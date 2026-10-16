@@ -21,10 +21,7 @@ pub(super) fn supports_surface_calibration(product_id: u32) -> bool {
     }
     static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
     PRODUCTS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_calibration_family_data.json"))
-                .expect("source-compared surface calibration products")
-        })
+        .get_or_init(|| crate::data::mouse_calibration_family_data!())
         .contains(&product_id)
 }
 
@@ -50,16 +47,10 @@ struct CalibrationMat {
 fn calibration_artwork(product_id: u32) -> &'static CalibrationArtwork {
     if product_id == 162 {
         static BABEL_ARTWORK: OnceLock<CalibrationArtwork> = OnceLock::new();
-        return BABEL_ARTWORK.get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_calibration_162_data.json"))
-                .expect("independently validated current /162 calibration artwork")
-        });
+        return BABEL_ARTWORK.get_or_init(|| crate::data::mouse_calibration_162_data!());
     }
     static ARTWORK: OnceLock<CalibrationArtwork> = OnceLock::new();
-    ARTWORK.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_calibration_70_data.json"))
-            .expect("validated current PID 70 calibration artwork")
-    })
+    ARTWORK.get_or_init(|| crate::data::mouse_calibration_70_data!())
 }
 
 fn artwork(product_id: u32, surface_id: &str) -> &'static CalibrationMat {

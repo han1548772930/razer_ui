@@ -264,11 +264,12 @@ mod preview_artwork_tests {
 
     #[test]
     fn persisted_layout_zero_keyboard_cards_decode_to_visible_source_slot_geometry() {
-        use gpui_kit::{Bounds, Image, ImageFormat, ObjectFit, SvgRenderer, point, px, size};
+        use gpui_kit::{Bounds, DevicePixels, ObjectFit, point, px, size};
         use razer_dashboard::dashboard_device_card::PRODUCT_CARD_IMAGE_CSS_SIZE;
         use razer_model::{model::Device, product_preview::registered_preview};
-        use std::sync::Arc;
-        let renderer = SvgRenderer::new(Arc::new(razer_assets::SynapseAssets));
+        mod fixtures {
+            include!("../../../../testdata/dashboard_artwork.rs");
+        }
         for pid in [579, 689, 720] {
             let legacy = registered_preview(pid).unwrap();
             let mut restored: Device =
@@ -282,24 +283,11 @@ mod preview_artwork_tests {
                     products::local_preview_artwork(&restored),
                 )
                 .unwrap_or_else(|| panic!("PID {pid}: persisted layout zero lost its image"));
-                let bytes = razer_assets::SynapseAssets.load(alias).unwrap().unwrap();
-                let decoded = Image::from_bytes(ImageFormat::Png, bytes.into_owned())
-                    .to_image_data(renderer.clone())
-                    .unwrap();
-                let dimensions = decoded.size(0);
-                let mut visible = [dimensions.width.0, dimensions.height.0, 0, 0];
-                for (index, pixel) in decoded.as_bytes(0).unwrap().chunks_exact(4).enumerate() {
-                    if pixel[3] == 0 {
-                        continue;
-                    }
-                    let index = i32::try_from(index).expect("Source artwork pixel index fits i32");
-                    let x = index % dimensions.width.0;
-                    let y = index / dimensions.width.0;
-                    visible[0] = visible[0].min(x);
-                    visible[1] = visible[1].min(y);
-                    visible[2] = visible[2].max(x + 1);
-                    visible[3] = visible[3].max(y + 1);
-                }
+                let (_, dimensions, visible) = fixtures::DASHBOARD_ARTWORK
+                    .iter()
+                    .find(|(fixture_alias, _, _)| *fixture_alias == alias)
+                    .expect("source PNG dimensions and alpha bounds");
+                let dimensions = size(DevicePixels(dimensions[0]), DevicePixels(dimensions[1]));
                 let slot = Bounds::new(
                     point(px(0.), px(0.)),
                     size(
@@ -370,7 +358,11 @@ mod preview_artwork_tests {
         );
         for image in &images {
             assert!(
-                razer_assets::SynapseAssets.load(image).unwrap().is_some(),
+                razer_assets::SynapseAssets
+                    .list(image)
+                    .unwrap()
+                    .iter()
+                    .any(|alias| alias.as_ref() == *image),
                 "{image}"
             );
         }

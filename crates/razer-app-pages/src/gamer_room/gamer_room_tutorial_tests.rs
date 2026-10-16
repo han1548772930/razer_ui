@@ -33,8 +33,7 @@ fn marketing_panel_stays_open_over_hotspot_and_closes_after_leaving(cx: &mut Tes
         .unwrap();
         cx.run_until_parked();
         cx.update_window(handle.into(), |_, window, cx| {
-            // Re-hit-test the same pointer while the popup now occludes its
-            // hotspot. Previously the banner's leave handler dismissed it.
+            // Re-hit-test the pointer while the popup occludes its hotspot.
             for _ in 0..4 {
                 window.hover(id, cx);
                 window.render_frame(cx);

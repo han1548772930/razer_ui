@@ -1,15 +1,32 @@
 //! Current host HD/_checkUSBDetail identity projection, without hardware state.
 //! See docs/re/device-identity-current-contract.md for source boundaries.
+#[cfg(test)]
+use anyhow::{Context as _, ensure};
 use serde::Deserialize;
+#[cfg(test)]
+use std::collections::BTreeSet;
 use std::sync::OnceLock;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
-enum Ids {
+pub(crate) enum Ids {
     One(u32),
     Many(Vec<u32>),
 }
 impl Ids {
+    #[cfg(test)]
+    fn validate(&self) -> anyhow::Result<()> {
+        let valid = |id: &u32| *id > 0 && *id <= u32::from(u16::MAX);
+        ensure!(
+            match self {
+                Self::One(id) => valid(id),
+                Self::Many(ids) => !ids.is_empty() && ids.iter().all(valid),
+            },
+            "Identity transport IDs must be nonzero USB product IDs"
+        );
+        Ok(())
+    }
+
     /// Host HD accepts a scalar or an array; no string/number coercion.
     fn contains(&self, raw: u32) -> bool {
         match self {
@@ -23,45 +40,90 @@ impl Ids {
     }
 }
 
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum DeviceCategory {
+    Accessory,
+    Audio,
+    Broadcaster,
+    Case,
+    Chair,
+    Egpu,
+    Gamepad,
+    Hue,
+    Iot,
+    Keyboard,
+    Keypad,
+    Monitor,
+    Mouse,
+    Mousemat,
+    Mouseplusmat,
+    System,
+}
+
+impl DeviceCategory {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Accessory => "ACCESSORY",
+            Self::Audio => "AUDIO",
+            Self::Broadcaster => "BROADCASTER",
+            Self::Case => "CASE",
+            Self::Chair => "CHAIR",
+            Self::Egpu => "EGPU",
+            Self::Gamepad => "GAMEPAD",
+            Self::Hue => "HUE",
+            Self::Iot => "IOT",
+            Self::Keyboard => "KEYBOARD",
+            Self::Keypad => "KEYPAD",
+            Self::Monitor => "MONITOR",
+            Self::Mouse => "MOUSE",
+            Self::Mousemat => "MOUSEMAT",
+            Self::Mouseplusmat => "MOUSEPLUSMAT",
+            Self::System => "SYSTEM",
+        }
+    }
+}
+
 /// Per-product `DeviceInfo` facts declared by the product's own middleware bundle.
 ///
-/// Generated for every product by `tools/audit-middleware-device-bindings.cjs` and
-/// projected by `tools/prepare-discovery-catalog.py`; no product id is special-cased.
-/// The original runtime reads `claimInterface`/`dongleId`/`bleId`/`category` from here.
+/// The fixed table carries source `claimInterface`/`dongleId`/`bleId`/`category`.
 #[derive(Debug, Deserialize)]
-struct MiddlewareFacts {
+#[serde(deny_unknown_fields)]
+pub(crate) struct MiddlewareFacts {
     #[serde(default)]
-    dongle_id: Option<u32>,
+    pub(crate) dongle_id: Option<u32>,
     #[serde(default)]
-    ble_id: Option<u32>,
+    pub(crate) ble_id: Option<u32>,
     #[serde(default)]
-    claim_interface: Option<u8>,
+    pub(crate) claim_interface: Option<u8>,
     #[serde(default)]
-    category: Option<String>,
+    pub(crate) category: Option<DeviceCategory>,
+    #[serde(default, rename = "receipt")]
+    pub(crate) _receipt: Option<serde::de::IgnoredAny>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct CatalogProduct {
-    product_id: u32,
+pub(crate) struct CatalogProduct {
+    pub(crate) product_id: u32,
     #[serde(default)]
-    rep_id: Option<u32>,
+    pub(crate) rep_id: Option<u32>,
     #[serde(default)]
-    dongle_id: Option<Ids>,
+    pub(crate) dongle_id: Option<Ids>,
     #[serde(default)]
-    ble_id: Option<Ids>,
+    pub(crate) ble_id: Option<Ids>,
     #[serde(default)]
-    xbox_id: Option<Ids>,
+    pub(crate) xbox_id: Option<Ids>,
     #[serde(default)]
-    wired_id: Option<Ids>,
+    pub(crate) wired_id: Option<Ids>,
     #[serde(default)]
-    ps_mode_ids: Option<Vec<u32>>,
+    pub(crate) ps_mode_ids: Option<Vec<u32>>,
     #[serde(default)]
-    monitor_port_ids: Option<Vec<u32>>,
+    pub(crate) monitor_port_ids: Option<Vec<u32>>,
     #[serde(default)]
-    is_not_chroma_device: bool,
+    pub(crate) is_not_chroma_device: bool,
     #[serde(default)]
-    middleware: Option<MiddlewareFacts>,
+    pub(crate) middleware: Option<MiddlewareFacts>,
 }
 impl CatalogProduct {
     fn route(&self) -> u32 {
@@ -110,10 +172,60 @@ fn contains(ids: &Option<Ids>, raw: u32) -> bool {
 }
 fn catalog() -> &'static [CatalogProduct] {
     static CATALOG: OnceLock<Vec<CatalogProduct>> = OnceLock::new();
-    CATALOG.get_or_init(|| {
-        serde_json::from_str(include_str!("discovery_catalog.json"))
-            .expect("statically validated complete current identity catalog")
-    })
+    CATALOG.get_or_init(crate::data::device_identity_catalog::products)
+}
+
+#[cfg(test)]
+fn decode_catalog(json: &str) -> anyhow::Result<Vec<CatalogProduct>> {
+    let products: Vec<CatalogProduct> =
+        serde_json::from_str(json).context("Invalid identity catalog")?;
+    ensure!(!products.is_empty(), "Identity catalog is empty");
+    let mut seen = BTreeSet::new();
+    for product in &products {
+        ensure!(
+            product.product_id > 0 && product.product_id <= u32::from(u16::MAX),
+            "Identity product ID is invalid"
+        );
+        ensure!(
+            seen.insert(product.product_id),
+            "Identity catalog repeats a source product"
+        );
+        ensure!(
+            product.rep_id.is_none_or(|id| id <= u32::from(u16::MAX)),
+            "Identity route is outside USB product IDs"
+        );
+        for ids in [
+            &product.dongle_id,
+            &product.ble_id,
+            &product.xbox_id,
+            &product.wired_id,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            ids.validate()?;
+        }
+        for ids in [&product.ps_mode_ids, &product.monitor_port_ids]
+            .into_iter()
+            .flatten()
+        {
+            ensure!(
+                !ids.is_empty() && ids.iter().all(|id| *id > 0 && *id <= u32::from(u16::MAX)),
+                "Identity mode IDs are invalid"
+            );
+        }
+        if let Some(facts) = &product.middleware {
+            ensure!(
+                facts
+                    .dongle_id
+                    .into_iter()
+                    .chain(facts.ble_id)
+                    .all(|id| id <= u32::from(u16::MAX)),
+                "Middleware transport ID is invalid"
+            );
+        }
+    }
+    Ok(products)
 }
 
 /// Catalog facts only. No edition, layout, serial, online or readiness is inferred.
@@ -251,7 +363,7 @@ pub fn middleware_category(product_id: u32) -> Option<&'static str> {
         .iter()
         .find(|entry| entry.product_id == product_id)
         .and_then(|entry| entry.middleware.as_ref())
-        .and_then(|facts| facts.category.as_deref())
+        .and_then(|facts| facts.category.map(DeviceCategory::name))
 }
 
 /// Only for the source monitor observation branch, after its serial query.
@@ -283,6 +395,29 @@ pub fn lookup_monitor_port(raw_pid: u32, observed_monitor_serial: &str) -> Ident
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn identity_catalog_rejects_unknown_categories_invalid_ids_and_duplicate_rows() {
+        for source in [
+            r#"[{"product_id":756,"middleware":{"category":"UNKNOWN"}}]"#,
+            r#"[{"product_id":756,"dongle_id":[]}]"#,
+            r#"[{"product_id":756,"ble_id":70000}]"#,
+            r#"[{"product_id":756},{"product_id":756}]"#,
+            r#"[{"product_id":0}]"#,
+        ] {
+            assert!(decode_catalog(source).is_err(), "{source}");
+        }
+        // Shared transport aliases remain ambiguous by design; only repeated
+        // source rows are invalid, not product branches sharing a radio.
+        let catalog = decode_catalog(
+            r#"[
+            {"product_id":600,"dongle_id":625},
+            {"product_id":601,"dongle_id":625}
+        ]"#,
+        )
+        .unwrap();
+        assert_eq!(catalog.len(), 2);
+    }
 
     #[test]
     fn current756_routes_wired_dongle_and_ble_without_inventing_state() {

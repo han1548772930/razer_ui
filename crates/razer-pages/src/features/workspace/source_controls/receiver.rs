@@ -73,10 +73,7 @@ struct IndicatorLayer {
 }
 fn modes() -> &'static [IndicatorMode] {
     static MODES: OnceLock<Vec<IndicatorMode>> = OnceLock::new();
-    MODES.get_or_init(|| {
-        serde_json::from_str(include_str!("receiver_indicator_data.json"))
-            .expect("current receiver SVG timing")
-    })
+    MODES.get_or_init(|| crate::data::receiver_indicator_data!())
 }
 fn opacity(layer: &IndicatorLayer, elapsed: f32) -> f32 {
     let duration: f32 = layer

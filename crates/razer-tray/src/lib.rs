@@ -1,13 +1,13 @@
 //! Platform-independent systray presentation, translations, and UI commands.
 //! OS registration and native window operations belong to platform adapters.
+mod data;
 use gpui_kit::base::motion::{self, Easing, Transition};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use razer_i18n as i18n;
 use razer_widgets::surface;
 use razer_widgets::theme::TrayColors;
-use serde_json::Value;
-use std::{sync::OnceLock, time::Duration};
+use std::{collections::BTreeMap, sync::OnceLock, time::Duration};
 #[cfg(target_os = "windows")]
 mod windows;
 #[cfg(target_os = "windows")]
@@ -35,18 +35,26 @@ pub enum Event {
     Device(String),
 }
 
+type Translations = BTreeMap<String, BTreeMap<String, String>>;
+struct TrayStrings {
+    host: Translations,
+    popup: Translations,
+}
+
 fn text(group: &str, key: &str) -> String {
-    static STRINGS: OnceLock<Value> = OnceLock::new();
-    let data = STRINGS.get_or_init(|| {
-        serde_json::from_str(include_str!("tray_strings.json"))
-            .expect("validated tray translations")
-    });
+    static STRINGS: OnceLock<TrayStrings> = OnceLock::new();
+    let data = STRINGS.get_or_init(|| crate::data::tray_strings!());
+    let translations = match group {
+        "host" => &data.host,
+        "popup" => &data.popup,
+        _ => return key.to_owned(),
+    };
     let locale = i18n::locale().to_ascii_lowercase();
-    data[group]
+    translations
         .get(&locale)
         .and_then(|v| v.get(key))
-        .or_else(|| data[group]["en"].get(key))
-        .and_then(Value::as_str)
+        .or_else(|| translations.get("en").and_then(|strings| strings.get(key)))
+        .map(String::as_str)
         .unwrap_or(key)
         .to_owned()
 }
@@ -206,13 +214,16 @@ impl Render for TrayPopup {
                     cx,
                 ))
             });
-        div()
+        let content = div()
             .id("tray-viewport")
             .relative()
             .size_full()
             .overflow_hidden()
             .child(panel)
-            .child(version_badge("1.1.97"))
+            .child(version_badge("1.1.97"));
+        image_cache(razer_assets::resource_image_cache())
+            .size_full()
+            .child(content)
     }
 }
 

@@ -74,7 +74,7 @@ pub struct GamepadProductSpec {
 
 pub fn source_product(pid: u32) -> Option<&'static GamepadProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<GamepadProductSpec> =
-        super::source_catalog::SourceCatalog::new(include_str!("gamepad_products_data.json"));
+        super::source_catalog::SourceCatalog::new(|| crate::data::gamepad_products_data!());
     PRODUCTS.get(pid)
 }
 
@@ -170,6 +170,8 @@ pub struct GamepadProductWorkspace {
     previous_deadzones: BTreeMap<String, Value>,
     deadzone_dialog: Option<deadzone_dialog::DialogState>,
     calibration_state: calibration::state::CalibrationState,
+    calibration_resources: crate::runtime_resources::TextResources,
+    trigger_calibration_resources: trigger_calibration_renderer::Resources,
     calibration_dialog: Option<calibration::CalibrationDialog>,
     calibration_popup: Option<calibration::CalibrationDialog>,
     trigger_calibration_state: trigger_calibration_state::TriggerCalibrationState,
@@ -211,6 +213,8 @@ impl GamepadProductWorkspace {
             previous_deadzones: BTreeMap::new(),
             deadzone_dialog: None,
             calibration_state: Default::default(),
+            calibration_resources: Default::default(),
+            trigger_calibration_resources: Default::default(),
             calibration_dialog: None,
             calibration_popup: None,
             trigger_calibration_state: Default::default(),
@@ -263,6 +267,22 @@ impl GamepadProductWorkspace {
                 }
             }));
         this.refresh_trigger_visualization();
+        this.subscriptions
+            .push(razer_assets::observe_resources(cx, |this, _, cx| {
+                let mut changed = this.calibration_resources.refresh();
+                changed |= this.trigger_calibration_resources.refresh();
+                if this.page == "THUMBSTICKS" && this.thumbstick_ui.artwork_pending() {
+                    this.refresh_thumbstick_artwork();
+                    changed = true;
+                }
+                if this.trigger_artwork_pending() {
+                    this.refresh_trigger_visualization();
+                    changed = true;
+                }
+                if changed {
+                    cx.notify();
+                }
+            }));
         this
     }
 
@@ -290,6 +310,11 @@ impl GamepadProductWorkspace {
                 }
             }
             self.page = key.into();
+            if key == "TAB_CALIBRATION" {
+                self.request_calibration_resources();
+            }
+            self.refresh_thumbstick_artwork();
+            self.refresh_trigger_visualization();
             self.dismiss_deadzone(false, window, cx);
             self.low_deadzone = None;
             self.request_trigger_read(cx);

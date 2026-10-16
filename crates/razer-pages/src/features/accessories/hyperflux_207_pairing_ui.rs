@@ -5,21 +5,15 @@ use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::theme::HyperfluxColors as Colors;
 
 fn message(key: &str) -> String {
-    static STRINGS: OnceLock<Value> = OnceLock::new();
-    let strings = STRINGS.get_or_init(|| {
-        serde_json::from_str(include_str!("hyperflux_207_pairing_strings.json"))
-            .expect("audited HyperFlux locales")
-    });
+    static STRINGS: OnceLock<BTreeMap<String, BTreeMap<String, String>>> = OnceLock::new();
+    let strings = STRINGS.get_or_init(|| crate::data::hyperflux_207_pairing_strings!());
     let locale = razer_i18n::locale();
     strings
-        .as_object()
-        .and_then(|map| {
-            map.iter()
-                .find(|(name, _)| name.eq_ignore_ascii_case(&locale))
-                .map(|(_, v)| v)
-        })
-        .and_then(|values| values[key].as_str())
-        .or_else(|| strings["en"][key].as_str())
+        .iter()
+        .find(|(name, _)| name.eq_ignore_ascii_case(&locale))
+        .and_then(|(_, values)| values.get(key))
+        .or_else(|| strings["en"].get(key))
+        .map(String::as_str)
         .unwrap_or(key)
         .into()
 }

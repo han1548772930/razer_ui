@@ -1,0 +1,181 @@
+; Inno Setup >= 6.3; build through tools/workspace.py.
+; PayloadDir is an exact allowlisted staging directory, never assets/ or target/.
+#ifndef PayloadDir
+  #error PayloadDir must identify the prepared installation payload
+#endif
+#ifndef AppVersion
+  #error AppVersion must be a numeric x.y.z version
+#endif
+#ifndef AppArch
+  #error AppArch must be x64 or arm64
+#endif
+#ifndef OutputRoot
+  #error OutputRoot must identify the installer output directory
+#endif
+
+[Setup]
+AppId=RazerUI-FD42CC53-D87A-421A-A65F-823EB9F9C144
+AppName=Razer UI
+AppVersion={#AppVersion}
+AppPublisher=Razer UI contributors
+VersionInfoCompany=Razer UI contributors
+VersionInfoDescription=Razer UI installer
+DefaultDirName={localappdata}\Programs\Razer UI
+DefaultGroupName=Razer UI
+PrivilegesRequired=lowest
+#if AppArch == "arm64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+#endif
+; The locked GPUI build imports the Windows ICU C API (Windows 10 1703+).
+MinVersion=10.0.15063
+DisableProgramGroupPage=yes
+DisableDirPage=auto
+UsePreviousAppDir=yes
+SetupIconFile={#PayloadDir}\Razer UI.ico
+UninstallDisplayIcon={app}\Razer UI.ico
+OutputDir={#OutputRoot}
+OutputBaseFilename=Razer-UI-{#AppVersion}-{#AppArch}-Setup
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+CloseApplications=yes
+RestartApplications=no
+Uninstallable=yes
+UninstallDisplayName=Razer UI
+; No launch-on-finish: installing never starts device or service operations.
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+
+[Files]
+Source: "{#PayloadDir}\razer_ui.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\Razer UI.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PayloadDir}\razer-ui-installation.json"; DestDir: "{app}"; Flags: ignoreversion
+; This generated include enumerates explicitly supplied, verified runtime DLLs.
+#include AddBackslash(PayloadDir) + "..\runtime-files.iss"
+
+[Dirs]
+; Caches survive upgrades. Only the scoped uninstall code may delete the cache.
+Name: "{app}\assets"; Flags: uninsneveruninstall
+Name: "{app}\assets\cache"; Flags: uninsneveruninstall
+
+[Icons]
+Name: "{userprograms}\Razer UI"; Filename: "{app}\razer_ui.exe"; WorkingDir: "{app}"; IconFilename: "{app}\Razer UI.ico"
+Name: "{userdesktop}\Razer UI"; Filename: "{app}\razer_ui.exe"; WorkingDir: "{app}"; IconFilename: "{app}\Razer UI.ico"; Tasks: desktopicon
+
+[Registry]
+Root: HKCU; Subkey: "Software\Razer UI"; ValueType: string; ValueName: "InstallLocation"; ValueData: "{app}"; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKCU; Subkey: "Software\Razer UI"; ValueType: string; ValueName: "CacheRelative"; ValueData: "assets\cache"; Flags: uninsdeletevalue uninsdeletekeyifempty
+Root: HKCU; Subkey: "Software\Razer UI"; ValueType: string; ValueName: "Version"; ValueData: "{#AppVersion}"; Flags: uninsdeletevalue uninsdeletekeyifempty
+
+[Code]
+var
+  RemoveCachedAssets: Boolean;
+  OwnsInstallation: Boolean;
+  OwnedInstallDirectory: String;
+
+function PlainDirectoryOrMissing(const DirectoryName: String): Boolean;
+var
+  FindRec: TFindRec;
+begin
+  Result := True;
+  if FindFirst(DirectoryName, FindRec) then
+  begin
+    Result := ((FindRec.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0) and
+      ((FindRec.Attributes and FILE_ATTRIBUTE_REPARSE_POINT) = 0);
+    FindClose(FindRec);
+  end;
+end;
+
+function SafeDirectoryChain(const DirectoryName: String): Boolean;
+var
+  CurrentDirectory, ParentDirectory: String;
+begin
+  CurrentDirectory := RemoveBackslashUnlessRoot(ExpandFileName(DirectoryName));
+  Result := True;
+  repeat
+    if not PlainDirectoryOrMissing(CurrentDirectory) then
+    begin
+      Result := False;
+      Exit;
+    end;
+    ParentDirectory := RemoveBackslashUnlessRoot(ExtractFileDir(CurrentDirectory));
+    if CompareText(CurrentDirectory, ParentDirectory) = 0 then
+      Exit;
+    CurrentDirectory := ParentDirectory;
+  until CurrentDirectory = '';
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if not SafeDirectoryChain(ExpandConstant('{app}\assets\cache')) then
+    Result := 'The installation or resource-cache directory contains a link or a file. Choose an ordinary writable directory.';
+end;
+
+function InitializeUninstall(): Boolean;
+var
+  RegisteredDirectory, KeepCache: String;
+  Choice: Integer;
+begin
+  OwnedInstallDirectory := RemoveBackslashUnlessRoot(ExpandFileName(ExpandConstant('{app}')));
+  OwnsInstallation := RegQueryStringValue(HKCU, 'Software\Razer UI',
+    'InstallLocation', RegisteredDirectory);
+  if OwnsInstallation then
+    OwnsInstallation := CompareText(OwnedInstallDirectory,
+      RemoveBackslashUnlessRoot(ExpandFileName(RegisteredDirectory))) = 0;
+
+  Result := True;
+  RemoveCachedAssets := False;
+  KeepCache := ExpandConstant('{param:KEEPASSETCACHE|}');
+  if KeepCache = '0' then
+    RemoveCachedAssets := True
+  else if (KeepCache <> '') and (KeepCache <> '1') then
+  begin
+    Log('KEEPASSETCACHE must be 0 or 1. Uninstall cancelled.');
+    Result := False;
+  end
+  else if (KeepCache = '') and not UninstallSilent then
+  begin
+    Choice := MsgBox('Delete downloaded product resources from this installation?'
+      + #13#10 + #13#10 + 'Yes: remove the resource cache.'
+      + #13#10 + 'No: keep it for reinstalling and offline reuse.'
+      + #13#10 + 'Device profiles and user settings are kept in either case.',
+      mbConfirmation, MB_YESNOCANCEL);
+    if Choice = IDCANCEL then
+      Result := False
+    else
+      RemoveCachedAssets := Choice = IDYES;
+  end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  CacheDirectory: String;
+begin
+  if (CurUninstallStep <> usPostUninstall) or not RemoveCachedAssets then
+    Exit;
+  CacheDirectory := AddBackslash(OwnedInstallDirectory) + 'assets\cache';
+  if not OwnsInstallation or not SafeDirectoryChain(CacheDirectory) then
+  begin
+    Log('Cache cleanup skipped: installation ownership or plain-directory checks failed.');
+    Exit;
+  end;
+  // DelTree never follows reparse points within the cache (Inno Setup contract).
+  if DirExists(CacheDirectory) and not DelTree(CacheDirectory, True, True, True) then
+  begin
+    Log('Some resource-cache files could not be removed: ' + CacheDirectory);
+    if not UninstallSilent then
+      MsgBox('Some downloaded resources could not be removed. Close applications using them, then remove this directory manually:'
+        + #13#10 + CacheDirectory, mbInformation, MB_OK);
+  end;
+  RemoveDir(AddBackslash(OwnedInstallDirectory) + 'assets');
+  RemoveDir(OwnedInstallDirectory);
+end;

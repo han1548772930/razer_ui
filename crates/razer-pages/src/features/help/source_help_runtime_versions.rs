@@ -90,10 +90,7 @@ struct Supported {
 }
 fn records() -> &'static [Supported] {
     static SUPPORTED: OnceLock<Vec<Supported>> = OnceLock::new();
-    SUPPORTED.get_or_init(|| {
-        serde_json::from_str(include_str!("source_help_runtime_versions_data.json"))
-            .expect("current runtime version component receipts")
-    })
+    SUPPORTED.get_or_init(|| crate::data::source_help_runtime_versions_data!())
 }
 pub(super) fn supported(product_id: u32, offset: usize) -> bool {
     records()

@@ -29,10 +29,7 @@ struct ProductMacroData {
 }
 fn product_macro_data() -> &'static ProductMacroData {
     static DATA: std::sync::OnceLock<ProductMacroData> = std::sync::OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mapping_macro_data.json"))
-            .expect("audited product Macro playback data")
-    })
+    DATA.get_or_init(|| crate::data::mapping_macro_data!())
 }
 
 #[derive(Clone)]

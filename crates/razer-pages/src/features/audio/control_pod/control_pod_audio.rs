@@ -31,10 +31,7 @@ struct Data {
 pub struct RuntimeAudioDevice(BTreeMap<String, Value>);
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("control_pod_audio_data.json"))
-            .expect("audited Control Pod audio")
-    })
+    DATA.get_or_init(|| crate::data::control_pod_audio_data!())
 }
 
 impl AudioProductWorkspace {

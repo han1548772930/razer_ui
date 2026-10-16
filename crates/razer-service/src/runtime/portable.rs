@@ -12,24 +12,24 @@ use razer_device::device_query;
 use razer_device::device_reads;
 use razer_device::receiver_capabilities;
 use razer_hid::with_backend;
-#[path = "mouse_current_dpi.rs"]
-mod mouse_current_dpi;
-#[path = "mouse_current_power.rs"]
-mod mouse_current_power;
-#[path = "mouse_scroll.rs"]
-mod mouse_scroll;
-#[path = "leviathan.rs"]
-mod leviathan;
-#[path = "mouse_indicator_led.rs"]
-mod mouse_indicator_led;
-#[path = "mouse_receiver_legacy.rs"]
-mod mouse_receiver_legacy;
 #[path = "keyboard_indicator.rs"]
 mod keyboard_indicator;
 #[path = "keyboard_latest_restore.rs"]
 mod keyboard_latest_restore;
 #[path = "keyboard_legacy_calibration.rs"]
 mod keyboard_legacy_calibration;
+#[path = "leviathan.rs"]
+mod leviathan;
+#[path = "mouse_current_dpi.rs"]
+mod mouse_current_dpi;
+#[path = "mouse_current_power.rs"]
+mod mouse_current_power;
+#[path = "mouse_indicator_led.rs"]
+mod mouse_indicator_led;
+#[path = "mouse_receiver_legacy.rs"]
+mod mouse_receiver_legacy;
+#[path = "mouse_scroll.rs"]
+mod mouse_scroll;
 #[path = "seiren_eq.rs"]
 mod seiren_eq;
 use serde_json::{Value, json};
@@ -40,7 +40,7 @@ use std::{
 
 #[derive(Default)]
 pub(super) struct PortableRuntime {
-    latest_keyboard_events:keyboard_latest_restore::EventsState,
+    latest_keyboard_events: keyboard_latest_restore::EventsState,
     transactions: HashMap<String, u8>,
     audio_notifications: crate::audio_notification::AudioNotifications,
     audio_router: crate::audio_router::AudioRouter,
@@ -115,7 +115,12 @@ impl PortableRuntime {
         draft: Option<&razer_device::mouse_dpi_stages::DpiStagesDraft>,
     ) -> anyhow::Result<Value> {
         if product_id != razer_device::mouse_receiver_polling::PRODUCT_ID {
-            return self.receiver_setting(node, product_id, peer_product_id, super::receiver_settings::Setting::DpiStages(draft));
+            return self.receiver_setting(
+                node,
+                product_id,
+                peer_product_id,
+                super::receiver_settings::Setting::DpiStages(draft),
+            );
         }
         self.mouse_receiver_request(
             node,
@@ -148,25 +153,47 @@ impl PortableRuntime {
         )
     }
 
-    fn receiver_status(&mut self, node: &HidNode, source_product_id: Option<u16>) -> anyhow::Result<Value> {
+    fn receiver_status(
+        &mut self,
+        node: &HidNode,
+        source_product_id: Option<u16>,
+    ) -> anyhow::Result<Value> {
         let cap = receiver_capabilities::for_source(node.product_id, source_product_id)?;
-        ensure!(node.vendor_id == cap.vendor_id && node.interface_number == i32::from(cap.claim_interface),
-            "接收器节点不符合源 VID/接口选择；未知接口号不能猜测");
+        ensure!(
+            node.vendor_id == cap.vendor_id
+                && node.interface_number == i32::from(cap.claim_interface),
+            "接收器节点不符合源 VID/接口选择；未知接口号不能猜测"
+        );
         let started = Instant::now();
-        let validate = || { deadline(started)?; Self::revalidate(node) };
+        let validate = || {
+            deadline(started)?;
+            Self::revalidate(node)
+        };
         validate()?;
         let device = with_backend(|backend| backend.open(node))?;
-        ensure!(device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
-            "Receiver Feature collection length differs from the current source");
+        ensure!(
+            device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
+            "Receiver Feature collection length differs from the current source"
+        );
         validate()?;
-        let transaction = self.transaction(node, &cap.source_class, cap.transaction_prefix, cap.transaction_modulus)?;
+        let transaction = self.transaction(
+            node,
+            &cap.source_class,
+            cap.transaction_prefix,
+            cap.transaction_modulus,
+        )?;
         let devices = device_query::read_receiver(device.as_ref(), &cap, transaction, validate)?;
         validate()?;
-        let rows = devices.into_iter().map(|(product_id, status)| json!({"product_id":product_id,"status":status})).collect::<Vec<_>>();
-        Ok(json!({"node":node,"query":"receiver_wireless_status_v2","devices":rows,"device_count":rows.len(),
+        let rows = devices
+            .into_iter()
+            .map(|(product_id, status)| json!({"product_id":product_id,"status":status}))
+            .collect::<Vec<_>>();
+        Ok(
+            json!({"node":node,"query":"receiver_wireless_status_v2","devices":rows,"device_count":rows.len(),
             "transaction_id":transaction,"source_product_id":cap.source_product_id,"source_class":cap.source_class,
             "capability_evidence":cap.evidence_path,"transport_metadata":device.metadata(),
-            "elapsed_ms":started.elapsed().as_millis() as u64,"identity_scope":"hid_collection"}))
+            "elapsed_ms":started.elapsed().as_millis() as u64,"identity_scope":"hid_collection"}),
+        )
     }
 
     fn receiver_setting(
@@ -178,16 +205,38 @@ impl PortableRuntime {
     ) -> anyhow::Result<Value> {
         let session = setting.session(product_id, u32::from(node.product_id), peer_product_id)?;
         let cap = session.transport();
-        ensure!(node.vendor_id == cap.vendor_id && node.interface_number == i32::from(cap.claim_interface), "Receiver collection differs from the current source factory");
+        ensure!(
+            node.vendor_id == cap.vendor_id
+                && node.interface_number == i32::from(cap.claim_interface),
+            "Receiver collection differs from the current source factory"
+        );
         let started = Instant::now();
         let validate = || {
-            ensure!(started.elapsed() < Duration::from_secs(20), "Receiver setting deadline expired");
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "Receiver setting deadline expired"
+            );
             Self::revalidate(node)
         };
         validate()?;
         let device = with_backend(|backend| backend.open(node))?;
-        ensure!(device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes), "Receiver Feature collection length differs from source");
-        let mut response = setting.execute(&session, device.as_ref(), &mut || self.transaction(node, &cap.source_class, cap.transaction_prefix, cap.transaction_modulus), &validate)?;
+        ensure!(
+            device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
+            "Receiver Feature collection length differs from source"
+        );
+        let mut response = setting.execute(
+            &session,
+            device.as_ref(),
+            &mut || {
+                self.transaction(
+                    node,
+                    &cap.source_class,
+                    cap.transaction_prefix,
+                    cap.transaction_modulus,
+                )
+            },
+            &validate,
+        )?;
         response["node"] = serde_json::to_value(node)?;
         response["product_id"] = json!(product_id);
         response["peer_product_id"] = json!(peer_product_id);
@@ -764,13 +813,7 @@ impl PortableRuntime {
         // Retain the same open collection and process lock across set and get.
         let device = with_backend(|backend| backend.open(node))?;
         ensure!(
-            device
-                .report_lengths()?
-                .feature
-                .values()
-                .max()
-                .copied()
-                == Some(cap.report_bytes),
+            device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
             "DPI stage observed Feature Report size does not match current source"
         );
         let mut response = json!({"node":node,"product_id":product_id,"source_class":settings.source_class,

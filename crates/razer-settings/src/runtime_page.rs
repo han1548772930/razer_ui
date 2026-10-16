@@ -743,7 +743,8 @@ impl Render for RuntimePanel {
                         .role(Role::Status)
                         .aria_label(label.clone())
                         .child(label),
-                ).when_some(result.as_ref().ok(), |view, snapshot| {
+                )
+                .when_some(result.as_ref().ok(), |view, snapshot| {
                     view.children(snapshot.devices().iter().filter_map(|device| {
                         device.read_values().map(|values| {
                             diagnostics::device_values(device.product_id(), values, cx)
@@ -759,74 +760,105 @@ impl Render for RuntimePanel {
             })
             .children(self.readings.native.iter().map(|observation| {
                 let label = match &observation.result {
-                    Ok(value) => format!("产品 {} · {}：读取 {} 项，{} 项失败。",
-                        observation.product_id,observation.library,
-                        value["fields"].as_object().map_or(0, |fields|fields.len()),
-                        value["errors"].as_object().map_or(0, |fields|fields.len())),
-                    Err(error) => format!("产品 {} · {} 读取失败：{error}",observation.product_id,observation.library),
+                    Ok(value) => format!(
+                        "产品 {} · {}：读取 {} 项，{} 项失败。",
+                        observation.product_id,
+                        observation.library,
+                        value["fields"].as_object().map_or(0, |fields| fields.len()),
+                        value["errors"].as_object().map_or(0, |fields| fields.len())
+                    ),
+                    Err(error) => format!(
+                        "产品 {} · {} 读取失败：{error}",
+                        observation.product_id, observation.library
+                    ),
                 };
-                let fields = observation.result.as_ref().ok().and_then(|value|value["fields"].as_object());
-                let errors = observation.result.as_ref().ok().and_then(|value|value["errors"].as_object());
-                div().child(surface::note(label,cx)).when(self.details, |view| {
-                    view.children(fields.into_iter().flat_map(|fields|fields.iter()).map(|(export,value)| {
-                        div().whitespace_normal().child(format!("{export}：{}",display_value(&value["value"])))
-                    })).children(errors.into_iter().flat_map(|errors|errors.iter()).map(|(export,error)| {
-                        div().whitespace_normal().text_color(cx.theme().danger).child(format!("{export}：{}",display_value(error)))
-                    }))
-                }).into_any_element()
-            }))
-            .when(self.readings.hid.is_some() || self.readings.hid_nodes.is_some(), |this| {
-                this.child(
-                    Button::new("runtime-details")
-                        .ghost()
-                        .label(if self.details {
-                            "收起读取详情"
-                        } else {
-                            "查看读取详情"
-                        })
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.details = !this.details;
-                            cx.notify();
-                        })),
-                )
-                .when(self.details, |this| {
-                    this.when_some(self.readings.diagnostic_report.as_ref(), |view, report| {
-                        let label = match report {
-                            Ok(path) => format!("本次设备发现详情已记录：{}", path.display()),
-                            Err(error) => format!("设备发现详情未能记录：{error}"),
-                        };
-                        view.child(surface::note(label, cx))
+                let fields = observation
+                    .result
+                    .as_ref()
+                    .ok()
+                    .and_then(|value| value["fields"].as_object());
+                let errors = observation
+                    .result
+                    .as_ref()
+                    .ok()
+                    .and_then(|value| value["errors"].as_object());
+                div()
+                    .child(surface::note(label, cx))
+                    .when(self.details, |view| {
+                        view.children(fields.into_iter().flat_map(|fields| fields.iter()).map(
+                            |(export, value)| {
+                                div()
+                                    .whitespace_normal()
+                                    .child(format!("{export}：{}", display_value(&value["value"])))
+                            },
+                        ))
+                        .children(
+                            errors.into_iter().flat_map(|errors| errors.iter()).map(
+                                |(export, error)| {
+                                    div()
+                                        .whitespace_normal()
+                                        .text_color(cx.theme().danger)
+                                        .child(format!("{export}：{}", display_value(error)))
+                                },
+                            ),
+                        )
                     })
-                    .children(
-                        [
-                            ("USB 设备", &self.readings.usb),
-                            ("HID 接口", &self.readings.hid),
-                            ("HID collection", &self.readings.hid_nodes),
-                            ("版本", &self.readings.version),
-                            ("音频", &self.readings.audio),
-                        ]
-                        .into_iter()
-                        .filter_map(|(label, result)| {
-                            result
-                                .as_ref()
-                                .and_then(|result| result.as_ref().ok())
-                                .map(|value| {
-                                    v_flex()
-                                        .gap_2()
-                                        .child(label)
-                                        .child(
-                                            div()
-                                                .w_full()
-                                                .whitespace_normal()
-                                                .text_size(surface::css(12.))
-                                                .child(display_value(value)),
-                                        )
-                                        .into_any_element()
-                                })
-                        }),
+                    .into_any_element()
+            }))
+            .when(
+                self.readings.hid.is_some() || self.readings.hid_nodes.is_some(),
+                |this| {
+                    this.child(
+                        Button::new("runtime-details")
+                            .ghost()
+                            .label(if self.details {
+                                "收起读取详情"
+                            } else {
+                                "查看读取详情"
+                            })
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.details = !this.details;
+                                cx.notify();
+                            })),
                     )
-                })
-            })
+                    .when(self.details, |this| {
+                        this.when_some(self.readings.diagnostic_report.as_ref(), |view, report| {
+                            let label = match report {
+                                Ok(path) => format!("本次设备发现详情已记录：{}", path.display()),
+                                Err(error) => format!("设备发现详情未能记录：{error}"),
+                            };
+                            view.child(surface::note(label, cx))
+                        })
+                        .children(
+                            [
+                                ("USB 设备", &self.readings.usb),
+                                ("HID 接口", &self.readings.hid),
+                                ("HID collection", &self.readings.hid_nodes),
+                                ("版本", &self.readings.version),
+                                ("音频", &self.readings.audio),
+                            ]
+                            .into_iter()
+                            .filter_map(|(label, result)| {
+                                result.as_ref().and_then(|result| result.as_ref().ok()).map(
+                                    |value| {
+                                        v_flex()
+                                            .gap_2()
+                                            .child(label)
+                                            .child(
+                                                div()
+                                                    .w_full()
+                                                    .whitespace_normal()
+                                                    .text_size(surface::css(12.))
+                                                    .child(display_value(value)),
+                                            )
+                                            .into_any_element()
+                                    },
+                                )
+                            }),
+                        )
+                    })
+                },
+            )
     }
 }
 

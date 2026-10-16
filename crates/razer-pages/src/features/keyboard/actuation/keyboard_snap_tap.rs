@@ -67,10 +67,7 @@ struct SnapTapData {
 }
 fn data() -> &'static SnapTapData {
     static DATA: OnceLock<SnapTapData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_snap_tap_data.json"))
-            .expect("audited Snap Tap data")
-    })
+    DATA.get_or_init(|| crate::data::keyboard_snap_tap_data!())
 }
 
 /// Only a real middleware adapter may publish these observations. No adapter is

@@ -29,10 +29,7 @@ struct Item {
 }
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("record_options_data.json"))
-            .expect("audited record settings")
-    })
+    DATA.get_or_init(|| crate::data::record_options_data!())
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -4,7 +4,15 @@ fn resource(samples: u64, channels: u16) -> Vec<u8> {
     let pcm_offset = 64 + 2 * 24 + 8;
     let mut bytes = vec![0; pcm_offset + samples as usize * channels as usize * 2];
     bytes[..8].copy_from_slice(b"RZAV0001");
-    for (offset, value) in [(8,64u32),(12,2),(16,2),(20,25),(24,1),(28,8000),(48,2)] {
+    for (offset, value) in [
+        (8, 64u32),
+        (12, 2),
+        (16, 2),
+        (20, 25),
+        (24, 1),
+        (28, 8000),
+        (48, 2),
+    ] {
         bytes[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
     }
     bytes[32..34].copy_from_slice(&channels.to_le_bytes());
@@ -19,7 +27,9 @@ fn resource(samples: u64, channels: u16) -> Vec<u8> {
         bytes[at + 16..at + 20].copy_from_slice(&4u32.to_le_bytes());
         bytes[start..start + 4].copy_from_slice(&[255, 216, 255, 217]);
     }
-    for (ix, value) in bytes[pcm_offset..].iter_mut().enumerate() { *value = ix as u8; }
+    for (ix, value) in bytes[pcm_offset..].iter_mut().enumerate() {
+        *value = ix as u8;
+    }
     bytes
 }
 
@@ -32,17 +42,32 @@ struct SimulatedOutput {
     packets: Vec<Vec<u8>>,
 }
 impl Output for SimulatedOutput {
-    fn capacity(&self) -> u32 { 4 }
-    fn padding(&self) -> anyhow::Result<u32> { Ok(self.queued) }
+    fn capacity(&self) -> u32 {
+        4
+    }
+    fn padding(&self) -> anyhow::Result<u32> {
+        Ok(self.queued)
+    }
     fn write(&mut self, pcm: &[u8], frames: u32) -> anyhow::Result<()> {
         ensure!(frames <= 4 - self.queued, "Simulated queue overflow");
         self.queued += frames;
         self.packets.push(pcm.to_vec());
         Ok(())
     }
-    fn start(&mut self) -> anyhow::Result<()> { self.started = true; self.starts += 1; Ok(()) }
-    fn stop(&mut self) -> anyhow::Result<()> { self.started = false; Ok(()) }
-    fn reset(&mut self) -> anyhow::Result<()> { self.queued = 0; self.resets += 1; Ok(()) }
+    fn start(&mut self) -> anyhow::Result<()> {
+        self.started = true;
+        self.starts += 1;
+        Ok(())
+    }
+    fn stop(&mut self) -> anyhow::Result<()> {
+        self.started = false;
+        Ok(())
+    }
+    fn reset(&mut self) -> anyhow::Result<()> {
+        self.queued = 0;
+        self.resets += 1;
+        Ok(())
+    }
 }
 
 #[test]
@@ -111,17 +136,35 @@ fn media_rejects_invalid_endpoint_observation_and_out_of_range_seek() {
 fn media_clip_preserves_discrete_channels_and_timestamp_boundaries() {
     let bytes = resource(10, 8);
     let clip = Clip::parse(bytes.clone().into()).unwrap();
-    assert_eq!((clip.channels(),clip.channel_mask(),clip.sample_rate()), (8,0,8000));
-    assert_eq!((clip.width(),clip.height(),clip.sample_count()), (2,2,10));
-    assert_eq!(clip.pcm(0,10).unwrap(), &bytes[120..]);
-    assert_eq!((clip.frame_index(0),clip.frame_index(4),clip.frame_index(5),clip.frame_index(10)), (0,0,1,1));
-    assert!(clip.pcm(10,1).is_err());
+    assert_eq!(
+        (clip.channels(), clip.channel_mask(), clip.sample_rate()),
+        (8, 0, 8000)
+    );
+    assert_eq!(
+        (clip.width(), clip.height(), clip.sample_count()),
+        (2, 2, 10)
+    );
+    assert_eq!(clip.pcm(0, 10).unwrap(), &bytes[120..]);
+    assert_eq!(
+        (
+            clip.frame_index(0),
+            clip.frame_index(4),
+            clip.frame_index(5),
+            clip.frame_index(10)
+        ),
+        (0, 0, 1, 1)
+    );
+    assert!(clip.pcm(10, 1).is_err());
     for offset in [8, 34, 52, 56, 80, 84, 104, 112, 119] {
-        let mut damaged = bytes.clone(); damaged[offset] ^= 1;
-        assert!(Clip::parse(damaged.into()).is_err(), "accepted damaged field {offset}");
+        let mut damaged = bytes.clone();
+        damaged[offset] ^= 1;
+        assert!(
+            Clip::parse(damaged.into()).is_err(),
+            "accepted damaged field {offset}"
+        );
     }
     let mut repeated_timestamp = bytes.clone();
     repeated_timestamp[88..96].fill(0);
     assert!(Clip::parse(repeated_timestamp.into()).is_err());
-    assert!(Clip::parse(bytes[..bytes.len()-1].to_vec().into()).is_err());
+    assert!(Clip::parse(bytes[..bytes.len() - 1].to_vec().into()).is_err());
 }

@@ -12,13 +12,10 @@ struct Source {
 }
 fn source(pid: u32) -> &'static Source {
     static DATA: OnceLock<Vec<Source>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_notices_data.json"))
-            .expect("current keyboard prerequisite branches")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("audited current keyboard prerequisite caller")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_notices_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("audited current keyboard prerequisite caller")
 }
 impl KeyboardProductWorkspace {
     pub(super) fn mapping_macro_requires_synapse(&self, guid: &Value) -> bool {

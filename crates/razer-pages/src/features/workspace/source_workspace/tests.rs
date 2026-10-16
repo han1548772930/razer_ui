@@ -41,10 +41,14 @@ fn mouse_current_power_migration_preserves_source_local_storage_branches() {
         let mut device = razer_model::product_preview::registered_preview(product_id).unwrap();
         device.source_device_settings = Some(json!({"powerSavingValue": 7}));
         for profile in &mut device.profiles {
-            profile.source_settings = Some(json!({"powerSavingValue": 9, "_mousePowerDraft": {"powerSavingValue": 11}}));
+            profile.source_settings =
+                Some(json!({"powerSavingValue": 9, "_mousePowerDraft": {"powerSavingValue": 11}}));
         }
         SourceProductWorkspace::migrate_device_settings(&mut device);
-        assert_eq!(device.source_device_settings, Some(json!({"powerSavingValue": 7})));
+        assert_eq!(
+            device.source_device_settings,
+            Some(json!({"powerSavingValue": 7}))
+        );
         for profile in &device.profiles {
             assert_eq!(profile.source_settings, Some(json!({})));
         }

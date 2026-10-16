@@ -7,7 +7,6 @@ use super::{
 };
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::OnceLock};
 
 #[cfg(test)]
 #[path = "device_writes_tests.rs"]
@@ -25,12 +24,16 @@ pub enum DeviceWriteSetting {
 }
 
 impl DeviceWriteSetting {
-    pub fn read_kind(&self) -> DeviceReadKind {
+    pub fn kind(&self) -> DeviceWriteKind {
         match self {
-            Self::Dpi { .. } => DeviceReadKind::Dpi,
-            Self::Polling { .. } => DeviceReadKind::Polling,
-            Self::Idle { .. } => DeviceReadKind::Idle,
+            Self::Dpi { .. } => DeviceWriteKind::Dpi,
+            Self::Polling { .. } => DeviceWriteKind::Polling,
+            Self::Idle { .. } => DeviceWriteKind::Idle,
         }
+    }
+
+    pub fn read_kind(&self) -> DeviceReadKind {
+        self.kind().read_kind()
     }
 
     /// Check the typed observation without interpreting send completion as success.
@@ -52,46 +55,90 @@ impl DeviceWriteSetting {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DeviceWriteKind {
+    Dpi,
+    Polling,
+    Idle,
+}
+
+impl DeviceWriteKind {
+    pub const fn read_kind(self) -> DeviceReadKind {
+        match self {
+            Self::Dpi => DeviceReadKind::Dpi,
+            Self::Polling => DeviceReadKind::Polling,
+            Self::Idle => DeviceReadKind::Idle,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WriteMethod {
+    DpiLevel,
+    PollingRate,
+    ProfilePollingRate,
+    UsbHighSpeedPollingRate,
+    TimeToSleep,
+}
+
+impl WriteMethod {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::DpiLevel => "setDpiLevel",
+            Self::PollingRate => "setPollingRate",
+            Self::ProfilePollingRate => "setProfilePollingRate",
+            Self::UsbHighSpeedPollingRate => "setUSBHighSpeedPollingRate",
+            Self::TimeToSleep => "setTimeToSleep",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WriteSourceClass {
+    DualLinkMouse,
+    Legacy,
+}
+
+impl WriteSourceClass {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::DualLinkMouse => "rzDevice25DualLinkMouse",
+            Self::Legacy => "rzDevice25Legacy",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PollingCode {
+    pub hz: u32,
+    pub code: u8,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct WriteCommand {
-    pub kind: DeviceReadKind,
-    pub method: String,
+    pub kind: DeviceWriteKind,
+    pub method: WriteMethod,
     pub command: [u8; 3],
     pub selector: u8,
     pub read_kind: DeviceReadKind,
     pub min_response_bytes: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug)]
 pub struct DeviceWriteCapability {
     pub product_id: u32,
-    pub source_class: String,
+    pub source_class: WriteSourceClass,
     pub min_dpi: u16,
     pub max_dpi: u16,
-    pub polling_codes: BTreeMap<String, u8>,
-    pub writes: Vec<WriteCommand>,
+    pub polling_codes: &'static [PollingCode],
+    pub writes: &'static [WriteCommand],
 }
 
 pub fn capability(product_id: u32) -> Option<&'static DeviceWriteCapability> {
     if product_id == crate::mouse_legacy_polling::PRODUCT_ID {
         return Some(crate::mouse_legacy_polling::write_capability());
     }
-    #[derive(Deserialize)]
-    struct Catalog {
-        schema_version: u8,
-        products: Vec<DeviceWriteCapability>,
-    }
-    static CATALOG: OnceLock<Catalog> = OnceLock::new();
-    CATALOG
-        .get_or_init(|| {
-            let catalog: Catalog = serde_json::from_str(include_str!(
-                "../../../../assets/data/device-write-capabilities.json"
-            ))
-            .expect("source-derived device write capabilities");
-            assert_eq!(catalog.schema_version, 1);
-            catalog
-        })
-        .products
+    crate::data::device_write_capabilities::PRODUCTS
         .iter()
         .find(|cap| cap.product_id == product_id)
 }
@@ -103,7 +150,7 @@ pub fn prepare(
     let command = cap
         .writes
         .iter()
-        .find(|command| command.kind == setting.read_kind())
+        .find(|command| command.kind == setting.kind())
         .context("该设置没有当前源核实的写入能力")?;
     ensure!(
         command.read_kind == setting.read_kind(),
@@ -130,9 +177,10 @@ pub fn prepare(
         DeviceWriteSetting::Polling { hz } => {
             let code = cap
                 .polling_codes
-                .get(&format!("RATE_{hz}Hz"))
+                .iter()
+                .find(|rate| rate.hz == *hz)
                 .context("回报率没有当前源码枚举编码")?;
-            payload.push(*code);
+            payload.push(code.code);
         }
         DeviceWriteSetting::Idle { raw_time } => {
             // Unlike DPI/polling, the source has no selector byte. Its helper
@@ -146,7 +194,7 @@ pub fn prepare(
     );
     Ok(ReadCommand {
         name: command.read_kind,
-        method: command.method.clone(),
+        method: command.method.as_str().into(),
         command: command.command,
         payload,
         min_response_bytes: command.min_response_bytes,
@@ -209,7 +257,7 @@ pub fn apply(
     let cap = capability(read_cap.product_id).context("产品没有源核实的设备写入能力")?;
     let physical_class =
         super::device_reads::capability(read_cap.product_id).is_some_and(|owner| {
-            owner.source_class == cap.source_class
+            owner.source_class == cap.source_class.as_str()
                 && owner.physical_transports_by_pid.values().any(|branch| {
                     branch.source_class == read_cap.source_class
                         && branch.claim_interface == read_cap.claim_interface
@@ -219,7 +267,7 @@ pub fn apply(
                 })
         });
     ensure!(
-        cap.source_class == read_cap.source_class || physical_class,
+        cap.source_class.as_str() == read_cap.source_class || physical_class,
         "读写源设备类不一致"
     );
     let setter = prepare(cap, setting)?;

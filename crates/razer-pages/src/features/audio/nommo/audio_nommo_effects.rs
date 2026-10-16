@@ -27,10 +27,7 @@ struct Spec {
 fn spec(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("audio_nommo_effects_data.json"))
-                .expect("validated current Nommo effects")
-        })
+        .get_or_init(|| crate::data::audio_nommo_effects_data!())
         .iter()
         .find(|spec| spec.product_id == pid)
 }

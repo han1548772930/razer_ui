@@ -39,10 +39,7 @@ enum PosterFit {
 fn specification(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("audio_demo_data.json"))
-                .expect("audited audio demo descriptors")
-        })
+        .get_or_init(|| crate::data::audio_demo_data!())
         .iter()
         .find(|spec| spec.product_id == pid)
 }

@@ -17,9 +17,9 @@ use super::{
     display_window::DisplayMode,
     pairing_page::{PairingPage, PairingPageEvent},
 };
-use razer_widgets::scroll::SourceScrollable as _;
 use gpui_kit::component::*;
 use gpui_kit::*;
+use razer_widgets::scroll::SourceScrollable as _;
 use serde_json::Value;
 
 /// 原版 `multiDevicePairingInit` 负载里本仓库能够如实消费的部分。
@@ -68,7 +68,7 @@ impl PairingWindow {
 
 impl Render for PairingWindow {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        v_flex()
+        let content = v_flex()
             .id(SharedString::from(format!(
                 "display-mode-{}",
                 DisplayMode::MultiDevicePairing.key()
@@ -82,6 +82,9 @@ impl Render for PairingWindow {
                     .size_full()
                     .scrollable_both()
                     .child(self.page.clone()),
-            )
+            );
+        image_cache(razer_assets::resource_image_cache())
+            .size_full()
+            .child(content)
     }
 }

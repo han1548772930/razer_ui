@@ -1,21 +1,26 @@
 //! Exact receiver bindings derived from current DeviceInfo, feature, factory,
 //! protocol inheritance and command ASTs. Catalog membership is not a capability.
-use serde::Deserialize;
+#[cfg(test)]
+use anyhow::Context as _;
+use anyhow::ensure;
+use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use std::collections::BTreeSet;
 use std::sync::OnceLock;
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ReceiverProtocol {
     #[serde(rename = "razer_device25_wireless_status_v2")]
     RazerDevice25WirelessStatusV2,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ReceiverStartupRetry {
     pub first_peer_status: u8,
     pub delays_ms: Vec<u64>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct ReceiverCapability {
     pub source_product_id: u16,
     pub vendor_id: u16,
@@ -44,6 +49,33 @@ pub struct ReceiverCapability {
 }
 
 impl ReceiverCapability {
+    pub(crate) fn validate_source(&self) -> anyhow::Result<()> {
+        ensure!(
+            self.source_product_id != 0
+                && self.product_id != 0
+                && self.vendor_id != 0
+                && self.report_bytes == 91
+                && self.command[0] <= 80
+                && self.transaction_modulus > 0
+                && self.max_retry_in > 0
+                && self.max_retry_out > 0
+                && !self.source_class.is_empty(),
+            "Invalid receiver identity or report transport"
+        );
+        let counter_bits = (0..self.transaction_modulus).fold(0, |bits, counter| bits | counter);
+        ensure!(
+            self.transaction_prefix & counter_bits == 0,
+            "Receiver transaction namespace overlaps its counter"
+        );
+        if let Some(retry) = &self.startup_retry {
+            ensure!(
+                !retry.delays_ms.is_empty(),
+                "Receiver startup retry policy has no attempts"
+            );
+        }
+        Ok(())
+    }
+
     pub fn get_report_id(&self) -> u8 {
         if self.report_id == 0 {
             self.claim_interface
@@ -53,23 +85,46 @@ impl ReceiverCapability {
     }
 }
 
-pub fn all() -> &'static [ReceiverCapability] {
-    #[derive(Deserialize)]
-    struct Catalog {
-        schema_version: u8,
-        capabilities: Vec<ReceiverCapability>,
+#[cfg(test)]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Catalog {
+    schema_version: u8,
+    #[serde(rename = "scope")]
+    _scope: String,
+    capabilities: Vec<ReceiverCapability>,
+}
+
+#[cfg(test)]
+fn decode_catalog(json: &str) -> anyhow::Result<Catalog> {
+    let catalog: Catalog =
+        serde_json::from_str(json).context("Invalid receiver capability catalog")?;
+    ensure!(
+        catalog.schema_version == 1 && !catalog.capabilities.is_empty(),
+        "Invalid receiver capability schema"
+    );
+    let mut products = BTreeSet::new();
+    for capability in &catalog.capabilities {
+        ensure!(
+            products.insert(capability.product_id),
+            "Repeated receiver query product"
+        );
+        capability.validate_source()?;
     }
-    static CATALOG: OnceLock<Catalog> = OnceLock::new();
-    &CATALOG
-        .get_or_init(|| {
-            let catalog: Catalog = serde_json::from_str(include_str!(
-                "../../../../assets/data/receiver-query-capabilities.json"
-            ))
-            .expect("statically generated receiver capability asset must be valid");
-            assert_eq!(catalog.schema_version, 1);
-            catalog
-        })
-        .capabilities
+    Ok(catalog)
+}
+
+pub fn all() -> &'static [ReceiverCapability] {
+    static CATALOG: OnceLock<Vec<ReceiverCapability>> = OnceLock::new();
+    CATALOG.get_or_init(|| {
+        let products = crate::data::receiver_query_capabilities::products();
+        for product in &products {
+            product
+                .validate_source()
+                .expect("fixed receiver query table");
+        }
+        products
+    })
 }
 
 pub fn capability(product_id: u16) -> Option<&'static ReceiverCapability> {
@@ -102,5 +157,33 @@ pub fn for_source(
             Ok(selected)
         }
         Some(_) => anyhow::bail!("接收器查询 caller 与当前 factory 不匹配"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn receiver_catalog_validates_namespace_retry_shape_and_product_identity() {
+        let source = serde_json::json!({"schema_version":1,"scope":"receiver_queries","capabilities":[all()[0]]});
+        assert!(decode_catalog(&source.to_string()).is_ok());
+        for mutation in 0..4 {
+            let mut value = source.clone();
+            match mutation {
+                0 => value["capabilities"][0]["transaction_modulus"] = 0.into(),
+                1 => value["capabilities"][0]["report_bytes"] = 90.into(),
+                2 => value["capabilities"][0]["transaction_prefix"] = 1.into(),
+                3 => {
+                    let repeated = value["capabilities"][0].clone();
+                    value["capabilities"].as_array_mut().unwrap().push(repeated);
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                decode_catalog(&value.to_string()).is_err(),
+                "mutation {mutation}"
+            );
+        }
     }
 }

@@ -6,7 +6,9 @@ use anyhow::{Context as _, bail};
 use razer_device::backend::HidNode;
 use razer_platform::native_paths::EnginePaths;
 use serde_json::{Value, json};
-pub(super) fn leviathan_event_source(target:&razer_device::leviathan::EventTarget)->anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
+pub(super) fn leviathan_event_source(
+    target: &razer_device::leviathan::EventTarget,
+) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
     device_reads::leviathan_event_source(target)
 }
 pub(super) fn keyboard_latest_restore(
@@ -15,7 +17,11 @@ pub(super) fn keyboard_latest_restore(
 ) -> anyhow::Result<Value> {
     device_reads::keyboard_latest_restore(target, operation)
 }
-pub(super) fn keyboard_latest_event_source(target:&razer_device::keyboard_latest_protocol::Target)->anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>>{device_reads::keyboard_latest_event_source(target)}
+pub(super) fn keyboard_latest_event_source(
+    target: &razer_device::keyboard_latest_protocol::Target,
+) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
+    device_reads::keyboard_latest_event_source(target)
+}
 pub(super) fn keyboard_submission(
     target: &razer_device::device_reads::DeviceReadTarget,
     profile_guid: &str,
@@ -56,9 +62,11 @@ pub(super) fn mouse_runtime_artwork(
 ) -> anyhow::Result<()> {
     device_reads::mouse_runtime_artwork(target, canceled, publish)
 }
-pub(super) fn mouse_indicator_led_monitor(target: &razer_device::mouse_indicator_led::Target,
+pub(super) fn mouse_indicator_led_monitor(
+    target: &razer_device::mouse_indicator_led::Target,
     canceled: &std::sync::atomic::AtomicBool,
-    publish: &mut impl FnMut(razer_device::mouse_indicator_led::Notification) -> anyhow::Result<()>) -> anyhow::Result<()> {
+    publish: &mut impl FnMut(razer_device::mouse_indicator_led::Notification) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
     device_reads::mouse_indicator_led_monitor(target, canceled, publish)
 }
 pub(super) fn seiren_audio_capture(
@@ -385,9 +393,10 @@ impl NativeRuntime {
                 self.stop_controller_input(&owner_guid)
             }
             ServiceRequest::StartMappingKeyCapture => self.start_mapping_key_capture(),
-            ServiceRequest::StartKeyboardCalibrationCapture { product_id, container_id } => {
-                self.start_keyboard_calibration_capture(product_id, &container_id)
-            }
+            ServiceRequest::StartKeyboardCalibrationCapture {
+                product_id,
+                container_id,
+            } => self.start_keyboard_calibration_capture(product_id, &container_id),
             ServiceRequest::MappingKeyCaptureEvents => self.mapping_key_capture_events(),
             ServiceRequest::StopMappingKeyCapture => self.stop_mapping_key_capture(),
             ServiceRequest::StartShortcutCapture => self.start_shortcut_capture(),
@@ -588,7 +597,9 @@ impl NativeRuntime {
             ServiceRequest::DeviceMouseScroll { target, submission } => {
                 device_reads::mouse_scroll(&target, &submission)
             }
-            ServiceRequest::DeviceLeviathan { target, command } => device_reads::leviathan(&target,command),
+            ServiceRequest::DeviceLeviathan { target, command } => {
+                device_reads::leviathan(&target, command)
+            }
             ServiceRequest::DeviceMouseIndicatorLed { target, change } => {
                 device_reads::mouse_indicator_led(&target, &change)
             }
@@ -596,7 +607,10 @@ impl NativeRuntime {
                 self.seiren_audio.request(&target, &change)
             }
             ServiceRequest::SeirenNativeOpen { target } => self.seiren_audio.open(&target),
-            ServiceRequest::SeirenNativeCall { target, native_operation } => self.seiren_audio.call(&target,&native_operation),
+            ServiceRequest::SeirenNativeCall {
+                target,
+                native_operation,
+            } => self.seiren_audio.call(&target, &native_operation),
             ServiceRequest::SeirenNativeEvents { target } => self.seiren_audio.events(&target),
             ServiceRequest::SeirenNativeClose { target } => self.seiren_audio.close(&target),
             ServiceRequest::BleMouseCurrentPower { target, change } => {
@@ -631,9 +645,15 @@ impl NativeRuntime {
             ServiceRequest::StartOtfmRecording => self.start_otfm_recording(),
             ServiceRequest::QueryMacroRecordingStarted => self.query_macro_recording_started(),
             ServiceRequest::MacroRecorderGlobalState => self.macro_recorder_global_state(),
-            ServiceRequest::SetOtfmMappingsSuspended { suspended } => self.set_otfm_mappings_suspended(suspended),
-            ServiceRequest::MappingOtfmInputStart { owner_guid } => self.start_otfm_input(&owner_guid),
-            ServiceRequest::MacroRecorderStorageWrite { key, value } => self.macro_recorder_storage_write(&key, &value),
+            ServiceRequest::SetOtfmMappingsSuspended { suspended } => {
+                self.set_otfm_mappings_suspended(suspended)
+            }
+            ServiceRequest::MappingOtfmInputStart { owner_guid } => {
+                self.start_otfm_input(&owner_guid)
+            }
+            ServiceRequest::MacroRecorderStorageWrite { key, value } => {
+                self.macro_recorder_storage_write(&key, &value)
+            }
             ServiceRequest::StopMacroRecording => self.stop_macro_recording(),
             ServiceRequest::MacroRecordingEvents => Ok(self.macro_recorder.events()),
             ServiceRequest::SuspendMacroMappings => self.suspend_macro_mappings(),

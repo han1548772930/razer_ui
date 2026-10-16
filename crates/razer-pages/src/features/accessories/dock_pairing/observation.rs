@@ -48,7 +48,7 @@ pub struct DockPairingObservation {
     session: u64,
     kind: String,
     result: Option<Result<serde_json::Value, String>>,
-    continuation:bool,
+    continuation: bool,
 }
 impl DockPairingObservation {
     pub fn session(&self) -> u64 {
@@ -73,14 +73,23 @@ impl DockPairingObservation {
             session,
             kind: kind.into(),
             result: Some(result),
-            continuation:false,
+            continuation: false,
         }
     }
     /// Current192 Te may broadcast its setter error and then payload:{} for
     /// the same request when the recovery getter rejects. Keep that caller
     /// alive until its second source response; this does not retry a command.
-    pub fn intermediate_result(session:u64,kind:impl Into<String>,result:Result<serde_json::Value,String>)->Self {
-        Self{session,kind:kind.into(),result:Some(result),continuation:true}
+    pub fn intermediate_result(
+        session: u64,
+        kind: impl Into<String>,
+        result: Result<serde_json::Value, String>,
+    ) -> Self {
+        Self {
+            session,
+            kind: kind.into(),
+            result: Some(result),
+            continuation: true,
+        }
     }
     /// A publisher's acknowledgement of the already presented request progress.
     pub fn progress(session: u64, kind: impl Into<String>) -> Self {
@@ -88,7 +97,7 @@ impl DockPairingObservation {
             session,
             kind: kind.into(),
             result: None,
-            continuation:false,
+            continuation: false,
         }
     }
 }
@@ -209,7 +218,9 @@ impl PairingState {
             return (true, None, None);
         };
         self.pending = None;
-        if !observation.continuation {self.active = None;}
+        if !observation.continuation {
+            self.active = None;
+        }
         let applied = result.and_then(|payload| self.apply_result(&active, payload, dual));
         match applied {
             Ok(event) => (true, event, None),
@@ -380,19 +391,38 @@ mod tests {
 
     #[::core::prelude::v1::test]
     fn source192_failed_recovery_query_keeps_both_source_responses_for_same_request() {
-        let mut state=PairingState::default();
-        let read=state.request("DUALLINK_BIND_INFO",json!({}));
-        state.observe(DockPairingObservation::result(read.session(),read.kind(),Ok(json!([mouse()]))),true);
-        let unbind=state.request("DUALLINK_UNBIND_DEVICE",state.unpair_payload(Lane::Mouse,true).unwrap());
-        let (accepted,_,error)=state.observe(DockPairingObservation::intermediate_result(unbind.session(),unbind.kind(),Err("original setter rejection".into())),true);
-        assert!(accepted&&error.is_some());
-        assert_eq!(state.channel(Lane::Mouse).status,Status::UnpairFailed);
+        let mut state = PairingState::default();
+        let read = state.request("DUALLINK_BIND_INFO", json!({}));
+        state.observe(
+            DockPairingObservation::result(read.session(), read.kind(), Ok(json!([mouse()]))),
+            true,
+        );
+        let unbind = state.request(
+            "DUALLINK_UNBIND_DEVICE",
+            state.unpair_payload(Lane::Mouse, true).unwrap(),
+        );
+        let (accepted, _, error) = state.observe(
+            DockPairingObservation::intermediate_result(
+                unbind.session(),
+                unbind.kind(),
+                Err("original setter rejection".into()),
+            ),
+            true,
+        );
+        assert!(accepted && error.is_some());
+        assert_eq!(state.channel(Lane::Mouse).status, Status::UnpairFailed);
         assert!(state.active.is_some());
-        let (accepted,_,error)=state.observe(DockPairingObservation::result(unbind.session(),unbind.kind(),Ok(json!({}))),true);
-        assert!(accepted&&error.is_none());
-        assert_eq!(state.channel(Lane::Mouse).status,Status::Unpaired);
+        let (accepted, _, error) = state.observe(
+            DockPairingObservation::result(unbind.session(), unbind.kind(), Ok(json!({}))),
+            true,
+        );
+        assert!(accepted && error.is_none());
+        assert_eq!(state.channel(Lane::Mouse).status, Status::Unpaired);
         assert!(state.active.is_none());
-        let (accepted,_,_)=state.observe(DockPairingObservation::result(unbind.session(),unbind.kind(),Ok(json!({}))),true);
+        let (accepted, _, _) = state.observe(
+            DockPairingObservation::result(unbind.session(), unbind.kind(), Ok(json!({}))),
+            true,
+        );
         assert!(!accepted);
     }
 

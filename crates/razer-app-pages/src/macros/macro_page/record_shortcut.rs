@@ -20,10 +20,7 @@ struct Data {
 }
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("record_options_data.json"))
-            .expect("current ordered Macro shortcut keys")
-    })
+    DATA.get_or_init(|| crate::data::record_shortcut_data!())
 }
 
 pub struct ShortcutUi {

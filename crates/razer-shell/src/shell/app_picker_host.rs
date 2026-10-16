@@ -206,9 +206,10 @@ mod tests {
             );
             assert!(
                 razer_assets::SynapseAssets
-                    .load(item.icon())
+                    .list(item.icon())
                     .unwrap()
-                    .is_some()
+                    .iter()
+                    .any(|alias| alias.as_ref() == item.icon())
             );
             assert_eq!(restored.layout_id, 0);
             assert!(restored.dashboard.connection_observation.is_none());

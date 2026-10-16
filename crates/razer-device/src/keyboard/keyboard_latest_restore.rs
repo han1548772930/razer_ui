@@ -23,32 +23,47 @@ pub const STORAGE_FIELD: &str = "_keyboard756_mapping_document";
 /// which must be restored on the device.
 #[derive(Clone, Debug)]
 pub enum ProfileMutation {
-    Reset { previous_profile: Value, bindings_only: bool },
-    Delete { previous_active: Value, deleted_guid: String },
+    Reset {
+        previous_profile: Value,
+        bindings_only: bool,
+    },
+    Delete {
+        previous_active: Value,
+        deleted_guid: String,
+    },
 }
 
 /// Current50574 Xf/If retain name/GUID and restore only mappings for the
 /// keybind action. Registered presets inject their source mappings; an
 /// ordinary user profile has no injected mappings.
 pub fn reset_profile_candidate(profile: &Value, bindings_only: bool) -> anyhow::Result<Value> {
-    let guid = profile["guid"].as_str().context("756 reset profile GUID is absent")?;
-    let name = profile["name"].as_str().context("756 reset profile name is absent")?;
+    let guid = profile["guid"]
+        .as_str()
+        .context("756 reset profile GUID is absent")?;
+    let name = profile["name"]
+        .as_str()
+        .context("756 reset profile name is absent")?;
     let source = crate::keyboard_latest_mapping::source();
-    let mut candidate = if bindings_only { profile.clone() } else {
+    let mut candidate = if bindings_only {
+        profile.clone()
+    } else {
         crate::keyboard_latest_mapping::default_profile()
     };
     candidate["guid"] = json!(guid);
     candidate["name"] = json!(name);
     candidate["mappings"] = json!([]);
-    let preset = source["onboard_presets"].as_array()
-        .context("756 registered onboard presets are absent")?
-        .iter().any(|preset| preset["guid"] == guid);
+    let preset = crate::keyboard_latest_mapping::is_onboard_preset(guid);
     if preset {
-        let mappings = source["preset_mappings"].as_array()
+        let mappings = source["preset_mappings"]
+            .as_array()
             .context("756 preset mapping table is absent")?
-            .iter().find(|entry| entry[0] == guid)
+            .iter()
+            .find(|entry| entry[0] == guid)
             .context("756 registered preset mappings are absent")?;
-        ensure!(mappings[1].is_array(), "756 preset mappings are not an array");
+        ensure!(
+            mappings[1].is_array(),
+            "756 preset mappings are not an array"
+        );
         candidate["mappings"] = mappings[1].clone();
     }
     Ok(candidate)
@@ -166,31 +181,46 @@ pub struct Slot {
 /// Current51765.Ye/Ve display metadata. The inventory reader supplies every
 /// value; guest ownership is the retained source constant, never a lock getter.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct OnboardProfile {
-    slot_id:u8,
-    guid:String,
-    name:String,
-    owner:String,
-    locked:bool,
+    slot_id: u8,
+    guid: String,
+    name: String,
+    owner: String,
+    locked: bool,
 }
 impl OnboardProfile {
-    pub fn observe(metadata:&crate::keyboard_latest_protocol::ProfileMetadata)->anyhow::Result<Self> {
-        let source=crate::keyboard_latest_mapping::source();
-        let guest=source["guest_profile_owner"].as_str().context("756 guest profile owner is absent")?;
-        let preset=source["onboard_presets"].as_array().context("756 registered onboard presets are absent")?
-            .iter().any(|profile|profile["guid"]==metadata.guid);
-        let factory=metadata.name=="Factory Default";
-        let factory_slot=preset&&factory&&metadata.slot_id==2;
-        let owner=metadata.owner.replace('\0',"");
-        Ok(Self{slot_id:metadata.slot_id,guid:metadata.guid.clone(),name:metadata.name.clone(),
-            locked:!((preset&&!factory)||(!factory_slot&&owner==guest)),owner})
+    pub fn observe(
+        metadata: &crate::keyboard_latest_protocol::ProfileMetadata,
+    ) -> anyhow::Result<Self> {
+        let guest = crate::keyboard_latest_mapping::guest_profile_owner();
+        let preset = crate::keyboard_latest_mapping::is_onboard_preset(&metadata.guid);
+        let factory = metadata.name == "Factory Default";
+        let factory_slot = preset && factory && metadata.slot_id == 2;
+        let owner = metadata.owner.replace('\0', "");
+        Ok(Self {
+            slot_id: metadata.slot_id,
+            guid: metadata.guid.clone(),
+            name: metadata.name.clone(),
+            locked: !((preset && !factory) || (!factory_slot && owner == guest)),
+            owner,
+        })
     }
-    pub fn slot_id(&self)->u8 {self.slot_id}
-    pub fn guid(&self)->&str {&self.guid}
-    pub fn name(&self)->&str {&self.name}
-    pub fn owner(&self)->&str {&self.owner}
-    pub fn is_locked(&self)->bool {self.locked}
+    pub fn slot_id(&self) -> u8 {
+        self.slot_id
+    }
+    pub fn guid(&self) -> &str {
+        &self.guid
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn owner(&self) -> &str {
+        &self.owner
+    }
+    pub fn is_locked(&self) -> bool {
+        self.locked
+    }
 }
 pub fn slots(observed: &[Slot]) -> Vec<Slot> {
     let mut result = [

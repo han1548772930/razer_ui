@@ -198,10 +198,14 @@ impl LeviathanRequest {
     pub fn persists(&self) -> bool {
         self.persist && self.operation.profile_field().is_some()
     }
-    pub fn writes_device(&self)->bool {self.hardware_output.is_none()}
-    pub fn profile_field(&self)->Option<(&'static str,serde_json::Value)> {
-        self.hardware_output.as_ref().map(|value|("audioOutputSource",serde_json::json!(value)))
-            .or_else(||self.operation.profile_field())
+    pub fn writes_device(&self) -> bool {
+        self.hardware_output.is_none()
+    }
+    pub fn profile_field(&self) -> Option<(&'static str, serde_json::Value)> {
+        self.hardware_output
+            .as_ref()
+            .map(|value| ("audioOutputSource", serde_json::json!(value)))
+            .or_else(|| self.operation.profile_field())
     }
 }
 #[derive(Clone, Debug)]
@@ -263,7 +267,9 @@ impl State {
 }
 impl Drop for State {
     fn drop(&mut self) {
-        if let Some(guard)=&self.monitor_guard {guard.store(false,Ordering::Release);}
+        if let Some(guard) = &self.monitor_guard {
+            guard.store(false, Ordering::Release);
+        }
         for request in self.pending.values() {
             request.guard.store(false, Ordering::Release);
         }
@@ -272,7 +278,9 @@ impl Drop for State {
 impl EventEmitter<LeviathanRequest> for AudioProductWorkspace {}
 impl AudioProductWorkspace {
     pub(super) fn dismiss_leviathan_page(&mut self) {
-        if let Some(guard)=self.leviathan.monitor_guard.take(){guard.store(false,Ordering::Release);}
+        if let Some(guard) = self.leviathan.monitor_guard.take() {
+            guard.store(false, Ordering::Release);
+        }
         self.leviathan.input_popup = false;
         self.leviathan.bass_timer = None;
         for request in self.leviathan.pending.values() {
@@ -355,7 +363,12 @@ impl AudioProductWorkspace {
         }
         self.leviathan.bass_timer = None;
         self.leviathan.visible = value;
-        self.leviathan.source_output=if self.leviathan.visible.headset_output {"HEADSET"}else{"SOUNDBAR"}.into();
+        self.leviathan.source_output = if self.leviathan.visible.headset_output {
+            "HEADSET"
+        } else {
+            "SOUNDBAR"
+        }
+        .into();
         self.leviathan.observed = true;
         if let Some(bass) = &self.leviathan.bass {
             self.syncing = true;
@@ -396,8 +409,8 @@ impl AudioProductWorkspace {
                 if let Some(connected) = report.headphone_connected {
                     self.leviathan.visible.headset_connected = connected;
                     if !connected {
-                        self.leviathan.visible.headset_output=false;
-                        self.leviathan.source_output="SOUNDBAR".into();
+                        self.leviathan.visible.headset_output = false;
+                        self.leviathan.source_output = "SOUNDBAR".into();
                     }
                     self.leviathan.observed = true;
                 }
@@ -424,7 +437,7 @@ impl AudioProductWorkspace {
             }
             LeviathanOperation::Output { headset } => {
                 self.leviathan.visible.headset_output = headset;
-                self.leviathan.source_output=if headset {"HEADSET"}else{"SOUNDBAR"}.into();
+                self.leviathan.source_output = if headset { "HEADSET" } else { "SOUNDBAR" }.into();
             }
             LeviathanOperation::AudioMode { mode } => self.leviathan.visible.audio_mode = mode,
             LeviathanOperation::BluetoothInput => {}
@@ -440,9 +453,15 @@ impl AudioProductWorkspace {
         persist: bool,
         cx: &mut Context<Self>,
     ) {
-        self.emit_leviathan(operation,persist,None,cx);
+        self.emit_leviathan(operation, persist, None, cx);
     }
-    fn emit_leviathan(&mut self,operation:LeviathanOperation,persist:bool,hardware_output:Option<String>,cx:&mut Context<Self>) {
+    fn emit_leviathan(
+        &mut self,
+        operation: LeviathanOperation,
+        persist: bool,
+        hardware_output: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
         self.leviathan.generation = self.leviathan.generation.wrapping_add(1);
         let request = LeviathanRequest {
             generation: self.leviathan.generation,
@@ -451,39 +470,73 @@ impl AudioProductWorkspace {
             hardware_output,
             guard: Arc::new(AtomicBool::new(true)),
         };
-        if operation==LeviathanOperation::ReadIo {self.leviathan.monitor_guard=Some(request.guard());}
+        if operation == LeviathanOperation::ReadIo {
+            self.leviathan.monitor_guard = Some(request.guard());
+        }
         self.leviathan
             .pending
             .insert(request.generation, request.clone());
         cx.emit(request);
         cx.notify();
     }
-    pub fn finish_leviathan_local(&mut self,generation:u64,cx:&mut Context<Self>) {
-        self.leviathan.pending.remove(&generation);cx.notify();
+    pub fn finish_leviathan_local(&mut self, generation: u64, cx: &mut Context<Self>) {
+        self.leviathan.pending.remove(&generation);
+        cx.notify();
     }
-    pub fn observe_leviathan_notification(&mut self,guard:&Arc<AtomicBool>,event:razer_device::leviathan::Notification,cx:&mut Context<Self>) {
-        if !guard.load(Ordering::Acquire)||!self.leviathan.monitor_guard.as_ref().is_some_and(|current|Arc::ptr_eq(current,guard)){return;}
+    pub fn observe_leviathan_notification(
+        &mut self,
+        guard: &Arc<AtomicBool>,
+        event: razer_device::leviathan::Notification,
+        cx: &mut Context<Self>,
+    ) {
+        if !guard.load(Ordering::Acquire)
+            || !self
+                .leviathan
+                .monitor_guard
+                .as_ref()
+                .is_some_and(|current| Arc::ptr_eq(current, guard))
+        {
+            return;
+        }
         use razer_device::leviathan::Notification;
         match event {
-            Notification::Io{headphone,..}=>{
-                self.leviathan.visible.headset_connected=headphone==1;
-                if headphone!=1 {self.leviathan.source_output="SOUNDBAR".into();self.leviathan.visible.headset_output=false;}
+            Notification::Io { headphone, .. } => {
+                self.leviathan.visible.headset_connected = headphone == 1;
+                if headphone != 1 {
+                    self.leviathan.source_output = "SOUNDBAR".into();
+                    self.leviathan.visible.headset_output = false;
+                }
                 // The current MW device-event branch writes these title-case
                 // names locally. It does not enqueue another device setter.
-                let source=if headphone==1 {"Headset"}else{"Soundbar"}.to_owned();
-                self.draft["profile"]["audioOutputSource"]=serde_json::json!(source);
-                self.emit_leviathan(LeviathanOperation::Output{headset:headphone==1},true,Some(source),cx);
+                let source = if headphone == 1 { "Headset" } else { "Soundbar" }.to_owned();
+                self.draft["profile"]["audioOutputSource"] = serde_json::json!(source);
+                self.emit_leviathan(
+                    LeviathanOperation::Output {
+                        headset: headphone == 1,
+                    },
+                    true,
+                    Some(source),
+                    cx,
+                );
             }
-            Notification::Mode{mode}=>self.leviathan.visible.audio_mode=mode,
-            Notification::Output{state}=>{
+            Notification::Mode { mode } => self.leviathan.visible.audio_mode = mode,
+            Notification::Output { state } => {
                 // np(OutputEnum,state) preserves the original enum key case.
-                self.leviathan.source_output=match state {0=>"Soundbar",1=>"Headset",_=>""}.into();
-                self.leviathan.visible.headset_output=false;
+                self.leviathan.source_output = match state {
+                    0 => "Soundbar",
+                    1 => "Headset",
+                    _ => "",
+                }
+                .into();
+                self.leviathan.visible.headset_output = false;
             }
-            Notification::Camera{locked,..}=>self.leviathan.visible.camera_tracking=locked==1,
-            Notification::Input{..}=>{},
+            Notification::Camera { locked, .. } => {
+                self.leviathan.visible.camera_tracking = locked == 1
+            }
+            Notification::Input { .. } => {}
         }
-        self.leviathan.observed=true;cx.notify();
+        self.leviathan.observed = true;
+        cx.notify();
     }
     pub fn set_leviathan_active(&mut self, active: bool, cx: &mut Context<Self>) {
         if self.spec.product_id != 1352 {
@@ -546,7 +599,10 @@ impl AudioProductWorkspace {
             .unwrap_or(true);
         self.leviathan.visible.headset_output =
             profile.is_some_and(|profile| profile["audioOutputSource"] == "HEADSET");
-        self.leviathan.source_output=profile.and_then(|profile|profile["audioOutputSource"].as_str()).unwrap_or("SOUNDBAR").into();
+        self.leviathan.source_output = profile
+            .and_then(|profile| profile["audioOutputSource"].as_str())
+            .unwrap_or("SOUNDBAR")
+            .into();
         self.leviathan.visible.audio_mode = profile
             .and_then(|profile| profile["audioModeSelected"].as_u64())
             .filter(|mode| *mode <= 3)
@@ -554,7 +610,8 @@ impl AudioProductWorkspace {
         if let Some(bass) = bass.filter(|bass| bass.is_object()) {
             self.draft["profile"]["subWooferLevel"] = bass.clone();
         }
-        self.draft["profile"]["audioOutputSource"] = serde_json::json!(self.leviathan.source_output);
+        self.draft["profile"]["audioOutputSource"] =
+            serde_json::json!(self.leviathan.source_output);
         self.draft["profile"]["audioModeSelected"] =
             serde_json::json!(self.leviathan.visible.audio_mode);
         self.leviathan.restore_pending = true;

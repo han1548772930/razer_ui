@@ -15,9 +15,18 @@ pub struct ShortcutEvent {
     time_tick: u64,
 }
 impl ShortcutEvent {
-    pub(crate) fn new(shortcut: Shortcut,time_tick:u64)->Self { Self{shortcut,time_tick} }
-    pub fn shortcut(&self)->&Shortcut { &self.shortcut }
-    pub fn time_tick(&self)->u64 { self.time_tick }
+    pub(crate) fn new(shortcut: Shortcut, time_tick: u64) -> Self {
+        Self {
+            shortcut,
+            time_tick,
+        }
+    }
+    pub fn shortcut(&self) -> &Shortcut {
+        &self.shortcut
+    }
+    pub fn time_tick(&self) -> u64 {
+        self.time_tick
+    }
 }
 
 /// Current JS turnModifiersToNumber and the native 0x143e0 modifier groups.
@@ -81,7 +90,8 @@ impl GlobalShortcuts {
             // A Macro capture may disable it before a Mixer registers presets;
             // retain that state in the owner used by later registration.
             if self.listener.is_none() {
-                self.listener = Some(crate::platform::windows::global_shortcuts::Listener::start()?);
+                self.listener =
+                    Some(crate::platform::windows::global_shortcuts::Listener::start()?);
             }
             return self.listener.as_ref().unwrap().enable(enable);
         }

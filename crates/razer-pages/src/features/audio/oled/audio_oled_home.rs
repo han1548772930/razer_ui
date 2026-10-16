@@ -33,10 +33,7 @@ struct Spec {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_oled_home_data.json"))
-            .expect("validated 1383 OLED home data")
-    })
+    SPEC.get_or_init(|| crate::data::audio_oled_home_data!())
 }
 fn label(symbol: &str) -> String {
     t(&spec().labels[symbol])

@@ -11,18 +11,15 @@ mod microphone_dsp;
 #[path = "seiren_eq_native.rs"]
 mod native;
 pub use native::{
-    Level, NativeLevels, NativeOperation, NativeReply, NativeStage, NativeTransport, execute_native,
-    execute_native_in_session,
+    Level, NativeLevels, NativeOperation, NativeReply, NativeStage, NativeTransport,
+    execute_native, execute_native_in_session,
 };
 
 pub fn capability(product_id: u32) -> Option<&'static DeviceReadCapability> {
     static CAPS: OnceLock<Vec<DeviceReadCapability>> = OnceLock::new();
-    CAPS.get_or_init(|| {
-        serde_json::from_str(include_str!("seiren_eq_data.json"))
-            .expect("current Seiren EQ transport capabilities")
-    })
-    .iter()
-    .find(|cap| cap.product_id == product_id)
+    CAPS.get_or_init(|| crate::data::seiren_eq_data::seiren_eq_data!())
+        .iter()
+        .find(|cap| cap.product_id == product_id)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

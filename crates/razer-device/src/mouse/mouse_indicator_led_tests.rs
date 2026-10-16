@@ -195,20 +195,37 @@ fn source_index_sort_is_stable_and_does_not_require_total_order_from_json() {
         {"index":2,"id":"d"},{"index":0,"id":"e"}
     ]);
     let (sorted, _) = prepare_source_configuration(&input).unwrap();
-    assert_eq!(sorted.as_array().unwrap().iter().map(|entry| entry["id"].as_str().unwrap()).collect::<Vec<_>>(), ["e","b","c","d","a"]);
+    assert_eq!(
+        sorted
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|entry| entry["id"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["e", "b", "c", "d", "a"]
+    );
     // The JS comparator makes missing/object indices compare equal to every
     // number. Preserve all records without feeding that non-total comparator
     // into slice::sort, whose contract permits a panic for this input.
-    let input = serde_json::Value::Array((0..128).map(|id| match id % 3 {
-        0 => json!({"index":127-id,"id":id}),
-        1 => json!({"id":id}),
-        _ => json!({"index":{},"id":id}),
-    }).collect());
+    let input = serde_json::Value::Array(
+        (0..128)
+            .map(|id| match id % 3 {
+                0 => json!({"index":127-id,"id":id}),
+                1 => json!({"id":id}),
+                _ => json!({"index":{},"id":id}),
+            })
+            .collect(),
+    );
     let (sorted, bytes) = prepare_source_configuration(&input).unwrap();
-    let mut ids = sorted.as_array().unwrap().iter().map(|entry|entry["id"].as_u64().unwrap()).collect::<Vec<_>>();
+    let mut ids = sorted
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["id"].as_u64().unwrap())
+        .collect::<Vec<_>>();
     ids.sort_unstable();
-    assert_eq!(ids,(0..128).collect::<Vec<_>>());
-    assert_eq!(bytes,vec![0;128]);
+    assert_eq!(ids, (0..128).collect::<Vec<_>>());
+    assert_eq!(bytes, vec![0; 128]);
 }
 
 #[test]

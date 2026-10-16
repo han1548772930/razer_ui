@@ -17,10 +17,7 @@ struct Icons {
 
 fn icons() -> &'static Icons {
     static ICONS: OnceLock<Icons> = OnceLock::new();
-    ICONS.get_or_init(|| {
-        serde_json::from_str(include_str!("app_picker_icons_data.json"))
-            .expect("verified current app menu category vectors and local catalog icons")
-    })
+    ICONS.get_or_init(|| crate::data::app_picker_icons_data!())
 }
 
 /// Observed fields follow the source U selector, including its absent branch.

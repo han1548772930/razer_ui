@@ -334,8 +334,20 @@ pub fn ble_frame(
     element: u8,
     data: &[u8],
 ) -> anyhow::Result<Vec<u8>> {
-    ensure!(transaction < 31 && data.len() <= 255, "756 BLE command header is invalid");
-    let mut frame = vec![transaction, data.len() as u8, 0, 0, command[1], command[2], profile, element];
+    ensure!(
+        transaction < 31 && data.len() <= 255,
+        "756 BLE command header is invalid"
+    );
+    let mut frame = vec![
+        transaction,
+        data.len() as u8,
+        0,
+        0,
+        command[1],
+        command[2],
+        profile,
+        element,
+    ];
     frame.extend_from_slice(data);
     Ok(frame)
 }
@@ -350,31 +362,61 @@ pub fn execute_ble(
         Operation::BleSlot { set } => {
             ensure!(*set != Some(0), "756 BLE profile slot is zero");
             let data = set.map(|slot| vec![slot]).unwrap_or_default();
-            let acknowledgement = exchange([data.len() as u8, 3, if set.is_some() { 2 } else { 130 }], 0, 0, &data)?;
-            let slot = if set.is_some() { None } else {
-                Some(keyboard_latest_restore::ble_profile_response(&acknowledgement)?)
+            let acknowledgement = exchange(
+                [data.len() as u8, 3, if set.is_some() { 2 } else { 130 }],
+                0,
+                0,
+                &data,
+            )?;
+            let slot = if set.is_some() {
+                None
+            } else {
+                Some(keyboard_latest_restore::ble_profile_response(
+                    &acknowledgement,
+                )?)
             };
-            Ok(Reply::BleSlot { slot, acknowledgement })
+            Ok(Reply::BleSlot {
+                slot,
+                acknowledgement,
+            })
         }
         Operation::ReadTimeToDim { slot } => {
             let batteries = exchange([0, 5, 128], 0, 1, &[])?;
             let battery = batteries.first().copied().unwrap_or(1);
             let bytes = exchange([0, 5, 138], *slot, battery, &[])?;
             ensure!(bytes.len() >= 4, "756 BLE dim response is truncated");
-            Ok(Reply::TimeToDim { slot: *slot, enabled: bytes[0] == 1,
-                seconds: u16::from_le_bytes([bytes[1], bytes[2]]), brightness: bytes[3], bytes })
+            Ok(Reply::TimeToDim {
+                slot: *slot,
+                enabled: bytes[0] == 1,
+                seconds: u16::from_le_bytes([bytes[1], bytes[2]]),
+                brightness: bytes[3],
+                bytes,
+            })
         }
         Operation::ReadAutoSleepMode { slot } => {
             let bytes = exchange([0, 5, 135], *slot, 1, &[])?;
-            let enabled = *bytes.first().context("756 BLE auto-sleep response is empty")? == 1;
-            Ok(Reply::AutoSleepMode { slot: *slot, enabled, bytes })
+            let enabled = *bytes
+                .first()
+                .context("756 BLE auto-sleep response is empty")?
+                == 1;
+            Ok(Reply::AutoSleepMode {
+                slot: *slot,
+                enabled,
+                bytes,
+            })
         }
         Operation::ReadTimeToSleep => {
             let bytes = exchange([0, 5, 132], 0, 0, &[])?;
             ensure!(bytes.len() >= 2, "756 BLE sleep response is truncated");
-            Ok(Reply::TimeToSleep { seconds: u16::from_le_bytes([bytes[0], bytes[1]]), bytes })
+            Ok(Reply::TimeToSleep {
+                seconds: u16::from_le_bytes([bytes[0], bytes[1]]),
+                bytes,
+            })
         }
-        _ => anyhow::bail!("756 BLE command has no current protocol30 adapter: {}", serde_json::to_string(operation)?),
+        _ => anyhow::bail!(
+            "756 BLE command has no current protocol30 adapter: {}",
+            serde_json::to_string(operation)?
+        ),
     }
 }
 pub fn capability(physical: u32) -> anyhow::Result<&'static DeviceReadCapability> {
@@ -411,9 +453,18 @@ fn guid_text(bytes: &[u8]) -> String {
 }
 fn settings(setting: &Setting) -> anyhow::Result<([u8; 3], Vec<u8>)> {
     let (command, payload) = match setting {
-        Setting::ButtonAssignment { slot, key_id, mode, fn_id, data_size, data } => {
-            ensure!(*mode <= 1 && *data_size <= 5,
-                "756 button assignment mode/data size is invalid");
+        Setting::ButtonAssignment {
+            slot,
+            key_id,
+            mode,
+            fn_id,
+            data_size,
+            data,
+        } => {
+            ensure!(
+                *mode <= 1 && *data_size <= 5,
+                "756 button assignment mode/data size is invalid"
+            );
             let mut payload = vec![*slot, *key_id, *mode, *fn_id, *data_size];
             payload.extend_from_slice(data);
             // The source passes 80 padded bytes with packetSizeSet=10.
@@ -967,7 +1018,10 @@ pub fn execute_hid(
             command,
             &payload,
             next()?,
-            if matches!(operation, Operation::Setting(Setting::ButtonAssignment { .. })) {
+            if matches!(
+                operation,
+                Operation::Setting(Setting::ButtonAssignment { .. })
+            ) {
                 10
             } else {
                 payload.len() as u8

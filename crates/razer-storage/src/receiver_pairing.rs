@@ -1,16 +1,25 @@
 //! Original 164/241 ye/ge duallink-devices JSON semantics adapted to a local
 //! document. Only caller-confirmed hardware outcomes may add/remove bindings.
 //! Runtime serial state is observation-only and is never persisted as a read.
+use crate::{
+    data::receiver_pairing_catalog::{MASTERS, RADIO_IDS},
+    receiver_defaults::PairingMaster,
+    receiver_document::{Field, PairingCategory, PairingRecord},
+};
 use anyhow::{Context as _, ensure};
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de::{MapAccess, Visitor}, ser::SerializeMap};
-use serde_json::{Map, Value, json};
-use std::{collections::BTreeMap, path::Path, sync::OnceLock};
+use serde::{
+    Deserialize, Deserializer, Serialize, Serializer,
+    de::{MapAccess, Visitor},
+    ser::SerializeMap,
+};
+use serde_json::{Value, json};
+use std::{collections::BTreeMap, path::Path};
 
 #[derive(Default)]
 pub struct PairingCache {
-    records: Map<String, Value>,
+    records: BTreeMap<String, PairingRecord>,
     order: Vec<String>,
-    disk_snapshot: Option<Map<String, Value>>,
+    disk_snapshot: Option<BTreeMap<String, PairingRecord>>,
     disk_order: Option<Vec<String>>,
     serials: BTreeMap<String, String>,
     primary: u16,
@@ -20,24 +29,37 @@ pub struct PairingCache {
 // JS Object.values visits non-index keys in insertion order. serde_json's
 // default Map sorts keys, which changes UZ/J's first matching role decision.
 #[derive(Default)]
-struct OrderedRecords { records: Map<String, Value>, order: Vec<String> }
+struct OrderedRecords {
+    records: BTreeMap<String, PairingRecord>,
+    order: Vec<String>,
+}
 impl<'de> Deserialize<'de> for OrderedRecords {
-    fn deserialize<D: Deserializer<'de>>(deserializer:D)->Result<Self,D::Error> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         struct RecordsVisitor;
         impl<'de> Visitor<'de> for RecordsVisitor {
-            type Value=OrderedRecords;
-            fn expecting(&self,formatter:&mut std::fmt::Formatter<'_>)->std::fmt::Result {formatter.write_str("source duallink-devices object")}
-            fn visit_map<A:MapAccess<'de>>(self,mut map:A)->Result<Self::Value,A::Error> {
-                let mut value=OrderedRecords::default();
-                while let Some((key,row))=map.next_entry::<String,Value>()? {
-                    if !value.records.contains_key(&key) {value.order.push(key.clone());}
-                    value.records.insert(key,row);
+            type Value = OrderedRecords;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("source duallink-devices object")
+            }
+            fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut value = OrderedRecords::default();
+                while let Some((key, row)) = map.next_entry::<String, PairingRecord>()? {
+                    if !value.records.contains_key(&key) {
+                        value.order.push(key.clone());
+                    }
+                    value.records.insert(key, row);
                 }
                 // Integer array-index properties precede other string keys.
-                fn index(key:&str)->Option<u32> {key.parse::<u32>().ok().filter(|index|*index<u32::MAX&&index.to_string()==key)}
-                value.order.sort_by(|a,b|match(index(a),index(b)) {
-                    (Some(a),Some(b))=>a.cmp(&b),(Some(_),None)=>std::cmp::Ordering::Less,
-                    (None,Some(_))=>std::cmp::Ordering::Greater,(None,None)=>std::cmp::Ordering::Equal,
+                fn index(key: &str) -> Option<u32> {
+                    key.parse::<u32>()
+                        .ok()
+                        .filter(|index| *index < u32::MAX && index.to_string() == key)
+                }
+                value.order.sort_by(|a, b| match (index(a), index(b)) {
+                    (Some(a), Some(b)) => a.cmp(&b),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
                 });
                 Ok(value)
             }
@@ -45,11 +67,18 @@ impl<'de> Deserialize<'de> for OrderedRecords {
         deserializer.deserialize_map(RecordsVisitor)
     }
 }
-struct OrderedView<'a> {records:&'a Map<String,Value>,order:&'a [String]}
+struct OrderedView<'a> {
+    records: &'a BTreeMap<String, PairingRecord>,
+    order: &'a [String],
+}
 impl Serialize for OrderedView<'_> {
-    fn serialize<S:Serializer>(&self,serializer:S)->Result<S::Ok,S::Error> {
-        let mut map=serializer.serialize_map(Some(self.records.len()))?;
-        for key in self.order {if let Some(value)=self.records.get(key) {map.serialize_entry(key,value)?;}}
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(self.records.len()))?;
+        for key in self.order {
+            if let Some(value) = self.records.get(key) {
+                map.serialize_entry(key, value)?;
+            }
+        }
         map.end()
     }
 }
@@ -79,23 +108,10 @@ fn validate_container(container: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn catalog() -> &'static Value {
-    static CATALOG: OnceLock<Value> = OnceLock::new();
-    CATALOG.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../assets/data/receiver-pairing-catalog.json"
-        ))
-        .expect("current receiver pairing catalog")
-    })
-}
-
-fn master(receiver_pid: u16) -> anyhow::Result<Value> {
-    catalog()["masters"]
-        .as_array()
-        .context("缺少配对主设备目录")?
+fn master(receiver_pid: u16) -> anyhow::Result<&'static PairingMaster> {
+    MASTERS
         .iter()
-        .find(|row| row["productId"] == receiver_pid || row["dongleId"] == receiver_pid)
-        .cloned()
+        .find(|row| row.product_id == receiver_pid || row.dongle_id == receiver_pid)
         .context("主设备没有当前配对存储证据")
 }
 
@@ -105,10 +121,16 @@ impl PairingCache {
             Ok(serde_json::from_str::<OrderedRecords>(text)?)
         })?;
         Ok(Self {
-            records: previous.as_ref().map(|value|value.records.clone()).unwrap_or_default(),
-            order: previous.as_ref().map(|value|value.order.clone()).unwrap_or_default(),
-            disk_snapshot: previous.as_ref().map(|value|value.records.clone()),
-            disk_order: previous.map(|value|value.order),
+            records: previous
+                .as_ref()
+                .map(|value| value.records.clone())
+                .unwrap_or_default(),
+            order: previous
+                .as_ref()
+                .map(|value| value.order.clone())
+                .unwrap_or_default(),
+            disk_snapshot: previous.as_ref().map(|value| value.records.clone()),
+            disk_order: previous.map(|value| value.order),
             ..Self::default()
         })
     }
@@ -118,19 +140,26 @@ impl PairingCache {
             Ok(serde_json::from_str::<OrderedRecords>(text)?)
         })?;
         ensure!(
-            observed.as_ref().map(|value|&value.records) == self.disk_snapshot.as_ref()
-                && observed.as_ref().map(|value|&value.order) == self.disk_order.as_ref(),
+            observed.as_ref().map(|value| &value.records) == self.disk_snapshot.as_ref()
+                && observed.as_ref().map(|value| &value.order) == self.disk_order.as_ref(),
             "配对存储在操作期间发生变化，未覆盖其他物理设备记录"
         );
-        super::write_document(path, &OrderedView{records:&self.records,order:&self.order}, |previous| {
-            let previous: OrderedRecords = serde_json::from_str(previous)?;
-            ensure!(
-                Some(&previous.records) == self.disk_snapshot.as_ref()
-                    && Some(&previous.order) == self.disk_order.as_ref(),
-                "配对存储在保存前发生变化"
-            );
-            Ok(())
-        })?;
+        super::write_document(
+            path,
+            &OrderedView {
+                records: &self.records,
+                order: &self.order,
+            },
+            |previous| {
+                let previous: OrderedRecords = serde_json::from_str(previous)?;
+                ensure!(
+                    Some(&previous.records) == self.disk_snapshot.as_ref()
+                        && Some(&previous.order) == self.disk_order.as_ref(),
+                    "配对存储在保存前发生变化"
+                );
+                Ok(())
+            },
+        )?;
         self.disk_snapshot = Some(self.records.clone());
         self.disk_order = Some(self.order.clone());
         Ok(())
@@ -172,27 +201,25 @@ impl PairingCache {
     ) -> anyhow::Result<bool> {
         validate_container(container)?;
         let source756 = source_product_id == Some(756);
+        let category = PairingCategory::parse(category)?;
         ensure!(
-            (product_id > 0 || source756)
-                && dongle_id > 0
-                && dongle_id != u16::MAX
-                && matches!(category, "MOUSE" | "KEYBOARD"),
+            (product_id > 0 || source756) && dongle_id > 0 && dongle_id != u16::MAX,
             "配对缓存缺少真实产品和类别"
         );
         let mut master = master(receiver_pid)?;
         if source756 {
-            ensure!(category == "MOUSE", "756 配对缓存类别与原 factory 不符");
             ensure!(
-                catalog()["devices"]
-                    .as_array()
-                    .is_some_and(|rows| rows.iter().any(|row| row["DeviceDonglePid"] == dongle_id)),
+                category == PairingCategory::Mouse,
+                "756 配对缓存类别与原 factory 不符"
+            );
+            ensure!(
+                RADIO_IDS.contains(&dongle_id),
                 "756 配对回调没有解析当前目录 radio，不能保存源缓存"
             );
             master = self::master(756)?;
         }
         // Source X/ye stores identity and the factory interface only. UI
         // canPairTwoDevices belongs to the source DeviceInfo catalog.
-        master.as_object_mut().unwrap().remove("canPairTwoDevices");
         let device_key = key(dongle_id, container);
         if self.records.contains_key(&device_key) {
             self.primary = receiver_pid;
@@ -200,7 +227,18 @@ impl PairingCache {
             return Ok(false);
         }
         self.order.push(device_key.clone());
-        self.records.insert(device_key, json!({"vendorId":5426,"productId":product_id,"dongleId":dongle_id,"deviceContainerId":container,"category":category,"master":master}));
+        self.records.insert(
+            device_key,
+            PairingRecord {
+                vendor_id: Field::set(5426),
+                product_id: Field::set(product_id),
+                dongle_id: Field::set(dongle_id),
+                device_container_id: Field::set(container.to_owned()),
+                category: Field::set(category),
+                master: Field::set(master.into()),
+                ..PairingRecord::default()
+            },
+        );
         self.primary = receiver_pid;
         self.secondary = Some(dongle_id);
         Ok(true)
@@ -213,7 +251,7 @@ impl PairingCache {
         let device_key = key(dongle_id, container);
         self.serials.remove(&device_key);
         let removed = self.records.remove(&device_key).is_some();
-        self.order.retain(|key|key!=&device_key);
+        self.order.retain(|key| key != &device_key);
         self.primary = 0;
         self.secondary = None;
         Ok(removed)
@@ -234,9 +272,10 @@ impl PairingCache {
         );
         let mut matched = Vec::new();
         for (device_key, record) in &self.records {
-            if record["productId"] == product_id
-                && record["deviceContainerId"]
-                    .as_str()
+            if record.product_id.get() == Some(&product_id)
+                && record
+                    .device_container_id
+                    .get()
                     .is_some_and(|id| id.eq_ignore_ascii_case(container))
             {
                 self.serials
@@ -248,11 +287,17 @@ impl PairingCache {
     }
 
     pub fn records(&self) -> Value {
-        Value::Object(self.records.clone())
+        serde_json::to_value(&self.records).expect("typed pairing records serialize to JSON")
     }
 
     pub fn ordered_records(&self) -> Vec<Value> {
-        self.order.iter().filter_map(|key|self.records.get(key).cloned()).collect()
+        self.order
+            .iter()
+            .filter_map(|key| self.records.get(key))
+            .map(|record| {
+                serde_json::to_value(record).expect("typed pairing record serializes to JSON")
+            })
+            .collect()
     }
 
     pub fn state(&self) -> Value {
@@ -270,16 +315,47 @@ mod tests {
     const OWNER: &str = "{11111111-2222-3333-4444-555555555555}";
 
     #[test]
+    fn typed_records_preserve_extensions_nulls_and_absence() {
+        let original = r#"{"z":{"dongleId":193,"productId":null,"master":{"claimInterface":null,"futureMaster":{"mode":2}},"future":[1,null]},"a":{"dongleId":757}}"#;
+        let records: OrderedRecords = serde_json::from_str(original).unwrap();
+        let encoded = serde_json::to_string(&OrderedView {
+            records: &records.records,
+            order: &records.order,
+        })
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&encoded).unwrap(),
+            serde_json::from_str::<Value>(original).unwrap()
+        );
+        let wrong_type = r#"{"z":{"productId":"193"}}"#;
+        assert!(serde_json::from_str::<OrderedRecords>(wrong_type).is_err());
+    }
+
+    #[test]
     fn source_object_values_order_survives_disk_roundtrip_and_detects_reordering() {
-        let path = std::env::temp_dir().join(format!("razer-pairing-order-{}-{}.json",std::process::id(),
-            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()));
+        let path = std::env::temp_dir().join(format!(
+            "razer-pairing-order-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
         let original = r#"{"z":{"dongleId":193},"10":{"dongleId":10},"2":{"dongleId":2},"a":{"dongleId":757},"z":{"dongleId":195}}"#;
-        std::fs::write(&path,original).unwrap();
+        std::fs::write(&path, original).unwrap();
         let mut cache = PairingCache::load(&path).unwrap();
-        assert_eq!(cache.ordered_records(),vec![json!({"dongleId":2}),json!({"dongleId":10}),json!({"dongleId":195}),json!({"dongleId":757})]);
+        assert_eq!(
+            cache.ordered_records(),
+            vec![
+                json!({"dongleId":2}),
+                json!({"dongleId":10}),
+                json!({"dongleId":195}),
+                json!({"dongleId":757})
+            ]
+        );
         cache.save(&path).unwrap();
         let mut loaded = PairingCache::load(&path).unwrap();
-        assert_eq!(loaded.ordered_records(),cache.ordered_records());
+        assert_eq!(loaded.ordered_records(), cache.ordered_records());
         // Equal object contents with a different insertion order affect the
         // first matching source role and must count as an external mutation.
         std::fs::write(&path,r#"{"2":{"dongleId":2},"10":{"dongleId":10},"a":{"dongleId":757},"z":{"dongleId":195}}"#).unwrap();

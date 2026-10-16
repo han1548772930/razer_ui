@@ -291,7 +291,7 @@ impl SourceHelp {
                     },
                     callback.payload,
                 ),
-                // Previously audited special Help variants retain their
+                // Special Help variants retain their
                 // explicit branch until their callback receipt is refreshed.
                 None if page.obm => ("ON_RESET_OBM", true),
                 None => ("ON_RESET_DEVICE", false),

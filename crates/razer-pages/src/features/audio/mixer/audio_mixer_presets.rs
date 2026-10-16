@@ -44,12 +44,7 @@ pub struct PresetShortcutRequest {
 impl EventEmitter<PresetShortcutRequest> for AudioProductWorkspace {}
 fn recipe() -> &'static Recipe {
     static RECIPE: OnceLock<Recipe> = OnceLock::new();
-    RECIPE.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../../../assets/data/audio-mixer-presets-current.json"
-        ))
-        .expect("source-validated AudioMixer preset recipe")
-    })
+    RECIPE.get_or_init(|| crate::data::audio_mixer_presets_current!())
 }
 impl Default for Library {
     fn default() -> Self {

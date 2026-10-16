@@ -20,10 +20,7 @@ struct SourceLighting {
 fn source_lighting(product_id: u32) -> Option<&'static SourceLighting> {
     static SOURCE: OnceLock<Vec<SourceLighting>> = OnceLock::new();
     SOURCE
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_lighting_current_data.json"))
-                .expect("current statically extracted lighting configuration")
-        })
+        .get_or_init(|| crate::data::mouse_lighting_current_data!())
         .iter()
         .find(|source| source.product_id == product_id)
 }

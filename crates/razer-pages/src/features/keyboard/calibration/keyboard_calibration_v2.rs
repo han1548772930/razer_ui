@@ -102,10 +102,7 @@ struct Switch {
 }
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_calibration_v2_data.json"))
-            .expect("current V2 source metadata")
-    })
+    DATA.get_or_init(|| crate::data::keyboard_calibration_v2_data!())
 }
 fn label(symbol: &str) -> String {
     t(&data().labels[symbol])

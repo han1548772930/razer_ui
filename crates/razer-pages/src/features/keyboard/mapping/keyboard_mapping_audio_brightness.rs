@@ -19,12 +19,9 @@ struct Metadata {
 }
 fn metadata(pid: u32) -> Option<&'static Metadata> {
     static DATA: OnceLock<Vec<Metadata>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_audio_brightness_data.json"))
-            .expect("source-audited ordinary audio/brightness forms")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
+    DATA.get_or_init(|| crate::data::keyboard_mapping_audio_brightness_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
 }
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub(super) struct Draft {

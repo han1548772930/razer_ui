@@ -78,10 +78,7 @@ fn one() -> u32 {
 
 fn atlas() -> &'static Atlas {
     static ATLAS: OnceLock<Atlas> = OnceLock::new();
-    ATLAS.get_or_init(|| {
-        serde_json::from_str(include_str!("gamepad_artwork_current_data.json"))
-            .expect("validated mounted current controller artwork")
-    })
+    ATLAS.get_or_init(|| crate::data::gamepad_artwork_current_data!())
 }
 
 fn product(pid: u32) -> &'static Product {

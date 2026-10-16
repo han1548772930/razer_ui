@@ -33,10 +33,7 @@ struct Source {
 }
 fn source() -> &'static Source {
     static SOURCE: OnceLock<Source> = OnceLock::new();
-    SOURCE.get_or_init(|| {
-        serde_json::from_str(include_str!("chroma_settings_data.json"))
-            .expect("audited Chroma Settings")
-    })
+    SOURCE.get_or_init(|| crate::data::chroma_settings_data!())
 }
 pub fn text(key: &str) -> String {
     source()

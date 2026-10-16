@@ -381,10 +381,7 @@ struct SourcePathHit {
 fn source_surface(pid: u32, group_index: usize) -> Option<&'static Surface> {
     static SURFACES: OnceLock<Vec<Surface>> = OnceLock::new();
     SURFACES
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_customize_current_data.json"))
-                .expect("current mounted mouse geometry")
-        })
+        .get_or_init(|| crate::data::mouse_customize_current_data!())
         .iter()
         .find(|surface| surface.product_id == pid && surface.group_index == group_index)
 }

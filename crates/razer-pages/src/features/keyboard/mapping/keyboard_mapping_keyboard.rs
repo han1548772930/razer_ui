@@ -118,13 +118,10 @@ struct RecordingSource {
 }
 fn recording_source(pid: u32) -> &'static RecordingSource {
     static DATA: OnceLock<Vec<RecordingSource>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_recording_data.json"))
-            .expect("current recording input transformations")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("audited keyboard recording source")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_recording_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("audited keyboard recording source")
 }
 
 impl KeyboardProductWorkspace {

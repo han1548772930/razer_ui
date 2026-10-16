@@ -1,24 +1,62 @@
 use super::*;
 use razer_device::leviathan::{self, Operation};
 
-pub(super) fn event_source(selected:&leviathan::EventTarget)->anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
-    let target=match selected {
-        leviathan::EventTarget::WindowsContainer(target)=>target.clone(),
-        leviathan::EventTarget::Collection(node)=>{
-            ensure!(node.vendor_id==5426&&node.product_id==1352,"Noa event physical product differs");
-            let snapshot=hid::enumerate_for_product(5426,1352)?;
-            ensure!(snapshot["complete"]==true,"Noa native event enumeration is incomplete");
-            let interfaces=snapshot["interfaces"].as_array().context("Noa event interfaces are absent")?;
-            let rows=interfaces.iter().filter(|item|item["path"].as_str().is_some_and(|path|node.path.eq_ignore_ascii_case(path.as_bytes()))).collect::<Vec<_>>();
-            ensure!(rows.len()==1,"Noa collection has no unique native identity");
-            DeviceReadTarget{product_id:1352,physical_product_id:1352,peer_product_id:None,
-                path:rows[0]["path"].as_str().context("Noa path is absent")?.into(),
-                device_container_id:rows[0]["device_container_id"].as_str().context("Noa ContainerId is absent")?.into()}
+pub(super) fn event_source(
+    selected: &leviathan::EventTarget,
+) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
+    let target = match selected {
+        leviathan::EventTarget::WindowsContainer(target) => target.clone(),
+        leviathan::EventTarget::Collection(node) => {
+            ensure!(
+                node.vendor_id == 5426 && node.product_id == 1352,
+                "Noa event physical product differs"
+            );
+            let snapshot = hid::enumerate_for_product(5426, 1352)?;
+            ensure!(
+                snapshot["complete"] == true,
+                "Noa native event enumeration is incomplete"
+            );
+            let interfaces = snapshot["interfaces"]
+                .as_array()
+                .context("Noa event interfaces are absent")?;
+            let rows = interfaces
+                .iter()
+                .filter(|item| {
+                    item["path"]
+                        .as_str()
+                        .is_some_and(|path| node.path.eq_ignore_ascii_case(path.as_bytes()))
+                })
+                .collect::<Vec<_>>();
+            ensure!(
+                rows.len() == 1,
+                "Noa collection has no unique native identity"
+            );
+            DeviceReadTarget {
+                product_id: 1352,
+                physical_product_id: 1352,
+                peer_product_id: None,
+                path: rows[0]["path"]
+                    .as_str()
+                    .context("Noa path is absent")?
+                    .into(),
+                device_container_id: rows[0]["device_container_id"]
+                    .as_str()
+                    .context("Noa ContainerId is absent")?
+                    .into(),
+            }
         }
     };
-    ensure!(target.product_id==1352&&target.physical_product_id==1352&&target.peer_product_id.is_none(),"Noa event target differs");
-    current_target(&target,leviathan::transport())?;
-    Ok(Box::new(super::super::receiver_events::Events::new(1352,&target.device_container_id)))
+    ensure!(
+        target.product_id == 1352
+            && target.physical_product_id == 1352
+            && target.peer_product_id.is_none(),
+        "Noa event target differs"
+    );
+    current_target(&target, leviathan::transport())?;
+    Ok(Box::new(super::super::receiver_events::Events::new(
+        1352,
+        &target.device_container_id,
+    )))
 }
 
 pub(super) fn request(target: &DeviceReadTarget, operation: Operation) -> anyhow::Result<Value> {

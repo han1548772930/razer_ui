@@ -13,6 +13,8 @@ pub use mapping_device_runtime::MappingCallbackRequested;
 mod mapping_key_capture_runtime;
 #[path = "mapping/mapping_text_editor.rs"]
 mod mapping_text_editor;
+#[path = "mapping/source_key.rs"]
+pub(crate) mod source_key;
 pub fn active_mapping_workers() -> usize {
     mapping_device_runtime::active_workers() + mapping_key_capture_runtime::active_workers()
 }
@@ -185,8 +187,9 @@ mod audio_products;
 pub use audio_products::{
     AudioMixerCompletion, AudioMixerOperation, AudioMixerReply, AudioMixerRequest,
     AudioProductWorkspace, PresetShortcutBinding, PresetShortcutRequest,
-    SeirenAudioCaptureRequested, SeirenEqRequested, SeirenAudioPlaybackRequested, SeirenMicrophoneSetupSeen,
-    SeirenStreamMixerRequested, SeirenStreamMixerCaptureChanged, SeirenStreamMixerObservation,
+    SeirenAudioCaptureRequested, SeirenAudioPlaybackRequested, SeirenEqRequested,
+    SeirenMicrophoneSetupSeen, SeirenStreamMixerCaptureChanged, SeirenStreamMixerObservation,
+    SeirenStreamMixerRequested,
 };
 pub use audio_products::{
     AudioVolumeCompletion, AudioVolumeOperation, AudioVolumeReply, AudioVolumeRequest,

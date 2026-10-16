@@ -20,16 +20,16 @@ mod help_system;
 mod help_versions;
 #[path = "product_workspace_hyperflux.rs"]
 mod hyperflux;
+#[path = "product_workspace_keyboard_linked.rs"]
+mod keyboard_linked_profiles;
 #[path = "../lighting/product_workspace_lighting.rs"]
 mod lighting;
 #[path = "product_workspace_mapping.rs"]
 mod mapping;
-#[path = "product_workspace_receiver_indicator.rs"]
-mod receiver_indicator;
-#[path = "product_workspace_keyboard_linked.rs"]
-mod keyboard_linked_profiles;
 #[path = "../profiles/profile_collection.rs"]
 mod profile_collection;
+#[path = "product_workspace_receiver_indicator.rs"]
+mod receiver_indicator;
 #[path = "product_workspace_ripsaw.rs"]
 mod ripsaw;
 pub(super) use profile_collection::{
@@ -121,9 +121,15 @@ impl EventEmitter<super::DockPairingEvent> for ProductWorkspace {}
 impl EventEmitter<super::DockPairingUtilityRequested> for ProductWorkspace {}
 
 impl ProductWorkspace {
-    pub fn set_camera_host_window_status(&self, status: Option<razer_model::host_window_focus::HostWindowStatus>, cx: &mut Context<Self>) {
+    pub fn set_camera_host_window_status(
+        &self,
+        status: Option<razer_model::host_window_focus::HostWindowStatus>,
+        cx: &mut Context<Self>,
+    ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.set_camera_host_window_status(status, cx));
+            body.update(cx, |body, cx| {
+                body.set_camera_host_window_status(status, cx)
+            });
         }
     }
     /// Current product iframe includes its toolbar and product content. A
@@ -661,50 +667,116 @@ impl ProductWorkspace {
             });
         }
     }
-    pub fn observe_seiren_stream_mixer(&mut self,observation:super::audio_products::SeirenStreamMixerObservation,window:&mut Window,cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body {body.update(cx,|body,cx|body.observe_seiren_stream_mixer(observation,window,cx));}
+    pub fn observe_seiren_stream_mixer(
+        &mut self,
+        observation: super::audio_products::SeirenStreamMixerObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_stream_mixer(observation, window, cx)
+            });
+        }
     }
-    pub fn seiren_stream_mixer_request_matches(&self,request:&super::audio_products::SeirenStreamMixerRequested,cx:&App)->bool {
+    pub fn seiren_stream_mixer_request_matches(
+        &self,
+        request: &super::audio_products::SeirenStreamMixerRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body,Body::Source(body) if body.read(cx).seiren_stream_mixer_request_matches(request,cx))
     }
-    pub fn seiren_stream_mixer_capture_matches(&self,request:&super::audio_products::SeirenStreamMixerCaptureChanged,cx:&App)->bool {
+    pub fn seiren_stream_mixer_capture_matches(
+        &self,
+        request: &super::audio_products::SeirenStreamMixerCaptureChanged,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body,Body::Source(body) if body.read(cx).seiren_stream_mixer_capture_matches(request,cx))
     }
-    pub fn observe_seiren_document_version(&mut self,version:u64,cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body {body.update(cx,|body,cx|body.observe_seiren_document_version(version,cx));}
+    pub fn observe_seiren_document_version(&mut self, version: u64, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_document_version(version, cx)
+            });
+        }
     }
-    pub fn observe_seiren_stream_mixer_mode(&mut self,enabled:bool,cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body {body.update(cx,|body,cx|body.observe_seiren_stream_mixer_mode(enabled,cx));}
+    pub fn observe_seiren_stream_mixer_mode(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_stream_mixer_mode(enabled, cx)
+            });
+        }
     }
-    pub fn finish_seiren_stream_mixer(&mut self,request:&super::audio_products::SeirenStreamMixerRequested,error:Option<String>,window:&mut Window,cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body {body.update(cx,|body,cx|body.finish_seiren_stream_mixer(request,error,window,cx));}
+    pub fn finish_seiren_stream_mixer(
+        &mut self,
+        request: &super::audio_products::SeirenStreamMixerRequested,
+        error: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_seiren_stream_mixer(request, error, window, cx)
+            });
+        }
     }
-    pub fn observe_seiren_native_event(&mut self,event:serde_json::Value,window:&mut Window,cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body {
-            body.update(cx,|body,cx|body.observe_seiren_native_event(event,window,cx));
+    pub fn observe_seiren_native_event(
+        &mut self,
+        event: serde_json::Value,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_native_event(event, window, cx)
+            });
         }
     }
     pub fn observe_seiren_sampling_ready(&mut self, ready: bool, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body,cx|body.observe_seiren_sampling_ready(ready,cx));
+            body.update(cx, |body, cx| body.observe_seiren_sampling_ready(ready, cx));
         }
     }
-    pub fn set_seiren_microphone_setup_seen(&mut self, seen: bool, window:&mut Window, cx: &mut Context<Self>) {
+    pub fn set_seiren_microphone_setup_seen(
+        &mut self,
+        seen: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body,cx|body.set_seiren_microphone_setup_seen(seen,window,cx));
+            body.update(cx, |body, cx| {
+                body.set_seiren_microphone_setup_seen(seen, window, cx)
+            });
         }
     }
-    pub fn seiren_audio_playback_request_matches(&self, request:&super::audio_products::SeirenAudioPlaybackRequested, cx:&App)->bool {
+    pub fn seiren_audio_playback_request_matches(
+        &self,
+        request: &super::audio_products::SeirenAudioPlaybackRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body,Body::Source(body) if body.read(cx).seiren_audio_playback_request_matches(request,cx))
     }
-    pub fn observe_seiren_audio_playback_started(&mut self, request:&super::audio_products::SeirenAudioPlaybackRequested, cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body {
-            body.update(cx,|body,cx|body.observe_seiren_audio_playback_started(request,cx));
+    pub fn observe_seiren_audio_playback_started(
+        &mut self,
+        request: &super::audio_products::SeirenAudioPlaybackRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_audio_playback_started(request, cx)
+            });
         }
     }
-    pub fn finish_seiren_audio_playback(&mut self, request:&super::audio_products::SeirenAudioPlaybackRequested, error:Option<String>,cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body {
-            body.update(cx,|body,cx|body.finish_seiren_audio_playback(request,error,cx));
+    pub fn finish_seiren_audio_playback(
+        &mut self,
+        request: &super::audio_products::SeirenAudioPlaybackRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_seiren_audio_playback(request, error, cx)
+            });
         }
     }
     pub fn observe_seiren_native_levels(
@@ -807,21 +879,43 @@ impl ProductWorkspace {
     ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).current_dpi_request_matches(request, cx))
     }
-    pub fn mouse_scroll_request_matches(&self, request: &super::mouse_products::MouseScrollRequested, cx: &App) -> bool {
+    pub fn mouse_scroll_request_matches(
+        &self,
+        request: &super::mouse_products::MouseScrollRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).mouse_scroll_request_matches(request, cx))
     }
-    pub fn mouse_scroll_save_matches(&self, request: &super::mouse_products::MouseScrollRequested, cx: &App) -> bool {
+    pub fn mouse_scroll_save_matches(
+        &self,
+        request: &super::mouse_products::MouseScrollRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).mouse_scroll_save_matches(request, cx))
     }
-    pub fn finish_mouse_scroll(&mut self, request: &super::mouse_products::MouseScrollRequested, cx: &mut Context<Self>) {
-        if let Body::Source(body) = &self.body { body.update(cx, |body, cx| body.finish_mouse_scroll(request, cx)); }
+    pub fn finish_mouse_scroll(
+        &mut self,
+        request: &super::mouse_products::MouseScrollRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_mouse_scroll(request, cx));
+        }
     }
     pub fn prepare_mouse_scroll_exit(&mut self, cx: &mut Context<Self>) {
-        if let Body::Source(body) = &self.body { body.update(cx, |body, cx| body.prepare_mouse_scroll_exit(cx)); }
-    }
-    pub fn restore_mouse_profile_after_serial(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.restore_mouse_profile_after_serial(window, cx));
+            body.update(cx, |body, cx| body.prepare_mouse_scroll_exit(cx));
+        }
+    }
+    pub fn restore_mouse_profile_after_serial(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.restore_mouse_profile_after_serial(window, cx)
+            });
         }
     }
     pub fn initialize_mouse182_profile(
@@ -1379,7 +1473,9 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
-                    WorkspaceEvent::ProfileMacrosImported(macros) => WorkspaceEvent::ProfileMacrosImported(macros.clone()),
+                    WorkspaceEvent::ProfileMacrosImported(macros) => {
+                        WorkspaceEvent::ProfileMacrosImported(macros.clone())
+                    }
                     WorkspaceEvent::MouseMappingSaveRejected(reason) => {
                         WorkspaceEvent::MouseMappingSaveRejected(*reason)
                     }
@@ -1507,14 +1603,21 @@ impl ProductWorkspace {
                     WorkspaceEvent::KeyboardLegacyProfileRequested => {
                         WorkspaceEvent::KeyboardLegacyProfileRequested
                     }
-                    WorkspaceEvent::KeyboardLatestProfileSwitchRequested {guid,defer_persistence} => {
-                        WorkspaceEvent::KeyboardLatestProfileSwitchRequested {guid:guid.clone(),defer_persistence:*defer_persistence}
-                    }
+                    WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
+                        guid,
+                        defer_persistence,
+                    } => WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
+                        guid: guid.clone(),
+                        defer_persistence: *defer_persistence,
+                    },
                     WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation) => {
                         WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation.clone())
                     }
-                    WorkspaceEvent::KeyboardLatestOnboardProfileRequested {slot_id,guid} => {
-                        WorkspaceEvent::KeyboardLatestOnboardProfileRequested {slot_id:*slot_id,guid:guid.clone()}
+                    WorkspaceEvent::KeyboardLatestOnboardProfileRequested { slot_id, guid } => {
+                        WorkspaceEvent::KeyboardLatestOnboardProfileRequested {
+                            slot_id: *slot_id,
+                            guid: guid.clone(),
+                        }
                     }
                     WorkspaceEvent::KeyboardLegacyRuntimeStatus(message) => {
                         WorkspaceEvent::KeyboardLegacyRuntimeStatus(message.clone())
@@ -1528,7 +1631,9 @@ impl ProductWorkspace {
                     WorkspaceEvent::MouseCurrentDpiRequested(request) => {
                         WorkspaceEvent::MouseCurrentDpiRequested(request.clone())
                     }
-                    WorkspaceEvent::MouseScrollRequested(request) => WorkspaceEvent::MouseScrollRequested(request.clone()),
+                    WorkspaceEvent::MouseScrollRequested(request) => {
+                        WorkspaceEvent::MouseScrollRequested(request.clone())
+                    }
                     WorkspaceEvent::MouseCurrentPowerRequested(request) => {
                         WorkspaceEvent::MouseCurrentPowerRequested(request.clone())
                     }
@@ -1538,10 +1643,18 @@ impl ProductWorkspace {
                     WorkspaceEvent::SeirenAudioCaptureRequested(request) => {
                         WorkspaceEvent::SeirenAudioCaptureRequested(request.clone())
                     }
-                    WorkspaceEvent::SeirenAudioPlaybackRequested(request) => WorkspaceEvent::SeirenAudioPlaybackRequested(request.clone()),
-                    WorkspaceEvent::SeirenMicrophoneSetupSeen(seen) => WorkspaceEvent::SeirenMicrophoneSetupSeen(*seen),
-                    WorkspaceEvent::SeirenStreamMixerRequested(request) => WorkspaceEvent::SeirenStreamMixerRequested(request.clone()),
-                    WorkspaceEvent::SeirenStreamMixerCaptureChanged(request) => WorkspaceEvent::SeirenStreamMixerCaptureChanged(request.clone()),
+                    WorkspaceEvent::SeirenAudioPlaybackRequested(request) => {
+                        WorkspaceEvent::SeirenAudioPlaybackRequested(request.clone())
+                    }
+                    WorkspaceEvent::SeirenMicrophoneSetupSeen(seen) => {
+                        WorkspaceEvent::SeirenMicrophoneSetupSeen(*seen)
+                    }
+                    WorkspaceEvent::SeirenStreamMixerRequested(request) => {
+                        WorkspaceEvent::SeirenStreamMixerRequested(request.clone())
+                    }
+                    WorkspaceEvent::SeirenStreamMixerCaptureChanged(request) => {
+                        WorkspaceEvent::SeirenStreamMixerCaptureChanged(request.clone())
+                    }
                     WorkspaceEvent::MousePollingRequested { scope, field, hz } => {
                         WorkspaceEvent::MousePollingRequested {
                             scope: *scope,
@@ -1549,9 +1662,16 @@ impl ProductWorkspace {
                             hz: *hz,
                         }
                     }
-                    WorkspaceEvent::MousePollingRestoreRequested { scope, field, hz } =>
-                        WorkspaceEvent::MousePollingRestoreRequested { scope: *scope, field: *field, hz: *hz },
-                    WorkspaceEvent::MouseProfileSerialObserved => WorkspaceEvent::MouseProfileSerialObserved,
+                    WorkspaceEvent::MousePollingRestoreRequested { scope, field, hz } => {
+                        WorkspaceEvent::MousePollingRestoreRequested {
+                            scope: *scope,
+                            field: *field,
+                            hz: *hz,
+                        }
+                    }
+                    WorkspaceEvent::MouseProfileSerialObserved => {
+                        WorkspaceEvent::MouseProfileSerialObserved
+                    }
                     WorkspaceEvent::MouseDpiStagesRequested {
                         scope,
                         revision,
@@ -1627,7 +1747,9 @@ impl ProductWorkspace {
             let subscription = cx.subscribe(&entity, |_, _, event, cx| {
                 cx.emit(match event {
                     WorkspaceEvent::Changed => WorkspaceEvent::Changed,
-                    WorkspaceEvent::ProfileMacrosImported(macros) => WorkspaceEvent::ProfileMacrosImported(macros.clone()),
+                    WorkspaceEvent::ProfileMacrosImported(macros) => {
+                        WorkspaceEvent::ProfileMacrosImported(macros.clone())
+                    }
                     WorkspaceEvent::MouseMappingSaveRejected(reason) => {
                         WorkspaceEvent::MouseMappingSaveRejected(*reason)
                     }
@@ -1755,14 +1877,21 @@ impl ProductWorkspace {
                     WorkspaceEvent::KeyboardLegacyProfileRequested => {
                         WorkspaceEvent::KeyboardLegacyProfileRequested
                     }
-                    WorkspaceEvent::KeyboardLatestProfileSwitchRequested {guid,defer_persistence} => {
-                        WorkspaceEvent::KeyboardLatestProfileSwitchRequested {guid:guid.clone(),defer_persistence:*defer_persistence}
-                    }
+                    WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
+                        guid,
+                        defer_persistence,
+                    } => WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
+                        guid: guid.clone(),
+                        defer_persistence: *defer_persistence,
+                    },
                     WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation) => {
                         WorkspaceEvent::KeyboardLatestProfileMutationRequested(mutation.clone())
                     }
-                    WorkspaceEvent::KeyboardLatestOnboardProfileRequested {slot_id,guid} => {
-                        WorkspaceEvent::KeyboardLatestOnboardProfileRequested {slot_id:*slot_id,guid:guid.clone()}
+                    WorkspaceEvent::KeyboardLatestOnboardProfileRequested { slot_id, guid } => {
+                        WorkspaceEvent::KeyboardLatestOnboardProfileRequested {
+                            slot_id: *slot_id,
+                            guid: guid.clone(),
+                        }
                     }
                     WorkspaceEvent::KeyboardLegacyRuntimeStatus(message) => {
                         WorkspaceEvent::KeyboardLegacyRuntimeStatus(message.clone())
@@ -1780,26 +1909,43 @@ impl ProductWorkspace {
                             hz: *hz,
                         }
                     }
-                    WorkspaceEvent::MousePollingRestoreRequested { scope, field, hz } =>
-                        WorkspaceEvent::MousePollingRestoreRequested { scope: *scope, field: *field, hz: *hz },
-                    WorkspaceEvent::MouseProfileSerialObserved => WorkspaceEvent::MouseProfileSerialObserved,
+                    WorkspaceEvent::MousePollingRestoreRequested { scope, field, hz } => {
+                        WorkspaceEvent::MousePollingRestoreRequested {
+                            scope: *scope,
+                            field: *field,
+                            hz: *hz,
+                        }
+                    }
+                    WorkspaceEvent::MouseProfileSerialObserved => {
+                        WorkspaceEvent::MouseProfileSerialObserved
+                    }
                     WorkspaceEvent::MouseCurrentDpiRequested(request) => {
                         WorkspaceEvent::MouseCurrentDpiRequested(request.clone())
                     }
                     WorkspaceEvent::MouseCurrentPowerRequested(request) => {
                         WorkspaceEvent::MouseCurrentPowerRequested(request.clone())
                     }
-                    WorkspaceEvent::MouseScrollRequested(request) => WorkspaceEvent::MouseScrollRequested(request.clone()),
+                    WorkspaceEvent::MouseScrollRequested(request) => {
+                        WorkspaceEvent::MouseScrollRequested(request.clone())
+                    }
                     WorkspaceEvent::SeirenEqRequested(request) => {
                         WorkspaceEvent::SeirenEqRequested(request.clone())
                     }
                     WorkspaceEvent::SeirenAudioCaptureRequested(request) => {
                         WorkspaceEvent::SeirenAudioCaptureRequested(request.clone())
                     }
-                    WorkspaceEvent::SeirenAudioPlaybackRequested(request) => WorkspaceEvent::SeirenAudioPlaybackRequested(request.clone()),
-                    WorkspaceEvent::SeirenMicrophoneSetupSeen(seen) => WorkspaceEvent::SeirenMicrophoneSetupSeen(*seen),
-                    WorkspaceEvent::SeirenStreamMixerRequested(request) => WorkspaceEvent::SeirenStreamMixerRequested(request.clone()),
-                    WorkspaceEvent::SeirenStreamMixerCaptureChanged(request) => WorkspaceEvent::SeirenStreamMixerCaptureChanged(request.clone()),
+                    WorkspaceEvent::SeirenAudioPlaybackRequested(request) => {
+                        WorkspaceEvent::SeirenAudioPlaybackRequested(request.clone())
+                    }
+                    WorkspaceEvent::SeirenMicrophoneSetupSeen(seen) => {
+                        WorkspaceEvent::SeirenMicrophoneSetupSeen(*seen)
+                    }
+                    WorkspaceEvent::SeirenStreamMixerRequested(request) => {
+                        WorkspaceEvent::SeirenStreamMixerRequested(request.clone())
+                    }
+                    WorkspaceEvent::SeirenStreamMixerCaptureChanged(request) => {
+                        WorkspaceEvent::SeirenStreamMixerCaptureChanged(request.clone())
+                    }
                     WorkspaceEvent::MouseDpiStagesRequested {
                         scope,
                         revision,
@@ -2295,25 +2441,53 @@ impl ProductWorkspace {
             body.update(cx, |body, cx| body.publish_legacy_mapping(document, cx));
         }
     }
-    pub fn observe_keyboard_latest_document(&mut self, document: serde_json::Value, cx: &mut Context<Self>) {
+    pub fn observe_keyboard_latest_document(
+        &mut self,
+        document: serde_json::Value,
+        cx: &mut Context<Self>,
+    ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx,|body,cx|body.observe_keyboard_latest_document(document,cx));
+            body.update(cx, |body, cx| {
+                body.observe_keyboard_latest_document(document, cx)
+            });
         }
     }
     pub fn set_keyboard_latest_ble(&mut self, ble: bool, cx: &mut Context<Self>) {
-        if let Body::Source(body) = &self.body {body.update(cx,|body,cx|body.set_keyboard_latest_ble(ble,cx));}
-    }
-    pub fn set_keyboard_latest_connected(&mut self, connected:bool, cx:&mut Context<Self>) {
-        if let Body::Source(body)=&self.body { body.update(cx,|body,cx|body.set_keyboard_latest_connected(connected,cx)); }
-    }
-    pub fn confirm_keyboard_latest_profile(&mut self, guid: &str, manual: bool, window: &mut Window, cx: &mut Context<Self>) -> bool {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body,cx|body.confirm_keyboard_latest_profile(guid,manual,window,cx))
-        } else { false }
+            body.update(cx, |body, cx| body.set_keyboard_latest_ble(ble, cx));
+        }
     }
-    pub fn observe_keyboard_latest_mapping_event(&mut self, event: serde_json::Value, cx: &mut Context<Self>) {
+    pub fn set_keyboard_latest_connected(&mut self, connected: bool, cx: &mut Context<Self>) {
         if let Body::Source(body) = &self.body {
-            body.update(cx,|body,cx|body.observe_keyboard_latest_mapping_event(event,cx));
+            body.update(cx, |body, cx| {
+                body.set_keyboard_latest_connected(connected, cx)
+            });
+        }
+    }
+    pub fn confirm_keyboard_latest_profile(
+        &mut self,
+        guid: &str,
+        manual: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.confirm_keyboard_latest_profile(guid, manual, window, cx)
+            })
+        } else {
+            false
+        }
+    }
+    pub fn observe_keyboard_latest_mapping_event(
+        &mut self,
+        event: serde_json::Value,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_keyboard_latest_mapping_event(event, cx)
+            });
         }
     }
     pub fn mapping_history_clicked(

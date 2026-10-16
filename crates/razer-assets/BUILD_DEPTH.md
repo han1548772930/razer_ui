@@ -1,19 +1,17 @@
-# 资源包与编译边界
+# 资源索引与编译边界
 
-资源表反复嵌套 `std::iter::Chain` 曾引发类型深度溢出；全量图片内嵌又触发 Windows PE 链接的 2 GiB 上限。当前维护源表在 `assets/synapse/tables/asset-tables-source.rs`，不会作为 Rust 模块编译；[src/lib.rs](src/lib.rs) 保留原加载与列表语义，大资源由 [src/packed.rs](src/packed.rs) 按需从外部包读取并逐项校验。
+产品只编译有类型的资源索引和必需的 9 个原生 RGBA 图标，避免把整套图片放入 PE。`assets/synapse/tables/asset-tables-source.rs` 供维护工具解析，不作为携带图片的 Rust 模块编译；`remote-assets.rs` 由固定资源清单生成。[src/lib.rs](src/lib.rs) 保留原资源 alias、加载优先级和列表语义，载荷由资源运行时按单个文件获取。
 
-表顺序决定同名资源的首项匹配；轻量 `asset-list.json` 保留原始顺序和重复项。sprite、厂商本地音频 demo 控件和 GPUI Kit `AllAssets` 的优先级保持不变；它们与已删除的假设备 demo 不是同一功能。
+索引保留源表顺序、重复 alias、sprite fragment 和本地音频 demo 控件的优先级，未注册的键仍交给 GPUI Kit `AllAssets`。已声明而加载失败的文件保持真实错误，不能伪装为缺失键或空图。
 
-正式 `target/asset-pack/synapse.pack` 是可重建生成物，已从 Git 提交范围排除，也不进入 HF 原文件资源仓库；打包分发时仍须在程序旁携带 `assets/synapse.pack`。克隆源码后按下面的维护命令从本地源资源生成，或取得与该源码版本配套的发布包。构建脚本只复制本地生成包到 Cargo profile 的 `assets/`，不联网、不运行厂商程序，也不读取分析原件。
+运行时从私有资源仓库的固定提交按当前界面所需文件获取，缓存到当前 EXE 所在目录的 `assets/cache/`。有效缓存离线复用；不会启动时预取其他产品、恢复源码 `assets/` 或解压整套资源。Cargo 不执行网络获取，也没有 staging pack 的构建脚本；编译及安装均无需 `synapse.pack`。独立的 `razer-asset-pack` 容器核心仍可用于格式验证，详见 [资源交付与容器格式](../../docs/asset-pack-format.md)。
 
 静态检查和允许的纯 Rust library 测试：
 
 ```powershell
-python tools/workspace.py audit-asset-pack --prepare
-python tools/workspace.py prepare-asset-pack
-python tools/workspace.py verify-asset-pack
+python tools/workspace.py verify-runtime-assets
+python tools/workspace.py prepare-typed-data --check --crate razer-assets
 cargo check --locked --offline -p razer-assets --all-targets
-python tools/workspace.py validate-rust --suite assets
 ```
 
-旧的 7 项 assets 测试记录不适用于本次迁移。全量 codec 解码、真实 list/load 回环及全目标检查须以当前 [验证记录](../../.analysis/validation.json) 的源码身份和结果为准。应用窗口与真实设备验收未执行。完整边界见 [AGENTS.md](../../AGENTS.md)。
+纯 Rust 测试检查索引身份、路径与产品分支、缓存校验和模拟请求；不要求整套本地图片，也不下载资源。完整原件解码属于维护工具验证，不能替代应用窗口或设备验收。各项结论以当前 [验证记录](../../.analysis/validation.json) 的源码身份和结果为准。完整边界见 [AGENTS.md](../../AGENTS.md)。

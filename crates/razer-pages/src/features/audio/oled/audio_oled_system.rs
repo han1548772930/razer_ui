@@ -28,10 +28,7 @@ struct SystemSpec {
 }
 fn spec() -> &'static SystemSpec {
     static SPEC: OnceLock<SystemSpec> = OnceLock::new();
-    SPEC.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_oled_system_data.json"))
-            .expect("validated current 1383 System Info data")
-    })
+    SPEC.get_or_init(|| crate::data::audio_oled_system_data!())
 }
 fn text(symbol: &str) -> String {
     t(&spec().labels[symbol])
@@ -187,10 +184,7 @@ struct SystemAssetSizes {
 fn preview_size(asset: &str) -> [f32; 2] {
     static SIZES: OnceLock<SystemAssetSizes> = OnceLock::new();
     SIZES
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("audio_oled_system_asset_sizes.json"))
-                .expect("source drag-preview sizes")
-        })
+        .get_or_init(|| crate::data::audio_oled_system_asset_sizes!())
         .sizes[asset]
 }
 pub(super) struct SystemEditor {

@@ -31,10 +31,7 @@ impl KeyboardProductWorkspace {
         }
         static DATA: OnceLock<Vec<Source>> = OnceLock::new();
         if DATA
-            .get_or_init(|| {
-                serde_json::from_str(include_str!("keyboard_mapping_login_warning_data.json"))
-                    .expect("current Customize login warning")
-            })
+            .get_or_init(|| crate::data::keyboard_mapping_login_warning_data!())
             .iter()
             .any(|row| row.product_id == self.spec.product_id && row.confirmed)
         {

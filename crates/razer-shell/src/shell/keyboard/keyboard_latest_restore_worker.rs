@@ -71,7 +71,9 @@ fn observe_power_change(
     revision: u64,
     change: features::PowerChange,
 ) -> anyhow::Result<Option<Value>> {
-    let readings = change.operations().into_iter()
+    let readings = change
+        .operations()
+        .into_iter()
         .map(|operation| execute(client, target, generation, operation))
         .collect::<anyhow::Result<Vec<_>>>()?;
     generation.check()?;
@@ -1131,28 +1133,47 @@ pub(super) fn run(
                         }
                     }
                 }
-                if let Some((generation, revision)) = current_work.as_ref().filter(|(generation, revision)|
-                    generation.is_current() && revision_signal.load(Ordering::Acquire) == *revision)
+                if let Some((generation, revision)) =
+                    current_work.as_ref().filter(|(generation, revision)| {
+                        generation.is_current()
+                            && revision_signal.load(Ordering::Acquire) == *revision
+                    })
                 {
                     for change in std::mem::take(&mut pending_power) {
-                        match observe_power_change(&mut client, &target, generation,
-                            &revision_signal, *revision, change)
-                        {
+                        match observe_power_change(
+                            &mut client,
+                            &target,
+                            generation,
+                            &revision_signal,
+                            *revision,
+                            change,
+                        ) {
                             Ok(Some(document)) => {
                                 if target.ble() {
-                                    current_ble = Some((document.clone(), generation.clone(), *revision));
+                                    current_ble =
+                                        Some((document.clone(), generation.clone(), *revision));
                                 }
                                 let _ = replies.send(Reply::Candidate {
-                                    revision: *revision, generation: generation.clone(), document,
-                                    persist: true, manual: false,
+                                    revision: *revision,
+                                    generation: generation.clone(),
+                                    document,
+                                    persist: true,
+                                    manual: false,
                                 });
                             }
-                            Ok(None) => { pending_power.insert(change); }
-                            Err(_) if !generation.is_current() || revision_signal.load(Ordering::Acquire) != *revision => {
+                            Ok(None) => {
+                                pending_power.insert(change);
+                            }
+                            Err(_)
+                                if !generation.is_current()
+                                    || revision_signal.load(Ordering::Acquire) != *revision =>
+                            {
                                 pending_power.insert(change);
                             }
                             Err(error) => {
-                                let _ = replies.send(Reply::Diagnostic(format!("设备省电状态回读：{error:#}")));
+                                let _ = replies.send(Reply::Diagnostic(format!(
+                                    "设备省电状态回读：{error:#}"
+                                )));
                             }
                         }
                     }

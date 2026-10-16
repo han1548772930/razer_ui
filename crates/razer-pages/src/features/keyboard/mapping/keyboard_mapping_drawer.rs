@@ -1,6 +1,13 @@
 //! Current keyboard ButtonPanel and mapping popup; vendor values stay unencoded.
 //! Receipts: tools/audit_keyboard_mapping_drawer.cjs. No vendor code is executed.
 use super::*;
+
+#[derive(Deserialize)]
+struct Navigation {
+    product_id: u32,
+    confirm_mapping_history: bool,
+    confirm_mapping_navigation: bool,
+}
 use gpui_kit::component::button::ButtonVariants;
 use serde::Serialize;
 use std::{cell::Cell, rc::Rc};
@@ -133,13 +140,10 @@ struct Layout {
 }
 fn source(pid: u32) -> &'static Source {
     static DATA: OnceLock<Vec<Source>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_all_mapping_data.json"))
-            .expect("audited mapping drawer metadata")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("audited current keyboard caller")
+    DATA.get_or_init(|| crate::data::keyboard_all_mapping_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("audited current keyboard caller")
 }
 #[derive(Clone, Deserialize, Serialize)]
 pub(super) struct Edit {
@@ -362,17 +366,9 @@ impl KeyboardProductWorkspace {
         history_index: usize,
         cx: &mut Context<Self>,
     ) -> bool {
-        #[derive(Deserialize)]
-        struct Navigation {
-            product_id: u32,
-            confirm_mapping_history: bool,
-        }
         static DATA: OnceLock<Vec<Navigation>> = OnceLock::new();
         let confirmed = DATA
-            .get_or_init(|| {
-                serde_json::from_str(include_str!("keyboard_mapping_navigation_data.json"))
-                    .expect("current keyboard history guards")
-            })
+            .get_or_init(|| crate::data::keyboard_mapping_navigation_data!())
             .iter()
             .any(|row| row.product_id == self.spec.product_id && row.confirm_mapping_history);
         if confirmed
@@ -398,17 +394,9 @@ impl KeyboardProductWorkspace {
         if self.page == key {
             return true;
         }
-        #[derive(Deserialize)]
-        struct Navigation {
-            product_id: u32,
-            confirm_mapping_navigation: bool,
-        }
         static DATA: OnceLock<Vec<Navigation>> = OnceLock::new();
         let confirmed = DATA
-            .get_or_init(|| {
-                serde_json::from_str(include_str!("keyboard_mapping_navigation_data.json"))
-                    .expect("current keyboard navigation guards")
-            })
+            .get_or_init(|| crate::data::keyboard_mapping_navigation_data!())
             .iter()
             .any(|row| row.product_id == self.spec.product_id && row.confirm_mapping_navigation);
         if confirmed

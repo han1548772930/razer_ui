@@ -36,10 +36,7 @@ pub(super) struct Node {
 fn data(pid: u32) -> &'static Controller {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
     &DATA
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_mapping_controller_data.json"))
-                .expect("audited mounted controller metadata")
-        })
+        .get_or_init(|| crate::data::keyboard_mapping_controller_data!())
         .iter()
         .find(|product| product.product_id == pid)
         .expect("audited controller caller")

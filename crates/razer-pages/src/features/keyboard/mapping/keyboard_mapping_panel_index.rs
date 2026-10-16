@@ -9,14 +9,11 @@ struct Product {
 }
 fn split_min(product_id: u32) -> usize {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_panel_index_data.json"))
-            .expect("audited source index thresholds")
-    })
-    .iter()
-    .find(|row| row.product_id == product_id)
-    .expect("current ButtonPanel product")
-    .split_min_utf16
+    DATA.get_or_init(|| crate::data::keyboard_mapping_panel_index_data!())
+        .iter()
+        .find(|row| row.product_id == product_id)
+        .expect("current ButtonPanel product")
+        .split_min_utf16
 }
 
 #[derive(Default)]

@@ -27,10 +27,7 @@ struct Node {
 }
 fn tutorials() -> &'static [Tutorial] {
     static DATA: OnceLock<Vec<Tutorial>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("source_help_analog_data.json"))
-            .expect("current source projected tutorial")
-    })
+    DATA.get_or_init(|| crate::data::source_help_analog_data!())
 }
 fn tutorial(pid: u32) -> Option<&'static Tutorial> {
     tutorials().iter().find(|row| row.product_id == pid)
@@ -231,15 +228,18 @@ impl SourceHelpOwner {
                     .max_h(surface::css(420.))
                     .m(surface::css(1.))
                     .child(
-                        image_cache(retain_all(asset)).absolute().inset_0().child(
-                            img(asset)
-                                .id(SharedString::from(format!(
-                                    "help-analog-video-{}",
-                                    self.analog_step
-                                )))
-                                .size_full()
-                                .object_fit(ObjectFit::Cover),
-                        ),
+                        image_cache(razer_assets::resource_image_cache())
+                            .absolute()
+                            .inset_0()
+                            .child(
+                                img(asset)
+                                    .id(SharedString::from(format!(
+                                        "help-analog-video-{}",
+                                        self.analog_step
+                                    )))
+                                    .size_full()
+                                    .object_fit(ObjectFit::Cover),
+                            ),
                     ),
             )
             .child(

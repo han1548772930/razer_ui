@@ -29,10 +29,7 @@ struct CaptureData {
 fn capture_keys(pid: u32) -> &'static [Value] {
     static DATA: OnceLock<Vec<CaptureData>> = OnceLock::new();
     &DATA
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_calibration_capture_data.json"))
-                .expect("current 740/746 scan-code literals")
-        })
+        .get_or_init(|| crate::data::keyboard_calibration_capture_data!())
         .iter()
         .find(|row| row.product_id == pid)
         .expect("supported calibration product")

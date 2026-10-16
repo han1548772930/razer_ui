@@ -33,6 +33,8 @@ pub(super) struct State {
     cached: BTreeMap<(u32, u32), Value>,
     previews: BTreeMap<(u32, usize), (String, std::sync::Arc<Image>)>,
     preview_values: BTreeMap<u32, u32>,
+    resources: crate::runtime_resources::TextResources,
+    foreground_colors: Option<Vec<preview::ForegroundColor>>,
 }
 
 fn effect_ids(region: u32) -> &'static [u32] {
@@ -158,6 +160,13 @@ impl AudioProductWorkspace {
         if self.spec.product_id != 1342 {
             return;
         }
+        self.subscriptions
+            .push(razer_assets::observe_resources(cx, |this, _, cx| {
+                if this.mixer_lighting.resources.refresh() {
+                    this.refresh_mixer_lighting_previews();
+                    cx.notify();
+                }
+            }));
         for region in REGIONS {
             let options: Vec<Choice> = effect_ids(region)
                 .iter()

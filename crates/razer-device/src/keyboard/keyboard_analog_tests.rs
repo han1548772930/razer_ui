@@ -950,8 +950,19 @@ fn rejected_status_wrong_command_short_report_or_oversize_reply_preserves_attemp
 
 #[test]
 fn returned_prefix_does_not_reject_an_analog_acknowledgment() {
-    let device = Mock::new([Reply { report_id: 1, ..reply(&[]) }]);
-    let result = write(&device, &cap_for(678), continuous(), false, sequence_from(0), || Ok(())).unwrap();
+    let device = Mock::new([Reply {
+        report_id: 1,
+        ..reply(&[])
+    }]);
+    let result = write(
+        &device,
+        &cap_for(678),
+        continuous(),
+        false,
+        sequence_from(0),
+        || Ok(()),
+    )
+    .unwrap();
     assert_eq!(result.attempted_writes, 1);
     assert_eq!(result.acknowledgements.len(), 1);
     assert!(!result.verified());

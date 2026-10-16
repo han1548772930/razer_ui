@@ -12,13 +12,10 @@ struct Icon {
 }
 fn artwork(pid: u32) -> &'static Artwork {
     static DATA: OnceLock<Vec<Artwork>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_blade_artwork_data.json"))
-            .expect("current mapping blade artwork")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("audited keyboard blade")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_blade_artwork_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("audited keyboard blade")
 }
 impl KeyboardProductWorkspace {
     pub(super) fn mapping_function_blade(&self, slot: usize, cx: &Context<Self>) -> AnyElement {

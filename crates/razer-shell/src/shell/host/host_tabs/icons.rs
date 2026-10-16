@@ -5,7 +5,7 @@ pub(super) fn device_favicon(pid: u32) -> Option<&'static str> {
     static ICONS: OnceLock<BTreeMap<String, Option<String>>> = OnceLock::new();
     ICONS
         .get_or_init(|| {
-            serde_json::from_str(include_str!("../host_device_favicons.json"))
+            serde_json::from_str(crate::data::HOST_DEVICE_FAVICONS)
                 .expect("current product HTML favicon receipts")
         })
         .get(&pid.to_string())
@@ -19,7 +19,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     #[test]
-    fn every_registered_product_tab_has_a_loadable_source_favicon() {
+    fn every_registered_product_tab_has_a_manifested_source_favicon() {
         let mut images = BTreeSet::new();
         for product in razer_catalog::registry() {
             let icon = device_favicon(product.id())
@@ -29,7 +29,11 @@ mod tests {
         assert!(!images.is_empty());
         for icon in images {
             assert!(
-                razer_assets::SynapseAssets.load(icon).unwrap().is_some(),
+                razer_assets::SynapseAssets
+                    .list(icon)
+                    .unwrap()
+                    .iter()
+                    .any(|alias| alias.as_ref() == icon),
                 "{icon}"
             );
         }

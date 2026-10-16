@@ -52,10 +52,7 @@ struct OptionRow {
 }
 fn records() -> &'static [SmartSwitch] {
     static DATA: OnceLock<Vec<SmartSwitch>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("source_owner_smart_switch_data.json"))
-            .expect("current actually mounted SmartSwitch projection")
-    })
+    DATA.get_or_init(|| crate::data::source_owner_smart_switch_data!())
 }
 fn record(pid: u32) -> Option<&'static SmartSwitch> {
     records().iter().find(|row| row.product_id == pid)

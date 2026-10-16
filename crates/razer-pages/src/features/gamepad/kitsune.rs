@@ -11,9 +11,7 @@ struct Data {
 }
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("kitsune_data.json")).expect("audited Kitsune data")
-    })
+    DATA.get_or_init(|| crate::data::kitsune_data!())
 }
 fn label(symbol: &str) -> String {
     t(&data().labels[symbol])

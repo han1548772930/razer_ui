@@ -62,12 +62,7 @@ fn key_id(product: &ProductKeys, value: Option<&Value>) -> anyhow::Result<u8> {
 }
 fn product_keys(product_id: u32) -> anyhow::Result<&'static ProductKeys> {
     static KEYS: OnceLock<Catalog> = OnceLock::new();
-    let catalog = KEYS.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../assets/data/keyboard-analog-keys.json"
-        ))
-        .expect("current literal keyboard analog IDs")
-    });
+    let catalog = KEYS.get_or_init(|| crate::data::keyboard_analog_keys::keyboard_analog_keys!());
     ensure!(
         catalog.schema_version == 1,
         "Unknown keyboard key catalog schema"

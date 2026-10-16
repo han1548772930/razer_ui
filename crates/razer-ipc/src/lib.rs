@@ -52,8 +52,12 @@ pub enum ServiceRequest {
         product_id: u32,
         clip: razer_device::seiren_microphone::PcmPlaybackFile,
     },
-    SeirenAudioPlaybackPoll { session_id: u64 },
-    SeirenAudioPlaybackStop { session_id: u64 },
+    SeirenAudioPlaybackPoll {
+        session_id: u64,
+    },
+    SeirenAudioPlaybackStop {
+        session_id: u64,
+    },
     HidNodeSeirenEq {
         node: razer_device::backend::HidNode,
         product_id: u32,
@@ -63,13 +67,19 @@ pub enum ServiceRequest {
         target: razer_device::device_reads::DeviceReadTarget,
         change: razer_device::seiren_eq::Change,
     },
-    SeirenNativeOpen { target: razer_device::device_reads::DeviceReadTarget },
+    SeirenNativeOpen {
+        target: razer_device::device_reads::DeviceReadTarget,
+    },
     SeirenNativeCall {
         target: razer_device::device_reads::DeviceReadTarget,
         native_operation: razer_device::seiren_eq::NativeOperation,
     },
-    SeirenNativeEvents { target: razer_device::device_reads::DeviceReadTarget },
-    SeirenNativeClose { target: razer_device::device_reads::DeviceReadTarget },
+    SeirenNativeEvents {
+        target: razer_device::device_reads::DeviceReadTarget,
+    },
+    SeirenNativeClose {
+        target: razer_device::device_reads::DeviceReadTarget,
+    },
     HidNodeMouseCurrentPower {
         node: razer_device::backend::HidNode,
         product_id: u32,
@@ -98,9 +108,16 @@ pub enum ServiceRequest {
         target: razer_device::device_reads::DeviceReadTarget,
         command: razer_device::leviathan::Operation,
     },
-    LeviathanEventsStart {session_id:String,target:razer_device::leviathan::EventTarget},
-    LeviathanEventsPoll {session_id:String},
-    LeviathanEventsStop {session_id:String},
+    LeviathanEventsStart {
+        session_id: String,
+        target: razer_device::leviathan::EventTarget,
+    },
+    LeviathanEventsPoll {
+        session_id: String,
+    },
+    LeviathanEventsStop {
+        session_id: String,
+    },
     BleMouseCurrentPower {
         target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
         change: razer_device::mouse_current_power::Change,
@@ -118,8 +135,12 @@ pub enum ServiceRequest {
         operation_id: String,
         target: razer_device::mouse_indicator_led::Target,
     },
-    MouseIndicatorLedPoll { operation_id: String },
-    MouseIndicatorLedStop { operation_id: String },
+    MouseIndicatorLedPoll {
+        operation_id: String,
+    },
+    MouseIndicatorLedStop {
+        operation_id: String,
+    },
     /// Original host process-local Map stores; never device write-back or local
     /// draft persistence. The owning host registers real view metadata first.
     HostStorageView {
@@ -858,15 +879,24 @@ impl ServiceClient {
                 self.stop_after_error(anyhow::anyhow!("设备操作范围已取消，独占服务已关闭"))
             );
         }
-        let starting_recorder = matches!(request, ServiceRequest::StartMacroRecording | ServiceRequest::PrepareOtfmRecorder | ServiceRequest::StartOtfmRecording);
+        let starting_recorder = matches!(
+            request,
+            ServiceRequest::StartMacroRecording
+                | ServiceRequest::PrepareOtfmRecorder
+                | ServiceRequest::StartOtfmRecording
+        );
         let controller_triggers = matches!(&request, ServiceRequest::ControllerTriggers { .. });
         let starting_mapping = matches!(
             request,
-            ServiceRequest::MappingDeviceStart { .. } | ServiceRequest::ControllerInputStart { .. }
+            ServiceRequest::MappingDeviceStart { .. }
+                | ServiceRequest::ControllerInputStart { .. }
                 | ServiceRequest::MappingOtfmInputStart { .. }
         );
-        let starting_key_capture = matches!(request,
-            ServiceRequest::StartMappingKeyCapture | ServiceRequest::StartKeyboardCalibrationCapture { .. });
+        let starting_key_capture = matches!(
+            request,
+            ServiceRequest::StartMappingKeyCapture
+                | ServiceRequest::StartKeyboardCalibrationCapture { .. }
+        );
         let writing_app_files =
             matches!(&request, ServiceRequest::UserAppFiles { command } if command.mutates_files());
         let writing_device = matches!(
@@ -890,7 +920,10 @@ impl ServiceClient {
                 | ServiceRequest::HidNodeMouseReceiverIdle { .. }
                 | ServiceRequest::DeviceDpiStagesWrite { .. }
                 | ServiceRequest::HidNodeKeyboardBrightnessWrite { .. }
-                | ServiceRequest::HidNodeKeyboardReceiverBrightness { percent: Some(_), .. }
+                | ServiceRequest::HidNodeKeyboardReceiverBrightness {
+                    percent: Some(_),
+                    ..
+                }
                 | ServiceRequest::HidNodeMouseCurrentDpi {
                     change: Some(_),
                     ..
@@ -945,8 +978,14 @@ impl ServiceClient {
         let reading_device = matches!(
             request,
             ServiceRequest::DeviceRead { .. }
-                | ServiceRequest::HidNodeLeviathan { command: razer_device::leviathan::Operation::ReadIo, .. }
-                | ServiceRequest::DeviceLeviathan { command: razer_device::leviathan::Operation::ReadIo, .. }
+                | ServiceRequest::HidNodeLeviathan {
+                    command: razer_device::leviathan::Operation::ReadIo,
+                    ..
+                }
+                | ServiceRequest::DeviceLeviathan {
+                    command: razer_device::leviathan::Operation::ReadIo,
+                    ..
+                }
                 | ServiceRequest::LeviathanEventsStart { .. }
                 | ServiceRequest::LeviathanEventsPoll { .. }
                 | ServiceRequest::LeviathanEventsStop { .. }
@@ -1008,13 +1047,17 @@ impl ServiceClient {
                         | razer_device::mouse_indicator_led::Change::ReadConnectionQuality
                         | razer_device::mouse_indicator_led::Change::ReadSerialNumber
                         | razer_device::mouse_indicator_led::Change::ReadBatteryLevel
-                        | razer_device::mouse_indicator_led::Change::ReadChargingStatus, .. }
+                        | razer_device::mouse_indicator_led::Change::ReadChargingStatus,
+                    ..
+                }
                 | ServiceRequest::DeviceMouseIndicatorLed {
                     change: razer_device::mouse_indicator_led::Change::ReadConfiguration
                         | razer_device::mouse_indicator_led::Change::ReadConnectionQuality
                         | razer_device::mouse_indicator_led::Change::ReadSerialNumber
                         | razer_device::mouse_indicator_led::Change::ReadBatteryLevel
-                        | razer_device::mouse_indicator_led::Change::ReadChargingStatus, .. }
+                        | razer_device::mouse_indicator_led::Change::ReadChargingStatus,
+                    ..
+                }
                 | ServiceRequest::HidNodeMixerRead { .. }
                 | ServiceRequest::HidNodeMixerRouteRead { .. }
         );

@@ -19,10 +19,7 @@ struct PlaybackLists {
 
 pub fn choices(input: &str) -> Vec<Choice> {
     static LISTS: OnceLock<PlaybackLists> = OnceLock::new();
-    let lists = LISTS.get_or_init(|| {
-        serde_json::from_str(include_str!("playback_182.json"))
-            .expect("audited Macro playback lists")
-    });
+    let lists = LISTS.get_or_init(|| crate::data::playback_182!());
     let list = if matches!(input, "ScrollUp" | "ScrollDown") {
         &lists.wheel
     } else {

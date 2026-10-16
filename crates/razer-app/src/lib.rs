@@ -5,7 +5,7 @@
 //! UI 编辑使用本地草稿；启动及 USB/HID 拓扑变化会触发后台设备发现。
 //! 经当前源核实的原生查询在隔离 worker 中执行，结果通过观察事件进入 UI。
 //! 接口存在不等于设备配置已读取；历史快照和静态能力不能冒充当前读值。
-//! 开发验证限制见 AGENTS.md：不运行本应用、测试、探针或厂商代码。
+//! 执行限制见 AGENTS.md：不运行应用、探针或厂商代码。
 
 use razer_assets as resources;
 use razer_i18n as i18n;
@@ -28,9 +28,8 @@ pub fn run() {
     //
     // 用 rust-i18n 的全局语言设置（gpui-component 内部也是这一套），
     // 语言文件在 `locales/`。放在最前面，让自检等无窗路径也用同一语言。
-    // The shell consumes this same validated snapshot. Reading it again while
-    // opening the first window reparsed every saved product/profile on the UI
-    // thread, and could select a language from a different file revision.
+    // The shell consumes this validated snapshot so language and profile
+    // selection use the same file revision without reparsing on the UI thread.
     let workspace = store::read_workspace(&razer_storage::store_path());
     let lang = args
         .iter()
@@ -228,7 +227,7 @@ pub fn run() {
     // 注册图标源：**必须用 `AllAssets`**（完整 Lucide 图标集，1830 个 SVG）。
     // 默认的 `Assets` 只有少量图标，用它会导致大部分 `IconName` 渲染为空白。
     if let Err(error) = resources::SynapseAssets.validate() {
-        eprintln!("本地资源包无法加载：{error:#}");
+        eprintln!("资源索引无法加载：{error:#}");
         std::process::exit(1);
     }
     let application = gpui_kit::application().with_assets(resources::SynapseAssets);
@@ -236,6 +235,9 @@ pub fn run() {
     application.run(move |cx| {
         // 使用任何组件前必须先初始化。
         gpui_kit::init(cx);
+        if let Err(error) = resources::start_resources(cx) {
+            eprintln!("资源加载器无法初始化：{error:#}");
+        }
         if let Err(error) = resources::register_fonts(cx) {
             eprintln!("字体加载失败：{error}");
         }
@@ -263,10 +265,6 @@ pub fn run() {
         // .s3-dropdown         { border:1px solid #515151 }
         // ```
         //
-        // **修正记录**：此前把通用边框写成 `#555`，全量统计后确认真实值是
-        // **`#5d5d5d`（出现 157 次）**，`#555` 只有 7 次。
-        // 另外此前**完全没设字体**——真实是 `Roboto`，标题用 `RazerF5`。
-        //
         // 见 [`docs/screens/`](../docs/screens/README.md) 各页的「2.0.1 全局样式」。
         Theme::change(ThemeMode::Dark, None, cx);
         Theme::update(cx, |theme| {
@@ -276,7 +274,6 @@ pub fn run() {
             // 基字号取真实的 **16px**：gpui-kit 的字号是从 `theme.font_size`
             // 按比例派生的（`sizing.rs:239` 的 `×0.875`），所以它**决定不了**
             // 具体档位，只能靠调用点显式指定（见 `widgets::geometry::TEXT_*`）。
-            // 之前这里写 14px，与上面这行注释本身矛盾。
             theme.font_family = "Roboto".into();
             theme.font_size = px(16.);
 

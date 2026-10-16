@@ -12,10 +12,7 @@ struct SourceModuleDetail {
 }
 fn source_module_catalog() -> &'static SourceModuleCatalog {
     static CATALOG: OnceLock<SourceModuleCatalog> = OnceLock::new();
-    CATALOG.get_or_init(|| {
-        serde_json::from_str(include_str!("devices_modules_catalog.json"))
-            .expect("validated current 6505 module catalogue")
-    })
+    CATALOG.get_or_init(|| crate::data::devices_modules_catalog!())
 }
 fn localized_module_text(text: &BTreeMap<String, String>) -> String {
     let locale = i18n::locale().to_ascii_lowercase();
@@ -265,11 +262,7 @@ impl ModuleCatalog {
                             view.child(
                                 module_detail_action(
                                     SharedString::from(format!("module-details-{}", item.id)),
-                                    i18n::t(if expanded {
-                                        "CLOSE"
-                                    } else {
-                                        "MORE_INFORMATION"
-                                    }),
+                                    i18n::t(if expanded { "CLOSE" } else { "MORE_INFORMATION" }),
                                     cx,
                                 )
                                 .on_click(cx.listener(

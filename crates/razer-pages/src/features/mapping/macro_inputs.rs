@@ -117,10 +117,7 @@ struct MacroInputCatalogs {
 fn source_catalog(product_id: u32) -> Option<&'static MacroInputCatalog> {
     static CATALOGS: OnceLock<MacroInputCatalogs> = OnceLock::new();
     CATALOGS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("macro_input_catalogs.json"))
-                .expect("audited Macro input catalog capabilities")
-        })
+        .get_or_init(|| crate::data::macro_input_catalogs!())
         .products
         .iter()
         .find(|catalog| catalog.product_id == product_id)
@@ -133,23 +130,21 @@ impl MacroInputCatalog {
             InputSource::PreparedKeyboardLayout => {
                 // The prepared catalog owns its legacy/default layout policy.
                 // Unknown layouts must not fall through to a different catalog.
-                let source: Vec<Value> =
-                    serde_json::from_str(resources::keyboard_source_for_layout(device.layout_id)?)
-                        .ok()?;
+                let source = resources::keyboard_source_for_layout(device.layout_id)?;
                 let shapes = resources::keyboard_keys_for_layout(device.layout_id);
                 source
                     .iter()
-                    .flat_map(|group| {
-                        group["group"]["buttonList"]
-                            .as_array()
-                            .into_iter()
-                            .flatten()
-                    })
+                    .flat_map(resources::KeyboardSourceGroup::inputs)
                     .filter_map(|value| {
-                        let shape = shapes
-                            .iter()
-                            .find(|shape| value["inputID"].as_str() == Some(&shape.id))?;
-                        input(value, Some(shape))
+                        let shape = shapes.iter().find(|shape| value.id() == shape.id)?;
+                        Some(MacroInput {
+                            id: value.id().into(),
+                            label: shape.label.clone(),
+                            enabled: value.enabled()
+                                && value.functions().iter().any(|kind| kind == "MACRO"),
+                            bounds: Some(shape.bounds),
+                            shape: Some(shape),
+                        })
                     })
                     .collect()
             }

@@ -4,7 +4,19 @@ use gpui_kit::AssetSource;
 use razer_assets::SynapseAssets;
 
 #[::core::prelude::v1::test]
-fn all_current_controller_images_are_embedded_and_decoded() {
+fn all_current_controller_images_have_manifest_entries_and_source_dimensions() {
+    // Only original PNG IHDR bytes/SVG root tags are needed for these geometry
+    // assertions. Full resource closure is checked by the resource manifest;
+    // pure tests never queue a runtime download or inspect an installation cache.
+    mod fixtures {
+        include!("../../../testdata/resource_cases.rs");
+    }
+    let entries = SynapseAssets
+        .list("synapse/")
+        .unwrap()
+        .into_iter()
+        .map(|key| key.to_string())
+        .collect::<std::collections::BTreeSet<_>>();
     assert_eq!(atlas().products.len(), 8);
     for product in &atlas().products {
         let controls = &source_product(product.product_id).unwrap().button_controls;
@@ -34,7 +46,12 @@ fn all_current_controller_images_are_embedded_and_decoded() {
             );
         }
         for image in product.images.iter().chain(&product.mkeys) {
-            let loaded = SynapseAssets.load(&image.asset).unwrap().unwrap();
+            assert!(entries.contains(&image.asset), "{}", image.asset);
+            let loaded = fixtures::GAMEPAD_HEADERS
+                .iter()
+                .find(|(alias, _)| *alias == image.asset)
+                .expect("original image header fixture")
+                .1;
             assert!(image.width > 0. && image.height > 0.);
             if image.asset.ends_with(".png") {
                 assert!(loaded.starts_with(b"\x89PNG\r\n\x1a\n"), "{}", image.asset);

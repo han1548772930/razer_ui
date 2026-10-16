@@ -132,10 +132,7 @@ fn product(pid: u32) -> Option<&'static Product> {
     static PRODUCTS: OnceLock<Vec<Product>> = OnceLock::new();
     PRODUCTS
         .get_or_init(|| {
-            serde_json::from_str(include_str!(
-                "../../../../assets/data/controller-calibration-current-params.json"
-            ))
-            .expect("source-resolved V3 controller calibration parameters")
+            crate::data::controller_calibration_current_params::controller_calibration_current_params!()
         })
         .iter()
         .find(|p| p.product_id == pid && p.params.version == 3)

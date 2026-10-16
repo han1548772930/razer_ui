@@ -12,13 +12,10 @@ struct Product {
 }
 fn source(pid: u32) -> &'static Product {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_panel_dropdown_data.json"))
-            .expect("current actual keysDrop branches")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("actual keyboard keysDrop")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_panel_dropdown_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("actual keyboard keysDrop")
 }
 pub(super) fn close_icon(pid: u32) -> AnyElement {
     img(source(pid).close.clone())

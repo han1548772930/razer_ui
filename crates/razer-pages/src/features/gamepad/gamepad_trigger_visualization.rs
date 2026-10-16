@@ -73,11 +73,15 @@ fn source_artwork(pid: u32, edition: u32) -> anyhow::Result<Artwork> {
     let is_svg = matches!(pid, 2676 | 2684 | 4144);
     let extension = if is_svg { "svg" } else { "png" };
     let path = |edition| format!("synapse/gamepad-trigger-device/{pid}/{edition}.{extension}");
-    // Source catches the edition request and retries only the same product's edition0.
-    let bytes = SynapseAssets
-        .load(&path(edition))?
-        .or(SynapseAssets.load(&path(0))?)
-        .ok_or_else(|| anyhow::anyhow!("Missing current controller actuation artwork for {pid}"))?;
+    let bytes = crate::runtime_resources::load_edition_resource(edition, |edition| {
+        SynapseAssets.load(&path(edition))
+    })?
+    .ok_or_else(|| anyhow::anyhow!("Missing current controller actuation artwork for {pid}"))?;
+    decode_artwork(pid, edition, bytes.as_ref())
+}
+
+fn decode_artwork(pid: u32, edition: u32, bytes: &[u8]) -> anyhow::Result<Artwork> {
+    let is_svg = matches!(pid, 2676 | 2684 | 4144);
     let (width, height, svg, format) = if is_svg {
         let svg = String::from_utf8(bytes.to_vec())?;
         let (width, height) = if pid == 4144 {
@@ -87,7 +91,7 @@ fn source_artwork(pid: u32, edition: u32) -> anyhow::Result<Artwork> {
         };
         (width, height, Some(svg), ImageFormat::Svg)
     } else {
-        let (width, height) = image::ImageReader::new(Cursor::new(bytes.as_ref()))
+        let (width, height) = image::ImageReader::new(Cursor::new(bytes))
             .with_guessed_format()?
             .into_dimensions()?;
         (
@@ -170,8 +174,12 @@ fn media_scale(width: f32, root_font: f32) -> f32 {
 }
 
 impl GamepadProductWorkspace {
+    pub(super) fn trigger_artwork_pending(&self) -> bool {
+        self.page == "TRIGGERS" && self.trigger_visualization.artwork.is_none()
+    }
+
     pub(super) fn refresh_trigger_visualization(&mut self) {
-        if !self.spec.pages.iter().any(|page| page == "TRIGGERS") {
+        if self.page != "TRIGGERS" || !self.spec.pages.iter().any(|page| page == "TRIGGERS") {
             return;
         }
         let state = &mut self.trigger_visualization;
@@ -331,7 +339,9 @@ impl GamepadProductWorkspace {
 
 #[cfg(test)]
 mod tests {
-    use super::{Meter, dynamic_svg, media_scale, source_artwork};
+    use super::{Meter, decode_artwork, dynamic_svg, media_scale};
+    use gpui_kit::AssetSource;
+    use razer_assets::SynapseAssets;
     use serde_json::json;
     #[test]
     fn live_trigger_range_rounding_and_binary_illustrations_follow_source() {
@@ -349,7 +359,13 @@ mod tests {
     }
 
     #[test]
-    fn every_product_edition_loads_its_original_art_and_svg_trigger_layers() {
+    fn every_product_edition_has_its_manifest_entry_and_base_edition_fallback() {
+        let entries = SynapseAssets
+            .list("synapse/gamepad-trigger-device/")
+            .unwrap()
+            .into_iter()
+            .map(|key| key.to_string())
+            .collect::<std::collections::BTreeSet<_>>();
         for (pid, editions) in [
             (2629, vec![0, 128]),
             (2636, vec![0, 128, 129]),
@@ -360,24 +376,42 @@ mod tests {
             (4144, vec![0]),
         ] {
             for edition in editions.into_iter().chain([u32::MAX]) {
-                let art = source_artwork(pid, edition).unwrap();
-                assert!(art.width > 0. && art.height > 0.);
-                if let Some(svg) = art.svg {
-                    let meter = Meter {
-                        min: 0.,
-                        max: 100.,
-                        active: 50.,
-                        opacity: 0.125,
-                    };
-                    let changed = dynamic_svg(&svg, [meter; 2]);
-                    for side in ["leftTrigger", "rightTrigger"] {
-                        assert!(changed.contains(&format!(r#"class="{side}" opacity="0.125""#)));
-                    }
+                let extension = if matches!(pid, 2676 | 2684 | 4144) {
+                    "svg"
+                } else {
+                    "png"
+                };
+                let path =
+                    |edition| format!("synapse/gamepad-trigger-device/{pid}/{edition}.{extension}");
+                if edition != u32::MAX {
+                    assert!(entries.contains(&path(edition)));
                 }
+                assert!(entries.contains(&path(0)));
             }
         }
         assert_eq!(media_scale(850., 16.), 0.8);
         assert_eq!(media_scale(1300., 32.), 0.6);
         assert_eq!(media_scale(400., 16.), 0.5);
+    }
+
+    #[test]
+    fn original_svg_trigger_elements_accept_observations_without_resource_io() {
+        mod fixtures {
+            include!("../../../testdata/resource_cases.rs");
+        }
+        for &(pid, source) in fixtures::GAMEPAD_TRIGGER_ELEMENTS {
+            let art = decode_artwork(pid, 0, source.as_bytes()).unwrap();
+            assert!(art.width > 0. && art.height > 0.);
+            let meter = Meter {
+                min: 0.,
+                max: 100.,
+                active: 50.,
+                opacity: 0.125,
+            };
+            let changed = dynamic_svg(&art.svg.unwrap(), [meter; 2]);
+            for side in ["leftTrigger", "rightTrigger"] {
+                assert!(changed.contains(&format!(r#"class="{side}" opacity="0.125""#)));
+            }
+        }
     }
 }

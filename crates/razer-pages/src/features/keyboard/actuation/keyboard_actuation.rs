@@ -128,10 +128,7 @@ pub(super) struct State {
 fn presentation(pid: u32) -> &'static Presentation {
     static PRESENTATIONS: OnceLock<Vec<Presentation>> = OnceLock::new();
     PRESENTATIONS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_actuation_presentation_data.json"))
-                .expect("statically audited actuation command presentation")
-        })
+        .get_or_init(|| crate::data::keyboard_actuation_presentation_data!())
         .iter()
         .find(|presentation| presentation.product_id == pid)
         .expect("audited actuation product presentation")
@@ -140,10 +137,7 @@ fn presentation(pid: u32) -> &'static Presentation {
 fn specification(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_actuation_data.json"))
-                .expect("statically audited actuation specifications")
-        })
+        .get_or_init(|| crate::data::keyboard_actuation_data!())
         .iter()
         .find(|spec| spec.product_id == pid)
 }

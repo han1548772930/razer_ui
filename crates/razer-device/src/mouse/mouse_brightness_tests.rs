@@ -1073,11 +1073,7 @@ fn malformed_hid_lengths_and_oversized_payloads_never_decode_padding() {
     let valid = reply([3, 15, 132], &[1, 4, 84], 1, 2);
     let mut oversized = valid.clone();
     oversized[6] = 81;
-    for (response, count) in [
-        (valid[..90].to_vec(), 90),
-        (valid, 92),
-        (oversized, 91),
-    ] {
+    for (response, count) in [(valid[..90].to_vec(), 90), (valid, 92), (oversized, 91)] {
         let device = Transport::new([send([3, 15, 132], &[1, 4], 1), Step::Get(response, count)]);
         let transport = cap(170);
         assert!(

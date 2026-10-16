@@ -61,7 +61,7 @@ struct Effect {
 
 pub fn source_product(pid: u32) -> Option<&'static SystemProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<SystemProductSpec> =
-        super::source_catalog::SourceCatalog::new(include_str!("system_products_data.json"));
+        super::source_catalog::SourceCatalog::new(|| crate::data::system_products_data!());
     PRODUCTS.get(pid)
 }
 

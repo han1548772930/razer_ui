@@ -39,10 +39,10 @@ pub use dpi_70::{
 };
 #[path = "mapping/mouse_mapping_runtime_70.rs"]
 mod mapping_runtime_70;
-#[path = "scrolling/mouse_scroll_wheel.rs"]
-mod scroll_wheel;
 #[path = "scrolling/mouse_scroll_task.rs"]
 mod scroll_task;
+#[path = "scrolling/mouse_scroll_wheel.rs"]
+mod scroll_wheel;
 pub use scroll_task::MouseScrollRequested;
 pub use scroll_wheel::ScrollWheelObservation;
 #[path = "polling/mouse_polling_view.rs"]
@@ -62,8 +62,10 @@ pub use calibration_70::{MouseCalibrationRequested, MouseCalibrationWelcomeChang
 mod customize_190;
 #[path = "customize/mouse_receiver_indicator.rs"]
 mod receiver_indicator;
-pub use receiver_indicator::{MouseReceiverAction, MouseReceiverIndicatorRequested, MouseReceiverMonitorRequested};
 pub use customize_190::source_mapping::{MouseMappingNavigation, MouseMappingSaveRejected};
+pub use receiver_indicator::{
+    MouseReceiverAction, MouseReceiverIndicatorRequested, MouseReceiverMonitorRequested,
+};
 #[path = "customize/mouse_button_state_current.rs"]
 mod button_state_current;
 #[path = "customize/mouse_customize_70.rs"]
@@ -178,7 +180,11 @@ struct MouseEffect {
 
 impl MouseProductSpec {
     pub(crate) fn profile_document_defaults(&self) -> Option<(&Value, &Value, u32)> {
-        Some((&self.profile, self.device_profile.as_ref()?, self.profile_schema_version?))
+        Some((
+            &self.profile,
+            self.device_profile.as_ref()?,
+            self.profile_schema_version?,
+        ))
     }
     fn block_widget_columns(&self) -> bool {
         self.widget_column_layout.as_deref() == Some("block")
@@ -277,7 +283,7 @@ impl MouseProductSpec {
 
 pub fn source_product(product_id: u32) -> Option<&'static MouseProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<MouseProductSpec> =
-        super::source_catalog::SourceCatalog::new(include_str!("mouse_products_data.json"));
+        super::source_catalog::SourceCatalog::new(|| crate::data::mouse_products_data!());
     PRODUCTS.get(product_id)
 }
 pub(crate) fn mapping_target_info(product_id: u32) -> Option<&'static Value> {
@@ -335,6 +341,7 @@ pub struct MouseProductWorkspace {
     scroll_popup_focus: FocusHandle,
     scroll_application_picker: bool,
     dynamic_state: dynamic::State,
+    rotation_resources: rotation::Resources,
     calibration_state: calibration_70::State,
     smart_calibration_drag: Option<String>,
     smart_calibration_drag_cancelled: bool,
@@ -426,6 +433,7 @@ impl MouseProductWorkspace {
             scroll_popup_focus: cx.focus_handle(),
             scroll_application_picker: false,
             dynamic_state: dynamic::State::new(window, cx),
+            rotation_resources: rotation::Resources::default(),
             calibration_state: calibration_70::State::new(cx),
             smart_calibration_drag: None,
             smart_calibration_drag_cancelled: false,
@@ -466,6 +474,12 @@ impl MouseProductWorkspace {
             this.draft[polling::LOCAL_FIELDS] = json!([]);
         }
         this.sync_babel_calibration_lift();
+        this.subscriptions
+            .push(razer_assets::observe_resources(cx, |this, _, cx| {
+                if this.rotation_resources.refresh() {
+                    cx.notify();
+                }
+            }));
         this
     }
 
@@ -490,6 +504,9 @@ impl MouseProductWorkspace {
             }
             self.sync_matcher_mount(cx);
             if key == "ADVANCED" {
+                if self.spec.rotation {
+                    self.rotation_resources.request();
+                }
                 self.dynamic_ui_command(cx);
             }
             self.set_current_customize_input(None, false);
@@ -968,10 +985,7 @@ impl MouseProductWorkspace {
         // Current product dl.isEnabled(): >1000 Hz disables the threshold;
         // source evidence is recorded per product, never inferred by category.
         static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
-        let limited = PRODUCTS.get_or_init(|| {
-            serde_json::from_str(include_str!("power/mouse_low_power_data.json"))
-                .expect("validated current low-power polling capabilities")
-        });
+        let limited = PRODUCTS.get_or_init(|| crate::data::mouse_low_power_data!());
         !limited.contains(&self.spec.product_id)
             || if super::mouse_polling::source_spec(self.spec.product_id).is_some() {
                 self.effective_power_polling_rate() <= 1000
@@ -1673,7 +1687,8 @@ impl MouseProductWorkspace {
             left = left.child(self.power_battery_type(cx));
         }
         if self.spec.low_power_slider {
-            let card = self.low_power_card(cx)
+            let card = self
+                .low_power_card(cx)
                 .when(collapse_margins, |panel| panel.mb_0());
             if dim_lighting {
                 left = left.child(card);
@@ -1682,8 +1697,8 @@ impl MouseProductWorkspace {
             }
             panels = panels.child(
                 self.low_power_card(cx)
-                .when(collapse_margins, |panel| panel.mb_0())
-                .when(direct, performance_layout::direct_widget),
+                    .when(collapse_margins, |panel| panel.mb_0())
+                    .when(direct, performance_layout::direct_widget),
             );
         }
         if self.spec.low_battery_slider {
@@ -2027,19 +2042,25 @@ impl MouseProductWorkspace {
                         )
                         .child(rotation::cross().size_full()),
                 )
-                .child(
-                    img(rotation::image(self.number("/rotation/value") as i32))
-                        .absolute()
-                        .left(surface::css(209.5))
-                        .top(surface::css(112.))
-                        .size(surface::css(180.))
-                        .opacity(
-                            if self.boolean("/rotation/isEnabled") && self.advanced_enabled() {
-                                1.
-                            } else {
-                                0.3
-                            },
-                        ),
+                .children(
+                    self.rotation_resources
+                        .image(self.number("/rotation/value") as i32)
+                        .map(|image| {
+                            img(image)
+                                .absolute()
+                                .left(surface::css(209.5))
+                                .top(surface::css(112.))
+                                .size(surface::css(180.))
+                                .opacity(
+                                    if self.boolean("/rotation/isEnabled")
+                                        && self.advanced_enabled()
+                                    {
+                                        1.
+                                    } else {
+                                        0.3
+                                    },
+                                )
+                        }),
                 )
                 .child(
                     div()

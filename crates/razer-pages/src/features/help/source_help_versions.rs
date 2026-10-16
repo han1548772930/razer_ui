@@ -12,10 +12,7 @@ struct UiVersion {
 
 pub(super) fn ui_version(product_id: u32) -> Option<String> {
     static VERSIONS: OnceLock<Vec<UiVersion>> = OnceLock::new();
-    let rows = VERSIONS.get_or_init(|| {
-        serde_json::from_str(include_str!("source_help_versions_data.json"))
-            .expect("statically parsed current noscript version")
-    });
+    let rows = VERSIONS.get_or_init(|| crate::data::source_help_versions_data!());
     let row = rows.iter().find(|row| row.product_id == product_id)?;
     let build = match &row.build_version {
         serde_json::Value::String(value) => value.clone(),

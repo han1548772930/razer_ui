@@ -234,7 +234,10 @@ impl ReceiverRead {
         validate: impl Fn() -> anyhow::Result<()>,
     ) -> anyhow::Result<Observation<crate::device_writes::DeviceWriteResult>> {
         use crate::device_writes::{self, DeviceWriteSetting};
-        ensure!(self.command.name == DeviceReadKind::Idle, "Idle writer requires its source getter");
+        ensure!(
+            self.command.name == DeviceReadKind::Idle,
+            "Idle writer requires its source getter"
+        );
         let setting = DeviceWriteSetting::Idle { raw_time };
         device_writes::prepare(
             device_writes::capability(PRODUCT_ID).context("PID182 idle setter is absent")?,

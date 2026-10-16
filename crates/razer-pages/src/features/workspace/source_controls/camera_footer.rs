@@ -20,13 +20,11 @@ mod tests {
     use serde_json::Value;
 
     fn defaults(pid: u32) -> Value {
-        serde_json::from_str::<Value>(include_str!("../source_controls_data.json"))
-            .unwrap()
-            .as_array()
-            .unwrap()
+        super::super::specs()
             .iter()
-            .find(|p| p["product_id"] == pid)
-            .unwrap()["profile"]
+            .find(|p| p.product_id == pid)
+            .unwrap()
+            .profile
             .clone()
     }
 

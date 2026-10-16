@@ -32,24 +32,22 @@ mod help_scroll;
 mod help_system;
 #[path = "source_workspace/help_versions.rs"]
 mod help_versions;
-#[path = "source_workspace/seiren_local_settings.rs"]
-mod seiren_local_settings;
 #[path = "source_workspace/hyperflux.rs"]
 mod hyperflux;
-#[path = "source_workspace/keyboard_mapping.rs"]
-mod keyboard_mapping;
-#[path = "source_workspace/lighting.rs"]
-mod lighting;
-#[path = "source_workspace/mouse_runtime_artwork.rs"]
-mod mouse_runtime_artwork;
-#[path = "source_workspace/mouse_receiver_indicator.rs"]
-mod mouse_receiver_indicator;
-#[path = "source_workspace/mouse_profile_source.rs"]
-mod mouse_profile_source;
 #[path = "source_workspace/keyboard_linked_profiles.rs"]
 mod keyboard_linked_profiles;
+#[path = "source_workspace/keyboard_mapping.rs"]
+mod keyboard_mapping;
 #[path = "source_workspace/keyboard_profile_mutations.rs"]
 mod keyboard_profile_mutations;
+#[path = "source_workspace/lighting.rs"]
+mod lighting;
+#[path = "source_workspace/mouse_profile_source.rs"]
+mod mouse_profile_source;
+#[path = "source_workspace/mouse_receiver_indicator.rs"]
+mod mouse_receiver_indicator;
+#[path = "source_workspace/mouse_runtime_artwork.rs"]
+mod mouse_runtime_artwork;
 #[path = "source_workspace/profile_actions.rs"]
 mod profile_actions;
 #[path = "source_workspace/profile_bar.rs"]
@@ -62,6 +60,8 @@ mod profile_menu;
 mod profile_transfer;
 #[path = "source_workspace/ripsaw.rs"]
 mod ripsaw;
+#[path = "source_workspace/seiren_local_settings.rs"]
+mod seiren_local_settings;
 #[cfg(test)]
 #[path = "source_workspace/tests.rs"]
 mod tests;
@@ -616,7 +616,9 @@ impl SourceProductWorkspace {
         if let FamilyBody::Controls(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.observe_camera_firmware(
-                    values.as_ref().and_then(|values| values.firmware.as_deref()),
+                    values
+                        .as_ref()
+                        .and_then(|values| values.firmware.as_deref()),
                     cx,
                 );
             });
@@ -755,10 +757,12 @@ impl SourceProductWorkspace {
         observation: super::DockPairingObservation,
         cx: &mut Context<Self>,
     ) -> bool {
-        if self.device.product_id==192 {
-            if let Some(Ok(payload))=observation.result_ref() {
-                if let FamilyBody::Mouse(body)=&self.body {
-                    body.update(cx,|body,cx|body.observe_legacy_receiver_pairing(observation.kind(),payload,cx));
+        if self.device.product_id == 192 {
+            if let Some(Ok(payload)) = observation.result_ref() {
+                if let FamilyBody::Mouse(body) = &self.body {
+                    body.update(cx, |body, cx| {
+                        body.observe_legacy_receiver_pairing(observation.kind(), payload, cx)
+                    });
                 }
             }
         }
@@ -839,7 +843,10 @@ impl SourceProductWorkspace {
                             | razer_model::model::DeviceConnectionObservation::HidPresent
                     )
                 );
-            body.update(cx, |body, cx| {body.set_volume_active(active, cx);body.set_leviathan_active(active,cx);});
+            body.update(cx, |body, cx| {
+                body.set_volume_active(active, cx);
+                body.set_leviathan_active(active, cx);
+            });
         }
     }
     fn sync_camera_activity(&self, cx: &mut Context<Self>) {
@@ -876,10 +883,16 @@ impl SourceProductWorkspace {
         }
     }
 
-    pub fn set_camera_host_window_status(&self, status: Option<razer_model::host_window_focus::HostWindowStatus>, cx: &mut Context<Self>) {
+    pub fn set_camera_host_window_status(
+        &self,
+        status: Option<razer_model::host_window_focus::HostWindowStatus>,
+        cx: &mut Context<Self>,
+    ) {
         if matches!(self.device.product_id, 3594..=3596) {
             if let FamilyBody::Controls(body) = &self.body {
-                body.update(cx, |body, cx| body.set_camera_host_window_status(status, cx));
+                body.update(cx, |body, cx| {
+                    body.set_camera_host_window_status(status, cx)
+                });
             }
         }
     }
@@ -1183,54 +1196,122 @@ impl SourceProductWorkspace {
             });
         }
     }
-    pub fn observe_seiren_stream_mixer(&mut self,observation:super::audio_products::SeirenStreamMixerObservation,window:&mut Window,cx:&mut Context<Self>) {
-        if let FamilyBody::Audio(body)=&self.body {body.update(cx,|body,cx|body.observe_seiren_stream_mixer(observation,window,cx));}
+    pub fn observe_seiren_stream_mixer(
+        &mut self,
+        observation: super::audio_products::SeirenStreamMixerObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_stream_mixer(observation, window, cx)
+            });
+        }
     }
-    pub fn seiren_stream_mixer_request_matches(&self,request:&super::audio_products::SeirenStreamMixerRequested,cx:&App)->bool {
+    pub fn seiren_stream_mixer_request_matches(
+        &self,
+        request: &super::audio_products::SeirenStreamMixerRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body,FamilyBody::Audio(body) if body.read(cx).seiren_stream_mixer_request_matches(request))
     }
-    pub fn seiren_stream_mixer_capture_matches(&self,request:&super::audio_products::SeirenStreamMixerCaptureChanged,cx:&App)->bool {
+    pub fn seiren_stream_mixer_capture_matches(
+        &self,
+        request: &super::audio_products::SeirenStreamMixerCaptureChanged,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body,FamilyBody::Audio(body) if body.read(cx).seiren_stream_mixer_capture_matches(request))
     }
-    pub fn observe_seiren_document_version(&mut self,version:u64,cx:&mut Context<Self>) {
-        if matches!(self.device.product_id,1422|1446) {
-            self.device.source_device_settings.get_or_insert_with(||serde_json::json!({}))["version"]=serde_json::json!(version);
-            self.saved.source_device_settings.get_or_insert_with(||serde_json::json!({}))["version"]=serde_json::json!(version);
+    pub fn observe_seiren_document_version(&mut self, version: u64, cx: &mut Context<Self>) {
+        if matches!(self.device.product_id, 1422 | 1446) {
+            self.device
+                .source_device_settings
+                .get_or_insert_with(|| serde_json::json!({}))["version"] =
+                serde_json::json!(version);
+            self.saved
+                .source_device_settings
+                .get_or_insert_with(|| serde_json::json!({}))["version"] =
+                serde_json::json!(version);
             cx.notify();
         }
     }
-    pub fn observe_seiren_stream_mixer_mode(&mut self,enabled:bool,cx:&mut Context<Self>) {
-        if let FamilyBody::Audio(body)=&self.body {body.update(cx,|body,cx|body.observe_seiren_stream_mixer_mode(enabled,cx));}
+    pub fn observe_seiren_stream_mixer_mode(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_stream_mixer_mode(enabled, cx)
+            });
+        }
     }
-    pub fn finish_seiren_stream_mixer(&mut self,request:&super::audio_products::SeirenStreamMixerRequested,error:Option<String>,window:&mut Window,cx:&mut Context<Self>) {
-        if let FamilyBody::Audio(body)=&self.body {body.update(cx,|body,cx|body.finish_seiren_stream_mixer(request,error,window,cx));}
+    pub fn finish_seiren_stream_mixer(
+        &mut self,
+        request: &super::audio_products::SeirenStreamMixerRequested,
+        error: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_seiren_stream_mixer(request, error, window, cx)
+            });
+        }
     }
-    pub fn observe_seiren_native_event(&mut self,event:serde_json::Value,window:&mut Window,cx:&mut Context<Self>) {
-        if let FamilyBody::Audio(body)=&self.body {
-            body.update(cx,|body,cx|body.observe_seiren_native_event(event,window,cx));
+    pub fn observe_seiren_native_event(
+        &mut self,
+        event: serde_json::Value,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_native_event(event, window, cx)
+            });
         }
     }
     pub fn observe_seiren_sampling_ready(&mut self, ready: bool, cx: &mut Context<Self>) {
         if let FamilyBody::Audio(body) = &self.body {
-            body.update(cx, |body,cx|body.observe_seiren_sampling_ready(ready,cx));
+            body.update(cx, |body, cx| body.observe_seiren_sampling_ready(ready, cx));
         }
     }
-    pub fn set_seiren_microphone_setup_seen(&mut self, seen: bool, window:&mut Window, cx: &mut Context<Self>) {
+    pub fn set_seiren_microphone_setup_seen(
+        &mut self,
+        seen: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let FamilyBody::Audio(body) = &self.body {
-            body.update(cx, |body,cx|body.set_seiren_microphone_setup_seen(seen,window,cx));
+            body.update(cx, |body, cx| {
+                body.set_seiren_microphone_setup_seen(seen, window, cx)
+            });
         }
     }
-    pub fn seiren_audio_playback_request_matches(&self, request:&super::audio_products::SeirenAudioPlaybackRequested, cx:&App)->bool {
+    pub fn seiren_audio_playback_request_matches(
+        &self,
+        request: &super::audio_products::SeirenAudioPlaybackRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body,FamilyBody::Audio(body) if body.read(cx).seiren_audio_playback_request_matches(request))
     }
-    pub fn observe_seiren_audio_playback_started(&mut self, request:&super::audio_products::SeirenAudioPlaybackRequested, cx:&mut Context<Self>) {
-        if let FamilyBody::Audio(body)=&self.body {
-            body.update(cx,|body,cx|body.observe_seiren_audio_playback_started(request,cx));
+    pub fn observe_seiren_audio_playback_started(
+        &mut self,
+        request: &super::audio_products::SeirenAudioPlaybackRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_seiren_audio_playback_started(request, cx)
+            });
         }
     }
-    pub fn finish_seiren_audio_playback(&mut self, request:&super::audio_products::SeirenAudioPlaybackRequested, error:Option<String>,cx:&mut Context<Self>) {
-        if let FamilyBody::Audio(body)=&self.body {
-            body.update(cx,|body,cx|body.finish_seiren_audio_playback(request,error,cx));
+    pub fn finish_seiren_audio_playback(
+        &mut self,
+        request: &super::audio_products::SeirenAudioPlaybackRequested,
+        error: Option<String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Audio(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_seiren_audio_playback(request, error, cx)
+            });
         }
     }
     pub fn observe_seiren_native_levels(
@@ -1346,17 +1427,33 @@ impl SourceProductWorkspace {
     ) -> bool {
         matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).current_dpi_request_matches(request, cx))
     }
-    pub fn mouse_scroll_request_matches(&self, request: &super::mouse_products::MouseScrollRequested, cx: &App) -> bool {
+    pub fn mouse_scroll_request_matches(
+        &self,
+        request: &super::mouse_products::MouseScrollRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_scroll_request_matches(request, cx))
     }
-    pub fn mouse_scroll_save_matches(&self, request: &super::mouse_products::MouseScrollRequested, cx: &App) -> bool {
+    pub fn mouse_scroll_save_matches(
+        &self,
+        request: &super::mouse_products::MouseScrollRequested,
+        cx: &App,
+    ) -> bool {
         matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_scroll_save_matches(request, cx))
     }
-    pub fn finish_mouse_scroll(&mut self, request: &super::mouse_products::MouseScrollRequested, cx: &mut Context<Self>) {
-        if let FamilyBody::Mouse(body) = &self.body { body.update(cx, |body, cx| body.finish_mouse_scroll(request, cx)); }
+    pub fn finish_mouse_scroll(
+        &mut self,
+        request: &super::mouse_products::MouseScrollRequested,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_mouse_scroll(request, cx));
+        }
     }
     pub fn prepare_mouse_scroll_exit(&mut self, cx: &mut Context<Self>) {
-        if let FamilyBody::Mouse(body) = &self.body { body.update(cx, |body, _| body.prepare_mouse_scroll_exit()); }
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, _| body.prepare_mouse_scroll_exit());
+        }
     }
     pub fn finish_current_dpi(
         &mut self,
@@ -1374,7 +1471,8 @@ impl SourceProductWorkspace {
             // Identity telemetry survives profile Cancel/restore. It is not a
             // profile edit and must not be reverted to the pre-query serial.
             self.saved.serial_number = serial.clone();
-            if self.device.product_id == 182 && !serial.is_empty()
+            if self.device.product_id == 182
+                && !serial.is_empty()
                 && self.mouse_profile_observed_serial.as_ref() != Some(serial)
             {
                 self.mouse_profile_observed_serial = Some(serial.clone());
@@ -1386,17 +1484,29 @@ impl SourceProductWorkspace {
                 body.finish_current_dpi(request, observed, cx)
             });
         }
-        if source_serial_changed { cx.emit(WorkspaceEvent::MouseProfileSerialObserved); }
+        if source_serial_changed {
+            cx.emit(WorkspaceEvent::MouseProfileSerialObserved);
+        }
     }
-    pub fn restore_mouse_profile_after_serial(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.device.product_id != 182 || self.mouse_profile_observed_serial.as_deref() != Some(self.device.serial_number.as_str()) { return; }
+    pub fn restore_mouse_profile_after_serial(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.device.product_id != 182
+            || self.mouse_profile_observed_serial.as_deref()
+                != Some(self.device.serial_number.as_str())
+        {
+            return;
+        }
         self.mouse_profile_cache_changed |= mouse_profile_source::initialize(&mut self.device);
         self.refresh_profile_choices(window, cx);
         self.restore_active(window, cx);
         cx.notify();
     }
     fn sync_mouse_profile_selection(&mut self) {
-        if self.mouse_profile_observed_serial.as_deref() == Some(self.device.serial_number.as_str()) {
+        if self.mouse_profile_observed_serial.as_deref() == Some(self.device.serial_number.as_str())
+        {
             mouse_profile_source::sync_selection(&mut self.device, true);
         }
     }
@@ -1420,12 +1530,13 @@ impl SourceProductWorkspace {
             return;
         }
         if key.is_some()
-            && (self.mouse_profile_cache_changed || self
-                .saved
-                .profiles
-                .iter()
-                .find(|profile| profile.id == self.device.active_profile)
-                .is_none_or(|profile| profile.source_settings.is_none()))
+            && (self.mouse_profile_cache_changed
+                || self
+                    .saved
+                    .profiles
+                    .iter()
+                    .find(|profile| profile.id == self.device.active_profile)
+                    .is_none_or(|profile| profile.source_settings.is_none()))
         {
             // Current90012.fn creates and persists3298.F before Dn/Mn. This
             // establishes the local default without treating a GET as a save.
@@ -1440,14 +1551,11 @@ impl SourceProductWorkspace {
             return;
         }
         if let FamilyBody::Mouse(body) = &self.body {
-            let Some(profile) = self.device.active_profile_obj() else { return; };
+            let Some(profile) = self.device.active_profile_obj() else {
+                return;
+            };
             body.update(cx, |body, cx| {
-                body.initialize_mouse182_profile(
-                    key,
-                    &profile.guid,
-                    macro_recording,
-                    cx,
-                )
+                body.initialize_mouse182_profile(key, &profile.guid, macro_recording, cx)
             });
         }
     }
@@ -1741,7 +1849,7 @@ impl SourceProductWorkspace {
         cx: &mut Context<Self>,
     ) -> Result<String, String> {
         let active = self.device.active_profile.clone();
-        if !matches!(self.device.product_id,70|182|756)
+        if !matches!(self.device.product_id, 70 | 182 | 756)
             && matches!(&action, super::product_workspace::ProfileCollectionAction::Delete(id) if id == &active)
             && active_profile_settings_dirty(&self.device, &self.saved)
         {
@@ -1753,15 +1861,24 @@ impl SourceProductWorkspace {
         {
             return Err("请先保存或取消当前音频编辑，再删除活动配置文件".into());
         }
-        let removed_guid = if let super::product_workspace::ProfileCollectionAction::Delete(id) = &action {
-            self.device.profiles.iter().find(|profile| &profile.id == id).map(|profile| profile.guid.clone())
-        } else { None };
+        let removed_guid =
+            if let super::product_workspace::ProfileCollectionAction::Delete(id) = &action {
+                self.device
+                    .profiles
+                    .iter()
+                    .find(|profile| &profile.id == id)
+                    .map(|profile| profile.guid.clone())
+            } else {
+                None
+            };
         let target = super::product_workspace::edit_profile_collection(
             &mut self.device,
             &self.saved,
             action,
         )?;
-        if let Some(guid) = removed_guid { mouse_profile_source::removed_profile(&mut self.device, &guid); }
+        if let Some(guid) = removed_guid {
+            mouse_profile_source::removed_profile(&mut self.device, &guid);
+        }
         self.sync_mouse_profile_selection();
         self.refresh_profile_choices(window, cx);
         if active != self.device.active_profile {
@@ -1968,7 +2085,10 @@ impl SourceProductWorkspace {
     pub fn new(mut device: Device, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let mouse_profile_cache_changed = false;
         if device.profiles.is_empty() {
-            let initial = mouse_profile_source::default_profile(&device, mouse_profile_source::default_name());
+            let initial = mouse_profile_source::default_profile(
+                &device,
+                mouse_profile_source::default_name(),
+            );
             device.profiles.push(initial.unwrap_or_else(|| Profile {
                 id: "local-default".into(),
                 guid: "local-default".into(),
@@ -2070,7 +2190,9 @@ impl SourceProductWorkspace {
                  cx| {
                     if request.is_initialization() {
                         cx.emit(WorkspaceEvent::MousePollingRestoreRequested {
-                            scope: request.scope(), field: request.field(), hz: request.hz(),
+                            scope: request.scope(),
+                            field: request.field(),
+                            hz: request.hz(),
                         });
                         return;
                     }
@@ -2086,14 +2208,24 @@ impl SourceProductWorkspace {
             ));
             subscriptions.push(cx.subscribe(
                 &body,
-                |_: &mut Self, _, request: &super::mouse_products::MouseReceiverIndicatorRequested, cx| {
-                    cx.emit(WorkspaceEvent::MouseReceiverIndicatorRequested(request.clone()));
+                |_: &mut Self,
+                 _,
+                 request: &super::mouse_products::MouseReceiverIndicatorRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::MouseReceiverIndicatorRequested(
+                        request.clone(),
+                    ));
                 },
             ));
             subscriptions.push(cx.subscribe(
                 &body,
-                |_: &mut Self, _, request: &super::mouse_products::MouseReceiverMonitorRequested, cx| {
-                    cx.emit(WorkspaceEvent::MouseReceiverMonitorRequested(request.clone()));
+                |_: &mut Self,
+                 _,
+                 request: &super::mouse_products::MouseReceiverMonitorRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::MouseReceiverMonitorRequested(
+                        request.clone(),
+                    ));
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -2143,10 +2275,16 @@ impl SourceProductWorkspace {
                     cx.emit(WorkspaceEvent::MouseCurrentDpiRequested(request.clone()));
                 },
             ));
-            subscriptions.push(cx.subscribe(&body, |this: &mut Self, body, request: &super::mouse_products::MouseScrollRequested, cx| {
-                this.capture(body.read(cx).snapshot(), cx);
-                cx.emit(WorkspaceEvent::MouseScrollRequested(request.clone()));
-            }));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |this: &mut Self,
+                 body,
+                 request: &super::mouse_products::MouseScrollRequested,
+                 cx| {
+                    this.capture(body.read(cx).snapshot(), cx);
+                    cx.emit(WorkspaceEvent::MouseScrollRequested(request.clone()));
+                },
+            ));
             subscriptions.push(cx.subscribe_in(
                 &body,
                 window,
@@ -2522,18 +2660,43 @@ impl SourceProductWorkspace {
             let body = cx.new(|cx| {
                 super::audio_products::AudioProductWorkspace::new(device.product_id, window, cx)
             });
-            subscriptions.push(cx.subscribe(&body,|_: &mut Self,_,request:&super::audio_products::SeirenStreamMixerRequested,cx| {
-                cx.emit(WorkspaceEvent::SeirenStreamMixerRequested(request.clone()));
-            }));
-            subscriptions.push(cx.subscribe(&body,|_: &mut Self,_,request:&super::audio_products::SeirenStreamMixerCaptureChanged,cx| {
-                cx.emit(WorkspaceEvent::SeirenStreamMixerCaptureChanged(request.clone()));
-            }));
-            subscriptions.push(cx.subscribe(&body,|_: &mut Self,_,request:&super::audio_products::SeirenAudioPlaybackRequested,cx| {
-                cx.emit(WorkspaceEvent::SeirenAudioPlaybackRequested(request.clone()));
-            }));
-            subscriptions.push(cx.subscribe(&body,|_: &mut Self,_,event:&super::audio_products::SeirenMicrophoneSetupSeen,cx| {
-                cx.emit(WorkspaceEvent::SeirenMicrophoneSetupSeen(event.seen()));
-            }));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 request: &super::audio_products::SeirenStreamMixerRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::SeirenStreamMixerRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 request: &super::audio_products::SeirenStreamMixerCaptureChanged,
+                 cx| {
+                    cx.emit(WorkspaceEvent::SeirenStreamMixerCaptureChanged(
+                        request.clone(),
+                    ));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 request: &super::audio_products::SeirenAudioPlaybackRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::SeirenAudioPlaybackRequested(
+                        request.clone(),
+                    ));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, event: &super::audio_products::SeirenMicrophoneSetupSeen, cx| {
+                    cx.emit(WorkspaceEvent::SeirenMicrophoneSetupSeen(event.seen()));
+                },
+            ));
             subscriptions.push(cx.subscribe(
                 &body,
                 |this: &mut Self, body, request: &super::audio_products::SeirenEqRequested, cx| {
@@ -2646,9 +2809,14 @@ impl SourceProductWorkspace {
             FamilyBody::AccessorySystem(body)
         } else if super::source_controls::supports(device.product_id) {
             let body = cx.new(|cx| {
-                let mut body = super::source_controls::SourceControls::new(device.product_id, window, cx);
+                let mut body =
+                    super::source_controls::SourceControls::new(device.product_id, window, cx);
                 body.observe_camera_firmware(
-                    device.dashboard.readonly_values.as_ref().and_then(|values| values.firmware.as_deref()),
+                    device
+                        .dashboard
+                        .readonly_values
+                        .as_ref()
+                        .and_then(|values| values.firmware.as_deref()),
                     cx,
                 );
                 body
@@ -3168,30 +3336,47 @@ impl SourceProductWorkspace {
     /// Current756 middleware candidate publication, separate from a hardware
     /// read and from the older mapping runtime's connection owner.
     pub fn observe_keyboard_latest_document(&mut self, document: Value, cx: &mut Context<Self>) {
-        if self.device.product_id != 756 {return;}
-        let Some(profiles) = document["profiles"].as_array() else {return;};
+        if self.device.product_id != 756 {
+            return;
+        }
+        let Some(profiles) = document["profiles"].as_array() else {
+            return;
+        };
         for profile in &mut self.device.profiles {
             if let Some(candidate) = profiles.iter().find(|value| value["guid"] == profile.guid) {
-                let settings = profile.source_settings.get_or_insert_with(|| serde_json::json!({}));
-                if let (Some(target),Some(candidate)) = (settings.as_object_mut(),candidate.as_object()) {
+                let settings = profile
+                    .source_settings
+                    .get_or_insert_with(|| serde_json::json!({}));
+                if let (Some(target), Some(candidate)) =
+                    (settings.as_object_mut(), candidate.as_object())
+                {
                     target.extend(candidate.clone());
                 }
             }
         }
-        let settings=self.device.source_device_settings.get_or_insert_with(|| serde_json::json!({}));
+        let settings = self
+            .device
+            .source_device_settings
+            .get_or_insert_with(|| serde_json::json!({}));
         for &field in razer_device::keyboard_latest_mapping::features::DEVICE_FIELDS {
-            if let Some(value)=document.get(field) { settings[field]=value.clone(); }
+            if let Some(value) = document.get(field) {
+                settings[field] = value.clone();
+            }
         }
         settings[razer_device::keyboard_latest_restore::STORAGE_FIELD] = document.clone();
-        if let FamilyBody::Keyboard(body)=&self.body {
-            body.update(cx,|body,cx|body.observe_latest_source_document(&document,cx));
+        if let FamilyBody::Keyboard(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_latest_source_document(&document, cx)
+            });
         }
         cx.notify();
     }
-    pub fn set_keyboard_latest_connected(&mut self, connected:bool, cx:&mut Context<Self>) {
-        if self.device.product_id==756 {
-            if let FamilyBody::Keyboard(body)=&self.body {
-                body.update(cx,|body,cx|body.set_latest_mapping_connected(connected,cx));
+    pub fn set_keyboard_latest_connected(&mut self, connected: bool, cx: &mut Context<Self>) {
+        if self.device.product_id == 756 {
+            if let FamilyBody::Keyboard(body) = &self.body {
+                body.update(cx, |body, cx| {
+                    body.set_latest_mapping_connected(connected, cx)
+                });
             }
         }
     }
@@ -3199,9 +3384,11 @@ impl SourceProductWorkspace {
         self.keyboard_latest_ble = self.device.product_id == 756 && ble;
     }
     pub fn observe_keyboard_latest_mapping_event(&mut self, event: Value, cx: &mut Context<Self>) {
-        if self.device.product_id != 756 {return;}
+        if self.device.product_id != 756 {
+            return;
+        }
         if let FamilyBody::Keyboard(body) = &self.body {
-            body.update(cx, |body,cx| body.observe_latest_mapping_event(event,cx));
+            body.update(cx, |body, cx| body.observe_latest_mapping_event(event, cx));
         }
     }
     pub fn dirty(&self) -> bool {
@@ -3224,7 +3411,12 @@ impl SourceProductWorkspace {
         mouse_profile_source::accept_saved_version(&mut self.device, &self.saved, &snapshot);
         if self.device.product_id == 182
             && snapshot.source_device_settings == self.device.source_device_settings
-            && snapshot.profiles.iter().all(|saved| self.device.profiles.iter().any(|p| p.id == saved.id && p.guid == saved.guid))
+            && snapshot.profiles.iter().all(|saved| {
+                self.device
+                    .profiles
+                    .iter()
+                    .any(|p| p.id == saved.id && p.guid == saved.guid)
+            })
         {
             self.mouse_profile_cache_changed = false;
         }
@@ -3270,7 +3462,11 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn capture(&mut self, mut value: Value, cx: &mut Context<Self>) {
-        seiren_local_settings::capture(self.device.product_id,&mut self.device.source_device_settings,&mut value);
+        seiren_local_settings::capture(
+            self.device.product_id,
+            &mut self.device.source_device_settings,
+            &mut value,
+        );
         // Current 1342 middleware stores Effects presets at device scope,
         // outside profiles. Mirror that local library into every profile's
         // persisted source snapshot so profile navigation cannot fork it.
@@ -3414,7 +3610,11 @@ impl SourceProductWorkspace {
             };
             view.restore(settings.and_then(|v| v.get("_accessory")), window, cx)
         });
-        seiren_local_settings::project(self.device.product_id,self.device.source_device_settings.as_ref(),&mut value);
+        seiren_local_settings::project(
+            self.device.product_id,
+            self.device.source_device_settings.as_ref(),
+            &mut value,
+        );
         let snapshot = match &self.body {
             FamilyBody::Mouse(e) => {
                 e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
@@ -3514,7 +3714,13 @@ impl SourceProductWorkspace {
             .iter()
             .map(String::as_str)
             .chain((self.device.product_id == 190).then_some("sensitivityMatcher"))
-            .chain((self.device.product_id == 756).then_some(razer_device::keyboard_latest_mapping::features::DEVICE_FIELDS).into_iter().flatten().copied())
+            .chain(
+                (self.device.product_id == 756)
+                    .then_some(razer_device::keyboard_latest_mapping::features::DEVICE_FIELDS)
+                    .into_iter()
+                    .flatten()
+                    .copied(),
+            )
             .chain(
                 super::mouse_products::power_device_fields(self.device.product_id)
                     .iter()
@@ -3527,7 +3733,9 @@ impl SourceProductWorkspace {
                     .device
                     .source_device_settings
                     .get_or_insert_with(|| serde_json::json!({}));
-                settings.as_object_mut().expect("device settings object")
+                settings
+                    .as_object_mut()
+                    .expect("device settings object")
                     .insert(field.into(), value);
             }
         }
@@ -3537,7 +3745,13 @@ impl SourceProductWorkspace {
             .iter()
             .map(String::as_str)
             .chain((device.product_id == 190).then_some("sensitivityMatcher"))
-            .chain((device.product_id == 756).then_some(razer_device::keyboard_latest_mapping::features::DEVICE_FIELDS).into_iter().flatten().copied())
+            .chain(
+                (device.product_id == 756)
+                    .then_some(razer_device::keyboard_latest_mapping::features::DEVICE_FIELDS)
+                    .into_iter()
+                    .flatten()
+                    .copied(),
+            )
             .chain(
                 super::mouse_products::power_device_fields(device.product_id)
                     .iter()
@@ -3558,7 +3772,11 @@ impl SourceProductWorkspace {
                 if let Some(supplement) = profile.get_mut("_supplement") {
                     super::mouse_products::filter_power_persistence(device.product_id, supplement);
                 }
-                seiren_local_settings::migrate_profile(device.product_id,&mut device.source_device_settings,profile);
+                seiren_local_settings::migrate_profile(
+                    device.product_id,
+                    &mut device.source_device_settings,
+                    profile,
+                );
                 if accessory::device_layout(device.product_id) {
                     if let Some(layout) =
                         profile.as_object_mut().and_then(|p| p.remove("_accessory"))
@@ -3583,7 +3801,9 @@ impl SourceProductWorkspace {
                         let settings = device
                             .source_device_settings
                             .get_or_insert_with(|| serde_json::json!({}));
-                        settings.as_object_mut().expect("device settings object")
+                        settings
+                            .as_object_mut()
+                            .expect("device settings object")
                             .entry(field)
                             .or_insert(value);
                     }

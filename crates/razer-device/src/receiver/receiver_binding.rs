@@ -20,9 +20,7 @@ pub fn source192_binding_info(
     if rows.is_empty() {
         return Ok(json!([]));
     }
-    let available = super::pairing_catalog()["available"]
-        .as_array()
-        .context("Current192 available-device presentation is absent")?;
+    let available = &super::pairing_catalog().available;
     let connected: Value = serde_json::from_str(&connected_raw()?.unwrap_or_else(|| "[]".into()))
         .context("Current192 connectedDeviceInfo JSON parse failed")?;
     let physical = enumerate()?;
@@ -41,7 +39,14 @@ pub fn source192_binding_info(
         &empty
     };
     for (raw, _) in &rows {
-        let Some(product) = available.iter().find(|entry| entry["dongleId"] == *raw) else {
+        let Some(product) = available.iter().find(|entry| {
+            u16::try_from(*raw).ok().is_some_and(|raw| {
+                entry
+                    .dongle_id
+                    .as_ref()
+                    .is_some_and(|ids| ids.is_scalar(raw))
+            })
+        }) else {
             continue;
         };
         // he calls .find only after a catalog match. A truthy non-array or a
@@ -55,7 +60,7 @@ pub fn source192_binding_info(
                 !info.is_null(),
                 "Current192 connectedDeviceInfo.find visited null"
             );
-            if info["productId"] == product["productId"] {
+            if info["productId"] == product.product_id {
                 break;
             }
         }
@@ -89,12 +94,8 @@ pub fn project_binding_rows_with_runtime(
     } else {
         "MOUSE"
     };
-    let devices = super::pairing_catalog()["devices"]
-        .as_array()
-        .context("缺少本地兼容产品目录")?;
-    let available = super::pairing_catalog()["available"]
-        .as_array()
-        .context("缺少本地可用产品目录")?;
+    let devices = &super::pairing_catalog().devices;
+    let available = &super::pairing_catalog().available;
     let interfaces = physical["interfaces"]
         .as_array()
         .context("缺少物理接口枚举")?;
@@ -119,12 +120,16 @@ pub fn project_binding_rows_with_runtime(
         };
         let mut row = json!({"role":role,"name":{"en":format!("unknown-{raw}")},"productName":{"en":format!("unknown{raw}")},"editionName":{"en":format!("unknown{raw}")},"category":opposite_category,"editionId":0,"layoutId":0,"productId":raw,"status":status});
         let registered = available.iter().find(|entry| {
-            entry["dongleId"] == raw || (source_product_id == 756 && entry["productId"] == raw)
+            u16::try_from(raw).ok().is_some_and(|raw| {
+                entry
+                    .dongle_id
+                    .as_ref()
+                    .is_some_and(|ids| ids.is_scalar(raw))
+                    || (source_product_id == 756 && entry.product_id == raw)
+            })
         });
         if let Some(registered) = registered {
-            let product_id = registered["productId"]
-                .as_u64()
-                .context("目录 productId 缺失")?;
+            let product_id = u64::from(registered.product_id);
             if let Some(info) = connected
                 .iter()
                 .find(|info| info["productId"] == product_id)
@@ -171,28 +176,24 @@ pub fn project_binding_rows_with_runtime(
                         .or_else(|| info.get("layoutId").filter(truthy).cloned())
                         .unwrap_or(json!(0));
                 }
-            } else if let Some(device) = devices
-                .iter()
-                .find(|entry| entry["DeviceDonglePid"] == registered["dongleId"])
-            {
-                let names = device["ProductInfo"].as_array().and_then(|editions| {
-                    editions
-                        .iter()
-                        .find(|e| e["EID"] == 0)
-                        .or_else(|| editions.first())
-                });
+            } else if let Some(device) = devices.iter().find(|entry| {
+                registered
+                    .dongle_id
+                    .as_ref()
+                    .is_some_and(|ids| ids.is_scalar(entry.dongle_id))
+            }) {
+                let names = device
+                    .editions
+                    .iter()
+                    .find(|edition| edition.edition_id == 0)
+                    .or_else(|| device.editions.first());
                 if let Some(names) = names {
-                    let name = json!({"en":names["Name"],"zh-cn":names["CHSName"]});
+                    let name = json!({"en":names.name,"zh-cn":names.chinese_name});
                     for key in ["name", "productName", "editionName"] {
                         row[key] = name.clone();
                     }
                     if source_product_id != 756 {
-                        if device["DeviceType"]
-                            .as_str()
-                            .is_some_and(|value| !value.is_empty())
-                        {
-                            row["category"] = device["DeviceType"].clone();
-                        }
+                        row["category"] = json!(device.category.name());
                     }
                 }
             }

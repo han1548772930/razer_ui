@@ -15,10 +15,7 @@ type Catalog = BTreeMap<u32, BTreeMap<u32, BTreeMap<String, Translation>>>;
 
 pub(crate) fn catalog() -> &'static Catalog {
     static CATALOG: OnceLock<Catalog> = OnceLock::new();
-    CATALOG.get_or_init(|| {
-        serde_json::from_str(include_str!("source_names/catalog.json"))
-            .expect("validated current product names")
-    })
+    CATALOG.get_or_init(|| crate::data::catalog!())
 }
 
 pub fn product_locale(locale: &str) -> &'static str {

@@ -1,7 +1,7 @@
 //! The dedicated actor owns ServiceClient, its pipe, DLL worker and shutdown.
 //! UI cancellation sends a command or drops its sender. No native work runs on GPUI.
-use super::{ActionItem, MacroRecorderStorageChanged};
 use super::recording_decode::{Decoder, Options};
+use super::{ActionItem, MacroRecorderStorageChanged};
 use razer_ipc::ServiceClient;
 use razer_ipc::ServiceRequest;
 use serde_json::Value;
@@ -98,7 +98,8 @@ fn record(
         if started && stop_requested && !stopping {
             // stoppingRecorder invokes removeWindowStorageItem before dr();
             // it does not wait for the host-storage operation's Promise.
-            let _ = output.send_blocking(Update::WindowStorage(MacroRecorderStorageChanged::Remove));
+            let _ =
+                output.send_blocking(Update::WindowStorage(MacroRecorderStorageChanged::Remove));
             query(client, ServiceRequest::StopMacroRecording)?;
             stopping = true;
             deadline = Some(Instant::now() + Duration::from_secs(12));
@@ -127,7 +128,9 @@ fn record(
                     preview.push(event)?;
                     // disablingMapping starts only after native RECORDING.
                     // A button press / startingRecorder alone holds no lock.
-                    let _ = output.send_blocking(Update::WindowStorage(MacroRecorderStorageChanged::SoftwareExclusive));
+                    let _ = output.send_blocking(Update::WindowStorage(
+                        MacroRecorderStorageChanged::SoftwareExclusive,
+                    ));
                     if !already_stopped {
                         query(client, ServiceRequest::SuspendMacroMappings)?;
                     }

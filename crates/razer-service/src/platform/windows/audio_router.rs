@@ -379,7 +379,9 @@ impl Router {
                 result?;
                 // Dispatch (0x1af70) wraps a nonnegative handler HRESULT in
                 // status:"success", independently of an absent response body.
-                Ok(json!({"source_status":"success","source_response":{},"vendor_dll_loaded":false}))
+                Ok(
+                    json!({"source_status":"success","source_response":{},"vendor_dll_loaded":false}),
+                )
             }
             Command::Drain => {
                 let observations = self

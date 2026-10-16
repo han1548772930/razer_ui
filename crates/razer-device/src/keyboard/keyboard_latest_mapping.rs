@@ -18,14 +18,40 @@ pub mod features;
 #[path = "keyboard_latest_travel.rs"]
 pub mod travel;
 
+#[path = "../data/keyboard_latest_restore_schema.rs"]
+mod source_data;
+use source_data::*;
+
+fn typed_source() -> &'static LatestKeyboardSource {
+    static DATA: OnceLock<LatestKeyboardSource> = OnceLock::new();
+    DATA.get_or_init(|| crate::data::keyboard_latest_restore::keyboard_latest_restore!())
+}
+
+/// Mapping engine and vendor profile interchange document.
 pub fn source() -> &'static Value {
     static DATA: OnceLock<Value> = OnceLock::new();
     DATA.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../assets/data/keyboard-latest-restore.json"
-        ))
-        .expect("validated current756 restore literals")
+        serde_json::to_value(typed_source()).expect("typed keyboard interchange document")
     })
+}
+
+pub fn firmware_key_id(input: &str) -> Option<u64> {
+    typed_source()
+        .firmware_keyboard
+        .normal_mode
+        .get(input)
+        .and_then(|key| key.fw_id)
+}
+
+pub fn is_onboard_preset(guid: &str) -> bool {
+    typed_source()
+        .onboard_presets
+        .iter()
+        .any(|profile| profile.guid == guid)
+}
+
+pub fn guest_profile_owner() -> &'static str {
+    &typed_source().guest_profile_owner
 }
 
 /// Source-generated OBM assignment identities, retained by the connected
@@ -46,16 +72,22 @@ impl ObmButtonAssignments {
         )
     }
     pub fn from_mapping_list(rows: &[Value]) -> anyhow::Result<Self> {
-        let firmware = &source()["firmware_keyboard"]["NormalMode"];
         let mut keys = std::collections::BTreeMap::new();
         for row in rows.iter().filter(|row| !truthy(&row["isHyperShift"])) {
-            let Some(input) = row["inputID"].as_str() else { continue };
-            let Some(id) = firmware[input]["fwID"].as_u64() else { continue };
+            let Some(input) = row["inputID"].as_str() else {
+                continue;
+            };
+            let Some(id) = firmware_key_id(input) else {
+                continue;
+            };
             // The source skips unknown IDs and deduplicates by firmware ID.
-            keys.entry(u8::try_from(id)?).or_insert_with(|| input.to_owned());
+            keys.entry(u8::try_from(id)?)
+                .or_insert_with(|| input.to_owned());
         }
         ensure!(!keys.is_empty(), "756 OBM assignment identities are empty");
-        Ok(Self { keys: keys.into_iter().collect() })
+        Ok(Self {
+            keys: keys.into_iter().collect(),
+        })
     }
     pub fn keys(&self) -> &[(u8, String)] {
         &self.keys
@@ -1064,9 +1096,7 @@ pub fn analog_pair(
         slot > 0 && !guid.is_empty(),
         "Analog restore slot/GUID is absent"
     );
-    let table = source()["firmware_keyboard"]["NormalMode"]
-        .as_object()
-        .context("756 firmware keyboard is absent")?;
+    let table = &typed_source().firmware_keyboard.normal_mode;
     let act = defaults(guid, "preset_actuation", "default_actuation");
     let rt = defaults(guid, "preset_rapid_trigger", "default_rapid_trigger");
     let mut pair = AnalogPair {
@@ -1075,18 +1105,9 @@ pub fn analog_pair(
         actuation: Vec::new(),
         rapid_trigger: Vec::new(),
     };
-    for row in source()["physical_keys"]
-        .as_array()
-        .context("756 physical keys are absent")?
-    {
-        let input = row["inputID"]
-            .as_str()
-            .context("756 physical input ID is invalid")?;
-        let Some(key) = row["fwID"]
-            .as_u64()
-            .and_then(|v| u8::try_from(v).ok())
-            .filter(|id| *id != 255)
-        else {
+    for row in &typed_source().physical_keys {
+        let input = row.input_id.as_str();
+        let Some(key) = u8::try_from(row.fw_id).ok().filter(|id| *id != 255) else {
             continue;
         };
         let d = &act["rest"];
@@ -1142,7 +1163,7 @@ pub fn analog_pair(
                 .context("Analog mapping input is missing")?;
             let Some(key) = table
                 .get(input)
-                .and_then(|v| v["fwID"].as_u64())
+                .and_then(|v| v.fw_id)
                 .and_then(|v| u8::try_from(v).ok())
             else {
                 continue;

@@ -30,21 +30,24 @@ impl GraphInteraction {
     }
 }
 
-fn source() -> &'static Value {
-    static DATA: OnceLock<Value> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("../corex_fan_data.json"))
-            .expect("validated Core X fan source")
-    })
+#[derive(Deserialize)]
+struct FanPresentation {
+    axes: BTreeMap<String, Vec<f64>>,
+    translations: BTreeMap<String, BTreeMap<String, String>>,
+}
+
+fn source() -> &'static FanPresentation {
+    static DATA: OnceLock<FanPresentation> = OnceLock::new();
+    DATA.get_or_init(|| crate::data::corex_fan_data!())
 }
 fn label(key: &str) -> String {
     let locale = razer_i18n::locale();
-    source()["translations"]
+    source()
+        .translations
         .get(locale.as_str())
         .and_then(|v| v.get(key))
-        .or_else(|| source()["translations"]["en"].get(key))
-        .and_then(Value::as_str)
-        .map(str::to_owned)
+        .or_else(|| source().translations["en"].get(key))
+        .cloned()
         .unwrap_or_else(|| t(key))
 }
 fn valid_curve(value: &Value, low: f64, high: f64) -> bool {
@@ -84,10 +87,10 @@ struct Geometry {
 }
 impl Geometry {
     fn new(target: &str) -> Self {
-        let ticks = source()["axes"][target].as_array().expect("source axis");
+        let ticks = &source().axes[target];
         Self {
-            min: ticks[0].as_f64().unwrap(),
-            max: ticks.last().unwrap().as_f64().unwrap(),
+            min: ticks[0],
+            max: *ticks.last().expect("source axis"),
             right: ((820. - 8. - 75.) / (ticks.len() - 1) as f64).floor()
                 * (ticks.len() - 1) as f64
                 + 75.,
@@ -125,17 +128,9 @@ impl AccessorySystemProductWorkspace {
                 Choice::localized_with_translations(
                     id,
                     key.clone(),
-                    source()["translations"]
-                        .as_object()
-                        .into_iter()
-                        .flat_map(|locales| {
-                            locales.iter().filter_map(|(locale, texts)| {
-                                texts
-                                    .get(&key)
-                                    .and_then(Value::as_str)
-                                    .map(|text| (locale.clone(), text.to_owned()))
-                            })
-                        }),
+                    source().translations.iter().filter_map(|(locale, texts)| {
+                        texts.get(&key).map(|text| (locale.clone(), text.clone()))
+                    }),
                 )
             })
             .collect()
@@ -448,7 +443,7 @@ impl AccessorySystemProductWorkspace {
         let paint_points = points.clone();
         let line = cx.theme().primary;
         let grid = cx.theme().border;
-        let ticks = source()["axes"][&target].as_array().unwrap();
+        let ticks = &source().axes[&target];
         let count = ticks.len();
         let right = geometry.right;
         let mut graph = div()
@@ -544,7 +539,7 @@ impl AccessorySystemProductWorkspace {
             );
         }
         for (ix, tick) in ticks.iter().enumerate() {
-            let temp = tick.as_f64().unwrap();
+            let temp = *tick;
             graph = graph.child(
                 div()
                     .absolute()

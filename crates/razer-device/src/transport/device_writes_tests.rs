@@ -326,3 +326,58 @@ fn unsupported_dpi_polling_and_cancelled_routes_never_send_a_setter() {
     assert!(result.is_err());
     assert_eq!(device.sent.borrow().len(), 1);
 }
+
+#[test]
+fn typed_catalog_preserves_ordinary_profile_and_high_speed_rate_bytes() {
+    // Current source selects different codes for the same 1000 Hz setting:
+    // ordinary/profile => 1, USB high speed => 8. Numeric Hz must not erase it.
+    for (product, hz, header, payload, method) in [
+        (148, 333, [1, 0, 5], vec![3], "setPollingRate"),
+        (124, 1000, [2, 0, 14], vec![1, 1], "setProfilePollingRate"),
+        (
+            226,
+            1000,
+            [2, 0, 64],
+            vec![1, 8],
+            "setUSBHighSpeedPollingRate",
+        ),
+        (
+            235,
+            8000,
+            [2, 0, 64],
+            vec![1, 1],
+            "setUSBHighSpeedPollingRate",
+        ),
+    ] {
+        let source = capability(product).unwrap();
+        let command = prepare(source, &DeviceWriteSetting::Polling { hz }).unwrap();
+        assert_eq!(command.command, header);
+        assert_eq!(command.payload, payload);
+        assert_eq!(command.method, method);
+    }
+    // High-speed enums have no ordinary 333 Hz code; ordinary sources have no 8 kHz.
+    for (product, hz) in [(226, 333), (124, 8000)] {
+        assert!(
+            prepare(
+                capability(product).unwrap(),
+                &DeviceWriteSetting::Polling { hz }
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn typed_catalog_keeps_source_dpi_limits_and_legacy_selector_separate() {
+    let high_speed = capability(226).unwrap();
+    let command = prepare(high_speed, &DeviceWriteSetting::Dpi { x: 50000, y: 100 }).unwrap();
+    assert_eq!(command.payload, [0, 0xc3, 0x50, 0, 100, 0, 0]);
+    assert!(prepare(high_speed, &DeviceWriteSetting::Dpi { x: 50001, y: 100 }).is_err());
+
+    let legacy = capability(70).unwrap();
+    assert_eq!(legacy.source_class, WriteSourceClass::Legacy);
+    let command = prepare(legacy, &DeviceWriteSetting::Dpi { x: 16000, y: 16000 }).unwrap();
+    assert_eq!(command.payload, [1, 0x3e, 0x80, 0x3e, 0x80, 0, 0]);
+    assert!(prepare(legacy, &DeviceWriteSetting::Idle { raw_time: 1 }).is_err());
+    assert!(capability(0).is_none());
+}

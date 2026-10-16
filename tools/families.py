@@ -19,12 +19,12 @@ import urllib.parse
 import analysis as a
 
 FAMILY_CANDIDATES = {
-    "mouse": "mouse/mouse_products_data.json",
-    "keyboard": "keyboard/keyboard_products_data.json",
-    "audio": "audio/audio_products_data.json",
-    "gamepad": "gamepad/gamepad_products_data.json",
-    "system": "system/system_products_data.json",
-    "accessories": "accessories/accessory_system_products_data.json",
+    "mouse": "MOUSE_PRODUCTS_DATA",
+    "keyboard": "KEYBOARD_PRODUCTS_DATA",
+    "audio": "AUDIO_PRODUCTS_DATA",
+    "gamepad": "GAMEPAD_PRODUCTS_DATA",
+    "system": "SYSTEM_PRODUCTS_DATA",
+    "accessories": "ACCESSORY_SYSTEM_PRODUCTS_DATA",
 }
 # Batch families share these limits: adding families must not multiply analyzer
 # processes or simultaneous full resource crawls.
@@ -60,7 +60,7 @@ def family_candidate_scope(family):
     Registry IDs/categories locate official endpoints only. Its historical
     navigation, names and evidence references cannot supply current semantics.
     """
-    scopes = {name: set(candidates(a.ROOT / "crates/razer-pages/src/features" / source))
+    scopes = {name: set(candidates(a.builtin_data_path("razer-pages", source)))
               for name, source in FAMILY_CANDIDATES.items()}
     existing = set().union(*scopes.values())
     registry = a.ROOT / "crates/razer-catalog/src/registry_data.rs"
@@ -1070,8 +1070,8 @@ def _run(args, shared=None):
         if args.family == "all" and args.layer == "both":
             print(json.dumps({"family_scope": refresh_family_scope_index()}), flush=True)
         return
-    candidate_path = a.ROOT / (args.candidates or
-        "crates/razer-pages/src/features/" + FAMILY_CANDIDATES[args.family])
+    candidate_path = (a.ROOT / args.candidates if args.candidates else
+        a.builtin_data_path("razer-pages", FAMILY_CANDIDATES[args.family]))
     ids = candidates(candidate_path)
     scope = None
     if not args.candidates:
@@ -1293,7 +1293,7 @@ def audit_family_function(args):
         return audit_camera_source_review(args)
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.function):
         raise ValueError("Function must be a simple source chunk name")
-    ids = args.product or candidates(a.ROOT / "crates/razer-pages/src/features" / FAMILY_CANDIDATES[args.family])
+    ids = args.product or candidates(a.builtin_data_path("razer-pages", FAMILY_CANDIDATES[args.family]))
     rows = []
     for pid in ids:
         row = {"product_id": pid, "failures": [], "original_inputs": [], "complete_bodies": []}
@@ -1666,7 +1666,7 @@ def audit_mouse_scroll(args):
 
 def audit_mouse_dpi(args):
     """Reuse verified complete captures for the whole mounted DPI component tree."""
-    specs_path = a.ROOT / "crates/razer-pages/src/features/mouse/mouse_products_data.json"
+    specs_path = a.builtin_data_path("razer-pages", "MOUSE_PRODUCTS_DATA")
     specs = json.loads(specs_path.read_bytes())
     selected = set(args.product or [row["product_id"] for row in specs])
     receipt_path = a.ROOT / ".analysis/results/frontend/mouse-main-audit.json"
@@ -1849,13 +1849,13 @@ def audit_mouse_dpi(args):
     report["mouse_dpi_tree"] = {"tool": identity(Path(__file__)), "method": "verified current originals and complete Wakaru captures; numeric literals decoded without JavaScript evaluation",
                                  "products": rows, "target_execution": False, "runtime_acceptance": "unverified"}
     # Updating a selected subset cannot silently remove previously audited rows.
-    for name, generated in (("mouse_dpi_rows_data.json", row_specs), ("mouse_dpi_grid_data.json", grid_specs)):
-        destination = specs_path.parent / name
+    for symbol, generated in (("MOUSE_DPI_ROWS_DATA", row_specs), ("MOUSE_DPI_GRID_DATA", grid_specs)):
+        destination = a.builtin_data_path("razer-pages", symbol)
         previous = json.loads(destination.read_bytes()) if destination.is_file() else []
         replaced = {item["product_id"] for item in generated}
         combined = {item["product_id"]: item for item in previous if item["product_id"] not in replaced}
         combined.update({item["product_id"]: item for item in generated})
-        a.save(destination, [combined[pid] for pid in sorted(combined)])
+        a.save_builtin_data(symbol, [combined[pid] for pid in sorted(combined)])
     a.save(receipt_path, report)
     print(json.dumps({"receipt": a.rel(receipt_path), "dpi_rows": len(row_specs), "segmented_grids": len(grid_specs),
                       "runtime_acceptance": "unverified"}), flush=True)
@@ -1871,7 +1871,7 @@ def audit_mouse_page_layout(args):
     if args.family != "mouse" or args.function != "main":
         raise ValueError("mouse-page-layout requires current mouse UI captures")
     parser = Parser(Language(tree_sitter_javascript.language()))
-    data_path = a.ROOT / "crates/razer-pages/src/features/mouse/mouse_products_data.json"
+    data_path = a.builtin_data_path("razer-pages", "MOUSE_PRODUCTS_DATA")
     specs = json.loads(data_path.read_bytes())
     selected = set(args.product or [row["product_id"] for row in specs
                                    if "TAB_POWER" in row["pages"] or row["product_id"] == 162])
@@ -2015,7 +2015,7 @@ def audit_mouse_power(args):
     if args.family != "mouse" or args.function != "mw":
         raise ValueError("mouse-power requires current mouse middleware captures")
     parser = Parser(Language(tree_sitter_javascript.language()))
-    specs_path = a.ROOT / "crates/razer-pages/src/features/mouse/mouse_products_data.json"
+    specs_path = a.builtin_data_path("razer-pages", "MOUSE_PRODUCTS_DATA")
     specs = json.loads(specs_path.read_bytes())
     selected = set(args.product or [spec["product_id"] for spec in specs
                                    if spec["power_slider"] or spec["performance_power"]
@@ -2048,7 +2048,7 @@ def audit_mouse_power(args):
             "claim_interfaces_by_pid": {physical: branch["claim_interface"] for physical, branch in branches.items()},
             "queries": [], "polling_codes": {}, "charging_codes": {}})
         return transport
-    destination = a.ROOT / "crates/razer-device/src/mouse/mouse_current_power_data.json"
+    destination = a.builtin_data_path("razer-device", "MOUSE_CURRENT_POWER_DATA")
     physical_runtime_products = []
     if destination.is_file():
         current = json.loads(destination.read_bytes())
@@ -2575,7 +2575,7 @@ def audit_mouse_power(args):
         except (OSError, ValueError, KeyError, TypeError, IndexError, StopIteration, AttributeError) as error:
             row["failures"].append(type(error).__name__ + ": " + str(error))
         print(json.dumps({"product_id": pid, "failures": row["failures"]}), flush=True)
-    destination = a.ROOT / "crates/razer-device/src/mouse/mouse_current_power_data.json"
+    destination = a.builtin_data_path("razer-device", "MOUSE_CURRENT_POWER_DATA")
     runtime_updated = bool(generated) and not any(row["failures"] for row in rows)
     if runtime_updated:
         if args.product and destination.is_file():
@@ -2618,7 +2618,7 @@ def audit_mouse_customize(args):
     """Audit current mounted image producers and statically prepared artwork."""
     import base64
     import xml.etree.ElementTree as ET
-    data_path = a.ROOT / "crates/razer-pages/src/features/mouse/customize/mouse_customize_current_data.json"
+    data_path = a.builtin_data_path("razer-pages", "MOUSE_CUSTOMIZE_CURRENT_DATA")
     surfaces = json.loads(data_path.read_bytes())
     selected = set(args.product or [row["product_id"] for row in surfaces])
     receipt_path = a.ROOT / ".analysis/results/frontend/mouse-main-audit.json"
@@ -3289,9 +3289,9 @@ def audit_mouse_dpi_backend(args):
     """Trace current ordinary rzDevice25 factories, DPI tasks and packet bodies."""
     if args.family != "mouse" or args.function != "mw":
         raise ValueError("mouse-dpi-backend requires current mouse middleware")
-    specs = json.loads((a.ROOT / "crates/razer-pages/src/features/mouse/mouse_products_data.json").read_bytes())
+    specs = json.loads((a.builtin_data_path("razer-pages", "MOUSE_PRODUCTS_DATA")).read_bytes())
     selected = set(args.product or [item["product_id"] for item in specs])
-    destination = a.ROOT / "crates/razer-device/src/mouse/mouse_current_dpi_data.json"
+    destination = a.builtin_data_path("razer-device", "MOUSE_CURRENT_DPI_DATA")
     report_path = a.ROOT / ".analysis/results/frontend/mouse-dpi-backend-audit.json"
     rows, capabilities, modules = [], [], {}
     physical_report_path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
@@ -3920,7 +3920,7 @@ def audit_keyboard_analog_keys(args):
                          "original_inputs": originals, "tool": capture["tool"], "complete_tables": tables,
                          "unresolved": acquisition.get("unresolved", []),
                          "capture_failures": [row for row in capture.get("commands", []) if row.get("exit_code")]})
-    destination = a.ROOT / "assets/data/keyboard-analog-keys.json"
+    destination = a.builtin_data_path("razer-device", "KEYBOARD_ANALOG_KEYS")
     previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1, "products": []}
     combined = {row["product_id"]: row for row in previous["products"]}
     combined.update({row["product_id"]: row for row in products})
@@ -3959,7 +3959,7 @@ def audit_keyboard_page_layout(args):
     if args.family != "keyboard" or args.function != "main":
         raise ValueError("keyboard-page-layout requires current keyboard UI captures")
     parser = Parser(Language(tree_sitter_javascript.language()))
-    data_path = a.ROOT / "crates/razer-pages/src/features/keyboard/keyboard_products_data.json"
+    data_path = a.builtin_data_path("razer-pages", "KEYBOARD_PRODUCTS_DATA")
     ids = sorted(set(args.product or candidates(data_path)))
     query_tool = identity(Path(__file__))
     products, modules = [], {}
@@ -4286,7 +4286,7 @@ def audit_keyboard_actuation_selection(args):
     if args.family != "keyboard" or args.function != "main":
         raise ValueError("keyboard-actuation-selection requires current keyboard UI captures")
     parser = Parser(Language(tree_sitter_javascript.language()))
-    specs = json.loads((a.ROOT / "crates/razer-pages/src/features/keyboard/keyboard_products_data.json").read_bytes())
+    specs = json.loads((a.builtin_data_path("razer-pages", "KEYBOARD_PRODUCTS_DATA")).read_bytes())
     ids = sorted(set(args.product or [row["product_id"] for row in specs if "ACTUATION" in row["pages"]]))
     roles = {
         "selection_surface": (rb'this\.keyDownHandler=', {"class_declaration"}, b"showClearSelection"),
@@ -4601,7 +4601,7 @@ def audit_keyboard_artwork(args):
     sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
     import fontTools
     import json5
-    specs = json.loads((a.ROOT / "crates/razer-pages/src/features/keyboard/keyboard_products_data.json").read_bytes())
+    specs = json.loads((a.builtin_data_path("razer-pages", "KEYBOARD_PRODUCTS_DATA")).read_bytes())
     specs.append({"product_id": 653, "preview_only": True})
     selected = set(args.product or [item["product_id"] for item in specs])
     report, products, geometries, geometry_index, preparations = [], [], [], {}, []
@@ -4830,7 +4830,7 @@ def audit_keyboard_artwork(args):
                 row["failures"].append("No current parameterized base images; source special caller must be resolved")
             if pid in {555, 580, 747}:
                 row["independent_adapter"] = {"implementation": "crates/razer-pages/src/features/keyboard/mapping/keyboard_mapping_keypad_artwork.rs",
-                                              "images": "crates/razer-pages/src/features/keyboard/artwork/keyboard_keypad_device_image_data.json",
+                                              "images": "crates/razer-pages/src/data/keyboard_keypad_device_image_data.rs",
                                               "ownership": "Current Keypad producer owns view/edition/density and retained decode lifecycle separately"}
                 continue
 
@@ -5144,7 +5144,7 @@ def audit_keyboard_artwork(args):
                         if item["product_id"] not in selected] + preparations
     a.save(preparation_path, preparations)
     if parsed.returncode: raise ValueError("Full current artwork modules failed Wakaru static parser validation")
-    destination = a.ROOT / "crates/razer-pages/src/features/keyboard/artwork/keyboard_artwork_current_data.json"
+    destination = a.builtin_data_path("razer-pages", "KEYBOARD_ARTWORK_CURRENT_DATA")
     baseline = json.loads(destination.read_bytes()) if destination.exists() else {"products": [], "geometries": []}
     failed = {item["product_id"] for item in report if item["failures"]}
     replacements = {item["product_id"]: item for item in products if item["product_id"] not in failed}
@@ -5586,7 +5586,7 @@ def audit_mouse_runtime_artwork(args):
     sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
     if args.family != "mouse" or args.function != "mw":
         raise ValueError("mouse-runtime-artwork requires current mouse middleware")
-    scope = candidates(a.ROOT / "crates/razer-pages/src/features" / FAMILY_CANDIDATES["mouse"])
+    scope = candidates(a.builtin_data_path("razer-pages", FAMILY_CANDIDATES["mouse"]))
     selected = sorted(set(args.product or scope))
     rows, modules, consumers = [], {}, []
     module_cache, capture_cache = {}, {}
@@ -6126,7 +6126,7 @@ def audit_mapping_engine_literals(args):
                 menu.append({"kind": "separator"} if command is None else {
                     "kind": "action", "command": command, "label_key": ui_key(alias),
                     "disabled_when": ["profile_switch_disabled"] + disabled, "hidden_when": hidden})
-            menu_path = a.ROOT / "crates/razer-pages/src/features/profiles/source_profile_menu_data.json"
+            menu_path = a.builtin_data_path("razer-pages", "SOURCE_PROFILE_MENU_DATA")
             menu_data = json.loads(menu_path.read_bytes())
             menu_data["products"] = [row for row in menu_data["products"] if row["product_id"] != pid] + [{
                 "product_id": pid, "category": "KEYBOARD", "menu": menu,
@@ -6162,7 +6162,7 @@ def audit_mapping_engine_literals(args):
                                 ("defaultRapidTrigger", "default_rapid_trigger")]:
                 at = preset.index("this." + name + "=") + len("this." + name + "=")
                 runtime[label] = literal(preset[at:javascript_delimited(preset, at)])
-            runtime_path = a.ROOT / "assets/data/keyboard-latest-restore.json"
+            runtime_path = a.builtin_data_path("razer-device", "KEYBOARD_LATEST_RESTORE")
             a.save(runtime_path, runtime)
             products[-1]["latest_restore"] = {
                 "acquisitions": [identity(main_receipt), identity(mw_receipt)] + extra_receipts,
@@ -6453,7 +6453,7 @@ def audit_audio_demo(args):
     if getattr(args, "prepare", False):
         if {row["product_id"] for row in descriptors} != {1392,1442,3942}:
             raise ValueError("Descriptor publication requires the complete mounted product set")
-        a.save(a.ROOT / "crates/razer-pages/src/features/audio/audio_demo_data.json", descriptors)
+        a.save(a.builtin_data_path("razer-pages", "AUDIO_DEMO_DATA"), descriptors)
         result["prepared_controls"] = prepare_audio_demo_icons(rows)
         a.save(a.ROOT / ".analysis/results/frontend/audio-demo-audit.json", result)
     print(json.dumps({"receipt": ".analysis/results/frontend/audio-demo-audit.json",
@@ -7009,7 +7009,7 @@ def audit_audio_seiren_eq(args):
             if names_match is None:
                 raise ValueError("Current stream mixer name-to-native mapping is unresolved")
             name_ids = static_js_literal(endpoint_body[names_match.start():javascript_delimited(endpoint_body, names_match.start())])
-            stream_destination = a.ROOT / "assets/data/seiren-stream-mixer.json"
+            stream_destination = a.builtin_data_path("razer-device", "SEIREN_STREAM_MIXER")
             stream_data = {} if pid == 1422 or not stream_destination.is_file() else json.loads(stream_destination.read_bytes())
             stream_data[str(pid)] = {"version": 1, "userId": "xxx", "preset_name": "Default Preset",
                                      "inputChannels": input_channels, "outputChannel": output_channel,
@@ -7134,6 +7134,7 @@ def audit_audio_seiren_eq(args):
                 "failure_semantics": "No edition or locale fallback in L/writer; retain missing-context, missing-field and missing-language diagnostics instead of substituting deviceName",
                 "runtime_field": "productNames", "runtime_acceptance": "unverified"}
             a.save(stream_destination, stream_data)
+            a.save(a.builtin_data_path("razer-pages", "SEIREN_STREAM_MIXER"), stream_data)
             row["stream_mixer_defaults"] = {"runtime_data": identity(stream_destination),
                 "dynamic_fields": ["activePresetGuid and preset.guid use the current local UUID generator", "device.productId is current connected PID"],
                 "source_owners": [owner["role"] for owner in stream_owners.values()],
@@ -7209,7 +7210,7 @@ def audit_audio_seiren_eq(args):
             row["rust_ui_implementation"] = [identity(path) for path in sorted(
                 (a.ROOT / "crates/razer-pages/src/features/audio/seiren").glob("audio_seiren_*.rs"))]
             row["rust_ui_implementation"].append(identity(
-                a.ROOT / "crates/razer-pages/src/features/audio/seiren/audio_seiren_eq_data.json"))
+                a.builtin_data_path("razer-pages", "AUDIO_SEIREN_EQ_DATA")))
             # Resolve text exports within their complete current module. A
             # bundle-wide variable search is ambiguous because webpack modules
             # reuse short variable names.
@@ -7267,7 +7268,7 @@ def audit_audio_seiren_eq(args):
                 prepared = next(item for item in prepared_mic if item["display"] == asset["runtime_key"])
                 asset.update({"physical": identity(a.ROOT / prepared["output"]), "preparation": prepared})
             mic_data = {"labels": mic_labels, "assets": {key: value["runtime_key"] for key, value in microphone_assets.items()}}
-            mic_destination = a.ROOT / "crates/razer-pages/src/features/audio/seiren/audio_seiren_microphone_data.json"
+            mic_destination = a.builtin_data_path("razer-pages", "AUDIO_SEIREN_MICROPHONE_DATA")
             presentation = {} if pid == 1422 or not mic_destination.is_file() else json.loads(mic_destination.read_bytes())
             presentation[str(pid)] = mic_data
             a.save(mic_destination, presentation)
@@ -7320,7 +7321,7 @@ def audit_audio_seiren_eq(args):
             for asset in mixer_assets.values():
                 prepared = next(item for item in prepared_mixer if item["display"] == asset["runtime_key"])
                 asset.update({"physical": identity(a.ROOT / prepared["output"]), "preparation": prepared})
-            mixer_destination = a.ROOT / "crates/razer-pages/src/features/audio/seiren/audio_seiren_stream_mixer_data.json"
+            mixer_destination = a.builtin_data_path("razer-pages", "AUDIO_SEIREN_STREAM_MIXER_DATA")
             mixer_presentation = {} if pid == 1422 or not mixer_destination.is_file() else json.loads(mixer_destination.read_bytes())
             mixer_presentation[str(pid)] = {"labels": mixer_labels, "assets": {key: value["runtime_key"] for key, value in mixer_assets.items()}}
             a.save(mixer_destination, mixer_presentation)
@@ -7492,7 +7493,7 @@ def audit_audio_seiren_eq(args):
             row["failures"].append(type(error).__name__ + ": " + str(error))
             row["failure_stages"].append({"stage": stage, "error": row["failures"][-1]})
         print(json.dumps({"product_id": pid, "failures": row["failures"]}), flush=True)
-    destination = a.ROOT / "crates/razer-device/src/audio/seiren_eq_data.json"
+    destination = a.builtin_data_path("razer-device", "SEIREN_EQ_DATA")
     if len(runtime) == len(rows):
         a.save(destination, runtime)
     # Product branches share generated files. Record their final bytes after
@@ -7787,7 +7788,7 @@ def audit_camera_local_pages(args):
                 if pid == 3595 and ('supportCamoStudioActivation:!0' not in owners["camera_page"]
                                     or 'checkUSBCapacity:!1' in owners["camera_page"]):
                     raise ValueError("Kiyo V2 source picker branch differs")
-                descriptor_path = a.ROOT / "crates/razer-pages/src/features/workspace/source_controls_data.json"
+                descriptor_path = a.builtin_data_path("razer-pages", "SOURCE_CONTROLS_DATA")
                 descriptors = json.loads(descriptor_path.read_bytes())
                 spec = next(product for product in descriptors if product["product_id"] == pid)
                 default_export = re.search(r'DEFAULTPROFILE:\(\)=>\s*([A-Za-z_$][\w$]*)', config)
@@ -8020,7 +8021,7 @@ def audit_camera_local_pages(args):
                               for source in layers["ui"][0]["files"] if source.get("path", "").endswith(".css")]
                 row["rust_implementation"] = [identity(a.ROOT / path) for path in (
                     "crates/razer-pages/src/features/workspace/source_controls.rs",
-                    "crates/razer-pages/src/features/workspace/source_controls_data.json",
+                    "crates/razer-pages/src/data/source_controls_data.rs",
                     "crates/razer-pages/src/features/workspace/source_controls/camera_media.rs",
                     "crates/razer-pages/src/features/workspace/source_controls/camera_preview.rs",
                     "crates/razer-pages/src/features/workspace/source_controls/camera_runtime.rs",
@@ -8291,15 +8292,15 @@ def audit_camera_local_pages(args):
             row["rust_implementation"] = [identity(path) for path in sorted(
                 (a.ROOT / "crates/razer-pages/src/features/workspace/source_controls").glob("camera*.rs"))]
             row["rust_implementation"] += [identity(a.ROOT / path) for path in (
-                "crates/razer-pages/src/features/workspace/source_controls_data.json",
+                "crates/razer-pages/src/data/source_controls_data.rs",
                 "crates/razer-device/src/camera/camera_submission.rs", "crates/razer-device/src/camera/camera_submission_tests.rs",
                 "crates/razer-device/src/camera/camera_extensions.rs", "crates/razer-device/src/camera/camera_queue.rs",
                 "crates/razer-service/src/runtime/camera_controller.rs", "crates/razer-service/src/runtime/windows/camera.rs",
                 "crates/razer-service/src/runtime/windows/camera_extensions.rs",
                 "crates/razer-platform/src/camera/camera_preview.rs", "crates/razer-platform/src/camera/camera_preview/windows.rs",
                 "crates/razer-platform/src/input/global_shortcuts.rs", "crates/razer-platform/src/platform/windows/global_shortcuts.rs")]
-            spec = next(product for product in json.loads((a.ROOT /
-                "crates/razer-pages/src/features/workspace/source_controls_data.json").read_bytes()) if product["product_id"] == pid)
+            spec = next(product for product in json.loads(a.builtin_data_path(
+                "razer-pages", "SOURCE_CONTROLS_DATA").read_bytes()) if product["product_id"] == pid)
             row["page_control_inventory"] = [{"page": page["key"], "controls": [control["key"]
                 for section in page["sections"] for control in section["controls"]]} for page in spec["pages"]]
             bindings = {}
@@ -8451,8 +8452,8 @@ def audit_gamepad_artwork(args):
     from tree_sitter import Language, Parser
     import tree_sitter_javascript
     parser = Parser(Language(tree_sitter_javascript.language()))
-    products = {row["product_id"]: row for row in json.loads((a.ROOT /
-        "crates/razer-pages/src/features/gamepad/gamepad_products_data.json").read_bytes())}
+    products = {row["product_id"]: row for row in json.loads(a.builtin_data_path(
+        "razer-pages", "GAMEPAD_PRODUCTS_DATA").read_bytes())}
     selected = sorted(set(args.product or products) - {4115})
     rows, runtime, preparations = [], [], []
 
@@ -8804,12 +8805,12 @@ def audit_gamepad_artwork(args):
             print(f"gamepad-artwork {pid}: images={len(images)} mkeys={len(mkeys)} lines={len(lines)}", flush=True)
         except (KeyError, ValueError, OSError, IndexError, TypeError) as error:
             row["failures"].append(str(error)); print(f"gamepad-artwork {pid}: {error}", flush=True)
-    fixture = a.ROOT / "crates/razer-pages/src/features/gamepad/gamepad_artwork_current_data.json"
+    fixture = a.builtin_data_path("razer-pages", "GAMEPAD_ARTWORK_CURRENT_DATA")
     if runtime:
         previous = json.loads(fixture.read_bytes()) if fixture.is_file() else {"products": []}
         combined = {item["product_id"]: item for item in previous["products"]}; combined.update({item["product_id"]: item for item in runtime})
         a.save(fixture, {"schema_version": 1, "products": [combined[pid] for pid in sorted(combined)]})
-        a.save(a.ROOT / "crates/razer-pages/src/features/gamepad/gamepad_products_data.json", [products[pid] for pid in sorted(products)])
+        a.save(a.builtin_data_path("razer-pages", "GAMEPAD_PRODUCTS_DATA"), [products[pid] for pid in sorted(products)])
     report_path = a.ROOT / ".analysis/results/frontend/gamepad-main-audit.json"
     report = json.loads(report_path.read_bytes()) if report_path.is_file() else {"schema_version": 1}
     report["gamepad_artwork"] = {"products": rows, "tool": identity(Path(__file__)),
@@ -9987,7 +9988,7 @@ def audit_gamepad_input(args):
     import importlib.metadata
     if args.family != "gamepad" or args.function != "main":
         raise ValueError("gamepad-input requires current gamepad main captures")
-    selected = sorted(set(args.product or candidates(a.ROOT / "crates/razer-pages/src/features" / FAMILY_CANDIDATES["gamepad"])))
+    selected = sorted(set(args.product or candidates(a.builtin_data_path("razer-pages", FAMILY_CANDIDATES["gamepad"]))))
     rows = []
     for pid in selected:
         row = {"product_id": pid, "failures": []}
@@ -10027,7 +10028,7 @@ def audit_gamepad_thumbsticks(args):
     import tree_sitter_javascript
     if args.family != "gamepad" or args.function != "main":
         raise ValueError("gamepad-thumbsticks requires current gamepad main captures")
-    catalog = json.loads((a.ROOT / "crates/razer-pages/src/features/gamepad/gamepad_products_data.json").read_bytes())
+    catalog = json.loads((a.builtin_data_path("razer-pages", "GAMEPAD_PRODUCTS_DATA")).read_bytes())
     selected = sorted(set(args.product or [row["product_id"] for row in catalog if "THUMBSTICKS" in row["pages"]]))
     parser = Parser(Language(tree_sitter_javascript.language()))
     rows, preparations = [], []
@@ -10272,8 +10273,8 @@ def audit_gamepad_triggers(args):
     import tree_sitter_javascript
     if args.family != "gamepad" or args.function != "main":
         raise ValueError("gamepad-triggers requires current gamepad main captures")
-    products = {row["product_id"]: row for row in json.loads((a.ROOT /
-        "crates/razer-pages/src/features/gamepad/gamepad_products_data.json").read_bytes())}
+    products = {row["product_id"]: row for row in json.loads(a.builtin_data_path(
+        "razer-pages", "GAMEPAD_PRODUCTS_DATA").read_bytes())}
     supported = {pid for pid, row in products.items() if "TRIGGERS" in row["pages"]}
     selected = sorted(set(args.product or supported))
     if set(selected) - supported:
@@ -11295,7 +11296,7 @@ def audit_mouse_receiver_polling(args):
         default_profile = default_profiles[0]
         require(default_profile["lowPowerMode"] == 30 and default_profile["pollingRateWireless"] == 1000,
                 "PID182 current MW defaults changed")
-        spec_path = a.ROOT / "crates/razer-pages/src/features/mouse/mouse_products_data.json"
+        spec_path = a.builtin_data_path("razer-pages", "MOUSE_PRODUCTS_DATA")
         specs = json.loads(spec_path.read_bytes())
         product_spec = next(item for item in specs if item["product_id"] == 182)
         product_spec["profile"] = default_profile
@@ -11708,7 +11709,7 @@ def mouse_receiver_indicator_source_review(row):
     """
     names = ["crates/razer-pages/src/features/mouse/customize/mouse_receiver_indicator.rs",
              "crates/razer-pages/src/features/mouse/customize/mouse_receiver_indicator_state.rs",
-             "crates/razer-pages/src/features/mouse/customize/mouse_receiver_indicator_data.json",
+             "crates/razer-pages/src/data/mouse_receiver_indicator_data.rs",
              "crates/razer-pages/src/features/mouse/mod.rs",
              "crates/razer-pages/src/features/mouse/polling/mouse_polling_view.rs",
              "crates/razer-widgets/src/theme.rs",
@@ -12073,7 +12074,7 @@ def audit_mouse_receiver_indicator(args):
         import workspace
         report["receiver_indicator"]["resource_preparation"] = workspace.prepare_resources(preparations)
         if not any(row["failures"] for row in rows):
-            data_path = a.ROOT / "crates/razer-pages/src/features/mouse/customize/mouse_receiver_indicator_data.json"
+            data_path = a.builtin_data_path("razer-pages", "MOUSE_RECEIVER_INDICATOR_DATA")
             a.save(data_path, [row["source_descriptor"] for row in rows])
             report["receiver_indicator"]["generated_descriptor"] = identity(data_path)
         a.save(report_path, report)
@@ -13434,9 +13435,9 @@ def audit_mouse_receiver_legacy(args):
         descriptors = [row["single_led_descriptor"] for row in rows if "single_led_descriptor" in row]
         transports = [row["duallink_protocol"]["single_led_transport"] for row in rows
                       if "single_led_transport" in row.get("duallink_protocol", {})]
-        data_path = a.ROOT / "crates/razer-pages/src/features/mouse/customize/mouse_receiver_legacy_data.json"
-        transport_path = a.ROOT / "assets/data/mouse-receiver-legacy-capabilities.json"
-        binding_transport_path = a.ROOT / "assets/data/mouse-binding-query-capabilities.json"
+        data_path = a.builtin_data_path("razer-pages", "MOUSE_RECEIVER_LEGACY_DATA")
+        transport_path = a.builtin_data_path("razer-device", "MOUSE_RECEIVER_LEGACY_CAPABILITIES")
+        binding_transport_path = a.builtin_data_path("razer-device", "MOUSE_BINDING_QUERY_CAPABILITIES")
         a.save(data_path, descriptors)
         a.save(transport_path, transports)
         a.save(binding_transport_path, binding_transports)
@@ -13802,7 +13803,7 @@ def audit_camera_source_review(args):
                      "crates/razer-pages/src/features/workspace/source_controls/camera_shortcuts.rs",
                      "crates/razer-pages/src/features/workspace/source_controls/camera_shortcut_keys.rs",
                      "crates/razer-pages/src/features/workspace/source_controls.rs",
-                     "crates/razer-pages/src/features/workspace/source_controls_data.json",
+                     "crates/razer-pages/src/data/source_controls_data.rs",
                      "crates/razer-device/src/camera/camera_submission.rs",
                      "crates/razer-device/src/camera/camera_queue.rs",
                      "crates/razer-device/src/camera/camera.rs",
@@ -13831,7 +13832,7 @@ def audit_camera_source_review(args):
          "implementation": "Retained device MIC state survives profile/tab replacement. Scope initialization queries GetAudioFunction through independent CameraStart IPC. The reboot action submits the two values through real Windows COM/KS: C0 0E A0, wait 10ms, C0 03 A8 flash save, wait 10ms, C0 0E 07 02 reboot. Every native stage short circuits on failure; cancellation releases topology/node handles. Source optimistic values/dirty stay separate from validated raw receipts and diagnostics.",
          "verification": "Current full JS owners, CSS, warning SVG byte identity, current 1.0.35.0 complete IDA records and vtable slots are retained. Pure/source and simulated transport tests are separate; no real window, vendor code, service or device acceptance was run. Whole camera page completion is not inferred.",
          "source_roles": ["ui_mic_page", "ui_mic_actions", "ui_mic_reducer", "mw_mic_feature", "mw_mic_initialize", "mw_mic_initialize_caller", "mw_mic_set_wrapper", "mw_mic_get_wrapper", "mw_mic_set_ffi", "mw_mic_get_ffi", "native_processing_dispatch"],
-         "implementation_files": ["camera_mic.rs", "camera_processing_family.rs", "camera_processing_family_tests.rs", "camera_submission.rs", "camera_runtime.rs", "source_controls.rs", "source_controls_data.json"]},
+         "implementation_files": ["camera_mic.rs", "camera_processing_family.rs", "camera_processing_family_tests.rs", "camera_submission.rs", "camera_runtime.rs", "source_controls.rs", "source_controls_data.rs"]},
         {"id": "camera-choice-focus-callers", "status": "implemented_source_linked", "products": selected,
          "source": "The CAMERA/SYNAPSE handlers dispatch autoFocus.isEnabled using a full reducer object, then dispatch manualFocus as a separate ON_SET_AUTO_FOCUS payload after exposure handling.",
          "implementation": "settings_choice_steps captures each ordered reducer snapshot: autofocus toggle retains the old manual focus companion, exposure follows, then the separate focus action carries the cached focus. Each snapshot compiles and enqueues through request_camera_profile_edit.",
@@ -13886,7 +13887,7 @@ def audit_camera_source_review(args):
          "implementation": "Current configuration populates family DEFAULT_SETTINGS and minimum firmware descriptors. Shared image state preserves source built-in baseline, custom dataset and white-balance companions. Actual device firmware observations drive the original gate, including exact/missing/invalid version behavior. Specialized source controls render all three products with retained slider/stepper and input behavior. Ordinary focus edits maintain legacy cameraMode/cameraValue and profile load restores their original precedence. General control normalization no longer rewrites hidden camera zero/sentinel companions.",
          "verification": "The maintained query validates complete source labels/options, current descriptor citations and mounted pan override; pure state tests cover preset transitions and source comparison branches. Whole-page and runtime acceptance remain unverified.",
          "source_roles": ["ui_image_settings", "ui_product_configuration", "ui_camera_page", "ui_focus", "ui_firmware_comparator", "ui_semver_coerce", "ui_semver_class", "ui_pan_tilt", "ui_labels", "mw_focus_task", "ui_mounted_product"],
-         "implementation_files": ["camera_firmware.rs", "camera_image_state.rs", "camera_sections.rs", "source_controls.rs", "source_controls_data.json", "source_workspace.rs"]},
+         "implementation_files": ["camera_firmware.rs", "camera_image_state.rs", "camera_sections.rs", "source_controls.rs", "source_controls_data.rs", "source_workspace.rs"]},
         {"id": "camera-family-exposure-and-local-shortcut-callers", "status": "implemented_source_linked", "products": [pid for pid in selected if pid in {3595, 3596}],
          "source": "V2 exposure mounts automatic-only Lighting, metering, fixed -3 compensation with a separate post-mount face clamp, and a discrete manual shutter slider. Its field handlers share a leading-only 1000ms full-mode reassertion. X mounts standard manual exposure or automatic metering. Family MW registers local preset chords and broadcasts only selected mode for physical shortcut events.",
          "implementation": "Descriptors now mount these controls with source ranges/options/tooltips. The mounted exposure state owns the shared throttle and preserves old full snapshots before individual edits; the metering effect remains distinct from slider range. Family shortcuts restore by stable mode, own local accelerator cleanup, suspend during capture, and submit view writes only while CAMERA is mounted.",
@@ -14067,7 +14068,7 @@ def audit_keyboard_brightness(args):
 def audit_runtime_setup(args):
     """Verify source setup publication separately from telemetry/settings I/O."""
     families = list(FAMILY_CANDIDATES) if args.family == "all" else [args.family]
-    catalog_path = a.ROOT / "crates/razer-model/src/runtime_setup_data.json"
+    catalog_path = a.builtin_data_path("razer-model", "RUNTIME_SETUP_DATA")
     policies = {row["product_id"]: row for row in json.loads(catalog_path.read_bytes())} if catalog_path.exists() else {}
     for family in families:
         report_path = a.ROOT / f".analysis/results/frontend/{family}-mw-audit.json"

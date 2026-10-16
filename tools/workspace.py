@@ -1513,17 +1513,6 @@ def rust_inputs(*, include_asset_pack=True):
             if path.suffix == ".rs" or path.name == "Cargo.toml":
                 files.add(product_input(path, ROOT / "Cargo.toml"))
     pending = [path for path in files if path.suffix == ".rs"]
-    external_tables = ROOT / "assets/synapse/tables/asset-tables-source.rs"
-    if external_tables.exists():
-        files.add(product_input(external_tables, ROOT / "crates/razer-assets/src/lib.rs"))
-        pending.append(external_tables)
-        if include_asset_pack:
-            # This exact generated build resource is distinct from Rust source
-            # includes, which must still never depend on target/ or scratch.
-            pack = safe(ROOT / GENERATED_ASSET_PACK)
-            if not pack.is_file():
-                raise ValueError("Missing local asset pack; run audit-asset-pack --prepare and prepare-asset-pack")
-            files.add(pack)
     visited = set()
     while pending:
         path = pending.pop()
@@ -4902,6 +4891,9 @@ def main():
     import asset_release
     import evidence
     import families
+    import windows_installer
+    import typed_tables
+    import rust_data
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
@@ -4943,6 +4935,12 @@ def main():
     dashboard_images.add_argument("--product", type=int, action="append", help="Refresh selected products while retaining other verified requests and explicit failures")
     analysis.add_commands(commands)
     asset_release.add_commands(commands)
+    windows_installer.add_commands(commands)
+    typed_tables.add_commands(commands)
+    rust_data.add_commands(commands)
+    for name in ("prepare-runtime-assets", "verify-runtime-assets"):
+        runtime_assets = commands.add_parser(name)
+        runtime_assets.add_argument("--check-local", action="store_true", help="Verify existing local bytes without fetching")
     evidence.add_commands(commands)
     families.add_commands(commands)
     args = parser.parse_args()
@@ -4995,8 +4993,18 @@ def main():
         print(json.dumps(prepare_asset_pack(args.manifest, args.output), ensure_ascii=False))
     elif args.command == "verify-asset-pack":
         print(json.dumps(verify_asset_pack(args.pack, args.manifest), ensure_ascii=False))
-    elif args.command in {"prepare-asset-release", "verify-asset-release", "fetch-asset-release", "publish-asset-release"}:
+    elif args.command in {"prepare-asset-release", "verify-asset-release", "fetch-asset-release", "publish-asset-release", "pin-asset-release"}:
         print(json.dumps(asset_release.run(args), ensure_ascii=False), flush=True)
+    elif args.command in {"prepare-device-write-table", "prepare-storage-tables", "prepare-local-protocol-tables"}:
+        print(json.dumps(typed_tables.run(args), ensure_ascii=False), flush=True)
+    elif args.command == "prepare-typed-data":
+        print(json.dumps(rust_data.run(args), ensure_ascii=False), flush=True)
+    elif args.command == "prepare-runtime-assets":
+        print(json.dumps(asset_release.prepare_runtime_metadata(check_local=args.check_local), ensure_ascii=False), flush=True)
+    elif args.command == "verify-runtime-assets":
+        print(json.dumps(asset_release.verify_runtime_metadata(check_local=args.check_local), ensure_ascii=False), flush=True)
+    elif args.command in {"prepare-windows-installer", "verify-windows-installer", "compile-windows-installer"}:
+        print(json.dumps(windows_installer.run(args), ensure_ascii=False), flush=True)
     elif args.command == "prepare-image-analyzer":
         prepare_image_analyzer()
     elif args.command == "prepare-resources":

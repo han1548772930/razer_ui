@@ -88,10 +88,7 @@ struct HelpResetCallback {
 }
 fn records() -> &'static [Help] {
     static RECORDS: OnceLock<Vec<Help>> = OnceLock::new();
-    RECORDS.get_or_init(|| {
-        serde_json::from_str(include_str!("source_help_data.json"))
-            .expect("validated product Help metadata")
-    })
+    RECORDS.get_or_init(|| crate::data::source_help_data!())
 }
 
 /// Internet-only Help mounts have no local destination after their links are removed.

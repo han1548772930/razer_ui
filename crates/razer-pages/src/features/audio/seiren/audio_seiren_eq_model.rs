@@ -274,10 +274,7 @@ pub(super) struct Data {
 }
 pub(super) fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_seiren_eq_data.json"))
-            .expect("current static Seiren EQ inputs")
-    })
+    DATA.get_or_init(|| crate::data::audio_seiren_eq_data!())
 }
 pub(super) fn label(alias: &str) -> String {
     razer_i18n::t(&data().labels[alias])

@@ -37,7 +37,10 @@ impl PowerChange {
         use crate::keyboard_latest_protocol::Operation;
         match self {
             Self::DimLighting => vec![Operation::ReadTimeToDim { slot: 0 }],
-            Self::PowerSaving => vec![Operation::ReadAutoSleepMode { slot: 0 }, Operation::ReadTimeToSleep],
+            Self::PowerSaving => vec![
+                Operation::ReadAutoSleepMode { slot: 0 },
+                Operation::ReadTimeToSleep,
+            ],
         }
     }
     pub fn observe(
@@ -47,19 +50,40 @@ impl PowerChange {
     ) -> anyhow::Result<Value> {
         use crate::keyboard_latest_protocol::Reply;
         let (field, enabled, seconds) = match (self, readings) {
-            (Self::DimLighting, [Reply::TimeToDim { slot: 0, enabled, seconds, .. }]) =>
-                ("dimLighting", *enabled, *seconds),
-            (Self::PowerSaving, [Reply::AutoSleepMode { slot: 0, enabled, .. }, Reply::TimeToSleep { seconds, .. }]) =>
-                ("powerSaving", *enabled, *seconds),
+            (
+                Self::DimLighting,
+                [
+                    Reply::TimeToDim {
+                        slot: 0,
+                        enabled,
+                        seconds,
+                        ..
+                    },
+                ],
+            ) => ("dimLighting", *enabled, *seconds),
+            (
+                Self::PowerSaving,
+                [
+                    Reply::AutoSleepMode {
+                        slot: 0, enabled, ..
+                    },
+                    Reply::TimeToSleep { seconds, .. },
+                ],
+            ) => ("powerSaving", *enabled, *seconds),
             _ => anyhow::bail!("756 power event getter sequence differs"),
         };
         ensure!(document.is_object(), "756 power event document is invalid");
         let mut result = document.clone();
         result[field] = json!({"isEnabled":enabled,"value":f64::from(seconds)/60.});
         // Rg/Lg advance the source version even for an unchanged reading.
-        result["version"] = json!(next_source_version(document.get("version")
-            .map(|version| version.as_u64().context("756 power event version is invalid"))
-            .transpose()?)?);
+        result["version"] = json!(next_source_version(
+            document
+                .get("version")
+                .map(|version| version
+                    .as_u64()
+                    .context("756 power event version is invalid"))
+                .transpose()?
+        )?);
         Ok(result)
     }
 }

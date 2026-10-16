@@ -13,56 +13,143 @@ pub(super) struct ProfileConfirmation {
 }
 
 impl SourceProductWorkspace {
-    fn import_source_profiles(&mut self,rows:&[Value],macros:&[Value],window:&mut Window,cx:&mut Context<Self>)->Result<(),String> {
-        use razer_device::{keyboard_latest_mapping as mapping,keyboard_latest_restore as restore};
-        let existing=self.device.profiles.iter().map(|profile| {
-            let mut value=profile.source_settings.clone().unwrap_or(serde_json::json!({}));
-            value["guid"]=profile.guid.clone().into();value["name"]=profile.name.clone().into();value
-        }).collect::<Vec<_>>();
-        let active=self.device.active_profile_obj().map(|profile|profile.guid.as_str()).ok_or("The selected profile is absent")?;
-        let (profiles,imported_macros)=razer_device::profile_transfer::prepare_import_756(rows,macros,&existing,
-            &self.local_mapping_macros,active,self.device.layout_id,||uuid::Uuid::new_v4().to_string()).map_err(|e|e.to_string())?;
+    fn import_source_profiles(
+        &mut self,
+        rows: &[Value],
+        macros: &[Value],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        use razer_device::{
+            keyboard_latest_mapping as mapping, keyboard_latest_restore as restore,
+        };
+        let existing = self
+            .device
+            .profiles
+            .iter()
+            .map(|profile| {
+                let mut value = profile
+                    .source_settings
+                    .clone()
+                    .unwrap_or(serde_json::json!({}));
+                value["guid"] = profile.guid.clone().into();
+                value["name"] = profile.name.clone().into();
+                value
+            })
+            .collect::<Vec<_>>();
+        let active = self
+            .device
+            .active_profile_obj()
+            .map(|profile| profile.guid.as_str())
+            .ok_or("The selected profile is absent")?;
+        let (profiles, imported_macros) = razer_device::profile_transfer::prepare_import_756(
+            rows,
+            macros,
+            &existing,
+            &self.local_mapping_macros,
+            active,
+            self.device.layout_id,
+            || uuid::Uuid::new_v4().to_string(),
+        )
+        .map_err(|e| e.to_string())?;
         // Compile a complete candidate before altering the source store. This
         // checks all imported mapping branches and retains the active GUID.
-        let mut combined=existing;combined.extend(profiles.clone());
-        let previous=self.device.source_device_settings.as_ref().and_then(|settings|settings.get(restore::STORAGE_FIELD));
-        let compiled=mapping::prepare_document_with_device_settings(&combined,active,self.device.layout_id,previous,
-            self.device.source_device_settings.as_ref(),(0..8192).map(|_|uuid::Uuid::new_v4().to_string())).map_err(|e|e.to_string())?;
+        let mut combined = existing;
+        combined.extend(profiles.clone());
+        let previous = self
+            .device
+            .source_device_settings
+            .as_ref()
+            .and_then(|settings| settings.get(restore::STORAGE_FIELD));
+        let compiled = mapping::prepare_document_with_device_settings(
+            &combined,
+            active,
+            self.device.layout_id,
+            previous,
+            self.device.source_device_settings.as_ref(),
+            (0..8192).map(|_| uuid::Uuid::new_v4().to_string()),
+        )
+        .map_err(|e| e.to_string())?;
         for profile in profiles {
-            let guid=profile["guid"].as_str().ok_or("Imported profile GUID is absent")?.to_owned();
-            self.device.profiles.push(Profile{id:guid.clone(),guid:guid.clone(),name:profile["name"].as_str()
-                .ok_or("Imported profile name is absent")?.into(),dpi_stages:None,settings:None,
-                source_settings:compiled["profiles"].as_array().and_then(|rows|rows.iter().find(|row|row["guid"]==guid)).cloned()});
+            let guid = profile["guid"]
+                .as_str()
+                .ok_or("Imported profile GUID is absent")?
+                .to_owned();
+            self.device.profiles.push(Profile {
+                id: guid.clone(),
+                guid: guid.clone(),
+                name: profile["name"]
+                    .as_str()
+                    .ok_or("Imported profile name is absent")?
+                    .into(),
+                dpi_stages: None,
+                settings: None,
+                source_settings: compiled["profiles"]
+                    .as_array()
+                    .and_then(|rows| rows.iter().find(|row| row["guid"] == guid))
+                    .cloned(),
+            });
         }
-        self.device.source_device_settings.get_or_insert_with(||serde_json::json!({}))[restore::STORAGE_FIELD]=compiled;
+        self.device
+            .source_device_settings
+            .get_or_insert_with(|| serde_json::json!({}))[restore::STORAGE_FIELD] = compiled;
         self.local_mapping_macros.extend(imported_macros.clone());
-        self.sync_local_mapping_macros(window,cx);
-        self.refresh_profile_choices(window,cx);
-        if !imported_macros.is_empty(){cx.emit(WorkspaceEvent::ProfileMacrosImported(imported_macros));}
+        self.sync_local_mapping_macros(window, cx);
+        self.refresh_profile_choices(window, cx);
+        if !imported_macros.is_empty() {
+            cx.emit(WorkspaceEvent::ProfileMacrosImported(imported_macros));
+        }
         // MW ay appends and caches; it never invokes loadActiveProfile.
-        cx.emit(WorkspaceEvent::Changed);cx.notify();Ok(())
+        cx.emit(WorkspaceEvent::Changed);
+        cx.notify();
+        Ok(())
     }
 
-    fn export_source_profiles(&mut self,profiles:&[Value],macros:&[Value],window:&mut Window,cx:&mut Context<Self>) {
-        let target=razer_device::keyboard_latest_mapping::source()["profile_transfer_target"].clone();
-        let bytes=match razer_device::profile_transfer::encode(&target,profiles,macros) {
-            Ok(bytes)=>bytes,Err(error)=>{window.push_notification(error.to_string(),cx);return;}
+    fn export_source_profiles(
+        &mut self,
+        profiles: &[Value],
+        macros: &[Value],
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let target =
+            razer_device::keyboard_latest_mapping::source()["profile_transfer_target"].clone();
+        let bytes = match razer_device::profile_transfer::encode(&target, profiles, macros) {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                window.push_notification(error.to_string(), cx);
+                return;
+            }
         };
-        let directory=std::env::current_dir().unwrap_or_else(|_|std::path::PathBuf::from("."));
-        let timestamp=std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d|d.as_millis()).unwrap_or(0);
-        let filename=format!("profiles - {timestamp}.synapse4");
-        let picker=cx.prompt_for_new_path(&directory,Some(&filename));
-        self.profile_export_task=Some(cx.spawn_in(window,async move|owner,cx|{
-            let result=match picker.await {
-                Ok(Ok(Some(path)))=>Some(cx.background_executor().spawn(async move{
-                    use std::io::Write as _;
-                    let mut file=std::fs::File::create(&path).map_err(|e|e.to_string())?;
-                    file.write_all(&bytes).and_then(|_|file.flush()).map_err(|e|e.to_string())
-                }).await),Ok(Ok(None))=>None,_=>Some(Err("Could not open the profile save dialog".to_owned())),
+        let directory = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        let filename = format!("profiles - {timestamp}.synapse4");
+        let picker = cx.prompt_for_new_path(&directory, Some(&filename));
+        self.profile_export_task = Some(cx.spawn_in(window, async move |owner, cx| {
+            let result = match picker.await {
+                Ok(Ok(Some(path))) => Some(
+                    cx.background_executor()
+                        .spawn(async move {
+                            use std::io::Write as _;
+                            let mut file =
+                                std::fs::File::create(&path).map_err(|e| e.to_string())?;
+                            file.write_all(&bytes)
+                                .and_then(|_| file.flush())
+                                .map_err(|e| e.to_string())
+                        })
+                        .await,
+                ),
+                Ok(Ok(None)) => None,
+                _ => Some(Err("Could not open the profile save dialog".to_owned())),
             };
-            let _=owner.update_in(cx,|this,window,cx|{
-                this.profile_export_task=None;
-                if let Some(Err(error))=result {window.push_notification(error,cx);}
+            let _ = owner.update_in(cx, |this, window, cx| {
+                this.profile_export_task = None;
+                if let Some(Err(error)) = result {
+                    window.push_notification(error, cx);
+                }
                 cx.notify();
             });
         }));
@@ -160,17 +247,19 @@ impl SourceProductWorkspace {
     fn create_profile(&mut self, duplicate: bool, window: &mut Window, cx: &mut Context<Self>) {
         let id = if matches!(self.device.product_id, 182 | 756) {
             uuid::Uuid::new_v4().to_string()
-        } else { (1..)
-            .map(|index| format!("local-profile-{index}"))
-            .find(|id| {
-                !self
-                    .device
-                    .profiles
-                    .iter()
-                    .chain(&self.saved.profiles)
-                    .any(|profile| profile.id == *id || profile.guid == *id)
-            })
-            .expect("unused local profile identity") };
+        } else {
+            (1..)
+                .map(|index| format!("local-profile-{index}"))
+                .find(|id| {
+                    !self
+                        .device
+                        .profiles
+                        .iter()
+                        .chain(&self.saved.profiles)
+                        .any(|profile| profile.id == *id || profile.guid == *id)
+                })
+                .expect("unused local profile identity")
+        };
         let mut profile = if duplicate {
             let Some(mut profile) = self.device.active_profile_obj().cloned() else {
                 return;
@@ -232,19 +321,25 @@ impl SourceProductWorkspace {
                         .any(|profile| profile.name == *name)
                 })
                 .expect("unused default name");
-            mouse_profile_source::default_profile(&self.device, name.clone()).unwrap_or_else(|| Profile {
-                id: String::new(),
-                guid: String::new(),
-                name,
-                dpi_stages: None,
-                settings: None,
-                source_settings: None,
+            mouse_profile_source::default_profile(&self.device, name.clone()).unwrap_or_else(|| {
+                Profile {
+                    id: String::new(),
+                    guid: String::new(),
+                    name,
+                    dpi_stages: None,
+                    settings: None,
+                    source_settings: None,
+                }
             })
         };
         profile.id = id.clone();
         profile.guid = id.clone();
         if matches!(self.device.product_id, 182 | 756) {
-            if let Some(source) = profile.source_settings.as_mut().and_then(Value::as_object_mut) {
+            if let Some(source) = profile
+                .source_settings
+                .as_mut()
+                .and_then(Value::as_object_mut)
+            {
                 // ey copies the old profile and overlays the new GUID/name.
                 source.insert("guid".into(), serde_json::json!(profile.guid));
                 source.insert("name".into(), serde_json::json!(profile.name));
@@ -301,7 +396,11 @@ impl SourceProductWorkspace {
                         .await;
                     let _ = owner.update_in(cx, |this, window, cx| {
                         if this.device.active_profile == id && this.profile_switch_enabled() {
-                            this.profile_confirmation = Some(ProfileConfirmation { action, id, bindings_only:false });
+                            this.profile_confirmation = Some(ProfileConfirmation {
+                                action,
+                                id,
+                                bindings_only: false,
+                            });
                             this.profile_confirm_focus.focus(window, cx);
                             cx.notify();
                         }
@@ -339,13 +438,19 @@ impl SourceProductWorkspace {
                 self.profile_transfer_subscription = Some(cx.subscribe_in(
                     &dialog,
                     window,
-                    |this, _, event: &SourceProfileTransferEvent, window, cx| {
-                        match event {
-                            SourceProfileTransferEvent::Close=>this.dismiss_profile_dialog(window,cx),
-                            SourceProfileTransferEvent::Import{rows,macros}=>{
-                                if let Err(error)=this.import_source_profiles(rows,macros,window,cx){window.push_notification(error,cx);}
+                    |this, _, event: &SourceProfileTransferEvent, window, cx| match event {
+                        SourceProfileTransferEvent::Close => {
+                            this.dismiss_profile_dialog(window, cx)
+                        }
+                        SourceProfileTransferEvent::Import { rows, macros } => {
+                            if let Err(error) =
+                                this.import_source_profiles(rows, macros, window, cx)
+                            {
+                                window.push_notification(error, cx);
                             }
-                            SourceProfileTransferEvent::Export{profiles,macros}=>this.export_source_profiles(profiles,macros,window,cx),
+                        }
+                        SourceProfileTransferEvent::Export { profiles, macros } => {
+                            this.export_source_profiles(profiles, macros, window, cx)
                         }
                     },
                 ));
@@ -369,8 +474,8 @@ impl SourceProductWorkspace {
             return;
         }
         match confirmation.action {
-            ProfileAction::Reset if self.device.product_id==756=>{
-                self.reset_latest_keyboard_profile(confirmation.bindings_only,window,cx);
+            ProfileAction::Reset if self.device.product_id == 756 => {
+                self.reset_latest_keyboard_profile(confirmation.bindings_only, window, cx);
             }
             ProfileAction::Delete if self.device.profiles.len() > 1 => {
                 if let Err(error) = self.change_profile_collection(

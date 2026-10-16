@@ -11,8 +11,7 @@ fn performance_uses_registered_properties_capability_and_preserves_local_profile
         gpui_kit::init(cx);
         cx.set_reduce_motion(true);
     });
-    let specs: Vec<PropertiesSpec> =
-        serde_json::from_str(include_str!("mouse_properties_data.json")).unwrap();
+    let specs: Vec<PropertiesSpec> = crate::data::mouse_properties_data!();
     let registered = specs
         .first()
         .expect("audited properties capability")

@@ -63,13 +63,13 @@ mod audio_seiren_eq_write;
 mod audio_seiren_microphone;
 #[path = "seiren/audio_seiren_stream_mixer.rs"]
 mod audio_seiren_stream_mixer;
-pub use audio_seiren_stream_mixer::{
-    SeirenStreamMixerCaptureChanged, SeirenStreamMixerObservation, SeirenStreamMixerRequested,
-};
 pub use audio_mixer_presets::{PresetShortcutBinding, PresetShortcutRequest};
 pub use audio_seiren_audio_runtime::SeirenAudioCaptureRequested;
 pub use audio_seiren_eq_write::SeirenEqRequested;
 pub use audio_seiren_microphone::{SeirenAudioPlaybackRequested, SeirenMicrophoneSetupSeen};
+pub use audio_seiren_stream_mixer::{
+    SeirenStreamMixerCaptureChanged, SeirenStreamMixerObservation, SeirenStreamMixerRequested,
+};
 #[path = "audio_demo.rs"]
 mod demo;
 #[path = "nommo/audio_nommo.rs"]
@@ -205,7 +205,7 @@ pub struct AudioProductSpec {
 }
 pub fn source_product(pid: u32) -> Option<&'static AudioProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<AudioProductSpec> =
-        super::source_catalog::SourceCatalog::new(include_str!("audio_products_data.json"));
+        super::source_catalog::SourceCatalog::new(|| crate::data::audio_products_data!());
     PRODUCTS.get(pid)
 }
 pub fn supports_page(pid: u32, key: &str) -> bool {
@@ -232,10 +232,7 @@ struct ChromaLightingPage {
 fn chroma_lighting_page(pid: u32) -> Option<&'static ChromaLightingPage> {
     static PAGES: OnceLock<Vec<ChromaLightingPage>> = OnceLock::new();
     PAGES
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("audio_chroma_modes.json"))
-                .expect("validated audio chroma root-to-page routes")
-        })
+        .get_or_init(|| crate::data::audio_chroma_modes!())
         .iter()
         .find(|entry| entry.product_id == pid && supports_page(pid, &entry.page))
 }
@@ -649,6 +646,9 @@ impl AudioProductWorkspace {
                 self.sync_oled_runtime_select(window, cx);
             }
             self.page = page.into();
+            if page == "TAB_LIGHTING" {
+                self.refresh_mixer_lighting_previews();
+            }
             self.sync_seiren_audio_runtime(cx);
             if page == "TAB_EQ" {
                 self.sync_seiren_eq(window, cx);
@@ -2156,10 +2156,21 @@ impl Render for AudioProductWorkspace {
             let body = self.page_body(&self.page, false, window, cx);
             let footer = self.seiren_microphone_footer(cx);
             let wizard = self.seiren_microphone_wizard(window, cx);
-            return v_flex().id("seiren-page-with-footer").size_full().min_h_0()
-                .child(div().id("seiren-scrolling-page").flex_1().min_h_0().overflow_y_scroll()
-                    .child(super::product_surface::body().child(body)))
-                .children(footer).children(wizard).into_any_element();
+            return v_flex()
+                .id("seiren-page-with-footer")
+                .size_full()
+                .min_h_0()
+                .child(
+                    div()
+                        .id("seiren-scrolling-page")
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_y_scroll()
+                        .child(super::product_surface::body().child(body)),
+                )
+                .children(footer)
+                .children(wizard)
+                .into_any_element();
         }
         div()
             .id(SharedString::from(format!(

@@ -112,15 +112,11 @@ pub(super) fn edit(
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn source_spec(product_id: u32) -> Value {
-        let all: Value =
-            serde_json::from_str(include_str!("../source_controls_data.json")).unwrap();
-        all.as_array()
-            .unwrap()
+    fn source_spec(product_id: u32) -> &'static super::super::ProductSpec {
+        super::super::specs()
             .iter()
-            .find(|spec| spec["product_id"] == product_id)
+            .find(|spec| spec.product_id == product_id)
             .unwrap()
-            .clone()
     }
 
     // The glob imports above also carry GPUI's `test` macro; name the
@@ -129,8 +125,8 @@ mod tests {
     #[test]
     fn first_edit_keeps_source_baseline_then_custom_edits_update_user_settings() {
         let spec = source_spec(3594);
-        let defaults = &spec["profile"];
-        let settings = spec["camera_image_settings"].as_array().unwrap();
+        let defaults = &spec.profile;
+        let settings = &spec.camera_image_settings;
         let mut profile = defaults.clone();
         // Current C (102695-102749) and P (102774-102977) deliberately
         // differ; selecting vibrant uses C values with P userSettings.
@@ -168,8 +164,8 @@ mod tests {
     #[test]
     fn auto_checkbox_uses_user_balance_and_updates_custom_baseline_immediately() {
         let spec = source_spec(3594);
-        let defaults = &spec["profile"];
-        let settings = spec["camera_image_settings"].as_array().unwrap();
+        let defaults = &spec.profile;
+        let settings = &spec.camera_image_settings;
         let mut profile = defaults.clone();
         profile["image"][0]["dataSet"]["whiteBalance"]["value"] = 6100.into();
         edit(&mut profile, settings, "whiteBalance/isAuto", &false.into()).unwrap();
@@ -188,8 +184,8 @@ mod tests {
     fn camera_family_presets_preserve_first_edit_baseline_and_last_custom_value() {
         for product_id in [3595, 3596] {
             let spec = source_spec(product_id);
-            let defaults = &spec["profile"];
-            let settings = spec["camera_image_settings"].as_array().unwrap();
+            let defaults = &spec.profile;
+            let settings = &spec.camera_image_settings;
             let mut profile = defaults.clone();
             assert!(select(&mut profile, defaults, settings, 2));
             let previous_user = profile["image"][2]["dataSet"]["userSettings"].clone();

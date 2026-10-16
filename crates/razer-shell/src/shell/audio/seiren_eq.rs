@@ -15,31 +15,68 @@ pub(super) struct SeirenEqSettingsSave {
     profile: Profile,
 }
 pub(super) struct SeirenMixerVersionSave {
-    workspace:Entity<ProductWorkspace>,
-    request:razer_pages::features::SeirenStreamMixerRequested,
-    identity:String,
-    version:Option<u64>,
-    reply:std::sync::mpsc::Sender<Result<u64,String>>,
+    workspace: Entity<ProductWorkspace>,
+    request: razer_pages::features::SeirenStreamMixerRequested,
+    identity: String,
+    version: Option<u64>,
+    reply: std::sync::mpsc::Sender<Result<u64, String>>,
 }
 impl AppShell {
-    pub(super) fn persist_seiren_device_version(&mut self,workspace:Entity<ProductWorkspace>,request:razer_pages::features::SeirenStreamMixerRequested,reply:std::sync::mpsc::Sender<Result<u64,String>>,window:&mut Window,cx:&mut Context<Self>) {
-        if self.close_requested||self.storage_error.is_some()||!workspace.read(cx).seiren_stream_mixer_request_matches(&request,cx) {
-            let _=reply.send(Err(self.storage_error.clone().unwrap_or_else(||"Mixer device-document save owner is no longer current".into())));return;
+    pub(super) fn persist_seiren_device_version(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        request: razer_pages::features::SeirenStreamMixerRequested,
+        reply: std::sync::mpsc::Sender<Result<u64, String>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.close_requested
+            || self.storage_error.is_some()
+            || !workspace
+                .read(cx)
+                .seiren_stream_mixer_request_matches(&request, cx)
+        {
+            let _ = reply.send(Err(self.storage_error.clone().unwrap_or_else(|| {
+                "Mixer device-document save owner is no longer current".into()
+            })));
+            return;
         }
-        let file=store::WorkspaceFile::new(self.devices.iter().map(|entity|entity.read(cx).saved_snapshot(cx)).collect(),self.tracking_intro_seen)
-            .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
-            .with_preferences(self.settings.read(cx).snapshot())
-            .with_custom_colors(cx.global::<CustomColors>().colors())
-            .with_host_tab_order(self.host_tabs.order())
-            .with_dashboard(self.dashboard_state.read(cx).snapshot())
-            .with_module_services(self.module_catalog.read(cx).service_snapshot())
-            .with_macros(self.macro_library.read(cx).snapshot());
-        let identity=workspace.read(cx).identity(cx);
+        let file = store::WorkspaceFile::new(
+            self.devices
+                .iter()
+                .map(|entity| entity.read(cx).saved_snapshot(cx))
+                .collect(),
+            self.tracking_intro_seen,
+        )
+        .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
+        .with_preferences(self.settings.read(cx).snapshot())
+        .with_custom_colors(cx.global::<CustomColors>().colors())
+        .with_host_tab_order(self.host_tabs.order())
+        .with_dashboard(self.dashboard_state.read(cx).snapshot())
+        .with_module_services(self.module_catalog.read(cx).service_snapshot())
+        .with_macros(self.macro_library.read(cx).snapshot());
+        let identity = workspace.read(cx).identity(cx);
         self.pending_saves.push_back(PreparedSave {
             leviathan: None,
-            window:window.window_handle(),file,mouse_polling:None,mouse_dpi_stages:None,mouse_profile:None,keyboard_actuation:None,mouse_dpi:None,mouse_current_dpi:None,mouse_current_power:None,controller_trigger:None,
-            seiren_eq:Some(SeirenEqSave::MixerVersion(SeirenMixerVersionSave{workspace,request,identity,version:None,reply})),
-        });self.start_pending_save(cx);
+            window: window.window_handle(),
+            file,
+            mouse_polling: None,
+            mouse_dpi_stages: None,
+            mouse_profile: None,
+            keyboard_actuation: None,
+            mouse_dpi: None,
+            mouse_current_dpi: None,
+            mouse_current_power: None,
+            controller_trigger: None,
+            seiren_eq: Some(SeirenEqSave::MixerVersion(SeirenMixerVersionSave {
+                workspace,
+                request,
+                identity,
+                version: None,
+                reply,
+            })),
+        });
+        self.start_pending_save(cx);
     }
     pub(super) fn persist_seiren_eq(
         &mut self,
@@ -112,28 +149,48 @@ impl AppShell {
         });
         self.start_pending_save(cx);
     }
-    pub(super) fn rebase_seiren_eq_save(&self, save: &mut PreparedSave, cx: &App) -> anyhow::Result<()> {
+    pub(super) fn rebase_seiren_eq_save(
+        &self,
+        save: &mut PreparedSave,
+        cx: &App,
+    ) -> anyhow::Result<()> {
         let Some(operation) = &mut save.seiren_eq else {
             return Ok(());
         };
-        let eq=match operation {
-            SeirenEqSave::Settings(eq)=>eq,
-            SeirenEqSave::MixerVersion(version)=>{
-                anyhow::ensure!(version.request.is_valid()&&self.devices.contains(&version.workspace)
-                    &&version.workspace.read(cx).identity(cx)==version.identity,"Mixer device-document save owner changed");
-                let mut found=false;
-                save.file.devices=self.devices.iter().map(|entity| {
-                    let mut device=entity.read(cx).saved_snapshot(cx);
-                    if entity.read(cx).identity(cx)==version.identity {
-                        found=true;
-                        let settings=device.source_device_settings.get_or_insert_with(||serde_json::json!({}));
-                        anyhow::ensure!(settings.is_object(),"Seiren device settings is not an object");
-                        let next=razer_device::seiren_stream_mixer::next_device_version(settings.get("version"))?;
-                        settings["version"]=serde_json::json!(next);version.version=Some(next);
-                    }
-                    Ok(device)
-                }).collect::<anyhow::Result<Vec<_>>>()?;
-                anyhow::ensure!(found,"Seiren device-document saved owner is absent");
+        let eq = match operation {
+            SeirenEqSave::Settings(eq) => eq,
+            SeirenEqSave::MixerVersion(version) => {
+                anyhow::ensure!(
+                    version.request.is_valid()
+                        && self.devices.contains(&version.workspace)
+                        && version.workspace.read(cx).identity(cx) == version.identity,
+                    "Mixer device-document save owner changed"
+                );
+                let mut found = false;
+                save.file.devices = self
+                    .devices
+                    .iter()
+                    .map(|entity| {
+                        let mut device = entity.read(cx).saved_snapshot(cx);
+                        if entity.read(cx).identity(cx) == version.identity {
+                            found = true;
+                            let settings = device
+                                .source_device_settings
+                                .get_or_insert_with(|| serde_json::json!({}));
+                            anyhow::ensure!(
+                                settings.is_object(),
+                                "Seiren device settings is not an object"
+                            );
+                            let next = razer_device::seiren_stream_mixer::next_device_version(
+                                settings.get("version"),
+                            )?;
+                            settings["version"] = serde_json::json!(next);
+                            version.version = Some(next);
+                        }
+                        Ok(device)
+                    })
+                    .collect::<anyhow::Result<Vec<_>>>()?;
+                anyhow::ensure!(found, "Seiren device-document saved owner is absent");
                 return Ok(());
             }
         };
@@ -143,15 +200,28 @@ impl AppShell {
             .map(|entity| {
                 let mut saved = entity.read(cx).saved_snapshot(cx);
                 if entity.read(cx).identity(cx) == eq.identity {
-                    if matches!(eq.request.change(),Some(razer_device::seiren_eq::Change::SamplingRate(_))) {
-                        if let Some(rate)=eq.request.settings().pointer("/profile/samplingRate") {
-                            saved.source_device_settings.get_or_insert_with(||serde_json::json!({}))["samplingRate"]=rate.clone();
+                    if matches!(
+                        eq.request.change(),
+                        Some(razer_device::seiren_eq::Change::SamplingRate(_))
+                    ) {
+                        if let Some(rate) = eq.request.settings().pointer("/profile/samplingRate") {
+                            saved
+                                .source_device_settings
+                                .get_or_insert_with(|| serde_json::json!({}))["samplingRate"] =
+                                rate.clone();
                         }
                         return saved;
                     }
-                    if matches!(eq.request.change(),Some(razer_device::seiren_eq::Change::MonitorVolume(_))) {
-                        if let Some(monitor)=eq.request.settings().pointer("/device/micSideTone") {
-                            saved.source_device_settings.get_or_insert_with(||serde_json::json!({}))["micSideTone"]=monitor.clone();
+                    if matches!(
+                        eq.request.change(),
+                        Some(razer_device::seiren_eq::Change::MonitorVolume(_))
+                    ) {
+                        if let Some(monitor) = eq.request.settings().pointer("/device/micSideTone")
+                        {
+                            saved
+                                .source_device_settings
+                                .get_or_insert_with(|| serde_json::json!({}))["micSideTone"] =
+                                monitor.clone();
                         }
                         return saved;
                     }
@@ -219,20 +289,33 @@ impl AppShell {
         window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        let save=match save {
-            SeirenEqSave::Settings(save)=>save,
-            SeirenEqSave::MixerVersion(save)=>{
-                let result=if succeeded {
-                    save.version.ok_or_else(||"Seiren device document has an invalid version".to_owned()).and_then(|version| {
-                        if self.devices.contains(&save.workspace)&&save.workspace.read(cx).identity(cx)==save.identity {
-                            // A canceled in-flight save can still have reached disk.
-                            // Observe that local version without authorizing native work.
-                            save.workspace.update(cx,|workspace,cx|workspace.observe_seiren_document_version(version,cx));
-                        }
-                        if self.close_requested||!save.request.is_valid(){Err("Seiren mixer owner canceled after local persistence".into())}else{Ok(version)}
-                    })
-                }else{Err("Seiren device-document local persistence failed".into())};
-                let _=save.reply.send(result);return;
+        let save = match save {
+            SeirenEqSave::Settings(save) => save,
+            SeirenEqSave::MixerVersion(save) => {
+                let result = if succeeded {
+                    save.version
+                        .ok_or_else(|| "Seiren device document has an invalid version".to_owned())
+                        .and_then(|version| {
+                            if self.devices.contains(&save.workspace)
+                                && save.workspace.read(cx).identity(cx) == save.identity
+                            {
+                                // A canceled in-flight save can still have reached disk.
+                                // Observe that local version without authorizing native work.
+                                save.workspace.update(cx, |workspace, cx| {
+                                    workspace.observe_seiren_document_version(version, cx)
+                                });
+                            }
+                            if self.close_requested || !save.request.is_valid() {
+                                Err("Seiren mixer owner canceled after local persistence".into())
+                            } else {
+                                Ok(version)
+                            }
+                        })
+                } else {
+                    Err("Seiren device-document local persistence failed".into())
+                };
+                let _ = save.reply.send(result);
+                return;
             }
         };
         if !succeeded || save.request.change().is_none() || self.close_requested {
@@ -302,10 +385,12 @@ impl AppShell {
         }
         let route = routes[0].clone();
         let identity = workspace.read(cx).identity(cx);
-        self.sync_audio_notifications(window,cx);
-        let owner_request=self.audio_notifications.get(&identity)
+        self.sync_audio_notifications(window, cx);
+        let owner_request = self
+            .audio_notifications
+            .get(&identity)
             .context("Mounted Audio_StreamMixer owner is unavailable")
-            .and_then(|owner|owner.request(request.clone()));
+            .and_then(|owner| owner.request(request.clone()));
         let revision = self.discovery_revision;
         self.seiren_eq_workers += 1;
         self.status = "正在确认麦克风 EQ 设备设置…".into();

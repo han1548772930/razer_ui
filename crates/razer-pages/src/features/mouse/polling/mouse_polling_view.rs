@@ -319,10 +319,7 @@ impl MouseProductWorkspace {
 
     pub(super) fn advanced_enabled(&self) -> bool {
         static FLOORS: OnceLock<BTreeMap<String, String>> = OnceLock::new();
-        let floors = FLOORS.get_or_init(|| {
-            serde_json::from_str(include_str!("../mouse_advanced_data.json"))
-                .expect("validated current advanced firmware floors")
-        });
+        let floors = FLOORS.get_or_init(|| crate::data::mouse_advanced_data!());
         floors
             .get(&self.spec.product_id.to_string())
             .is_none_or(|required| {

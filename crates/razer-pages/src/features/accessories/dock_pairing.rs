@@ -39,10 +39,7 @@ struct Spec {
 fn spec(pid: u32) -> &'static Spec {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("dock_pairing_data.json"))
-                .expect("audited dock sources")
-        })
+        .get_or_init(|| crate::data::dock_pairing_data!())
         .iter()
         .find(|s| s.product_id == pid)
         .expect("supported dock product")

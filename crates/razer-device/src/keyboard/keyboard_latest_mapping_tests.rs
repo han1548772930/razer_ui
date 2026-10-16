@@ -452,3 +452,11 @@ fn generic_keyboard_disabled_pass_preserves_navigation_and_constrains_controller
     );
     assert_eq!(profile["mappings"], rows);
 }
+#[test]
+fn typed_restore_source_preserves_every_interchange_field_and_numeric_kind() {
+    let encoded = serde_json::to_vec(source()).unwrap();
+    assert_eq!(
+        format!("{:x}", md5::compute(encoded)),
+        "4227ad82d0cd6ef9976e62a92ae0fd33"
+    );
+}

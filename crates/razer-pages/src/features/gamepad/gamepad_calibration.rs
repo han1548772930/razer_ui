@@ -20,19 +20,28 @@ pub(super) struct CalibrationDialog {
 
 /// The official SVG carries three native overlay layers. Source CSS hides
 /// them and reveals the applicable layer; there are no raster replacements.
-fn calibration_svg(pid: u32, step: i8, part: u8, valid: bool) -> std::sync::Arc<Image> {
-    let source = match pid {
-        2676 => include_str!(
-            "../../../../../assets/synapse/products/2676/66ac4c2ab938abe3-gamepad-2676-calibration-source.svg"
+fn source_path(pid: u32) -> Option<&'static str> {
+    match pid {
+        2676 => Some(
+            "assets/synapse/products/2676/66ac4c2ab938abe3-gamepad-2676-calibration-source.svg",
         ),
-        2684 => include_str!(
-            "../../../../../assets/synapse/products/2684/5e4fc788bb484536-gamepad-2684-calibration-source.svg"
+        2684 => Some(
+            "assets/synapse/products/2684/5e4fc788bb484536-gamepad-2684-calibration-source.svg",
         ),
-        4144 => include_str!(
-            "../../../../../assets/synapse/products/4144/087f2909cac2c5aa-gamepad-4144-calibration-source.svg"
+        4144 => Some(
+            "assets/synapse/products/4144/087f2909cac2c5aa-gamepad-4144-calibration-source.svg",
         ),
-        _ => unreachable!("source SVG calibration product"),
-    };
+        _ => None,
+    }
+}
+
+fn calibration_svg(
+    source: &str,
+    pid: u32,
+    step: i8,
+    part: u8,
+    valid: bool,
+) -> std::sync::Arc<Image> {
     let modal = matches!(pid, 2676 | 2684);
     let mut svg = source.to_owned();
     for (class, visible) in [
@@ -58,6 +67,25 @@ fn calibration_svg(pid: u32, step: i8, part: u8, valid: bool) -> std::sync::Arc<
 }
 
 impl GamepadProductWorkspace {
+    pub(super) fn request_calibration_resources(&mut self) {
+        if let Some(path) = source_path(self.spec.product_id) {
+            self.calibration_resources.request(path);
+        }
+    }
+
+    fn calibration_image(&self) -> Option<std::sync::Arc<Image>> {
+        let pid = self.spec.product_id;
+        let source = self.calibration_resources.text(source_path(pid)?)?;
+        let state = &self.calibration_state;
+        Some(calibration_svg(
+            source,
+            pid,
+            state.step,
+            state.part,
+            state.valid,
+        ))
+    }
+
     pub(super) fn has_page_calibration(&self) -> bool {
         matches!(
             self.spec.product_id,
@@ -213,11 +241,9 @@ impl GamepadProductWorkspace {
             .w(area_length(if is_svg { 371. } else { 372. }))
             .h(area_length(product_height));
         if is_svg {
-            product = product.child(
-                img(calibration_svg(pid, state.step, state.part, state.valid))
-                    .w_full()
-                    .h_full()
-                    .object_fit(ObjectFit::Contain),
+            product = product.children(
+                self.calibration_image()
+                    .map(|image| img(image).w_full().h_full().object_fit(ObjectFit::Contain)),
             );
         } else {
             product = product.child(

@@ -8,8 +8,11 @@ gpui-kit.workspace = true
 anyhow.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+async-channel.workspace = true
+futures = "=0.3.34"
+sha2 = "=0.10.9"
 
 razer-asset-pack = { path = "../razer-asset-pack" }
 
-[dev-dependencies]
-sha2 = "=0.10.9"
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Security_Credentials"] }

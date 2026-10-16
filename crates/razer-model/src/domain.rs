@@ -1731,7 +1731,6 @@ mod tests {
         assert!(act.secondary_mm >= ACTUATION_MIN_MM && act.secondary_mm <= ACTUATION_MAX_MM);
     }
 
-    /// 归属修正：老板键是鼠标的、变调是音频设备的，不是键盘的。
     #[test]
     fn boss_key_and_key_shifter_are_not_keyboard_features() {
         use crate::model::DeviceCategory;

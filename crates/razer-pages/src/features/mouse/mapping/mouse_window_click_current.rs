@@ -10,12 +10,9 @@ struct Policy {
 }
 fn policy(pid: u32) -> Option<&'static Policy> {
     static DATA: OnceLock<Vec<Policy>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_window_click_current_data.json"))
-            .expect("actual mounted mouse windowClick policies")
-    })
-    .iter()
-    .find(|p| p.product_id == pid)
+    DATA.get_or_init(|| crate::data::mouse_window_click_current_data!())
+        .iter()
+        .find(|p| p.product_id == pid)
 }
 fn exempt(policy: &Policy, target: &[&str], parent: &[&str], ancestors: &[&str]) -> bool {
     policy.raw_option_exemption

@@ -131,7 +131,8 @@ impl PortableRuntime {
                 validate()?;
                 let device = with_backend(|backend| backend.open(node))?;
                 ensure!(
-                    device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
+                    device.report_lengths()?.feature.values().max().copied()
+                        == Some(cap.report_bytes),
                     "756 restore Feature descriptor differs"
                 );
                 let report = protocol::execute_hid(

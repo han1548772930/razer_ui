@@ -9,32 +9,70 @@ use std::{sync::OnceLock, time::Duration};
 pub const PRODUCT_ID: u32 = 1352;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(tag="route",rename_all="snake_case")]
+#[serde(tag = "route", rename_all = "snake_case")]
 pub enum EventTarget {
     Collection(crate::backend::HidNode),
     WindowsContainer(crate::device_reads::DeviceReadTarget),
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(tag="kind",rename_all="snake_case")]
+#[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Notification {
-    Input { source: u8 },
-    Io { headphone: u8, usb:u8, aux:u8, optical:u8, bluetooth:u8 },
-    Mode { mode: u8 },
-    Output { state:u8 },
-    Camera { locked:u8, direction:f32, distance:f32 },
+    Input {
+        source: u8,
+    },
+    Io {
+        headphone: u8,
+        usb: u8,
+        aux: u8,
+        optical: u8,
+        bluetooth: u8,
+    },
+    Mode {
+        mode: u8,
+    },
+    Output {
+        state: u8,
+    },
+    Camera {
+        locked: u8,
+        direction: f32,
+        distance: f32,
+    },
 }
-pub fn notification(bytes:&[u8])->anyhow::Result<Option<Notification>> {
-    if bytes.first()!=Some(&5) {return Ok(None);}
-    let Some(event)=bytes.get(1) else{anyhow::bail!("Noa notification header is truncated");};
-    let needed=match event {18|26|28=>3,19=>7,29=>11,_=>return Ok(None)};
-    ensure!(bytes.len()>=needed,"Noa notification payload is truncated");
+pub fn notification(bytes: &[u8]) -> anyhow::Result<Option<Notification>> {
+    if bytes.first() != Some(&5) {
+        return Ok(None);
+    }
+    let Some(event) = bytes.get(1) else {
+        anyhow::bail!("Noa notification header is truncated");
+    };
+    let needed = match event {
+        18 | 26 | 28 => 3,
+        19 => 7,
+        29 => 11,
+        _ => return Ok(None),
+    };
+    ensure!(
+        bytes.len() >= needed,
+        "Noa notification payload is truncated"
+    );
     Ok(Some(match event {
-        18=>Notification::Input{source:bytes[2]},
-        19=>Notification::Io{headphone:bytes[2],usb:bytes[3],aux:bytes[4],optical:bytes[5],bluetooth:bytes[6]},
-        26=>Notification::Mode{mode:bytes[2]},
-        28=>Notification::Output{state:bytes[2]},
-        29=>Notification::Camera{locked:bytes[2],direction:f32::from_le_bytes(bytes[3..7].try_into()?),distance:f32::from_le_bytes(bytes[7..11].try_into()?)},
-        _=>unreachable!(),
+        18 => Notification::Input { source: bytes[2] },
+        19 => Notification::Io {
+            headphone: bytes[2],
+            usb: bytes[3],
+            aux: bytes[4],
+            optical: bytes[5],
+            bluetooth: bytes[6],
+        },
+        26 => Notification::Mode { mode: bytes[2] },
+        28 => Notification::Output { state: bytes[2] },
+        29 => Notification::Camera {
+            locked: bytes[2],
+            direction: f32::from_le_bytes(bytes[3..7].try_into()?),
+            distance: f32::from_le_bytes(bytes[7..11].try_into()?),
+        },
+        _ => unreachable!(),
     }))
 }
 

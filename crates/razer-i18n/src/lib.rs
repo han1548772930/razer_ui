@@ -1,42 +1,6 @@
-//! 雷云真实文案（i18n）。
-
-//!
-
-//! # 做法
-
-//!
-
-//! 用 [`rust_i18n`] —— 也就是 **gpui-component 内部自己用的那一套**
-
-//! （它同样是 `rust_i18n::i18n!("locales", fallback = "en")` + `t!`）。
-
-//!
-
-//! 之前我手搓了一个 `HashMap` 查表，那不是库的规范用法，也没有语言回退、
-
-//! 运行时切换语言等能力，已替换为 rust-i18n。
-
-//!
-
-//! 本模块只做**薄封装**：`i18n!` 宏在 `main.rs`（crate 根）调用，
-
-//! 因为 `t!` 会展开成 `crate::_rust_i18n_try_translate(...)`。
-
-//!
-
-//! # 语言文件
-
-//!
-
-//! 位于 `locales/`，按 rust-i18n 约定**以文件名作为语言代码**：
-
-//! `locales/zh-CN.json`、`locales/en.json`。
-
-//!
-
-//! 内容是雷云前端语言包导出的**原文**，不是我自译的 ——
-
-//! 当前资源审计入口见 `docs/re/resources-current.md`。
+//! Source-derived translations with locale fallback and runtime language selection.
+//! Locale files use language codes under `locales/`; resource provenance is
+//! documented in `docs/re/resources-current.md`.
 
 rust_i18n::i18n!("../../locales", fallback = "en");
 

@@ -21,13 +21,10 @@ struct Choice {
 }
 fn data(pid: u32) -> &'static Product {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_joystick_data.json"))
-            .expect("current mounted joystick tables")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("current joystick caller")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_joystick_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("current joystick caller")
 }
 #[derive(Default, Clone, Deserialize, Serialize)]
 pub(super) struct State {

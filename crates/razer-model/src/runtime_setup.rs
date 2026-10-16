@@ -19,10 +19,7 @@ fn waiting() -> crate::model::SetupStatus {
 fn policy(product_id: u32) -> Option<&'static Policy> {
     static POLICIES: OnceLock<Vec<Policy>> = OnceLock::new();
     POLICIES
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("runtime_setup_data.json"))
-                .expect("source module setup policies")
-        })
+        .get_or_init(|| crate::data::runtime_setup_data!())
         .iter()
         .find(|policy| {
             policy.product_id == product_id && policy.ready_before_profile_initialization

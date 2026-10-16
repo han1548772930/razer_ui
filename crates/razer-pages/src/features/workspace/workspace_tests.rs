@@ -296,7 +296,7 @@ fn narrow_mic_workspace_keeps_eq_width_and_reaches_retained_last_band(cx: &mut T
         }
     });
 
-    // Exercise hit testing at the formerly clipped edge, then resize back.
+    // Exercise edge hit testing, then restore the window size.
     cx.update_window(handle.into(), |_, window, cx| {
         let bar = window
             .within("mic-band-16000")

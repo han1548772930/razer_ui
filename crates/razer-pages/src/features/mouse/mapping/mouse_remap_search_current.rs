@@ -23,12 +23,9 @@ struct Policy {
 }
 fn policy(pid: u32) -> Option<&'static Policy> {
     static DATA: OnceLock<Vec<Policy>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_remap_search_current_data.json"))
-            .expect("actual 199/208 search dictionaries")
-    })
-    .iter()
-    .find(|p| p.product_id == pid)
+    DATA.get_or_init(|| crate::data::mouse_remap_search_current_data!())
+        .iter()
+        .find(|p| p.product_id == pid)
 }
 #[derive(Default)]
 pub(super) struct State {

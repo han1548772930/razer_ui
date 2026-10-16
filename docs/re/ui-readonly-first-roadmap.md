@@ -2,6 +2,27 @@
 
 从原始输入生成全量分析，完整实现所有本地功能，包括设备变更、写回和持久化。[本地优先范围](local-first-scope.md) 排除的联网功能须从 UI 和 dispatch 清除。
 
+## 2026-10-16 主任务与子任务交接
+
+全产品、本地全页面的原始任务尚未完成。鼠标、键盘／游戏手柄、附件／摄像头／系统三个子任务的代码保留在当前工作区，已按用户要求暂停。以下记录用于继续实现，不能作为整页完成结论；分析缺项仍集中维护在 [gaps.json](../../.analysis/results/gaps.json)。
+
+| 负责人／范围 | 已落地位置与行为 | 继续位置 |
+| --- | --- | --- |
+| `mouse_source_integration`：鼠标滚轮 153／170／203／204／214／226／45066 | [页面任务](../../crates/razer-pages/src/features/mouse/scrolling/mouse_scroll_task.rs)、[串行保存](../../crates/razer-shell/src/shell/mouse/mouse_scroll.rs)、[直连传输](../../crates/razer-discovery/src/direct/mouse_scroll.rs)：用户编辑、300ms 模式 debounce、53 位 profile 版本保存、typed IPC、接收器分支、226 mask→mode、取消与清理；保存仅合并本次操作的字段，保留原版乐观 UI | startup／profile restore 的滚轮初始化和事件、Smart Reel 实际 OBM GUID、45066 实际首匹配 slot；详见 [MW 证据](../../.analysis/results/frontend/mouse-mw-audit.json) |
+| `keyboard_gamepad_ui`：八款游戏手柄的新旧摇杆分支 | [摇杆页面](../../crates/razer-pages/src/features/gamepad/gamepad_thumbsticks.rs)：死区／双死区／灵敏度／圆度读写与服务队列，Assign 和校准导航，源 SVG／视频素材、禁用焦点与 Tutorial 点击时序；保存合并限制于操作字段；`razer_i18n::has` 对齐锁定版本 API | 新资源包下重跑完整 gamepad 页面测试，继续完整 profile restore／通知及其余整页交互；详见 [main 证据](../../.analysis/results/frontend/gamepad-main-audit.json) 与 [MW 证据](../../.analysis/results/frontend/gamepad-mw-audit.json) |
+| `accessories_camera_system`：Kiyo V2 PID3595 MIC | [MIC 控件](../../crates/razer-pages/src/features/workspace/source_controls/camera_mic.rs)：`CAMERA_MIC_SETTINGS`→`setAudioFunction(1/0)`→10ms→flash save→10ms→reboot；保留 dirty／pending／reboot 状态及取消／清理；刷新当前 native 静态捕获并保留反编译失败 | 新增编译测试及统一测试仍待复跑，继续其余摄像头／附件／系统页面。当前 [摄像头报告](../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 对应 gaps 仍有未解语义／失败及整页待验收项 |
+| 主任务：音频／视频 | [平台播放后端](../../crates/razer-platform/src/media.rs) 及 [页面播放器文件](../../crates/razer-pages/src/features/audio/audio_media.rs) 已写入；原始示例已转为保留时序、帧及原八通道 PCM 的 RZAV；GPUI 视频参考留在 `.analysis/inputs/references/gpui-video/` | `audio_media.rs` 尚未挂载到音频模块／demo／Leviathan，播放器控制、全屏、seek 过期结果、循环偏好及生命周期仍须接线；不宣称播放功能完成；见 [音频 demo 证据](../../.analysis/results/frontend/audio-demo-audit.json) |
+
+资源迁移此前完成了原文件 HF／Git LFS 工具和清单：私有 Dataset `han1548772930/razer-ui-assets`，332 个产品分组、7,768 个资源文件、1,513,885,677 字节；主仓库保留 71 张 Rust 表和 9 个原生托盘／菜单图标。用户正在通过网页上传，自动上传已停止，[资源锁](../../tools/asset-release.json) 的 `storage.revision` 仍为空，远程完整性与不可变提交尚未确认。不要重新启动批量下载、上传或推送 GitHub。
+
+本次用户进一步明确的资源交付要求：程序运行时从 HF 按使用的产品获取所需静态资源，允许缓存并离线复用，不将整套文件下载回项目 `assets/`；缓存放程序安装位置，交付安装程序。此为用户明确提出的资源下载例外，其余账户／云同步／联网业务仍排除。运行时接线、安装包配置、统一数据入口与类型化访问正在处理，尚未完成；Razer 行为仍须以当前 Razer 原件为准。后续开发须遵循 [集中配置、类型化数据与安装资源规则](../../AGENTS.md)。
+
+此前生成包已由 `assets/synapse.pack` 移到 `target/asset-pack/synapse.pack`，HF 原文件快照不含该包；原安装读取路径仍为可执行文件旁 `assets/synapse.pack`，将随上述运行时方案调整。无人调用的 `assets/native/razer-hid-0.0.31.node` 已删除，字节相同的静态分析原件保留在 `.analysis/inputs/`。
+
+验证须区分范围：鼠标子任务报告 123 项纯 Rust／模拟测试通过；gamepad 的协议、i18n、保存回归和摄像头 MIC 的局部测试通过，完整合并后测试未完成。最新统一入口收据 [validation.json](../../.analysis/validation.json) 为 `2026-10-16T06:57:15.697066+00:00`，仅运行 `mouse-scroll-persistence` 四项，命令通过但 `inputs_unchanged=false`、整体 `passed=false`，不代表当前全工作区通过。逐命令日志在 `.analysis/verification/`。资源包迁移后的定向 `cargo check` 与包校验已通过，仍不能替代全工作区检查。应用、安装程序、厂商代码、真实窗口及设备验收均未运行。
+
+## 全产品实现路线
+
 2026-10-15 当前范围是全部源码产品与全部本地页面，不限本机连接设备或单一 PID。统一获取 locator 仍保留 332 个 PID，真实产品注册为 331 个：162 端点的 PWA manifest 曾被误当作产品身份，而完整 DeviceInfo 实际声明 163；获取证据保留，错误生产注册已隔离。locator 仅用于获取，不是行为证据。当前正在对所有产品族 UI／MW 原件进行 repair 和完整静态提取。必须按当前 index、manifest 和入口 lazy loader 确认挂载关系；获取目录中附存的旧 main 即使哈希正确，也不能当作当前挂载页面。
 
 2026-10-14 获取的官方生产通道 4.0.827 宿主收据包含 36 个文件；2026-10-15 重新计算其实际长度与 SHA-256，全部匹配。安装主 EXE、ASAR、mapping_engine.dll、simple_service.dll 与 HID.node 均与保留的宿主解包原件一致；主 EXE PE 版本为 `4.0.827.114`。本轮又完成 637 个本机安装文件、4,681 个公共静态缓存容器及响应资源的获取，解析失败为 0；5 个前端缓存组中 PID179 MW 保留 2 个版本冲突。宿主收据仍标记依赖闭包不完整，缓存亦不能证明当天部署；旧 ASAR／JS 提取总量和页面版本须逐项核对当前原件与输出。原始端点、版本、字节身份和失败见 [产物索引](../../.analysis/results/README.md) 及各 acquisition 收据。

@@ -12,19 +12,19 @@ use razer_device::{
 use razer_ipc::{ServiceClient, ServiceRequest};
 use serde_json::Value;
 pub mod keyboard_indicator;
-pub mod leviathan;
 pub mod keyboard_latest_restore;
 pub mod keyboard_legacy_calibration;
 pub mod keyboard_metadata;
+pub mod leviathan;
 pub mod mouse_current_dpi;
 pub mod mouse_current_power;
-pub mod mouse_scroll;
 pub mod mouse_indicator_led;
 pub mod mouse_receiver_legacy;
 pub mod mouse_receiver_polling;
 pub mod mouse_runtime_artwork;
-pub mod seiren_eq;
+pub mod mouse_scroll;
 mod receiver_settings;
+pub mod seiren_eq;
 
 #[cfg(windows)]
 #[path = "platform/windows.rs"]
@@ -575,38 +575,57 @@ impl DirectRoute {
     }
 }
 
-fn decode_keyboard_brightness_reply(reply: &Value, percent: Option<u8>) -> anyhow::Result<KeyboardBrightness> {
-        let reading = if let Some(percent) = percent {
-            ensure!(
-                reply["result"]["requested_percent"] == percent
-                    && reply["result"]["verified"] == true,
-                "键盘亮度写入请求不匹配或未取得回读确认"
-            );
-            &reply["result"]["observed"]
-        } else {
-            &reply["reading"]
-        };
-        let observed: KeyboardBrightness = serde_json::from_value(reading.clone())?;
+fn decode_keyboard_brightness_reply(
+    reply: &Value,
+    percent: Option<u8>,
+) -> anyhow::Result<KeyboardBrightness> {
+    let reading = if let Some(percent) = percent {
         ensure!(
-            observed.percent <= 100 && percent.is_none_or(|percent| observed.percent == percent),
-            "键盘亮度响应范围或请求不匹配"
+            reply["result"]["requested_percent"] == percent && reply["result"]["verified"] == true,
+            "键盘亮度写入请求不匹配或未取得回读确认"
         );
-        Ok(observed)
+        &reply["result"]["observed"]
+    } else {
+        &reply["reading"]
+    };
+    let observed: KeyboardBrightness = serde_json::from_value(reading.clone())?;
+    ensure!(
+        observed.percent <= 100 && percent.is_none_or(|percent| observed.percent == percent),
+        "键盘亮度响应范围或请求不匹配"
+    );
+    Ok(observed)
 }
 
 pub fn keyboard_brightness_available(observed: &ObservedDevice) -> bool {
-    let Some(cap) = razer_device::keyboard_settings::capability(observed.product_id()) else { return false; };
-    if observed.peer_product_id().is_some() { return receiver_settings::session(observed, true).is_ok(); }
-    matches!(observed.transport(), Some(crate::discovery::ObservedTransport::Wired))
-        && cap.transport.direct_pids.contains(&observed.physical_product_id())
+    let Some(cap) = razer_device::keyboard_settings::capability(observed.product_id()) else {
+        return false;
+    };
+    if observed.peer_product_id().is_some() {
+        return receiver_settings::session(observed, true).is_ok();
+    }
+    matches!(
+        observed.transport(),
+        Some(crate::discovery::ObservedTransport::Wired)
+    ) && cap
+        .transport
+        .direct_pids
+        .contains(&observed.physical_product_id())
 }
 
-pub fn request_keyboard_brightness(client: &mut ServiceClient, observed: &ObservedDevice, percent: Option<u8>) -> anyhow::Result<KeyboardBrightness> {
-    ensure!(keyboard_brightness_available(observed), "No current source brightness route for this observation");
+pub fn request_keyboard_brightness(
+    client: &mut ServiceClient,
+    observed: &ObservedDevice,
+    percent: Option<u8>,
+) -> anyhow::Result<KeyboardBrightness> {
+    ensure!(
+        keyboard_brightness_available(observed),
+        "No current source brightness route for this observation"
+    );
     if observed.peer_product_id().is_some() {
         receiver_settings::keyboard(observed, percent, &mut |request| client.request(request))
     } else {
-        let cap = razer_device::keyboard_settings::capability(observed.product_id()).context("Keyboard brightness source is absent")?;
+        let cap = razer_device::keyboard_settings::capability(observed.product_id())
+            .context("Keyboard brightness source is absent")?;
         resolve(client, observed, &cap.transport)?.keyboard(client, percent)
     }
 }

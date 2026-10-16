@@ -3,9 +3,6 @@
 //! The source renders `SWITCH_OFF_LIGHTING_HEADER` / `SWITCH_OFF_LIGHTING_TOOLTIP`
 //! as the widget title and tip, `DISPLAY_TURNED_OFF` and `IDLE_FOR_MIN` as the two
 //! `.check-item` labels, and a 1–15 minute slider tagged `1`/`15` with no label.
-//! Both keys previously used here (`SWITCH_OFF_LIGHTING_WHEN_DISPLAY_IS_OFF`,
-//! `SWITCH_OFF_LIGHTING_WHEN_IDLE`) and the `MINUTES` label do not exist in the
-//! current sources, so `t()` returned the key text itself.
 use super::{SWITCH_OFF_IDLE_MINUTES, SWITCH_OFF_LIGHTING_ITEMS};
 
 #[::core::prelude::v1::test]

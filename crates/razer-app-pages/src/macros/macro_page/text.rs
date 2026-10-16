@@ -104,9 +104,7 @@ pub struct TextEmojiSearch {
 }
 pub fn text_source() -> &'static TextSource {
     static DATA: OnceLock<TextSource> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("text_data.json")).expect("current Macro text data")
-    })
+    DATA.get_or_init(|| crate::data::text_data!())
 }
 
 pub struct TextRowState {

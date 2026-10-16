@@ -85,16 +85,20 @@ impl RecorderLock {
         anyhow::ensure!(!new.is_null(), "Macro storage newValue is JSON null");
         if new["mode"] == "exclusive" {
             self.exclusive = true;
-            return Ok(RecorderMode::from_value(&new["payload"]["macro_recorder_mode"])
-                .map(RecorderNotification::Started));
+            return Ok(
+                RecorderMode::from_value(&new["payload"]["macro_recorder_mode"])
+                    .map(RecorderNotification::Started),
+            );
         }
         if matches!(event["keyState"].as_str(), Some("removed" | "cleared"))
             && old["mode"] == "exclusive"
         {
             self.exclusive = first_exclusive(aggregate).ok().flatten().is_some();
             if !self.exclusive {
-                return Ok(RecorderMode::from_value(&old["payload"]["macro_recorder_mode"])
-                    .map(RecorderNotification::Stopped));
+                return Ok(
+                    RecorderMode::from_value(&old["payload"]["macro_recorder_mode"])
+                        .map(RecorderNotification::Stopped),
+                );
             }
         }
         Ok(None)
@@ -109,9 +113,17 @@ fn event_json(value: Option<&Value>) -> Value {
 }
 
 fn first_exclusive(aggregate: Option<&str>) -> Result<Option<Value>> {
-    let rows: Value = serde_json::from_str(aggregate.filter(|value| !value.is_empty()).unwrap_or("[]"))?;
-    for row in rows.as_array().context("Macro storage aggregate is not an array")? {
-        let value: Value = serde_json::from_str(row["value"].as_str().context("Macro owner value is not a JSON string")?)?;
+    let rows: Value =
+        serde_json::from_str(aggregate.filter(|value| !value.is_empty()).unwrap_or("[]"))?;
+    for row in rows
+        .as_array()
+        .context("Macro storage aggregate is not an array")?
+    {
+        let value: Value = serde_json::from_str(
+            row["value"]
+                .as_str()
+                .context("Macro owner value is not a JSON string")?,
+        )?;
         anyhow::ensure!(!value.is_null(), "Macro owner value is JSON null");
         if value["mode"] == "exclusive" {
             return Ok(Some(value));

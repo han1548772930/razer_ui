@@ -22,10 +22,7 @@ impl PeerDescription {
 pub fn description(dongle_id: u32) -> Option<&'static PeerDescription> {
     static CATALOG: OnceLock<Vec<PeerDescription>> = OnceLock::new();
     CATALOG
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("receiver_peer_catalog.json"))
-                .expect("statically validated current receiver descriptions")
-        })
+        .get_or_init(|| crate::data::receiver_peer_catalog::receiver_peer_catalog!())
         .iter()
         .find(|entry| entry.dongle_id == dongle_id)
 }

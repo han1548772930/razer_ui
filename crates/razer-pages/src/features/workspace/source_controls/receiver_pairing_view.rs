@@ -10,10 +10,7 @@ struct PairingText {
 }
 pub(super) fn t(key: &str) -> String {
     static TEXT: OnceLock<PairingText> = OnceLock::new();
-    let text = TEXT.get_or_init(|| {
-        serde_json::from_str(include_str!("receiver_pairing_data.json"))
-            .expect("audited 179 pairing locales")
-    });
+    let text = TEXT.get_or_init(|| crate::data::receiver_pairing_data!());
     let locale = razer_i18n::locale();
     text.translations
         .iter()

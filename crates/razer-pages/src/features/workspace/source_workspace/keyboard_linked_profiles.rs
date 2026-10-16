@@ -23,10 +23,15 @@ impl SourceProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if self.device.product_id == 756 && self.keyboard_latest_ble && from_ui {
-            self.profile.update(cx,|state,cx|state.set_selected_value(&self.device.active_profile,window,cx));
-            if let Some(profile) = self.device.profiles.iter().find(|profile|profile.id==id) {
+            self.profile.update(cx, |state, cx| {
+                state.set_selected_value(&self.device.active_profile, window, cx)
+            });
+            if let Some(profile) = self.device.profiles.iter().find(|profile| profile.id == id) {
                 if self.device.active_profile != id {
-                    cx.emit(WorkspaceEvent::KeyboardLatestProfileSwitchRequested {guid:source_guid(profile).to_owned(),defer_persistence:false});
+                    cx.emit(WorkspaceEvent::KeyboardLatestProfileSwitchRequested {
+                        guid: source_guid(profile).to_owned(),
+                        defer_persistence: false,
+                    });
                 }
             }
             return;
@@ -73,8 +78,9 @@ impl SourceProductWorkspace {
                 keyboard.set_factory_default_profile(factory_default_profile, window, cx)
             });
         }
-        self.profile
-            .update(cx, |state, cx| state.set_selected_value(&id.to_owned(), window, cx));
+        self.profile.update(cx, |state, cx| {
+            state.set_selected_value(&id.to_owned(), window, cx)
+        });
         self.restore_active(window, cx);
         self.restore_seiren_selected_profile(cx);
         if publish {
@@ -103,10 +109,18 @@ impl SourceProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
-        if self.device.product_id != 756 { return false; }
-        let Some(id) = self.device.profiles.iter()
+        if self.device.product_id != 756 {
+            return false;
+        }
+        let Some(id) = self
+            .device
+            .profiles
+            .iter()
             .find(|profile| source_guid(profile) == guid)
-            .map(|profile| profile.id.clone()) else { return false; };
+            .map(|profile| profile.id.clone())
+        else {
+            return false;
+        };
         self.select_source_profile_inner(&id, manual, false, window, cx);
         true
     }

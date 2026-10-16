@@ -1,10 +1,12 @@
 //! Device workspaces, product pages and editor controllers.
+mod data;
 #[path = "features/mod.rs"]
 pub mod features;
 #[path = "keyboard_geometry.rs"]
 pub mod keyboard_geometry;
 #[path = "nav.rs"]
 pub mod nav;
+mod runtime_resources;
 #[cfg(test)]
 #[path = "../testdata/devices.rs"]
 mod test_devices;

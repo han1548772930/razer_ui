@@ -35,8 +35,6 @@ mod audio_mixer;
 mod audio_notifications;
 #[path = "shell/audio/audio_volume.rs"]
 mod audio_volume;
-#[path = "shell/audio/leviathan.rs"]
-mod leviathan;
 #[path = "shell/windows/chroma_studio_window.rs"]
 mod chroma_studio_window;
 #[path = "shell/windows/chroma_window.rs"]
@@ -55,48 +53,50 @@ mod device_discovery;
 mod display_window;
 #[path = "shell/windows/firmware_update.rs"]
 mod firmware_update;
+#[path = "shell/host/game_monitor.rs"]
+mod game_monitor;
 #[path = "shell/header_status.rs"]
 mod header_status;
 #[path = "shell/help_owner.rs"]
 mod help_owner;
 #[path = "shell/host/host_tabs.rs"]
 mod host_tabs;
-#[path = "shell/host/game_monitor.rs"]
-mod game_monitor;
-#[path = "shell/host/macro_recorder.rs"]
-mod macro_recorder;
 #[path = "shell/keyboard/keyboard_actuation_write.rs"]
 mod keyboard_actuation_write;
 #[path = "shell/keyboard/keyboard_brightness_read.rs"]
 mod keyboard_brightness_read;
 #[path = "shell/keyboard/keyboard_brightness_write.rs"]
 mod keyboard_brightness_write;
-#[path = "shell/keyboard/keyboard_lifecycle.rs"]
-mod keyboard_lifecycle;
 #[path = "shell/keyboard/keyboard_indicator.rs"]
 mod keyboard_indicator;
 #[path = "shell/keyboard/keyboard_latest_restore.rs"]
 mod keyboard_latest_restore;
 #[path = "shell/keyboard/keyboard_legacy_calibration.rs"]
 mod keyboard_legacy_calibration;
+#[path = "shell/keyboard/keyboard_lifecycle.rs"]
+mod keyboard_lifecycle;
 #[path = "shell/keyboard/keyboard_sensitivity_preference.rs"]
 mod keyboard_sensitivity_preference;
 #[path = "shell/keyboard/keyboard_wristrest.rs"]
 mod keyboard_wristrest;
+#[path = "shell/audio/leviathan.rs"]
+mod leviathan;
+#[path = "shell/host/macro_recorder.rs"]
+mod macro_recorder;
 #[path = "shell/mouse/mouse_current_dpi.rs"]
 mod mouse_current_dpi;
 #[path = "shell/mouse/mouse_current_power.rs"]
 mod mouse_current_power;
-#[path = "shell/mouse/mouse_scroll.rs"]
-mod mouse_scroll;
 #[path = "shell/mouse/mouse_dpi_70.rs"]
 mod mouse_dpi_70;
 #[path = "shell/mouse/mouse_dpi_stages.rs"]
 mod mouse_dpi_stages;
-#[path = "shell/mouse/mouse_runtime_artwork.rs"]
-mod mouse_runtime_artwork;
 #[path = "shell/mouse/mouse_receiver_indicator.rs"]
 mod mouse_receiver_indicator;
+#[path = "shell/mouse/mouse_runtime_artwork.rs"]
+mod mouse_runtime_artwork;
+#[path = "shell/mouse/mouse_scroll.rs"]
+mod mouse_scroll;
 use controller_triggers::ControllerTriggerSave;
 use mouse_current_dpi::MouseCurrentDpiSave;
 use mouse_current_power::MouseCurrentPowerSave;
@@ -137,12 +137,12 @@ use razer_app_pages::release_notes;
 use razer_app_pages::service_pages;
 use razer_settings::runtime_page;
 use razer_settings::settings_page;
-#[path = "shell/windows/settings_window.rs"]
-mod settings_window;
-#[path = "shell/windows/restart_notification.rs"]
-mod restart_notification;
 #[path = "shell/windows/profile_switch_notification.rs"]
 mod profile_switch_notification;
+#[path = "shell/windows/restart_notification.rs"]
+mod restart_notification;
+#[path = "shell/windows/settings_window.rs"]
+mod settings_window;
 #[path = "shell/host/startup.rs"]
 mod startup;
 #[path = "shell/tray.rs"]
@@ -676,7 +676,8 @@ impl AppShell {
                     settings_page::SettingsEvent::DynamicLightingRequested(_) => {
                         // ia writes isDynamicLighting; native lighting ownership is
                         // a separate storage/service consumer and remains unimplemented.
-                        this.status = "灯光模式已保留为本地选择；设备控制权的服务写入适配尚未完成".into();
+                        this.status =
+                            "灯光模式已保留为本地选择；设备控制权的服务写入适配尚未完成".into();
                         cx.notify();
                     }
                     settings_page::SettingsEvent::Preview(pid) => {
@@ -1076,8 +1077,8 @@ impl AppShell {
         }));
         this.install_macro_recorder_storage(cx);
         this.install_profile_switch_notification_cleanup(cx);
-        if let Err(error)=this.initialize_profile_switch_notifications(window,cx) {
-            this.status=format!("Profile notification initialization: {error:#}");
+        if let Err(error) = this.initialize_profile_switch_notifications(window, cx) {
+            this.status = format!("Profile notification initialization: {error:#}");
         }
         this.install_audio_notification_cleanup(cx);
         this.install_thx_cleanup(cx);
@@ -1139,7 +1140,7 @@ impl AppShell {
         }
         let entity =
             cx.new(|cx| ProductWorkspace::new(device, self.tracking_intro_seen, window, cx));
-        self.restore_seiren_microphone_setup_seen(&entity,window,cx);
+        self.restore_seiren_microphone_setup_seen(&entity, window, cx);
         let tutorial_visible = self
             .settings
             .read(cx)
@@ -1890,12 +1891,19 @@ impl AppShell {
                         macro_page::MacroPage::new(self.macro_library.clone(), window, cx)
                     });
                     page.update(cx, |page, cx| page.set_devices(self.devices.clone(), cx));
-                    self.subscriptions.push(cx.subscribe_in(&page,window,|this,_,change:&macro_page::MacroRecorderStorageChanged,window,cx| {
-                        this.publish_macro_recorder_storage(*change,window,cx);
-                    }));
-                    self.subscriptions.push(cx.subscribe(&page, |this, _, _: &macro_page::MacroGlobalShortcutsRestored, _| {
-                        this.set_audio_global_shortcuts_enabled(true);
-                    }));
+                    self.subscriptions.push(cx.subscribe_in(
+                        &page,
+                        window,
+                        |this, _, change: &macro_page::MacroRecorderStorageChanged, window, cx| {
+                            this.publish_macro_recorder_storage(*change, window, cx);
+                        },
+                    ));
+                    self.subscriptions.push(cx.subscribe(
+                        &page,
+                        |this, _, _: &macro_page::MacroGlobalShortcutsRestored, _| {
+                            this.set_audio_global_shortcuts_enabled(true);
+                        },
+                    ));
                     self.subscriptions.push(cx.observe(&page, |this, page, cx| {
                         let enabled = !page.read(cx).keyboard_shortcut_capture_active()
                             && !page.read(cx).record_shortcut_capture_active();
@@ -2240,23 +2248,30 @@ impl AppShell {
             self.continue_save_queue(false, cx);
             return false;
         }
-        if let Err(error)=self.rebase_leviathan_save(&mut request,cx) {
-            self.status=format!("???????????{error:#}");
-            if let Some(sound)=request.leviathan.take(){self.finish_leviathan_save(sound,false,cx);}
-            self.continue_save_queue(false,cx);return false;
+        if let Err(error) = self.rebase_leviathan_save(&mut request, cx) {
+            self.status = format!("???????????{error:#}");
+            if let Some(sound) = request.leviathan.take() {
+                self.finish_leviathan_save(sound, false, cx);
+            }
+            self.continue_save_queue(false, cx);
+            return false;
         }
         self.rebase_current_power_save(&mut request, cx);
         if let Err(error) = self.rebase_mouse_scroll_save(&mut request, cx) {
             self.status = format!("滚轮配置保存失败：{error:#}");
-            if let Some(profile) = request.mouse_profile.take() { self.finish_mouse_scroll_save(profile, false, request.window, cx); }
+            if let Some(profile) = request.mouse_profile.take() {
+                self.finish_mouse_scroll_save(profile, false, request.window, cx);
+            }
             self.continue_save_queue(false, cx);
             return false;
         }
         self.rebase_controller_trigger_save(&mut request, cx);
-        if let Err(error)=self.rebase_seiren_eq_save(&mut request,cx) {
-            self.status=format!("麦克风设置本地保存失败：{error:#}");
-            if let Some(eq)=request.seiren_eq.take(){self.finish_seiren_eq_save(eq,false,request.window,cx);}
-            self.continue_save_queue(false,cx);
+        if let Err(error) = self.rebase_seiren_eq_save(&mut request, cx) {
+            self.status = format!("麦克风设置本地保存失败：{error:#}");
+            if let Some(eq) = request.seiren_eq.take() {
+                self.finish_seiren_eq_save(eq, false, request.window, cx);
+            }
+            self.continue_save_queue(false, cx);
             return false;
         }
         self.rebase_keyboard_actuation_save(&mut request, cx);
@@ -2308,7 +2323,9 @@ impl AppShell {
                 })
                 .collect();
         }
-        if let Some(profile) = &request.mouse_profile && profile.scroll.is_none() {
+        if let Some(profile) = &request.mouse_profile
+            && profile.scroll.is_none()
+        {
             request.file.devices = self
                 .devices
                 .iter()
@@ -2343,7 +2360,9 @@ impl AppShell {
             if let Err(error) = mouse_dpi_70::prepare_mapping_document(device, &request.file.macros)
             {
                 self.status = format!("Mouse profile preparation failed: {error:#}");
-                if let Some(sound)=request.leviathan.take(){self.finish_leviathan_save(sound,false,cx);}
+                if let Some(sound) = request.leviathan.take() {
+                    self.finish_leviathan_save(sound, false, cx);
+                }
                 if let Some(control) = request.keyboard_actuation.take() {
                     self.finish_keyboard_actuation_save(control, false, request.window, cx);
                 }
@@ -2457,9 +2476,15 @@ impl AppShell {
                             if !this.close_requested {
                                 if let Some(document) = mapping {
                                     if product_id == 756 {
-                                        this.publish_keyboard_latest_restore(entity.clone(),document,cx);
+                                        this.publish_keyboard_latest_restore(
+                                            entity.clone(),
+                                            document,
+                                            cx,
+                                        );
                                     } else {
-                                        entity.update(cx, |d, cx| d.publish_legacy_mapping(document, cx));
+                                        entity.update(cx, |d, cx| {
+                                            d.publish_legacy_mapping(document, cx)
+                                        });
                                     }
                                 }
                             }
@@ -2481,7 +2506,7 @@ impl AppShell {
                             && mouse_current_power.is_none()
                             && controller_trigger.is_none()
                             && seiren_eq.is_none()
-            && leviathan.is_none()
+                            && leviathan.is_none()
                             && keyboard_actuation.is_none()
                         {
                             this.status = "已保存到本机 · 尚未发送到设备".into();
@@ -2494,7 +2519,7 @@ impl AppShell {
                             && mouse_current_power.is_none()
                             && controller_trigger.is_none()
                             && seiren_eq.is_none()
-            && leviathan.is_none()
+                            && leviathan.is_none()
                             && keyboard_actuation.is_none()
                             && this.settings.read(cx).snapshot().notifications
                             && !this.close_requested
@@ -2592,7 +2617,9 @@ impl AppShell {
                         if let Some(trigger) = controller_trigger {
                             this.finish_controller_trigger_save(trigger, true, window, cx);
                         }
-                        if let Some(sound)=leviathan {this.finish_leviathan_save(sound,true,cx);}
+                        if let Some(sound) = leviathan {
+                            this.finish_leviathan_save(sound, true, cx);
+                        }
                         if let Some(eq) = seiren_eq {
                             this.finish_seiren_eq_save(eq, true, window, cx);
                         }
@@ -2638,7 +2665,9 @@ impl AppShell {
                         if let Some(trigger) = controller_trigger {
                             this.finish_controller_trigger_save(trigger, false, window, cx);
                         }
-                        if let Some(sound)=leviathan {this.finish_leviathan_save(sound,false,cx);}
+                        if let Some(sound) = leviathan {
+                            this.finish_leviathan_save(sound, false, cx);
+                        }
                         if let Some(eq) = seiren_eq {
                             this.finish_seiren_eq_save(eq, false, window, cx);
                         }
@@ -2679,7 +2708,8 @@ impl AppShell {
                 || self.controller_trigger_workers > 0
                 || self.seiren_eq_workers > 0
                 || (!self.seiren_audio_captures.is_empty()
-                    || !self.seiren_audio_playbacks.is_empty()) && self.close_requested
+                    || !self.seiren_audio_playbacks.is_empty())
+                    && self.close_requested
                 || (razer_pages::features::active_mapping_workers() > 0
                     || audio_mixer::active_local_workers() > 0)
                     && self.close_requested)
@@ -2788,7 +2818,11 @@ impl AppShell {
                             if !this.close_requested {
                                 if let Some(document) = document {
                                     if product_id == 756 {
-                                        this.publish_keyboard_latest_restore(entity.clone(),document,cx);
+                                        this.publish_keyboard_latest_restore(
+                                            entity.clone(),
+                                            document,
+                                            cx,
+                                        );
                                     } else {
                                         entity.update(cx, |workspace, cx| {
                                             workspace.publish_legacy_mapping(document, cx)
@@ -2936,7 +2970,7 @@ impl AppShell {
             || self.controller_trigger_workers > 0
             || self.seiren_eq_workers > 0
             || !self.seiren_audio_captures.is_empty()
-                || !self.seiren_audio_playbacks.is_empty()
+            || !self.seiren_audio_playbacks.is_empty()
             || (razer_pages::features::active_mapping_workers() > 0
                 || audio_mixer::active_local_workers() > 0)
         {
@@ -3322,6 +3356,7 @@ impl AppShell {
 }
 impl Render for AppShell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let resource_errors = razer_assets::resource_errors();
         let keyboard_app_frame = match &self.location {
             Location::Device(key) => self
                 .devices
@@ -3374,78 +3409,106 @@ impl Render for AppShell {
                 .child(self.pairing.clone())
                 .into_any_element(),
         };
-        v_flex()
-            .key_context("AppShell")
-            .track_focus(&self.host_tabs.focus)
-            // The source captures key releases at window scope, even after an
-            // invalid outside click moves focus. Route only to the visible device.
-            .capture_key_up(cx.listener(|this, event: &KeyUpEvent, _, cx| {
-                if let Location::Device(key) = &this.location {
-                    if let Some(device) = this
-                        .devices
-                        .iter()
-                        .find(|d| d.read(cx).identity(cx) == *key)
-                        .cloned()
-                    {
-                        device.update(cx, |device, cx| device.capture_snap_key_up(event, cx));
-                    }
-                }
-            }))
-            .capture_key_down(cx.listener(|this, _: &KeyDownEvent, _, cx| {
-                if let Location::Device(key) = &this.location {
-                    if this.devices.iter().any(|d| {
-                        d.read(cx).identity(cx) == *key && d.read(cx).captures_snap_keys(cx)
-                    }) {
-                        cx.stop_propagation();
-                    }
-                }
-            }))
-            .on_action(cx.listener(Self::close_current_host_tab))
-            .on_action(cx.listener(Self::reopen_host_tab))
-            .on_action(cx.listener(Self::next_host_tab))
-            .on_action(cx.listener(Self::previous_host_tab))
-            .on_action(cx.listener(Self::move_host_tab_left))
-            .on_action(cx.listener(Self::move_host_tab_right))
+        gpui_kit::image_cache(razer_assets::resource_image_cache())
             .size_full()
-            .bg(cx.theme().background)
-            .text_color(cx.theme().foreground)
-            .child(self.title_bar(window, cx))
             .child(
                 v_flex()
-                    .id("source-application-frame")
-                    .flex_1()
-                    .min_h_0()
-                    .min_w_0()
-                    .on_prepaint(move |bounds, _, _| {
-                        if let Some(handle) = &keyboard_app_frame {
-                            handle.set(bounds);
+                    .key_context("AppShell")
+                    .track_focus(&self.host_tabs.focus)
+                    // The source captures key releases at window scope, even after an
+                    // invalid outside click moves focus. Route only to the visible device.
+                    .capture_key_up(cx.listener(|this, event: &KeyUpEvent, _, cx| {
+                        if let Location::Device(key) = &this.location {
+                            if let Some(device) = this
+                                .devices
+                                .iter()
+                                .find(|d| d.read(cx).identity(cx) == *key)
+                                .cloned()
+                            {
+                                device
+                                    .update(cx, |device, cx| device.capture_snap_key_up(event, cx));
+                            }
                         }
-                    })
-                    // The product toolbar is inside the original iframe.
-                    .child(self.toolbar(cx))
+                    }))
+                    .capture_key_down(cx.listener(|this, _: &KeyDownEvent, _, cx| {
+                        if let Location::Device(key) = &this.location {
+                            if this.devices.iter().any(|d| {
+                                d.read(cx).identity(cx) == *key && d.read(cx).captures_snap_keys(cx)
+                            }) {
+                                cx.stop_propagation();
+                            }
+                        }
+                    }))
+                    .on_action(cx.listener(Self::close_current_host_tab))
+                    .on_action(cx.listener(Self::reopen_host_tab))
+                    .on_action(cx.listener(Self::next_host_tab))
+                    .on_action(cx.listener(Self::previous_host_tab))
+                    .on_action(cx.listener(Self::move_host_tab_left))
+                    .on_action(cx.listener(Self::move_host_tab_right))
+                    .size_full()
+                    .bg(cx.theme().background)
+                    .text_color(cx.theme().foreground)
+                    .child(self.title_bar(window, cx))
                     .child(
-                        div()
-                            .id("shell-content-viewport")
-                            .relative()
+                        v_flex()
+                            .id("source-application-frame")
                             .flex_1()
                             .min_h_0()
                             .min_w_0()
-                            .child(div().absolute().inset_0().child(content)),
+                            .on_prepaint(move |bounds, _, _| {
+                                if let Some(handle) = &keyboard_app_frame {
+                                    handle.set(bounds);
+                                }
+                            })
+                            // The product toolbar is inside the original iframe.
+                            .child(self.toolbar(cx))
+                            .child(
+                                div()
+                                    .id("shell-content-viewport")
+                                    .relative()
+                                    .flex_1()
+                                    .min_h_0()
+                                    .min_w_0()
+                                    .child(div().absolute().inset_0().child(content)),
+                            ),
+                    )
+                    .when_some(self.source_alert.clone(), |view, alert| view.child(alert))
+                    .when_some(self.release_notes.clone(), |view, notes| view.child(notes))
+                    .when_some(self.iot_popup.clone(), |view, popup| view.child(popup))
+                    .child(
+                        div()
+                            .h(surface::css(24.))
+                            .flex_shrink_0()
+                            .px_3()
+                            .flex()
+                            .items_center()
+                            .text_size(surface::css(12.))
+                            .text_color(cx.theme().muted_foreground)
+                            .gap_3()
+                            .child(div().flex_1().min_w_0().child(self.status.clone()))
+                            .when(!resource_errors.is_empty(), |bar| {
+                                bar.child(format!("界面资源加载失败（{}）", resource_errors.len()))
+                                    .child(
+                                        Button::new("retry-interface-resources")
+                                            .ghost()
+                                            .xsmall()
+                                            .label("重试资源")
+                                            .tooltip(
+                                                resource_errors
+                                                    .first()
+                                                    .cloned()
+                                                    .unwrap_or_default(),
+                                            )
+                                            .on_click(|_, _, cx| {
+                                                if let Err(error) = razer_assets::retry_resources()
+                                                {
+                                                    eprintln!("资源重试失败：{error}");
+                                                }
+                                                cx.refresh_windows();
+                                            }),
+                                    )
+                            }),
                     ),
-            )
-            .when_some(self.source_alert.clone(), |view, alert| view.child(alert))
-            .when_some(self.release_notes.clone(), |view, notes| view.child(notes))
-            .when_some(self.iot_popup.clone(), |view, popup| view.child(popup))
-            .child(
-                div()
-                    .h(surface::css(24.))
-                    .flex_shrink_0()
-                    .px_3()
-                    .flex()
-                    .items_center()
-                    .text_size(surface::css(12.))
-                    .text_color(cx.theme().muted_foreground)
-                    .child(self.status.clone()),
             )
     }
 }

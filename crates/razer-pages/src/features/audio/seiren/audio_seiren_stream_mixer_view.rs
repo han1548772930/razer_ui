@@ -15,24 +15,21 @@ use gpui_kit::component::{
 };
 use razer_widgets::{surface::css, synapse_select};
 
-fn presentation(pid: u32) -> &'static Value {
-    static DATA: OnceLock<Value> = OnceLock::new();
-    &DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_seiren_stream_mixer_data.json"))
-            .expect("prepared stream mixer presentation")
-    })[pid.to_string()]
+#[derive(Deserialize)]
+struct Presentation {
+    labels: BTreeMap<String, String>,
+    assets: BTreeMap<String, String>,
+}
+
+fn presentation(pid: u32) -> &'static Presentation {
+    static DATA: OnceLock<BTreeMap<String, Presentation>> = OnceLock::new();
+    &DATA.get_or_init(|| crate::data::audio_seiren_stream_mixer_data!())[&pid.to_string()]
 }
 pub(super) fn text(pid: u32, key: &str) -> String {
-    t(presentation(pid)["labels"][key]
-        .as_str()
-        .expect("source mixer label"))
+    t(&presentation(pid).labels[key])
 }
 pub(super) fn asset(pid: u32, key: &str) -> SharedString {
-    presentation(pid)["assets"][key]
-        .as_str()
-        .expect("source mixer asset")
-        .to_owned()
-        .into()
+    presentation(pid).assets[key].clone().into()
 }
 fn action_button(id: impl Into<ElementId>, primary: bool) -> BaseButton {
     BaseButton::new(id)
@@ -833,7 +830,7 @@ impl AudioProductWorkspace {
         let listening = (data["isStreamMixMonitor"] == true) == stream;
         let title = text(pid, label);
         let device = if stream {
-            recipe(pid)["deviceName"].as_str().unwrap_or("")
+            recipe(pid).device_name.as_str()
         } else {
             data["playbackMixDevice"].as_str().unwrap_or("")
         }
@@ -952,7 +949,10 @@ impl AudioProductWorkspace {
         let pid = self.spec.product_id;
         let disabled = !enabled(&state.data);
         let name = channel["name"].as_str().unwrap_or("").to_owned();
-        let enum_name = recipe(pid)["nameToDeviceId"][&name].as_str().unwrap_or("");
+        let enum_name = recipe(pid)
+            .name_to_device_id
+            .get(&name)
+            .map_or("", String::as_str);
         let linked = channel["isLinked"] == true;
         let configurable = channel["inputChannelType"] == "configurable";
         let drag_name = name.clone();
@@ -1235,7 +1235,9 @@ impl AudioProductWorkspace {
             if !found {
                 footer = footer.child(
                     div()
-                        .id(SharedString::from(format!("seiren-stream-device-warning-{name}")))
+                        .id(SharedString::from(format!(
+                            "seiren-stream-device-warning-{name}"
+                        )))
                         .size(css(16.))
                         .child(svg().path(asset(pid, "device-warning")).size(css(16.)))
                         .tooltip({
@@ -1289,10 +1291,11 @@ impl AudioProductWorkspace {
         let state = self.seiren_stream.as_ref().expect("source mixer");
         let pid = self.spec.product_id;
         let bounds = state.add_bounds.clone();
-        let popover =
-            window.use_keyed_state((ElementId::from("seiren-stream-add-popup"), "lifecycle"), cx, |_, cx| {
-                gpui_kit::base::PopoverState::new(false, cx)
-            });
+        let popover = window.use_keyed_state(
+            (ElementId::from("seiren-stream-add-popup"), "lifecycle"),
+            cx,
+            |_, cx| gpui_kit::base::PopoverState::new(false, cx),
+        );
         popover.update(cx, |popover, cx| {
             popover.sync_open(state.add_open, window, cx)
         });

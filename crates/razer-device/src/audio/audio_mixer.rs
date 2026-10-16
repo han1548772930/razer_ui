@@ -443,10 +443,7 @@ pub fn endpoint_limits() -> &'static [EndpointLimit] {
 fn capability() -> &'static Capability {
     static CAPABILITY: OnceLock<Capability> = OnceLock::new();
     CAPABILITY.get_or_init(|| {
-        let result: Capability = serde_json::from_str(include_str!(
-            "../../../../assets/data/audio-mixer-protocol.json"
-        ))
-        .expect("source-derived Audio Mixer protocol");
+        let result: Capability = crate::data::audio_mixer_protocol::audio_mixer_protocol!();
         assert_eq!(result.schema_version, 1);
         result
     })
@@ -469,12 +466,8 @@ pub fn mic_eq_values(bands: &[i32; 10]) -> anyhow::Result<[MixerValue; 10]> {
         band_order: [u8; 10],
     }
     static RECIPE: OnceLock<Recipe> = OnceLock::new();
-    let recipe = RECIPE.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../assets/data/audio-mixer-mic-eq-current.json"
-        ))
-        .expect("source-derived microphone EQ templates")
-    });
+    let recipe = RECIPE
+        .get_or_init(|| crate::data::audio_mixer_mic_eq_current::audio_mixer_mic_eq_current!());
     ensure!(
         recipe.product_id == 1342
             && recipe.enable_before_bands
@@ -498,12 +491,7 @@ struct EchoRecipe {
 }
 fn echo_recipe() -> &'static EchoRecipe {
     static RECIPE: OnceLock<EchoRecipe> = OnceLock::new();
-    RECIPE.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../assets/data/audio-mixer-echo-current.json"
-        ))
-        .expect("source-derived Echo/Reverb recipe")
-    })
+    RECIPE.get_or_init(|| crate::data::audio_mixer_echo_current::audio_mixer_echo_current!())
 }
 pub fn echo_presets() -> &'static BTreeMap<String, [f32; 4]> {
     &echo_recipe().presets

@@ -1,4 +1,4 @@
-//! Current Settings app 720/ho/uo, independently verified on 2026-10-03.
+//! Current Settings app 720/ho/uo.
 use razer_widgets::scroll::SourceScrollable as _;
 #[path = "settings_lighting.rs"]
 mod lighting;
@@ -77,11 +77,8 @@ fn keyboard_preview_layouts() -> &'static [PreviewLayout] {
     }
     static LAYOUTS: std::sync::OnceLock<Vec<PreviewLayout>> = std::sync::OnceLock::new();
     LAYOUTS.get_or_init(|| {
-        serde_json::from_str::<Catalog>(include_str!(
-            "../../../../assets/synapse/products/653/configs/customize-layouts.json"
-        ))
-        .expect("audited current 653 layouts")
-        .layouts
+        let catalog: Catalog = crate::data::customize_layouts!();
+        catalog.layouts
     })
 }
 
@@ -767,17 +764,18 @@ impl SettingsPage {
     }
 }
 fn dashboard_source_version() -> &'static str {
+    #[derive(serde::Deserialize)]
+    struct DashboardVersion {
+        version: String,
+        #[serde(rename = "buildVersion")]
+        build_version: u64,
+    }
     static VERSION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
     VERSION
         .get_or_init(|| {
-            let manifest: serde_json::Value = serde_json::from_str(include_str!(
-                "../../../../assets/synapse/manifests/settings-dashboard-manifest.json"
-            ))
-            .expect("current acquired Dashboard manifest");
-            let version = manifest["version"].as_str().expect("Dashboard version");
-            let build = manifest["buildVersion"]
-                .as_u64()
-                .expect("Dashboard buildVersion");
+            let manifest: DashboardVersion = crate::data::settings_dashboard_manifest!();
+            let version = &manifest.version;
+            let build = manifest.build_version;
             std::iter::once("4".to_owned())
                 .chain(version.split('.').skip(1).map(str::to_owned))
                 .chain(std::iter::once(build.to_string()))

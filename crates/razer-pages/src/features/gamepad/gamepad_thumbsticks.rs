@@ -21,6 +21,12 @@ pub(super) struct ThumbstickUi {
     artwork: Option<Arc<Image>>,
 }
 
+impl ThumbstickUi {
+    pub(super) fn artwork_pending(&self) -> bool {
+        self.artwork.is_none()
+    }
+}
+
 fn nearest_step(value: f32, steps: &[i64]) -> i64 {
     // Source reduce replaces only for a strictly smaller distance. A tie
     // therefore preserves the first source dataset member.
@@ -241,7 +247,7 @@ impl GamepadProductWorkspace {
     }
 
     pub(super) fn refresh_thumbstick_artwork(&mut self) {
-        if !self.modern_thumbsticks() {
+        if !self.modern_thumbsticks() || self.page != "THUMBSTICKS" {
             return;
         }
         let loaded = (|| -> anyhow::Result<Arc<Image>> {
@@ -251,9 +257,10 @@ impl GamepadProductWorkspace {
                     self.spec.product_id
                 )
             };
-            let bytes = SynapseAssets
-                .load(&path(self.edition_id))?
-                .or(SynapseAssets.load(&path(0))?)
+            let bytes =
+                crate::runtime_resources::load_edition_resource(self.edition_id, |edition| {
+                    SynapseAssets.load(&path(edition))
+                })?
                 .ok_or_else(|| anyhow::anyhow!("Current sensitivity SVG is missing"))?;
             let mut svg = String::from_utf8(bytes.to_vec())?;
             circle_radius(

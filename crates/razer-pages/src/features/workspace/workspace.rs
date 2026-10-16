@@ -28,9 +28,15 @@ pub enum WorkspaceEvent {
     MappingCallbackRequested(super::MappingCallbackRequested),
     MouseMappingTargetRequested(super::mouse_products::MouseMappingTargetRequested),
     KeyboardLegacyProfileRequested,
-    KeyboardLatestProfileSwitchRequested { guid: String, defer_persistence: bool },
+    KeyboardLatestProfileSwitchRequested {
+        guid: String,
+        defer_persistence: bool,
+    },
     KeyboardLatestProfileMutationRequested(razer_device::keyboard_latest_restore::ProfileMutation),
-    KeyboardLatestOnboardProfileRequested { slot_id: u8, guid: String },
+    KeyboardLatestOnboardProfileRequested {
+        slot_id: u8,
+        guid: String,
+    },
     KeyboardLinkedBaseSelected(String),
     KeyboardLegacyRuntimeStatus(String),
     HelpResetRequested(super::HelpResetRequest),

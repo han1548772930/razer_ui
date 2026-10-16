@@ -74,8 +74,13 @@ pub fn select_alexa<I: SelectItem<Value = String> + 'static>(
 
 /// Current module 7734 renders clickable divs without tabIndex or key handlers.
 /// Use only where the mounted source caller and that dependency are verified.
-pub fn select_pointer<I: SelectItem<Value = String> + 'static>(state: &Entity<SelectState<Vec<I>>>) -> SynapseSelect<I> {
-    SynapseSelect { pointer_only: true, ..select(state) }
+pub fn select_pointer<I: SelectItem<Value = String> + 'static>(
+    state: &Entity<SelectState<Vec<I>>>,
+) -> SynapseSelect<I> {
+    SynapseSelect {
+        pointer_only: true,
+        ..select(state)
+    }
 }
 
 #[derive(IntoElement)]
@@ -366,7 +371,9 @@ impl<I: SelectItem<Value = String> + 'static> RenderOnce for SynapseSelect<I> {
 
 impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.pointer_only { return self.render_pointer(window, cx); }
+        if self.pointer_only {
+            return self.render_pointer(window, cx);
+        }
         let focus = self.state.focus_handle(cx);
         let content_focus = self.list.focus_handle(cx);
         let options = self.list.read(cx).delegate();

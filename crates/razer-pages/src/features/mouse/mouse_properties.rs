@@ -43,10 +43,7 @@ impl PropertiesSpec {
 pub(super) fn source_spec(product_id: u32) -> Option<&'static PropertiesSpec> {
     static SPECS: OnceLock<Vec<PropertiesSpec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_properties_data.json"))
-                .expect("validated current mouse properties capabilities")
-        })
+        .get_or_init(|| crate::data::mouse_properties_data!())
         .iter()
         .find(|spec| spec.product_id == product_id)
 }

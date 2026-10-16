@@ -97,10 +97,7 @@ pub struct SourceSpec {
 pub fn source_spec(product_id: u32) -> Option<&'static SourceSpec> {
     static SOURCES: OnceLock<Vec<SourceSpec>> = OnceLock::new();
     SOURCES
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_polling_source_data.json"))
-                .expect("current source polling data")
-        })
+        .get_or_init(|| crate::data::mouse_polling_source_data!())
         .iter()
         .find(|spec| spec.product_id == product_id)
 }

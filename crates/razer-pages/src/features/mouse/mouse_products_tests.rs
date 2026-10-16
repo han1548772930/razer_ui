@@ -1,15 +1,7 @@
 //! Receipts for the mouse page's localized names.
 //!
-//! The mouse page used to hardcode Chinese labels. Every replacement is a key the
-//! source itself uses: the panel titles and control labels come from the mouse
-//! bundles (`.ref/devices/100/static/js/main.1734869e.js` and its page chunks), the
-//! input names from the source's assignment labels (`LEFT_CLICK`, `STEP_BACK`, …)
-//! and the effect names from the source's effect table
-//! (`{we.DU0: Static_Effect, we.xkP: Breathing_Effect, …}`). Each key's bundled
-//! zh-CN value is exactly the string that used to be hardcoded, which is what
-//! makes the mapping traceable rather than guessed.
-//!
-//! The tests are compile-checked only: running them is forbidden in this workspace.
+//! Panel, input and effect labels retain source translation identities;
+//! language changes must preserve the selected command or effect.
 use super::{effect_label, input_label, localized_name};
 
 const PAGE_KEYS: [&str; 22] = [

@@ -68,10 +68,14 @@ unsafe extern "C" fn unsupported_event(
 unsafe extern "C" fn input_event(info: *const c_char, kind: i32, input: *const c_char, tick: u64) {
     // Current createCbInputNotification forwards only native type1. Preserve
     // the exact input string; assignment decoding owns its JSON semantics.
-    if kind != 1 { return; }
+    if kind != 1 {
+        return;
+    }
     let event = json!({"type":"inputnotified","input":unsafe { copy_string(input) }});
     if let Ok(text) = CString::new(event.to_string()) {
-        unsafe { device_event(info, kind, text.as_ptr(), tick); }
+        unsafe {
+            device_event(info, kind, text.as_ptr(), tick);
+        }
     }
 }
 
@@ -348,17 +352,28 @@ impl NativeRuntime {
 
     pub(super) fn start_otfm_input(&mut self, owner: &str) -> anyhow::Result<Value> {
         self.validate_mapping_device(owner)?;
-        anyhow::ensure!(!self.mapping_device.registration(owner)?.input_registered,
-            "OTFM input notifications are already registered");
+        anyhow::ensure!(
+            !self.mapping_device.registration(owner)?.input_registered,
+            "OTFM input notifications are already registered"
+        );
         let info = CString::new(self.mapping_device.registration(owner)?.info.to_string())?;
         let register: RemoveDevice = unsafe { self.mapping_symbol("registerInputNotification")? };
         let result = self.call(|| unsafe { register(info.as_ptr(), callback3) });
-        if self.poisoned { std::mem::forget(info); return result.map(|_|Value::Null); }
+        if self.poisoned {
+            std::mem::forget(info);
+            return result.map(|_| Value::Null);
+        }
         result?;
-        self.mapping_device.registration.as_mut().unwrap().input_registered = true;
+        self.mapping_device
+            .registration
+            .as_mut()
+            .unwrap()
+            .input_registered = true;
         let install: SetInput = unsafe { self.mapping_symbol("setInputNotificationCallback")? };
         let result = self.call(|| unsafe { install(info.as_ptr(), input_event, callback3) });
-        if self.poisoned { std::mem::forget(info); }
+        if self.poisoned {
+            std::mem::forget(info);
+        }
         result?;
         Ok(json!({"registered":true,"owner_guid":owner}))
     }
@@ -578,11 +593,15 @@ impl NativeRuntime {
         let mut unregister_error = None;
         if self.mapping_device.registration(owner)?.input_registered {
             let result = (|| -> anyhow::Result<()> {
-                let unregister: RemoveDevice = unsafe { self.mapping_symbol("unregisterInputNotification")? };
+                let unregister: RemoveDevice =
+                    unsafe { self.mapping_symbol("unregisterInputNotification")? };
                 self.call(|| unsafe { unregister(text.as_ptr(), callback3) })?;
                 Ok(())
             })();
-            if self.poisoned { std::mem::forget(text); return result.map(|_|Value::Null); }
+            if self.poisoned {
+                std::mem::forget(text);
+                return result.map(|_| Value::Null);
+            }
             if let Err(error) = result {
                 unregister_error = Some(error);
             }

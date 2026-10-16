@@ -33,13 +33,31 @@ struct Data {
     names: KeyNames,
     extended: HashMap<String, String>,
 }
-type KeyNames = HashMap<String, HashMap<String, serde_json::Value>>;
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum KeyName {
+    Text(String),
+    ByDevice(KeyNameByDevice),
+}
+#[derive(Deserialize, serde::Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+struct KeyNameByDevice {
+    keyboard: String,
+    mouse: String,
+    default: String,
+}
+impl KeyName {
+    fn default_text(&self) -> &str {
+        match self {
+            Self::Text(value) => value,
+            Self::ByDevice(value) => &value.default,
+        }
+    }
+}
+type KeyNames = HashMap<String, HashMap<String, KeyName>>;
 fn data() -> &'static Data {
     static DATA: OnceLock<Data> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_data.json"))
-            .expect("audited Macro keyboard data")
-    })
+    DATA.get_or_init(|| crate::data::keyboard_data!())
 }
 
 pub use razer_widgets::keyboard_capture::RawKey;
@@ -103,14 +121,7 @@ fn display(key: &Key, editing: bool) -> String {
     // falls back to UnitedStates; pn passes undefined and F uses default.
     let table = &data().names[if editing { "default" } else { "1" }];
     let value = table.get(id).or_else(|| data().names["default"].get(id));
-    value
-        .and_then(|value| {
-            value
-                .as_str()
-                .or_else(|| value.get("DEFAULT").and_then(|v| v.as_str()))
-        })
-        .unwrap_or(id)
-        .to_string()
+    value.map(KeyName::default_text).unwrap_or(id).to_string()
 }
 
 /// ShortcutKey Rr calls the same layout-name resolver. An unobserved system
@@ -118,11 +129,7 @@ fn display(key: &Key, editing: bool) -> String {
 pub fn shortcut_name(input_id: &str) -> String {
     data().names["default"]
         .get(input_id)
-        .and_then(|value| {
-            value
-                .as_str()
-                .or_else(|| value.get("DEFAULT").and_then(|v| v.as_str()))
-        })
+        .map(KeyName::default_text)
         .unwrap_or(input_id)
         .to_owned()
 }
@@ -175,7 +182,7 @@ impl MacroPage {
         else {
             return;
         };
-        // Parse the embedded data before installing the native callback.
+        // Materialize the fixed key table before installing the native callback.
         let _ = data();
         let Some(capture) = super::keyboard_windows::Capture::start(window) else {
             return;

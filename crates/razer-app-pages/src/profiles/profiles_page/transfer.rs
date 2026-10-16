@@ -16,14 +16,77 @@ mod view;
 #[derive(Deserialize)]
 struct SourceData {
     labels: BTreeMap<String, String>,
-    targets: BTreeMap<String, Value>,
+    targets: BTreeMap<u32, TransferTarget>,
+}
+#[derive(Clone, Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TransferTarget {
+    product_id: u32,
+    dongle_id: Option<u32>,
+    ble_id: Option<u32>,
+    category: TransferCategory,
+    #[serde(default, rename = "is8kAnalogDevice")]
+    is_eight_k_analog_device: bool,
+}
+#[derive(Clone, Deserialize, serde::Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum TransferCategory {
+    Accessory,
+    Audio,
+    Broadcaster,
+    Case,
+    Chair,
+    Egpu,
+    Gamepad,
+    Hue,
+    Iot,
+    Keyboard,
+    Keypad,
+    Monitor,
+    Mouse,
+    Mousemat,
+    Mouseplusmat,
+    System,
+}
+impl TransferCategory {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Accessory => "ACCESSORY",
+            Self::Audio => "AUDIO",
+            Self::Broadcaster => "BROADCASTER",
+            Self::Case => "CASE",
+            Self::Chair => "CHAIR",
+            Self::Egpu => "EGPU",
+            Self::Gamepad => "GAMEPAD",
+            Self::Hue => "HUE",
+            Self::Iot => "IOT",
+            Self::Keyboard => "KEYBOARD",
+            Self::Keypad => "KEYPAD",
+            Self::Monitor => "MONITOR",
+            Self::Mouse => "MOUSE",
+            Self::Mousemat => "MOUSEMAT",
+            Self::Mouseplusmat => "MOUSEPLUSMAT",
+            Self::System => "SYSTEM",
+        }
+    }
+}
+impl TransferTarget {
+    fn matches_category(&self, category: Option<&str>) -> bool {
+        category == Some(self.category.as_str())
+    }
+
+    fn matches_product(&self, product: Option<f64>) -> bool {
+        product.is_some_and(|product| {
+            [Some(self.product_id), self.dongle_id, self.ble_id]
+                .into_iter()
+                .flatten()
+                .any(|identity| f64::from(identity) == product)
+        })
+    }
 }
 fn data() -> &'static SourceData {
     static DATA: OnceLock<SourceData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("transfer_data.json"))
-            .expect("current Profiles transfer data")
-    })
+    DATA.get_or_init(|| crate::data::transfer_data!())
 }
 fn text(symbol: &str) -> String {
     i18n::t(&data().labels[symbol])
@@ -285,7 +348,7 @@ impl ProfileTransfer {
         if self.closed || self.busy || self.cloud || self.mode != Mode::Import {
             return;
         }
-        let Some(target) = data().targets.get(&self.pid.to_string()).cloned() else {
+        let Some(target) = data().targets.get(&self.pid).cloned() else {
             self.error = Some(local(
                 "此产品的当前导入兼容性尚未核实。",
                 "Current import compatibility for this product is not verified.",

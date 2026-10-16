@@ -7,10 +7,7 @@ use razer_widgets::theme::DrawerColors;
 pub(super) fn supports_smart_only_calibration(product_id: u32) -> bool {
     static PRODUCTS: OnceLock<Vec<u32>> = OnceLock::new();
     PRODUCTS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_smart_calibration_family_data.json"))
-                .expect("current independently mounted Smart Only roots")
-        })
+        .get_or_init(|| crate::data::mouse_smart_calibration_family_data!())
         .contains(&product_id)
 }
 pub(super) fn smart_calibration_commits_on_release(product_id: u32) -> bool {

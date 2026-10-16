@@ -6,7 +6,7 @@ use razer_pages::features::{AudioProductWorkspace, LeviathanRequest};
 use std::sync::{Mutex, OnceLock};
 
 static QUEUE: OnceLock<Mutex<()>> = OnceLock::new();
-#[path="leviathan_events.rs"]
+#[path = "leviathan_events.rs"]
 mod events;
 pub(super) struct LeviathanSave {
     workspace: Entity<ProductWorkspace>,
@@ -113,10 +113,14 @@ impl AppShell {
                         "Noa source profile settings differ"
                     );
                     settings["profile"][field] = value.clone();
-                    let document=device.source_device_settings.get_or_insert_with(||serde_json::json!({}));
-                    ensure!(document.is_object(),"Noa source device document differs");
-                    let version=razer_device::mapping_submission::next_source_version(document.get("version").and_then(serde_json::Value::as_u64))?;
-                    document["version"]=serde_json::json!(version);
+                    let document = device
+                        .source_device_settings
+                        .get_or_insert_with(|| serde_json::json!({}));
+                    ensure!(document.is_object(), "Noa source device document differs");
+                    let version = razer_device::mapping_submission::next_source_version(
+                        document.get("version").and_then(serde_json::Value::as_u64),
+                    )?;
+                    document["version"] = serde_json::json!(version);
                     found = true;
                 }
                 Ok(device)
@@ -131,8 +135,11 @@ impl AppShell {
         succeeded: bool,
         cx: &mut Context<Self>,
     ) {
-        if succeeded&&!save.request.writes_device(){
-            save.page.update(cx,|page,cx|page.finish_leviathan_local(save.request.generation,cx));return;
+        if succeeded && !save.request.writes_device() {
+            save.page.update(cx, |page, cx| {
+                page.finish_leviathan_local(save.request.generation, cx)
+            });
+            return;
         }
         if !succeeded
             || self.close_requested
@@ -189,7 +196,13 @@ impl AppShell {
         let identity = workspace.read(cx).identity(cx);
         let profile_id = device.active_profile.clone();
         if request.operation.command().is_read() {
-            self.start_leviathan_monitor(workspace.clone(),page.clone(),observed.clone(),request.guard(),cx);
+            self.start_leviathan_monitor(
+                workspace.clone(),
+                page.clone(),
+                observed.clone(),
+                request.guard(),
+                cx,
+            );
         }
         cx.spawn(async move |this,cx| {
             let guard=request.clone();

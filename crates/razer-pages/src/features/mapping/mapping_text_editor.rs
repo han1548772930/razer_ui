@@ -39,12 +39,7 @@ struct EmojiSearch {
 }
 fn data() -> &'static EmojiData {
     static DATA: OnceLock<EmojiData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../keyboard/mapping/keyboard_mapping_text_emoji_data.json"
-        ))
-        .expect("current MapText literals")
-    })
+    DATA.get_or_init(|| crate::data::keyboard_mapping_text_emoji_data!())
 }
 pub(crate) struct CharacterMapRequested;
 impl EventEmitter<CharacterMapRequested> for MappingTextEditor {}

@@ -160,13 +160,42 @@ fn leviathan_bad_ranges_and_truncated_reads_never_fabricate_observations() {
 #[test]
 fn leviathan_interrupt_parser_preserves_event_fields_and_little_endian_camera_values() {
     use super::{Notification, notification};
-    assert_eq!(notification(&[5,19,1,2,3,4,5]).unwrap(),Some(Notification::Io{headphone:1,usb:2,aux:3,optical:4,bluetooth:5}));
-    assert_eq!(notification(&[5,28,1]).unwrap(),Some(Notification::Output{state:1}));
-    assert_eq!(notification(&[5,26,3]).unwrap(),Some(Notification::Mode{mode:3}));
-    assert_eq!(notification(&[5,18,3]).unwrap(),Some(Notification::Input{source:3}));
-    let mut camera=vec![5,29,1];camera.extend_from_slice(&(-12.25f32).to_le_bytes());camera.extend_from_slice(&1.75f32.to_le_bytes());
-    assert_eq!(notification(&camera).unwrap(),Some(Notification::Camera{locked:1,direction:-12.25,distance:1.75}));
-    for bytes in [&[5][..],&[5,19,1,2,3,4],&camera[..10]] {assert!(notification(bytes).is_err());}
-    assert_eq!(notification(&[8,19]).unwrap(),None);
-    assert_eq!(notification(&[5,255]).unwrap(),None);
+    assert_eq!(
+        notification(&[5, 19, 1, 2, 3, 4, 5]).unwrap(),
+        Some(Notification::Io {
+            headphone: 1,
+            usb: 2,
+            aux: 3,
+            optical: 4,
+            bluetooth: 5
+        })
+    );
+    assert_eq!(
+        notification(&[5, 28, 1]).unwrap(),
+        Some(Notification::Output { state: 1 })
+    );
+    assert_eq!(
+        notification(&[5, 26, 3]).unwrap(),
+        Some(Notification::Mode { mode: 3 })
+    );
+    assert_eq!(
+        notification(&[5, 18, 3]).unwrap(),
+        Some(Notification::Input { source: 3 })
+    );
+    let mut camera = vec![5, 29, 1];
+    camera.extend_from_slice(&(-12.25f32).to_le_bytes());
+    camera.extend_from_slice(&1.75f32.to_le_bytes());
+    assert_eq!(
+        notification(&camera).unwrap(),
+        Some(Notification::Camera {
+            locked: 1,
+            direction: -12.25,
+            distance: 1.75
+        })
+    );
+    for bytes in [&[5][..], &[5, 19, 1, 2, 3, 4], &camera[..10]] {
+        assert!(notification(bytes).is_err());
+    }
+    assert_eq!(notification(&[8, 19]).unwrap(), None);
+    assert_eq!(notification(&[5, 255]).unwrap(), None);
 }

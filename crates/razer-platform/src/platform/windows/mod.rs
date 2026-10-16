@@ -17,8 +17,8 @@ pub(crate) mod keyboard_layout_monitor;
 pub(crate) mod services;
 #[path = "session_changes.rs"]
 pub(crate) mod session_changes;
+pub(crate) mod startup;
 #[path = "system.rs"]
 pub(crate) mod system;
-pub(crate) mod startup;
 #[path = "wheel_scroll.rs"]
 pub(crate) mod wheel_scroll;

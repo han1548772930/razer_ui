@@ -8,13 +8,10 @@ struct Source {
 }
 fn source(pid: u32) -> &'static Source {
     static DATA: OnceLock<Vec<Source>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_active_button_data.json"))
-            .expect("current activeButton producers")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("audited current activeButton product")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_active_button_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("audited current activeButton product")
 }
 fn label(metadata: &Source, helper: &str, id: &Value) -> Value {
     if let Some(category) = match helper {

@@ -9,12 +9,26 @@ const ROOT: &str = "/scrollWheelStages/scrollWheelStages/5";
 const KEYS: [&str; 5] = ["pLeft", "pMidLeft", "pMid", "pMidRight", "pRight"];
 type Points = [[f32; 2]; 5];
 
-fn presets(pid: u32, stage: &str) -> &'static Value {
-    static DATA: OnceLock<Value> = OnceLock::new();
-    &DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_haptic_data.json"))
-            .expect("statically parsed current 167/231 haptic settings")
-    })[pid.to_string()][stage]
+#[derive(Deserialize)]
+struct PresetPoint {
+    x: f64,
+    y: f64,
+}
+
+#[derive(Deserialize)]
+struct HapticPreset {
+    #[serde(rename = "scrollTension")]
+    scroll_tension: i64,
+    #[serde(rename = "scrollSteps")]
+    scroll_steps: i64,
+    coordinates: Vec<PresetPoint>,
+}
+
+fn presets(pid: u32, stage: &str) -> Option<&'static HapticPreset> {
+    static DATA: OnceLock<BTreeMap<String, BTreeMap<String, HapticPreset>>> = OnceLock::new();
+    DATA.get_or_init(|| crate::data::mouse_haptic_data!())
+        .get(&pid.to_string())?
+        .get(stage)
 }
 
 impl MouseProductWorkspace {
@@ -231,7 +245,7 @@ impl MouseProductWorkspace {
             "upDirection"
         };
         let points = self.curve_points(direction);
-        let preset = presets(self.spec.product_id, stage)["coordinates"].clone();
+        let preset = presets(self.spec.product_id, stage);
         let color = if editable && !linked && direction == "downDirection" {
             DrawerColors::new().hypershift()
         } else {
@@ -291,14 +305,9 @@ impl MouseProductWorkspace {
                             curve.curve_to(at(points[2]), at(points[1]));
                             curve.move_to(at(points[2]));
                             curve.curve_to(at(points[4]), at(points[3]));
-                        } else if let Some(points) = preset.as_array() {
-                            let point = |p: &Value| {
-                                at([
-                                    p["x"].as_f64().unwrap_or(0.) as f32,
-                                    p["y"].as_f64().unwrap_or(0.) as f32,
-                                ])
-                            };
-                            for segment in points.windows(3).step_by(2) {
+                        } else if let Some(preset) = preset {
+                            let point = |p: &PresetPoint| at([p.x as f32, p.y as f32]);
+                            for segment in preset.coordinates.windows(3).step_by(2) {
                                 curve.move_to(point(&segment[0]));
                                 curve.curve_to(point(&segment[2]), point(&segment[1]));
                             }
@@ -328,12 +337,18 @@ impl MouseProductWorkspace {
             .into_any_element()
     }
     pub(super) fn haptic_panel(&self, stage: &str, cx: &Context<Self>) -> AnyElement {
-        let settings = if stage == "SW_CUSTOM" {
-            self.draft
+        let (tension, steps) = if stage == "SW_CUSTOM" {
+            let settings = self
+                .draft
                 .pointer(&format!("{ROOT}/upDirection"))
-                .unwrap_or(&Value::Null)
+                .unwrap_or(&Value::Null);
+            (
+                settings["scrollTension"].as_i64().unwrap_or(0),
+                settings["scrollSteps"].as_i64().unwrap_or(0),
+            )
         } else {
-            presets(self.spec.product_id, stage)
+            let preset = presets(self.spec.product_id, stage).expect("current haptic stage");
+            (preset.scroll_tension, preset.scroll_steps)
         };
         let area = Rc::new(Cell::new(Bounds::default()));
         surface::panel_with_help(
@@ -382,29 +397,23 @@ impl MouseProductWorkspace {
                 .text_size(surface::css(12.))
                 .child(t("DEGREE_OF_ROTATION")),
         )
-        .child(
-            h_flex().justify_between().mt(surface::css(20.)).children(
-                [
-                    ("scrollTension", "SCROLL_TENSION"),
-                    ("scrollSteps", "SCROLL_STEPS"),
-                ]
-                .map(|(field, key)| {
-                    v_flex()
-                        .w(surface::css(255.))
-                        .py(surface::css(20.))
-                        .rounded(surface::css(4.))
-                        .bg(cx.theme().secondary)
-                        .text_center()
-                        .child(
-                            div()
-                                .text_size(surface::css(28.))
-                                .mb(surface::css(10.))
-                                .child(settings[field].as_i64().unwrap_or(0).to_string()),
-                        )
-                        .child(t(key))
-                }),
-            ),
-        )
+        .child(h_flex().justify_between().mt(surface::css(20.)).children(
+            [(tension, "SCROLL_TENSION"), (steps, "SCROLL_STEPS")].map(|(value, key)| {
+                v_flex()
+                    .w(surface::css(255.))
+                    .py(surface::css(20.))
+                    .rounded(surface::css(4.))
+                    .bg(cx.theme().secondary)
+                    .text_center()
+                    .child(
+                        div()
+                            .text_size(surface::css(28.))
+                            .mb(surface::css(10.))
+                            .child(value.to_string()),
+                    )
+                    .child(t(key))
+            }),
+        ))
         .into_any_element()
     }
     pub(super) fn scroll_custom_popup(

@@ -102,9 +102,7 @@ fn keys() -> &'static [Key] {
     }
     static DATA: OnceLock<Data> = OnceLock::new();
     &DATA
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_data.json")).expect("audited keys")
-        })
+        .get_or_init(|| crate::data::recording_keyboard_data!())
         .keys
 }
 fn makecode(vk: u16) -> u16 {

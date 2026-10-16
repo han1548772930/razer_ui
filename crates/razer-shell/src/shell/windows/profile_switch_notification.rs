@@ -720,7 +720,7 @@ impl Render for ProfileWindow {
             .map(Notification::key)
             .collect::<Vec<_>>();
         let owner = cx.entity().downgrade();
-        div()
+        let content = div()
             .size_full()
             .on_children_prepainted(move |bounds, window, cx| {
                 let sizes = keys
@@ -748,7 +748,10 @@ impl Render for ProfileWindow {
                     });
                 });
             })
-            .children(panels)
+            .children(panels);
+        image_cache(razer_assets::resource_image_cache())
+            .size_full()
+            .child(content)
     }
 }
 

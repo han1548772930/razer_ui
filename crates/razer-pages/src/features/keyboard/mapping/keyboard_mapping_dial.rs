@@ -23,12 +23,9 @@ struct Recipe {
 }
 fn source(pid: u32) -> Option<&'static Source> {
     static DATA: OnceLock<Vec<Source>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_dial_data.json"))
-            .expect("current mounted dial recipes")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
+    DATA.get_or_init(|| crate::data::keyboard_mapping_dial_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
 }
 #[derive(Default, Clone, Deserialize, Serialize)]
 pub(super) struct Draft {

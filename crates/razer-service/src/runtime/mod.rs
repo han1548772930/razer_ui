@@ -11,11 +11,11 @@ mod controller_triggers;
 mod keyboard_submission_controller;
 #[path = "keyboard_wristrest_controller.rs"]
 mod keyboard_wristrest_controller;
-#[path = "mouse_runtime_artwork_controller.rs"]
-mod mouse_runtime_artwork_controller;
+mod leviathan_events;
 #[path = "mouse_indicator_led_controller.rs"]
 mod mouse_indicator_led_controller;
-mod leviathan_events;
+#[path = "mouse_runtime_artwork_controller.rs"]
+mod mouse_runtime_artwork_controller;
 #[cfg(windows)]
 #[path = "windows/native.rs"]
 mod native;

@@ -26,6 +26,16 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def builtin_data_path(crate, symbol):
+    import asset_release
+    return asset_release.builtin_data_path(crate, symbol, root=ROOT)
+
+
+def save_builtin_data(symbol, value):
+    import asset_release
+    return asset_release.save_builtin_data(symbol, value, root=ROOT)
+
+
 def _resolved_path_identity(path):
     """Compare resolved Win32 paths using equivalent DOS/UNC spellings.
 
@@ -82,6 +92,10 @@ def save(path, data):
                 time.sleep(0.05)
     finally:
         temp.unlink(missing_ok=True)
+    maintained = ROOT / ".analysis/inputs/typed-tables"
+    if path.resolve().is_relative_to(maintained.resolve()):
+        import asset_release
+        asset_release.regenerate_builtin_path(path, root=ROOT)
 
 
 def stamp():
@@ -3727,7 +3741,7 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
     another DualLink master can select different constructors and report IDs.
     """
     import evidence
-    capability_path = ROOT / "assets/data/device-read-capabilities.json"
+    capability_path = builtin_data_path("razer-device", "DEVICE_READ_CAPABILITIES")
     capability_raw = capability_path.read_bytes()
     capabilities = selected_capabilities if selected_capabilities is not None else json.loads(capability_raw)["products"]
     # These three additional keyboard factories own nonzero-interface receiver
@@ -3910,7 +3924,7 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
         result["runtime_factory_products_pending_current_evidence"] = [row["product_id"]
             for row in result["products"] if not row["source_owners_complete"]]
         result["runtime_factory_data"] = actual(capability_path)[1]
-        receiver_path = ROOT / "assets/data/receiver-query-capabilities.json"
+        receiver_path = builtin_data_path("razer-device", "RECEIVER_QUERY_CAPABILITIES")
         receivers = json.loads(receiver_path.read_bytes())
         synchronized = []
         for receiver in receivers["capabilities"]:
@@ -3926,7 +3940,7 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
         result["receiver_runtime_data"] = actual(receiver_path)[1]
         result["receiver_sources_outside_basic_factory_scope"] = [receiver["product_id"]
             for receiver in receivers["capabilities"] if receiver["product_id"] not in synchronized]
-        pairing_path = ROOT / "assets/data/receiver-pairing-capabilities.json"
+        pairing_path = builtin_data_path("razer-device", "RECEIVER_PAIRING_CAPABILITIES")
         pairing = json.loads(pairing_path.read_bytes())
         receiver_by_pid = {cap["product_id"]: cap for cap in receivers["capabilities"]}
         for cap in pairing["products"]:

@@ -21,14 +21,14 @@ pub mod keyboard_layout;
 pub mod keyboard_layout_monitor;
 #[path = "input/macro_geometry.rs"]
 pub mod macro_geometry;
+pub mod media;
 #[path = "native_paths.rs"]
 pub mod native_paths;
-pub mod media;
 #[path = "observation/session_changes.rs"]
 pub mod session_changes;
+pub mod startup;
 #[path = "system.rs"]
 pub mod system;
-pub mod startup;
 #[path = "input/wheel_scroll.rs"]
 pub mod wheel_scroll;
 #[path = "windows_service_status.rs"]

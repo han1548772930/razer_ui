@@ -156,7 +156,7 @@ impl KeyboardProductSpec {
 }
 pub fn source_product(pid: u32) -> Option<&'static KeyboardProductSpec> {
     static PRODUCTS: super::source_catalog::SourceCatalog<KeyboardProductSpec> =
-        super::source_catalog::SourceCatalog::new(include_str!("keyboard_products_data.json"));
+        super::source_catalog::SourceCatalog::new(|| crate::data::keyboard_products_data!());
     PRODUCTS.get(pid)
 }
 pub(crate) fn mapping_target_info(product_id: u32) -> Option<&'static Value> {

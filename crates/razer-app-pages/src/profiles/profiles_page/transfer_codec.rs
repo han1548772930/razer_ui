@@ -47,13 +47,6 @@ fn js_truthy(value: &Value) -> bool {
     }
 }
 
-fn same_number(left: &Value, right: &Value) -> bool {
-    match (left.as_f64(), right.as_f64()) {
-        (Some(left), Some(right)) => left == right,
-        _ => false,
-    }
-}
-
 // JavaScript JSON.stringify's ordinary finite-number notation. The MD5 check
 // is authoritative: an unsupported encoding is rejected, never accepted unhashed.
 fn number(value: &serde_json::Number) -> Result<String, String> {
@@ -163,7 +156,7 @@ fn entry(encoded: &Value) -> Result<Value, String> {
     Ok(value)
 }
 
-pub fn read(path: &std::path::Path, target: &Value) -> Result<DecodedFile, String> {
+pub fn read(path: &std::path::Path, target: &super::TransferTarget) -> Result<DecodedFile, String> {
     use std::io::Read as _;
     // Bound local parsing independently from vendor UI. No downloaded code runs.
     const MAX_BYTES: u64 = 16 * 1024 * 1024;
@@ -186,16 +179,13 @@ pub fn read(path: &std::path::Path, target: &Value) -> Result<DecodedFile, Strin
     let rows = document["profiles"]
         .as_array()
         .ok_or("Missing profiles array")?;
-    let matching_category =
-        document["category"].is_string() && document["category"] == target["category"];
-    let matching_pid = ["productId", "dongleId", "bleId"]
-        .iter()
-        .any(|key| same_number(&document["productId"], &target[*key]));
+    let matching_category = target.matches_category(document["category"].as_str());
+    let product_id = document["productId"].as_f64();
+    let matching_pid = target.matches_product(product_id);
     if !matching_category && !matching_pid {
         return Err("No compatible profiles for this product".into());
     }
-    let mut warning =
-        matching_category && !same_number(&document["productId"], &target["productId"]);
+    let mut warning = matching_category && product_id != Some(f64::from(target.product_id));
     let mut decode = |rows: &[Value]| {
         rows.iter()
             .filter_map(|row| match entry(row) {
@@ -216,7 +206,7 @@ pub fn read(path: &std::path::Path, target: &Value) -> Result<DecodedFile, Strin
     );
     // Current 43/Da strips nested Dynamic Keystroke mappings for products
     // without is8kAnalogDevice, after validating the original payload hash.
-    if !js_truthy(&target["is8kAnalogDevice"]) {
+    if !target.is_eight_k_analog_device {
         for profile in &mut profiles {
             let mut mappings = profile["mappings"].as_array().cloned().unwrap_or_default();
             mappings.retain(|mapping| {
@@ -239,7 +229,7 @@ pub fn read(path: &std::path::Path, target: &Value) -> Result<DecodedFile, Strin
 
 #[cfg(test)]
 mod tests {
-    use super::{base64, js_truthy, number, same_number, stable};
+    use super::{base64, js_truthy, number, stable};
     use serde_json::json;
 
     #[test]
@@ -250,9 +240,13 @@ mod tests {
         for value in [json!(true), json!(1), json!("false"), json!([]), json!({})] {
             assert!(js_truthy(&value));
         }
-        assert!(same_number(&json!(2636.0), &json!(2636)));
-        assert!(!same_number(&json!("2636"), &json!(2636)));
-        assert!(!same_number(&json!(null), &json!(null)));
+        let target = &super::super::data().targets[&1318];
+        assert!(target.matches_product(json!(1318.0).as_f64()));
+        assert!(target.matches_product(json!(1318).as_f64()));
+        assert!(!target.matches_product(json!("1318").as_f64()));
+        assert!(!target.matches_product(json!(null).as_f64()));
+        assert!(target.matches_category(Some("AUDIO")));
+        assert!(!target.matches_category(Some("MOUSE")));
     }
 
     #[test]

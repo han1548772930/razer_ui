@@ -4,15 +4,19 @@ use anyhow::{Context as _, ensure};
 use serde_json::Value;
 #[path = "audio_notifications_worker.rs"]
 mod worker;
-use worker::Command;
-use worker::Update;
 use razer_device::audio_notification::AudioNotification;
 use razer_ipc::{ServiceClient, ServiceRequest};
 use std::{
-    sync::{Arc,Mutex,atomic::{AtomicBool,Ordering},mpsc::{self, Receiver, Sender}},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+        mpsc::{self, Receiver, Sender},
+    },
     thread::{self, JoinHandle},
     time::Duration,
 };
+use worker::Command;
+use worker::Update;
 
 fn source_product(product_id: u32) -> bool {
     // Only these current startup roots register audio_streamMixer. The same
@@ -26,30 +30,49 @@ fn broadcast_shortcut_state(
     enabled: bool,
     owners: impl IntoIterator<Item = Sender<Command>>,
 ) -> Vec<String> {
-    if *current == enabled { return Vec::new(); }
+    if *current == enabled {
+        return Vec::new();
+    }
     *current = enabled;
     // Retain intent even with no Mixer mounted. A future owner starts with it.
-    owners.into_iter().filter_map(|owner| {
-        owner.send(Command::GlobalShortcutsEnabled(enabled)).err().map(|error| error.to_string())
-    }).collect()
+    owners
+        .into_iter()
+        .filter_map(|owner| {
+            owner
+                .send(Command::GlobalShortcutsEnabled(enabled))
+                .err()
+                .map(|error| error.to_string())
+        })
+        .collect()
 }
 
 pub(super) struct Session {
     stop: Sender<Command>,
     worker: Option<JoinHandle<()>>,
     _status: Task<()>,
-    route_key:String,
-    view_id:u64,
-    live:Arc<AtomicBool>,
-    request_guards:Mutex<Vec<Arc<AtomicBool>>>,
+    route_key: String,
+    view_id: u64,
+    live: Arc<AtomicBool>,
+    request_guards: Mutex<Vec<Arc<AtomicBool>>>,
 }
-pub(super) struct Retired { identity:String, worker:JoinHandle<()> }
-fn next_view()->u64 {
-    static NEXT:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(0x1_ffff_0500);
-    NEXT.fetch_add(1,std::sync::atomic::Ordering::Relaxed)
+pub(super) struct Retired {
+    identity: String,
+    worker: JoinHandle<()>,
 }
-fn route_key(route:&razer_discovery::discovery::ObservedDevice)->String {
-    format!("{}:{}:{}:{:?}:{:?}:{:?}",route.product_id(),route.physical_product_id(),route.container(),route.hid_node(),route.peer_product_id(),route.transport())
+fn next_view() -> u64 {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0x1_ffff_0500);
+    NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+fn route_key(route: &razer_discovery::discovery::ObservedDevice) -> String {
+    format!(
+        "{}:{}:{}:{:?}:{:?}:{:?}",
+        route.product_id(),
+        route.physical_product_id(),
+        route.container(),
+        route.hid_node(),
+        route.peer_product_id(),
+        route.transport()
+    )
 }
 
 impl Drop for Session {
@@ -60,33 +83,64 @@ impl Drop for Session {
 }
 
 impl Session {
-    fn retain_guard(&self,guard:Arc<AtomicBool>) {
-        let mut guards=self.request_guards.lock().unwrap_or_else(|error|error.into_inner());
-        guards.retain(|guard|guard.load(Ordering::Acquire));
-        if !guards.iter().any(|current|Arc::ptr_eq(current,&guard)){guards.push(guard);}
+    fn retain_guard(&self, guard: Arc<AtomicBool>) {
+        let mut guards = self
+            .request_guards
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        guards.retain(|guard| guard.load(Ordering::Acquire));
+        if !guards.iter().any(|current| Arc::ptr_eq(current, &guard)) {
+            guards.push(guard);
+        }
     }
     fn cancel(&self) {
-        self.live.store(false,Ordering::Release);
-        for guard in self.request_guards.lock().unwrap_or_else(|error|error.into_inner()).iter(){guard.store(false,Ordering::Release);}
-        let _=self.stop.send(Command::Stop);
+        self.live.store(false, Ordering::Release);
+        for guard in self
+            .request_guards
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .iter()
+        {
+            guard.store(false, Ordering::Release);
+        }
+        let _ = self.stop.send(Command::Stop);
     }
-    fn mixer(&self,request:razer_pages::features::SeirenStreamMixerRequested)->anyhow::Result<Receiver<anyhow::Result<worker::MixerReceipt>>> {
+    fn mixer(
+        &self,
+        request: razer_pages::features::SeirenStreamMixerRequested,
+    ) -> anyhow::Result<Receiver<anyhow::Result<worker::MixerReceipt>>> {
         self.retain_guard(request.guard());
-        let (reply,receiver)=mpsc::channel();self.stop.send(Command::Mixer{request,reply}).context("Audio_StreamMixer owner stopped")?;Ok(receiver)
-    }
-    fn capture(&self,request:razer_pages::features::SeirenStreamMixerCaptureChanged)->anyhow::Result<()> {
-        self.retain_guard(request.guard());
-        self.stop.send(Command::Capture(request)).context("Audio_StreamMixer owner stopped")
-    }
-    pub(super) fn request(&self,request:razer_pages::features::SeirenEqRequested)->anyhow::Result<Receiver<anyhow::Result<razer_device::seiren_eq::Report>>> {
-        self.retain_guard(request.guard());
-        let (reply,receiver)=mpsc::channel();
-        self.stop.send(Command::Eq{request,reply}).context("Audio_StreamMixer owner stopped")?;
+        let (reply, receiver) = mpsc::channel();
+        self.stop
+            .send(Command::Mixer { request, reply })
+            .context("Audio_StreamMixer owner stopped")?;
         Ok(receiver)
     }
-    fn retire(mut self,identity:String) -> Option<Retired> {
+    fn capture(
+        &self,
+        request: razer_pages::features::SeirenStreamMixerCaptureChanged,
+    ) -> anyhow::Result<()> {
+        self.retain_guard(request.guard());
+        self.stop
+            .send(Command::Capture(request))
+            .context("Audio_StreamMixer owner stopped")
+    }
+    pub(super) fn request(
+        &self,
+        request: razer_pages::features::SeirenEqRequested,
+    ) -> anyhow::Result<Receiver<anyhow::Result<razer_device::seiren_eq::Report>>> {
+        self.retain_guard(request.guard());
+        let (reply, receiver) = mpsc::channel();
+        self.stop
+            .send(Command::Eq { request, reply })
+            .context("Audio_StreamMixer owner stopped")?;
+        Ok(receiver)
+    }
+    fn retire(mut self, identity: String) -> Option<Retired> {
         self.cancel();
-        self.worker.take().map(|worker|Retired{identity,worker})
+        self.worker
+            .take()
+            .map(|worker| Retired { identity, worker })
     }
 
     fn finish(mut self) {
@@ -96,9 +150,15 @@ impl Session {
         }
     }
 }
-fn remove_view(storage:&mut razer_storage::host::HostStorage,view_id:u64) {
-    use razer_storage::host::{HostStorageCall,HostStoreKind};
-    let _=storage.call(HostStorageCall{store:HostStoreKind::Window,sender_id:view_id,action:"removeWindowStorageItem".into(),payload:serde_json::json!({"key":razer_device::seiren_stream_mixer::ACTIVE_KEY}),target_url_array:vec![]});
+fn remove_view(storage: &mut razer_storage::host::HostStorage, view_id: u64) {
+    use razer_storage::host::{HostStorageCall, HostStoreKind};
+    let _ = storage.call(HostStorageCall {
+        store: HostStoreKind::Window,
+        sender_id: view_id,
+        action: "removeWindowStorageItem".into(),
+        payload: serde_json::json!({"key":razer_device::seiren_stream_mixer::ACTIVE_KEY}),
+        target_url_array: vec![],
+    });
     storage.close_view(view_id);
 }
 
@@ -111,13 +171,17 @@ fn enabled(client: &mut ServiceClient, enable: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-
 impl AppShell {
     /// yn/Rr capture and RECORDING.enablingMapping target one source hotkey
     /// service. Forward those operations to the retained Rust Mixer owners.
-    pub(super) fn set_audio_global_shortcuts_enabled(&mut self,enabled:bool) {
-        let owners = self.audio_notifications.values().map(|session| session.stop.clone());
-        for error in broadcast_shortcut_state(&mut self.audio_global_shortcuts_enabled, enabled, owners) {
+    pub(super) fn set_audio_global_shortcuts_enabled(&mut self, enabled: bool) {
+        let owners = self
+            .audio_notifications
+            .values()
+            .map(|session| session.stop.clone());
+        for error in
+            broadcast_shortcut_state(&mut self.audio_global_shortcuts_enabled, enabled, owners)
+        {
             eprintln!("[Audio_StreamMixer] shortcut owner closed: {error}");
         }
     }
@@ -131,7 +195,7 @@ impl AppShell {
             for session in sessions.values() {
                 session.cancel();
                 this.cancel_profile_notification_sender(session.view_id);
-                remove_view(&mut this.host_storage,session.view_id);
+                remove_view(&mut this.host_storage, session.view_id);
             }
             let cleanup = cx.background_executor().spawn(async move {
                 for (_, session) in sessions {
@@ -161,14 +225,26 @@ impl AppShell {
         let removed = self
             .audio_notifications
             .keys()
-            .filter(|key| desired.get(*key).is_none_or(|(_,route,_)|self.audio_notifications.get(*key).is_none_or(|owner|owner.route_key!=route.as_ref().map(route_key).unwrap_or_else(||"local".into()))))
+            .filter(|key| {
+                desired.get(*key).is_none_or(|(_, route, _)| {
+                    self.audio_notifications.get(*key).is_none_or(|owner| {
+                        owner.route_key
+                            != route
+                                .as_ref()
+                                .map(route_key)
+                                .unwrap_or_else(|| "local".into())
+                    })
+                })
+            })
             .cloned()
             .collect::<Vec<_>>();
         for key in removed {
-            if let Some(session)=self.audio_notifications.remove(&key) {
+            if let Some(session) = self.audio_notifications.remove(&key) {
                 self.cancel_profile_notification_sender(session.view_id);
-                remove_view(&mut self.host_storage,session.view_id);
-                if let Some(worker)=session.retire(key){self.audio_notification_cleanup.push(worker);}
+                remove_view(&mut self.host_storage, session.view_id);
+                if let Some(worker) = session.retire(key) {
+                    self.audio_notification_cleanup.push(worker);
+                }
             }
         }
         // Joining only finished threads keeps teardown ownership without
@@ -182,23 +258,56 @@ impl AppShell {
             }
         }
         self.audio_notification_cleanup = pending;
-        for (identity, (product_id,observation,rate)) in desired {
-            let workspace=self.devices.iter().find(|workspace|workspace.read(cx).identity(cx)==identity).cloned().expect("retained audio workspace");
-            if self.audio_notifications.contains_key(&identity)||self.audio_notification_cleanup.iter().any(|retired|retired.identity==identity) {
+        for (identity, (product_id, observation, rate)) in desired {
+            let workspace = self
+                .devices
+                .iter()
+                .find(|workspace| workspace.read(cx).identity(cx) == identity)
+                .cloned()
+                .expect("retained audio workspace");
+            if self.audio_notifications.contains_key(&identity)
+                || self
+                    .audio_notification_cleanup
+                    .iter()
+                    .any(|retired| retired.identity == identity)
+            {
                 continue;
             }
             let (stop, stop_rx) = mpsc::channel();
             let (status_tx, status_rx) = mpsc::channel();
-            let live=Arc::new(AtomicBool::new(true));let worker_live=live.clone();
-            let route_key=observation.as_ref().map(route_key).unwrap_or_else(||"local".into());
-            let view_id=next_view();
-            let view_name=format!("razer-local:audio:{identity}");
-            let shortcuts_enabled=self.audio_global_shortcuts_enabled;
-            self.host_storage.register_view(razer_storage::host::HostStorageView{id:view_id,url:view_name.clone(),remote:false,destroyed:false,crashed:false,disposed:false,tracked_url:true});
+            let live = Arc::new(AtomicBool::new(true));
+            let worker_live = live.clone();
+            let route_key = observation
+                .as_ref()
+                .map(route_key)
+                .unwrap_or_else(|| "local".into());
+            let view_id = next_view();
+            let view_name = format!("razer-local:audio:{identity}");
+            let shortcuts_enabled = self.audio_global_shortcuts_enabled;
+            self.host_storage
+                .register_view(razer_storage::host::HostStorageView {
+                    id: view_id,
+                    url: view_name.clone(),
+                    remote: false,
+                    destroyed: false,
+                    crashed: false,
+                    disposed: false,
+                    tracked_url: true,
+                });
             let worker = match thread::Builder::new()
                 .name(format!("razer-audio-{product_id}"))
                 .spawn(move || {
-                    if let Err(error) = worker::run(stop_rx, status_tx.clone(), observation,product_id,rate,view_id,view_name,worker_live,shortcuts_enabled) {
+                    if let Err(error) = worker::run(
+                        stop_rx,
+                        status_tx.clone(),
+                        observation,
+                        product_id,
+                        rate,
+                        view_id,
+                        view_name,
+                        worker_live,
+                        shortcuts_enabled,
+                    ) {
                         worker::report(
                             &status_tx,
                             format!("AudioEnumerator 初始化或通知读取失败：{error:#}"),
@@ -207,7 +316,7 @@ impl AppShell {
                 }) {
                 Ok(worker) => worker,
                 Err(error) => {
-                    remove_view(&mut self.host_storage,view_id);
+                    remove_view(&mut self.host_storage, view_id);
                     window.push_notification(
                         format!("AudioEnumerator 工作线程启动失败：{error}"),
                         cx,
@@ -230,36 +339,111 @@ impl AppShell {
                         }
                     };
                     let current = this.update_in(cx, |this, window, cx| {
-                        if !this.audio_notifications.get(&owner).is_some_and(|session|session.view_id==view_id) {
+                        if !this
+                            .audio_notifications
+                            .get(&owner)
+                            .is_some_and(|session| session.view_id == view_id)
+                        {
                             return false;
                         }
                         for message in messages {
                             match message {
-                                Update::Diagnostic(message)=>{this.status=message.clone();window.push_notification(message,cx);}
-                                Update::Ready(ready)=>{workspace.update(cx,|workspace,cx|workspace.observe_seiren_sampling_ready(ready,cx));}
-                                Update::Native(event)=>{workspace.update(cx,|workspace,cx|workspace.observe_seiren_native_event(event,window,cx));}
-                                Update::Host(call,reply)=>{let result=this.host_storage.call(call).map_err(|error|format!("{error:#}"));let _=reply.send(result);}
-                                Update::Mixer(observation)=>{workspace.update(cx,|workspace,cx|workspace.observe_seiren_stream_mixer(observation,window,cx));}
-                                Update::CaptureMode(request,enabled)=>{
-                                    if workspace.read(cx).seiren_stream_mixer_capture_matches(&request,cx) {
-                                        workspace.update(cx,|workspace,cx|workspace.observe_seiren_stream_mixer_mode(enabled,cx));
+                                Update::Diagnostic(message) => {
+                                    this.status = message.clone();
+                                    window.push_notification(message, cx);
+                                }
+                                Update::Ready(ready) => {
+                                    workspace.update(cx, |workspace, cx| {
+                                        workspace.observe_seiren_sampling_ready(ready, cx)
+                                    });
+                                }
+                                Update::Native(event) => {
+                                    workspace.update(cx, |workspace, cx| {
+                                        workspace.observe_seiren_native_event(event, window, cx)
+                                    });
+                                }
+                                Update::Host(call, reply) => {
+                                    let result = this
+                                        .host_storage
+                                        .call(call)
+                                        .map_err(|error| format!("{error:#}"));
+                                    let _ = reply.send(result);
+                                }
+                                Update::Mixer(observation) => {
+                                    workspace.update(cx, |workspace, cx| {
+                                        workspace.observe_seiren_stream_mixer(
+                                            observation,
+                                            window,
+                                            cx,
+                                        )
+                                    });
+                                }
+                                Update::CaptureMode(request, enabled) => {
+                                    if workspace
+                                        .read(cx)
+                                        .seiren_stream_mixer_capture_matches(&request, cx)
+                                    {
+                                        workspace.update(cx, |workspace, cx| {
+                                            workspace.observe_seiren_stream_mixer_mode(enabled, cx)
+                                        });
                                     }
                                 }
-                                Update::DeviceVersion(request,reply)=>{this.persist_seiren_device_version(workspace.clone(),request,reply,window,cx);}
-                                Update::ProfileNotification{sender_id,product_id,container_id,preset_name,timer_tick}=>{
-                                    let edition=workspace.read(cx).device(cx).edition_id;
-                                    let locale=razer_i18n::locale().to_ascii_lowercase();
-                                    let result=razer_device::seiren_stream_mixer::product_name(product_id,edition,&locale).map(str::to_owned).and_then(|product_name|this.publish_stream_mixer_profile_notification(sender_id,container_id,product_name,preset_name,timer_tick,window,cx));
-                                    if let Err(error)=result {this.status=format!("Mixer profile notification: {error:#}");}
+                                Update::DeviceVersion(request, reply) => {
+                                    this.persist_seiren_device_version(
+                                        workspace.clone(),
+                                        request,
+                                        reply,
+                                        window,
+                                        cx,
+                                    );
+                                }
+                                Update::ProfileNotification {
+                                    sender_id,
+                                    product_id,
+                                    container_id,
+                                    preset_name,
+                                    timer_tick,
+                                } => {
+                                    let edition = workspace.read(cx).device(cx).edition_id;
+                                    let locale = razer_i18n::locale().to_ascii_lowercase();
+                                    let result = razer_device::seiren_stream_mixer::product_name(
+                                        product_id, edition, &locale,
+                                    )
+                                    .map(str::to_owned)
+                                    .and_then(|product_name| {
+                                        this.publish_stream_mixer_profile_notification(
+                                            sender_id,
+                                            container_id,
+                                            product_name,
+                                            preset_name,
+                                            timer_tick,
+                                            window,
+                                            cx,
+                                        )
+                                    });
+                                    if let Err(error) = result {
+                                        this.status =
+                                            format!("Mixer profile notification: {error:#}");
+                                    }
                                 }
                             }
                             cx.notify();
                         }
-                        let sessions=this.audio_notifications.values().map(|session|(session.view_id,session.stop.clone())).collect::<Vec<_>>();
-                        for (id,command) in sessions {
-                            if let Ok(events)=this.host_storage.drain_events(id) {
-                                let events=events.into_iter().filter(|event|event.channel=="windowStorageEvent").map(|event|event.payload).collect::<Vec<_>>();
-                                if !events.is_empty(){let _=command.send(Command::HostEvents(events));}
+                        let sessions = this
+                            .audio_notifications
+                            .values()
+                            .map(|session| (session.view_id, session.stop.clone()))
+                            .collect::<Vec<_>>();
+                        for (id, command) in sessions {
+                            if let Ok(events) = this.host_storage.drain_events(id) {
+                                let events = events
+                                    .into_iter()
+                                    .filter(|event| event.channel == "windowStorageEvent")
+                                    .map(|event| event.payload)
+                                    .collect::<Vec<_>>();
+                                if !events.is_empty() {
+                                    let _ = command.send(Command::HostEvents(events));
+                                }
                             }
                         }
                         true
@@ -278,42 +462,98 @@ impl AppShell {
                     route_key,
                     view_id,
                     live,
-                    request_guards:Mutex::new(Vec::new()),
+                    request_guards: Mutex::new(Vec::new()),
                 },
             );
         }
     }
-    pub(super) fn request_seiren_stream_mixer(&mut self,workspace:Entity<ProductWorkspace>,request:razer_pages::features::SeirenStreamMixerRequested,window:&mut Window,cx:&mut Context<Self>) {
-        if self.close_requested||!workspace.read(cx).seiren_stream_mixer_request_matches(&request,cx){return;}
-        self.sync_audio_notifications(window,cx);let identity=workspace.read(cx).identity(cx);
-        let receiver=self.audio_notifications.get(&identity).context("Mixer owner is still cleaning up").and_then(|owner|owner.mixer(request.clone()));
-        self.seiren_eq_workers+=1;
-        cx.spawn_in(window,async move |this,cx| {
-            let result=cx.background_spawn(async move {
-                receiver?.recv().context("Mixer owner closed before operation receipt")?
-            }).await;
-            let _=this.update_in(cx,|this,window,cx|{
-                this.seiren_eq_workers=this.seiren_eq_workers.saturating_sub(1);
-                let current=this.devices.contains(&workspace)&&workspace.read(cx).identity(cx)==identity&&workspace.read(cx).seiren_stream_mixer_request_matches(&request,cx);
+    pub(super) fn request_seiren_stream_mixer(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        request: razer_pages::features::SeirenStreamMixerRequested,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.close_requested
+            || !workspace
+                .read(cx)
+                .seiren_stream_mixer_request_matches(&request, cx)
+        {
+            return;
+        }
+        self.sync_audio_notifications(window, cx);
+        let identity = workspace.read(cx).identity(cx);
+        let receiver = self
+            .audio_notifications
+            .get(&identity)
+            .context("Mixer owner is still cleaning up")
+            .and_then(|owner| owner.mixer(request.clone()));
+        self.seiren_eq_workers += 1;
+        cx.spawn_in(window, async move |this, cx| {
+            let result = cx
+                .background_spawn(async move {
+                    receiver?
+                        .recv()
+                        .context("Mixer owner closed before operation receipt")?
+                })
+                .await;
+            let _ = this.update_in(cx, |this, window, cx| {
+                this.seiren_eq_workers = this.seiren_eq_workers.saturating_sub(1);
+                let current = this.devices.contains(&workspace)
+                    && workspace.read(cx).identity(cx) == identity
+                    && workspace
+                        .read(cx)
+                        .seiren_stream_mixer_request_matches(&request, cx);
                 if current {
-                    let error=match result {
-                        Ok(worker::MixerReceipt::LocalSaved)=>{this.status="混音器设置已保存到本机；当前设备未连接，未写入设备。".into();None}
-                        Ok(worker::MixerReceipt::DeviceSubmitted)=>None,
-                        Err(error)=>Some(format!("混音器操作尚未确认：{error:#}")),
+                    let error = match result {
+                        Ok(worker::MixerReceipt::LocalSaved) => {
+                            this.status =
+                                "混音器设置已保存到本机；当前设备未连接，未写入设备。".into();
+                            None
+                        }
+                        Ok(worker::MixerReceipt::DeviceSubmitted) => None,
+                        Err(error) => Some(format!("混音器操作尚未确认：{error:#}")),
                     };
-                    if let Some(message)=&error {this.status=message.clone();}
-                    workspace.update(cx,|workspace,cx|workspace.finish_seiren_stream_mixer(&request,error,window,cx));
+                    if let Some(message) = &error {
+                        this.status = message.clone();
+                    }
+                    workspace.update(cx, |workspace, cx| {
+                        workspace.finish_seiren_stream_mixer(&request, error, window, cx)
+                    });
                 }
-                if this.close_requested&&this.save_task.is_none(){this.continue_save_queue(true,cx);}cx.notify();
+                if this.close_requested && this.save_task.is_none() {
+                    this.continue_save_queue(true, cx);
+                }
+                cx.notify();
             });
-        }).detach();
+        })
+        .detach();
     }
-    pub(super) fn set_seiren_stream_mixer_capture(&mut self,workspace:Entity<ProductWorkspace>,request:razer_pages::features::SeirenStreamMixerCaptureChanged,window:&mut Window,cx:&mut Context<Self>) {
-        if self.close_requested||!workspace.read(cx).seiren_stream_mixer_capture_matches(&request,cx){return;}
-        self.sync_audio_notifications(window,cx);
-        let identity=workspace.read(cx).identity(cx);
-        let result=self.audio_notifications.get(&identity).context("当前混音器未连接本地音频服务").and_then(|owner|owner.capture(request));
-        if let Err(error)=result {self.status=format!("混音器快捷键捕获尚未启动：{error:#}");cx.notify();}
+    pub(super) fn set_seiren_stream_mixer_capture(
+        &mut self,
+        workspace: Entity<ProductWorkspace>,
+        request: razer_pages::features::SeirenStreamMixerCaptureChanged,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.close_requested
+            || !workspace
+                .read(cx)
+                .seiren_stream_mixer_capture_matches(&request, cx)
+        {
+            return;
+        }
+        self.sync_audio_notifications(window, cx);
+        let identity = workspace.read(cx).identity(cx);
+        let result = self
+            .audio_notifications
+            .get(&identity)
+            .context("当前混音器未连接本地音频服务")
+            .and_then(|owner| owner.capture(request));
+        if let Err(error) = result {
+            self.status = format!("混音器快捷键捕获尚未启动：{error:#}");
+            cx.notify();
+        }
     }
 }
 
@@ -328,12 +568,30 @@ mod audio_shortcut_lifecycle_tests {
         assert!(!enabled); // sync_audio_notifications passes this to new workers.
         let (first, first_events) = mpsc::channel();
         let (second, second_events) = mpsc::channel();
-        assert!(broadcast_shortcut_state(&mut enabled, true, [first.clone(), second.clone()]).is_empty());
-        assert!(matches!(first_events.try_recv(), Ok(Command::GlobalShortcutsEnabled(true))));
-        assert!(matches!(second_events.try_recv(), Ok(Command::GlobalShortcutsEnabled(true))));
-        assert!(broadcast_shortcut_state(&mut enabled, false, [first.clone(), second.clone()]).is_empty());
-        assert!(matches!(first_events.try_recv(), Ok(Command::GlobalShortcutsEnabled(false))));
-        assert!(matches!(second_events.try_recv(), Ok(Command::GlobalShortcutsEnabled(false))));
+        assert!(
+            broadcast_shortcut_state(&mut enabled, true, [first.clone(), second.clone()])
+                .is_empty()
+        );
+        assert!(matches!(
+            first_events.try_recv(),
+            Ok(Command::GlobalShortcutsEnabled(true))
+        ));
+        assert!(matches!(
+            second_events.try_recv(),
+            Ok(Command::GlobalShortcutsEnabled(true))
+        ));
+        assert!(
+            broadcast_shortcut_state(&mut enabled, false, [first.clone(), second.clone()])
+                .is_empty()
+        );
+        assert!(matches!(
+            first_events.try_recv(),
+            Ok(Command::GlobalShortcutsEnabled(false))
+        ));
+        assert!(matches!(
+            second_events.try_recv(),
+            Ok(Command::GlobalShortcutsEnabled(false))
+        ));
         broadcast_shortcut_state(&mut enabled, false, [first, second]);
         assert!(first_events.try_recv().is_err());
         assert!(second_events.try_recv().is_err());
@@ -348,6 +606,9 @@ mod audio_shortcut_lifecycle_tests {
         let errors = broadcast_shortcut_state(&mut enabled, true, [closed, live]);
         assert_eq!(errors.len(), 1);
         assert!(enabled);
-        assert!(matches!(events.try_recv(), Ok(Command::GlobalShortcutsEnabled(true))));
+        assert!(matches!(
+            events.try_recv(),
+            Ok(Command::GlobalShortcutsEnabled(true))
+        ));
     }
 }

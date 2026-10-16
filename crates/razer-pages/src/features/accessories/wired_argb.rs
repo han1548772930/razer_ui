@@ -124,10 +124,7 @@ impl Spec {
 fn spec(pid: u32) -> &'static Spec {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("wired_argb_data.json"))
-                .expect("audited ARGB sources")
-        })
+        .get_or_init(|| crate::data::wired_argb_data!())
         .iter()
         .find(|spec| spec.product_id == pid)
         .expect("supported ARGB product")

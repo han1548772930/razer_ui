@@ -22,10 +22,7 @@ struct Node {
 }
 fn records() -> &'static [WhatsNew] {
     static DATA: OnceLock<Vec<WhatsNew>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("source_owner_whats_new_data.json"))
-            .expect("actual current WhatsNewDialog projection")
-    })
+    DATA.get_or_init(|| crate::data::source_owner_whats_new_data!())
 }
 fn record(pid: u32) -> Option<&'static WhatsNew> {
     records().iter().find(|row| row.product_id == pid)

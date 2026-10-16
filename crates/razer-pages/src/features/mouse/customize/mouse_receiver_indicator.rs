@@ -19,10 +19,10 @@ use std::{
     },
     time::Duration,
 };
-#[path = "mouse_receiver_indicator_state.rs"]
-mod source;
 #[path = "mouse_receiver_legacy.rs"]
 mod legacy;
+#[path = "mouse_receiver_indicator_state.rs"]
+mod source;
 
 #[derive(Deserialize)]
 struct Source {
@@ -36,10 +36,7 @@ struct Source {
 fn source(product_id: u32) -> Option<&'static Source> {
     static SOURCE: OnceLock<Vec<Source>> = OnceLock::new();
     SOURCE
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_receiver_indicator_data.json"))
-                .expect("verified current receiver resources")
-        })
+        .get_or_init(|| crate::data::mouse_receiver_indicator_data!())
         .iter()
         .find(|source| source.product_id == product_id)
 }
@@ -127,7 +124,7 @@ pub(super) struct State {
     legacy_image_epoch: u64,
     legacy_tip_hovered: bool,
     legacy_binding_requested: bool,
-    legacy_binding_requests:Vec<MouseReceiverIndicatorRequested>,
+    legacy_binding_requests: Vec<MouseReceiverIndicatorRequested>,
 }
 impl State {
     pub(super) fn new(cx: &mut Context<MouseProductWorkspace>) -> Self {
@@ -152,7 +149,7 @@ impl State {
             legacy_image_epoch: 0,
             legacy_tip_hovered: false,
             legacy_binding_requested: false,
-            legacy_binding_requests:Vec::new(),
+            legacy_binding_requests: Vec::new(),
         }
     }
     fn cancel_requests(&mut self) {
@@ -167,7 +164,9 @@ impl State {
     }
     pub(super) fn cancel(&mut self) {
         self.cancel_requests();
-        for request in self.legacy_binding_requests.drain(..) {request.cancel();}
+        for request in self.legacy_binding_requests.drain(..) {
+            request.cancel();
+        }
         if let Some(monitor) = self.monitor.take() {
             monitor.valid.store(false, Ordering::Release);
         }
@@ -197,10 +196,11 @@ impl MouseProductWorkspace {
         for index in 0..3 {
             let selected = source::MODES
                 .iter()
-                .position(|(value, _)| Some(*value) == source::mode(&self.receiver_indicator.configuration, index))
+                .position(|(value, _)| {
+                    Some(*value) == source::mode(&self.receiver_indicator.configuration, index)
+                })
                 .map(IndexPath::new);
-            let select = cx
-                .new(|cx| SelectState::new(choices(), selected, window, cx));
+            let select = cx.new(|cx| SelectState::new(choices(), selected, window, cx));
             self.subscriptions.push(cx.subscribe_in(
                 &select,
                 window,
@@ -268,8 +268,11 @@ impl MouseProductWorkspace {
             self.receiver_indicator.guide = false;
             self.receiver_indicator.guide_tab = 0;
             self.receiver_indicator.preview = "none";
-            self.receiver_indicator.help.update(cx, |help, _| *help = Help::default());
-            self.receiver_indicator.legacy_image_epoch = self.receiver_indicator.legacy_image_epoch.wrapping_add(1);
+            self.receiver_indicator
+                .help
+                .update(cx, |help, _| *help = Help::default());
+            self.receiver_indicator.legacy_image_epoch =
+                self.receiver_indicator.legacy_image_epoch.wrapping_add(1);
             self.receiver_indicator.legacy_tip_hovered = false;
         }
         self.receiver_indicator.widget_mounted = mounted;
@@ -311,11 +314,7 @@ impl MouseProductWorkspace {
             return;
         }
         self.receiver_indicator.initialized = Some(scope);
-        self.enqueue_receiver_indicator(
-            MouseReceiverAction::Initialize,
-            scope,
-            cx,
-        );
+        self.enqueue_receiver_indicator(MouseReceiverAction::Initialize, scope, cx);
     }
     fn enqueue_receiver_indicator(
         &mut self,
@@ -331,14 +330,21 @@ impl MouseProductWorkspace {
             profile: self.snapshot(),
             valid: Arc::new(AtomicBool::new(true)),
         };
-        if matches!(request.action,MouseReceiverAction::LegacyBindingInfo) {
+        if matches!(request.action, MouseReceiverAction::LegacyBindingInfo) {
             // Mounted TopView owns this getter independently of the active
             // profile. A profile reload cancels LED writes, not this read.
-            self.receiver_indicator.legacy_binding_requests.push(request.clone());
+            self.receiver_indicator
+                .legacy_binding_requests
+                .push(request.clone());
             cx.emit(request);
             return;
         }
-        if matches!(request.action, MouseReceiverAction::LegacyInitialize | MouseReceiverAction::LegacySet { .. } | MouseReceiverAction::LegacyBindingInfo) {
+        if matches!(
+            request.action,
+            MouseReceiverAction::LegacyInitialize
+                | MouseReceiverAction::LegacySet { .. }
+                | MouseReceiverAction::LegacyBindingInfo
+        ) {
             // MW persists every allowed event before its NORMAL_SKIPPABLE
             // device queue coalesces setters. Keep all event owners alive;
             // coalescing here would silently drop local version increments.
@@ -373,7 +379,9 @@ impl MouseProductWorkspace {
         let Some(scope) = self.mouse_polling_scope(cx) else {
             return;
         };
-        let Ok(configuration) = source::with_mode(&self.receiver_indicator.configuration, index, mode) else {
+        let Ok(configuration) =
+            source::with_mode(&self.receiver_indicator.configuration, index, mode)
+        else {
             return;
         };
         self.receiver_indicator.configuration = configuration.clone();
@@ -388,10 +396,16 @@ impl MouseProductWorkspace {
         request: &MouseReceiverIndicatorRequested,
         cx: &App,
     ) -> bool {
-        if matches!(request.action,MouseReceiverAction::LegacyBindingInfo) {
+        if matches!(request.action, MouseReceiverAction::LegacyBindingInfo) {
             return request.is_valid()
-                &&self.mouse_polling_scope(cx).is_some_and(|scope|scope.same_device_connection(request.scope))
-                &&self.receiver_indicator.legacy_binding_requests.iter().any(|pending|pending.sequence==request.sequence);
+                && self
+                    .mouse_polling_scope(cx)
+                    .is_some_and(|scope| scope.same_device_connection(request.scope))
+                && self
+                    .receiver_indicator
+                    .legacy_binding_requests
+                    .iter()
+                    .any(|pending| pending.sequence == request.sequence);
         }
         request.is_valid()
             && self.mouse_polling_scope(cx) == Some(request.scope)
@@ -400,8 +414,16 @@ impl MouseProductWorkspace {
                 .pending
                 .as_ref()
                 .is_some_and(|pending| pending.sequence == request.sequence)
-                || matches!(request.action, MouseReceiverAction::LegacyInitialize | MouseReceiverAction::LegacySet { .. } | MouseReceiverAction::LegacyBindingInfo)
-                    && self.receiver_indicator.queued.iter().any(|queued| queued.sequence == request.sequence))
+                || matches!(
+                    request.action,
+                    MouseReceiverAction::LegacyInitialize
+                        | MouseReceiverAction::LegacySet { .. }
+                        | MouseReceiverAction::LegacyBindingInfo
+                ) && self
+                    .receiver_indicator
+                    .queued
+                    .iter()
+                    .any(|queued| queued.sequence == request.sequence))
     }
     pub fn finish_receiver_indicator(
         &mut self,
@@ -409,18 +431,46 @@ impl MouseProductWorkspace {
         report: Option<Report>,
         cx: &mut Context<Self>,
     ) {
-        if matches!(request.action,MouseReceiverAction::LegacyBindingInfo) {
-            if let Some(index)=self.receiver_indicator.legacy_binding_requests.iter().position(|pending|pending.sequence==request.sequence) {
-                self.receiver_indicator.legacy_binding_requests.remove(index).cancel();
+        if matches!(request.action, MouseReceiverAction::LegacyBindingInfo) {
+            if let Some(index) = self
+                .receiver_indicator
+                .legacy_binding_requests
+                .iter()
+                .position(|pending| pending.sequence == request.sequence)
+            {
+                self.receiver_indicator
+                    .legacy_binding_requests
+                    .remove(index)
+                    .cancel();
             }
-            cx.notify();return;
+            cx.notify();
+            return;
         }
-        if matches!(request.action, MouseReceiverAction::LegacyInitialize | MouseReceiverAction::LegacySet { .. } | MouseReceiverAction::LegacyBindingInfo) {
-            if self.receiver_indicator.pending.as_ref().is_some_and(|pending| pending.sequence == request.sequence) {
+        if matches!(
+            request.action,
+            MouseReceiverAction::LegacyInitialize
+                | MouseReceiverAction::LegacySet { .. }
+                | MouseReceiverAction::LegacyBindingInfo
+        ) {
+            if self
+                .receiver_indicator
+                .pending
+                .as_ref()
+                .is_some_and(|pending| pending.sequence == request.sequence)
+            {
                 self.receiver_indicator.pending.take().unwrap().cancel();
                 self.receiver_indicator.pending = self.receiver_indicator.queued.pop_front();
-            } else if let Some(index) = self.receiver_indicator.queued.iter().position(|queued| queued.sequence == request.sequence) {
-                self.receiver_indicator.queued.remove(index).unwrap().cancel();
+            } else if let Some(index) = self
+                .receiver_indicator
+                .queued
+                .iter()
+                .position(|queued| queued.sequence == request.sequence)
+            {
+                self.receiver_indicator
+                    .queued
+                    .remove(index)
+                    .unwrap()
+                    .cancel();
             }
             cx.notify();
             return;
@@ -455,7 +505,9 @@ impl MouseProductWorkspace {
         cx: &App,
     ) -> bool {
         monitor.is_valid()
-            && self.mouse_polling_scope(cx).is_some_and(|scope| monitor.matches_scope(scope))
+            && self
+                .mouse_polling_scope(cx)
+                .is_some_and(|scope| monitor.matches_scope(scope))
             && self
                 .receiver_indicator
                 .monitor
@@ -506,7 +558,11 @@ impl MouseProductWorkspace {
             cx.notify();
         }
     }
-    pub fn restart_receiver_initialization(&mut self, monitor: &MouseReceiverMonitorRequested, cx: &mut Context<Self>) {
+    pub fn restart_receiver_initialization(
+        &mut self,
+        monitor: &MouseReceiverMonitorRequested,
+        cx: &mut Context<Self>,
+    ) {
         if self.receiver_monitor_matches(monitor, cx) {
             self.receiver_indicator.initialized = None;
             self.sync_receiver_indicator(cx);
@@ -583,15 +639,25 @@ impl MouseProductWorkspace {
                                 v_flex()
                                     .gap(surface::css(10.))
                                     .child(t(["LED_1", "LED_2", "LED_3"][index]))
-                                    .when_some(source::selector_label(&self.receiver_indicator.configuration, index), |row, label| row.child(
-                                        razer_widgets::synapse_select::select_pointer(select)
-                                            .items(choices())
-                                            .selected_text(t(label))
-                                            .accessibility_label(t(
-                                                ["LED_1", "LED_2", "LED_3"][index]
-                                            ))
-                                            .w(surface::css(160.)),
-                                    ))
+                                    .when_some(
+                                        source::selector_label(
+                                            &self.receiver_indicator.configuration,
+                                            index,
+                                        ),
+                                        |row, label| {
+                                            row.child(
+                                                razer_widgets::synapse_select::select_pointer(
+                                                    select,
+                                                )
+                                                .items(choices())
+                                                .selected_text(t(label))
+                                                .accessibility_label(t(
+                                                    ["LED_1", "LED_2", "LED_3"][index]
+                                                ))
+                                                .w(surface::css(160.)),
+                                            )
+                                        },
+                                    )
                             },
                         ),
                     ),
@@ -599,8 +665,15 @@ impl MouseProductWorkspace {
         )
         .into_any_element()
     }
-    pub(super) fn receiver_guide(&self, window: &mut Window, cx: &mut Context<Self>) -> Option<AnyElement> {
-        if !self.receiver_indicator.guide || self.page != "TAB_CUSTOMIZE" || !self.receiver_indicator_visible() {
+    pub(super) fn receiver_guide(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if !self.receiver_indicator.guide
+            || self.page != "TAB_CUSTOMIZE"
+            || !self.receiver_indicator_visible()
+        {
             return None;
         }
         let spec = source(self.spec.product_id)?;
@@ -711,14 +784,32 @@ impl MouseProductWorkspace {
         // parts without adding that behavior (190 main.js ja complete owner).
         let viewport = window.viewport_size();
         Some(
-            deferred(anchored().position(point(px(0.), px(0.))).child(
-                div().id("mouse-receiver-guide-overlay").absolute().top_0().left_0()
-                    .w(viewport.width).h(viewport.height).flex().items_center().justify_center()
-                    .role(Role::Dialog).occlude().on_click(|_, _, cx| cx.stop_propagation())
-                    .child(DialogBackdrop::new().absolute().inset_0().bg(Colors::overlay()))
-                    .child(DialogPopup::new().child(card)),
-            )).with_priority(999)
-                .into_any_element(),
+            deferred(
+                anchored().position(point(px(0.), px(0.))).child(
+                    div()
+                        .id("mouse-receiver-guide-overlay")
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .w(viewport.width)
+                        .h(viewport.height)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .role(Role::Dialog)
+                        .occlude()
+                        .on_click(|_, _, cx| cx.stop_propagation())
+                        .child(
+                            DialogBackdrop::new()
+                                .absolute()
+                                .inset_0()
+                                .bg(Colors::overlay()),
+                        )
+                        .child(DialogPopup::new().child(card)),
+                ),
+            )
+            .with_priority(999)
+            .into_any_element(),
         )
     }
 

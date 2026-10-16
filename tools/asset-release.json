@@ -41913,6 +41913,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": null
+    "revision": "bf645f811bd14e5ab654eb64f835a79d6a69b2df"
   }
 }

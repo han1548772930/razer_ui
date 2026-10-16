@@ -20,7 +20,8 @@ impl Setting<'_> {
         match self {
             Self::Scroll(submission) => {
                 submission.validate(product_id)?;
-                razer_device::mouse_current_dpi::capability(product_id).context("Scroll physical factory is absent")?
+                razer_device::mouse_current_dpi::capability(product_id)
+                    .context("Scroll physical factory is absent")?
                     .receiver_session(physical_product_id, peer)
             }
             Self::KeyboardBrightness(percent) => {
@@ -57,13 +58,18 @@ impl Setting<'_> {
     ) -> anyhow::Result<Value> {
         let product_id = session.transport().product_id;
         if let Self::Scroll(submission) = self {
-            let executor = razer_device::mouse_scroll::MouseScroll::new(device, session.transport())?;
-            let observation = session.observe(device, next, validate, |next, guard| executor.submit(submission, next, guard))?;
-            return Ok(json!({"report":observation.reading,"receiver_before":observation.receiver_before,
+            let executor =
+                razer_device::mouse_scroll::MouseScroll::new(device, session.transport())?;
+            let observation = session.observe(device, next, validate, |next, guard| {
+                executor.submit(submission, next, guard)
+            })?;
+            return Ok(
+                json!({"report":observation.reading,"receiver_before":observation.receiver_before,
                 "receiver_after":observation.receiver_after,"setting_scope":"source_scroll_profile",
                 "source_class":razer_device::mouse_current_dpi::capability(product_id)
                     .context("Current scroll command owner is absent")?.transport().source_class,
-                "transport_source_class":session.transport().source_class}));
+                "transport_source_class":session.transport().source_class}),
+            );
         }
         if let Self::CurrentDpi(change) = self {
             let observation = razer_device::mouse_current_dpi::execute_in_session(

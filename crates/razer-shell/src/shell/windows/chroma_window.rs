@@ -440,13 +440,16 @@ impl Render for ChromaWindow {
             }),
         }
         .unwrap_or_else(|| self.page.clone().into_any_element());
-        v_flex()
+        let content = v_flex()
             .id(SharedString::from(format!(
                 "display-mode-{}",
                 DisplayMode::ChromaApp.key()
             )))
             .size_full()
             .child(bar)
-            .child(div().flex_1().min_h_0().child(root))
+            .child(div().flex_1().min_h_0().child(root));
+        image_cache(razer_assets::resource_image_cache())
+            .size_full()
+            .child(content)
     }
 }

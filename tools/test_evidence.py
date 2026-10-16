@@ -2628,6 +2628,12 @@ class DpiPublicationTests(unittest.TestCase):
                 destination = root / "crates/razer-device/src/mouse/mouse_current_dpi_data.json"
                 specs.parent.mkdir(parents=True)
                 destination.parent.mkdir(parents=True)
+                (root / "crates/razer-pages/src/data.rs").write_text(
+                    'pub(crate) const MOUSE_PRODUCTS_DATA: &str = include_str!("features/mouse/mouse_products_data.json");\n',
+                    encoding="utf-8")
+                (root / "crates/razer-device/src/data.rs").write_text(
+                    'pub(crate) const MOUSE_CURRENT_DPI_DATA: &str = include_str!("mouse/mouse_current_dpi_data.json");\n',
+                    encoding="utf-8")
                 specs.write_text(json.dumps([{"product_id": 80}, {"product_id": 83}]), encoding="utf-8")
                 original = b'[ {"product_id": 80, "minimum": 100}, {"product_id": 83, "minimum": 200} ]\n'
                 destination.write_bytes(original)
@@ -2791,6 +2797,106 @@ class AssetReleaseTests(unittest.TestCase):
         lock["storage"]["revision"] = "main"
         with self.assertRaisesRegex(ValueError, "immutable HF commit"):
             self.assets.validate_lock(lock)
+
+    def runtime_sources(self):
+        self.source("assets/synapse/tables/asset-tables-source.rs", b'''
+const FIRST: &[(&str, &[u8])] = include!("first.rs");
+const SECOND: &[(&str, &[u8])] = &[
+    ("synapse/duplicate.svg", include_bytes!("../products/1/image.png")),
+];
+static ASSET_TABLES: &[&[(&str, &[u8])]] = &[FIRST, SECOND];
+''')
+        self.source("assets/synapse/tables/first.rs", b'''&[
+    ("synapse/duplicate.svg", include_bytes!("../shared/common.svg") as &[u8]),
+    ("synapse/other.svg", include_bytes!("../products/2/image.png")),
+]
+''')
+        demo = []
+        for name in ("play", "pause", "fullscreen", "fullscreen-exit"):
+            path = "assets/synapse/products/1/control-" + name + ".svg"
+            self.source(path, name.encode())
+            demo.append(f'"synapse/audio-demo-control-{name}.svg" => Some(include_bytes!("../products/1/control-{name}.svg")),')
+        self.source("assets/synapse/tables/audio-demo-controls-embedded.rs", "\n".join(demo).encode())
+        self.source("assets/synapse/tables/audio-volume-sprite-embedded.rs", b'''
+const AUDIO_VOLUME_SPRITE: &str = include_str!("../products/1/sprite.svg");
+const AUDIO_VOLUME_SPRITE_PATH: &str = "synapse/audio-volume-external-sprite.svg";
+''')
+        self.source("assets/synapse/products/1/sprite.svg", b'''<svg>
+<view id="link" viewBox="0 0 20 20" /><view id="hover" viewBox="0 20 20 20" /></svg>''')
+        for name in self.assets.REMOTE_FONT_PATHS:
+            self.source(name, name.encode())
+        self.assets.prepare("test/assets")
+
+    def test_runtime_metadata_keeps_alias_precedence_list_duplicates_and_sprite_views(self):
+        self.runtime_sources()
+        result = self.assets.prepare_runtime_metadata(check_local=True)
+        self.assertEqual(result["fonts"], 14)
+        value = self.assets.runtime_metadata()
+        duplicate = [row for row in value["entries"] if row["key"] == "synapse/duplicate.svg"]
+        self.assertEqual([row["path"] for row in duplicate], [
+            "assets/synapse/shared/common.svg", "assets/synapse/products/1/image.png"])
+        self.assertNotEqual(duplicate[0]["sha256"], duplicate[1]["sha256"])
+        self.assertEqual(value["entries"][1]["view_box"], "0 0 20 20")
+        self.assertEqual(value["entries"][2]["view_box"], "0 20 20 20")
+        self.assertEqual(value["entries"][0]["sha256"], value["entries"][2]["sha256"])
+        self.assertEqual([row["provider"] for row in value["list_entries"]],
+                         ["audio_demo_controls"] * 4 + ["audio_volume_sprite"] * 3 + ["tables"] * 3)
+        self.assertEqual(value["list_entries"][-3]["key"], value["list_entries"][-1]["key"])
+        self.assertEqual([row["path"] for row in value["fonts"]], list(self.assets.REMOTE_FONT_PATHS))
+        self.assertIsNone(value["storage"]["revision"])
+        self.assertTrue(all(not row["path"].startswith(".analysis/") for row in value["files"]))
+
+    def test_runtime_metadata_verifies_without_resource_payloads_or_analysis(self):
+        self.runtime_sources()
+        self.assets.prepare_runtime_metadata(check_local=True)
+        lock_before = (self.root / self.assets.LOCK).read_bytes()
+        metadata_before = (self.root / self.assets.RUNTIME_METADATA).read_bytes()
+        for row in self.assets.rows_for(self.assets.load_lock()):
+            (self.root / row["path"]).unlink()
+        self.assertTrue(self.assets.verify_runtime_metadata()["passed"])
+        self.assets.prepare_runtime_metadata()
+        self.assertEqual((self.root / self.assets.RUNTIME_METADATA).read_bytes(), metadata_before)
+        self.assertEqual((self.root / self.assets.LOCK).read_bytes(), lock_before)
+        with self.assertRaisesRegex(ValueError, "Runtime source length or SHA-256 differs"):
+            self.assets.verify_runtime_metadata(check_local=True)
+
+    def test_runtime_metadata_rejects_changed_output_unknown_files_and_unparsed_tables(self):
+        self.runtime_sources()
+        self.assets.prepare_runtime_metadata()
+        self.source(self.assets.RUNTIME_METADATA, b"wrong metadata")
+        with self.assertRaisesRegex(ValueError, "Runtime metadata differs"):
+            self.assets.verify_runtime_metadata()
+        self.source("assets/synapse/tables/first.rs", b'''&[
+    ("synapse/missing.svg", include_bytes!("../products/1/absent.svg")),
+]''')
+        with self.assertRaisesRegex(ValueError, "absent from the resource lock"):
+            self.assets.runtime_metadata()
+        self.source("assets/synapse/tables/first.rs", b"&[unresolved_function()]")
+        with self.assertRaisesRegex(ValueError, "Unparsed AssetSource table"):
+            self.assets.runtime_metadata()
+
+    def test_compiled_data_paths_and_shared_regeneration_use_owner_tables(self):
+        for crate, literal in (("razer-device", "data/shared.json"),
+                               ("razer-pages", "features/shared.json")):
+            self.source(f"crates/{crate}/src/data.rs", (
+                "pub(crate) const SHARED: &str =\n"
+                f'    include_str!(\n        "{literal}"\n    );\n').encode())
+        self.assertEqual(self.assets.builtin_data_path("razer-device", "SHARED"),
+                         self.root / "crates/razer-device/src/data/shared.json")
+        targets = self.assets.save_builtin_data("SHARED", {"product_id": 42})
+        self.assertEqual(len(targets), 2)
+        self.assertTrue(all(json.loads(path.read_bytes()) == {"product_id": 42} for path in targets))
+        with self.assertRaisesRegex(ValueError, "missing or repeated"):
+            self.assets.builtin_data_path("razer-device", "MISSING")
+
+    def test_compiled_data_table_rejects_path_escape_and_duplicate_bindings(self):
+        registry = "crates/razer-device/src/data.rs"
+        self.source(registry, b'pub(crate) const SHARED: &str = include_str!("../outside.json");\n')
+        with self.assertRaisesRegex(ValueError, "escaped its owning crate"):
+            self.assets.builtin_data_path("razer-device", "SHARED")
+        self.source(registry, b'pub(crate) const SHARED: &str = include_str!("one.json");\n' * 2)
+        with self.assertRaisesRegex(ValueError, "missing or repeated"):
+            self.assets.builtin_data_path("razer-device", "SHARED")
 
 
 class RustValidationTests(unittest.TestCase):

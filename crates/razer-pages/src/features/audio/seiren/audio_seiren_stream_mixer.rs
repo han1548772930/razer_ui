@@ -2,6 +2,7 @@
 //! source optimistic actions; middleware cache observations remain distinct
 //! from native device acknowledgements. See audio-MapAudio-audit.json.
 use super::*;
+use crate::features::source_key::SourceKey;
 use gpui_kit::component::{
     IndexPath,
     input::{InputEvent, InputState},
@@ -196,14 +197,18 @@ fn selected(data: &Value) -> &str {
 fn enabled(data: &Value) -> bool {
     data["isStreamMixerEnabled"] == true
 }
-fn recipe(pid: u32) -> &'static Value {
-    static RECIPES: OnceLock<Value> = OnceLock::new();
-    &RECIPES.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../../../assets/data/seiren-stream-mixer.json"
-        ))
-        .expect("current stream mixer source literals")
-    })[pid.to_string()]
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Recipe {
+    native_device_ids: BTreeMap<String, u64>,
+    name_to_device_id: BTreeMap<String, String>,
+    device_name: String,
+    capture_keys: Vec<SourceKey>,
+}
+
+fn recipe(pid: u32) -> &'static Recipe {
+    static RECIPES: OnceLock<BTreeMap<String, Recipe>> = OnceLock::new();
+    &RECIPES.get_or_init(|| crate::data::seiren_stream_mixer!())[&pid.to_string()]
 }
 fn source_initial() -> Value {
     json!({"levelMeter":[],"waitingForLevelMeter":false,"inputChannels":[],
@@ -782,16 +787,12 @@ impl AudioProductWorkspace {
         else {
             return;
         };
-        let ids = &recipe(self.spec.product_id)["nativeDeviceIds"];
+        let ids = &recipe(self.spec.product_id).native_device_ids;
         let levels = entries
             .iter()
             .filter_map(|entry| {
                 let id = entry["deviceId"].as_u64().filter(|id| *id != 0)?;
-                let name = ids
-                    .as_object()?
-                    .iter()
-                    .find(|(_, value)| value.as_u64() == Some(id))?
-                    .0;
+                let name = ids.iter().find(|(_, value)| **value == id)?.0;
                 let mut observed = entry.clone();
                 observed["deviceIdEnum"] = json!(name);
                 Some(observed)

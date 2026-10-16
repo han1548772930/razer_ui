@@ -1,4 +1,5 @@
 //! Settings and live connection views. Host navigation is emitted as events.
+mod data;
 #[path = "products.rs"]
 pub mod products;
 #[path = "runtime_page.rs"]

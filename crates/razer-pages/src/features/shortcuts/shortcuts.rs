@@ -65,10 +65,7 @@ struct SourceEmojiSearch {
 }
 fn source_shortcuts() -> &'static SourceShortcutData {
     static DATA: OnceLock<SourceShortcutData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("shortcuts_current.json"))
-            .expect("current shortcuts literals")
-    })
+    DATA.get_or_init(|| crate::data::shortcuts_current!())
 }
 
 /// HTML textarea maxlength counts UTF-16 units. Trim only the inserted span,

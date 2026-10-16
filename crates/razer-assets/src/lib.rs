@@ -1,15 +1,21 @@
-//! Local packaged reference assets; provenance is in assets/synapse/manifest.json.
+//! Product resources are fetched individually and reused from the installation cache.
 use gpui_kit::{AssetSource, SharedString};
 use std::borrow::Cow;
 pub struct SynapseAssets;
-mod audio_demo_controls {
-    include!("../../../assets/synapse/tables/audio-demo-controls-embedded.rs");
-}
-
-mod audio_volume_sprite {
-    include!("../../../assets/synapse/tables/audio-volume-sprite-embedded.rs");
-}
+mod data;
+mod keyboard_source;
+pub use keyboard_source::{InputCounter, KeyboardSourceGroup, KeyboardSourceInput, keyboard_source_for_layout};
 mod packed;
+mod remote;
+pub use remote::{
+    ResourceChanged, ResourcePending, is_resource_pending, observe_resources, resource_errors,
+    resource_generation, resource_image_cache, retry_resources, start_resources,
+};
+
+/// Request one original file by its manifest path, without hydrating its product.
+pub fn load_path(path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
+    remote::load_path(path).map(|bytes| bytes.map(Cow::Owned))
+}
 impl SynapseAssets {
     pub fn validate(&self) -> anyhow::Result<()> {
         packed::validate()
@@ -17,11 +23,8 @@ impl SynapseAssets {
 }
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
-        if let Some(bytes) = audio_volume_sprite::audio_volume_sprite_load(path) {
-            return Ok(Some(bytes));
-        }
-        if let Some(bytes) = audio_demo_controls::audio_demo_controls_load(path) {
-            return Ok(Some(Cow::Borrowed(bytes)));
+        if path.starts_with("assets/") {
+            return load_path(path);
         }
         if let Some(bytes) = packed::load(path)? {
             return Ok(Some(Cow::Owned(bytes)));
@@ -30,62 +33,22 @@ impl AssetSource for SynapseAssets {
     }
     fn list(&self, path: &str) -> anyhow::Result<Vec<SharedString>> {
         let mut items = gpui_kit::assets::AllAssets.list(path)?;
-        items.extend(audio_demo_controls::audio_demo_controls_list(path));
-        items.extend(audio_volume_sprite::audio_volume_sprite_list(path));
-        items.extend(
-            packed::aliases()?
-                .iter()
-                .filter(|key| key.starts_with(path))
-                .map(|key| SharedString::from(*key)),
-        );
+        items.extend(remote::list(path)?.into_iter().map(SharedString::from));
         Ok(items)
     }
 }
+/// Register cached fonts immediately; missing fonts are requested in the background.
 pub fn register_fonts(cx: &gpui_kit::App) -> anyhow::Result<()> {
-    cx.text_system().add_fonts(vec![
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/104d76669a1810f2-Roboto-Light.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/202d2e67f0ed60f1-Roboto-LightItalic.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/179ca811a216df59-Roboto-Regular.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/4bd8affd7aecd848-Roboto-Italic.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/b5356da237055228-Roboto-Medium.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/f9bfc6d616e97b51-Roboto-MediumItalic.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/fc8488b1de752bbd-Roboto-Bold.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/1c6453f110bf3eef-Roboto-BoldItalic.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/0fa0aefa2bf1e00b-RazerF5-Thin.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/ba98bf5a0ea8d551-RazerF5-Regular.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/64293d40f66cda7e-RazerF5-SemiBold.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/fa85dc64f3408613-RazerF5-Bold.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/c79c356dc2b997ea-RazerF5-RegItalic.ttf"
-        )),
-        Cow::Borrowed(include_bytes!(
-            "../../../assets/synapse/shared/fonts/85a911b833545640-RazerF5-BoldItalic.ttf"
-        )),
-    ])
+    let mut fonts = Vec::new();
+    for font in &remote::manifest()?.fonts {
+        if let Some(bytes) = remote::cached_or_request(font)? {
+            fonts.push(Cow::Owned(bytes));
+        }
+    }
+    if !fonts.is_empty() {
+        cx.text_system().add_fonts(fonts)?;
+    }
+    Ok(())
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum DeviceImage {
@@ -281,24 +244,10 @@ pub fn keyboard_keys_for_layout(layout_id: u32) -> &'static [KeyboardKey] {
     static LAYOUTS: std::sync::OnceLock<Vec<KeyboardLayout>> = std::sync::OnceLock::new();
     let layout_id = if layout_id == 0 { 1 } else { layout_id };
     LAYOUTS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!(
-                "../../../assets/synapse/products/653/configs/layouts.json"
-            ))
-            .expect("bundled Customize layout geometry")
-        })
+        .get_or_init(|| crate::data::layouts!())
         .iter()
         .find(|layout| layout.layout_id == layout_id)
         .map_or(&[], |layout| layout.keys.as_slice())
-}
-
-/// Full groupList data includes invisible dial sub-inputs required by the drawer.
-pub fn keyboard_source_for_layout(layout_id: u32) -> Option<&'static str> {
-    const SOURCES: &[(u32, &str)] = include!("../../../assets/synapse/tables/keyboard-sources.rs");
-    let layout_id = if layout_id == 0 { 1 } else { layout_id };
-    SOURCES
-        .iter()
-        .find_map(|&(layout, source)| (layout == layout_id).then_some(source))
 }
 
 #[cfg(test)]
@@ -530,35 +479,24 @@ mod tests {
             assert_eq!(image.layout_id, layout);
             assert!(!image.is_fallback_preview);
             let keys = keyboard_keys_for_layout(image.layout_id);
-            let source: serde_json::Value =
-                serde_json::from_str(keyboard_source_for_layout(layout).unwrap()).unwrap();
-            let inputs = source
-                .as_array()
-                .unwrap()
-                .iter()
-                .flat_map(|group| group["group"]["buttonList"].as_array().unwrap().iter());
+            let inputs = keyboard_source_for_layout(layout).unwrap().iter().flat_map(KeyboardSourceGroup::inputs);
             assert!(keys.len() >= 118, "layout {layout}");
             for input in inputs {
-                let shaped = input.get("d").is_some()
-                    || input.get("r").is_some()
-                    || input.get("x").is_some();
+                let shaped = input.has_geometry();
                 let key = keys
                     .iter()
-                    .find(|key| key.id == input["inputID"].as_str().unwrap());
+                    .find(|key| key.id == input.id());
                 assert_eq!(
                     key.is_some(),
                     shaped,
                     "layout {layout}, input {}",
-                    input["inputID"]
+                    input.id()
                 );
                 if let Some(key) = key {
-                    assert_eq!(key.enabled, input["isEnabled"].as_bool().unwrap_or(true));
-                    let functions: Vec<String> =
-                        input.get("functionList").map_or_else(Vec::new, |value| {
-                            serde_json::from_value(value.clone()).unwrap()
-                        });
+                    assert_eq!(key.enabled, input.enabled());
+                    let functions = input.functions();
                     assert_eq!(
-                        key.functions, functions,
+                        key.functions.as_slice(), functions,
                         "layout {layout}, input {}",
                         key.id
                     );
@@ -566,7 +504,7 @@ mod tests {
             }
         }
         assert!(std::ptr::eq(keyboard_keys_for_layout(0), keyboard_keys()));
-        assert_eq!(keyboard_source_for_layout(0), keyboard_source_for_layout(1));
+        assert!(std::ptr::eq(keyboard_source_for_layout(0).unwrap(), keyboard_source_for_layout(1).unwrap()));
         for unknown in [13, 14, 19, 999] {
             assert!(keyboard_keys_for_layout(unknown).is_empty());
             assert!(keyboard_source_for_layout(unknown).is_none());

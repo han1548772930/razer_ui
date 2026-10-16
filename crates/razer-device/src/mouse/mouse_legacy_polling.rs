@@ -9,7 +9,10 @@
 use crate::{
     backend::FeatureTransport,
     device_reads::{DeviceReadCapability, DeviceReadKind, ReadCommand},
-    device_writes::{DeviceWriteCapability, DeviceWriteResult, DeviceWriteSetting, WriteCommand},
+    device_writes::{
+        DeviceWriteCapability, DeviceWriteKind, DeviceWriteResult, DeviceWriteSetting, PollingCode,
+        WriteCommand, WriteMethod, WriteSourceClass,
+    },
 };
 use anyhow::{Context as _, Result, ensure};
 use std::{collections::BTreeMap, sync::OnceLock};
@@ -111,32 +114,40 @@ pub fn read_capability() -> &'static DeviceReadCapability {
 }
 
 pub fn write_capability() -> &'static DeviceWriteCapability {
-    static CAP: OnceLock<DeviceWriteCapability> = OnceLock::new();
-    CAP.get_or_init(|| DeviceWriteCapability {
+    static CAP: DeviceWriteCapability = DeviceWriteCapability {
         product_id: PRODUCT_ID,
-        source_class: "rzDevice25Legacy".into(),
+        source_class: WriteSourceClass::Legacy,
         min_dpi: 100,
         max_dpi: 16000,
-        polling_codes: codes(),
-        writes: vec![
+        polling_codes: &[
+            PollingCode { hz: 1000, code: 1 },
+            PollingCode { hz: 500, code: 2 },
+            PollingCode { hz: 333, code: 3 },
+            PollingCode { hz: 250, code: 4 },
+            PollingCode { hz: 200, code: 5 },
+            PollingCode { hz: 125, code: 8 },
+            PollingCode { hz: 100, code: 10 },
+        ],
+        writes: &[
             WriteCommand {
-                kind: DeviceReadKind::Polling,
-                method: "setPollingRate".into(),
+                kind: DeviceWriteKind::Polling,
+                method: WriteMethod::PollingRate,
                 command: SET_POLLING,
                 selector: 0,
                 read_kind: DeviceReadKind::Polling,
                 min_response_bytes: 0,
             },
             WriteCommand {
-                kind: DeviceReadKind::Dpi,
-                method: "setDpiLevel".into(),
+                kind: DeviceWriteKind::Dpi,
+                method: WriteMethod::DpiLevel,
                 command: SET_DPI,
                 selector: 1,
                 read_kind: DeviceReadKind::Dpi,
                 min_response_bytes: 0,
             },
         ],
-    })
+    };
+    &CAP
 }
 
 /// Source ot reads first, skips equal values, writes, then confirms by GET.

@@ -38,7 +38,7 @@ fn simultaneous_staging_does_not_truncate_or_remove_another_save() {
     let first_target = temp.0.join("profile.json");
     let mut first = TemporaryDocument::create(&first_target).unwrap();
     first.write(b"first").unwrap();
-    // Same target and same stem with another extension formerly shared a path.
+    // Distinct saves require independent staging paths, including equal stems.
     for target in [&first_target, &temp.0.join("profile.other")] {
         let mut second = TemporaryDocument::create(target).unwrap();
         second.write(b"second").unwrap();

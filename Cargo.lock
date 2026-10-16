@@ -5732,11 +5732,14 @@ name = "razer-assets"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-channel",
+ "futures",
  "gpui-kit",
  "razer-asset-pack",
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5978,6 +5981,7 @@ dependencies = [
  "async-channel",
  "gpui-kit",
  "raw-window-handle",
+ "razer-assets",
  "razer-i18n",
  "razer-model",
  "razer-widgets",

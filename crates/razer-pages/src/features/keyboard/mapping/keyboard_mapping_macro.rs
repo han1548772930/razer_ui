@@ -67,10 +67,7 @@ fn source_name_cmp(pid: u32, left: &str, right: &str) -> std::cmp::Ordering {
     }
     static DATA: OnceLock<Vec<SortSource>> = OnceLock::new();
     let alphabet = &DATA
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_mapping_name_sort_data.json"))
-                .expect("current macro name sorting")
-        })
+        .get_or_init(|| crate::data::keyboard_mapping_name_sort_data!())
         .iter()
         .find(|row| row.product_id == pid)
         .expect("current keyboard macro helper")

@@ -28,10 +28,7 @@ struct Presentation {
 }
 fn presentation(pid: u32) -> &'static Presentation {
     static DATA: OnceLock<BTreeMap<String, Presentation>> = OnceLock::new();
-    &DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_seiren_microphone_data.json"))
-            .expect("current microphone data")
-    })[&pid.to_string()]
+    &DATA.get_or_init(|| crate::data::audio_seiren_microphone_data!())[&pid.to_string()]
 }
 fn text(pid: u32, key: &str) -> SharedString {
     t(presentation(pid)

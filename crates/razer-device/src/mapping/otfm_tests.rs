@@ -120,7 +120,10 @@ fn otfm_recording_timeout_aborts_with_the_timeout_reason() {
     let mut machine = recording_machine(1_000);
     // Real input extends the recording deadline to its own tick plus 120s.
     machine
-        .item(json!({"type":"keyboard","action":"keydown","vkCode":65}), 2_000)
+        .item(
+            json!({"type":"keyboard","action":"keydown","vkCode":65}),
+            2_000,
+        )
         .unwrap();
     machine.tick(121_999);
     assert_eq!(machine.state, State::Recording);
@@ -134,10 +137,15 @@ fn otfm_recording_timeout_aborts_with_the_timeout_reason() {
 fn otfm_recording_keeps_real_input_and_normalizes_numpad_keys() {
     let mut machine = recording_machine(0);
     machine
-        .item(json!({"type":"keyboard","action":"keydown","vkCode":45,"flags":0}), 1)
+        .item(
+            json!({"type":"keyboard","action":"keydown","vkCode":45,"flags":0}),
+            1,
+        )
         .unwrap();
     assert_eq!(machine.items.last().unwrap()["vkCode"], 96);
-    machine.item(json!({"type":"keyboard","action":"mousemove"}), 2).unwrap();
+    machine
+        .item(json!({"type":"keyboard","action":"mousemove"}), 2)
+        .unwrap();
     assert!(machine.has_mouse_move);
     // The native reader stamps its own tick on each accepted item.
     machine
@@ -190,14 +198,26 @@ fn otfm_post_recording_without_an_observed_geometry_change_keeps_processing() {
 #[test]
 fn otfm_geometry_change_requires_a_mouse_move_and_a_screen_shift() {
     let mut machine = Machine::default();
-    machine.geometry(true, json!([{"name":"a"}]), json!({"top":0,"left":0,"width":100,"height":100}));
-    machine.geometry(false, json!([{"name":"b"}]), json!({"top":0,"left":0,"width":100,"height":100}));
+    machine.geometry(
+        true,
+        json!([{"name":"a"}]),
+        json!({"top":0,"left":0,"width":100,"height":100}),
+    );
+    machine.geometry(
+        false,
+        json!([{"name":"b"}]),
+        json!({"top":0,"left":0,"width":100,"height":100}),
+    );
     assert!(!machine.geometry_changed());
     // The mouse moved, but the observed screen geometry did not: the monitor
     // list alone is not the geometry change the source rejects on.
     machine.has_mouse_move = true;
     assert!(!machine.geometry_changed());
-    machine.geometry(false, json!([{"name":"b"}]), json!({"top":0,"left":0,"width":200,"height":100}));
+    machine.geometry(
+        false,
+        json!([{"name":"b"}]),
+        json!({"top":0,"left":0,"width":200,"height":100}),
+    );
     assert!(machine.geometry_changed());
     machine.reject_geometry(9);
     assert_eq!(machine.state, State::RejectedRestore);
@@ -237,7 +257,12 @@ fn otfm_assignment_input_requires_a_complete_source_pair() {
     let (scancode, virtual_key) = zero_flag_key();
     let mut input = AssignmentInput::new(u64::MAX);
     // The keydown alone is retained but produces no assigned action.
-    assert_eq!(input.push(keyboard_keydown(scancode, 0), 1_000, 1, &[]).unwrap(), None);
+    assert_eq!(
+        input
+            .push(keyboard_keydown(scancode, 0), 1_000, 1, &[])
+            .unwrap(),
+        None
+    );
     assert_eq!(input.items.len(), 1);
     let assigned = input
         .push(keyboard_keyup(scancode, 1), 1_001, 1, &[])
@@ -256,15 +281,24 @@ fn otfm_assignment_input_requires_a_complete_source_pair() {
 #[test]
 fn otfm_assignment_input_ignores_the_trigger_scancode_inside_its_grace_period() {
     let mut input = AssignmentInput::new(7);
-    assert_eq!(input.push(keyboard_keydown(7, 1), 100, 1, &[]).unwrap(), None);
+    assert_eq!(
+        input.push(keyboard_keydown(7, 1), 100, 1, &[]).unwrap(),
+        None
+    );
     assert!(input.items.is_empty());
-    assert_eq!(input.push(keyboard_keydown(9, 1), 100, 1, &[]).unwrap(), None);
+    assert_eq!(
+        input.push(keyboard_keydown(9, 1), 100, 1, &[]).unwrap(),
+        None
+    );
     assert_eq!(input.items.len(), 1);
     input.reset();
     assert!(input.items.is_empty());
     assert!(input.first_at.is_none());
     input.set_trigger(9);
-    assert_eq!(input.push(keyboard_keydown(9, 1), 200, 1, &[]).unwrap(), None);
+    assert_eq!(
+        input.push(keyboard_keydown(9, 1), 200, 1, &[]).unwrap(),
+        None
+    );
     assert!(input.items.is_empty());
 }
 
@@ -272,15 +306,30 @@ fn otfm_assignment_input_ignores_the_trigger_scancode_inside_its_grace_period() 
 fn otfm_assignment_input_reports_a_missing_flag_and_the_source_fn_state() {
     let mut missing = AssignmentInput::new(u64::MAX);
     let error = missing
-        .push(json!({"type":"keyboard","action":"keydown","scancode":1234}), 0, 1, &[])
+        .push(
+            json!({"type":"keyboard","action":"keydown","scancode":1234}),
+            0,
+            1,
+            &[],
+        )
         .unwrap_err();
     assert!(error.to_string().contains("flag"));
     // A held Fn suppresses the assignment and survives a collection reset.
     let mut input = AssignmentInput::new(u64::MAX);
-    assert_eq!(input.push(json!({"type":"razerKey","key":1,"flag":0}), 0, 1, &[]).unwrap(), None);
+    assert_eq!(
+        input
+            .push(json!({"type":"razerKey","key":1,"flag":0}), 0, 1, &[])
+            .unwrap(),
+        None
+    );
     assert!(input.fn_held);
     input.reset();
     assert!(input.fn_held);
-    assert_eq!(input.push(json!({"type":"razerKey","key":1,"flag":1}), 1, 1, &[]).unwrap(), None);
+    assert_eq!(
+        input
+            .push(json!({"type":"razerKey","key":1,"flag":1}), 1, 1, &[])
+            .unwrap(),
+        None
+    );
     assert!(!input.fn_held);
 }

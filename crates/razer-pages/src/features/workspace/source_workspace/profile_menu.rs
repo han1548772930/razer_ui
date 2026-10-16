@@ -80,13 +80,10 @@ pub(super) fn spec(pid: u32) -> Option<&'static MenuSpec> {
         products: Vec<MenuSpec>,
     }
     static DATA: OnceLock<MenuData> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("../../profiles/source_profile_menu_data.json"))
-            .expect("audited current profile menus")
-    })
-    .products
-    .iter()
-    .find(|product| product.product_id == pid)
+    DATA.get_or_init(|| crate::data::source_profile_menu_data!())
+        .products
+        .iter()
+        .find(|product| product.product_id == pid)
 }
 
 impl MenuSpec {
@@ -154,11 +151,27 @@ fn condition(rule: &str, workspace: &SourceProductWorkspace) -> Option<bool> {
         "profile_switch_disabled" => !workspace.profile_switch_enabled(),
         "linked_games_empty" => !linked_games(&workspace.device),
         "linked_games_present" => linked_games(&workspace.device),
-        "analog_preset_profile"=>workspace.device.product_id==756&&workspace.device.active_profile_obj().is_some_and(|profile|
-            razer_device::keyboard_latest_mapping::source()["onboard_presets"].as_array().into_iter().flatten()
-                .any(|preset|preset["guid"]==profile.guid)),
-        "onboard_profile"=>workspace.device.active_profile_obj().is_some_and(|profile|
-            razer_device::keyboard_latest_restore::slots(&[]).iter().any(|slot|slot.guid==profile.guid)),
+        "analog_preset_profile" => {
+            workspace.device.product_id == 756
+                && workspace
+                    .device
+                    .active_profile_obj()
+                    .is_some_and(|profile| {
+                        razer_device::keyboard_latest_mapping::source()["onboard_presets"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .any(|preset| preset["guid"] == profile.guid)
+                    })
+        }
+        "onboard_profile" => workspace
+            .device
+            .active_profile_obj()
+            .is_some_and(|profile| {
+                razer_device::keyboard_latest_restore::slots(&[])
+                    .iter()
+                    .any(|slot| slot.guid == profile.guid)
+            }),
         // Static unsupported entries are removed by the source table.
         "reset_unsupported" | "share_category_unsupported" | "share_unsupported" => true,
         _ => return None,
@@ -397,8 +410,10 @@ fn confirmation_element(
     };
     let title = razer_i18n::t(&key("label_key", "DELETE_PROFILE_TITLE"));
     let description = razer_i18n::t(&key("description_key", "DELETE_PROFILE_MSG"));
-    let button_keys=definition.and_then(|value|value["button_keys"].as_array()).cloned()
-        .unwrap_or_else(||vec![serde_json::json!("REMOVE")]);
+    let button_keys = definition
+        .and_then(|value| value["button_keys"].as_array())
+        .cloned()
+        .unwrap_or_else(|| vec![serde_json::json!("REMOVE")]);
     let width = definition
         .and_then(|value| value["width"].as_f64())
         .unwrap_or(300.) as f32;
@@ -438,36 +453,43 @@ fn confirmation_element(
         )
         .child(div().text_center().mb(surface::css(10.)).child(description))
         .child(
-            h_flex().w_full().justify_center().gap(surface::css(10.)).children(button_keys.into_iter().enumerate().map(|(index,key)| {
-                let owner=owner.clone();let popup=popup.clone();let mut confirmation=confirmation.clone();
-                confirmation.bindings_only=confirmation.action==ProfileAction::Reset&&index==0;
-                Button::new(("source-profile-confirm",index))
-                    .label(razer_i18n::t(key.as_str().unwrap_or("REMOVE")))
-                    .xsmall()
-                    .h(surface::css(27.))
-                    .min_w(surface::css(90.))
-                    .flex_1()
-                    .px(surface::css(5.))
-                    .py(surface::css(4.))
-                    .text_size(surface::css(12.))
-                    .line_height(surface::css(14.))
-                    .rounded(cx.theme().font_size * (3. / 16.))
-                    .border_1()
-                    .border_color(cx.theme().title_bar.opacity(0.3))
-                    .custom(
-                        ButtonCustomVariant::new(cx)
-                            .color(danger)
-                            .foreground(cx.theme().primary_foreground)
-                            .hover(danger.opacity(0.8))
-                            .active(danger.opacity(0.6)),
-                    )
-                    .on_click(move |_, window, cx| {
-                        let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
-                        let _ = owner.update(cx, |owner, cx| {
-                            owner.confirm_profile_action(confirmation.clone(), window, cx)
-                        });
-                    })
-            })),
+            h_flex()
+                .w_full()
+                .justify_center()
+                .gap(surface::css(10.))
+                .children(button_keys.into_iter().enumerate().map(|(index, key)| {
+                    let owner = owner.clone();
+                    let popup = popup.clone();
+                    let mut confirmation = confirmation.clone();
+                    confirmation.bindings_only =
+                        confirmation.action == ProfileAction::Reset && index == 0;
+                    Button::new(("source-profile-confirm", index))
+                        .label(razer_i18n::t(key.as_str().unwrap_or("REMOVE")))
+                        .xsmall()
+                        .h(surface::css(27.))
+                        .min_w(surface::css(90.))
+                        .flex_1()
+                        .px(surface::css(5.))
+                        .py(surface::css(4.))
+                        .text_size(surface::css(12.))
+                        .line_height(surface::css(14.))
+                        .rounded(cx.theme().font_size * (3. / 16.))
+                        .border_1()
+                        .border_color(cx.theme().title_bar.opacity(0.3))
+                        .custom(
+                            ButtonCustomVariant::new(cx)
+                                .color(danger)
+                                .foreground(cx.theme().primary_foreground)
+                                .hover(danger.opacity(0.8))
+                                .active(danger.opacity(0.6)),
+                        )
+                        .on_click(move |_, window, cx| {
+                            let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
+                            let _ = owner.update(cx, |owner, cx| {
+                                owner.confirm_profile_action(confirmation.clone(), window, cx)
+                            });
+                        })
+                })),
         )
         .into_any_element()
 }

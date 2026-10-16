@@ -40,7 +40,9 @@ impl MacroLibraryFile {
     }
 
     fn source_macro_document(&self, entry: &Entry) -> Result<Value, String> {
-        if let Some(document)=entry.retained_source_document()? {return Ok(document);}
+        if let Some(document) = entry.retained_source_document()? {
+            return Ok(document);
+        }
         let guid = entry
             .xml_guid
             .as_deref()
@@ -116,11 +118,14 @@ impl MacroLibraryFile {
                 .map_err(|e| e.to_string())?
                 .into();
         }
-        let compiled=json!({"guid":guid,"name":entry.name,"macroType":kind,"macroPlaybackOption":name,
+        let compiled = json!({"guid":guid,"name":entry.name,"macroType":kind,"macroPlaybackOption":name,
             "delaySetting":entry.record_delay,"activePhase":entry.active_phase,
             "macroEvents":source,"appEngine":engine});
-        let mut document=entry.source_document.clone().unwrap_or_else(||json!({}));
-        document.as_object_mut().ok_or("Retained macro source is not an object")?.extend(compiled.as_object().unwrap().clone());
+        let mut document = entry.source_document.clone().unwrap_or_else(|| json!({}));
+        document
+            .as_object_mut()
+            .ok_or("Retained macro source is not an object")?
+            .extend(compiled.as_object().unwrap().clone());
         Ok(document)
     }
 

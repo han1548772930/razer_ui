@@ -120,12 +120,9 @@ struct Product {
 }
 fn source(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_keypad_panel_data.json"))
-            .expect("actual current keypad panel metadata")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
+    DATA.get_or_init(|| crate::data::keyboard_mapping_keypad_panel_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
 }
 pub(super) fn supported(pid: u32) -> bool {
     source(pid).is_some()

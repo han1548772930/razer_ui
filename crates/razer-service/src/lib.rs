@@ -127,7 +127,7 @@ pub fn probe_engine(spec: &EngineSpec) -> ProbeStatus {
     };
 
     // 逐个查导出。`*mut c_void` 只是个占位类型，这里只查符号是否存在、
-    // 不会按任何签名调用这些导出；此前加载库仍已执行 DLL 入口。
+    // 不会按任何签名调用这些导出；加载库会执行 DLL 入口。
     let mut missing = Vec::new();
     let mut found = 0;
     for symbol in spec.symbols {

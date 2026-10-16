@@ -1,6 +1,7 @@
-"""Raw Hugging Face/Git LFS resource snapshots; workspace.py owns the CLI.
+"""Raw Hugging Face resources and code-owned runtime metadata.
 
-Developer preparation only. Neither Cargo nor the product downloads resources.
+workspace.py owns the CLI. Cargo uses committed metadata without hydrating the
+resource payload; the product fetches individual files through its asset service.
 """
 from __future__ import annotations
 
@@ -32,6 +33,20 @@ GIT_ICONS = {"assets/synapse/shared/pending-source-audit/" + n for n in NATIVE_I
 META_FILES = {".gitattributes", "README.md", "release-index.json"}
 LFS_ATTRIBUTES = (b"* -filter -diff -merge -text\n"
                   b"assets/** filter=lfs diff=lfs merge=lfs -text\n")
+RUNTIME_METADATA = "assets/synapse/tables/remote-assets.rs"
+REMOTE_FONT_PATHS = tuple("assets/synapse/shared/fonts/" + name for name in (
+    "104d76669a1810f2-Roboto-Light.ttf", "202d2e67f0ed60f1-Roboto-LightItalic.ttf",
+    "179ca811a216df59-Roboto-Regular.ttf", "4bd8affd7aecd848-Roboto-Italic.ttf",
+    "b5356da237055228-Roboto-Medium.ttf", "f9bfc6d616e97b51-Roboto-MediumItalic.ttf",
+    "fc8488b1de752bbd-Roboto-Bold.ttf", "1c6453f110bf3eef-Roboto-BoldItalic.ttf",
+    "0fa0aefa2bf1e00b-RazerF5-Thin.ttf", "ba98bf5a0ea8d551-RazerF5-Regular.ttf",
+    "64293d40f66cda7e-RazerF5-SemiBold.ttf", "fa85dc64f3408613-RazerF5-Bold.ttf",
+    "c79c356dc2b997ea-RazerF5-RegItalic.ttf", "85a911b833545640-RazerF5-BoldItalic.ttf",
+))
+# Original PID 1352 icon_external_link_sprite.0b292d50.svg <view> elements.
+# These are presentation values; the lock separately identifies the original
+# bytes used for integrity checking, including both fragment aliases.
+SPRITE_VIEWS = (("link", "0 0 20 20"), ("hover", "0 20 20 20"))
 
 
 def encoded(value):
@@ -192,10 +207,10 @@ def prepare(repository=None):
             "---\npretty_name: Razer UI local product resources\ntags:\n- desktop-ui\n---\n\n"
             f"Raw files for `{lock['tag']}`. Products retain `assets/synapse/products/<PID>/`; "
             "shared files retain their original paths. Resource payloads use Git LFS. No ZIP archives.\n\n"
-            "Use the matching source checkout and its `tools/asset-release.json`: "
-            "`python tools/workspace.py fetch-asset-release`. Add `--product PID` for a source update "
-            "including shared and cross-product dependencies. Full workspace compilation requires all products. "
-            "Prepare the local runtime pack with the source workspace tools. The application never downloads resources.\n\n"
+            "The application's committed resource index pins this dataset to an immutable revision. "
+            "It fetches individual files as screens use them, verifies their length and SHA-256, and "
+            "retains them in its installation cache for offline reuse. Cargo needs no downloaded payload. "
+            "`tools/workspace.py fetch-asset-release` is an explicit source-maintenance operation only.\n\n"
             "Vendor artwork, fonts and binaries retain their original rights. This dataset grants no license "
             "to vendor content.\n", encoding="utf-8", newline="\n")
         if inventory() != (groups, retained):
@@ -251,6 +266,257 @@ def validate_lock(lock):
 
 def load_lock():
     return validate_lock(json.loads((ROOT / LOCK).read_bytes()))
+
+
+def builtin_data_path(crate, symbol, *, root=None):
+    """Read the owning crate's data.rs instead of duplicating data paths."""
+    if (not re.fullmatch(r"razer-[a-z][a-z0-9-]*", crate)
+            or not re.fullmatch(r"[A-Z][A-Z0-9_]*", symbol)):
+        raise ValueError("Invalid compiled-data owner or symbol")
+    root = (root or ROOT).resolve()
+    source = root / "crates" / crate / "src"
+    registry = source / "data.rs"
+    text = registry.read_text(encoding="utf-8")
+    pattern = (r'pub\(crate\)\s+const\s+' + re.escape(symbol)
+               + r':\s*&str\s*=\s*include_str!\(\s*"([^"\\]+)"\s*\)\s*;')
+    bindings = re.findall(pattern, text)
+    if not bindings:
+        import typed_tables
+        fixed = typed_tables.fixed_tables().get((crate, symbol))
+        if fixed is not None:
+            return root / fixed[0]
+    if not bindings and (root / "tools/typed-data.json").is_file():
+        recipes = json.loads((root / "tools/typed-data.json").read_bytes())["tables"]
+        paths = {item["source"] for item in recipes if item["crate"] == crate and item["symbol"] == symbol}
+        if len(paths) == 1:
+            target = root / paths.pop()
+            if not target.resolve().is_relative_to((root / ".analysis/inputs/typed-tables").resolve()):
+                raise ValueError("Typed-data maintenance input escaped its owning directory")
+            return target
+    if len(bindings) != 1:
+        raise ValueError("Compiled-data binding is missing or repeated: " + crate + "::" + symbol)
+    target = Path(os.path.abspath(source / bindings[0]))
+    if (not target.resolve().is_relative_to(source.resolve())
+            or any(part in ("", ".", "..") for part in bindings[0].split("/"))
+            or "\\" in bindings[0]):
+        raise ValueError("Compiled-data path escaped its owning crate")
+    current = target
+    while current != source.parent:
+        if (current.is_symlink() or (current.exists()
+                and getattr(current.lstat(), "st_file_attributes", 0) & 0x400)):
+            raise ValueError("Compiled-data path traverses a link")
+        current = current.parent
+    return target
+
+
+def save_builtin_data(symbol, value, *, root=None):
+    """Regenerate all explicit owners of a shared compiled data binding."""
+    root = (root or ROOT).resolve()
+    targets = []
+    for registry in sorted((root / "crates").glob("*/src/data.rs")):
+        if re.search(r'pub\(crate\)\s+const\s+' + re.escape(symbol) + r'\b', registry.read_text(encoding="utf-8")):
+            targets.append(builtin_data_path(registry.parent.parent.name, symbol, root=root))
+    registry = root / "tools/typed-data.json"
+    recipes = json.loads(registry.read_bytes())["tables"] if registry.is_file() else []
+    typed = [item for item in recipes if item["symbol"] == symbol]
+    for item in typed:
+        target = root / item["source"]
+        if target not in targets:
+            targets.append(target)
+    import typed_tables
+    targets.extend(root / item[0] for (owner, name), item in typed_tables.fixed_tables().items()
+                   if name == symbol and (root / item[0]).is_file() and root / item[0] not in targets)
+    if not targets:
+        raise ValueError("Compiled-data binding has no owner: " + symbol)
+    for target in targets:
+        analysis.save(target, value)
+    return targets
+
+
+def regenerate_builtin_path(path, *, root=None):
+    """Keep generated Rust synchronized when a maintenance workflow saves input."""
+    root = (root or ROOT).resolve()
+    import typed_tables
+    typed_tables.regenerate_input(path, root=root)
+    registry = root / "tools/typed-data.json"
+    recipes = json.loads(registry.read_bytes())["tables"] if registry.is_file() else []
+    matches = [item for item in recipes if (root / item["source"]).resolve() == Path(path).resolve()]
+    if matches:
+        import rust_data
+        for item in matches:
+            rust_data.build_table(item["crate"], item["symbol"], item["module"], item["root_type"],
+                                 source=item["source"], macro_name=item["macro"],
+                                 allow_value=item.get("allow_value", False),
+                                 product_factory=item.get("product_factory", False))
+
+
+def rust_array(text, start):
+    """Read one literal Rust array without executing or compiling its source."""
+    if text[start] != "[":
+        raise ValueError("Expected a Rust array")
+    depth, position = 0, start
+    while position < len(text):
+        token = text[position]
+        if token == '"':
+            position += 1
+            while position < len(text) and text[position] != '"':
+                position += 2 if text[position] == "\\" else 1
+            if position >= len(text):
+                raise ValueError("Unterminated string in Rust resource table")
+        elif text.startswith("//", position):
+            newline = text.find("\n", position)
+            position = len(text) if newline == -1 else newline
+            continue
+        elif text.startswith("/*", position):
+            closing = text.find("*/", position + 2)
+            if closing == -1:
+                raise ValueError("Unterminated comment in Rust resource table")
+            position = closing + 2
+            continue
+        elif token == "[":
+            depth += 1
+        elif token == "]":
+            depth -= 1
+            if depth == 0:
+                return text[start:position + 1]
+        position += 1
+    raise ValueError("Unterminated Rust resource array")
+
+
+def runtime_metadata(lock=None, *, check_local=False):
+    """Resolve current alias semantics from source and immutable file identities.
+
+    This does not consume analysis reports or require ignored payload files.
+    check_local additionally verifies original bytes and sprite viewports when
+    preparing a release from a fully hydrated developer workspace.
+    """
+    lock = load_lock() if lock is None else validate_lock(lock)
+    files = {row["path"]: dict(row) for row in [*rows_for(lock), *lock["git_files"]]
+             if not row["path"].startswith("assets/synapse/tables/")}
+    tables_path = "assets/synapse/tables/asset-tables-source.rs"
+    table_text = source_path(tables_path).read_text(encoding="utf-8")
+    order = re.search(r'static ASSET_TABLES:[^=]+=\s*&\[', table_text)
+    if order is None:
+        raise ValueError("AssetSource table order is unresolved")
+    names = re.findall(r'\b[A-Z][A-Z_0-9]+\b', rust_array(table_text, order.end() - 1))
+    if not names or len(set(names)) != len(names):
+        raise ValueError("Missing or repeated AssetSource table")
+
+    def relative_input(owner, literal):
+        path = Path(os.path.abspath(ROOT / owner / ".." / literal))
+        try:
+            name = path.relative_to(ROOT).as_posix()
+        except ValueError as error:
+            raise ValueError("Resource table input escaped the workspace") from error
+        source_path(name)  # Validate spelling and links even when payload is absent.
+        return name
+
+    def row_for(name):
+        if name not in files:
+            raise ValueError("Runtime asset is absent from the resource lock: " + name)
+        return dict(files[name])
+
+    def entry(key, owner, literal):
+        if (not key.startswith("synapse/") or any(ord(c) < 32 for c in key)
+                or "\\" in key or any(p in ("", ".", "..") for p in key.split("/"))):
+            raise ValueError("Invalid runtime asset alias: " + key)
+        return {"key": key, **row_for(relative_input(owner, literal))}
+
+    definitions = {}
+    pattern = r'const ([A-Z][A-Z_0-9]+):\s*&\[\(&str,\s*&\[u8\]\)\]\s*=\s*'
+    for match in re.finditer(pattern, table_text):
+        expression = table_text[match.end():]
+        if expression.startswith("include!"):
+            include = re.match(r'include!\("([^"\\]+)"\)', expression)
+            if include is None:
+                raise ValueError("Nonliteral asset table include")
+            name = relative_input(tables_path, include[1])
+            definitions[match[1]] = (name, source_path(name).read_text(encoding="utf-8"))
+        elif expression.startswith("&["):
+            definitions[match[1]] = (tables_path, rust_array(table_text, match.end() + 1))
+        else:
+            raise ValueError("Unresolved AssetSource table: " + match[1])
+    tuples = re.compile(r'\(\s*"([^"\\]+)"\s*,\s*include_bytes!\(\s*"([^"\\]+)"\s*\)\s*(?:as\s*&\[u8\]|\.as_slice\(\))?\s*,?\s*\)')
+    table_entries = []
+    for name in names:
+        if name not in definitions:
+            raise ValueError("Missing AssetSource table: " + name)
+        owner, body = definitions[name]
+        clean = re.sub(r'(?m)^\s*//[^\n]*', '', body)
+        found_tuples = list(tuples.finditer(clean))
+        if tuples.sub('', clean).strip("&[], \t\r\n"):
+            raise ValueError("Unparsed AssetSource table content: " + name)
+        table_entries.extend(entry(match[1], owner, match[2]) for match in found_tuples)
+
+    demo_path = "assets/synapse/tables/audio-demo-controls-embedded.rs"
+    sprite_path = "assets/synapse/tables/audio-volume-sprite-embedded.rs"
+    demo_body = source_path(demo_path).read_text(encoding="utf-8")
+    demo_entries = [entry(match[1], demo_path, match[2]) for match in re.finditer(
+        r'"([^"\\]+)"\s*=>\s*Some\(include_bytes!\("([^"\\]+)"\)\)', demo_body)]
+    if {row["key"] for row in demo_entries} != {
+            "synapse/audio-demo-control-play.svg", "synapse/audio-demo-control-pause.svg",
+            "synapse/audio-demo-control-fullscreen.svg", "synapse/audio-demo-control-fullscreen-exit.svg"}:
+        raise ValueError("Audio demo AssetSource aliases require a source audit")
+    sprite_body = source_path(sprite_path).read_text(encoding="utf-8")
+    sprite_input = re.search(r'const AUDIO_VOLUME_SPRITE: &str = include_str!\("([^"\\]+)"\);', sprite_body)
+    sprite_alias = re.search(r'const AUDIO_VOLUME_SPRITE_PATH: &str = "([^"\\]+)";', sprite_body)
+    if sprite_input is None or sprite_alias is None:
+        raise ValueError("Audio sprite AssetSource requires a source audit")
+    sprite = entry(sprite_alias[1], sprite_path, sprite_input[1])
+    sprite_entries = [sprite] + [
+        {**sprite, "key": sprite["key"] + "#" + view, "view_box": viewport, "width": 20, "height": 20}
+        for view, viewport in SPRITE_VIEWS]
+    if check_local:
+        checked = {row["path"] for row in [*table_entries, *demo_entries, sprite]}
+        checked.update(REMOTE_FONT_PATHS)
+        for name in checked:
+            if not matches(row_for(name)):
+                raise ValueError("Runtime source length or SHA-256 differs: " + name)
+        sprite_text = source_path(sprite["path"]).read_text(encoding="utf-8")
+        for view, viewport in SPRITE_VIEWS:
+            if f'<view id="{view}" viewBox="{viewport}"' not in sprite_text:
+                raise ValueError("Original sprite viewport changed: " + view)
+    return {"schema_version": 1, "storage": dict(lock["storage"]),
+            "entries": [*sprite_entries, *demo_entries, *table_entries],
+            "list_entries": [*({"key": row["key"], "provider": "audio_demo_controls"} for row in demo_entries),
+                             *({"key": row["key"], "provider": "audio_volume_sprite"} for row in sprite_entries),
+                             *({"key": row["key"], "provider": "tables"} for row in table_entries)],
+            "fonts": [row_for(name) for name in REMOTE_FONT_PATHS],
+            "files": list(files.values())}
+
+
+def runtime_metadata_bytes(value):
+    from rust_data import ROOT as schema_root, RustData, pretty_expression
+    schema = RustData(schema_root / "crates/razer-assets")
+    expression = schema.render(value, "Manifest", schema_root / "crates/razer-assets/src/remote.rs")
+    if schema.excluded or schema.value_fields:
+        raise ValueError("Resource metadata must have a complete typed representation")
+    return ("// Generated by tools/workspace.py prepare-runtime-assets.\n"
+            "// File hashes verify resource integrity, never source-code compatibility.\n"
+            "use super::{Entry, ListEntry, Manifest, ResourceFile, Storage};\n"
+            "#[rustfmt::skip]\n"
+            "pub(super) fn manifest() -> Manifest {\n" + pretty_expression(expression, indent=4) + "\n}\n").encode("utf-8")
+
+
+def prepare_runtime_metadata(*, check_local=False):
+    value = runtime_metadata(check_local=check_local)
+    path = source_path(RUNTIME_METADATA)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(runtime_metadata_bytes(value))
+    return runtime_metadata_summary(value)
+
+
+def verify_runtime_metadata(*, check_local=False):
+    value = runtime_metadata(check_local=check_local)
+    if source_path(RUNTIME_METADATA).read_bytes() != runtime_metadata_bytes(value):
+        raise ValueError("Runtime metadata differs from the source aliases or resource lock")
+    return runtime_metadata_summary(value)
+
+
+def runtime_metadata_summary(value):
+    return {"path": RUNTIME_METADATA, "aliases": len(value["entries"]),
+            "list_entries": len(value["list_entries"]), "fonts": len(value["fonts"]),
+            "files": len(value["files"]), "revision": value["storage"]["revision"], "passed": True}
 
 
 def selected_groups(lock, products=None):
@@ -332,17 +598,26 @@ def remote_tree(repository, revision):
 
 def verify_remote_files(lock, tree):
     expected = {r["path"]: r for r in rows_for(lock)}
-    if tree.keys() != expected.keys() | META_FILES:
+    retained = {r["path"]: r for r in lock["git_files"]}
+    if not expected.keys() <= tree.keys() or tree.keys() - expected.keys() - retained.keys() - META_FILES:
         raise ValueError("Remote snapshot file set differs from its lock")
-    for name, row in expected.items():
+    verified = dict(expected)
+    for name, row in verified.items():
         actual, lfs = tree[name], tree[name].get("lfs")
         if actual.get("size") != row["bytes"]:
             raise ValueError("Remote resource length differs: " + name)
         if lfs:
             if lfs.get("oid") != row["sha256"] or lfs.get("size") != row["bytes"]:
                 raise ValueError("Remote LFS SHA-256 differs: " + name)
-        elif row["bytes"] != 0 or row["sha256"] != hashlib.sha256(b"").hexdigest():
-            raise ValueError("Remote resource is not stored in Git LFS: " + name)
+        else:
+            roots = (ROOT, ROOT / OUTPUT / lock["tag"])
+            evidence = next((root for root in roots if matches(row, root)), None)
+            if evidence is None:
+                raise ValueError("Local SHA-256 evidence is required to verify a remote Git blob: " + name)
+            blob = source_path(name, evidence).read_bytes()
+            oid = hashlib.sha1(b"blob " + str(len(blob)).encode("ascii") + b"\0" + blob).hexdigest()
+            if actual.get("oid") != oid:
+                raise ValueError("Remote Git blob differs from SHA-256-verified source: " + name)
 
 
 def verify_remote(lock=None):
@@ -352,14 +627,30 @@ def verify_remote(lock=None):
         raise ValueError("Resource snapshot has no verified immutable HF commit")
     tree = remote_tree(storage["repository"], storage["revision"])
     verify_remote_files(lock, tree)
-    raw_expected = encoded(published_manifest(lock))
-    url = f"https://huggingface.co/datasets/{storage['repository']}/resolve/{storage['revision']}/release-index.json"
-    with urllib.request.urlopen(urllib.request.Request(url, headers=hf_headers()), timeout=120) as response:
-        raw = response.read(len(raw_expected) + 1)
-    if raw != raw_expected:
-        raise ValueError("Remote manifest differs from the checked-in lock")
+    if "release-index.json" in tree:
+        raw_expected = encoded(published_manifest(lock))
+        url = f"https://huggingface.co/datasets/{storage['repository']}/resolve/{storage['revision']}/release-index.json"
+        with urllib.request.urlopen(urllib.request.Request(url, headers=hf_headers()), timeout=120) as response:
+            raw = response.read(len(raw_expected) + 1)
+        if raw != raw_expected:
+            raise ValueError("Remote manifest differs from the checked-in lock")
     return {"repository": storage["repository"], "revision": storage["revision"],
-            "source_files_verified": len(rows_for(lock)), "passed": True}
+            "source_files_verified": len(rows_for(lock)),
+            "lfs_files_verified": sum(bool(tree[r["path"]].get("lfs")) for r in rows_for(lock)),
+            "git_blob_files_verified": sum(not bool(tree[r["path"]].get("lfs")) for r in rows_for(lock)),
+            "retained_files_present": len(tree.keys() & {r["path"] for r in lock["git_files"]}),
+            "remote_manifest_present": "release-index.json" in tree, "passed": True}
+
+
+def pin_remote(revision):
+    if not re.fullmatch(r"[a-f0-9]{40}", revision):
+        raise ValueError("An immutable HF commit is required")
+    with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        lock = load_lock()
+        lock["storage"]["revision"] = revision
+        report = verify_remote(lock)
+        analysis.save(ROOT / LOCK, lock)
+    return report
 
 
 def checkout(lock, groups):
@@ -529,6 +820,8 @@ def add_commands(commands):
     p.add_argument("--from-dir", help="Prepared raw snapshot directory; no network")
     p.add_argument("--replace-existing", action="store_true", help="Explicitly replace modified resource files")
     commands.add_parser("publish-asset-release", help="Push raw files with Git LFS, verify and pin the HF commit")
+    p = commands.add_parser("pin-asset-release", help="Verify an existing HF upload and pin it without uploading or downloading payloads")
+    p.add_argument("--revision", required=True)
 
 
 def run(args):
@@ -540,4 +833,6 @@ def run(args):
         return restore(args.product, args.from_dir, args.replace_existing)
     if args.command == "publish-asset-release":
         return publish()
+    if args.command == "pin-asset-release":
+        return pin_remote(args.revision)
     raise ValueError("Unknown asset snapshot command")

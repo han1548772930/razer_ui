@@ -52,13 +52,10 @@ struct Artwork {
 }
 fn artwork(pid: u32) -> &'static Artwork {
     static DATA: OnceLock<Vec<Artwork>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_ai_data.json"))
-            .expect("current AI mapping artwork")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("source-mounted AI mapping")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_ai_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("source-mounted AI mapping")
 }
 pub(super) fn valid(workspace: &KeyboardProductWorkspace, slot: &Slot) -> bool {
     let Some(observation) = workspace

@@ -1,26 +1,60 @@
 //! Current rotation artwork: preserve its two source colors when rotating.
+use crate::runtime_resources::TextResources;
 use gpui_kit::base::{Slider as BaseSlider, SliderIndicator, SliderTrack};
 use gpui_kit::component::slider::SliderState;
 use gpui_kit::*;
 use razer_widgets::theme::DrawerColors;
 use razer_widgets::theme::SliderColors;
 use razer_widgets::{source_slider::source_thumb, surface};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
+
+const SOURCE: &str = "assets/synapse/products/190/b1ee704bd4c09e21-mouse-rotation.svg";
+
+#[derive(Default)]
+pub(super) struct Resources {
+    texts: TextResources,
+    images: Option<Vec<Arc<Image>>>,
+}
+
+impl Resources {
+    pub(super) fn request(&mut self) {
+        self.texts.request(SOURCE);
+        self.refresh();
+    }
+
+    pub(super) fn refresh(&mut self) -> bool {
+        self.texts.refresh();
+        if self.images.is_some() {
+            return false;
+        }
+        let Some(source) = self.texts.text(SOURCE) else {
+            return false;
+        };
+        self.images = Some(images(source));
+        true
+    }
+
+    pub(super) fn image(&self, degrees: i32) -> Option<Arc<Image>> {
+        self.images
+            .as_ref()
+            .map(|images| images[(degrees.clamp(-44, 44) + 44) as usize].clone())
+    }
+}
 
 /// GPUI's monochrome Svg transform would lose the #111 background cutout.
 /// Nest the exact SVG in a larger color image, rotating around the source
 /// CSS box center (70 x 108), without clipping its corners at +/-44 degrees.
-pub(super) fn image(degrees: i32) -> Arc<Image> {
-    static IMAGES: OnceLock<Vec<Arc<Image>>> = OnceLock::new();
-    IMAGES.get_or_init(|| {
-        let source = include_str!("../../../../../assets/synapse/products/190/b1ee704bd4c09e21-mouse-rotation.svg")
-            .replacen("width=\"71\" height=\"110\"", "width=\"70\" height=\"108\"", 1);
-        (-44..=44).map(|degrees| {
+fn images(source: &str) -> Vec<Arc<Image>> {
+    let source = source.replacen(
+        "width=\"71\" height=\"110\"",
+        "width=\"70\" height=\"108\"",
+        1,
+    );
+    (-44..=44).map(|degrees| {
             Arc::new(Image::from_bytes(ImageFormat::Svg, format!(
                 "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"180\" height=\"180\" viewBox=\"0 0 180 180\"><g transform=\"translate(90 90) rotate({degrees}) translate(-35 -54)\">{source}</g></svg>"
             ).into_bytes()))
         }).collect()
-    })[(degrees.clamp(-44, 44) + 44) as usize].clone()
 }
 
 pub(super) fn cross() -> Canvas<()> {

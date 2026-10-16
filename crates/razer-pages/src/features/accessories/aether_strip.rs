@@ -43,10 +43,7 @@ struct Spec {
 }
 fn spec() -> &'static Spec {
     static SPEC: OnceLock<Spec> = OnceLock::new();
-    SPEC.get_or_init(|| {
-        serde_json::from_str(include_str!("aether_strip_data.json"))
-            .expect("audited Aether Strip source")
-    })
+    SPEC.get_or_init(|| crate::data::aether_strip_data!())
 }
 fn text(key: &str) -> String {
     spec()

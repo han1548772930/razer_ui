@@ -1425,55 +1425,21 @@ fn smooth_path(
     }
     path.build().ok()
 }
-fn zoom_image(plus: bool) -> Arc<Image> {
-    static PLUS: OnceLock<Arc<Image>> = OnceLock::new();
-    static MINUS: OnceLock<Arc<Image>> = OnceLock::new();
-    (if plus { &PLUS } else { &MINUS })
-        .get_or_init(|| {
-            Arc::new(Image::from_bytes(
-                ImageFormat::Svg,
-                if plus {
-                    include_bytes!("../../../../../../assets/synapse/products/190/d095e668c2b54d18-mouse-dynamic-plus.svg").to_vec()
-                } else {
-                    include_bytes!("../../../../../../assets/synapse/products/190/165cc2fa326aeeb6-mouse-dynamic-minus.svg").to_vec()
-                },
-            ))
-        })
-        .clone()
+fn zoom_image(plus: bool) -> &'static str {
+    if plus {
+        "assets/synapse/products/190/d095e668c2b54d18-mouse-dynamic-plus.svg"
+    } else {
+        "assets/synapse/products/190/165cc2fa326aeeb6-mouse-dynamic-minus.svg"
+    }
 }
-fn tutorial_icon() -> Arc<Image> {
-    static ICON: OnceLock<Arc<Image>> = OnceLock::new();
-    ICON.get_or_init(|| {
-        Arc::new(Image::from_bytes(
-            ImageFormat::Svg,
-            include_bytes!("../../../../../../assets/synapse/products/190/518c5e047f901635-mouse-dynamic-tutorial.svg").to_vec(),
-        ))
-    })
-    .clone()
+fn tutorial_icon() -> &'static str {
+    "assets/synapse/products/190/518c5e047f901635-mouse-dynamic-tutorial.svg"
 }
-fn tutorial_media() -> Arc<Image> {
-    static MEDIA: OnceLock<Arc<Image>> = OnceLock::new();
-    MEDIA
-        .get_or_init(|| {
-            Arc::new(Image::from_bytes(
-                ImageFormat::Webp,
-                include_bytes!("../../../../../../assets/synapse/shared/source-unverified/c6d5c020e60f44f8831ccb9371bc477b320cda22817f24d5ce0689c490273334.webp").to_vec(),
-            ))
-        })
-        .clone()
+fn tutorial_media() -> &'static str {
+    "assets/synapse/shared/source-unverified/c6d5c020e60f44f8831ccb9371bc477b320cda22817f24d5ce0689c490273334.webp"
 }
-fn close_icon() -> Arc<Image> {
-    static ICON: OnceLock<Arc<Image>> = OnceLock::new();
-    ICON.get_or_init(|| {
-        Arc::new(Image::from_bytes(
-            ImageFormat::Svg,
-            include_bytes!(
-                "../../../../../../assets/synapse/shared/products/53b67d2c7d30aa84-audio-sound-mapping-close.svg"
-            )
-            .to_vec(),
-        ))
-    })
-    .clone()
+fn close_icon() -> &'static str {
+    "synapse/audio-sound-mapping-close.svg"
 }
 fn tutorial_item(mode: &'static str) -> impl IntoElement {
     let escape = |text: String| {

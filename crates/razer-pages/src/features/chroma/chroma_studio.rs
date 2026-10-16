@@ -72,10 +72,7 @@ struct Effect {
 }
 fn source() -> &'static Source {
     static SOURCE: OnceLock<Source> = OnceLock::new();
-    SOURCE.get_or_init(|| {
-        serde_json::from_str(include_str!("chroma_studio_data.json"))
-            .expect("audited current Studio source")
-    })
+    SOURCE.get_or_init(|| crate::data::chroma_studio_data!())
 }
 fn label(key: &str) -> String {
     let source = source();

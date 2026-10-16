@@ -232,12 +232,10 @@ struct Spec {
 }
 fn spec(pid: u32) -> &'static Spec {
     static DATA: OnceLock<Vec<Spec>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("wireless_argb_data.json")).expect("audited ARGB sources")
-    })
-    .iter()
-    .find(|s| s.product_id == pid)
-    .expect("supported ARGB product")
+    DATA.get_or_init(|| crate::data::wireless_argb_data!())
+        .iter()
+        .find(|s| s.product_id == pid)
+        .expect("supported ARGB product")
 }
 impl Spec {
     fn text(&self, key: &str) -> String {

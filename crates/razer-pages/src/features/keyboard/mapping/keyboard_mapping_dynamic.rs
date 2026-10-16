@@ -23,7 +23,7 @@ const TRIGGERS: [&str; 4] = [
 struct Metadata {
     product_id: u32,
     unit: f32,
-    defaults: Value,
+    defaults: BTreeMap<String, f64>,
     headers: Vec<Header>,
     body_labels: BTreeMap<String, String>,
 }
@@ -49,13 +49,12 @@ mod metadata_tests {
     fn all_current_dynamic_mapping_metadata_loads() {
         // Source header descriptors contain actuation values and bounds.
         // startX belongs to the live action-trigger drag, not these descriptors.
-        let rows: Vec<Metadata> =
-            serde_json::from_str(include_str!("keyboard_mapping_dynamic_data.json")).unwrap();
+        let rows: Vec<Metadata> = crate::data::keyboard_mapping_dynamic_data!();
         assert!(!rows.is_empty());
         for row in rows {
             assert_eq!(row.headers.len(), 4, "product {}", row.product_id);
             for header in row.headers {
-                assert!(row.defaults[&header.id].is_number());
+                assert!(row.defaults[&header.id].is_finite());
                 assert!(header.min < header.max);
             }
         }
@@ -64,12 +63,9 @@ mod metadata_tests {
 
 fn metadata(pid: u32) -> Option<&'static Metadata> {
     static DATA: OnceLock<Vec<Metadata>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_dynamic_data.json"))
-            .expect("audited current Dynamic Key Stroke")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
+    DATA.get_or_init(|| crate::data::keyboard_mapping_dynamic_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
 }
 fn empty_action() -> Value {
     json!({"keyboardGroup":{"key":"","keyGroup":0,"modifiers":[]},"triggers":TRIGGERS.into_iter().map(|id|(id.to_owned(),json!("NONE"))).collect::<serde_json::Map<_,_>>()})
@@ -941,7 +937,7 @@ impl KeyboardProductWorkspace {
         }
         if let Some(index) = state.adjustment[slot] {
             let h = &m.headers[index];
-            let reset = edit.slots[slot].dynamic.group[&h.id] != m.defaults[&h.id];
+            let reset = edit.slots[slot].dynamic.group[&h.id].as_f64() != Some(m.defaults[&h.id]);
             let reset_bounds = state.reset_bounds[slot].clone();
             let mut adjustment = v_flex()
                 .id(SharedString::from(format!(
@@ -985,16 +981,12 @@ impl KeyboardProductWorkspace {
                                 }))
                                 .on_click(cx.listener(move |this, _, _, cx| {
                                     if let Some(m) = metadata(this.spec.product_id) {
-                                        if let Some(value) =
-                                            m.defaults[&m.headers[index].id].as_f64()
-                                        {
-                                            this.change_mapping_dynamic_actuation(
-                                                slot,
-                                                index,
-                                                value as f32,
-                                                cx,
-                                            );
-                                        }
+                                        this.change_mapping_dynamic_actuation(
+                                            slot,
+                                            index,
+                                            m.defaults[&m.headers[index].id] as f32,
+                                            cx,
+                                        );
                                     }
                                 })),
                         ),
@@ -1270,14 +1262,12 @@ impl RenderOnce for SourceTip {
                         .on_click(move |_, _, cx| {
                             let _ = owner.update(cx, |this, cx| {
                                 if let Some(m) = metadata(this.spec.product_id) {
-                                    if let Some(value) = m.defaults[&m.headers[index].id].as_f64() {
-                                        this.change_mapping_dynamic_actuation(
-                                            slot,
-                                            index,
-                                            value as f32,
-                                            cx,
-                                        );
-                                    }
+                                    this.change_mapping_dynamic_actuation(
+                                        slot,
+                                        index,
+                                        m.defaults[&m.headers[index].id] as f32,
+                                        cx,
+                                    );
                                 }
                             });
                         })

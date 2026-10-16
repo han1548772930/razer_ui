@@ -14,13 +14,10 @@ struct Metadata {
 }
 fn metadata(pid: u32) -> &'static Metadata {
     static DATA: OnceLock<Vec<Metadata>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_sidebar_secondary_current_data.json"))
-            .expect("actual mouse secondary row policy")
-    })
-    .iter()
-    .find(|p| p.product_id == pid)
-    .expect("audited ordinary mouse row")
+    DATA.get_or_init(|| crate::data::mouse_sidebar_secondary_current_data!())
+        .iter()
+        .find(|p| p.product_id == pid)
+        .expect("audited ordinary mouse row")
 }
 
 #[derive(Default)]

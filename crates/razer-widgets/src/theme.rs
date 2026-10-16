@@ -4,9 +4,15 @@ use gpui_kit::{Hsla, rgb, rgba};
 /// Current notification-manager Root.ece81d56.chunk.css ordinary cards.
 pub struct ProfileNotificationColors;
 impl ProfileNotificationColors {
-    pub fn surface() -> Hsla { rgb(0x111111).into() }
-    pub fn text() -> Hsla { rgb(0xcccccc).into() }
-    pub fn accent() -> Hsla { rgb(0x44d62c).into() }
+    pub fn surface() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
 }
 
 /// Current notification-manager SystemRestartRequiredWindow.c1a8ea66.chunk.css.
@@ -300,8 +306,12 @@ impl MouseCustomizeColors {
 /// bodies and resource producers: mouse-main-audit.json receiver_indicator.
 pub struct MouseReceiverColors;
 impl MouseReceiverColors {
-    pub fn legacy_radio_border() -> Hsla { rgb(0x737373).into() }
-    pub fn legacy_message() -> Hsla { rgb(0x999999).into() }
+    pub fn legacy_radio_border() -> Hsla {
+        rgb(0x737373).into()
+    }
+    pub fn legacy_message() -> Hsla {
+        rgb(0x999999).into()
+    }
     pub fn tip_surface() -> Hsla {
         rgb(0x000000).into()
     }
@@ -524,26 +534,66 @@ impl GamepadTriggerColors {
 /// Original bodies/rules are retained by `gamepad_thumbsticks` in the main audit.
 pub struct GamepadThumbstickColors;
 impl GamepadThumbstickColors {
-    pub fn text() -> Hsla { rgb(0xcccccc).into() }
-    pub fn stage_text() -> Hsla { rgb(0xbbbbbb).into() }
-    pub fn white() -> Hsla { rgb(0xffffff).into() }
-    pub fn accent() -> Hsla { rgb(0x44d62c).into() }
-    pub fn accent_track() -> Hsla { rgba(0x44d62c4d).into() }
-    pub fn warning() -> Hsla { rgb(0xfd8611).into() }
-    pub fn warning_track() -> Hsla { rgba(0xfd86114d).into() }
-    pub fn panel() -> Hsla { rgb(0x111111).into() }
-    pub fn black() -> Hsla { rgb(0x000000).into() }
-    pub fn border() -> Hsla { rgb(0x5d5d5d).into() }
-    pub fn bubble() -> Hsla { rgb(0x1f1f1f).into() }
-    pub fn bubble_border() -> Hsla { rgb(0x555555).into() }
-    pub fn circle() -> Hsla { rgb(0x707070).into() }
-    pub fn hover() -> Hsla { rgb(0x292929).into() }
-    pub fn thumb_hover() -> Hsla { rgb(0x5d5d5d).into() }
-    pub fn thumb_active() -> Hsla { rgb(0x383838).into() }
-    pub fn selected_text() -> Hsla { rgb(0x212121).into() }
-    pub fn highlight() -> Hsla { rgba(0x44d62c33).into() }
-    pub fn highlight_border() -> Hsla { rgb(0x2eb717).into() }
-    pub fn button_border() -> Hsla { rgba(0x0000004d).into() }
+    pub fn text() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub fn stage_text() -> Hsla {
+        rgb(0xbbbbbb).into()
+    }
+    pub fn white() -> Hsla {
+        rgb(0xffffff).into()
+    }
+    pub fn accent() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub fn accent_track() -> Hsla {
+        rgba(0x44d62c4d).into()
+    }
+    pub fn warning() -> Hsla {
+        rgb(0xfd8611).into()
+    }
+    pub fn warning_track() -> Hsla {
+        rgba(0xfd86114d).into()
+    }
+    pub fn panel() -> Hsla {
+        rgb(0x111111).into()
+    }
+    pub fn black() -> Hsla {
+        rgb(0x000000).into()
+    }
+    pub fn border() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub fn bubble() -> Hsla {
+        rgb(0x1f1f1f).into()
+    }
+    pub fn bubble_border() -> Hsla {
+        rgb(0x555555).into()
+    }
+    pub fn circle() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub fn hover() -> Hsla {
+        rgb(0x292929).into()
+    }
+    pub fn thumb_hover() -> Hsla {
+        rgb(0x5d5d5d).into()
+    }
+    pub fn thumb_active() -> Hsla {
+        rgb(0x383838).into()
+    }
+    pub fn selected_text() -> Hsla {
+        rgb(0x212121).into()
+    }
+    pub fn highlight() -> Hsla {
+        rgba(0x44d62c33).into()
+    }
+    pub fn highlight_border() -> Hsla {
+        rgb(0x2eb717).into()
+    }
+    pub fn button_border() -> Hsla {
+        rgba(0x0000004d).into()
+    }
 }
 
 /// Current 2636 `.alert-backdrop`, `.alert-container` and deadzone disclosure.

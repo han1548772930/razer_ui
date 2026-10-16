@@ -36,7 +36,7 @@ pub enum ProductPageRole {
 pub enum AdapterStatus {
     /// A source route is audited; there is no claim its native UI is complete.
     SourceAudited,
-    /// The previously audited workspace has an adapter; conditional UI and
+    /// The source workspace has an adapter; conditional UI and
     /// native service completion remain separately audited.
     ExistingAdapter,
 }

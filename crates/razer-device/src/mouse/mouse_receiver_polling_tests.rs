@@ -369,12 +369,10 @@ fn failed_truncated_or_other_profile_cannot_be_a_reading() {
 
 #[test]
 fn different_returned_prefix_preserves_polling_and_both_peer_checks() {
-    let transport = Transport::new([
-        online(),
-        Reply::DifferentPrefix(vec![1, 1]),
-        online(),
-    ]);
-    let observation = route(183).read(&transport, transactions(), || Ok(())).unwrap();
+    let transport = Transport::new([online(), Reply::DifferentPrefix(vec![1, 1]), online()]);
+    let observation = route(183)
+        .read(&transport, transactions(), || Ok(()))
+        .unwrap();
     assert_eq!(hz(&observation), 1000);
     assert_eq!(observation.receiver_before, [(183, 1)]);
     assert_eq!(observation.receiver_after, [(183, 1)]);
@@ -469,15 +467,20 @@ fn receiver_idle_runs_set_then_one_get_on_every_master_without_profile_or_pre_re
     for physical in [183, 164, 179, 241] {
         for raw_time in [60u16, 300, 900] {
             let transport = Transport::new([
-                online(), Reply::Data(vec![0xab]),
-                Reply::DifferentPrefix(raw_time.to_be_bytes().to_vec()), online(),
+                online(),
+                Reply::Data(vec![0xab]),
+                Reply::DifferentPrefix(raw_time.to_be_bytes().to_vec()),
+                online(),
             ]);
             let result = route_for(physical, DeviceReadKind::Idle)
-                .apply_idle(&transport, raw_time, transactions(), || Ok(())).unwrap();
+                .apply_idle(&transport, raw_time, transactions(), || Ok(()))
+                .unwrap();
             assert!(result.reading.verified && result.reading.changed);
             assert!(result.reading.previous.is_none());
             assert_eq!(result.reading.acknowledged.unwrap().data, [0xab]);
-            assert!(matches!(result.reading.observed, Some(DeviceReadValue::Idle { raw_time: actual }) if actual == raw_time));
+            assert!(
+                matches!(result.reading.observed, Some(DeviceReadValue::Idle { raw_time: actual }) if actual == raw_time)
+            );
             let reports = transport.outputs.borrow();
             assert_eq!(reports.len(), 4);
             assert_eq!(&reports[1][6..9], &[2, 7, 3]);
@@ -487,7 +490,10 @@ fn receiver_idle_runs_set_then_one_get_on_every_master_without_profile_or_pre_re
             for (index, report) in reports.iter().enumerate() {
                 assert_eq!(report[0], if physical == 241 { 3 } else { 0 });
                 assert_eq!(report[2], 5 + index as u8);
-                assert_eq!(report[89], report[3..89].iter().fold(0, |crc, byte| crc ^ byte));
+                assert_eq!(
+                    report[89],
+                    report[3..89].iter().fold(0, |crc, byte| crc ^ byte)
+                );
             }
             assert!(transport.inputs.borrow().is_empty());
         }
@@ -496,21 +502,38 @@ fn receiver_idle_runs_set_then_one_get_on_every_master_without_profile_or_pre_re
 
 #[test]
 fn receiver_idle_rejects_failed_readback_and_cancels_after_ack_before_get() {
-    for reply in [Reply::Unsupported, Reply::Short, Reply::Data(vec![0]), Reply::Data(vec![0, 60])] {
+    for reply in [
+        Reply::Unsupported,
+        Reply::Short,
+        Reply::Data(vec![0]),
+        Reply::Data(vec![0, 60]),
+    ] {
         let transport = Transport::new([online(), Reply::Data(vec![]), reply]);
         let mut route = route_for(183, DeviceReadKind::Idle);
         route.transport.max_retry_out = 1;
         route.transport.max_retry_in = 1;
-        assert!(route
-            .apply_idle(&transport, 300, transactions(), || Ok(())).is_err());
+        assert!(
+            route
+                .apply_idle(&transport, 300, transactions(), || Ok(()))
+                .is_err()
+        );
         assert_eq!(transport.outputs.borrow().len(), 3);
     }
     let transport = Transport::new([online(), Reply::Data(vec![])]);
-    assert!(route_for(183, DeviceReadKind::Idle).apply_idle(&transport, 300, transactions(), || {
-        ensure!(transport.reads.get() < 2, "canceled after setter ACK"); Ok(())
-    }).is_err());
+    assert!(
+        route_for(183, DeviceReadKind::Idle)
+            .apply_idle(&transport, 300, transactions(), || {
+                ensure!(transport.reads.get() < 2, "canceled after setter ACK");
+                Ok(())
+            })
+            .is_err()
+    );
     assert_eq!(transport.outputs.borrow().len(), 2);
     let invalid = Transport::new([]);
-    assert!(route_for(183, DeviceReadKind::Polling).apply_idle(&invalid, 300, transactions(), || Ok(())).is_err());
+    assert!(
+        route_for(183, DeviceReadKind::Polling)
+            .apply_idle(&invalid, 300, transactions(), || Ok(()))
+            .is_err()
+    );
     assert!(invalid.outputs.borrow().is_empty());
 }

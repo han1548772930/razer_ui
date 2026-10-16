@@ -4,7 +4,9 @@ use super::*;
 
 impl SourceProductWorkspace {
     pub(super) fn profile_bar_visible(&self) -> bool {
-        if self.device.product_id==756&&self.keyboard_latest_ble {return false;}
+        if self.device.product_id == 756 && self.keyboard_latest_ble {
+            return false;
+        }
         if let Some(always_mounted) =
             profile_menu::spec(self.device.product_id).and_then(|spec| spec.always_mounted())
         {

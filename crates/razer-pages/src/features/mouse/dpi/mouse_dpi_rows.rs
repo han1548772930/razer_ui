@@ -54,10 +54,7 @@ fn slider_requires_visible() -> bool {
 pub(super) fn source_spec(product_id: u32) -> Option<&'static RowsSpec> {
     static SPECS: OnceLock<Vec<RowsSpec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_dpi_rows_data.json"))
-                .expect("audited DPI row capabilities")
-        })
+        .get_or_init(|| crate::data::mouse_dpi_rows_data!())
         .iter()
         .find(|spec| spec.product_id == product_id)
 }

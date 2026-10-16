@@ -9,18 +9,33 @@ impl SourceProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.device.product_id != 756 { return; }
-        let Some(index) = self.device.profiles.iter()
-            .position(|profile| profile.id == self.device.active_profile) else { return };
+        if self.device.product_id != 756 {
+            return;
+        }
+        let Some(index) = self
+            .device
+            .profiles
+            .iter()
+            .position(|profile| profile.id == self.device.active_profile)
+        else {
+            return;
+        };
         let profile = &self.device.profiles[index];
-        let mut previous = profile.source_settings.clone()
+        let mut previous = profile
+            .source_settings
+            .clone()
             .unwrap_or_else(razer_device::keyboard_latest_mapping::default_profile);
         previous["guid"] = serde_json::json!(profile.guid);
         previous["name"] = serde_json::json!(profile.name);
-        let candidate = match razer_device::keyboard_latest_restore::reset_profile_candidate(&previous, bindings_only) {
+        let candidate = match razer_device::keyboard_latest_restore::reset_profile_candidate(
+            &previous,
+            bindings_only,
+        ) {
             Ok(candidate) => candidate,
             Err(error) => {
-                cx.emit(WorkspaceEvent::KeyboardLegacyRuntimeStatus(format!("{error:#}")));
+                cx.emit(WorkspaceEvent::KeyboardLegacyRuntimeStatus(format!(
+                    "{error:#}"
+                )));
                 return;
             }
         };
@@ -29,7 +44,8 @@ impl SourceProductWorkspace {
         self.restore_active(window, cx);
         cx.emit(WorkspaceEvent::KeyboardLatestProfileMutationRequested(
             razer_device::keyboard_latest_restore::ProfileMutation::Reset {
-                previous_profile: previous, bindings_only,
+                previous_profile: previous,
+                bindings_only,
             },
         ));
         cx.emit(WorkspaceEvent::Changed);

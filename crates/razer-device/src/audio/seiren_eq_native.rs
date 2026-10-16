@@ -38,19 +38,51 @@ pub struct NativeLevels {
 pub enum NativeOperation {
     DeviceInitialize,
     GetMode,
-    GetDeviceVolume { device_id: u32 },
-    GetDeviceMute { device_id: u32 },
-    SetDeviceVolume { device_id: u32, level: u32 },
-    SetDeviceMute { device_id: u32, muted: bool },
-    SetMicMonitorLevel { level: i32 },
-    SetMicMonitorEnable { enabled: bool },
-    SetMasterSampleRate { rate: u32 },
-    SetMode { enabled: bool },
-    SetPlaybackExternal { enabled: bool },
-    SetLevelMeterEnable { enabled: bool },
-    SetStreamMixMonitor { enabled: bool },
-    SetMixEnable { output_id: u32, input_id: u32, enabled: bool },
-    SetMixLevel { output_id: u32, input_id: u32, level: u32 },
+    GetDeviceVolume {
+        device_id: u32,
+    },
+    GetDeviceMute {
+        device_id: u32,
+    },
+    SetDeviceVolume {
+        device_id: u32,
+        level: u32,
+    },
+    SetDeviceMute {
+        device_id: u32,
+        muted: bool,
+    },
+    SetMicMonitorLevel {
+        level: i32,
+    },
+    SetMicMonitorEnable {
+        enabled: bool,
+    },
+    SetMasterSampleRate {
+        rate: u32,
+    },
+    SetMode {
+        enabled: bool,
+    },
+    SetPlaybackExternal {
+        enabled: bool,
+    },
+    SetLevelMeterEnable {
+        enabled: bool,
+    },
+    SetStreamMixMonitor {
+        enabled: bool,
+    },
+    SetMixEnable {
+        output_id: u32,
+        input_id: u32,
+        enabled: bool,
+    },
+    SetMixLevel {
+        output_id: u32,
+        input_id: u32,
+        level: u32,
+    },
     DeviceTerminate,
 }
 impl NativeOperation {
@@ -80,7 +112,9 @@ pub trait NativeTransport {
     fn call(&self, operation: &NativeOperation) -> anyhow::Result<NativeReply>;
     /// Retained feature state from initialization and explicit mode changes.
     /// This is not an extra native getter or a UI observation.
-    fn stream_mixer_enabled(&self)->bool{false}
+    fn stream_mixer_enabled(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -186,20 +220,25 @@ pub fn execute_native(
     change: &Change,
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Report> {
-    execute_native_inner(product_id,transport,change,validate,true)
+    execute_native_inner(product_id, transport, change, validate, true)
 }
 
 /// The source AudioMarie instance initializes once and is retained until
 /// unload. Reusing it must never terminate it after each volume/sample task.
 pub fn execute_native_in_session(
-    product_id: u32, transport: &dyn NativeTransport, change: &Change,
+    product_id: u32,
+    transport: &dyn NativeTransport,
+    change: &Change,
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<Report> {
-    execute_native_inner(product_id,transport,change,validate,false)
+    execute_native_inner(product_id, transport, change, validate, false)
 }
 fn execute_native_inner(
-    product_id: u32, transport: &dyn NativeTransport, change: &Change,
-    validate: impl Fn() -> anyhow::Result<()>, lifecycle:bool,
+    product_id: u32,
+    transport: &dyn NativeTransport,
+    change: &Change,
+    validate: impl Fn() -> anyhow::Result<()>,
+    lifecycle: bool,
 ) -> anyhow::Result<Report> {
     validate_change(product_id, change)?;
     ensure!(
@@ -215,12 +254,20 @@ fn execute_native_inner(
         source_skipped: None,
         native_levels: None,
     };
-    let initialized = if lifecycle {call(
-        &mut report,
-        transport,
-        NativeOperation::DeviceInitialize,
-        &validate,
-    )} else {CallOutcome{called:true,returned:true,succeeded:true}};
+    let initialized = if lifecycle {
+        call(
+            &mut report,
+            transport,
+            NativeOperation::DeviceInitialize,
+            &validate,
+        )
+    } else {
+        CallOutcome {
+            called: true,
+            returned: true,
+            succeeded: true,
+        }
+    };
     // AudioMarie.init sets isInit after ConfigureFFI, before awaiting
     // DeviceInitialize. Its false return or caught exception does not clear
     // isInit, so the source feature still attempts the requested operation.
@@ -228,7 +275,9 @@ fn execute_native_inner(
     // must still prevent the operation, and every later call checks the guard.
     if initialized.called {
         let operations = match change {
-            Change::SamplingRate(rate) => vec![NativeOperation::SetMasterSampleRate{rate:*rate}],
+            Change::SamplingRate(rate) => {
+                vec![NativeOperation::SetMasterSampleRate { rate: *rate }]
+            }
             Change::ReadVolumes => {
                 // Audio_StreamMixer.getRuntimeData publishes only the actual
                 // native HP volume/mute then mic volume/mute, in this order.
@@ -259,25 +308,22 @@ fn execute_native_inner(
                 ]
             }
             Change::MonitorVolume(level) => {
-                {
-                    let enabled=transport.stream_mixer_enabled();
-                    if enabled {
-                        report.source_skipped = Some(
-                            "Source skips mic-monitor settings while stream mixer is enabled"
-                                .into(),
-                        );
-                        report.source_result = true;
-                        Vec::new()
-                    } else {
-                        vec![
-                            NativeOperation::SetMicMonitorLevel {
-                                level: level.value as i32,
-                            },
-                            NativeOperation::SetMicMonitorEnable {
-                                enabled: level.is_enabled,
-                            },
-                        ]
-                    }
+                let enabled = transport.stream_mixer_enabled();
+                if enabled {
+                    report.source_skipped = Some(
+                        "Source skips mic-monitor settings while stream mixer is enabled".into(),
+                    );
+                    report.source_result = true;
+                    Vec::new()
+                } else {
+                    vec![
+                        NativeOperation::SetMicMonitorLevel {
+                            level: level.value as i32,
+                        },
+                        NativeOperation::SetMicMonitorEnable {
+                            enabled: level.is_enabled,
+                        },
+                    ]
                 }
             }
             _ => unreachable!("validated native operation"),
@@ -304,9 +350,9 @@ fn execute_native_inner(
                     Some(NativeReply::Boolean(mic_muted)),
                 ) = (
                     stages[usize::from(lifecycle)].reply(),
-                    stages[usize::from(lifecycle)+1].reply(),
-                    stages[usize::from(lifecycle)+2].reply(),
-                    stages[usize::from(lifecycle)+3].reply(),
+                    stages[usize::from(lifecycle) + 1].reply(),
+                    stages[usize::from(lifecycle) + 2].reply(),
+                    stages[usize::from(lifecycle) + 3].reply(),
                 )
                 else {
                     unreachable!("validated native observation types");
@@ -320,12 +366,14 @@ fn execute_native_inner(
     }
     // DeviceTerminate runs even after partial initialization, failed setters,
     // cancellation or an identity change; it uses the original container owner.
-    if lifecycle {call(
-        &mut report,
-        transport,
-        NativeOperation::DeviceTerminate,
-        &|| Ok(()),
-    );}
+    if lifecycle {
+        call(
+            &mut report,
+            transport,
+            NativeOperation::DeviceTerminate,
+            &|| Ok(()),
+        );
+    }
     Ok(report)
 }
 
@@ -357,7 +405,9 @@ mod tests {
         }
     }
     impl NativeTransport for Simulated {
-        fn stream_mixer_enabled(&self)->bool{self.mode==1}
+        fn stream_mixer_enabled(&self) -> bool {
+            self.mode == 1
+        }
         fn call(&self, operation: &NativeOperation) -> anyhow::Result<NativeReply> {
             self.calls.lock().unwrap().push(operation.clone());
             ensure!(

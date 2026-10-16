@@ -40,15 +40,10 @@ struct Source {
 }
 fn source(pid: u32) -> &'static Source {
     static DATA: OnceLock<Vec<Source>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "keyboard_mapping_sensitivity_warning_data.json"
-        ))
-        .expect("current mapped clutch warning")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("audited mapped clutch warning")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_sensitivity_warning_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("audited mapped clutch warning")
 }
 impl KeyboardProductWorkspace {
     pub(super) fn request_mapping_sensitivity_warning(

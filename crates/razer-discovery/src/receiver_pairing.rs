@@ -3,19 +3,6 @@
 use anyhow::{Context as _, ensure};
 use razer_device::receiver_pairing::ScanCandidate;
 use serde_json::{Value, json};
-use std::sync::OnceLock;
-
-fn catalog() -> &'static Value {
-    static CATALOG: OnceLock<Value> = OnceLock::new();
-    CATALOG.get_or_init(|| {
-        let catalog: Value = serde_json::from_str(include_str!(
-            "../../../assets/data/receiver-pairing-catalog.json"
-        ))
-        .expect("source-generated pairing catalog");
-        assert_eq!(catalog["schema_version"], 1);
-        catalog
-    })
-}
 
 /// Source runtime overrides need separately retained owner/serial scope and
 /// real records. This wrapper has no such observations to merge. The source
@@ -43,53 +30,40 @@ pub fn project_scan_candidates_for_source(
         "当前产品尚未核验扫描候选转换"
     );
     ensure!(scanned.len() <= 3, "扫描候选超出当前 Protocol25 记录数");
-    let source = catalog();
-    let devices = source["devices"]
-        .as_array()
-        .context("缺少当前兼容设备目录")?;
-    let available = source["available"]
-        .as_array()
-        .context("缺少当前可用产品目录")?;
-    let receiver = devices
-        .iter()
-        .find(|row| row["DeviceDonglePid"] == source_pid)
+    let receiver = razer_device::receiver_pairing::catalog_device(source_pid)
         .context("当前兼容目录没有接收器")?;
-    let buddies = receiver["DevicePairingBuddies"]
-        .as_array()
-        .context("接收器缺少原始配对兼容列表")?;
+    let buddies = receiver.pairing_buddies();
     let mut result = Vec::new();
     for candidate in scanned {
         let raw = candidate.dongle_id;
-        let device = devices.iter().find(|row| row["DeviceDonglePid"] == raw);
+        let device = razer_device::receiver_pairing::catalog_device(raw);
         // Current756 handleScanDevices projects every actual event record;
         // Linker callers reject an absent catalog device before their buddies
         // filter. Neither branch turns a missing catalog row into a read.
-        if source_pid != 757 && (device.is_none() || !buddies.iter().any(|pid| *pid == raw)) {
+        if source_pid != 757 && (device.is_none() || !buddies.contains(&raw)) {
             continue;
         }
-        let editions = device
-            .and_then(|device| device["ProductInfo"].as_array())
-            .map_or(&[][..], Vec::as_slice);
+        let editions = device.map_or(&[][..], |device| device.editions());
         let selected = editions
             .iter()
-            .find(|edition| edition["EID"] == candidate.edition_id)
-            .or_else(|| editions.iter().find(|edition| edition["EID"] == 0));
+            .find(|edition| edition.edition_id() == u16::from(candidate.edition_id))
+            .or_else(|| editions.iter().find(|edition| edition.edition_id() == 0));
         let default_en = format!("unknown-{raw}");
         let default_cn = format!("未知设备-{raw}");
         let name = json!({
-            "en":selected.and_then(|row|row["Name"].as_str()).filter(|name|!name.is_empty()).unwrap_or(&default_en),
-            "zh-cn":selected.and_then(|row|row["CHSName"].as_str()).filter(|name|!name.is_empty()).unwrap_or(&default_cn),
+            "en":selected.map(|edition|edition.name()).filter(|name|!name.is_empty()).unwrap_or(&default_en),
+            "zh-cn":selected.map(|edition|edition.chinese_name()).filter(|name|!name.is_empty()).unwrap_or(&default_cn),
         });
         let product_id = device
-            .and_then(|device| device["DeviceSiblings"].as_array())
+            .and_then(|device| device.siblings())
             .and_then(|rows| rows.first())
-            .and_then(Value::as_u64)
+            .map(|product| u64::from(*product))
             .unwrap_or(0);
-        let category = device
-            .and_then(|device| device["DeviceType"].as_str())
-            .unwrap_or("");
+        let category = device.map(|device| device.category()).unwrap_or("");
         let mut row = json!({"productId":product_id,"dongleId":raw,"name":name,"productName":name,"editionName":name,"category":category,"editionId":candidate.edition_id});
-        let Some(registered) = available.iter().find(|row| row["dongleId"] == raw) else {
+        let Some(registered) =
+            razer_device::receiver_pairing::registered_source756_pair_product(raw)
+        else {
             // Current756 spreads the actual candidate AFTER its presentation
             // defaults. Linker callers do the reverse. The distinction keeps
             // an unknown756 scan's real edition and empty category intact.
@@ -103,10 +77,7 @@ pub fn project_scan_candidates_for_source(
             result.push(defaults);
             continue;
         };
-        let product_id = registered["productId"]
-            .as_u64()
-            .filter(|pid| *pid > 0)
-            .context("可用产品条目缺少真实 productId")?;
+        let product_id = u64::from(registered);
         row["productId"] = json!(product_id);
         if let Some(observed) = connected
             .iter()
@@ -131,23 +102,17 @@ pub fn project_source756_pair_device(
     layout_id: u8,
     connected: &[Value],
 ) -> anyhow::Result<Value> {
-    let device = razer_device::receiver_pairing::source756_pair_catalog_device(dongle_id)?;
-    let editions = device["ProductInfo"].as_array().unwrap();
+    let device = razer_device::receiver_pairing::source756_pair_device(dongle_id)?;
+    let editions = device.editions();
     let selected = editions
         .iter()
-        .find(|row| row["EID"] == scanned_edition)
-        .or_else(|| editions.iter().find(|row| row["EID"] == 0));
+        .find(|edition| edition.edition_id() == u16::from(scanned_edition))
+        .or_else(|| editions.iter().find(|edition| edition.edition_id() == 0));
     let fallback_en = format!("unknown-{dongle_id}");
     let fallback_cn = format!("未知设备-{dongle_id}");
-    let names = json!({"en":selected.and_then(|row| row["Name"].as_str()).filter(|name| !name.is_empty()).unwrap_or(&fallback_en),"zh-cn":selected.and_then(|row| row["CHSName"].as_str()).filter(|name| !name.is_empty()).unwrap_or(&fallback_cn)});
-    let registered = catalog()["available"]
-        .as_array()
-        .context("当前可用设备目录缺失")?
-        .iter()
-        .find(|row| row["dongleId"] == dongle_id);
-    let product_id = registered
-        .and_then(|row| row["productId"].as_u64())
-        .unwrap_or(0);
+    let names = json!({"en":selected.map(|edition| edition.name()).filter(|name| !name.is_empty()).unwrap_or(&fallback_en),"zh-cn":selected.map(|edition| edition.chinese_name()).filter(|name| !name.is_empty()).unwrap_or(&fallback_cn)});
+    let registered = razer_device::receiver_pairing::registered_source756_pair_product(dongle_id);
+    let product_id = registered.unwrap_or(0);
     // The mounted Protocol25 pair parser supplies no typeDesc. Source falls
     // back to the opposite-category metadata factory's actual MOUSE category.
     let mut projected = json!({"productId":product_id,"dongleId":dongle_id,"category":"MOUSE","name":names,"productName":names,"editionName":names,"editionId":edition_id,"layoutId":layout_id});
@@ -232,12 +197,9 @@ pub fn project_device_info(
     records: &Value,
     bindings: Option<&Value>,
 ) -> anyhow::Result<Value> {
-    let default = catalog()["masters"]
-        .as_array()
-        .context("缺少源主设备目录")?
-        .iter()
-        .find(|row| row["productId"] == source_product_id)
+    let source_default = razer_device::receiver_pairing::catalog_master(source_product_id)
         .context("caller 主设备缺失")?;
+    let default = json!({"productId": source_default.product_id(), "dongleId": source_default.dongle_id(), "bleId": source_default.ble_id()});
     let rows: Vec<_> = match records {
         Value::Object(rows) => rows.values().collect(),
         Value::Array(rows) => rows.iter().collect(),
@@ -246,7 +208,7 @@ pub fn project_device_info(
     let cached = rows
         .into_iter()
         .find(|row| row["productId"] == source_product_id);
-    let master = cached.map(|row| &row["master"]).unwrap_or(default);
+    let master = cached.map(|row| &row["master"]).unwrap_or(&default);
     let slaves = if let Some(row) = cached {
         vec![json!({"productId":row["productId"],"dongleId":row["dongleId"]})]
     } else {

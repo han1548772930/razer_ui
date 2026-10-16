@@ -131,7 +131,10 @@ impl NativeRuntime {
 
     pub(super) fn resume_macro_mappings(&mut self) -> anyhow::Result<Value> {
         let (mapping, shortcuts) = resume_operations(|name| {
-            anyhow::ensure!(!self.poisoned, "Recorder callback owner is unavailable during restoration");
+            anyhow::ensure!(
+                !self.poisoned,
+                "Recorder callback owner is unavailable during restoration"
+            );
             let enable: Operation = unsafe { self.mapping_symbol(name)? };
             // callMappingEngineAction returns callback {result,reason} without
             // rejecting false. Keep those separate from transport exceptions.
@@ -153,7 +156,11 @@ impl NativeRuntime {
     pub(super) fn start_macro_recording(&mut self) -> anyhow::Result<Value> {
         self.register_macro_recorder()?;
         let result = self.start_recorder_mode("kSoftware", c"kSoftware")?;
-        anyhow::ensure!(result["accepted"] == true, "Software recorder rejected start: {}", result["reason"]);
+        anyhow::ensure!(
+            result["accepted"] == true,
+            "Software recorder rejected start: {}",
+            result["reason"]
+        );
         Ok(result)
     }
 
@@ -177,7 +184,11 @@ impl NativeRuntime {
         Ok(())
     }
 
-    fn start_recorder_mode(&mut self, mode: &'static str, native: &'static std::ffi::CStr) -> anyhow::Result<Value> {
+    fn start_recorder_mode(
+        &mut self,
+        mode: &'static str,
+        native: &'static std::ffi::CStr,
+    ) -> anyhow::Result<Value> {
         let start: Start = unsafe { self.mapping_symbol("startMacroRecording")? };
         // Current host and background machine branch on result, not a later
         // macrorecordingstarted event. A rejected result is retained verbatim.
@@ -197,8 +208,10 @@ impl NativeRuntime {
     }
 
     pub(super) fn start_otfm_recording(&mut self) -> anyhow::Result<Value> {
-        anyhow::ensure!(self.macro_recorder.registered && !self.macro_recorder.recording,
-            "OTFM requires its prepared, inactive recorder listener owner");
+        anyhow::ensure!(
+            self.macro_recorder.registered && !self.macro_recorder.recording,
+            "OTFM requires its prepared, inactive recorder listener owner"
+        );
         self.start_recorder_mode("kOTFM", c"kOTFM")
     }
 
@@ -215,25 +228,44 @@ impl NativeRuntime {
         self.mapping()?;
         let mode: super::Query = unsafe { self.mapping_symbol("getMacroRecordingMode")? };
         let observed = self.call(|| unsafe { mode(callback3) })?;
-        let mode = observed.value.ok_or_else(|| anyhow::anyhow!("Native recorder mode callback has no value"))?;
+        let mode = observed
+            .value
+            .ok_or_else(|| anyhow::anyhow!("Native recorder mode callback has no value"))?;
         let global: super::Query = unsafe { self.mapping_symbol("getGlobalMode")? };
         let observed = self.call(|| unsafe { global(callback3) })?;
-        let global = observed.value.ok_or_else(|| anyhow::anyhow!("Native global mode callback has no value"))?;
+        let global = observed
+            .value
+            .ok_or_else(|| anyhow::anyhow!("Native global mode callback has no value"))?;
         Ok(json!({"macroRecordingMode":mode,"globalMode":global}))
     }
 
     pub(super) fn set_otfm_mappings_suspended(&mut self, suspended: bool) -> anyhow::Result<Value> {
-        anyhow::ensure!(self.macro_recorder.registered, "OTFM listener owner is absent");
+        anyhow::ensure!(
+            self.macro_recorder.registered,
+            "OTFM listener owner is absent"
+        );
         let mut errors = Vec::new();
         // Promise.all in the current source submits BOTH operations, including
         // the global shortcut operation when disableMapping rejects.
-        let operation: Operation = unsafe { self.mapping_symbol(if suspended {"disableMapping"} else {"enableMapping"})? };
+        let operation: Operation = unsafe {
+            self.mapping_symbol(if suspended {
+                "disableMapping"
+            } else {
+                "enableMapping"
+            })?
+        };
         match self.call(|| unsafe { operation(callback2) }) {
             Ok(_) => self.macro_recorder.mappings_suspended = suspended,
             Err(error) => errors.push(format!("mapping: {error:#}")),
         }
         if !self.poisoned {
-            let operation: Operation = unsafe { self.mapping_symbol(if suspended {"disableGlobalShortcut"} else {"enableGlobalShortcut"})? };
+            let operation: Operation = unsafe {
+                self.mapping_symbol(if suspended {
+                    "disableGlobalShortcut"
+                } else {
+                    "enableGlobalShortcut"
+                })?
+            };
             match self.call(|| unsafe { operation(callback2) }) {
                 Ok(_) => self.macro_recorder.shortcuts_suspended = suspended,
                 Err(error) => errors.push(format!("global shortcut: {error:#}")),
@@ -245,14 +277,28 @@ impl NativeRuntime {
         Ok(json!({"suspended":suspended}))
     }
 
-    pub(super) fn macro_recorder_storage_write(&mut self, key: &str, value: &Value) -> anyhow::Result<Value> {
-        anyhow::ensure!(self.macro_recorder.registered, "Recorder storage writer owner is absent");
-        anyhow::ensure!(key == "synapseMacros" || key.starts_with("synapse_"), "Recorder storage key is outside current local chain");
+    pub(super) fn macro_recorder_storage_write(
+        &mut self,
+        key: &str,
+        value: &Value,
+    ) -> anyhow::Result<Value> {
+        anyhow::ensure!(
+            self.macro_recorder.registered,
+            "Recorder storage writer owner is absent"
+        );
+        anyhow::ensure!(
+            key == "synapseMacros" || key.starts_with("synapse_"),
+            "Recorder storage key is outside current local chain"
+        );
         let key_text = std::ffi::CString::new(key)?;
         let value_text = std::ffi::CString::new(value.to_string())?;
         let set: super::StorageSetItem = unsafe { self.mapping_symbol("localStorageSetItem")? };
-        let result = self.call(|| unsafe { set(key_text.as_ptr(), value_text.as_ptr(), callback2) });
-        if self.poisoned { std::mem::forget(key_text); std::mem::forget(value_text); }
+        let result =
+            self.call(|| unsafe { set(key_text.as_ptr(), value_text.as_ptr(), callback2) });
+        if self.poisoned {
+            std::mem::forget(key_text);
+            std::mem::forget(value_text);
+        }
         result?;
         Ok(json!({"published":true,"key":key}))
     }
@@ -283,7 +329,9 @@ impl NativeRuntime {
         }
         if self.macro_recorder.shortcuts_suspended {
             if self.poisoned {
-                errors.push("Recorder connection timed out; shortcut restoration is unconfirmed".into());
+                errors.push(
+                    "Recorder connection timed out; shortcut restoration is unconfirmed".into(),
+                );
             } else {
                 let result = (|| {
                     let enable: Operation = unsafe { self.mapping_symbol("enableGlobalShortcut")? };
@@ -291,7 +339,9 @@ impl NativeRuntime {
                 })();
                 match result {
                     Ok(_) => self.macro_recorder.shortcuts_suspended = false,
-                    Err(error) => errors.push(format!("Restore recorder global shortcuts: {error:#}")),
+                    Err(error) => {
+                        errors.push(format!("Restore recorder global shortcuts: {error:#}"))
+                    }
                 }
             }
         }
@@ -321,7 +371,11 @@ mod shortcut_resume_tests {
             if name == "enableMapping" {
                 anyhow::bail!("mapping transport failure");
             }
-            Ok(CallbackReply { success: true, reason: String::new(), value: None })
+            Ok(CallbackReply {
+                success: true,
+                reason: String::new(),
+                value: None,
+            })
         });
         assert!(result.is_err());
         assert_eq!(calls, ["enableMapping", "enableGlobalShortcut"]);
@@ -330,8 +384,13 @@ mod shortcut_resume_tests {
     #[test]
     fn recorder_resume_preserves_native_false_as_source_response_data() {
         let (mapping, shortcuts) = resume_operations(|_| {
-            Ok(CallbackReply { success: false, reason: "hotkey was not disabled".into(), value: None })
-        }).unwrap();
+            Ok(CallbackReply {
+                success: false,
+                reason: "hotkey was not disabled".into(),
+                value: None,
+            })
+        })
+        .unwrap();
         assert!(!mapping.success);
         assert!(!shortcuts.success);
         assert_eq!(shortcuts.reason, "hotkey was not disabled");

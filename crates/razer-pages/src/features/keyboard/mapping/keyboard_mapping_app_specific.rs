@@ -20,13 +20,10 @@ pub(super) struct Presets {
 }
 pub(super) fn data(pid: u32) -> &'static Data {
     static DATA: OnceLock<Vec<Data>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_app_interdevice_data.json"))
-            .expect("current app/inter-device metadata")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("current keyboard product")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_app_interdevice_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("current keyboard product")
 }
 #[derive(Default)]
 pub(super) struct State {

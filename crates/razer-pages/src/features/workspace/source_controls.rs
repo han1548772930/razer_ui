@@ -224,21 +224,9 @@ struct ProductSpec {
 fn specs() -> &'static [ProductSpec] {
     static SPECS: OnceLock<Vec<ProductSpec>> = OnceLock::new();
     SPECS.get_or_init(|| {
-        let mut specs: Vec<ProductSpec> =
-            serde_json::from_str(include_str!("source_controls_data.json"))
-                .expect("validated camera descriptors");
-        specs.extend(
-            serde_json::from_str::<Vec<ProductSpec>>(include_str!(
-                "../keyboard/keyboard_oled_data.json"
-            ))
-            .expect("validated OLED descriptors"),
-        );
-        specs.extend(
-            serde_json::from_str::<Vec<ProductSpec>>(include_str!(
-                "../accessories/accessory_controls_data.json"
-            ))
-            .expect("validated accessory descriptors"),
-        );
+        let mut specs: Vec<ProductSpec> = crate::data::source_controls_data!();
+        specs.extend(crate::data::keyboard_oled_data!());
+        specs.extend(crate::data::accessory_controls_data!());
         specs
     })
 }
@@ -2057,7 +2045,9 @@ impl SourceControls {
             .px(surface::css(20.))
             .py(surface::css(27.));
         if self.spec.product_id == 3595 && page.key == "MIC" {
-            return column.child(self.render_camera_microphone(page, cx)).into_any_element();
+            return column
+                .child(self.render_camera_microphone(page, cx))
+                .into_any_element();
         }
         if !page.camera_groups.is_empty() {
             column = column.children(

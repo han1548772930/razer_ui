@@ -177,9 +177,7 @@ impl AudioProductWorkspace {
         if !state.capture_ready {
             return;
         }
-        let keys = recipe(self.spec.product_id)["captureKeys"]
-            .as_array()
-            .expect("source capture table");
+        let keys = &recipe(self.spec.product_id).capture_keys;
         if let Some(captured) = state
             .capture_keys
             .accept(keys, &event, state.capture_hypershift)
@@ -250,7 +248,7 @@ impl AudioProductWorkspace {
     }
     fn store_seiren_stream_mixer_shortcut(
         &mut self,
-        key: &Value,
+        key: &impl serde::Serialize,
         key_input: bool,
         hypershift: Option<bool>,
         modifiers: Vec<String>,
@@ -263,6 +261,7 @@ impl AudioProductWorkspace {
         if !state.capture_ready {
             return;
         }
+        let key = serde_json::to_value(key).expect("source shortcut key fields");
         let guid = selected(&state.data).to_owned();
         if matches!(
             key["inputID"].as_str(),
@@ -278,12 +277,10 @@ impl AudioProductWorkspace {
             );
             return;
         }
-        let keys = recipe(self.spec.product_id)["captureKeys"]
-            .as_array()
-            .expect("source capture table");
+        let keys = &recipe(self.spec.product_id).capture_keys;
         let current = &state.data["shortcutMapping"];
         let (mapping, display) =
-            shortcut_mapping(current, keys, key, key_input, hypershift, modifiers);
+            shortcut_mapping(current, keys, &key, key_input, hypershift, modifiers);
         // xe passes [currentShortcut] as mappingList. There is no whole preset
         // library conflict check in this current component.
         let duplicate =
@@ -434,10 +431,10 @@ impl AudioProductWorkspace {
             .into_any_element()
     }
 }
-fn source_capture_key(keys: &[Value], key_code: u32, location: u8) -> Option<&Value> {
+fn source_capture_key(keys: &[SourceKey], key_code: u32, location: u8) -> Option<&SourceKey> {
     let flag = if location == 2 { 2 } else { 0 };
     keys.iter()
-        .find(|key| key["keyCode"] == key_code.to_string() && key["flag"] == flag)
+        .find(|key| key.key_code == key_code.to_string() && key.flag == flag)
 }
 #[derive(Default)]
 pub(super) struct CaptureKeys {
@@ -445,14 +442,14 @@ pub(super) struct CaptureKeys {
     last_key: Option<(u32, u32)>,
 }
 struct CapturedKey<'a> {
-    key: &'a Value,
+    key: &'a SourceKey,
     modifiers: Vec<String>,
     hypershift: Option<bool>,
 }
 impl CaptureKeys {
     fn accept<'a>(
         &mut self,
-        keys: &'a [Value],
+        keys: &'a [SourceKey],
         event: &razer_platform::keyboard_capture::KeyboardEvent,
         hypershift: bool,
     ) -> Option<CapturedKey<'a>> {
@@ -467,7 +464,7 @@ impl CaptureKeys {
             // event.repeat. A first held event after activation is accepted.
             self.last_key = Some(identity);
             if matches!(code, 16 | 17) {
-                self.modifiers.push(key["inputID"].as_str()?.into());
+                self.modifiers.push(key.input_id.as_deref()?.into());
                 None
             } else {
                 Some(CapturedKey {
@@ -491,7 +488,7 @@ impl CaptureKeys {
                 self.modifiers.retain(|id| {
                     !keys
                         .iter()
-                        .any(|key| key["inputID"] == *id && key["keyCode"] == key_code)
+                        .any(|key| key.input_id.as_deref() == Some(id) && key.key_code == key_code)
                 });
             } else {
                 self.last_key = None;
@@ -502,20 +499,22 @@ impl CaptureKeys {
 }
 fn shortcut_mapping(
     current: &Value,
-    keys: &[Value],
-    key: &Value,
+    keys: &[SourceKey],
+    key: &impl serde::Serialize,
     key_input: bool,
     hypershift: Option<bool>,
     modifiers: Vec<String>,
 ) -> (Value, String) {
+    let key = serde_json::to_value(key).expect("source shortcut key fields");
     let modifiers = if modifiers.is_empty() {
         ["Ctrl", "Alt"]
             .iter()
             .map(|name| {
                 keys.iter()
-                    .find(|key| key["name"] == *name)
-                    .expect("source default modifier")["inputID"]
-                    .as_str()
+                    .find(|key| key.name == *name)
+                    .expect("source default modifier")
+                    .input_id
+                    .as_deref()
                     .expect("source modifier ID")
                     .to_owned()
             })
@@ -527,8 +526,8 @@ fn shortcut_mapping(
         .iter()
         .filter_map(|id| {
             keys.iter()
-                .find(|key| key["inputID"] == *id)
-                .and_then(|key| key["name"].as_str())
+                .find(|key| key.input_id.as_deref() == Some(id))
+                .map(|key| key.name.as_str())
         })
         .map(|name| format!("{name} + "))
         .collect::<String>();
@@ -557,8 +556,8 @@ fn shortcut_mapping(
     }
     mapping["inputID"] = if key_input {
         keys.iter()
-            .find(|candidate| candidate["keyCode"] == key["keyCode"])
-            .map(|key| key["inputID"].clone())
+            .find(|candidate| Some(candidate.key_code.as_str()) == key["keyCode"].as_str())
+            .map(|key| json!(key.input_id))
             .unwrap_or(Value::Null)
     } else {
         key["inputID"].clone()
@@ -576,8 +575,8 @@ fn shortcut_conflicts(mappings: &[Value], current_guid: &Value, display: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn source_keys() -> &'static [Value] {
-        recipe(1422)["captureKeys"].as_array().unwrap()
+    fn source_keys() -> &'static [SourceKey] {
+        &recipe(1422).capture_keys
     }
     fn event(
         message: u32,
@@ -600,19 +599,31 @@ mod tests {
     fn stream_mixer_raw_keys_use_browser_sides_and_first_keycode_assignment() {
         let keys = source_keys();
         assert_eq!(
-            source_capture_key(keys, 17, 1).unwrap()["inputID"],
+            source_capture_key(keys, 17, 1)
+                .unwrap()
+                .input_id
+                .as_deref()
+                .unwrap(),
             "KEY_LEFT_CTRL"
         );
         assert_eq!(
-            source_capture_key(keys, 17, 2).unwrap()["inputID"],
+            source_capture_key(keys, 17, 2)
+                .unwrap()
+                .input_id
+                .as_deref()
+                .unwrap(),
             "KEY_RIGHT_CTRL"
         );
         assert_eq!(
-            source_capture_key(keys, 16, 2).unwrap()["inputID"],
+            source_capture_key(keys, 16, 2)
+                .unwrap()
+                .input_id
+                .as_deref()
+                .unwrap(),
             "KEY_RIGHT_SHIFT"
         );
         let num_enter = source_capture_key(keys, 13, 3).unwrap();
-        assert_eq!(num_enter["inputID"], "KEY_ENTER");
+        assert_eq!(num_enter.input_id.as_deref().unwrap(), "KEY_ENTER");
         let (mapping, display) =
             shortcut_mapping(&json!({}), keys, num_enter, true, Some(false), vec![]);
         assert_eq!(mapping["inputID"], "KEY_NUMPAD_ENTER");
@@ -622,7 +633,11 @@ mod tests {
         );
         assert_eq!(display, "Ctrl + Alt + Enter");
         assert_eq!(
-            source_capture_key(keys, 97, 3).unwrap()["inputID"],
+            source_capture_key(keys, 97, 3)
+                .unwrap()
+                .input_id
+                .as_deref()
+                .unwrap(),
             "KEY_NUMPAD_1"
         );
         assert!(source_capture_key(keys, 92, 2).is_none());
@@ -661,7 +676,7 @@ mod tests {
         let primary = capture
             .accept(keys, &event(0x100, 65, 0x1e, false, true), true)
             .unwrap();
-        assert_eq!(primary.key["inputID"], "KEY_A");
+        assert_eq!(primary.key.input_id.as_deref().unwrap(), "KEY_A");
         assert_eq!(primary.hypershift, Some(true));
         assert!(
             capture

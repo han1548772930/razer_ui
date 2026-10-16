@@ -6,10 +6,7 @@ struct ModuleServiceSource {
 }
 fn module_service_source() -> &'static ModuleServiceSource {
     static SOURCE: OnceLock<ModuleServiceSource> = OnceLock::new();
-    SOURCE.get_or_init(|| {
-        serde_json::from_str(include_str!("module_service_source.json"))
-            .expect("validated module service category source")
-    })
+    SOURCE.get_or_init(|| crate::data::module_service_source!())
 }
 fn service_row_key(row: &Record, module: Option<&Module>) -> String {
     module
@@ -322,11 +319,7 @@ impl ModuleCatalog {
         let expanded = self.expanded.contains(&key);
         module_detail_action(
             SharedString::from(format!("service-details-{key}")),
-            i18n::t(if expanded {
-                "CLOSE"
-            } else {
-                "MORE_INFORMATION"
-            }),
+            i18n::t(if expanded { "CLOSE" } else { "MORE_INFORMATION" }),
             cx,
         )
         .on_click(cx.listener(move |this, _, _, cx| this.toggle_service_details(key.clone(), cx)))

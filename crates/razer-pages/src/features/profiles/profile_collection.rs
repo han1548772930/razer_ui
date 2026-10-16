@@ -18,21 +18,39 @@ pub fn edit(device: &mut Device, saved: &Device, action: Action) -> Result<Strin
         if !device.profiles.iter().any(|profile| &profile.id == id) {
             return Err("待删除的配置文件已不存在".into());
         }
-        let removed_guid=device.profiles.iter().find(|profile|&profile.id==id).map(|profile|profile.guid.clone()).unwrap();
+        let removed_guid = device
+            .profiles
+            .iter()
+            .find(|profile| &profile.id == id)
+            .map(|profile| profile.guid.clone())
+            .unwrap();
         device.profiles.retain(|profile| &profile.id != id);
-        if device.product_id==756 {
+        if device.product_id == 756 {
             // Current50574 qf uses the requested survivor when valid, otherwise
             // the first stored profile. UI deletion supplies its first survivor.
             for profile in &mut device.profiles {
-                if let Some(mappings)=profile.source_settings.as_mut().and_then(|source|source.get_mut("mappings")).and_then(serde_json::Value::as_array_mut) {
+                if let Some(mappings) = profile
+                    .source_settings
+                    .as_mut()
+                    .and_then(|source| source.get_mut("mappings"))
+                    .and_then(serde_json::Value::as_array_mut)
+                {
                     mappings.retain(|mapping| {
-                        let target=if mapping["mapping"].is_array(){&mapping["mapping"][0]}else{mapping};
-                        !(target["outputType"]=="profileNavigationGroup"&&target["profileNavigationGroup"]["guid"]==removed_guid
-                            &&target["profileNavigationGroup"]["profileNavigationAssignment"]=="Specific")
+                        let target = if mapping["mapping"].is_array() {
+                            &mapping["mapping"][0]
+                        } else {
+                            mapping
+                        };
+                        !(target["outputType"] == "profileNavigationGroup"
+                            && target["profileNavigationGroup"]["guid"] == removed_guid
+                            && target["profileNavigationGroup"]["profileNavigationAssignment"]
+                                == "Specific")
                     });
                 }
             }
-            let target=device.profiles[0].id.clone();device.active_profile=target.clone();return Ok(target);
+            let target = device.profiles[0].id.clone();
+            device.active_profile = target.clone();
+            return Ok(target);
         }
         // Ua supplies the last profile as its successor. The local successor
         // must be a surviving identity, including deletion of that last row.

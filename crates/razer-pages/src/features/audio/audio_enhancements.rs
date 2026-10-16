@@ -70,12 +70,9 @@ struct Mode {
 }
 fn product(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_enhancements_data.json"))
-            .expect("current original Enhancements mount projection")
-    })
-    .iter()
-    .find(|p| p.product_id == pid)
+    DATA.get_or_init(|| crate::data::audio_enhancements_data!())
+        .iter()
+        .find(|p| p.product_id == pid)
 }
 fn message(row: &Product, key: &str) -> String {
     row.locales

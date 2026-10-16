@@ -87,9 +87,7 @@ pub(super) struct ScrollWheelSpec {
 pub(super) fn source_spec(product_id: u32) -> Option<&'static ScrollWheelSpec> {
     static DATA: OnceLock<Vec<ScrollWheelSpec>> = OnceLock::new();
     DATA.get_or_init(|| {
-        let specs: Vec<ScrollWheelSpec> =
-            serde_json::from_str(include_str!("mouse_scroll_wheel_data.json"))
-                .expect("validated current scroll wheel capabilities");
+        let specs: Vec<ScrollWheelSpec> = crate::data::mouse_scroll_wheel_data!();
         for spec in &specs {
             assert!(
                 spec.presentation == Presentation::TwoModeSwitches
@@ -818,8 +816,7 @@ mod tests {
             gpui_kit::init(cx);
             cx.set_reduce_motion(true);
         });
-        let catalog: Vec<ScrollWheelSpec> =
-            serde_json::from_str(include_str!("mouse_scroll_wheel_data.json")).unwrap();
+        let catalog: Vec<ScrollWheelSpec> = crate::data::mouse_scroll_wheel_data!();
         for presentation in [Presentation::TwoModeLevels, Presentation::TwoModeSwitches] {
             let pid = catalog
                 .iter()

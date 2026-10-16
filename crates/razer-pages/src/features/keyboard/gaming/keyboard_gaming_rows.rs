@@ -11,10 +11,7 @@ pub(super) struct Rows {
 
 pub(super) fn for_product(product_id: u32) -> Option<&'static Rows> {
     static ROWS: OnceLock<Vec<Rows>> = OnceLock::new();
-    ROWS.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_gaming_review_data.json"))
-            .expect("current per-product Gaming Mode rows")
-    })
-    .iter()
-    .find(|rows| rows.product_id == product_id)
+    ROWS.get_or_init(|| crate::data::keyboard_gaming_review_data!())
+        .iter()
+        .find(|rows| rows.product_id == product_id)
 }

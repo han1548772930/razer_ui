@@ -18,6 +18,7 @@ impl GamepadProductWorkspace {
         {
             return;
         }
+        self.request_calibration_resources();
         self.calibration_state
             .set_reducer_valid(self.trigger_calibration_state.valid);
         let return_focus = window.focused(cx);
@@ -78,11 +79,9 @@ impl GamepadProductWorkspace {
             .relative()
             .w(surface::css(371.))
             .h(surface::css(250.))
-            .child(
-                img(calibration_svg(pid, state.step, state.part, state.valid))
-                    .w_full()
-                    .h_full()
-                    .object_fit(ObjectFit::Contain),
+            .children(
+                self.calibration_image()
+                    .map(|image| img(image).w_full().h_full().object_fit(ObjectFit::Contain)),
             );
         if (1..=5).contains(&state.step) && (!state.valid || state.step == 5) {
             product = product.child(

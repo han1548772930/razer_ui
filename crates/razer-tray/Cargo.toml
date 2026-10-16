@@ -5,6 +5,7 @@ edition.workspace=true
 
 [dependencies]
 razer-model.workspace = true
+razer-assets.workspace = true
 anyhow.workspace=true
 gpui-kit.workspace=true
 tray-icon.workspace=true

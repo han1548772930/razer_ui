@@ -9,19 +9,23 @@ use razer_device::device_reads::DeviceReadCapability;
 use razer_device::device_reads::DeviceReadKind;
 use razer_device::device_reads::DeviceReadTarget;
 use serde_json::{Value, json};
-#[path = "keyboard/keyboard_wristrest.rs"]
-mod keyboard_wristrest_adapter;
 #[path = "keyboard/keyboard_indicator.rs"]
 mod keyboard_indicator_adapter;
 #[path = "keyboard/keyboard_latest_restore.rs"]
 mod keyboard_latest_restore_adapter;
+#[path = "keyboard/keyboard_wristrest.rs"]
+mod keyboard_wristrest_adapter;
 pub(super) fn keyboard_latest_restore(
     target: &razer_device::keyboard_latest_protocol::Target,
     operation: &razer_device::keyboard_latest_protocol::Operation,
 ) -> anyhow::Result<Value> {
     keyboard_latest_restore_adapter::request(target, operation)
 }
-pub(super) fn keyboard_latest_event_source(target:&razer_device::keyboard_latest_protocol::Target)->anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>>{keyboard_latest_restore_adapter::event_source(target)}
+pub(super) fn keyboard_latest_event_source(
+    target: &razer_device::keyboard_latest_protocol::Target,
+) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
+    keyboard_latest_restore_adapter::event_source(target)
+}
 #[path = "keyboard/keyboard_legacy_calibration.rs"]
 mod keyboard_legacy_calibration_adapter;
 pub(super) fn keyboard_legacy_calibration(
@@ -40,34 +44,45 @@ pub(super) fn keyboard_indicator(
 mod mouse_current_dpi_adapter;
 #[path = "mouse/mouse_current_power.rs"]
 mod mouse_current_power_adapter;
-#[path = "mouse/mouse_scroll.rs"]
-mod mouse_scroll_adapter;
 #[path = "mouse/mouse_indicator_led.rs"]
 mod mouse_indicator_led_adapter;
 #[path = "mouse/mouse_receiver_legacy.rs"]
 mod mouse_receiver_legacy_adapter;
-pub(super) fn mouse_receiver_legacy(target: &DeviceReadTarget,
-    change: &razer_device::mouse_receiver_legacy::Change) -> anyhow::Result<Value> {
+#[path = "mouse/mouse_scroll.rs"]
+mod mouse_scroll_adapter;
+pub(super) fn mouse_receiver_legacy(
+    target: &DeviceReadTarget,
+    change: &razer_device::mouse_receiver_legacy::Change,
+) -> anyhow::Result<Value> {
     mouse_receiver_legacy_adapter::request(target, change)
 }
-pub(super) fn mouse_indicator_led(target: &DeviceReadTarget,
-    change: &razer_device::mouse_indicator_led::Change) -> anyhow::Result<Value> {
+pub(super) fn mouse_indicator_led(
+    target: &DeviceReadTarget,
+    change: &razer_device::mouse_indicator_led::Change,
+) -> anyhow::Result<Value> {
     mouse_indicator_led_adapter::request(target, change)
 }
-pub(super) fn mouse_indicator_led_monitor(target: &razer_device::mouse_indicator_led::Target,
+pub(super) fn mouse_indicator_led_monitor(
+    target: &razer_device::mouse_indicator_led::Target,
     canceled: &std::sync::atomic::AtomicBool,
-    publish: &mut impl FnMut(razer_device::mouse_indicator_led::Notification) -> anyhow::Result<()>) -> anyhow::Result<()> {
+    publish: &mut impl FnMut(razer_device::mouse_indicator_led::Notification) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
     mouse_indicator_led_adapter::monitor(target, canceled, publish)
 }
-#[path = "audio/seiren_eq.rs"]
-mod seiren_eq_adapter;
 #[path = "audio/leviathan.rs"]
 mod leviathan_adapter;
-pub(super) fn leviathan_event_source(target:&razer_device::leviathan::EventTarget)->anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
+#[path = "audio/seiren_eq.rs"]
+mod seiren_eq_adapter;
+pub(super) fn leviathan_event_source(
+    target: &razer_device::leviathan::EventTarget,
+) -> anyhow::Result<Box<dyn razer_device::receiver_pairing::HardwareEvents>> {
     leviathan_adapter::event_source(target)
 }
-pub(super) fn leviathan(target:&DeviceReadTarget,operation:razer_device::leviathan::Operation)->anyhow::Result<Value> {
-    leviathan_adapter::request(target,operation)
+pub(super) fn leviathan(
+    target: &DeviceReadTarget,
+    operation: razer_device::leviathan::Operation,
+) -> anyhow::Result<Value> {
+    leviathan_adapter::request(target, operation)
 }
 pub(super) use seiren_eq_adapter::State as SeirenAudio;
 pub(super) fn seiren_eq(
@@ -86,9 +101,15 @@ pub(super) fn mouse_current_power(
 ) -> anyhow::Result<Value> {
     mouse_current_power_adapter::request(target, change)
 }
-pub(super) fn mouse_scroll(target: &DeviceReadTarget, submission: &razer_device::mouse_scroll::Submission) -> anyhow::Result<Value> {
+pub(super) fn mouse_scroll(
+    target: &DeviceReadTarget,
+    submission: &razer_device::mouse_scroll::Submission,
+) -> anyhow::Result<Value> {
     if target.peer_product_id.is_some() {
-        return receiver_setting(target, super::super::receiver_settings::Setting::Scroll(submission));
+        return receiver_setting(
+            target,
+            super::super::receiver_settings::Setting::Scroll(submission),
+        );
     }
     mouse_scroll_adapter::request(target, submission)
 }
@@ -119,7 +140,10 @@ pub(super) fn mouse_current_dpi(
     change: Option<&razer_device::mouse_current_dpi::DpiChange>,
 ) -> anyhow::Result<Value> {
     if target.peer_product_id.is_some() {
-        return receiver_setting(target, super::super::receiver_settings::Setting::CurrentDpi(change));
+        return receiver_setting(
+            target,
+            super::super::receiver_settings::Setting::CurrentDpi(change),
+        );
     }
     mouse_current_dpi_adapter::request(target, change)
 }
@@ -263,8 +287,10 @@ pub(super) fn query(target: &DeviceReadTarget, kind: DeviceReadKind) -> anyhow::
     let bound_cap = if target.peer_product_id.is_none() {
         source_cap.for_physical_product(target.physical_product_id)?
     } else {
-        let master = razer_device::receiver_capabilities::capability(u16::try_from(target.physical_product_id)?)
-            .context("物理接收器能力未核实")?;
+        let master = razer_device::receiver_capabilities::capability(u16::try_from(
+            target.physical_product_id,
+        )?)
+        .context("物理接收器能力未核实")?;
         source_cap.for_duallink_master(target.physical_product_id, master.claim_interface)?
     };
     let cap = &bound_cap;
@@ -389,11 +415,17 @@ pub(super) fn write(
         && target.peer_product_id.is_some()
         && let device_writes::DeviceWriteSetting::Idle { raw_time } = setting
     {
-        return with_mouse_receiver(target, DeviceReadKind::Idle, |route, device, next, validate| {
-            let observed = route.apply_idle(device, *raw_time, next, validate)?;
-            Ok(json!({"result":observed.reading,"receiver_before":observed.receiver_before,
-                "receiver_after":observed.receiver_after,"method":"setTimeToSleep"}))
-        });
+        return with_mouse_receiver(
+            target,
+            DeviceReadKind::Idle,
+            |route, device, next, validate| {
+                let observed = route.apply_idle(device, *raw_time, next, validate)?;
+                Ok(
+                    json!({"result":observed.reading,"receiver_before":observed.receiver_before,
+                "receiver_after":observed.receiver_after,"method":"setTimeToSleep"}),
+                )
+            },
+        );
     }
     if target.product_id == razer_device::mouse_receiver_polling::PRODUCT_ID
         && target.peer_product_id.is_some()
@@ -573,22 +605,44 @@ pub(super) fn keyboard_metadata(target: &DeviceReadTarget, serial: bool) -> anyh
     Ok(response)
 }
 
-fn receiver_setting(target: &DeviceReadTarget, setting: super::super::receiver_settings::Setting<'_>) -> anyhow::Result<Value> {
-    let peer = target.peer_product_id.context("Receiver setting requires a retained peer")?;
+fn receiver_setting(
+    target: &DeviceReadTarget,
+    setting: super::super::receiver_settings::Setting<'_>,
+) -> anyhow::Result<Value> {
+    let peer = target
+        .peer_product_id
+        .context("Receiver setting requires a retained peer")?;
     let session = setting.session(target.product_id, target.physical_product_id, peer)?;
     let cap = session.transport();
     let before = current_target(target, cap)?;
     let started = Instant::now();
     let validate = || {
-        ensure!(started.elapsed() < Duration::from_secs(20), "Receiver setting deadline expired");
-        ensure!(current_target(target, cap)?["device_instance_id"] == before["device_instance_id"], "Receiver device instance changed during setting");
+        ensure!(
+            started.elapsed() < Duration::from_secs(20),
+            "Receiver setting deadline expired"
+        );
+        ensure!(
+            current_target(target, cap)?["device_instance_id"] == before["device_instance_id"],
+            "Receiver device instance changed during setting"
+        );
         Ok(())
     };
     let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
-    let feature_bytes = before["feature_report_bytes"].as_u64().and_then(|bytes| usize::try_from(bytes).ok()).context("Receiver Feature size is absent")?;
-    ensure!(feature_bytes == cap.report_bytes, "Receiver Feature size differs from source");
+    let feature_bytes = before["feature_report_bytes"]
+        .as_u64()
+        .and_then(|bytes| usize::try_from(bytes).ok())
+        .context("Receiver Feature size is absent")?;
+    ensure!(
+        feature_bytes == cap.report_bytes,
+        "Receiver Feature size differs from source"
+    );
     let device = hid_transport::open(&target.path, feature_bytes)?;
-    let mut response = setting.execute(&session, &device, &mut || transaction(target, cap), &validate)?;
+    let mut response = setting.execute(
+        &session,
+        &device,
+        &mut || transaction(target, cap),
+        &validate,
+    )?;
     response["target"] = serde_json::to_value(target)?;
     response["peer_product_id"] = json!(peer);
     response["transport_metadata"] = device.metadata();
@@ -603,7 +657,10 @@ pub(super) fn keyboard_brightness(
 ) -> anyhow::Result<Value> {
     use razer_device::keyboard_settings;
     if target.peer_product_id.is_some() {
-        return receiver_setting(target, super::super::receiver_settings::Setting::KeyboardBrightness(percent));
+        return receiver_setting(
+            target,
+            super::super::receiver_settings::Setting::KeyboardBrightness(percent),
+        );
     }
     let settings = keyboard_settings::capability(target.product_id)
         .context("此产品没有当前源核实的键盘亮度能力")?;
@@ -630,7 +687,10 @@ pub(super) fn keyboard_brightness(
         .as_u64()
         .and_then(|count| usize::try_from(count).ok())
         .context("键盘接口缺少实际 Feature Report 长度")?;
-    ensure!(feature_bytes == cap.report_bytes, "键盘亮度接口实际 Feature Report 长度不匹配");
+    ensure!(
+        feature_bytes == cap.report_bytes,
+        "键盘亮度接口实际 Feature Report 长度不匹配"
+    );
     let device = hid_transport::open(&target.path, feature_bytes)?;
     validate()?;
     let mut response = json!({"target":target,"source_class":settings.source_class,
@@ -785,7 +845,10 @@ pub(super) fn dpi_stages(
         );
     }
     if target.peer_product_id.is_some() {
-        return receiver_setting(target, super::super::receiver_settings::Setting::DpiStages(draft));
+        return receiver_setting(
+            target,
+            super::super::receiver_settings::Setting::DpiStages(draft),
+        );
     }
     let settings = mouse_dpi_stages::capability(target.product_id)
         .context("Product has no current source-proven DPI stage capability")?

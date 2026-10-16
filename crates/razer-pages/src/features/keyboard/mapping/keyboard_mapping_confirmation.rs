@@ -50,13 +50,10 @@ struct Source {
 }
 fn source(pid: u32) -> &'static Source {
     static DATA: OnceLock<Vec<Source>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_confirmation_data.json"))
-            .expect("current root unsaved mapping dialogs")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
-    .expect("audited current root unsaved mapping caller")
+    DATA.get_or_init(|| crate::data::keyboard_mapping_confirmation_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
+        .expect("audited current root unsaved mapping caller")
 }
 fn button(id: &str, label: String) -> gpui_kit::base::Button {
     let long = label.encode_utf16().count() > 9;

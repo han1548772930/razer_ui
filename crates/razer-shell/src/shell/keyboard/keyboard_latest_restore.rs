@@ -407,8 +407,16 @@ impl AppShell {
             let worker_revision = revision_signal.clone();
             match thread::Builder::new()
                 .name("keyboard756-restore".into())
-                .spawn(move || worker::run(observed, signal, worker_exclusive, worker_revision, receiver, sender))
-            {
+                .spawn(move || {
+                    worker::run(
+                        observed,
+                        signal,
+                        worker_exclusive,
+                        worker_revision,
+                        receiver,
+                        sender,
+                    )
+                }) {
                 Ok(worker) => {
                     self.keyboard_latest_restore.workers.push(worker);
                     self.keyboard_latest_restore.owners.insert(

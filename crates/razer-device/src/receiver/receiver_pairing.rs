@@ -6,6 +6,8 @@
 use super::{backend::FeatureTransport, receiver_capabilities::ReceiverCapability};
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use std::collections::BTreeSet;
 use std::{
     sync::OnceLock,
     time::{Duration, Instant},
@@ -35,7 +37,7 @@ pub enum PairingAction {
     },
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct PairingCapability {
     pub product_id: u16,
     pub category: String,
@@ -51,23 +53,61 @@ pub struct PairingCapability {
     pub transport: ReceiverCapability,
 }
 
-pub fn capability(product_id: u16, category: &str) -> Option<&'static PairingCapability> {
-    #[derive(Deserialize)]
-    struct Catalog {
-        schema_version: u8,
-        products: Vec<PairingCapability>,
+#[cfg(test)]
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CapabilityCatalog {
+    schema_version: u8,
+    products: Vec<PairingCapability>,
+}
+
+#[cfg(test)]
+fn decode_capabilities(json: &str) -> anyhow::Result<CapabilityCatalog> {
+    let catalog: CapabilityCatalog =
+        serde_json::from_str(json).context("Invalid pairing capability catalog")?;
+    ensure!(
+        catalog.schema_version == 1 && !catalog.products.is_empty(),
+        "Invalid pairing capability schema"
+    );
+    let mut products = BTreeSet::new();
+    for capability in &catalog.products {
+        capability.transport.validate_source()?;
+        ensure!(
+            capability.product_id == capability.transport.product_id
+                && matches!(capability.category.as_str(), "MOUSE" | "KEYBOARD")
+                && products.insert((capability.product_id, capability.category.as_str())),
+            "Invalid or repeated pairing product/category branch"
+        );
+        let bits =
+            (0..capability.transport.transaction_modulus).fold(0, |bits, counter| bits | counter);
+        ensure!(
+            [
+                capability.scan_pair_prefix,
+                capability.unpair_prefix,
+                capability.cancel_prefix,
+                capability.metadata_prefix,
+            ]
+            .into_iter()
+            .all(|prefix| prefix & bits == 0),
+            "Pairing namespace overlaps its transaction counter"
+        );
+        if let Some(source_class) = capability.metadata_source_class.as_deref() {
+            ensure!(
+                matches!(
+                    source_class,
+                    "rzDevice25" | "rzDevice25DualLinkMouse" | "rzDevice25DualLinkKeyboard"
+                ),
+                "Unknown pairing metadata factory"
+            );
+        }
     }
-    static CATALOG: OnceLock<Catalog> = OnceLock::new();
+    Ok(catalog)
+}
+
+pub fn capability(product_id: u16, category: &str) -> Option<&'static PairingCapability> {
+    static CATALOG: OnceLock<Vec<PairingCapability>> = OnceLock::new();
     CATALOG
-        .get_or_init(|| {
-            let c: Catalog = serde_json::from_str(include_str!(
-                "../../../../assets/data/receiver-pairing-capabilities.json"
-            ))
-            .expect("current pairing command capabilities");
-            assert_eq!(c.schema_version, 1);
-            c
-        })
-        .products
+        .get_or_init(crate::data::receiver_pairing_capabilities::products)
         .iter()
         .find(|c| c.product_id == product_id && c.category == category)
 }
@@ -104,43 +144,299 @@ pub fn for_source(
     }
 }
 
-fn pairing_catalog() -> &'static serde_json::Value {
-    static CATALOG: OnceLock<serde_json::Value> = OnceLock::new();
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct PairingProductEdition {
+    #[serde(rename = "EID")]
+    pub(crate) edition_id: u16,
+    #[serde(rename = "Name")]
+    pub(crate) name: String,
+    #[serde(rename = "CHSName")]
+    pub(crate) chinese_name: String,
+}
+
+impl PairingProductEdition {
+    pub fn edition_id(&self) -> u16 {
+        self.edition_id
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn chinese_name(&self) -> &str {
+        &self.chinese_name
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct PairingCatalogDevice {
+    #[serde(rename = "DeviceDonglePid")]
+    pub(crate) dongle_id: u16,
+    #[serde(rename = "ProductInfo")]
+    pub(crate) editions: Vec<PairingProductEdition>,
+    #[serde(
+        rename = "DeviceSiblings",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(crate) siblings: Option<Vec<u16>>,
+    #[serde(rename = "DevicePairingBuddies")]
+    pub(crate) pairing_buddies: Vec<u16>,
+    #[serde(rename = "DeviceType")]
+    pub(crate) category: PairingDeviceCategory,
+    #[serde(
+        rename = "DeviceFamily",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(crate) family: Option<String>,
+}
+
+impl PairingCatalogDevice {
+    pub fn dongle_id(&self) -> u16 {
+        self.dongle_id
+    }
+    pub fn editions(&self) -> &[PairingProductEdition] {
+        &self.editions
+    }
+    pub fn siblings(&self) -> Option<&[u16]> {
+        self.siblings.as_deref()
+    }
+    pub fn pairing_buddies(&self) -> &[u16] {
+        &self.pairing_buddies
+    }
+
+    pub fn category(&self) -> &'static str {
+        self.category.name()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub(crate) enum PairingDeviceCategory {
+    #[serde(rename = "MOUSE")]
+    Mouse,
+    #[serde(rename = "KEYBOARD")]
+    Keyboard,
+    #[serde(rename = "ACCESSORY")]
+    Accessory,
+    #[serde(rename = "MOUSEMAT")]
+    MouseMat,
+}
+
+impl PairingDeviceCategory {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Mouse => "MOUSE",
+            Self::Keyboard => "KEYBOARD",
+            Self::Accessory => "ACCESSORY",
+            Self::MouseMat => "MOUSEMAT",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct PairingMaster {
+    #[serde(rename = "productId")]
+    pub(crate) product_id: u16,
+    #[serde(rename = "dongleId")]
+    pub(crate) dongle_id: u16,
+    #[serde(rename = "bleId")]
+    pub(crate) ble_id: u16,
+    #[serde(rename = "claimInterface")]
+    pub(crate) claim_interface: u8,
+    #[serde(
+        rename = "supports8KHzPollingRate",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(crate) supports_eight_khz: Option<bool>,
+    #[serde(rename = "canPairTwoDevices")]
+    pub(crate) can_pair_two_devices: bool,
+}
+
+impl PairingMaster {
+    pub fn product_id(&self) -> u16 {
+        self.product_id
+    }
+    pub fn dongle_id(&self) -> u16 {
+        self.dongle_id
+    }
+    pub fn ble_id(&self) -> u16 {
+        self.ble_id
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub(crate) enum CatalogProductIds {
+    One(u16),
+    Many(Vec<u16>),
+}
+
+impl CatalogProductIds {
+    fn is_scalar(&self, product_id: u16) -> bool {
+        matches!(self, Self::One(id) if *id == product_id)
+    }
+
+    fn validate(&self) -> anyhow::Result<()> {
+        let valid = |id: &u16| *id > 0;
+        ensure!(
+            match self {
+                Self::One(id) => valid(id),
+                Self::Many(ids) => !ids.is_empty() && ids.iter().all(valid),
+            },
+            "Invalid pairing available radio IDs"
+        );
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub(crate) struct PairingAvailableProduct {
+    #[serde(rename = "productId")]
+    pub(crate) product_id: u16,
+    #[serde(rename = "dongleId", default)]
+    pub(crate) dongle_id: Option<CatalogProductIds>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+pub(crate) struct PairingCatalog {
+    pub(crate) schema_version: u8,
+    pub(crate) masters: Vec<PairingMaster>,
+    pub(crate) devices: Vec<PairingCatalogDevice>,
+    pub(crate) available: Vec<PairingAvailableProduct>,
+}
+
+#[cfg(test)]
+fn decode_pairing_catalog(json: &str) -> anyhow::Result<PairingCatalog> {
+    let catalog: PairingCatalog =
+        serde_json::from_str(json).context("Invalid pairing source catalog")?;
+    ensure!(
+        catalog.schema_version == 1 && !catalog.devices.is_empty(),
+        "Invalid pairing source schema"
+    );
+    let mut masters = BTreeSet::new();
+    for master in &catalog.masters {
+        ensure!(
+            master.product_id != 0 && masters.insert(master.product_id),
+            "Invalid or repeated pairing master"
+        );
+    }
+    let mut devices = BTreeSet::new();
+    for device in &catalog.devices {
+        ensure!(
+            device.dongle_id > 0
+                && device.dongle_id != u16::MAX
+                && devices.insert(device.dongle_id),
+            "Invalid or repeated pairing radio"
+        );
+        let mut editions = BTreeSet::new();
+        for edition in &device.editions {
+            ensure!(
+                editions.insert(edition.edition_id),
+                "Repeated pairing product edition"
+            );
+        }
+        ensure!(
+            device
+                .pairing_buddies
+                .iter()
+                .chain(device.siblings.iter().flatten())
+                .all(|pid| *pid > 0),
+            "Invalid pairing companion product"
+        );
+    }
+    for product in &catalog.available {
+        ensure!(product.product_id > 0, "Invalid available pairing product");
+        if let Some(ids) = &product.dongle_id {
+            ids.validate()?;
+        }
+    }
+    Ok(catalog)
+}
+
+fn pairing_catalog() -> &'static PairingCatalog {
+    static CATALOG: OnceLock<PairingCatalog> = OnceLock::new();
     CATALOG.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../../../../assets/data/receiver-pairing-catalog.json"
-        ))
-        .expect("current pairing source catalog")
+        let catalog = crate::data::receiver_pairing_catalog::catalog();
+        assert_eq!(catalog.schema_version, 1, "fixed pairing source schema");
+        for product in &catalog.available {
+            if let Some(ids) = &product.dongle_id {
+                ids.validate().expect("fixed available radio IDs");
+            }
+        }
+        catalog
     })
+}
+
+pub fn catalog_master(product_id: u32) -> Option<&'static PairingMaster> {
+    pairing_catalog()
+        .masters
+        .iter()
+        .find(|master| u32::from(master.product_id) == product_id)
+}
+
+pub fn catalog_device(dongle_id: u16) -> Option<&'static PairingCatalogDevice> {
+    pairing_catalog()
+        .devices
+        .iter()
+        .find(|device| device.dongle_id == dongle_id)
 }
 
 /// Source UI _5 reads a cached master's DeviceInfo capability, independently
 /// of the persisted binding record or any hardware status.
 pub fn master_can_pair_two_devices(product_id: u32) -> bool {
-    pairing_catalog()["masters"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .find(|row| row["productId"] == product_id)
-        .is_some_and(|row| row["canPairTwoDevices"] == true)
+    pairing_catalog()
+        .masters
+        .iter()
+        .find(|master| u32::from(master.product_id) == product_id)
+        .is_some_and(|master| master.can_pair_two_devices)
 }
 
 /// Current756's event54 callback calls ProductInfo.find before getEdition or
 /// MW_RESPONSE_UI. A scan may contain an unknown radio, but an absent catalog
 /// device aborts this callback; it cannot be projected as a successful UI pair.
-pub fn source756_pair_catalog_device(dongle_id: u16) -> anyhow::Result<&'static serde_json::Value> {
+pub fn source756_pair_device(dongle_id: u16) -> anyhow::Result<&'static PairingCatalogDevice> {
     ensure!(dongle_id > 0 && dongle_id != u16::MAX, "配对 radio ID 无效");
-    let device = pairing_catalog()["devices"]
-        .as_array()
-        .context("当前配对兼容目录缺失")?
+    let device = pairing_catalog()
+        .devices
         .iter()
-        .find(|row| row["DeviceDonglePid"] == dongle_id)
+        .find(|device| device.dongle_id == dongle_id)
         .context("756 原配对回调在 ProductInfo.find 前缺少目录设备，未发布 UI 响应")?;
-    ensure!(
-        device["ProductInfo"].is_array(),
-        "756 原配对回调缺少 ProductInfo 数组"
-    );
     Ok(device)
+}
+
+/// Compatibility serialization boundary for existing diagnostic callers.
+/// Device selection and schema validation use the typed source catalog.
+pub fn source756_pair_catalog_device(dongle_id: u16) -> anyhow::Result<&'static serde_json::Value> {
+    let selected = source756_pair_device(dongle_id)?;
+    static ROWS: OnceLock<Vec<serde_json::Value>> = OnceLock::new();
+    let rows = ROWS.get_or_init(|| {
+        pairing_catalog()
+            .devices
+            .iter()
+            .map(|device| serde_json::to_value(device).expect("typed pairing source serialization"))
+            .collect()
+    });
+    let index = pairing_catalog()
+        .devices
+        .iter()
+        .position(|device| std::ptr::eq(device, selected))
+        .context("Selected pairing device no longer belongs to the source catalog")?;
+    Ok(&rows[index])
+}
+
+pub fn registered_source756_pair_product(dongle_id: u16) -> Option<u32> {
+    pairing_catalog()
+        .available
+        .iter()
+        .find(|product| {
+            product
+                .dongle_id
+                .as_ref()
+                .is_some_and(|ids| ids.is_scalar(dongle_id))
+        })
+        .map(|product| u32::from(product.product_id))
 }
 
 /// An interrupt/callback subscription bound to the exact retained physical owner.
@@ -564,6 +860,44 @@ mod tests {
         assert!(format!("{error:#}").contains("未发布 UI 响应"));
         assert!(source756_pair_catalog_device(0).is_err());
         assert!(source756_pair_catalog_device(u16::MAX).is_err());
+    }
+
+    #[test]
+    fn typed_pairing_master_preserves_receiver_ids_and_optional_polling_flag() {
+        assert!(master_can_pair_two_devices(241));
+        assert!(!master_can_pair_two_devices(756));
+        assert!(!master_can_pair_two_devices(65000));
+        assert_eq!(
+            serde_json::to_value(catalog_master(241).unwrap()).unwrap(),
+            serde_json::json!({
+                "productId":241,"dongleId":241,"bleId":0,"claimInterface":3,
+                "canPairTwoDevices":true,"supports8KHzPollingRate":true
+            })
+        );
+        assert!(
+            serde_json::to_value(catalog_master(756).unwrap())
+                .unwrap()
+                .get("supports8KHzPollingRate")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn pairing_catalog_rejects_wrong_shapes_and_repeated_source_branches() {
+        let mut value = serde_json::json!({"schema_version":1,"masters":[],"available":[],"devices":[source756_pair_device(757).unwrap()]});
+        assert!(decode_pairing_catalog(&value.to_string()).is_ok());
+        value["devices"][0]["ProductInfo"] = serde_json::Value::Null;
+        assert!(decode_pairing_catalog(&value.to_string()).is_err());
+        let mut value =
+            serde_json::json!({"schema_version":1,"products":[capability(164,"MOUSE").unwrap()]});
+        assert!(decode_capabilities(&value.to_string()).is_ok());
+        let repeated = value["products"][0].clone();
+        value["products"].as_array_mut().unwrap().push(repeated);
+        assert!(decode_capabilities(&value.to_string()).is_err());
+        let scalar: CatalogProductIds = serde_json::from_str("757").unwrap();
+        let array: CatalogProductIds = serde_json::from_str("[757]").unwrap();
+        assert!(scalar.is_scalar(757));
+        assert!(!array.is_scalar(757));
     }
 
     struct Mock {

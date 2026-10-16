@@ -90,9 +90,16 @@ pub(super) fn request(target: &Target, operation: &Operation) -> anyhow::Result<
                 ble_target.product_id == 756 && ble_target.physical_product_id == 758,
                 "756 BLE profile adapter identity differs"
             );
-            ensure!(matches!(operation, Operation::BleSlot { .. }
-                | Operation::ReadTimeToDim { .. } | Operation::ReadAutoSleepMode { .. }
-                | Operation::ReadTimeToSleep), "756 BLE operation has no current protocol30 adapter");
+            ensure!(
+                matches!(
+                    operation,
+                    Operation::BleSlot { .. }
+                        | Operation::ReadTimeToDim { .. }
+                        | Operation::ReadAutoSleepMode { .. }
+                        | Operation::ReadTimeToSleep
+                ),
+                "756 BLE operation has no current protocol30 adapter"
+            );
             let _apartment = Apartment::new()?;
             let started = Instant::now();
             let validate = || {
@@ -129,25 +136,34 @@ pub(super) fn request(target: &Target, operation: &Operation) -> anyhow::Result<
                 let edition = connection.exchange(&[0, 0, 0, 0, 1, 134, 0, 0], &validate)?;
                 ensure!(edition.len() >= 2, "756 BLE edition response is truncated");
                 let mut sequence = 1;
-                let report = protocol::execute_ble(operation, |command, profile, element, data| {
-                    validate()?;
-                    let frame = protocol::ble_frame(sequence, command, profile, element, data)?;
-                    sequence = if sequence == 30 { 0 } else { sequence + 1 };
-                    let mut last_error = None;
-                    // Source retries preserve the command's transaction ID.
-                    for attempt in 0..2 {
-                        if attempt > 0 { pause(30, &validate)?; }
-                        match connection.exchange(&frame, &validate) {
-                            Ok(reply) => { validate()?; return Ok(reply); }
-                            Err(error) => {
-                                validate()?;
-                                if !gatt::retryable(&error) { return Err(error); }
-                                last_error = Some(error);
+                let report =
+                    protocol::execute_ble(operation, |command, profile, element, data| {
+                        validate()?;
+                        let frame = protocol::ble_frame(sequence, command, profile, element, data)?;
+                        sequence = if sequence == 30 { 0 } else { sequence + 1 };
+                        let mut last_error = None;
+                        // Source retries preserve the command's transaction ID.
+                        for attempt in 0..2 {
+                            if attempt > 0 {
+                                pause(30, &validate)?;
+                            }
+                            match connection.exchange(&frame, &validate) {
+                                Ok(reply) => {
+                                    validate()?;
+                                    return Ok(reply);
+                                }
+                                Err(error) => {
+                                    validate()?;
+                                    if !gatt::retryable(&error) {
+                                        return Err(error);
+                                    }
+                                    last_error = Some(error);
+                                }
                             }
                         }
-                    }
-                    Err(last_error.unwrap_or_else(|| anyhow::anyhow!("756 BLE command did not run")))
-                })?;
+                        Err(last_error
+                            .unwrap_or_else(|| anyhow::anyhow!("756 BLE command did not run")))
+                    })?;
                 validate()?;
                 Ok(json!({"target":target,"report":report}))
             })();

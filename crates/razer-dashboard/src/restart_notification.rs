@@ -215,7 +215,7 @@ impl Render for RestartNotification {
                         )),
                     ),
             );
-        div()
+        let content = div()
             .size_full()
             // ResizeObserver reads the panel's border box. An inset canvas
             // would measure its padding box and lose both source borders.
@@ -238,7 +238,10 @@ impl Render for RestartNotification {
                     });
                 });
             })
-            .child(panel)
+            .child(panel);
+        image_cache(razer_assets::resource_image_cache())
+            .size_full()
+            .child(content)
     }
 }
 

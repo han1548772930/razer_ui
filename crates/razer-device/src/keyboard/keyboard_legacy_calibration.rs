@@ -61,12 +61,7 @@ fn key(product_id: u32, input: &str) -> anyhow::Result<&'static Key> {
     }
     static CATALOG: OnceLock<Catalog> = OnceLock::new();
     CATALOG
-        .get_or_init(|| {
-            serde_json::from_str(include_str!(
-                "../../../../assets/data/keyboard-analog-keys.json"
-            ))
-            .expect("current literal analog keys")
-        })
+        .get_or_init(|| crate::data::keyboard_analog_keys_legacy::keyboard_analog_keys_legacy!())
         .products
         .iter()
         .find(|product| product.product_id == product_id)

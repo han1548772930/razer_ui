@@ -69,12 +69,15 @@ fn validate_unpair_completion(result: &Value, dongle_id: u16) -> anyhow::Result<
                 && result["command_error"].is_string(),
             "解绑缺少原 2000ms 恢复查询证据"
         ),
-        Some("source_restore_after_binding_query_error_2000ms")=>ensure!(
-            result["product_id"]==193&&result["removed_dongle_id"].as_u64()==Some(u64::from(dongle_id))
-                &&result["command_error"].is_string()&&result["binding_query_error"].is_string()
-                &&result["source_response_error"]==result["command_error"]
-                &&result["source_response_payload"]==json!({})&&result["hardware_confirmed"]==false
-                &&result["observed_bindings"].is_null(),
+        Some("source_restore_after_binding_query_error_2000ms") => ensure!(
+            result["product_id"] == 193
+                && result["removed_dongle_id"].as_u64() == Some(u64::from(dongle_id))
+                && result["command_error"].is_string()
+                && result["binding_query_error"].is_string()
+                && result["source_response_error"] == result["command_error"]
+                && result["source_response_payload"] == json!({})
+                && result["hardware_confirmed"] == false
+                && result["observed_bindings"].is_null(),
             "Current192 query-error source restoration has no hardware confirmation"
         ),
         _ => anyhow::bail!("解绑没有原 ACK 或失败后的恢复查询证据"),
@@ -379,8 +382,8 @@ fn run(
                     if let PairingAction::Unpair { dongle_id } = action {
                         validate_unpair_completion(&result, dongle_id)?;
                         if result["source_response_error"].is_string() {
-                            let mut error_response=result.clone();
-                            error_response["source_response_intermediate_error"]=json!(true);
+                            let mut error_response = result.clone();
+                            error_response["source_response_intermediate_error"] = json!(true);
                             source_response(UnpairStep::SourceResponse(error_response));
                         }
                         // u(ACK) responds before ge()/p(), without awaiting an
@@ -687,20 +690,27 @@ impl AppShell {
                         unreachable!()
                     };
                     validate_unpair_completion(&result, dongle_id)?;
-                    if result["source_response_intermediate_error"]==true {
-                        anyhow::bail!("{}",result["source_response_error"].as_str().context("Missing original unpair error")?);
+                    if result["source_response_intermediate_error"] == true {
+                        anyhow::bail!(
+                            "{}",
+                            result["source_response_error"]
+                                .as_str()
+                                .context("Missing original unpair error")?
+                        );
                     }
-                    if product_id==193&&result["source_response_payload"]==json!({}) {
+                    if product_id == 193 && result["source_response_payload"] == json!({}) {
                         // Failed-ACK recovery sends the literal empty payload.
                         // Adding a radio ID here would make TopView delete a
                         // row that current VA deliberately leaves in place.
                         return Ok(json!({}));
                     }
-                    let source_product=if product_id==193 {
+                    let source_product = if product_id == 193 {
                         // Current192 VA removes rows by the response's radio
                         // ID. The event's logical PID is a different field.
                         json!(dongle_id)
-                    }else{event.payload()["productId"].clone()};
+                    } else {
+                        event.payload()["productId"].clone()
+                    };
                     Ok(
                         json!({"productId":source_product,"binding_readback":result["binding_readback"],"binding_readback_confirmed":result["binding_readback_confirmed"],"binding_readback_error":result["binding_readback_error"],"runtime_cleanup_complete":false,"local_cache_persisted":result["local_cache_persisted"],"local_cache_error":result["local_cache_error"],"reconnect_scheduled":result["reconnect_scheduled"],"reconnect_error":result["reconnect_error"],"pairing_worker_cleanup_error":result["pairing_worker_cleanup_error"]}),
                     )
@@ -902,13 +912,19 @@ impl AppShell {
                                 });
                             }
                             Delivery::SourceResponse(value) => {
-                                let intermediate=value["source_response_intermediate_error"]==true;
+                                let intermediate =
+                                    value["source_response_intermediate_error"] == true;
                                 let result =
                                     Self::dock_pairing_result(product_id, &requested, value);
                                 source_response_applied |= workspace.update(cx, |workspace, cx| {
                                     workspace.observe_dock_pairing(
-                                        if intermediate {DockPairingObservation::intermediate_result(session,&kind,result)}
-                                        else {DockPairingObservation::result(session, &kind, result)},
+                                        if intermediate {
+                                            DockPairingObservation::intermediate_result(
+                                                session, &kind, result,
+                                            )
+                                        } else {
+                                            DockPairingObservation::result(session, &kind, result)
+                                        },
                                         cx,
                                     )
                                 });
@@ -1164,19 +1180,41 @@ mod tests {
 
     #[::core::prelude::v1::test]
     fn source192_unpair_recovery_publishes_literal_empty_payload_without_inventing_a_read() {
-        let event=DockPairingEvent::request("DUALLINK_UNBIND_DEVICE",json!({"productId":713,"category":"KEYBOARD"}));
-        let empty_query=json!({"operation":"unpair","product_id":193,"completion_evidence":"binding_query_after_failed_ack_2000ms","removed_dongle_id":713,"command_error":"setter rejected","observed_bindings":[[193,1],[65535,0]],"source_response_payload":{}});
-        assert_eq!(AppShell::dock_pairing_result(193,&event,empty_query).unwrap(),json!({}));
-        let failed_query=json!({"operation":"unpair","product_id":193,"completion_evidence":"source_restore_after_binding_query_error_2000ms","removed_dongle_id":713,"command_error":"setter rejected","binding_query_error":"getter rejected","source_response_error":"setter rejected","source_response_payload":{},"hardware_confirmed":false});
-        validate_unpair_completion(&failed_query,713).unwrap();
-        assert_eq!(AppShell::dock_pairing_result(193,&event,failed_query.clone()).unwrap(),json!({}));
+        let event = DockPairingEvent::request(
+            "DUALLINK_UNBIND_DEVICE",
+            json!({"productId":713,"category":"KEYBOARD"}),
+        );
+        let empty_query = json!({"operation":"unpair","product_id":193,"completion_evidence":"binding_query_after_failed_ack_2000ms","removed_dongle_id":713,"command_error":"setter rejected","observed_bindings":[[193,1],[65535,0]],"source_response_payload":{}});
+        assert_eq!(
+            AppShell::dock_pairing_result(193, &event, empty_query).unwrap(),
+            json!({})
+        );
+        let failed_query = json!({"operation":"unpair","product_id":193,"completion_evidence":"source_restore_after_binding_query_error_2000ms","removed_dongle_id":713,"command_error":"setter rejected","binding_query_error":"getter rejected","source_response_error":"setter rejected","source_response_payload":{},"hardware_confirmed":false});
+        validate_unpair_completion(&failed_query, 713).unwrap();
+        assert_eq!(
+            AppShell::dock_pairing_result(193, &event, failed_query.clone()).unwrap(),
+            json!({})
+        );
         assert!(failed_query["observed_bindings"].is_null());
-        assert!(receiver_readback_for_refresh(&event,&failed_query).is_none());
-        let mut intermediate=failed_query.clone();intermediate["source_response_intermediate_error"]=json!(true);
-        assert_eq!(AppShell::dock_pairing_result(193,&event,intermediate).unwrap_err(),"setter rejected");
-        for (field,value) in [("product_id",json!(241)),("hardware_confirmed",json!(true)),("observed_bindings",json!([])),("source_response_error",json!("different error"))] {
-            let mut invalid=failed_query.clone();invalid[field]=value;
-            assert!(validate_unpair_completion(&invalid,713).is_err(),"{field}");
+        assert!(receiver_readback_for_refresh(&event, &failed_query).is_none());
+        let mut intermediate = failed_query.clone();
+        intermediate["source_response_intermediate_error"] = json!(true);
+        assert_eq!(
+            AppShell::dock_pairing_result(193, &event, intermediate).unwrap_err(),
+            "setter rejected"
+        );
+        for (field, value) in [
+            ("product_id", json!(241)),
+            ("hardware_confirmed", json!(true)),
+            ("observed_bindings", json!([])),
+            ("source_response_error", json!("different error")),
+        ] {
+            let mut invalid = failed_query.clone();
+            invalid[field] = value;
+            assert!(
+                validate_unpair_completion(&invalid, 713).is_err(),
+                "{field}"
+            );
         }
     }
 

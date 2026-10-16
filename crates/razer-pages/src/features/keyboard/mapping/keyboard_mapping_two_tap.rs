@@ -33,12 +33,9 @@ struct Info {
 }
 fn find_data(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_two_tap_data.json"))
-            .expect("audited mounted TwoTap data")
-    })
-    .iter()
-    .find(|product| product.product_id == pid)
+    DATA.get_or_init(|| crate::data::keyboard_mapping_two_tap_data!())
+        .iter()
+        .find(|product| product.product_id == pid)
 }
 fn data(pid: u32) -> &'static Product {
     find_data(pid).expect("audited AnalogInput TwoTap product")
@@ -521,10 +518,7 @@ fn actuation_visible(workspace: &KeyboardProductWorkspace, slot: usize, edit: &E
     }
     static ENTRIES: OnceLock<Vec<Entry>> = OnceLock::new();
     let entry = ENTRIES
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_mapping_entry_gates_data.json"))
-                .expect("current actual mapping page entry gates")
-        })
+        .get_or_init(|| crate::data::keyboard_mapping_entry_gates_data!())
         .iter()
         .find(|row| row.product_id == workspace.spec.product_id)
         .and_then(|row| row.pages.iter().find(|page| page.page == workspace.page));

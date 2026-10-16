@@ -3,7 +3,10 @@
 //! Local persistence and optimistic UI are owned by the caller. Setter
 //! readbacks confirm tasks; only the source's explicit initialization getter
 //! supplies a replacement UI value.
-use crate::{backend::FeatureTransport, device_reads::DeviceReadCapability};
+use crate::{
+    backend::FeatureTransport,
+    device_reads::{DeviceReadCapability, PhysicalFeatureTransport},
+};
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use std::{sync::OnceLock, time::Duration};
@@ -70,12 +73,9 @@ impl Capability {
 pub mod ble;
 pub fn capability(product_id: u32) -> Option<&'static Capability> {
     static CAPS: OnceLock<Vec<Capability>> = OnceLock::new();
-    CAPS.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_current_power_data.json"))
-            .expect("current mouse basic-power source capabilities")
-    })
-    .iter()
-    .find(|cap| cap.product_id == product_id)
+    CAPS.get_or_init(|| crate::data::mouse_current_power_data::mouse_current_power_data!())
+        .iter()
+        .find(|cap| cap.product_id == product_id)
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]

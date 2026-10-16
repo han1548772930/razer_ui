@@ -21,24 +21,35 @@ pub(super) const GUIDE_TABS: [&str; 4] = [
 /// An unknown or string ledStatus has no matching enum case; it is not a
 /// malformed three-element Configuration to replace with reducer defaults.
 pub(super) fn mode(configuration: &Value, index: usize) -> Option<Mode> {
-    let value = configuration.as_array()?.iter()
+    let value = configuration
+        .as_array()?
+        .iter()
         .find(|entry| entry.get("index").and_then(Value::as_f64) == Some(index as f64))
         .and_then(|entry| entry.get("ledStatus"))
         .filter(|value| !value.is_null());
-    let Some(value) = value else { return Some(Mode::ConnectionQuality); };
+    let Some(value) = value else {
+        return Some(Mode::ConnectionQuality);
+    };
     let number = value.as_f64()?;
-    MODES.iter().find(|(mode, _)| f64::from(u8::from(*mode)) == number).map(|(mode, _)| *mode)
+    MODES
+        .iter()
+        .find(|(mode, _)| f64::from(u8::from(*mode)) == number)
+        .map(|(mode, _)| *mode)
 }
 
 /// Dropdown7734 indexes dataSet[value] using a JS property key, but marks a
 /// row selected only for a strict numeric match. "2" therefore has a label
 /// without a checked row; other in-range unknown keys keep an empty trigger.
 pub(super) fn selector_label(configuration: &Value, index: usize) -> Option<&'static str> {
-    let value = configuration.as_array()?.iter()
+    let value = configuration
+        .as_array()?
+        .iter()
         .find(|entry| entry.get("index").and_then(Value::as_f64) == Some(index as f64))
         .and_then(|entry| entry.get("ledStatus"))
         .filter(|value| !value.is_null());
-    let Some(value) = value else { return Some("CONNECTION_QUALITY"); };
+    let Some(value) = value else {
+        return Some("CONNECTION_QUALITY");
+    };
     if value.as_f64() == Some(-1.)
         || razer_device::mouse_indicator_led::source_configuration_number(Some(value)) > 4.
     {
@@ -47,7 +58,9 @@ pub(super) fn selector_label(configuration: &Value, index: usize) -> Option<&'st
     fn property_index(value: &Value) -> Option<usize> {
         match value {
             Value::Number(value) => (0..5).find(|index| value.as_f64() == Some(*index as f64)),
-            Value::String(value) => ["0", "1", "2", "3", "4"].iter().position(|key| *key == value),
+            Value::String(value) => ["0", "1", "2", "3", "4"]
+                .iter()
+                .position(|key| *key == value),
             Value::Array(values) if values.len() == 1 => property_index(&values[0]),
             _ => None,
         }
@@ -58,8 +71,14 @@ pub(super) fn selector_label(configuration: &Value, index: usize) -> Option<&'st
 /// The source click maps existing entries only. It does not add a missing LED,
 /// deduplicate an index, sort the UI array, or discard unknown profile fields.
 pub(super) fn with_mode(configuration: &Value, index: usize, mode: Mode) -> anyhow::Result<Value> {
-    let mut entries = configuration.as_array().context("Source receiver configuration is not an array")?.clone();
-    ensure!(entries.iter().all(|entry| !entry.is_null()), "Source receiver click cannot access a null entry");
+    let mut entries = configuration
+        .as_array()
+        .context("Source receiver configuration is not an array")?
+        .clone();
+    ensure!(
+        entries.iter().all(|entry| !entry.is_null()),
+        "Source receiver click cannot access a null entry"
+    );
     for entry in &mut entries {
         if entry.get("index").and_then(Value::as_f64) == Some(index as f64) {
             entry["ledStatus"] = serde_json::json!(u8::from(mode));
@@ -208,45 +227,91 @@ pub(super) fn colors(
 #[cfg(test)]
 mod tests {
     use super::{
-        GuideScale, active_dpi_color, battery_color, colors, dpi_color, polling_color,
-        preview_colors, mode, selector_label, with_mode,
+        GuideScale, active_dpi_color, battery_color, colors, dpi_color, mode, polling_color,
+        preview_colors, selector_label, with_mode,
     };
     use razer_device::mouse_indicator_led::{Configuration, Mode, Quality};
     #[test]
     fn source_lookup_distinguishes_missing_null_unknown_and_string_modes() {
         use serde_json::json;
         assert_eq!(mode(&json!([]), 0), Some(Mode::ConnectionQuality));
-        assert_eq!(mode(&json!([{"index":0,"ledStatus":null}]),0),Some(Mode::ConnectionQuality));
-        assert_eq!(mode(&json!([{"index":0,"ledStatus":99},{"index":0,"ledStatus":2}]),0),None);
-        assert_eq!(mode(&json!([{"index":"0","ledStatus":0}]),0),Some(Mode::ConnectionQuality));
-        assert_eq!(mode(&json!([{"index":0,"ledStatus":"2"}]),0),None);
-        assert_eq!(colors(&json!([{"index":0,"ledStatus":99}]),Quality::Green,0.,1000,None),[None,Some(0x00ff00),Some(0x00ff00)]);
+        assert_eq!(
+            mode(&json!([{"index":0,"ledStatus":null}]), 0),
+            Some(Mode::ConnectionQuality)
+        );
+        assert_eq!(
+            mode(
+                &json!([{"index":0,"ledStatus":99},{"index":0,"ledStatus":2}]),
+                0
+            ),
+            None
+        );
+        assert_eq!(
+            mode(&json!([{"index":"0","ledStatus":0}]), 0),
+            Some(Mode::ConnectionQuality)
+        );
+        assert_eq!(mode(&json!([{"index":0,"ledStatus":"2"}]), 0), None);
+        assert_eq!(
+            colors(
+                &json!([{"index":0,"ledStatus":99}]),
+                Quality::Green,
+                0.,
+                1000,
+                None
+            ),
+            [None, Some(0x00ff00), Some(0x00ff00)]
+        );
     }
     #[test]
     fn source_dropdown_property_lookup_and_strict_row_selection_stay_separate() {
         use serde_json::json;
         for value in [json!("2"), json!([2]), json!([["2"]])] {
             let configuration = json!([{"index":0,"ledStatus":value}]);
-            assert_eq!(selector_label(&configuration,0),Some("CONNECTION_QUALITY"));
-            assert_eq!(mode(&configuration,0),None);
+            assert_eq!(
+                selector_label(&configuration, 0),
+                Some("CONNECTION_QUALITY")
+            );
+            assert_eq!(mode(&configuration, 0), None);
         }
-        for value in [json!(-2), json!(1.5), json!("foo"), json!(false), json!({}),json!([])] {
-            assert_eq!(selector_label(&json!([{"index":0,"ledStatus":value}]),0),Some(""));
+        for value in [
+            json!(-2),
+            json!(1.5),
+            json!("foo"),
+            json!(false),
+            json!({}),
+            json!([]),
+        ] {
+            assert_eq!(
+                selector_label(&json!([{"index":0,"ledStatus":value}]), 0),
+                Some("")
+            );
         }
-        for value in [json!(-1),json!(5),json!("5"),json!([5])] {
-            assert_eq!(selector_label(&json!([{"index":0,"ledStatus":value}]),0),None);
+        for value in [json!(-1), json!(5), json!("5"), json!([5])] {
+            assert_eq!(
+                selector_label(&json!([{"index":0,"ledStatus":value}]), 0),
+                None
+            );
         }
-        assert_eq!(selector_label(&json!([{"index":0,"ledStatus":"-1"}]),0),Some(""));
+        assert_eq!(
+            selector_label(&json!([{"index":0,"ledStatus":"-1"}]), 0),
+            Some("")
+        );
     }
     #[test]
     fn source_click_updates_all_numeric_matches_without_adding_sorting_or_losing_metadata() {
         use serde_json::json;
-        let configuration=json!([{"index":2,"ledStatus":4,"extra":7},{"index":0,"ledStatus":2},{"index":0,"ledStatus":1},{"index":"0","ledStatus":0}]);
-        let updated=with_mode(&configuration,0,Mode::Off).unwrap();
-        assert_eq!(updated,json!([{"index":2,"ledStatus":4,"extra":7},{"index":0,"ledStatus":0},{"index":0,"ledStatus":0},{"index":"0","ledStatus":0}]));
-        assert_eq!(with_mode(&updated,0,Mode::Off).unwrap(),updated);
-        assert_eq!(with_mode(&configuration,1,Mode::Off).unwrap(),configuration);
-        assert!(with_mode(&json!([null]),0,Mode::Off).is_err());
+        let configuration = json!([{"index":2,"ledStatus":4,"extra":7},{"index":0,"ledStatus":2},{"index":0,"ledStatus":1},{"index":"0","ledStatus":0}]);
+        let updated = with_mode(&configuration, 0, Mode::Off).unwrap();
+        assert_eq!(
+            updated,
+            json!([{"index":2,"ledStatus":4,"extra":7},{"index":0,"ledStatus":0},{"index":0,"ledStatus":0},{"index":"0","ledStatus":0}])
+        );
+        assert_eq!(with_mode(&updated, 0, Mode::Off).unwrap(), updated);
+        assert_eq!(
+            with_mode(&configuration, 1, Mode::Off).unwrap(),
+            configuration
+        );
+        assert!(with_mode(&json!([null]), 0, Mode::Off).is_err());
     }
     #[test]
     fn source_led_colors_preserve_battery_endpoints_and_exact_source_rounding() {
@@ -262,7 +327,11 @@ mod tests {
         assert_eq!(dpi_color(0), None);
         assert_eq!(
             colors(
-                &serde_json::json!(Configuration::new([Mode::Off, Mode::PollingRate, Mode::DpiStage])),
+                &serde_json::json!(Configuration::new([
+                    Mode::Off,
+                    Mode::PollingRate,
+                    Mode::DpiStage
+                ])),
                 Quality::Green,
                 0.,
                 333,
@@ -274,7 +343,13 @@ mod tests {
     #[test]
     fn default_colors_are_source_reducer_defaults_not_device_observations() {
         assert_eq!(
-            colors(&serde_json::json!(Configuration::default()), Quality::Green, 0., 1000, None),
+            colors(
+                &serde_json::json!(Configuration::default()),
+                Quality::Green,
+                0.,
+                1000,
+                None
+            ),
             [Some(0x00ff00), Some(0xff0000), Some(0x00ff00)]
         );
     }

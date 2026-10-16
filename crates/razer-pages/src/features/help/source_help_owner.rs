@@ -26,10 +26,7 @@ pub(super) fn message(product_id: u32, key: &str) -> String {
         return text;
     }
     static DATA: OnceLock<Vec<Messages>> = OnceLock::new();
-    let data = DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("source_help_owner_data.json"))
-            .expect("audited current owner messages")
-    });
+    let data = DATA.get_or_init(|| crate::data::source_help_owner_data!());
     let locale = i18n::locale();
     data.iter()
         .find(|row| row.product_id == product_id)
@@ -648,12 +645,15 @@ impl SourceHelpOwner {
                         video.mx_0().my(surface::css(20.)).max_h(surface::css(420.))
                     })
                     .child(
-                        image_cache(retain_all(asset)).absolute().inset_0().child(
-                            img(asset)
-                                .id("help-owner-video")
-                                .size_full()
-                                .object_fit(ObjectFit::Cover),
-                        ),
+                        image_cache(razer_assets::resource_image_cache())
+                            .absolute()
+                            .inset_0()
+                            .child(
+                                img(asset)
+                                    .id("help-owner-video")
+                                    .size_full()
+                                    .object_fit(ObjectFit::Cover),
+                            ),
                     ),
             )
             .child(

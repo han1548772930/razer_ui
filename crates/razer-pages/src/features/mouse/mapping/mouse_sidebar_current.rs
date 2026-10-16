@@ -41,12 +41,9 @@ struct Policy {
 }
 fn policy(pid: u32) -> Option<&'static Policy> {
     static DATA: OnceLock<Vec<Policy>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_sidebar_current_data.json"))
-            .expect("actual mouse sidebar consumers")
-    })
-    .iter()
-    .find(|p| p.product_id == pid)
+    DATA.get_or_init(|| crate::data::mouse_sidebar_current_data!())
+        .iter()
+        .find(|p| p.product_id == pid)
 }
 #[derive(Deserialize)]
 struct Assets {
@@ -56,13 +53,10 @@ struct Assets {
 }
 fn assets(pid: u32) -> &'static Assets {
     static DATA: OnceLock<Vec<Assets>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_sidebar_assets_current_data.json"))
-            .expect("current sidebar CSS assets")
-    })
-    .iter()
-    .find(|p| p.product_id == pid)
-    .expect("audited mouse sidebar assets")
+    DATA.get_or_init(|| crate::data::mouse_sidebar_assets_current_data!())
+        .iter()
+        .find(|p| p.product_id == pid)
+        .expect("audited mouse sidebar assets")
 }
 
 #[derive(Deserialize)]
@@ -76,13 +70,10 @@ struct RowGeometry {
 }
 fn row_geometry(pid: u32) -> &'static RowGeometry {
     static DATA: OnceLock<Vec<RowGeometry>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_sidebar_geometry_current_data.json"))
-            .expect("per-product original sidebar row geometry")
-    })
-    .iter()
-    .find(|geometry| geometry.product_id == pid)
-    .expect("actual sidebar row geometry")
+    DATA.get_or_init(|| crate::data::mouse_sidebar_geometry_current_data!())
+        .iter()
+        .find(|geometry| geometry.product_id == pid)
+        .expect("actual sidebar row geometry")
 }
 
 #[derive(Clone)]

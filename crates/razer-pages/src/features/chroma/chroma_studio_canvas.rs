@@ -18,10 +18,7 @@ struct Rect {
 }
 fn grid() -> &'static Grid {
     static GRID: OnceLock<Grid> = OnceLock::new();
-    GRID.get_or_init(|| {
-        serde_json::from_str(include_str!("chroma_studio_grid.json"))
-            .expect("audited Studio SVG grid")
-    })
+    GRID.get_or_init(|| crate::data::chroma_studio_grid!())
 }
 pub(super) fn render(zoom: f32, moving: bool) -> impl IntoElement {
     canvas(

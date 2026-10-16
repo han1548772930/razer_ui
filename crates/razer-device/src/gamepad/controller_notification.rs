@@ -201,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn controller_input_capability_includes_all_nine_products_without_adding_trigger_pages() {
+    fn controller_input_covers_nine_products_and_shares_2650_thumbstick_transport() {
         for pid in [2629, 2636, 2647, 2650, 2676, 2684, 4115, 4133, 4144] {
             assert!(capability(pid).unwrap().accepts(pid));
             assert!(!capability(pid).unwrap().accepts(9999));
@@ -212,7 +212,11 @@ mod tests {
         }
         assert_eq!(Parser::new(2650, 2650).unwrap().interval_ms(), Some(60));
         assert_eq!(Parser::new(4115, 4115).unwrap().interval_ms(), None);
-        assert!(crate::controller_triggers::capability(2650).is_none());
+        // Current 2650 MW module98773 carries the mounted Thumbsticks commands;
+        // the shared transport capability does not determine mounted pages.
+        let thumbsticks = crate::controller_triggers::capability(2650).unwrap();
+        assert!(thumbsticks.accepts(2650));
+        assert_eq!(thumbsticks.report_id(), 4);
         assert!(crate::controller_triggers::capability(4115).is_none());
     }
 

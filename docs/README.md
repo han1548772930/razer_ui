@@ -5,7 +5,7 @@
 | 文档 | 用途 |
 | --- | --- |
 | [本地优先范围](re/local-first-scope.md) | 必须实现的本地功能、需要移除的联网入口和执行边界 |
-| [完整实现路线](re/ui-readonly-first-roadmap.md) | 原始输入重审、统一分析、逐项实现与验收要求 |
+| [完整实现路线](re/ui-readonly-first-roadmap.md) | 主任务／三个子任务交接、暂停与继续位置，以及逐项实现和验收要求 |
 | [架构与 OpenLogi 参考](re/architecture.md) | Rust 分层、本地 IPC、协议版本与证据哈希的用途 |
 | [静态逆向工具选型](re/tooling.md) | 专业前端与原生工具的能力、选择理由及执行边界 |
 | [本地资源包格式](asset-pack-format.md) | 只读 pack、原资源语义、按需校验及构建／分发边界 |

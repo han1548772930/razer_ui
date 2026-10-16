@@ -2,7 +2,10 @@
 //! profile 0 are separate source tasks; independent X/Y is a local flag.
 //! Physical receiver/BLE branches are admitted only by their source factory.
 use crate::mouse_dpi_stages::{DpiStagesDraft, DpiStagesReading, PackedDpiStage};
-use crate::{backend::FeatureTransport, device_reads::DeviceReadCapability};
+use crate::{
+    backend::FeatureTransport,
+    device_reads::{DeviceReadCapability, PhysicalFeatureTransport},
+};
 use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use std::{sync::OnceLock, time::Duration};
@@ -78,8 +81,7 @@ pub fn capability(product_id: u32) -> Option<&'static Capability> {
     static CAPS: OnceLock<Vec<Capability>> = OnceLock::new();
     CAPS.get_or_init(|| {
         let mut capabilities: Vec<Capability> =
-            serde_json::from_str(include_str!("mouse_current_dpi_data.json"))
-                .expect("current DPI source factory and protocol capabilities");
+            crate::data::mouse_current_dpi_data::mouse_current_dpi_data!();
         // Current182 factory87887 selects ordinary wired and DualLink radio
         // senders. Retain those distinct physical branches for each exchange.
         if let Some(cap) = capabilities.iter_mut().find(|cap| cap.product_id == 182) {

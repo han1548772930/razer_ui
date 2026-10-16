@@ -9,15 +9,17 @@ use anyhow::{Context as _, Result, ensure};
 use serde_json::{Value, json};
 use std::sync::LazyLock;
 
-static SOURCE: LazyLock<Value> = LazyLock::new(|| {
-    serde_json::from_str(include_str!("mouse_legacy_mapping_data.json"))
-        .expect("checked current PID70 middleware literals")
-});
+#[path = "../data/mouse_legacy_mapping_data_schema.rs"]
+mod source_data;
+use source_data::*;
+
+static SOURCE: LazyLock<LegacyMouseSource> =
+    LazyLock::new(|| crate::data::mouse_legacy_mapping_data::mouse_legacy_mapping_data!());
 
 /// Convert the UI's retained sensitivity field names to the middleware's
 /// normalized profile. Active is already one-based in the current UI adapter.
 pub fn normalize_profile(source: &Value) -> Result<Value> {
-    let mut profile = SOURCE["profile"].clone();
+    let mut profile = serde_json::to_value(&SOURCE.profile)?;
     let fields = source
         .as_object()
         .context("Mouse source profile is not an object")?;
@@ -93,21 +95,20 @@ pub fn prepare_document(
         fresh_guids: fresh_guids.into_iter().collect(),
         ..Default::default()
     };
-    for key in SOURCE["dkmKeys"].as_array().expect("source DKM list") {
-        context.dkm_keys.insert(
-            key["inputID"].as_str().expect("source DKM ID").to_owned(),
-            key.clone(),
-        );
+    for key in &SOURCE.dkm_keys {
+        context
+            .dkm_keys
+            .insert(key.input_id.clone(), serde_json::to_value(key)?);
     }
     if context.default_turbos.as_ref().is_none_or(Vec::is_empty) {
         engine.generate_default_turbos(&mut context)?;
     }
-    let defaults = engine.generate(
-        SOURCE["defaultMappings"]
-            .as_array()
-            .expect("source mapping list"),
-        &mut context,
-    )?;
+    let mappings = SOURCE
+        .default_mappings
+        .iter()
+        .map(serde_json::to_value)
+        .collect::<Result<Vec<_>, _>>()?;
+    let defaults = engine.generate(&mappings, &mut context)?;
     let mut normalized = Vec::with_capacity(profiles.len());
     for source in profiles {
         let mut profile = normalize_profile(source)?;
@@ -189,20 +190,23 @@ pub fn interdevice_otfs_document(document: &Value) -> Result<Value> {
         synapse_turbos: document["synapseTurbos"].as_array().cloned(),
         ..Default::default()
     };
-    for key in SOURCE["dkmKeys"].as_array().expect("source DKM list") {
-        context.dkm_keys.insert(
-            key["inputID"].as_str().expect("source DKM ID").into(),
-            key.clone(),
-        );
+    for key in &SOURCE.dkm_keys {
+        context
+            .dkm_keys
+            .insert(key.input_id.clone(), serde_json::to_value(key)?);
     }
     let engine = MappingEngine::new(70)?;
-    let defaults: Vec<_> = SOURCE["defaultMappings"]
-        .as_array()
-        .expect("source defaults")
+    let defaults = SOURCE
+        .default_mappings
         .iter()
-        .filter(|mapping| mapping["sensitivityGroup"]["sensitivityAssignment"] != "OTFS_Scroll")
-        .cloned()
-        .collect();
+        .filter(|mapping| {
+            mapping
+                .sensitivity_group
+                .as_ref()
+                .is_none_or(|group| group.sensitivity_assignment != "OTFS_Scroll")
+        })
+        .map(serde_json::to_value)
+        .collect::<Result<Vec<_>, _>>()?;
     let default_engine = engine.generate(&defaults, &mut context)?.app_engine;
     let mut result = document.clone();
     result["profiles"][active]["appEngine"] = engine.generate(&mappings, &mut context)?.app_engine;
@@ -217,8 +221,18 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn typed_mouse_source_preserves_every_interchange_field_and_numeric_kind() {
+        let value = serde_json::to_value(&*SOURCE).unwrap();
+        let encoded = serde_json::to_vec(&value).unwrap();
+        assert_eq!(
+            format!("{:x}", md5::compute(encoded)),
+            "2420815508ff2cb512b6c1371602b638"
+        );
+    }
+
+    #[test]
     fn interdevice_otfs_preserves_saved_mappings_and_intercepts_scroll() {
-        let mut profile = SOURCE["profile"].clone();
+        let mut profile = serde_json::to_value(&SOURCE.profile).unwrap();
         profile["guid"] = json!("otfs-test-profile");
         profile["name"] = json!("Local profile");
         profile["mappings"] = json!([

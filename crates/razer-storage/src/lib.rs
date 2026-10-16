@@ -2,17 +2,20 @@
 //! host process-local Map semantics. Storage does not write devices or claim
 //! Chromium database or vendor profile file formats.
 pub mod app_features;
+mod data;
 pub mod game_catalog;
-pub mod linked_profiles;
-pub mod keyboard_calibration;
-pub mod keyboard_analog_restore;
 pub mod host;
+pub mod keyboard_analog_restore;
+pub mod keyboard_calibration;
+pub mod linked_profiles;
 pub mod macro_recorder;
 pub mod profile_notification;
-pub mod receiver_pairing;
-pub mod receiver_reset;
+mod receiver_defaults;
+mod receiver_document;
 pub mod receiver_indicator;
 pub mod receiver_legacy;
+pub mod receiver_pairing;
+pub mod receiver_reset;
 pub mod source_identity;
 pub mod source_local;
 use std::{

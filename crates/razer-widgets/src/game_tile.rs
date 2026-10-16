@@ -51,12 +51,6 @@ pub fn list_box(children: impl IntoIterator<Item = AnyElement>) -> AnyElement {
         .into_any_element()
 }
 
-// 每个游戏一张磁贴的 `linked_game_tile(…)` 需要真实的已关联游戏数据（游戏封面、
-// 关联的配置文件、未识别状态）。本地没有该数据源，且它在本仓库里会变成死代码，
-// 因此这里只保留源码里**空列表也会渲染**的那张 `.add-new` 磁贴；数据源接入后
-// 再按同一份 CSS 补回逐游戏磁贴（规则已记录在
-// `docs/re/linked-game-tile-audit.md`）。
-
 /// 一张已关联游戏磁贴：`.linked-game-tile`。
 ///
 /// 源码里 `.game-body` 放游戏封面（`.game-body{background-size:cover}`），没有封面时

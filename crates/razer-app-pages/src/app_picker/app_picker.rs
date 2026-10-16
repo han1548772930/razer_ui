@@ -987,13 +987,15 @@ impl RenderOnce for PickerTile {
         }
         // Deferred paint preserves the 96px grid row while an expanded title
         // appears above the next row, matching source hover z-index:100.
-        tile_grid_slot(SharedString::from(format!("{id}-slot"))).test_support().child(if hovered {
-            deferred(button)
-                .with_priority(gpui_kit::base::POPUP_PRIORITY + 1)
-                .into_any_element()
-        } else {
-            button.into_any_element()
-        })
+        tile_grid_slot(SharedString::from(format!("{id}-slot")))
+            .test_support()
+            .child(if hovered {
+                deferred(button)
+                    .with_priority(gpui_kit::base::POPUP_PRIORITY + 1)
+                    .into_any_element()
+            } else {
+                button.into_any_element()
+            })
     }
 }
 

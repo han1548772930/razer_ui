@@ -362,14 +362,29 @@ impl MouseProductWorkspace {
     /// serial-indexed profile cache. This request contains no setting or
     /// profile, so the transport must perform only the identity getter.
     pub fn request_current_dpi_identity(&mut self, cx: &mut Context<Self>) {
-        if self.spec.product_id != 182 || self.current_dpi.pending.is_some() { return; }
-        let Some(scope) = self.mouse_polling_scope(cx) else { return; };
+        if self.spec.product_id != 182 || self.current_dpi.pending.is_some() {
+            return;
+        }
+        let Some(scope) = self.mouse_polling_scope(cx) else {
+            return;
+        };
         self.current_dpi.sequence = self.current_dpi.sequence.wrapping_add(1);
-        self.enqueue_current_dpi(MouseCurrentDpiRequested {
-            scope, sequence: self.current_dpi.sequence, profile: None,
-            change: Some(DpiChange { stages: None, active: None, profile_guid: None, initialize: true }),
-            read: true, valid: Arc::new(AtomicBool::new(true)),
-        }, cx);
+        self.enqueue_current_dpi(
+            MouseCurrentDpiRequested {
+                scope,
+                sequence: self.current_dpi.sequence,
+                profile: None,
+                change: Some(DpiChange {
+                    stages: None,
+                    active: None,
+                    profile_guid: None,
+                    initialize: true,
+                }),
+                read: true,
+                valid: Arc::new(AtomicBool::new(true)),
+            },
+            cx,
+        );
     }
 
     fn enqueue_current_dpi(&mut self, request: MouseCurrentDpiRequested, cx: &mut Context<Self>) {

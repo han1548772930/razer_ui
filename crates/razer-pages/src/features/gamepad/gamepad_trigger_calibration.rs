@@ -29,6 +29,8 @@ impl GamepadProductWorkspace {
         if !self.has_popup_calibration() || self.trigger_calibration_popup.is_some() {
             return;
         }
+        self.trigger_calibration_resources
+            .request(self.spec.product_id);
         // Two popup views observe the same controllerCalibrationReducer.
         // Independent visual state must not reset its shared validity.
         self.trigger_calibration_state
@@ -186,6 +188,7 @@ impl GamepadProductWorkspace {
         let content = trigger_calibration_renderer::render(
             pid,
             self.edition_id,
+            &self.trigger_calibration_resources,
             trigger_calibration_renderer::TriggerCalibrationView {
                 part: state.part(),
                 step: state.step,

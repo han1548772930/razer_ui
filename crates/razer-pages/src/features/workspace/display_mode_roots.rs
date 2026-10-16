@@ -8,8 +8,6 @@
 //! whose bundle was not scanned.
 use std::sync::OnceLock;
 
-const DISPLAY_MODE_ROOTS: &str = include_str!("display-mode-roots.json");
-
 #[derive(serde::Deserialize)]
 struct DisplayModeRoots {
     modes: DisplayModeModes,
@@ -59,11 +57,7 @@ impl DisplayModeRoot {
 
 fn roots() -> &'static DisplayModeModes {
     static ROOTS: OnceLock<DisplayModeModes> = OnceLock::new();
-    ROOTS.get_or_init(|| {
-        serde_json::from_str::<DisplayModeRoots>(DISPLAY_MODE_ROOTS)
-            .expect("validated display mode root table")
-            .modes
-    })
+    ROOTS.get_or_init(|| crate::data::display_mode_roots!().modes)
 }
 
 impl DisplayModeRoot {

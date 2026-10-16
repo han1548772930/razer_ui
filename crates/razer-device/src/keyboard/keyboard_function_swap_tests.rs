@@ -321,7 +321,15 @@ fn malformed_and_uncorrelated_getter_responses_are_rejected() {
 
 #[test]
 fn returned_prefix_is_stripped_before_function_swap_decoding() {
-    let device = Mock::new([Reply { report_id: 1, ..reply(&[1]) }]);
-    assert_eq!(read_with_cap(&device, &cap(), 0, &|| Ok(())).unwrap().raw_swap, 1);
+    let device = Mock::new([Reply {
+        report_id: 1,
+        ..reply(&[1])
+    }]);
+    assert_eq!(
+        read_with_cap(&device, &cap(), 0, &|| Ok(()))
+            .unwrap()
+            .raw_swap,
+        1
+    );
     assert_eq!(device.sent().len(), 1);
 }

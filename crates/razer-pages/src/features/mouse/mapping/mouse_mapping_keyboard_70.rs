@@ -2,6 +2,7 @@
 //! table; 2048.61e611c9 focused recorder. No vendor script is evaluated.
 use super::super::Choice;
 use super::*;
+use crate::features::source_key::SourceKey;
 use gpui_kit::base::Button as BaseButton;
 use gpui_kit::component::{
     IndexPath,
@@ -24,15 +25,14 @@ const GROUPS: &[(&str, &str)] = &[
     ("Modifiers", "KB_MODIFIERS"),
     ("Symbols", "KB_SYMBOLS"),
 ];
-fn keys() -> &'static [Value] {
-    static KEYS: OnceLock<Vec<Value>> = OnceLock::new();
-    KEYS.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_mapping_keyboard_70_data.json"))
-            .expect("current70 UI6114 keys")
-    })
+fn keys() -> &'static [SourceKey] {
+    static KEYS: OnceLock<Vec<SourceKey>> = OnceLock::new();
+    KEYS.get_or_init(|| crate::data::mouse_mapping_keyboard_70_data!())
 }
-fn key(id: &str) -> Option<&'static Value> {
-    keys().iter().find(|key| key["inputID"] == id)
+fn key(id: &str) -> Option<&'static SourceKey> {
+    keys()
+        .iter()
+        .find(|key| key.input_id.as_deref() == Some(id))
 }
 fn modifier(id: &str) -> bool {
     matches!(
@@ -50,8 +50,8 @@ fn choices(group: usize) -> Vec<Choice> {
     keys()
         .iter()
         .enumerate()
-        .filter(|(_, key)| key["type"] == GROUPS[group].0)
-        .map(|(i, key)| Choice::new(i.to_string(), key["name"].as_str().unwrap_or_default()))
+        .filter(|(_, key)| key.kind == GROUPS[group].0)
+        .map(|(i, key)| Choice::new(i.to_string(), key.name.clone()))
         .collect()
 }
 
@@ -146,7 +146,7 @@ pub(super) struct State {
     combination: Option<String>,
     reset_at: Option<Instant>,
     native_fn: bool,
-    native_down: BTreeMap<u64, Value>,
+    native_down: BTreeMap<u64, SourceKey>,
 }
 impl State {
     pub(super) fn stop(&mut self) {
@@ -194,13 +194,13 @@ impl MouseProductWorkspace {
             let candidates = keys()
                 .iter()
                 .enumerate()
-                .filter(|(_, key)| key["type"] == GROUPS[group].0);
+                .filter(|(_, key)| key.kind == GROUPS[group].0);
             candidates
                 .clone()
                 .find(|(_, candidate)| {
                     if group == 6 && !modifiers.is_empty() {
                         id.and_then(key)
-                            .is_some_and(|key| key["keyCode"] == candidate["keyCode"])
+                            .is_some_and(|key| key.key_code == candidate.key_code)
                     } else {
                         candidate["inputID"].as_str() == id
                     }
@@ -447,22 +447,22 @@ impl MouseProductWorkspace {
         } else {
             keys().get(state.selected?)?
         };
-        let selected = if let Some(code) = selected["modifier"].as_str() {
-            let modifier = keys().iter().find(|key| key["keyCode"] == code)?;
+        let selected = if let Some(code) = selected.modifier.as_deref() {
+            let modifier = keys().iter().find(|key| key.key_code == code)?;
             if !modifiers
                 .iter()
-                .any(|id| key(id).is_some_and(|key| key["keyCode"] == modifier["keyCode"]))
+                .any(|id| key(id).is_some_and(|key| key.key_code == modifier.key_code))
             {
-                modifiers.push(modifier["inputID"].as_str()?.to_owned());
+                modifiers.push(modifier.input_id.clone()?);
             }
             keys()
                 .iter()
-                .find(|key| key["keyCode"] == selected["keyCode"])?
+                .find(|key| key.key_code == selected.key_code)?
         } else {
             selected
         };
         let mut group =
-            json!({"keyGroup":state.group,"key":selected["inputID"],"modifiers":modifiers});
+            json!({"keyGroup":state.group,"key":selected.input_id,"modifiers":modifiers});
         if state.turbo {
             group["turboMode"] = json!({"isTurbo":true,"keysPerSecond":state.speed});
         }
@@ -569,12 +569,12 @@ impl MouseProductWorkspace {
         };
         let Some(target) = keys().iter().find(|key| {
             alias
-                .map(|id| key["inputID"] == id)
-                .unwrap_or_else(|| key["keyCode"] == event.code().to_string())
+                .map(|id| key.input_id.as_deref() == Some(id))
+                .unwrap_or_else(|| key.key_code == event.code().to_string())
         }) else {
             return;
         };
-        let Some(id) = target["inputID"].as_str() else {
+        let Some(id) = target.input_id.as_deref() else {
             return;
         };
         self.consume_mouse_keyboard_key_70(id, event.down(), cx);
@@ -601,42 +601,39 @@ impl MouseProductWorkspace {
             if let Some(original) = keys()
                 .iter()
                 .find(|key| {
-                    key["inputID"] != "KEY_NON_US_POUND"
-                        && key["scancode"] == input["scancode"]
-                        && key["outputFlag"].as_u64().unwrap_or(0) == 0
+                    key.input_id.as_deref() != Some("KEY_NON_US_POUND")
+                        && Some(key.scancode) == input["scancode"].as_u64()
+                        && key.output_flag.unwrap_or(0) == 0
                 })
-                .and_then(|key| key["inputID"].as_str())
+                .and_then(|key| key.input_id.as_deref())
             {
                 if let Some(mapped) = mini_fn_key(pid, original).and_then(key) {
-                    input["scancode"] = mapped["scancode"].clone();
-                    flag += mapped["outputFlag"].as_u64().unwrap_or(0);
+                    input["scancode"] = json!(mapped.scancode);
+                    flag += mapped.output_flag.unwrap_or(0);
                 }
             }
         }
         let Some(target) = keys().iter().find(|key| {
             // PID70 has no keyboard layoutId. Source G excludes non-US pound;
             // system layout controls displayed names independently.
-            if key["inputID"] == "KEY_NON_US_POUND" {
+            if key.input_id.as_deref() == Some("KEY_NON_US_POUND") {
                 return false;
             }
-            let base = key["outputFlag"].as_u64().or_else(|| key["flag"].as_u64());
-            key["scancode"] == input["scancode"]
-                && base.is_some_and(|base| base == flag || base + 1 == flag)
+            let base = key.output_flag.unwrap_or(key.flag);
+            Some(key.scancode) == input["scancode"].as_u64() && (base == flag || base + 1 == flag)
         }) else {
             return;
         };
-        let Some(id) = target["inputID"].as_str() else {
+        let Some(id) = target.input_id.as_deref() else {
             return;
         };
         let state = &mut self.mapping_current_state.keyboard;
         if flag % 2 == 0 {
-            if let Some(scan) = target["scancode"].as_u64() {
-                state.native_down.insert(scan, target.clone());
-            }
+            state.native_down.insert(target.scancode, target.clone());
             if state
                 .native_down
                 .get(&29)
-                .is_some_and(|key| key["outputFlag"] == 4)
+                .is_some_and(|key| key.output_flag == Some(4))
                 && state.native_down.contains_key(&69)
             {
                 state.native_down.clear();

@@ -1,8 +1,8 @@
 //! Current 3594/3595/3596 source pickers and retained preview consumers.
 //! Chromium enumeration and getUserMedia are replaced by local OS capture;
 //! video facts never become property-read acknowledgements or profile values.
-use super::*;
 use super::camera_preview::CameraPreviewState;
+use super::*;
 use razer_device::camera_submission::CameraScope;
 use razer_platform::camera_preview::{Event, Preferences, Session, Source, VideoMode};
 use razer_platform::session_changes::{SessionChange, SessionMonitor};

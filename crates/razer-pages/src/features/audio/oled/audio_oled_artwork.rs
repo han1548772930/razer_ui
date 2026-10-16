@@ -29,10 +29,7 @@ struct ArtworkSpec {
 }
 fn artwork_spec() -> &'static ArtworkSpec {
     static SPEC: OnceLock<ArtworkSpec> = OnceLock::new();
-    SPEC.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_oled_artwork_data.json"))
-            .expect("validated current 1383 artwork")
-    })
+    SPEC.get_or_init(|| crate::data::audio_oled_artwork_data!())
 }
 fn artwork_label(symbol: &str) -> String {
     t(&artwork_spec().labels[symbol])

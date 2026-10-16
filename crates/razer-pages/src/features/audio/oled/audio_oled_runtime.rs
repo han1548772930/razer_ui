@@ -77,10 +77,7 @@ struct Loading {
 }
 fn spec() -> &'static RuntimeSpec {
     static SPEC: OnceLock<RuntimeSpec> = OnceLock::new();
-    SPEC.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_oled_runtime_data.json"))
-            .expect("validated 1383 runtime defaults")
-    })
+    SPEC.get_or_init(|| crate::data::audio_oled_runtime_data!())
 }
 fn text(symbol: &str) -> String {
     t(&spec().labels[symbol])

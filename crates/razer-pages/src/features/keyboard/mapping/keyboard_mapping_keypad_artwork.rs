@@ -82,12 +82,7 @@ struct ProductImage {
 }
 fn product_images() -> &'static [ProductImage] {
     static IMAGES: OnceLock<Vec<ProductImage>> = OnceLock::new();
-    IMAGES.get_or_init(|| {
-        serde_json::from_str(include_str!(
-            "../artwork/keyboard_keypad_device_image_data.json"
-        ))
-        .expect("actual current Keypad ProductImage candidates")
-    })
+    IMAGES.get_or_init(|| crate::data::keyboard_keypad_device_image_data!())
 }
 pub fn source_keypad_product_image(pid: u32, edition: u32, density: u32) -> Option<&'static str> {
     let density = if pid == 747 { 1 } else { density };
@@ -440,12 +435,9 @@ impl RenderOnce for ModeTip {
 }
 fn source(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("../artwork/keyboard_keypad_artwork_data.json"))
-            .expect("current mounted keypad artwork metadata")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
+    DATA.get_or_init(|| crate::data::keyboard_keypad_artwork_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
 }
 
 #[derive(IntoElement)]

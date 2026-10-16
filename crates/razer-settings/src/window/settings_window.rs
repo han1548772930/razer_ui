@@ -31,10 +31,7 @@ struct Source {
 }
 fn source() -> &'static Source {
     static SOURCE: OnceLock<Source> = OnceLock::new();
-    SOURCE.get_or_init(|| {
-        serde_json::from_str(include_str!("settings_window_data.json"))
-            .expect("audited settings data")
-    })
+    SOURCE.get_or_init(|| crate::data::settings_window_data!())
 }
 pub fn text(key: &str) -> String {
     source()
@@ -289,7 +286,7 @@ impl Render for SettingsWindow {
             "TEXT_GENERAL_SETTING" => self.general(cx),
             _ => self.software(cx),
         };
-        v_flex()
+        let content = v_flex()
             .id("razer-settings")
             .track_focus(&self.focus)
             .size_full()
@@ -433,6 +430,9 @@ impl Render for SettingsWindow {
                             .child(body),
                     )
                     .into_any_element()
-            })
+            });
+        image_cache(razer_assets::resource_image_cache())
+            .size_full()
+            .child(content)
     }
 }

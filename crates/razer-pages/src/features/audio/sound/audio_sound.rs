@@ -30,12 +30,9 @@ struct Native {
 }
 pub(super) fn product(pid: u32) -> Option<&'static Product> {
     static DATA: OnceLock<Vec<Product>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("audio_sound_data.json"))
-            .expect("current independent Sound mount receipts")
-    })
-    .iter()
-    .find(|row| row.product_id == pid)
+    DATA.get_or_init(|| crate::data::audio_sound_data!())
+        .iter()
+        .find(|row| row.product_id == pid)
 }
 pub(super) fn message(row: &Product, key: &str) -> String {
     message_for_locale(row, key, &razer_i18n::locale())

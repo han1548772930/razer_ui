@@ -16,10 +16,7 @@ pub(super) struct Mount {
 pub(super) fn mount(pid: u32) -> Option<&'static Mount> {
     static MOUNTS: OnceLock<Vec<Mount>> = OnceLock::new();
     MOUNTS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("keyboard_polling_data.json"))
-                .expect("validated mounted polling callers")
-        })
+        .get_or_init(|| crate::data::keyboard_polling_data!())
         .iter()
         .find(|m| m.pid == pid)
 }

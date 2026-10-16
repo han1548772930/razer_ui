@@ -33,56 +33,76 @@ unsafe extern "system" {
     ) -> i32;
     fn GetKeyState(key: i32) -> i16;
 }
-#[link(name="kernel32")]
+#[link(name = "kernel32")]
 unsafe extern "system" {
-    fn QueryPerformanceFrequency(frequency:*mut i64)->i32;
-    fn QueryPerformanceCounter(counter:*mut i64)->i32;
+    fn QueryPerformanceFrequency(frequency: *mut i64) -> i32;
+    fn QueryPerformanceCounter(counter: *mut i64) -> i32;
 }
-#[link(name="winmm")]
+#[link(name = "winmm")]
 unsafe extern "system" {
-    fn timeGetTime()->u32;
+    fn timeGetTime() -> u32;
 }
 
 // Current 1f0d40 writes CPU offset41 from the invariant-TSC bit, or from
 // Microsoft's hypervisor signature when the hypervisor-present bit is set.
-#[cfg(any(target_arch="x86",target_arch="x86_64"))]
-fn stable_performance_counter()->bool {
-    #[cfg(target_arch="x86")]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+fn stable_performance_counter() -> bool {
+    #[cfg(target_arch = "x86")]
     use std::arch::x86::__cpuid;
-    #[cfg(target_arch="x86_64")]
+    #[cfg(target_arch = "x86_64")]
     use std::arch::x86_64::__cpuid;
-    let extended=__cpuid(0x8000_0000).eax;
-    if extended>=0x8000_0007&&__cpuid(0x8000_0007).edx&0x100!=0 {return true;}
-    if __cpuid(0).eax==0||__cpuid(1).ecx&0x8000_0000==0 {return false;}
-    let hypervisor=__cpuid(0x4000_0000);
-    hypervisor.ebx==1_919_117_645&&hypervisor.ecx==1_718_580_079&&hypervisor.edx==1_984_438_388
+    let extended = __cpuid(0x8000_0000).eax;
+    if extended >= 0x8000_0007 && __cpuid(0x8000_0007).edx & 0x100 != 0 {
+        return true;
+    }
+    if __cpuid(0).eax == 0 || __cpuid(1).ecx & 0x8000_0000 == 0 {
+        return false;
+    }
+    let hypervisor = __cpuid(0x4000_0000);
+    hypervisor.ebx == 1_919_117_645
+        && hypervisor.ecx == 1_718_580_079
+        && hypervisor.edx == 1_984_438_388
 }
-#[cfg(not(any(target_arch="x86",target_arch="x86_64")))]
-fn stable_performance_counter()->bool {false}
+#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+fn stable_performance_counter() -> bool {
+    false
+}
 
 /// c94c0 -> 1b7f50 -> 1a8c30/1a8d30 captures QPC microseconds before
 /// side-modifier lookup. 1a9170 extends the fallback millisecond clock through
 /// wrap and converts it to microseconds. No vendor export is executed here.
-struct EventClock { frequency:Option<i64>,previous_high:u8,wraps:u16 }
+struct EventClock {
+    frequency: Option<i64>,
+    previous_high: u8,
+    wraps: u16,
+}
 impl EventClock {
-    fn new()->Self {
-        let mut frequency=0;
-        let available=unsafe{QueryPerformanceFrequency(&mut frequency)}!=0&&frequency>0&&stable_performance_counter();
-        Self{frequency:available.then_some(frequency),previous_high:0,wraps:0}
+    fn new() -> Self {
+        let mut frequency = 0;
+        let available = unsafe { QueryPerformanceFrequency(&mut frequency) } != 0
+            && frequency > 0
+            && stable_performance_counter();
+        Self {
+            frequency: available.then_some(frequency),
+            previous_high: 0,
+            wraps: 0,
+        }
     }
-    fn tick(&mut self)->u64 {
-        if let Some(frequency)=self.frequency {
-            let mut counter=0;
-            unsafe{QueryPerformanceCounter(&mut counter)};
+    fn tick(&mut self) -> u64 {
+        if let Some(frequency) = self.frequency {
+            let mut counter = 0;
+            unsafe { QueryPerformanceCounter(&mut counter) };
             // Integer division, including large counters, matches the native
             // quotient/remainder conversion without overflowing its product.
-            return ((i128::from(counter)*1_000_000)/i128::from(frequency)) as u64;
+            return ((i128::from(counter) * 1_000_000) / i128::from(frequency)) as u64;
         }
-        let now=unsafe{timeGetTime()};
-        let high=(now>>24) as u8;
-        if high<self.previous_high {self.wraps=self.wraps.wrapping_add(1);}
-        self.previous_high=high;
-        ((u64::from(self.wraps)<<32)|u64::from(now))*1000
+        let now = unsafe { timeGetTime() };
+        let high = (now >> 24) as u8;
+        if high < self.previous_high {
+            self.wraps = self.wraps.wrapping_add(1);
+        }
+        self.previous_high = high;
+        ((u64::from(self.wraps) << 32) | u64::from(now)) * 1000
     }
 }
 type Reply = mpsc::Sender<Result<Vec<Shortcut>, String>>;
@@ -181,7 +201,7 @@ fn run(receiver: mpsc::Receiver<Command>, events: Arc<Mutex<VecDeque<ShortcutEve
     let mut unused = Vec::<i32>::new();
     let mut enabled = false;
     let mut suspended = false;
-    let mut clock=EventClock::new();
+    let mut clock = EventClock::new();
     loop {
         let mut message: Message = unsafe { std::mem::zeroed() };
         // PeekMessage creates/owns this thread's hidden message queue. Windows
@@ -190,7 +210,7 @@ fn run(receiver: mpsc::Receiver<Command>, events: Arc<Mutex<VecDeque<ShortcutEve
             if message.message != 0x312 || !enabled {
                 continue;
             }
-            let time_tick=clock.tick();
+            let time_tick = clock.tick();
             let sides = side_modifiers();
             if let Some(accelerator) = registrations
                 .values()
@@ -204,7 +224,7 @@ fn run(receiver: mpsc::Receiver<Command>, events: Arc<Mutex<VecDeque<ShortcutEve
                 {
                     if let Ok(mut queue) = events.lock() {
                         if queue.len() < 512 {
-                            queue.push_back(ShortcutEvent::new(binding.clone(),time_tick));
+                            queue.push_back(ShortcutEvent::new(binding.clone(), time_tick));
                         }
                     }
                 }
@@ -219,7 +239,7 @@ fn run(receiver: mpsc::Receiver<Command>, events: Arc<Mutex<VecDeque<ShortcutEve
             Command::Stop => break,
             Command::Enable(value, reply) => {
                 suspended = !value;
-                enabled = value&&!registrations.is_empty();
+                enabled = value && !registrations.is_empty();
                 let _ = reply.send(Ok(Vec::new()));
             }
             Command::Registered(reply) => {
@@ -269,7 +289,9 @@ fn run(receiver: mpsc::Receiver<Command>, events: Arc<Mutex<VecDeque<ShortcutEve
                     // 143e0 -> c6ba4 calls the service's Enable after a new
                     // accelerator registers. Explicitly suspended services
                     // retain the registration until their owner enables them.
-                    if !suspended {enabled=true;}
+                    if !suspended {
+                        enabled = true;
+                    }
                     Ok(Vec::new())
                 })()
                 .map_err(|error: anyhow::Error| format!("{error:#}"));

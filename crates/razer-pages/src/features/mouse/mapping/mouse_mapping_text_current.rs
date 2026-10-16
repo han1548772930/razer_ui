@@ -19,10 +19,7 @@ struct Policies {
 }
 fn policies() -> &'static Policies {
     static DATA: OnceLock<Policies> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("mouse_mapping_text_current_data.json"))
-            .expect("independently audited current mouse text policies")
-    })
+    DATA.get_or_init(|| crate::data::mouse_mapping_text_current_data!())
 }
 fn policy(product_id: u32) -> Option<&'static Policy> {
     policies()

@@ -10,10 +10,7 @@ struct Policy {
 fn policy(product_id: u32) -> Option<&'static Policy> {
     static POLICIES: OnceLock<Vec<Policy>> = OnceLock::new();
     POLICIES
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_mapping_stages_current_data.json"))
-                .expect("actual mounted stages reducer policies")
-        })
+        .get_or_init(|| crate::data::mouse_mapping_stages_current_data!())
         .iter()
         .find(|p| p.product_id == product_id)
 }

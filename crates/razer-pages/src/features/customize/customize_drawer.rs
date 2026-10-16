@@ -134,15 +134,6 @@ const MOUSE_INPUTS: [(&str, &str, &str); 8] = [
 ];
 
 #[derive(Deserialize)]
-struct SourceGroup {
-    group: SourceButtons,
-}
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SourceButtons {
-    button_list: Vec<SourceInput>,
-}
-#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct SourceInput {
     #[serde(rename = "inputID")]
@@ -176,10 +167,26 @@ fn keyboard_inputs(layout: u32) -> &'static [SourceInput] {
             (1..=18)
                 .filter_map(|layout| {
                     razer_assets::keyboard_source_for_layout(layout).map(|source| {
-                        let inputs = serde_json::from_str::<Vec<SourceGroup>>(source)
-                            .expect("audited 653 ButtonPanel data")
-                            .into_iter()
-                            .flat_map(|group| group.group.button_list)
+                        let inputs = source.iter().flat_map(razer_assets::KeyboardSourceGroup::inputs)
+                            .map(|input| SourceInput {
+                                id: input.id().into(),
+                                button_key: input.button_key().into(),
+                                input_type: input.input_type().into(),
+                                counter: match input.counter() {
+                                    razer_assets::InputCounter::Label(value) => value.clone().into(),
+                                    razer_assets::InputCounter::Number(value) => (*value).into(),
+                                },
+                                default_value: input.default_value().into(),
+                                assignment: input.assignment().into(),
+                                is_enabled: input.enabled(),
+                                disabled: input.disabled(),
+                                is_side_panel_list: input.side_panel(),
+                                is_key_toggle: None,
+                                disable_hypershift_mapping: input.disable_hypershift_mapping(),
+                                function_list: input.functions().to_vec(),
+                                disable_turbo_in_assignment: Vec::new(),
+                                hid: input.hid().map(Into::into),
+                            })
                             .collect();
                         (layout, inputs)
                     })

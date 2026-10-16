@@ -12,10 +12,7 @@ pub(super) struct Spec {
 pub(super) fn source_spec(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| {
-            serde_json::from_str(include_str!("mouse_preset_calibration_data.json"))
-                .expect("independently audited Smart/Preset callers")
-        })
+        .get_or_init(|| crate::data::mouse_preset_calibration_data!())
         .iter()
         .find(|spec| spec.product_id == pid)
 }

@@ -181,10 +181,7 @@ struct Asset {
 fn catalog() -> &'static [NativeLibrary] {
     static CATALOG: OnceLock<Vec<NativeLibrary>> = OnceLock::new();
     CATALOG.get_or_init(|| {
-        let asset: Asset = serde_json::from_str(include_str!(
-            "../../../assets/data/native-library-inventory.json"
-        ))
-        .expect("statically generated native library inventory must be valid");
+        let asset: Asset = crate::data::native_library_inventory!();
         assert_eq!(asset.schema_version, 1);
         asset.libraries
     })

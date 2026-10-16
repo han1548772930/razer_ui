@@ -26,7 +26,8 @@ impl PortableRuntime {
                 validate()?;
                 let device = with_backend(|backend| backend.open(node))?;
                 ensure!(
-                    device.report_lengths()?.feature.values().max().copied() == Some(cap.report_bytes),
+                    device.report_lengths()?.feature.values().max().copied()
+                        == Some(cap.report_bytes),
                     "Calibration Feature descriptor differs"
                 );
                 let report = calibration::execute(

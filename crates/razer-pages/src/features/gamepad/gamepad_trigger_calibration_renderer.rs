@@ -4,6 +4,61 @@ use super::*;
 use razer_widgets::theme::GamepadDialogColors as Colors;
 use std::sync::Arc;
 
+const METER: &str =
+    "assets/synapse/shared/products/7b3c6dfca30eb0a1-gamepad-2676-trigger-meter-template.svg";
+const TIMER: &str =
+    "assets/synapse/shared/products/4b1d206017625867-gamepad-2676-trigger-timer-template.svg";
+
+#[derive(Default)]
+pub(super) struct Resources {
+    texts: crate::runtime_resources::TextResources,
+    artwork_path: Option<&'static str>,
+    artwork: Option<[Arc<Image>; 5]>,
+}
+
+impl Resources {
+    pub(super) fn request(&mut self, pid: u32) {
+        let path = match pid {
+            2676 => {
+                "assets/synapse/products/2676/6a37b05df5932aee-gamepad-2676-calibration-trigger-artwork-edition-0.svg"
+            }
+            2684 => {
+                "assets/synapse/products/2684/224fadaef89ee02f-gamepad-2684-calibration-trigger-artwork-edition-0.svg"
+            }
+            _ => return,
+        };
+        self.artwork_path = Some(path);
+        for path in [METER, TIMER, path] {
+            self.texts.request(path);
+        }
+        self.refresh();
+    }
+
+    pub(super) fn refresh(&mut self) -> bool {
+        let changed = self.texts.refresh();
+        if self.artwork.is_none() {
+            if let Some(source) = self.artwork_path.and_then(|path| self.texts.text(path)) {
+                self.artwork = Some(artwork_images(source));
+                return true;
+            }
+        }
+        changed
+    }
+
+    fn artwork(&self, part: u8, step: i8) -> Option<Arc<Image>> {
+        let index = if step == 11 {
+            0
+        } else if step == 12 {
+            if part == 4 { 4 } else { 3 }
+        } else if part == 4 {
+            2
+        } else {
+            1
+        };
+        self.artwork.as_ref().map(|images| images[index].clone())
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct TriggerCalibrationView {
     pub part: u8,
@@ -18,6 +73,7 @@ pub(super) struct TriggerCalibrationView {
 pub(super) fn render(
     pid: u32,
     edition: u32,
+    resources: &Resources,
     view: TriggerCalibrationView,
     cx: &Context<GamepadProductWorkspace>,
 ) -> AnyElement {
@@ -82,7 +138,7 @@ pub(super) fn render(
                                 .child(t("FAILED_CALIBRATION_SHORT").to_uppercase()),
                         ),
                 )
-                .child(visualization(pid, edition, view))
+                .child(visualization(resources, edition, view))
                 .child(actions(view, true, cx)),
         );
     } else {
@@ -116,7 +172,7 @@ pub(super) fn render(
                     })
                     .child(if complete { text.to_uppercase() } else { text }),
             )
-            .child(visualization(pid, edition, view))
+            .child(visualization(resources, edition, view))
             .child(actions(view, false, cx));
     }
     content.into_any_element()
@@ -184,7 +240,7 @@ fn button(id: &'static str, key: &'static str, primary: bool) -> BaseButton {
         .child(t(key).to_uppercase())
 }
 
-fn visualization(pid: u32, _edition: u32, view: TriggerCalibrationView) -> AnyElement {
+fn visualization(resources: &Resources, _edition: u32, view: TriggerCalibrationView) -> AnyElement {
     let mut area = div()
         .relative()
         .w(surface::css(601.))
@@ -198,11 +254,10 @@ fn visualization(pid: u32, _edition: u32, view: TriggerCalibrationView) -> AnyEl
                 .w(surface::css(372.))
                 .h(surface::css(158.))
                 .overflow_hidden()
-                .child(
-                    img(artwork(pid, view.part, view.step))
-                        .w_full()
-                        .h_full()
-                        .object_fit(ObjectFit::Contain),
+                .children(
+                    resources
+                        .artwork(view.part, view.step)
+                        .map(|image| img(image).w_full().h_full().object_fit(ObjectFit::Contain)),
                 ),
         );
     if matches!(view.step, 10 | 11) {
@@ -225,15 +280,22 @@ fn visualization(pid: u32, _edition: u32, view: TriggerCalibrationView) -> AnyEl
                     .when(!right, |d| d.left(surface::css(19.455)))
                     .size(surface::css(100.))
                     .when(view.timer_progress > 0., |d| {
-                        d.child(img(timer(pid, view.timer_progress)).size_full())
+                        d.children(
+                            resources
+                                .texts
+                                .text(TIMER)
+                                .map(|source| img(timer(source, view.timer_progress)).size_full()),
+                        )
                     }),
             );
         }
         meter = meter.child(
-            div()
-                .absolute()
-                .inset_0()
-                .child(img(meter_svg(pid, view)).w_full().h_full()),
+            div().absolute().inset_0().children(
+                resources
+                    .texts
+                    .text(METER)
+                    .map(|source| img(meter_svg(source, view)).w_full().h_full()),
+            ),
         );
         area = area.child(meter);
     }
@@ -248,16 +310,7 @@ fn clamp_percentage(value: f64) -> f64 {
     }
 }
 
-fn meter_svg(pid: u32, view: TriggerCalibrationView) -> Arc<Image> {
-    let source = match pid {
-        2676 => include_str!(
-            "../../../../../assets/synapse/shared/products/7b3c6dfca30eb0a1-gamepad-2676-trigger-meter-template.svg"
-        ),
-        2684 => include_str!(
-            "../../../../../assets/synapse/shared/products/7b3c6dfca30eb0a1-gamepad-2676-trigger-meter-template.svg"
-        ),
-        _ => unreachable!("current trigger calibration product"),
-    };
+fn meter_svg(source: &str, view: TriggerCalibrationView) -> Arc<Image> {
     let percent = 100. - clamp_percentage(view.raw_trigger_percent.unwrap_or(100.));
     // Parent already performs the source's 50ms cubic marker interpolation.
     let angle = -std::f64::consts::FRAC_PI_2
@@ -324,24 +377,11 @@ fn bezier_half(x: f64) -> f64 {
     3. * t * t - 2. * t * t * t
 }
 
-fn timer(pid: u32, progress: f64) -> Arc<Image> {
+fn timer(source: &str, progress: f64) -> Arc<Image> {
     let p = clamp_percentage(progress);
     let svg = if p >= 100. {
         "<svg width=\"100\" height=\"100\" viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"50\" cy=\"50\" r=\"50\" fill=\"#44D62C\" opacity=\"0.3\"/></svg>".to_owned()
     } else {
-        let source = match pid {
-            2676 => {
-                include_str!(
-                    "../../../../../assets/synapse/shared/products/4b1d206017625867-gamepad-2676-trigger-timer-template.svg"
-                )
-            }
-            2684 => {
-                include_str!(
-                    "../../../../../assets/synapse/shared/products/4b1d206017625867-gamepad-2676-trigger-timer-template.svg"
-                )
-            }
-            _ => unreachable!("current trigger calibration product"),
-        };
         let angle = p / 100. * std::f64::consts::TAU;
         source
             .replace("{{large_arc}}", if p > 50. { "1" } else { "0" })
@@ -351,47 +391,21 @@ fn timer(pid: u32, progress: f64) -> Arc<Image> {
     Arc::new(Image::from_bytes(ImageFormat::Svg, svg.into_bytes()))
 }
 
-fn artwork(pid: u32, part: u8, step: i8) -> Arc<Image> {
-    static FIRST: OnceLock<[Arc<Image>; 5]> = OnceLock::new();
-    static SECOND: OnceLock<[Arc<Image>; 5]> = OnceLock::new();
-    let (cache, source) = match pid {
-        2676 => (
-            &FIRST,
-            include_str!(
-                "../../../../../assets/synapse/products/2676/6a37b05df5932aee-gamepad-2676-calibration-trigger-artwork-edition-0.svg"
-            ),
-        ),
-        2684 => (
-            &SECOND,
-            include_str!(
-                "../../../../../assets/synapse/products/2684/224fadaef89ee02f-gamepad-2684-calibration-trigger-artwork-edition-0.svg"
-            ),
-        ),
-        _ => unreachable!("current trigger calibration product"),
-    };
-    let index = if step == 11 {
-        0
-    } else if step == 12 {
-        if part == 4 { 4 } else { 3 }
-    } else if part == 4 {
-        2
-    } else {
-        1
-    };
-    cache.get_or_init(|| std::array::from_fn(|variant| {
+fn artwork_images(source: &str) -> [Arc<Image>; 5] {
+    std::array::from_fn(|variant| {
         let mut svg = source.to_owned();
         for (class, active, successful) in [
             ("leftTrigger", matches!(variant, 1 | 3), variant == 3),
             ("rightTrigger", matches!(variant, 2 | 4), variant == 4),
         ] {
-            svg = set_source_opacity(&svg, class, if active {0.3} else {0.});
+            svg = set_source_opacity(&svg, class, if active { 0.3 } else { 0. });
             if successful {
                 svg = svg.replace(&format!("class=\"{class}\""),
                     &format!("class=\"{class}\" style=\"fill-opacity:0.2;stroke:#44D62C;stroke-width:1;opacity:1\""));
             }
         }
         Arc::new(Image::from_bytes(ImageFormat::Svg, svg.into_bytes()))
-    }))[index].clone()
+    })
 }
 
 /// wL/vl changes opacity only if it follows the exact class inside the same

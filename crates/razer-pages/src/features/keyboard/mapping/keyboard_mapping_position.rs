@@ -12,12 +12,9 @@ struct TwoTapPosition {
 }
 fn two_tap_position(product_id: u32) -> Option<&'static TwoTapPosition> {
     static DATA: OnceLock<Vec<TwoTapPosition>> = OnceLock::new();
-    DATA.get_or_init(|| {
-        serde_json::from_str(include_str!("keyboard_mapping_position_data.json"))
-            .expect("audited current TwoTap geometry")
-    })
-    .iter()
-    .find(|row| row.product_id == product_id)
+    DATA.get_or_init(|| crate::data::keyboard_mapping_position_data!())
+        .iter()
+        .find(|row| row.product_id == product_id)
 }
 
 pub(super) struct PopupPosition {
