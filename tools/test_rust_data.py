@@ -110,6 +110,26 @@ class RustDataTests(unittest.TestCase):
             rust_data.build_table("razer-fixture", "PRODUCTS", self.module, "Vec<Product>",
                                   source=source, schema=schema, product_factory=True)
 
+    def test_repeated_large_subtrees_share_typed_constructors_without_losing_fields(self):
+        schema = self.schema('''
+            struct Row { label: String }
+            struct Device { rows: Vec<Row> }
+        ''')
+        schema.expression_pool = {}
+        value = {"rows": [{"label": "repeated" * 200}] * 30}
+        expression = schema.render(value, "Device", self.module)
+        self.assertEqual(expression, "source_table_3()")
+        self.assertEqual(len(schema.shared_constructors), 4)
+        row = schema.shared_constructors[1]
+        self.assertEqual(row[1], "Row")
+        self.assertEqual(schema.shared_constructors[2][2].count(row[0] + "()"), 30)
+        helpers = "".join("fn " + name + "() -> " + typ + " {" + body + "}"
+                          for name, typ, body in schema.shared_constructors)
+        tree = schema.parser.parse(("fn table() -> Device {" + helpers + expression + "}").encode())
+        self.assertFalse(tree.root_node.has_error)
+        self.assertFalse(schema.excluded)
+        self.assertFalse(schema.value_fields)
+
     def test_saving_maintenance_input_regenerates_owned_rust_and_its_receipt(self):
         import analysis
         import asset_release
