@@ -393,6 +393,8 @@ impl PortableRuntime {
             ServiceRequest::CameraCancel { operation_id } => {self.camera.cancel(&operation_id)?;Ok(json!({"cancel_requested":true}))}
             ServiceRequest::ControllerTriggers { node, product_id, trigger_operation } =>
                 super::controller_triggers::execute(&node, product_id, &trigger_operation),
+            ServiceRequest::ControllerLighting { node, product_id, lighting_operation } =>
+                super::controller_lighting::execute(&node, product_id, &lighting_operation),
             ServiceRequest::ControllerTriggerCalibrationStart { operation_id, node, product_id, part_id } =>
                 self.controller_calibration.start(operation_id, node, product_id, part_id),
             ServiceRequest::ControllerTriggerCalibrationPoll { operation_id } =>

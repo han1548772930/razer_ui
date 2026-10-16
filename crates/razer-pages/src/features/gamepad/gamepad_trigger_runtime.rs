@@ -309,10 +309,13 @@ fn project_thumbstick_profile(
 impl GamepadProductWorkspace {
     pub fn observe_controller_connection(&mut self, connected: bool, cx: &mut Context<Self>) {
         self.trigger_runtime.invalidate();
+        self.lighting_runtime.invalidate();
+        self.lighting_ui.cancel(cx);
         self.cancel_thumbstick_edits(cx);
         self.observe_controller_input(None, &[], cx);
         if connected {
             self.request_trigger_read(cx);
+            self.request_controller_lighting(cx);
         }
     }
     pub fn observe_controller_input(
@@ -589,6 +592,50 @@ mod tests {
                 ..
             }
         ));
+    }
+    #[test]
+    fn restored_thumbstick_edit_keeps_the_other_side_and_the_obm_slot() {
+        for pid in [2629, 2636, 2647, 2650, 2676, 2684, 4133, 4144] {
+            let spec = source_product(pid).unwrap();
+            let mut saved = json!({"profile":spec.profile,"controller":spec.controller});
+            saved["profile"]["obmSlotId"] = json!([3]);
+            saved["controller"]["rightStick"]["deadzoneValue"] = json!(9);
+            prepare_thumbstick_change(
+                &mut saved,
+                "/controller/rightStick/deadzoneValue",
+                spec.circular_mode,
+                !matches!(pid, 2676 | 2684),
+            )
+            .unwrap();
+            let mut restored = json!({"profile":spec.profile,"controller":spec.controller});
+            super::super::merge_known(&mut restored, &saved);
+            super::super::profile::restore_features(
+                &mut restored["profile"],
+                &saved["profile"],
+                spec,
+            )
+            .unwrap();
+            restored["controller"]["leftStick"]["deadzoneValue"] = json!(5);
+            let operation = prepare_thumbstick_change(
+                &mut restored,
+                "/controller/leftStick/deadzoneValue",
+                spec.circular_mode,
+                !matches!(pid, 2676 | 2684),
+            )
+            .unwrap();
+            assert!(matches!(
+                operation,
+                TriggerOperation::ThumbstickDeadzone {
+                    profile_slot: 3,
+                    ..
+                }
+            ));
+            assert_eq!(
+                restored["profile"]["controllerDeadzone"]["deadzones"],
+                json!([{"controllerId":2,"value":9},{"controllerId":1,"value":5}]),
+                "{pid}"
+            );
+        }
     }
     #[test]
     fn sensitivity_profile_update_does_not_mutate_deadzone_or_fabricate_readback() {

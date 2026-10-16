@@ -286,6 +286,11 @@ pub enum ServiceRequest {
         product_id: u32,
         trigger_operation: razer_device::controller_triggers::TriggerOperation,
     },
+    ControllerLighting {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        lighting_operation: razer_device::controller_lighting::LightingOperation,
+    },
     ControllerInputStart {
         product_id: u32,
         physical_product_id: u32,
@@ -885,7 +890,10 @@ impl ServiceClient {
                 | ServiceRequest::PrepareOtfmRecorder
                 | ServiceRequest::StartOtfmRecording
         );
-        let controller_triggers = matches!(&request, ServiceRequest::ControllerTriggers { .. });
+        let controller_triggers = matches!(
+            &request,
+            ServiceRequest::ControllerTriggers { .. } | ServiceRequest::ControllerLighting { .. }
+        );
         let starting_mapping = matches!(
             request,
             ServiceRequest::MappingDeviceStart { .. }

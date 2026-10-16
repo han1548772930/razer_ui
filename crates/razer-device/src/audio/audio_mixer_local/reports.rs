@@ -1,20 +1,103 @@
 //! Actual AudioMixer JS templates and query-copy order (not native RMW).
 use super::*;
-fn output(device: &dyn FeatureTransport, bytes: &[u8]) -> anyhow::Result<()> {
+use std::{thread, time::Duration};
+
+#[derive(Clone, Copy)]
+enum Channel {
+    Feature,
+    Output,
+}
+
+/// AudioMixer.sendCommandOut retries native failures swallowed by the host.
+/// These mounted callers have no expected-reply template: an actual response
+/// completes the exchange without a Protocol25 status interpretation.
+fn exchange(
+    device: &dyn FeatureTransport,
+    channel: Channel,
+    report: &[u8],
+    reply: Option<u8>,
+    validate: &dyn Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Option<Vec<u8>>> {
+    let mut last_error = None;
+    for attempt in 0..20 {
+        validate()?;
+        if attempt > 0 {
+            thread::sleep(Duration::from_millis(10));
+            validate()?;
+        }
+        let sent = match channel {
+            Channel::Feature => device.send_feature_at_collection_max(report),
+            Channel::Output => device.write_output(report),
+        };
+        validate()?;
+        if let Err(error) = sent {
+            last_error = Some(error);
+            continue;
+        }
+        let Some(selector) = reply else {
+            return Ok(None);
+        };
+        thread::sleep(Duration::from_millis(5));
+        validate()?;
+        let mut bytes = vec![
+            0;
+            match channel {
+                Channel::Feature => 64,
+                Channel::Output => 16,
+            }
+        ];
+        bytes[0] = selector;
+        let received = match channel {
+            Channel::Feature => device.get_feature_at_collection_max(&mut bytes),
+            Channel::Output => device.get_input(&mut bytes),
+        };
+        validate()?;
+        match received {
+            Ok(count) if count > 0 && count <= bytes.len() => {
+                return Ok(Some(bytes[..count].to_vec()));
+            }
+            Ok(count) => {
+                last_error = Some(anyhow::anyhow!(
+                    "Mixer source reply length {count} outside 1..={}",
+                    bytes.len()
+                ));
+            }
+            Err(error) => last_error = Some(error),
+        }
+    }
+    Err(last_error.expect("Each unsuccessful source attempt records its error"))
+        .context("Mixer source report failed after 20 OUT attempts")
+}
+
+pub(super) fn feature(
+    device: &dyn FeatureTransport,
+    report: &[u8; 64],
+    reply: Option<u8>,
+    validate: &dyn Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Option<Vec<u8>>> {
+    exchange(device, Channel::Feature, report, reply, validate)
+}
+
+pub(super) fn output(
+    device: &dyn FeatureTransport,
+    bytes: &[u8],
+    reply: Option<u8>,
+    validate: &dyn Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Option<Vec<u8>>> {
+    ensure!(bytes.len() <= 66, "Mixer source output exceeds 66 bytes");
     let mut report = [0; 66];
     report[..bytes.len()].copy_from_slice(bytes);
-    device.write_output(&report)
+    exchange(device, Channel::Output, &report, reply, validate)
 }
-fn query(device: &dyn FeatureTransport, bytes: &[u8]) -> anyhow::Result<Vec<u8>> {
-    output(device, bytes)?;
-    let mut input = [0; 16];
-    input[0] = 18;
-    let count = device.get_input(&mut input)?;
-    ensure!(
-        count > 1 && count <= 16,
-        "Mixer source query has no actual data"
-    );
-    Ok(input[1..count].to_vec())
+fn query(
+    device: &dyn FeatureTransport,
+    bytes: &[u8],
+    validate: &dyn Fn() -> anyhow::Result<()>,
+) -> anyhow::Result<Vec<u8>> {
+    let input = output(device, bytes, Some(18), validate)?
+        .context("Mixer source query did not return an Input report")?;
+    ensure!(input.len() > 1, "Mixer source query has no actual data");
+    Ok(input[1..].to_vec())
 }
 pub(super) fn execute(
     device: &dyn FeatureTransport,
@@ -55,7 +138,7 @@ pub(super) fn execute(
                     if *enabled { 224 } else { 96 },
                 ],
                 "playbackMixReducer" => {
-                    observation = json!({"query":query(device,&[4,24,0,192,6])?});
+                    observation = json!({"query":query(device,&[4,24,0,192,6],validate)?});
                     validate()?;
                     vec![
                         3,
@@ -69,7 +152,7 @@ pub(super) fn execute(
                 }
                 _ => anyhow::bail!("Unknown source analog mute {key}"),
             };
-            output(device, &bytes)?;
+            output(device, &bytes, None, validate)?;
         }
         Command::AnalogGain { key, value } => {
             ensure!(value.is_finite(), "Mixer analog gain not finite");
@@ -79,7 +162,7 @@ pub(super) fn execute(
                         (-45. ..=0.).contains(value),
                         "Optical source gain range invalid"
                     );
-                    let data = query(device, &[4, 95, 252, 0, 44])?;
+                    let data = query(device, &[4, 95, 252, 0, 44], validate)?;
                     ensure!(data.len() > 2, "Optical query missing original copy byte");
                     validate()?;
                     let raw = value.trunc().abs() as u8;
@@ -113,7 +196,7 @@ pub(super) fn execute(
                 }
                 _ => anyhow::bail!("Unknown source analog gain {key}"),
             };
-            output(device, &bytes)?;
+            output(device, &bytes, None, validate)?;
         }
         Command::Bleep { enabled } => {
             let mut report = [0; 64];
@@ -138,19 +221,13 @@ pub(super) fn execute(
                 0,
                 0,
             ]);
-            device.send_feature(&report)?;
-            validate()?;
-            let mut reply = [0; 64];
-            reply[0] = 7;
-            let count = device.get_feature(&mut reply)?;
-            ensure!(count > 0 && count <= 64, "Bleep Feature reply absent");
-            observation = json!({"feature_reply":&reply[..count]});
+            observation = json!({"feature_reply":feature(device, &report, Some(7), validate)?});
         }
         Command::Fader { region, mode } => {
             ensure!((1..=2).contains(mode), "Fader mode outside mounted source");
             let mut report = [0; 64];
             report[..13].copy_from_slice(&[7, 0, 31, 0, 0, 0, 4, 15, 17, 1, *region, *mode, 0]);
-            device.send_feature(&report)?;
+            feature(device, &report, None, validate)?;
         }
         _ => anyhow::bail!("Not a fixed Mixer source report"),
     }

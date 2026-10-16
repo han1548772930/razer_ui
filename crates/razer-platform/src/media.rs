@@ -1,12 +1,13 @@
 //! Offline audible media. The retained owner controls a worker; the worker owns
 //! native playback, consumes real endpoint progress and releases it on stop.
 mod clip;
+mod tempo;
 use anyhow::{Context as _, ensure};
 pub use clip::Clip;
 use std::{
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         mpsc,
     },
     thread::{self, JoinHandle},
@@ -15,12 +16,77 @@ use std::{
 #[cfg(windows)]
 mod windows;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum PlaybackRate {
+    Quarter,
+    Half,
+    #[default]
+    Normal,
+    FiveQuarters,
+    ThreeHalves,
+    Double,
+}
+impl PlaybackRate {
+    fn ratio(self) -> (u64, u64) {
+        match self {
+            Self::Quarter => (1, 4),
+            Self::Half => (1, 2),
+            Self::Normal => (1, 1),
+            Self::FiveQuarters => (5, 4),
+            Self::ThreeHalves => (3, 2),
+            Self::Double => (2, 1),
+        }
+    }
+    fn source_frames(self, frames: u64) -> u64 {
+        let (numerator, denominator) = self.ratio();
+        frames * numerator / denominator
+    }
+    fn output_frames(self, frames: u64) -> u64 {
+        let (numerator, denominator) = self.ratio();
+        (frames * denominator).div_ceil(numerator)
+    }
+    pub fn faster(self) -> Self {
+        match self {
+            Self::Quarter => Self::Half,
+            Self::Half => Self::Normal,
+            Self::Normal => Self::FiveQuarters,
+            Self::FiveQuarters => Self::ThreeHalves,
+            Self::ThreeHalves | Self::Double => Self::Double,
+        }
+    }
+    pub fn slower(self) -> Self {
+        match self {
+            Self::Quarter | Self::Half => Self::Quarter,
+            Self::Normal => Self::Half,
+            Self::FiveQuarters => Self::Normal,
+            Self::ThreeHalves => Self::FiveQuarters,
+            Self::Double => Self::ThreeHalves,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Status {
     cursor: u64,
     playing: bool,
     ended: bool,
     error: Option<String>,
+    seek_revision: u64,
+    volume: f32,
+    rate: PlaybackRate,
+}
+impl Default for Status {
+    fn default() -> Self {
+        Self {
+            cursor: 0,
+            playing: false,
+            ended: false,
+            error: None,
+            seek_revision: 0,
+            volume: 1.,
+            rate: PlaybackRate::Normal,
+        }
+    }
 }
 impl Status {
     pub fn cursor(&self) -> u64 {
@@ -35,11 +101,23 @@ impl Status {
     pub fn error(&self) -> Option<&str> {
         self.error.as_deref()
     }
+    pub fn seek_revision(&self) -> u64 {
+        self.seek_revision
+    }
+    pub fn volume(&self) -> f32 {
+        self.volume
+    }
+    pub fn playback_rate(&self) -> PlaybackRate {
+        self.rate
+    }
 }
 enum Command {
     Pause,
     Play,
-    Seek(u64),
+    Toggle,
+    Seek { cursor: u64, revision: u64 },
+    Volume(f32),
+    Rate(PlaybackRate),
 }
 trait Output {
     fn capacity(&self) -> u32;
@@ -48,6 +126,7 @@ trait Output {
     fn start(&mut self) -> anyhow::Result<()>;
     fn stop(&mut self) -> anyhow::Result<()>;
     fn reset(&mut self) -> anyhow::Result<()>;
+    fn set_volume(&mut self, volume: f32) -> anyhow::Result<()>;
 }
 struct Playback {
     clip: Arc<Clip>,
@@ -56,16 +135,18 @@ struct Playback {
     started: bool,
     wants_play: bool,
     status: Status,
+    tempo: Option<tempo::Tempo>,
 }
 impl Playback {
-    fn new(clip: Arc<Clip>) -> Self {
+    fn new(clip: Arc<Clip>, autoplay: bool) -> Self {
         Self {
             clip,
             base: 0,
             written: 0,
             started: false,
-            wants_play: true,
+            wants_play: autoplay,
             status: Status::default(),
+            tempo: None,
         }
     }
     fn observe(&mut self, output: &dyn Output) -> anyhow::Result<u32> {
@@ -74,11 +155,26 @@ impl Playback {
             padding <= output.capacity() && u64::from(padding) <= self.written,
             "Playback queue observation differs"
         );
-        self.status.cursor = self.base + self.written - u64::from(padding);
+        self.status.cursor = (self.base
+            + self
+                .status
+                .rate
+                .source_frames(self.written - u64::from(padding)))
+        .min(self.clip.sample_count());
         Ok(padding)
     }
     fn command(&mut self, command: Command, output: &mut dyn Output) -> anyhow::Result<()> {
         match command {
+            Command::Toggle => {
+                self.command(
+                    if self.wants_play {
+                        Command::Pause
+                    } else {
+                        Command::Play
+                    },
+                    output,
+                )?;
+            }
             Command::Pause => {
                 output.stop()?;
                 self.started = false;
@@ -88,11 +184,17 @@ impl Playback {
             }
             Command::Play => {
                 if self.status.ended {
-                    self.command(Command::Seek(0), output)?;
+                    self.command(
+                        Command::Seek {
+                            cursor: 0,
+                            revision: self.status.seek_revision,
+                        },
+                        output,
+                    )?;
                 }
                 self.wants_play = true;
             }
-            Command::Seek(cursor) => {
+            Command::Seek { cursor, revision } => {
                 ensure!(
                     cursor <= self.clip.sample_count(),
                     "Playback seek exceeds duration"
@@ -105,6 +207,32 @@ impl Playback {
                 self.status.cursor = cursor;
                 self.status.playing = false;
                 self.status.ended = cursor == self.clip.sample_count();
+                self.status.seek_revision = revision;
+                self.tempo = (self.status.rate != PlaybackRate::Normal)
+                    .then(|| tempo::Tempo::new(self.clip.clone(), cursor, self.status.rate));
+            }
+            Command::Volume(volume) => {
+                ensure!(
+                    volume.is_finite() && (0.0..=1.0).contains(&volume),
+                    "Media volume exceeds range"
+                );
+                output.set_volume(volume)?;
+                self.status.volume = volume;
+            }
+            Command::Rate(rate) => {
+                if self.status.rate != rate {
+                    self.observe(output)?;
+                    let cursor = self.status.cursor;
+                    output.stop()?;
+                    self.started = false;
+                    output.reset()?;
+                    self.base = cursor;
+                    self.written = 0;
+                    self.status.rate = rate;
+                    self.status.playing = false;
+                    self.tempo = (rate != PlaybackRate::Normal)
+                        .then(|| tempo::Tempo::new(self.clip.clone(), cursor, rate));
+                }
             }
         }
         Ok(())
@@ -114,11 +242,19 @@ impl Playback {
         if !self.wants_play {
             return Ok(());
         }
-        let remaining = self.clip.sample_count() - self.base - self.written;
+        let remaining = self
+            .status
+            .rate
+            .output_frames(self.clip.sample_count() - self.base)
+            - self.written;
         let available = output.capacity() - padding;
         if remaining > 0 && available > 0 {
             let count = remaining.min(u64::from(available)) as u32;
-            output.write(self.clip.pcm(self.base + self.written, count)?, count)?;
+            if let Some(tempo) = &mut self.tempo {
+                output.write(&tempo.read(count), count)?;
+            } else {
+                output.write(self.clip.pcm(self.base + self.written, count)?, count)?;
+            }
             self.written += u64::from(count);
         }
         if remaining == 0 && padding == 0 {
@@ -141,13 +277,20 @@ pub struct Session {
     commands: mpsc::Sender<Command>,
     status: Arc<Mutex<Status>>,
     cancel: Arc<AtomicBool>,
+    seek_revision: AtomicU64,
     worker: Option<JoinHandle<anyhow::Result<()>>>,
 }
 impl Session {
     pub fn start(clip: Arc<Clip>) -> anyhow::Result<Self> {
+        Self::open(clip, true)
+    }
+    pub fn prepare(clip: Arc<Clip>) -> anyhow::Result<Self> {
+        Self::open(clip, false)
+    }
+    fn open(clip: Arc<Clip>, autoplay: bool) -> anyhow::Result<Self> {
         #[cfg(not(windows))]
         {
-            let _ = clip;
+            let _ = (clip, autoplay);
             anyhow::bail!("Native audible media output is available on Windows");
         }
         #[cfg(windows)]
@@ -165,7 +308,7 @@ impl Session {
                             return Ok(());
                         }
                         let mut output = windows::Endpoint::open(&clip)?;
-                        let mut playback = Playback::new(clip);
+                        let mut playback = Playback::new(clip, autoplay);
                         let result = (|| {
                             while !signal.load(Ordering::Acquire) {
                                 for command in incoming.try_iter() {
@@ -183,8 +326,9 @@ impl Session {
                             }
                             Ok(())
                         })();
-                        let cleanup = output.stop().and_then(|_| output.reset());
-                        result.and(cleanup)
+                        let stop = output.stop();
+                        let reset = output.reset();
+                        result.and(stop).and(reset)
                     })();
                     if let Ok(mut state) = result_status.lock() {
                         state.playing = false;
@@ -192,12 +336,16 @@ impl Session {
                             state.error = Some(format!("{error:#}"));
                         }
                     }
+                    if let Err(error) = &result {
+                        eprintln!("Media output: {error:#}");
+                    }
                     result
                 })?;
             Ok(Self {
                 commands,
                 status,
                 cancel,
+                seek_revision: AtomicU64::new(0),
                 worker: Some(worker),
             })
         }
@@ -225,11 +373,36 @@ impl Session {
     pub fn play(&self) -> anyhow::Result<()> {
         self.send(Command::Play)
     }
-    pub fn seek(&self, frame: u64) -> anyhow::Result<()> {
-        self.send(Command::Seek(frame))
+    pub fn toggle(&self) -> anyhow::Result<()> {
+        self.send(Command::Toggle)
+    }
+    pub fn seek(&self, frame: u64) -> anyhow::Result<u64> {
+        let revision = self.seek_revision.fetch_add(1, Ordering::Relaxed) + 1;
+        self.send(Command::Seek {
+            cursor: frame,
+            revision,
+        })?;
+        Ok(revision)
+    }
+    pub fn set_volume(&self, volume: f32) -> anyhow::Result<()> {
+        ensure!(
+            volume.is_finite() && (0.0..=1.0).contains(&volume),
+            "Media volume exceeds range"
+        );
+        self.send(Command::Volume(volume))
+    }
+    pub fn set_playback_rate(&self, rate: PlaybackRate) -> anyhow::Result<()> {
+        self.send(Command::Rate(rate))
+    }
+    /// Signal the output owner without waiting for COM or endpoint cleanup.
+    pub fn cancel(&self) {
+        self.cancel.store(true, Ordering::Release);
+        if let Some(worker) = &self.worker {
+            worker.thread().unpark();
+        }
     }
     pub fn stop(&mut self) -> anyhow::Result<()> {
-        self.cancel.store(true, Ordering::Release);
+        self.cancel();
         if let Some(worker) = self.worker.take() {
             worker.thread().unpark();
             worker
@@ -241,9 +414,9 @@ impl Session {
 }
 impl Drop for Session {
     fn drop(&mut self) {
-        if let Err(error) = self.stop() {
-            eprintln!("Media cleanup: {error:#}");
-        }
+        // The worker owns the endpoint and performs stop/reset even when the
+        // view disappears. Joining is reserved for explicit background cleanup.
+        self.cancel();
     }
 }
 

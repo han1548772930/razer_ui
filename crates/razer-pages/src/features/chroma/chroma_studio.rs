@@ -203,6 +203,12 @@ pub struct ChromaStudio {
 }
 impl EventEmitter<ChromaStudioEvent> for ChromaStudio {}
 impl ChromaStudio {
+    /// Release transient native input when this retained document loses its host.
+    pub fn deactivate(&mut self, cx: &mut Context<Self>) {
+        self.properties
+            .update(cx, |properties, cx| properties.deactivate(cx));
+    }
+
     pub fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // A StudioSession survives its host window. Drop window-bound input
         // state before a newly attached host focuses this retained document.

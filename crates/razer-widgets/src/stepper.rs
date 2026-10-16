@@ -265,6 +265,44 @@ impl Stepper {
         }
     }
 
+    fn scroll(&mut self, event: &ScrollWheelEvent, window: &mut Window, cx: &mut Context<Self>) {
+        // Current 4230/44230 register window mousewheel only when the text
+        // input is clicked. Tab focus and spinner presses do not register it.
+        if self.disabled || !self.interacting {
+            return;
+        }
+        let delta = event.delta.pixel_delta(px(1.)).y;
+        if delta == px(0.) {
+            return;
+        }
+        let action = if delta > px(0.) {
+            StepAction::Increment
+        } else {
+            StepAction::Decrement
+        };
+        // Wheel guards compare props.value with coercive >= / <=;
+        // spinner classes instead compare the draft with strict ===.
+        let wheel_at_limit = if self.allow_live_update && self.draft_from_typing {
+            let draft = self.input.read(cx).value();
+            let value = if draft.is_empty() {
+                0.
+            } else {
+                draft.parse::<f64>().unwrap_or(f64::NAN)
+            };
+            if action == StepAction::Increment {
+                value >= self.max
+            } else {
+                value <= self.min
+            }
+        } else {
+            self.at_limit(action)
+        };
+        if !wheel_at_limit {
+            self.step_once(action, window, cx);
+        }
+        cx.stop_propagation();
+    }
+
     fn set_value(&mut self, value: f64, window: &mut Window, cx: &mut Context<Self>) {
         self.value = value;
         self.draft_from_typing = false;
@@ -456,6 +494,7 @@ impl Render for Stepper {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let focus = self.input.focus_handle(cx);
         let owner = cx.entity().downgrade();
+        let wheel_owner = owner.clone();
         let increment = self.spinner(
             BaseButton::new("increment"),
             StepAction::Increment,
@@ -534,41 +573,29 @@ impl Render for Stepper {
                     cx.stop_propagation();
                 }
             }))
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, window, cx| {
-                if this.disabled || !this.focused {
-                    return;
-                }
-                let delta = event.delta.pixel_delta(px(1.)).y;
-                if delta == px(0.) {
-                    return;
-                }
-                let action = if delta > px(0.) {
-                    StepAction::Increment
-                } else {
-                    StepAction::Decrement
-                };
-                // Wheel guards compare props.value with coercive >= / <=;
-                // spinner classes instead compare the draft with strict ===.
-                let wheel_at_limit = if this.allow_live_update && this.draft_from_typing {
-                    let draft = this.input.read(cx).value();
-                    let value = if draft.is_empty() {
-                        0.
-                    } else {
-                        draft.parse::<f64>().unwrap_or(f64::NAN)
-                    };
-                    if action == StepAction::Increment {
-                        value >= this.max
-                    } else {
-                        value <= this.min
-                    }
-                } else {
-                    this.at_limit(action)
-                };
-                if !wheel_at_limit {
-                    this.step_once(action, window, cx);
-                }
-                cx.stop_propagation();
-            }));
+            .child(
+                canvas(
+                    |_, _, _| (),
+                    move |_, _, window, _| {
+                        let wheel_owner = wheel_owner.clone();
+                        // The source listener belongs to window, so the
+                        // clicked input keeps receiving wheel events after
+                        // the pointer leaves it. Blur ends registration, and
+                        // unmount removes this frame's weak listener.
+                        window.on_mouse_event(
+                            move |event: &ScrollWheelEvent, phase, window, cx| {
+                                if phase.bubble() {
+                                    let _ = wheel_owner.update(cx, |this, cx| {
+                                        this.scroll(event, window, cx);
+                                    });
+                                }
+                            },
+                        );
+                    },
+                )
+                .absolute()
+                .size_0(),
+            );
         if self.custom_keymapping {
             // Source children are absolute in the 56 x 23 padding box. Its
             // root padding does not move them: input left 6, width 90%, and

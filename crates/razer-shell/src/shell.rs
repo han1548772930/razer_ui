@@ -47,6 +47,8 @@ mod controller_calibration_focus;
 mod controller_input;
 #[path = "shell/gamepad/controller_triggers.rs"]
 mod controller_triggers;
+#[path = "shell/gamepad/controller_lighting.rs"]
+mod controller_lighting;
 #[path = "shell/devices/device_discovery.rs"]
 mod device_discovery;
 #[path = "shell/windows/display_window.rs"]
@@ -98,6 +100,7 @@ mod mouse_runtime_artwork;
 #[path = "shell/mouse/mouse_scroll.rs"]
 mod mouse_scroll;
 use controller_triggers::ControllerTriggerSave;
+use controller_lighting::ControllerLightingSave;
 use mouse_current_dpi::MouseCurrentDpiSave;
 use mouse_current_power::MouseCurrentPowerSave;
 use mouse_dpi_stages::MouseDpiStagesSave;
@@ -173,6 +176,7 @@ struct PreparedSave {
     mouse_current_dpi: Option<MouseCurrentDpiSave>,
     mouse_current_power: Option<MouseCurrentPowerSave>,
     controller_trigger: Option<ControllerTriggerSave>,
+    controller_lighting: Option<ControllerLightingSave>,
     seiren_eq: Option<seiren_eq::SeirenEqSave>,
     mouse_profile: Option<MouseLegacyProfileSave>,
     keyboard_actuation: Option<keyboard_actuation_write::KeyboardActuationSave>,
@@ -331,6 +335,7 @@ pub struct AppShell {
     mouse_scroll_workers: usize,
     current_power_workers: usize,
     controller_trigger_workers: usize,
+    controller_lighting_workers: usize,
     seiren_eq_workers: usize,
     seiren_microphone_setup: seiren_microphone_setup::State,
     seiren_audio_captures: BTreeMap<u64, seiren_audio_capture::Worker>,
@@ -563,6 +568,7 @@ impl AppShell {
             mouse_scroll_workers: 0,
             current_power_workers: 0,
             controller_trigger_workers: 0,
+            controller_lighting_workers: 0,
             seiren_eq_workers: 0,
             seiren_microphone_setup: seiren_microphone_setup::State::default(),
             seiren_audio_captures: BTreeMap::new(),
@@ -1437,6 +1443,9 @@ impl AppShell {
                 WorkspaceEvent::ControllerTriggerRequested(request) => {
                     this.persist_controller_trigger(entity.clone(),request.clone(),window,cx);
                 }
+                WorkspaceEvent::ControllerLightingRequested(request) => {
+                    this.persist_controller_lighting(entity.clone(),request.clone(),window,cx);
+                }
                 WorkspaceEvent::Changed => {
                     this.sync_local_mapping_targets(window,cx);
                     this.sync_gamer_room(cx);
@@ -2155,6 +2164,7 @@ impl AppShell {
             mouse_dpi: None,
             mouse_current_dpi: None,
             mouse_current_power: None,
+            controller_lighting: None,
             controller_trigger: None,
             seiren_eq: None,
             keyboard_actuation: None,
@@ -2221,6 +2231,7 @@ impl AppShell {
             mouse_dpi: None,
             mouse_current_dpi: None,
             mouse_current_power: None,
+            controller_lighting: None,
             controller_trigger: None,
             seiren_eq: None,
             keyboard_actuation: None,
@@ -2266,6 +2277,14 @@ impl AppShell {
             return false;
         }
         self.rebase_controller_trigger_save(&mut request, cx);
+        if let Err(error) = self.rebase_controller_lighting_save(&mut request, cx) {
+            self.status = format!("手柄灯效本地保存失败：{error:#}");
+            if let Some(lighting) = request.controller_lighting.take() {
+                self.finish_controller_lighting_save(lighting, false, request.window, cx);
+            }
+            self.continue_save_queue(false, cx);
+            return false;
+        }
         if let Err(error) = self.rebase_seiren_eq_save(&mut request, cx) {
             self.status = format!("麦克风设置本地保存失败：{error:#}");
             if let Some(eq) = request.seiren_eq.take() {
@@ -2375,6 +2394,9 @@ impl AppShell {
                 if let Some(trigger) = request.controller_trigger.take() {
                     self.finish_controller_trigger_save(trigger, false, request.window, cx);
                 }
+                if let Some(lighting) = request.controller_lighting.take() {
+                    self.finish_controller_lighting_save(lighting, false, request.window, cx);
+                }
                 if let Some(eq) = request.seiren_eq.take() {
                     self.finish_seiren_eq_save(eq, false, request.window, cx);
                 }
@@ -2415,6 +2437,7 @@ impl AppShell {
             mouse_current_dpi,
             mouse_current_power,
             controller_trigger,
+            controller_lighting,
             seiren_eq,
             mouse_profile,
             keyboard_actuation,
@@ -2428,6 +2451,7 @@ impl AppShell {
             && mouse_current_dpi.is_none()
             && mouse_current_power.is_none()
             && controller_trigger.is_none()
+                            && controller_lighting.is_none()
             && seiren_eq.is_none()
             && leviathan.is_none()
             && keyboard_actuation.is_none()
@@ -2505,6 +2529,7 @@ impl AppShell {
                             && mouse_current_dpi.is_none()
                             && mouse_current_power.is_none()
                             && controller_trigger.is_none()
+                            && controller_lighting.is_none()
                             && seiren_eq.is_none()
                             && leviathan.is_none()
                             && keyboard_actuation.is_none()
@@ -2518,6 +2543,7 @@ impl AppShell {
                             && mouse_current_dpi.is_none()
                             && mouse_current_power.is_none()
                             && controller_trigger.is_none()
+                            && controller_lighting.is_none()
                             && seiren_eq.is_none()
                             && leviathan.is_none()
                             && keyboard_actuation.is_none()
@@ -2617,6 +2643,9 @@ impl AppShell {
                         if let Some(trigger) = controller_trigger {
                             this.finish_controller_trigger_save(trigger, true, window, cx);
                         }
+                        if let Some(lighting) = controller_lighting {
+                            this.finish_controller_lighting_save(lighting, true, window, cx);
+                        }
                         if let Some(sound) = leviathan {
                             this.finish_leviathan_save(sound, true, cx);
                         }
@@ -2665,6 +2694,9 @@ impl AppShell {
                         if let Some(trigger) = controller_trigger {
                             this.finish_controller_trigger_save(trigger, false, window, cx);
                         }
+                        if let Some(lighting) = controller_lighting {
+                            this.finish_controller_lighting_save(lighting, false, window, cx);
+                        }
                         if let Some(sound) = leviathan {
                             this.finish_leviathan_save(sound, false, cx);
                         }
@@ -2706,6 +2738,7 @@ impl AppShell {
                 || self.mouse_scroll_workers > 0
                 || self.current_power_workers > 0
                 || self.controller_trigger_workers > 0
+                || self.controller_lighting_workers > 0
                 || self.seiren_eq_workers > 0
                 || (!self.seiren_audio_captures.is_empty()
                     || !self.seiren_audio_playbacks.is_empty())
@@ -2968,6 +3001,7 @@ impl AppShell {
             || self.mouse_scroll_workers > 0
             || self.current_power_workers > 0
             || self.controller_trigger_workers > 0
+                || self.controller_lighting_workers > 0
             || self.seiren_eq_workers > 0
             || !self.seiren_audio_captures.is_empty()
             || !self.seiren_audio_playbacks.is_empty()

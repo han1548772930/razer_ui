@@ -1,6 +1,6 @@
 """Pure tests for source provenance and the connected analysis index."""
 import argparse
-from contextlib import redirect_stdout
+from contextlib import closing, redirect_stdout
 import hashlib
 import io
 import json
@@ -10,6 +10,7 @@ import struct
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import MagicMock, patch
 
 import analysis
@@ -54,6 +55,43 @@ class EvidenceTests(unittest.TestCase):
                                          "sha256": hashlib.sha256(output.read_bytes()).hexdigest()})
         self.source(folder + "/capture.json", json.dumps(manifest).encode())
         return manifest, folder
+
+    def ida_runtime(self, members, expected=None):
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, "w") as archive:
+            for name, payload in members.items():
+                archive.writestr(name, payload)
+        raw = stream.getvalue()
+        archive_name = "python-3.11.9-embed-amd64.zip"
+        files = members if expected is None else expected
+        receipt = {"url": "https://www.python.org/ftp/python/3.11.9/" + archive_name,
+                   "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+                   "files": [{"path": name, "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
+                             for name, payload in {**files, archive_name: raw}.items()]}
+        self.source("tools/analyzers/python-3.11.9/acquisition.json", json.dumps(receipt).encode())
+        self.source(".work/analyzers/" + archive_name, raw)
+        return receipt
+
+    def test_ida_runtime_restores_exact_members_and_archive_without_target_execution_or_network(self):
+        receipt = self.ida_runtime({"python311.dll": b"inert analyzer fixture", "python311._pth": b"python311.zip"})
+        with patch.object(analysis.urllib.request, "urlopen", side_effect=AssertionError("Verified cache must not download")):
+            result = analysis.prepare_ida_python()
+            self.assertEqual(result["restored_members"], 3)
+            for member in receipt["files"]:
+                path = self.root / "tools/analyzers/python-3.11.9" / member["path"]
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), member["sha256"])
+            self.assertEqual(analysis.prepare_ida_python()["restored_members"], 0)
+
+    def test_ida_runtime_rejects_member_mismatch_before_installing_any_file(self):
+        self.ida_runtime({"python311.dll": b"different"}, {"python311.dll": b"expected"})
+        with self.assertRaisesRegex(ValueError, "member differs"):
+            analysis.prepare_ida_python()
+        self.assertFalse((self.root / "tools/analyzers/python-3.11.9/python311.dll").exists())
+
+    def test_ida_runtime_rejects_unconfined_receipt_paths(self):
+        self.ida_runtime({"../outside.dll": b"inert"})
+        with self.assertRaisesRegex(ValueError, "invalid or duplicate"):
+            analysis.prepare_ida_python()
 
     def test_identity_claims_do_not_turn_missing_or_changed_bytes_into_success(self):
         name = ".analysis/inputs/test/source.js"
@@ -2875,7 +2913,7 @@ class AssetReleaseTests(unittest.TestCase):
             (0, 1, 128, 0, 1, 0, 3, "synapse/duplicate.svg"),
             (1, 1, 128, 0, 1, 0, 3, "synapse/duplicate.svg")])
         schema = Path(__file__).resolve().parent.parent / resource_database.SCHEMA
-        with sqlite3.connect(":memory:") as connection:
+        with closing(sqlite3.connect(":memory:")) as connection:
             connection.executescript(schema.read_text(encoding="utf-8"))
             resource_database.fill_selectors(connection, rows)
         mappings = self.assets.load_resource_mappings()

@@ -107,6 +107,7 @@ pub struct SourceTooltip {
     width: f32,
     kind: SourceTooltipKind,
     hovered_priority: Option<usize>,
+    dismiss_on_press: bool,
     hypershift_layout: Option<HypershiftHelpLayout>,
     trigger: Trigger,
 }
@@ -127,6 +128,7 @@ impl SourceTooltip {
             width,
             kind: SourceTooltipKind::DropTips,
             hovered_priority: None,
+            dismiss_on_press: false,
             hypershift_layout: None,
             trigger: Box::new(|_, _, _| div().into_any_element()),
         }
@@ -134,6 +136,12 @@ impl SourceTooltip {
 
     pub fn kind(mut self, kind: SourceTooltipKind) -> Self {
         self.kind = kind;
+        self
+    }
+
+    /// Source controls may hide their delayed portal on the initial press.
+    pub fn dismiss_on_press(mut self) -> Self {
+        self.dismiss_on_press = true;
         self
     }
 
@@ -277,6 +285,12 @@ impl RenderOnce for SourceTooltip {
                 state.trigger = *hovered;
                 cx.notify();
             }))
+            .when(self.dismiss_on_press, |view| {
+                view.on_any_mouse_down(window.listener_for(&state, |state, _, _, cx| {
+                    state.trigger = false;
+                    cx.notify();
+                }))
+            })
             .on_prepaint({
                 let anchor = anchor.clone();
                 move |bounds, _, _| anchor.set(bounds)

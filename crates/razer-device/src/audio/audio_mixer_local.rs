@@ -12,6 +12,9 @@ use serde_json::{Value, json};
 pub mod lighting;
 #[path = "audio_mixer_local/reports.rs"]
 mod reports;
+#[cfg(test)]
+#[path = "audio_mixer_local/source_feature_tests.rs"]
+mod source_feature_tests;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -478,11 +481,6 @@ pub fn execute(
 ) -> anyhow::Result<Receipt> {
     validate()?;
     let mut response = Value::Null;
-    let output = |bytes: &[u8]| -> anyhow::Result<()> {
-        let mut report = vec![0; 66];
-        report[..bytes.len()].copy_from_slice(bytes);
-        device.write_output(&report)
-    };
     match command {
         Command::LightingSample { .. } => {
             anyhow::bail!("Mixer lighting peak sampling requires the local audio endpoint adapter")
@@ -504,16 +502,14 @@ pub fn execute(
             control(&[10, u8::from(*mode == 2) | (2 * (mode & 3))])?;
         }
         Command::PhantomPower { enabled } => {
-            output(&[10, if *enabled { 5 } else { 2 }])?;
-            validate()?;
-            let mut input = [0; 16];
-            input[0] = 18;
-            let count = device.get_input(&mut input)?;
-            ensure!(
-                count > 0 && count <= input.len(),
-                "48V Input report missing"
-            );
-            response = json!({"input":&input[..count]});
+            let input = reports::output(
+                device,
+                &[10, if *enabled { 5 } else { 2 }],
+                Some(18),
+                validate,
+            )?
+            .context("48V source command did not return an Input report")?;
+            response = json!({"input":input});
         }
         Command::InputMicGain { value } => {
             ensure!(
@@ -521,17 +517,24 @@ pub fn execute(
                 "Mic source gain outside range"
             );
             let raw = ((value + 12.) / 51.75 * 69.).trunc() as u8;
-            output(&[3, 24, 0, 192, 16, raw, raw])?;
+            reports::output(device, &[3, 24, 0, 192, 16, raw, raw], None, validate)?;
         }
-        Command::InputMicMute { enabled } => output(&[
-            3,
-            24,
-            0,
-            192,
-            148,
-            if *enabled { 196 } else { 68 },
-            if *enabled { 192 } else { 64 },
-        ])?,
+        Command::InputMicMute { enabled } => {
+            reports::output(
+                device,
+                &[
+                    3,
+                    24,
+                    0,
+                    192,
+                    148,
+                    if *enabled { 196 } else { 68 },
+                    if *enabled { 192 } else { 64 },
+                ],
+                None,
+                validate,
+            )?;
+        }
         Command::ChannelMute {
             channel, enabled, ..
         } => {
@@ -554,7 +557,7 @@ pub fn execute(
                 *channel,
                 u8::from(*enabled),
             ]);
-            device.send_feature(&report)?;
+            reports::feature(device, &report, None, validate)?;
         }
         Command::Property { target, value } => {
             response =

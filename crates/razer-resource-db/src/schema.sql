@@ -33,6 +33,30 @@ CREATE TABLE resource_storage (
     id INTEGER PRIMARY KEY CHECK(id=1), schema_version INTEGER NOT NULL CHECK(schema_version=1),
     provider TEXT NOT NULL, repository TEXT NOT NULL, revision TEXT
 ) STRICT;
+CREATE TABLE ui_product (
+    id INTEGER PRIMARY KEY CHECK(id>0 AND id<=4294967295), name TEXT NOT NULL CHECK(length(name)>0)
+) STRICT;
+CREATE TABLE ui_product_category (
+    product_id INTEGER NOT NULL REFERENCES ui_product(id), position INTEGER NOT NULL CHECK(position>=0),
+    value TEXT NOT NULL CHECK(length(value)>0), PRIMARY KEY(product_id, position), UNIQUE(product_id, value)
+) STRICT;
+CREATE TABLE ui_product_edition (
+    product_id INTEGER NOT NULL REFERENCES ui_product(id), position INTEGER NOT NULL CHECK(position>=0),
+    edition_id INTEGER NOT NULL CHECK(edition_id>=0 AND edition_id<=4294967295),
+    PRIMARY KEY(product_id, position), UNIQUE(product_id, edition_id)
+) STRICT;
+CREATE TABLE ui_navigation (
+    key TEXT PRIMARY KEY CHECK(length(key)>0), product_id INTEGER NOT NULL REFERENCES ui_product(id),
+    position INTEGER NOT NULL CHECK(position>=0), display_mode TEXT NOT NULL CHECK(length(display_mode)>0),
+    is_primary INTEGER NOT NULL CHECK(is_primary IN (0,1)), UNIQUE(product_id, position)
+) STRICT;
+CREATE UNIQUE INDEX ui_navigation_primary ON ui_navigation(product_id) WHERE is_primary=1;
+CREATE TABLE ui_page (
+    key TEXT PRIMARY KEY CHECK(length(key)>0), navigation_key TEXT NOT NULL REFERENCES ui_navigation(key),
+    position INTEGER NOT NULL CHECK(position>=0), kind TEXT NOT NULL CHECK(length(kind)>0),
+    role TEXT NOT NULL CHECK(role IN ('Page','Help','StandaloneMode')),
+    help_selector INTEGER NOT NULL CHECK(help_selector>=0), UNIQUE(navigation_key, position)
+) STRICT;
 CREATE TABLE resource_file (
     id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE,
     bytes INTEGER NOT NULL CHECK(bytes>=0), sha256 TEXT NOT NULL CHECK(length(sha256)=64)

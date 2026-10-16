@@ -167,7 +167,14 @@ type UnregisterShortcut = unsafe extern "C" fn(u32, u32, Callback2);
 type SetShortcutCallback = unsafe extern "C" fn(EventCallback, Callback2);
 
 pub(super) fn controller_calibration_node_proof(node: &HidNode) -> anyhow::Result<Value> {
-    controller_calibration_identity::proof(node)
+    controller_feature_node_proof(node, 1)
+}
+
+pub(super) fn controller_feature_node_proof(
+    node: &HidNode,
+    claim_interface: u8,
+) -> anyhow::Result<Value> {
+    controller_calibration_identity::proof(node, claim_interface)
 }
 type StorageSetItem = unsafe extern "C" fn(*const c_char, *const c_char, Callback2);
 
@@ -518,6 +525,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeReceiverStatusForSource { .. }
             | ServiceRequest::HidNodeReceiverDockMode { .. }
             | ServiceRequest::ControllerTriggers { .. }
+            | ServiceRequest::ControllerLighting { .. }
             | ServiceRequest::ControllerTriggerCalibrationStart { .. }
             | ServiceRequest::ControllerTriggerCalibrationPoll { .. }
             | ServiceRequest::ControllerTriggerCalibrationCancel { .. } => {

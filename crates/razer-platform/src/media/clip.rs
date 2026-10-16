@@ -163,4 +163,11 @@ impl Clip {
         let at = self.pcm_offset + usize::try_from(start)? * align;
         Ok(&self.bytes[at..at + count as usize * align])
     }
+    pub(super) fn sample(&self, frame: u64, channel: usize) -> Option<i16> {
+        if frame >= self.samples || channel >= usize::from(self.channels) {
+            return None;
+        }
+        let at = self.pcm_offset + (frame as usize * usize::from(self.channels) + channel) * 2;
+        Some(i16::from_le_bytes([self.bytes[at], self.bytes[at + 1]]))
+    }
 }

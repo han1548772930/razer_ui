@@ -2,7 +2,9 @@
 
 IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读取 `.agents/skills/`。各份捕获记录实际工具版本，不能跨版本沿用验证结论。
 
-2026-10-16 对官方保留原件 `HID.node`（SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`）重新全函数静态捕获，实际 IDA 8.3、Hex-Rays 8.3.0.230608、Python 3.11.6；1,679 个函数、1,688 个产物逐字节校验，RVA `0x30888` 的反编译失败及完整汇编保留。[HID 查询](../../.analysis/results/native/chain-audit.json) 对 34 个当前产品来源完成工厂分支核验，并连接 31 个完整 native 函数、23 处已解析间接调用：12 个 `hid.dll` 动态导出全局、批量 Feature 回调及共享 worker 销毁链。此处 0 个未解间接调用仅指所选函数和指定调用上下文，不代表所有 N-API／Promise 回调或全部产品链已解析。捕获不能视为全部产品读写完成；未执行目标程序或设备操作。
+当前 `HID.node`（SHA-256 `f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f`、405,704 字节）的 [实际捕获收据](../../.analysis/results/native/f611827603911d7807c8499dd231bdf77898fbe2ec3ce40215dccfbb7185cc1f/capture.json) 使用 IDA 9.1、Hex-Rays 9.1.0.250226、Python 3.11.9，完整捕获 1,641 个函数；RVA `0x30888` 的反编译失败及完整汇编保留。其他 IDA 8.3 捕获的函数数与产物摘要不能套用到这份收据。[HID 查询](../../.analysis/results/native/chain-audit.json) 中的工厂、回调、动态导出与共享 worker 链须分别对照其引用的完整函数及实际产物身份；指定查询没有未解边不代表全部 N-API／Promise、产品协议或生命周期已经闭合。当前 GetFeature／GetInput 的完整函数分别位于 RVA `0x17ac0..0x17c43`、`0x17c50..0x17dd3`，Windows 返回长度均为原生已读长度加一；Rust 的 source-host collection 适配与产品重试／取消仍须逐调用方校验。
+
+`capture-corpus --source retained --ida-root E:/IDA --include-path '\.(dll|node|sys|customactionkey)$' --no-refresh-gaps` 本批选择 884 个不同字节的非 EXE 模块。工具核验完整旧捕获的所有产物后复用，对缺项使用当前 IDA／Hex-Rays；未选 EXE 保留在同一队列，不能把本批结果记为全语料闭合。保留原件的当前版本来源仍另行审计。进度、失败、输入快照及实际工具版本见 [统一原生队列](../../.analysis/results/native-corpus-capture.json)，不使用未结束旧队列的累计数作为本轮完成结论。
 
 维护入口统一为 `python tools/workspace.py`。原件位于 `.analysis/inputs/`，获取收据及索引保存实际字节 SHA-256；结果位于 `.analysis/results/`，临时数据库位于 `.work/`。不运行厂商应用、JavaScript、目标 DLL／导出、helper、installer、调试器或真实设备。
 
@@ -21,6 +23,7 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 | 7-Zip | 新提取使用 24.02 x64，已有 26.02 收据保留各自身份；版本及 EXE／DLL SHA 随静态提取记录 | 仅识别为 PE 的安装器不能记成已提取全部载荷 |
 | ILSpyCmd 9.1.0.7988 | 固定 NuGet 包与 59 个文件，.NET 8 上静态导出 C# 项目和完整 IL | 不执行输入程序集；保留 unresolved 注释、stderr、两阶段退出码；native C++ 使用 IDA |
 | innounp 2.71.2 | 当前官方发布资产与完整源码提交独立固定于 `tools/analyzers/innounp-2.71.2/`；静态列举／提取 Inno Setup | 旧 2.71.1 发布资产已不可获取，原收据的恢复失败保留，不用新版本字节替换旧摘要；重建 install_script.iss 只作为分析产物 |
+| PyAV 16.0.1／FFmpeg | `prepare-media-analyzer` 按实际 Python 3.14／Windows x64 ABI 取得官方 `cp314-win_amd64` wheel，核验 SHA-256、全部 RECORD 成员及实际导入版本；获取收据位于 `tools/analyzers/media-python/acquisition.json` | 仅静态读取与转换媒体，不运行厂商代码。原八通道 PCM、时间戳与 JPEG 帧分别核验；派生文件在 `.analysis/inputs/prepared-media/` 独立索引，不冒充官方原件，不以转换通过代替播放验收 |
 
 工具获取收据位于 `tools/analyzers/`；前端分析器准备记录位于 [.analysis/results/analysis-preparation.json](../../.analysis/results/analysis-preparation.json)。`analyze-host` 按既有 ILSpy 收据恢复精确匹配的官方包成员，不改写预期摘要。
 

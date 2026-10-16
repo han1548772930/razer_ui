@@ -158,19 +158,41 @@ fn read_collection_feature(
         "Collection Feature buffer differs from its observed maximum length"
     );
     let count = read(report)?;
+    source_control_report_count(report, count, windows)
+}
+
+fn read_input_report(
+    lengths: &ReportLengths,
+    report: &mut [u8],
+    windows: bool,
+    read: impl FnOnce(&mut [u8]) -> anyhow::Result<usize>,
+) -> anyhow::Result<usize> {
+    ensure!(
+        !report.is_empty() && valid_io_length(&lengths.input, report[0], report.len()),
+        "Input report differs from its observed ID and length"
+    );
+    let count = read(report)?;
+    source_control_report_count(report, count, windows)
+}
+
+fn source_control_report_count(
+    report: &[u8],
+    count: usize,
+    windows: bool,
+) -> anyhow::Result<usize> {
     // Locked hidapi 2.6.7 Windows C uses the same IOCTL/OVERLAPPED sequence as
     // current HID.node, but adds the prefix only when returned data[0] is zero.
-    // HID.node's 0x17ac0 returns BytesReturned+1 unconditionally.
+    // HID.node's Feature 0x17ac0 and Input 0x17c50 return BytesReturned+1.
     let count = if windows && report[0] != 0 {
         count
             .checked_add(1)
-            .context("Collection Feature count overflow")?
+            .context("Source control report count overflow")?
     } else {
         count
     };
     ensure!(
         count <= report.len(),
-        "Collection Feature count exceeds its buffer"
+        "Source control report count exceeds its buffer"
     );
     Ok(count)
 }
@@ -236,17 +258,11 @@ impl FeatureTransport for NativeTransport {
     }
 
     fn get_input(&self, report: &mut [u8]) -> anyhow::Result<usize> {
-        ensure!(!report.is_empty(), "Input Report 缓冲区为空");
-        ensure!(
-            valid_io_length(&self.lengths.input, report[0], report.len()),
-            "Input Report 与实际 descriptor 的 ID/长度不一致"
-        );
-        let count = self
-            .device
-            .get_input_report(report)
-            .context("HID 控制 Input Report 读取失败")?;
-        ensure!(count <= report.len(), "HID Input Report 超过缓冲区长度");
-        Ok(count)
+        read_input_report(&self.lengths, report, cfg!(windows), |buffer| {
+            self.device
+                .get_input_report(buffer)
+                .context("HID 控制 Input Report 读取失败")
+        })
     }
 
     fn report_lengths(&self) -> anyhow::Result<ReportLengths> {
@@ -389,6 +405,85 @@ mod tests {
             read_collection_feature(&observed, &mut report, true, |_| panic!(
                 "wrong collection size must not read"
             ))
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn mixer_feature_get18_keeps_native_count_on_a_feature7_collection() {
+        let observed = ReportLengths {
+            feature: [(7, 64)].into(),
+            ..Default::default()
+        };
+        assert!(!observed.feature.contains_key(&18));
+        let mut report = [0; 64];
+        report[0] = 18;
+        let count = read_collection_feature(&observed, &mut report, true, |buffer| {
+            assert_eq!(buffer[0], 18);
+            buffer[0..4].copy_from_slice(&[18, 10, 20, 30]);
+            Ok(63)
+        })
+        .unwrap();
+        assert_eq!(count, 64);
+        assert_eq!(report[..4], [18, 10, 20, 30]);
+
+        // Preserve a short native result; the protocol owner decides whether
+        // that particular source task requires a complete payload.
+        report[0] = 18;
+        let count = read_collection_feature(&observed, &mut report, true, |_| Ok(2)).unwrap();
+        assert_eq!(count, 3);
+        report[0] = 18;
+        assert!(read_collection_feature(&observed, &mut report, true, |_| Ok(64)).is_err());
+    }
+
+    #[test]
+    fn mixer_input_keeps_source_native_count_for_numbered_and_unnumbered_reports() {
+        for (selector, windows, native_count, expected_count) in [
+            (18, true, 15, 16),
+            (9, true, 7, 8),
+            (18, true, 2, 3),
+            (18, true, 0, 1),
+            (0, true, 16, 16),
+            (18, false, 16, 16),
+        ] {
+            let observed = ReportLengths {
+                input: [(selector, 16)].into(),
+                ..Default::default()
+            };
+            let mut report = [0; 16];
+            report[0] = selector;
+            let count = read_input_report(&observed, &mut report, windows, |buffer| {
+                assert_eq!(buffer[0], selector);
+                buffer[1] = 0x5a;
+                Ok(native_count)
+            })
+            .unwrap();
+            assert_eq!(count, expected_count);
+            assert_eq!(report[1], 0x5a);
+        }
+    }
+
+    #[test]
+    fn mixer_input_rejects_native_errors_overflow_and_unobserved_reports() {
+        let observed = ReportLengths {
+            input: [(18, 16)].into(),
+            ..Default::default()
+        };
+        let mut report = [0; 16];
+        report[0] = 18;
+        assert!(
+            read_input_report(&observed, &mut report, true, |_| {
+                anyhow::bail!("Simulated native Input failure")
+            })
+            .is_err()
+        );
+        assert!(read_input_report(&observed, &mut report, true, |_| Ok(16)).is_err());
+        assert!(read_input_report(&observed, &mut report, true, |_| Ok(usize::MAX)).is_err());
+        report[0] = 9;
+        assert!(
+            read_input_report(&observed, &mut report, true, |_| {
+                panic!("Unobserved Input ID must fail before native I/O")
+            })
             .is_err()
         );
     }

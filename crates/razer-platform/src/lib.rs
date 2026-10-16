@@ -24,6 +24,8 @@ pub mod macro_geometry;
 pub mod media;
 #[path = "native_paths.rs"]
 pub mod native_paths;
+#[path = "input/screen_color.rs"]
+pub mod screen_color;
 #[path = "observation/session_changes.rs"]
 pub mod session_changes;
 pub mod startup;

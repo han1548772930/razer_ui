@@ -7,11 +7,18 @@ struct Transport {
     replies: RefCell<VecDeque<Vec<u8>>>,
 }
 impl FeatureTransport for Transport {
-    fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+    fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+        panic!("Source controller SET must use the collection Feature framing")
+    }
+    fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+        panic!("Source controller GET must use the host-compatible byte count")
+    }
+    fn send_feature_at_collection_max(&self, report: &[u8]) -> anyhow::Result<()> {
         self.sends.borrow_mut().push(report.to_vec());
         Ok(())
     }
-    fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+    fn get_feature_at_collection_max(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+        assert_eq!(report[0], self.sends.borrow().last().unwrap()[0]);
         let bytes = self
             .replies
             .borrow_mut()
@@ -30,6 +37,42 @@ fn reply(command: Command, report_id: u8, transaction: u8, status: u8, data: &[u
     report[6] = data.len() as u8;
     report[9..9 + data.len()].copy_from_slice(data);
     report
+}
+#[test]
+fn every_controller_uses_source_report_selector_and_discards_the_returned_prefix() {
+    for product_id in [2629, 2636, 2647, 2650, 2676, 2684, 4133, 4144] {
+        let cap = capability(product_id).unwrap();
+        let replies = [1, 2].into_iter().enumerate().map(|(transaction, side)| {
+            let mut bytes = reply(
+                Command::SetCircularity(1, side, true),
+                cap.report_id(),
+                transaction as u8,
+                2,
+                &[],
+            );
+            bytes[0] = 0x7f;
+            bytes
+        });
+        let io = Transport {
+            sends: RefCell::new(vec![]),
+            replies: RefCell::new(replies.collect()),
+        };
+        let result = TriggerProtocol::new(&io, cap, |_| Ok(()))
+            .execute(&TriggerOperation::Circularity {
+                profile_slot: 1,
+                circular: true,
+            })
+            .unwrap();
+        assert!(result.is_none(), "Setter ACK cannot invent a readback");
+        let sends = io.sends.borrow();
+        assert_eq!(sends.len(), 2);
+        for (ix, sent) in sends.iter().enumerate() {
+            assert_eq!(sent[0], cap.report_id());
+            assert_eq!(sent[2], ix as u8);
+            assert_eq!(sent[6..12], [3, 12, 18, 1, ix as u8 + 1, 1]);
+        }
+        assert!(io.replies.borrow().is_empty());
+    }
 }
 #[test]
 fn digital_write_sets_mode_before_value_and_skips_inactive_side() {
@@ -159,7 +202,7 @@ fn unsupported_reply_stops_the_write_and_cancellation_prevents_io() {
     );
     assert_eq!(io.sends.borrow().len(), 1);
     assert!(
-        TriggerProtocol::new(&io, capability(2629).unwrap(), |_| bail!("canceled"))
+        TriggerProtocol::new(&io, capability(2629).unwrap(), |_| anyhow::bail!("canceled"))
             .execute(&op)
             .is_err()
     );

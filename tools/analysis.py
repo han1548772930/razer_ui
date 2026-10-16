@@ -940,7 +940,68 @@ def _refresh_gaps():
     return ledger
 
 
+def prepare_ida_python():
+    """Restore only byte-exact members of the pinned official analyzer runtime."""
+    import io
+    import zipfile
+
+    directory = ROOT / "tools/analyzers/python-3.11.9"
+    receipt_path = directory / "acquisition.json"
+    receipt = json.loads(receipt_path.read_bytes())
+    expected = {item["path"]: item for item in receipt["files"]}
+    if (not expected or len(expected) != len(receipt["files"])
+            or any(Path(name).name != name or name in {".", ".."} for name in expected)):
+        raise ValueError("IDA Python runtime receipt contains invalid or duplicate member names")
+    with index_lock(directory / "restore.lock"):
+        missing = [name for name, item in expected.items()
+                   if not (directory / name).is_file() or (directory / name).stat().st_size != item["bytes"]
+                   or sha(directory / name) != item["sha256"]]
+        if missing:
+            parsed = urllib.parse.urlparse(receipt["url"])
+            if parsed.scheme != "https" or parsed.hostname != "www.python.org":
+                raise ValueError("IDA Python runtime requires its pinned official HTTPS source")
+            cache = ROOT / ".work/analyzers/python-3.11.9-embed-amd64.zip"
+            if cache.is_file() and cache.stat().st_size == receipt["bytes"] and sha(cache) == receipt["sha256"]:
+                raw = cache.read_bytes()
+            else:
+                with urllib.request.urlopen(receipt["url"], timeout=60) as response:
+                    raw = response.read(receipt["bytes"] + 1)
+                    final = urllib.parse.urlparse(response.url)
+                if final.scheme != "https" or final.hostname != "www.python.org":
+                    raise ValueError("IDA Python runtime redirected outside its official source")
+            if len(raw) != receipt["bytes"] or hashlib.sha256(raw).hexdigest() != receipt["sha256"]:
+                raise ValueError("IDA Python runtime archive differs from pinned acquisition bytes")
+            cache.parent.mkdir(parents=True, exist_ok=True)
+            if not cache.is_file():
+                cache.write_bytes(raw)
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                names = archive.namelist()
+                archive_name = Path(parsed.path).name
+                archive_entry = expected.get(archive_name)
+                retained_archive = (archive_entry is not None and archive_entry["sha256"] == receipt["sha256"]
+                                    and archive_entry["bytes"] == receipt["bytes"])
+                members = set(expected) - ({archive_name} if retained_archive else set())
+                if len(names) != len(set(names)) or not members.issubset(names):
+                    raise ValueError("IDA Python runtime archive member set differs: " + str(sorted(members - set(names))))
+                payloads = {}
+                for name, item in expected.items():
+                    payload = raw if retained_archive and name == archive_name else archive.read(name)
+                    if len(payload) != item["bytes"] or hashlib.sha256(payload).hexdigest() != item["sha256"]:
+                        raise ValueError("IDA Python runtime member differs: " + name)
+                    payloads[name] = payload
+            for name in missing:
+                pending = directory / (name + ".restoring-" + uuid.uuid4().hex)
+                try:
+                    pending.write_bytes(payloads[name])
+                    pending.replace(directory / name)
+                finally:
+                    pending.unlink(missing_ok=True)
+        return {"receipt": rel(receipt_path), "archive_sha256": receipt["sha256"],
+                "verified_members": len(expected), "restored_members": len(missing)}
+
+
 def configure_ida():
+    runtime = prepare_ida_python()
     package = ROOT / "tools/ida/ida-pro-mcp-2.0/src/ida_pro_mcp"
     plugin = ROOT / "tools/ida/idausr/plugins/ida_mcp.py"
     plugin.parent.mkdir(parents=True, exist_ok=True)
@@ -949,7 +1010,7 @@ def configure_ida():
     config = {"mcpServers": {"ida-pro-mcp": {"url": "http://127.0.0.1:13337/mcp"}}}
     save(ROOT / "tools/ida/mcp.json", config)
     print(json.dumps({"configuration": "tools/ida/mcp.json", "version": "2.0.0",
-                      "plugin_sha256": sha(plugin)}), flush=True)
+                      "plugin_sha256": sha(plugin), "python_runtime": runtime}), flush=True)
 
 
 def probe_ida(args):

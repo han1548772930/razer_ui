@@ -70,6 +70,7 @@ pub use audio_seiren_microphone::{SeirenAudioPlaybackRequested, SeirenMicrophone
 pub use audio_seiren_stream_mixer::{
     SeirenStreamMixerCaptureChanged, SeirenStreamMixerObservation, SeirenStreamMixerRequested,
 };
+mod audio_media;
 #[path = "audio_demo.rs"]
 mod demo;
 #[path = "nommo/audio_nommo.rs"]
@@ -306,6 +307,20 @@ impl EventEmitter<AudioMixerRequest> for AudioProductWorkspace {}
 impl EventEmitter<AudioNavigation> for AudioProductWorkspace {}
 
 impl AudioProductWorkspace {
+    pub fn floating_demo(&self, cx: &App) -> Option<AnyElement> {
+        self.demo
+            .as_ref()
+            .filter(|demo| demo.read(cx).is_floating())
+            .map(|demo| demo.clone().into_any_element())
+    }
+    pub fn stop_media(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(demo) = &self.demo {
+            demo.update(cx, |demo, cx| demo.stop(window, cx));
+        }
+        if let Some(media) = &self.leviathan.media {
+            media.update(cx, |media, cx| media.stop(window, cx));
+        }
+    }
     pub(super) fn set_source_owner(
         &mut self,
         owner: Entity<super::source_help_owner::SourceHelpOwner>,
@@ -344,7 +359,7 @@ impl AudioProductWorkspace {
             nommo_brightness_dragging: false,
             nommo_effects: nommo_effects::NommoEffectsState::new(pid, window, cx),
             oled_home: oled_home::OledHomeState::new(pid),
-            demo: demo::AudioDemo::for_product(pid, cx),
+            demo: demo::AudioDemo::for_product(pid, window, cx),
             pod_audio_editor: None,
             pod_audio_subscription: None,
             pod_runtime_devices: Vec::new(),
@@ -627,6 +642,9 @@ impl AudioProductWorkspace {
     }
     pub fn set_page(&mut self, page: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != page {
+            if let Some(demo) = &self.demo {
+                demo.update(cx, |demo, cx| demo.set_page(page == "TAB_DEMO", window, cx));
+            }
             if self.page == "TAB_EQ" {
                 self.dismiss_seiren_eq(cx);
             }
@@ -635,6 +653,9 @@ impl AudioProductWorkspace {
             self.dismiss_seiren_stream_mixer(cx);
             self.dismiss_effect_preset_confirmation();
             if self.page == "TAB_SOUND" && self.spec.product_id == 1352 {
+                if let Some(media) = &self.leviathan.media {
+                    media.update(cx, |media, cx| media.stop(window, cx));
+                }
                 self.dismiss_leviathan_page();
             }
             self.dismiss_mixer_warning(window, cx);

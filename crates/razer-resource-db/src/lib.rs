@@ -15,7 +15,7 @@ mod packaged {
 pub use packaged::CACHE_RELATIVE;
 
 const APPLICATION_ID: u32 = 0x525A5549;
-const SCHEMA_VERSION: u32 = 2;
+const SCHEMA_VERSION: u32 = 3;
 
 fn open(path: &std::path::Path) -> anyhow::Result<Connection> {
     let connection = Connection::open_with_flags(

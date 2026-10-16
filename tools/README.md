@@ -45,6 +45,7 @@ python tools/workspace.py supplement-native --input PROJECTREL --pointer-table-r
 python tools/workspace.py verify-resources
 python tools/workspace.py verify-runtime-assets
 python tools/workspace.py prepare-static-python
+python tools/workspace.py prepare-media-analyzer
 python tools/workspace.py prepare-emoji-search --check
 python tools/workspace.py prepare-resource-database --check
 python tools/workspace.py prepare-typed-data --check
@@ -61,6 +62,8 @@ python tools/workspace.py validate-rust --suite asset-pack-core
 `PROJECTREL` 为 `.analysis/inputs/` 下已登记的 DLL／NODE／EXE。`capture-native` 使用 IDA 批处理与 Hex-Rays 保存全函数、汇编、CFG、xref、类型、字符串、导出／导入和失败；结束后正常退出。`--resume` 补齐同一输入的缺失结果，`--mcp-only` 使用独立私有副本启动查询会话。
 
 `prepare-static-python` 按当前 Python ABI 恢复项目内固定版本的 JavaScript／Rust 解析器，校验发行元数据、wheel 字节及两种语法的静态解析。`prepare-typed-data` 支持重复的 `--crate`／`--symbol` 定向选择；选项不匹配时失败，不能把零张表记为验证通过。
+
+`prepare-media-analyzer` 按当前 Python ABI 恢复固定 PyAV 16.0.1 的官方 PyPI wheel，逐项验证发布长度、SHA-256、完整 RECORD 清单和成员字节后写入 `tools/analyzers/media-python/`。获取收据保存 PyPI 原始元数据、wheel、全部提取文件及实际 FFmpeg 库版本；分析器用于静态解码／准备已核验的媒体，不属于产品运行依赖，也不执行厂商代码。
 
 `prepare-resource-database` 生成唯一的 `assets/synapse/resource-catalog.sqlite3`；`prepare-emoji-search` 和 `prepare-runtime-assets` 使用同一实现。四份原始 JS 核验获取收据、实际字节和完整搜索字符串，数据库保存 1,857 条唯一记录与 1,936 项原始顺序。分组值、变体和排除列表分别去重，Mapping、无排除项的 Mouse 分支和 Macro 保留各自的标签、分组顺序、tab 目标及系统版本规则。工具逐字段回读所有表情与完整资源索引，记录 SQLite 实际版本、输入／输出 SHA；`--check` 校验同一数据库。旧重复词表和生成 Rust 资源索引不再保留。新 JS 来源由 `prepare-emoji-search --source PROJECTREL` 重复登记；完整 callable owner、解析器版本和等价性记录位于 `.analysis/results/typed-data.json`。产品不读取分析目录或远程词表。
 
@@ -131,6 +134,8 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 应用媒体资源按“私有 HF 仓库 → 当前实际文件请求 → 安装目录 `assets/cache/` → 当前产品界面”流转。`tools/asset-release.json` 固定仓库提交、文件长度／SHA-256 和产品依赖；`prepare-runtime-assets` 解析 `tools/resource-mappings.json`并生成上述 SQLite 目录库，`verify-runtime-assets` 检查相同输出。无需本地图片，也不下载资源；`--check-local` 仅用于明确恢复了原文件的维护工作区。`razer-resource-db::InstallationPaths` 统一定位安装缓存与其 `catalogs/` 子目录；独立目录库在打开 UI 前核验并离线原子发布，缺失／损坏从 EXE 旁安装文件恢复；缺少有效文件明确失败。目录库只读打开、校验 schema 和完整性，领域 owner 保留有类型快照；媒体保留异步去重、并发限制、内容验证及原子缓存，缓存命中不联网。凭据仅从本机配置读取。
 
 `verify-asset-release --remote` 核对已固定远端清单及 LFS 文件身份；`publish-asset-release` 在核验后固定新提交；`pin-asset-release --revision COMMIT` 核验已上传版本。`fetch-asset-release --product PID` 仅为维护人员显式恢复选定产品与共享依赖，普通编译和产品启动均不调用。完整原图核验须明确使用维护来源，不将其复制到 crate 测试夹具。
+
+`publish-asset-release --add-files .analysis/inputs/resource-publication.json --dry-run` 核对选定原件、获取收据和新增 alias，准备具体增量而不联网；去掉 `--dry-run` 后只复制新文件至禁止 LFS 自动下载及换行转换的隔离仓库，保留既有媒体指针，验证固定基线与全部远端身份后发布并固定新提交。清单必须包含每份原件及获取收据的路径、长度和 SHA-256；已有文件或 alias 的不同内容会明确失败。`--prune-maintenance-tables` 仅允许逐项核对固定远端身份后移除已迁移的 `assets/synapse/tables/*.rs` 维护片段，删除清单和实际身份保留在统一 `.analysis/results/asset-release-update.json`。独立复核远端普通 Git blob 时可用 `verify-asset-release --remote --from-dir SOURCE` 提供同一隔离仓库作为 SHA-256 字节依据；不会恢复源码 `assets/` 或下载 LFS 载荷。发布后运行 `prepare-resource-database` 同步目录库中的固定版本和新增 alias。
 
 `prepare-typed-data [--check] [--crate CRATE]` 使用 `tools/typed-data.json` 和 `.analysis/inputs/typed-tables/` 的维护输入，按实际 Rust struct／enum、字段、值域和产品分支生成普通有类型构造函数；界面目录由 `catalog_data.py` 路由到同一 SQLite，并在领域所有者中生成普通读取函数；专用设备写入、读取／身份／接收器、存储默认值分别由 `prepare-device-write-table`、`prepare-local-protocol-tables`、`prepare-storage-tables` 维护。固定协议构造函数随程序编译，界面目录随独立数据库安装，产品不解析这些维护 JSON；外部报文、动态扩展和用户配置只在有类型的边界读写。原 JSON 不在 crates 中保留第二份生产数据。
 

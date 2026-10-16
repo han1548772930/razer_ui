@@ -802,7 +802,10 @@ impl SourceProductWorkspace {
             self.help.update(cx, |help, cx| help.leave_page(cx));
             self.cancel_keyboard_calibration_v2(cx);
             if let FamilyBody::Audio(body) = &self.body {
-                body.update(cx, |body, cx| body.cancel_leviathan(cx));
+                body.update(cx, |body, cx| {
+                    body.cancel_leviathan(cx);
+                    body.stop_media(window, cx);
+                });
             }
             if let FamilyBody::Gamepad(body) = &self.body {
                 body.update(cx, |body, cx| {
@@ -1352,6 +1355,26 @@ impl SourceProductWorkspace {
         cx: &App,
     ) -> bool {
         matches!(&self.body, FamilyBody::Gamepad(body) if body.read(cx).controller_trigger_request_matches(request))
+    }
+    pub fn controller_lighting_request_matches(
+        &self,
+        request: &super::gamepad_products::ControllerLightingRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Gamepad(body) if body.read(cx).controller_lighting_request_matches(request))
+    }
+    pub fn finish_controller_lighting(
+        &mut self,
+        request: &super::gamepad_products::ControllerLightingRequested,
+        result: Result<razer_device::controller_lighting::LightingResult, String>,
+        window: Option<&mut Window>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Gamepad(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_controller_lighting(request, result, window, cx)
+            });
+        }
     }
     pub fn observe_controller_input(
         &mut self,
@@ -2653,6 +2676,16 @@ impl SourceProductWorkspace {
                  cx| {
                     this.capture(body.read(cx).snapshot(), cx);
                     cx.emit(WorkspaceEvent::ControllerTriggerRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |this: &mut Self,
+                 body,
+                 request: &super::gamepad_products::ControllerLightingRequested,
+                 cx| {
+                    this.capture(body.read(cx).snapshot(), cx);
+                    cx.emit(WorkspaceEvent::ControllerLightingRequested(request.clone()));
                 },
             ));
             FamilyBody::Gamepad(body)
@@ -4089,6 +4122,9 @@ impl SourceProductWorkspace {
                     body.cancel_range_edits(cx);
                     body.leave_calibration(window, cx);
                 }),
+                FamilyBody::Audio(body) => {
+                    body.update(cx, |body, cx| body.set_page("HELP", window, cx));
+                }
                 FamilyBody::Controls(body) if self.device.product_id == 3331 => {
                     body.update(cx, |body, cx| body.set_page("HELP", window, cx));
                 }
@@ -4243,6 +4279,10 @@ impl Render for SourceProductWorkspace {
             }
             _ => None,
         };
+        let audio_floating = match &self.body {
+            FamilyBody::Audio(audio) if self.active => audio.read(cx).floating_demo(cx),
+            _ => None,
+        };
         let body = if is_help {
             self.help.clone().into_any_element()
         } else if let Some(view) = self.dock_pairing.as_ref().filter(|_| {
@@ -4292,6 +4332,7 @@ impl Render for SourceProductWorkspace {
         v_flex()
             .id("source-product-workspace")
             .test_support()
+            .relative()
             .size_full()
             .min_h_0()
             .min_w_0()
@@ -4448,5 +4489,6 @@ impl Render for SourceProductWorkspace {
             .children(dynamic_tutorial_popup)
             .children(seiren_tutorial)
             .child(self.help_owner.clone())
+            .children(audio_floating)
     }
 }

@@ -5,6 +5,8 @@ use std::{io::Write, time::Duration};
 mod camera_controller;
 #[path = "controller_calibration.rs"]
 mod controller_calibration;
+#[path = "controller_lighting.rs"]
+mod controller_lighting;
 #[path = "controller_triggers.rs"]
 mod controller_triggers;
 #[path = "keyboard_submission_controller.rs"]
@@ -123,6 +125,7 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::ThxCancel { .. }
             | ServiceRequest::HidNodeReports { .. }
             | ServiceRequest::ControllerTriggers { .. }
+            | ServiceRequest::ControllerLighting { .. }
             | ServiceRequest::ControllerTriggerCalibrationStart { .. }
             | ServiceRequest::ControllerTriggerCalibrationPoll { .. }
             | ServiceRequest::ControllerTriggerCalibrationCancel { .. }

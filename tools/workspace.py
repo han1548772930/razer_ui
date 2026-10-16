@@ -1048,7 +1048,8 @@ def prepare_static_python():
                     raise ValueError("Parser wheel member escaped its installation directory")
                 content = archive.read(member)
                 target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(content)
+                if not target.is_file() or target.read_bytes() != content:
+                    target.write_bytes(content)
                 files.append({"path": relative(target), "bytes": len(content), "sha256": digest(target),
                               "wheel": relative(wheel_path), "member": member.filename})
     receipt = {"schema_version": 1, "acquired_at_utc": analysis.stamp(), "python_abi": abi + "-" + platform,
@@ -2441,27 +2442,9 @@ def resource_reference_plan(mapping, *, excluded=()):
 
 
 def registered_resource_products():
-    """Use the complete included registry for IDs only, never source semantics."""
-    pending = [ROOT / "crates/razer-catalog/src/registry_data.rs"]
-    visited, products = set(), set()
-    while pending:
-        path = safe(pending.pop())
-        if path in visited:
-            raise ValueError("Repeated or cyclic product registry include")
-        visited.add(path)
-        text = path.read_text(encoding="utf-8")
-        current = [int(value) for value in re.findall(r'RegisteredProduct \{ id: (\d+),', text)]
-        if len(current) != len(set(current)) or products.intersection(current):
-            raise ValueError("Duplicate product ID in the complete resource registry")
-        products.update(current)
-        for name in re.findall(r'include!\s*\(\s*"([^"]+)"\s*\)', text):
-            included = safe(path.parent / name)
-            if included.parent != path.parent or included.suffix != ".rs":
-                raise ValueError("Resource registry include is outside its owning module")
-            pending.append(included)
-    if not products:
-        raise ValueError("No products found in the complete resource registry")
-    return products
+    """Use the complete validated maintenance directory for endpoint IDs only."""
+    import resource_database
+    return {row["id"] for row in resource_database.product_registry()}
 
 
 def current_product_favicon(product_id, acquisition, cache):
@@ -3022,6 +3005,180 @@ def prepare_image_analyzer():
     write_json(destination / "acquisition.json", receipt)
     print(json.dumps({"receipt": relative(destination / "acquisition.json"), "python_abi": receipt["python_abi"],
                       "files": len(records)}), flush=True)
+
+
+def verified_wheel_members(archive, record_name):
+    """Verify every wheel member before publishing any analyzer files."""
+    import csv
+    import io
+    names = [item.filename for item in archive.infolist() if not item.is_dir()]
+    if len(names) != len(set(names)):
+        raise ValueError("Analyzer wheel has duplicate members")
+    records = list(csv.reader(io.StringIO(archive.read(record_name).decode("utf-8"))))
+    listed = []
+    for row in records:
+        if len(row) != 3:
+            raise ValueError("Analyzer wheel RECORD has an invalid row")
+        name, encoded_digest, length = row
+        if (not name or "\\" in name or PureWindowsPath(name).drive
+                or name.startswith("/") or ".." in Path(name).parts):
+            raise ValueError("Analyzer wheel member escaped its installation directory")
+        listed.append(name)
+        content = archive.read(name)
+        if name == record_name:
+            if encoded_digest or length:
+                raise ValueError("Analyzer wheel RECORD must be unsigned")
+            continue
+        if not encoded_digest or not length:
+            raise ValueError("Analyzer wheel member lacks a RECORD identity: " + name)
+        algorithm, expected = encoded_digest.split("=", 1)
+        actual = base64.urlsafe_b64encode(hashlib.sha256(content).digest()).rstrip(b"=").decode("ascii")
+        if algorithm != "sha256" or actual != expected or len(content) != int(length):
+            raise ValueError("Analyzer wheel RECORD does not verify: " + name)
+        if archive.getinfo(name).external_attr >> 16 & 0o170000 == 0o120000:
+            raise ValueError("Analyzer wheel contains a symbolic link")
+    if len(listed) != len(set(listed)) or set(listed) != set(names):
+        raise ValueError("Analyzer wheel RECORD does not cover every unique member")
+    return listed
+
+
+def prepare_media_analyzer():
+    """Restore the pinned project-local PyAV decoder for this Python ABI."""
+    import analysis
+    import sysconfig
+    import zipfile
+    version = "16.0.1"
+    abi = f"cp{sys.version_info.major}{sys.version_info.minor}"
+    wheel_abi = abi + ("t" if sysconfig.get_config_var("Py_GIL_DISABLED") else "")
+    platform_tag = sysconfig.get_platform().replace("-", "_").replace(".", "_")
+    filename = f"av-{version}-{abi}-{wheel_abi}-{platform_tag}.whl"
+    metadata_url = f"https://pypi.org/pypi/av/{version}/json"
+    reference = safe(ROOT / ".analysis/references/python-static-wheels")
+    destination = safe(ROOT / "tools/analyzers/media-python")
+    reference.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(metadata_url, timeout=40) as response:
+        metadata_bytes = response.read()
+    metadata = json.loads(metadata_bytes)
+    if metadata["info"]["version"] != version or metadata["info"]["name"].lower() != "av":
+        raise ValueError("PyAV metadata does not match the pinned analyzer")
+    artifact = next((item for item in metadata["urls"]
+                     if item["filename"] == filename and item["packagetype"] == "bdist_wheel"), None)
+    if artifact is None:
+        raise ValueError("Pinned PyAV has no wheel for the active Python ABI: " + filename)
+    metadata_path = reference / f"av-{version}.{hashlib.sha256(metadata_bytes).hexdigest()}.pypi.json"
+    metadata_path.write_bytes(metadata_bytes)
+    wheel_path = reference / filename
+    if not wheel_path.is_file() or digest(wheel_path) != artifact["digests"]["sha256"]:
+        with urllib.request.urlopen(artifact["url"], timeout=90) as response:
+            wheel_bytes = response.read()
+        if len(wheel_bytes) != artifact["size"] or hashlib.sha256(wheel_bytes).hexdigest() != artifact["digests"]["sha256"]:
+            raise ValueError("PyAV wheel differs from its published byte identity")
+        wheel_path.write_bytes(wheel_bytes)
+    if wheel_path.stat().st_size != artifact["size"]:
+        raise ValueError("PyAV wheel length differs from its publisher metadata")
+    records = []
+    with zipfile.ZipFile(wheel_path) as archive:
+        members = verified_wheel_members(archive, f"av-{version}.dist-info/RECORD")
+        for name in members:
+            output = safe(destination / name)
+            if not output.is_relative_to(destination):
+                raise ValueError("PyAV wheel member escaped its analyzer directory")
+            content = archive.read(name)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_bytes(content)
+            records.append({"path": relative(output), "bytes": len(content), "sha256": digest(output),
+                            "member": name, "wheel": relative(wheel_path)})
+    sys.path.insert(0, str(destination))
+    import av
+    if av.__version__ != version or not Path(av.__file__).resolve().is_relative_to(destination):
+        raise ValueError("Restored PyAV does not load from the verified analyzer directory")
+    receipt = {"schema_version": 1, "acquired_at_utc": analysis.stamp(),
+        "python_abi": wheel_abi + "-" + platform_tag, "python_version": sys.version.split()[0],
+        "target_execution": False,
+        "scope": "Project-local static media decoder and encoder; no vendor target execution or product runtime dependency",
+        "tool": {"path": "tools/workspace.py", "sha256": digest(Path(__file__))},
+        "wheels": [{"name": "av", "version": version, "path": relative(wheel_path), "url": artifact["url"],
+                    "bytes": wheel_path.stat().st_size, "sha256": digest(wheel_path),
+                    "metadata_path": relative(metadata_path), "metadata_url": metadata_url,
+                    "metadata_sha256": digest(metadata_path)}], "files": records,
+        "record_verification": {"members": len(records), "all_record_members_verified": True,
+                                "all_extracted_bytes_match": True},
+        "decoder_probe": {"pyav": av.__version__, "libraries": {name: list(value) for name, value in av.library_versions.items()}}}
+    receipt_path = destination / "acquisition.json"
+    write_json(receipt_path, receipt)
+    analysis.index_files([
+        {"path": relative(wheel_path), "bytes": wheel_path.stat().st_size, "sha256": digest(wheel_path),
+         "url": artifact["url"], "kind": "static_analyzer_wheel"},
+        {"path": relative(metadata_path), "bytes": len(metadata_bytes), "sha256": digest(metadata_path),
+         "url": metadata_url, "kind": "static_analyzer_metadata"}])
+    return {"receipt": relative(receipt_path), "python_abi": receipt["python_abi"], "files": len(records),
+            "pyav": av.__version__}
+
+
+def prepare_native_cursors(sources, group_id=None):
+    """Extract byte-verified PE cursor groups into analysis-owned CUR evidence."""
+    import analysis
+    import host
+    if not isinstance(sources, list) or not sources:
+        raise ValueError("Native cursor sources must be a nonempty ordered list")
+    input_root = (ROOT / ".analysis/inputs").resolve()
+    destination = input_root / "native-resources"
+    files, derivations, inputs, snapshots = {}, [], [], []
+    for source in sources:
+        if type(source) is not dict or set(source) != {"path", "acquisition"}:
+            raise ValueError("Native cursor source requires a path and acquisition receipt")
+        paths = [safe(ROOT / source[key]) for key in ("path", "acquisition")]
+        if any(not path.is_relative_to(input_root) or path.is_symlink() for path in paths):
+            raise ValueError("Native cursor evidence must belong to analysis inputs")
+        original_path, receipt_path = paths
+        original_raw, receipt_raw = original_path.read_bytes(), receipt_path.read_bytes()
+        original = {"path": relative(original_path), "bytes": len(original_raw),
+                    "sha256": hashlib.sha256(original_raw).hexdigest()}
+        acquisition = {"path": relative(receipt_path), "bytes": len(receipt_raw),
+                       "sha256": hashlib.sha256(receipt_raw).hexdigest()}
+        receipt = json.loads(receipt_raw)
+        declared = receipt.get("files", []) + receipt.get("resources", [])
+        if not any(all(row.get(key) == original[key] for key in original) for row in declared):
+            raise ValueError("Native cursor original differs from its acquisition receipt")
+        snapshots.extend(((original_path, original_raw), (receipt_path, receipt_raw)))
+        inputs.append({"original": original, "acquisition": acquisition})
+        groups = host.pe_cursor_groups(original_raw, group_id)
+        if not groups:
+            raise ValueError("Native cursor source contains no supported cursor group")
+        for group in groups:
+            raw = group.pop("data")
+            digest_value = hashlib.sha256(raw).hexdigest()
+            path = destination / (digest_value + ".cur")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if path.exists():
+                if path.read_bytes() != raw:
+                    raise ValueError("Prepared native cursor has conflicting bytes")
+            else:
+                temporary = path.with_suffix(".cur.partial")
+                temporary.write_bytes(raw)
+                os.replace(temporary, path)
+            output = {"path": relative(path), "bytes": path.stat().st_size, "sha256": digest(path)}
+            if output["sha256"] != digest_value or output["bytes"] != len(raw):
+                raise ValueError("Prepared native cursor changed during publication")
+            files[output["path"]] = output
+            derivations.append({"original": original, "acquisition": acquisition, **group, "output": output})
+    if any(path.read_bytes() != raw for path, raw in snapshots):
+        raise ValueError("Native cursor original or acquisition changed during extraction")
+    receipt_path = destination / "acquisition.json"
+    receipt = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
+               "tool": {"path": "tools/workspace.py", "sha256": digest(Path(__file__))},
+               "pe_tool": {"path": "tools/host.py", "sha256": digest(ROOT / "tools/host.py")},
+               "python_version": sys.version.split()[0], "inputs": inputs,
+               "files": list(files.values()), "derivations": derivations,
+               "input_bytes_unchanged": True, "target_execution": False,
+               "conversion": "RT_GROUP_CURSOR order and original RT_CURSOR hotspots; standard CUR directory, original DIB and AND-mask bytes unchanged",
+               "limitations": "Uncompressed BITMAPINFOHEADER frames only; absent/ambiguous language, invalid lengths, palette, bounds or hotspots fail explicitly"}
+    write_json(receipt_path, receipt)
+    analysis.index_files([{**row, "kind": "prepared_native_cursor", "acquisition_receipt": relative(receipt_path)}
+                          for row in files.values()] + [{"path": relative(receipt_path),
+                          "bytes": receipt_path.stat().st_size, "sha256": digest(receipt_path), "kind": "acquisition_receipt"}])
+    return {"receipt": relative(receipt_path), "originals": len(inputs), "groups": len(derivations),
+            "unique_files": len(files), "files": list(files.values()), "target_execution": False}
 
 
 def prepare_resources(acquisition, resources=None):
@@ -3698,8 +3855,9 @@ def prepare_product_names():
             failures.append({"path": relative(manifest),
                              "error": type(error).__name__ if isinstance(error, OSError) else str(error),
                              "errno": getattr(error, "errno", None)})
-    registry = ROOT / "crates/razer-catalog/src/registry_data.rs"
-    registered = {int(value) for value in re.findall(r"RegisteredProduct\s*\{\s*id:\s*(\d+)", registry.read_text(encoding="utf-8"))}
+    import resource_database
+    registry = ROOT / resource_database.PRODUCT_REGISTRY
+    registered = registered_resource_products()
     report = {"schema_version": 1, "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
               "tool": {"path": relative(Path(__file__)), "sha256": digest(Path(__file__)),
                        "python_version": sys.version.split()[0]},
@@ -3973,7 +4131,8 @@ def prepare_source_preview_domains(parameter_locators, *, prepare=False):
     dashboard_receipt_path = ROOT / ".analysis/inputs/frontend/dashboard-product-images-current/acquisition.json"
     if dashboard_receipt_path.is_file():
         dashboard_receipt = json.loads(dashboard_receipt_path.read_bytes())
-        registry = (ROOT / "crates/razer-catalog/src/registry_data.rs").read_text(encoding="utf-8")
+        import resource_database
+        registry = {row["id"]: row for row in resource_database.product_registry()}
         for pid in (103, 147, 196):
             cached = source_cache.get(pid)
             if cached is None:
@@ -4000,8 +4159,8 @@ def prepare_source_preview_domains(parameter_locators, *, prepare=False):
                 break
             if producer is None or pid in retry_producers:
                 continue
-            editions = re.search(r'RegisteredProduct \{ id: ' + str(pid) + r',[^\n]*?edition_ids: &\[(.*?)\]', registry)
-            if editions is None:
+            product = registry.get(pid)
+            if product is None:
                 continue
             contexts = [{"input": locator["input"], "requests": [route["literal"] for route in locator.get("routes", [])
                          if route.get("product_id") == pid]}
@@ -4009,7 +4168,7 @@ def prepare_source_preview_domains(parameter_locators, *, prepare=False):
                         if f"/products/{pid}/ui/" in locator.get("input", {}).get("url", "")]
             source_editions = {int(re.match(r'"\./\d+_(\d+)/', request)[1])
                                for context in contexts for request in context["requests"]}
-            for edition in map(int, re.findall(r"\d+", editions[1])):
+            for edition in product["edition_ids"]:
                 if edition in source_editions:
                     continue
                 requests = [item for item in dashboard_receipt["requests"]
@@ -4094,13 +4253,13 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
     keys.update((pid, 0, 0, 1, "product") for pid in keyboard_ids)
     parameter_locators = []
     parameter_failures = []
-    registry_path = ROOT / "crates/razer-catalog/src/registry_data.rs"
-    registry_text = registry_path.read_text(encoding="utf-8")
-    for match in re.finditer(r'RegisteredProduct \{ id: (\d+),[^\n]*?edition_ids: &\[(.*?)\]', registry_text):
-        pid = int(match[1])
+    import resource_database
+    registry_path = ROOT / resource_database.PRODUCT_REGISTRY
+    for product in resource_database.product_registry():
+        pid = product["id"]
         if pid not in scope:
             continue
-        for edition in map(int, re.findall(r"\d+", match[2])):
+        for edition in product["edition_ids"]:
             keys.add((pid, edition, edition, 0, "product"))
             if pid in keyboard_ids:
                 keys.add((pid, edition, edition, 1, "product"))
@@ -4626,6 +4785,14 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("ipc-client", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "client_tests"]),
         ("controller-trigger-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "controller_trigger"]),
         ("controller-trigger-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::trigger_runtime::tests"]),
+        ("controller-profile", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::profile::tests"]),
+        ("controller-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "controller_"]),
+        ("audio-demo-media", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "media::tests"]),
+        ("screen-color-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "screen_color"]),
+        ("screen-color-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "screen_color"]),
+        ("audio-demo-floating", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "demo::tests"]),
+        ("source-feature-transport", ["cargo", "test", "--locked", "--offline", "-p", "razer-hid", "--lib"]),
+        ("audio-mixer-feature-transport", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "source_feature_tests"]),
         ("app-picker-current", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "current_app_picker_"]),
         ("source-catalog", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "source_catalog::tests"]),
         ("controller-input", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "controller_input"]),
@@ -4932,6 +5099,10 @@ def main():
     pack_verify.add_argument("--manifest", default=".analysis/results/asset-pack-manifest.json")
     pack_verify.add_argument("--pack", default=GENERATED_ASSET_PACK)
     commands.add_parser("prepare-image-analyzer", help="Verify a project-local Pillow wheel for the active Python ABI")
+    commands.add_parser("prepare-media-analyzer", help="Verify a project-local PyAV wheel for the active Python ABI")
+    native_cursors = commands.add_parser("prepare-native-cursors", help="Extract verified PE cursor groups without loading DLLs")
+    native_cursors.add_argument("--sources", required=True, help="JSON list of path/acquisition records; '-' reads stdin")
+    native_cursors.add_argument("--group", type=int, help="Extract only this numeric RT_GROUP_CURSOR identifier")
     resource = commands.add_parser("prepare-resources")
     resource.add_argument("--acquisition", required=True)
     resource.add_argument("--resources", required=True, help="JSON map of original paths to product display aliases; '-' reads stdin")
@@ -5034,6 +5205,11 @@ def main():
         print(json.dumps(windows_installer.run(args), ensure_ascii=False), flush=True)
     elif args.command == "prepare-image-analyzer":
         prepare_image_analyzer()
+    elif args.command == "prepare-media-analyzer":
+        print(json.dumps(prepare_media_analyzer(), ensure_ascii=False), flush=True)
+    elif args.command == "prepare-native-cursors":
+        sources = json.loads(sys.stdin.read() if args.sources == "-" else args.sources)
+        print(json.dumps(prepare_native_cursors(sources, args.group), ensure_ascii=False), flush=True)
     elif args.command == "prepare-resources":
         mappings = json.loads(sys.stdin.read() if args.resources == "-" else args.resources)
         print(json.dumps(prepare_resources(args.acquisition, mappings), ensure_ascii=False))
@@ -5070,7 +5246,7 @@ def main():
     elif args.command == "audit-runtime-setup":
         families.audit_runtime_setup(args)
     elif args.command == "audit-registry-identity":
-        families.audit_registry_identity(args.prepare)
+        families.audit_registry_identity(args.prepare, args.product)
     elif args.command == "acquire-family":
         families.run(args, refresh=not args.no_refresh_gaps)
     else:

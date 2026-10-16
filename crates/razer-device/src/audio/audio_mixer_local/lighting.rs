@@ -337,18 +337,8 @@ pub(super) fn execute(
         if delay {
             std::thread::sleep(Duration::from_millis(5));
         }
-        validate()?;
-        device.send_feature(&report)?;
-        if let Some(id) = reply {
-            validate()?;
-            let mut bytes = [0; 64];
-            bytes[0] = id;
-            let count = device.get_feature(&mut bytes)?;
-            ensure!(
-                count > 0 && count <= 64,
-                "Mixer meter color Feature reply absent"
-            );
-            observations.push(json!({"feature_reply":&bytes[..count]}));
+        if let Some(bytes) = super::reports::feature(device, &report, reply, validate)? {
+            observations.push(json!({"feature_reply":bytes}));
         }
     }
     Ok(json!({"observations":observations}))

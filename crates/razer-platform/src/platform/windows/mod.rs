@@ -15,6 +15,8 @@ pub(crate) mod keyboard_layout;
 pub(crate) mod keyboard_layout_monitor;
 #[path = "services.rs"]
 pub(crate) mod services;
+#[path = "screen_color.rs"]
+pub(crate) mod screen_color;
 #[path = "session_changes.rs"]
 pub(crate) mod session_changes;
 pub(crate) mod startup;

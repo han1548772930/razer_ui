@@ -91,6 +91,11 @@ impl ChromaWindow {
         self.window == window
     }
     pub(super) fn activate_apps(&mut self, cx: &mut Context<Self>) {
+        if self.active == ChromaTab::Studio {
+            if let Some(studio) = &self.studio {
+                studio.update(cx, |studio, cx| studio.deactivate(cx));
+            }
+        }
         self.page.update(cx, |page, cx| page.activate_apps(cx));
         self.active = ChromaTab::Dashboard;
         let page = self.page.clone();
@@ -181,6 +186,11 @@ impl ChromaWindow {
         ));
     }
     pub(super) fn open_studio(&mut self, studio: Entity<StudioSession>, cx: &mut Context<Self>) {
+        if let Some(previous) = &self.studio {
+            if previous != &studio {
+                previous.update(cx, |studio, cx| studio.deactivate(cx));
+            }
+        }
         self.studio = Some(studio.clone());
         self.active = ChromaTab::Studio;
         let handle = self.window;
@@ -273,6 +283,11 @@ impl ChromaWindow {
         });
     }
     fn select_tab(&mut self, tab: ChromaTab, window: &mut Window, cx: &mut Context<Self>) {
+        if self.active == ChromaTab::Studio && tab != ChromaTab::Studio {
+            if let Some(studio) = &self.studio {
+                studio.update(cx, |studio, cx| studio.deactivate(cx));
+            }
+        }
         self.active = tab;
         match tab {
             ChromaTab::Dashboard => self.page.update(cx, |p, cx| p.focus(window, cx)),
@@ -306,7 +321,11 @@ impl ChromaWindow {
                 self.settings_observer = None;
             }
             ChromaTab::Migration => self.migration = None,
-            ChromaTab::Studio => self.studio = None,
+            ChromaTab::Studio => {
+                if let Some(studio) = self.studio.take() {
+                    studio.update(cx, |studio, cx| studio.deactivate(cx));
+                }
+            }
             ChromaTab::Dashboard => return,
         }
         if self.active == tab {

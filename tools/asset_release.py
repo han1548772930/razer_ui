@@ -597,7 +597,7 @@ def remote_tree(repository, revision):
     return files
 
 
-def verify_remote_files(lock, tree):
+def verify_remote_files(lock, tree, evidence_roots=()):
     expected = {r["path"]: r for r in rows_for(lock)}
     retained = {r["path"]: r for r in lock["git_files"]}
     if not expected.keys() <= tree.keys() or tree.keys() - expected.keys() - retained.keys() - META_FILES:
@@ -611,7 +611,7 @@ def verify_remote_files(lock, tree):
             if lfs.get("oid") != row["sha256"] or lfs.get("size") != row["bytes"]:
                 raise ValueError("Remote LFS SHA-256 differs: " + name)
         else:
-            roots = (ROOT, ROOT / OUTPUT / lock["tag"])
+            roots = (ROOT, ROOT / OUTPUT / lock["tag"], *evidence_roots)
             evidence = next((root for root in roots if matches(row, root)), None)
             if evidence is None:
                 raise ValueError("Local SHA-256 evidence is required to verify a remote Git blob: " + name)
@@ -621,13 +621,13 @@ def verify_remote_files(lock, tree):
                 raise ValueError("Remote Git blob differs from SHA-256-verified source: " + name)
 
 
-def verify_remote(lock=None):
+def verify_remote(lock=None, *, evidence_roots=()):
     lock = lock or load_lock()
     storage = lock["storage"]
     if not storage.get("revision"):
         raise ValueError("Resource snapshot has no verified immutable HF commit")
     tree = remote_tree(storage["repository"], storage["revision"])
-    verify_remote_files(lock, tree)
+    verify_remote_files(lock, tree, evidence_roots)
     if "release-index.json" in tree:
         raw_expected = encoded(published_manifest(lock))
         url = f"https://huggingface.co/datasets/{storage['repository']}/resolve/{storage['revision']}/release-index.json"
@@ -759,6 +759,225 @@ def restore(products=None, directory=None, replace=False):
             "scope": "source hydration; full workspace compilation and pack preparation require all products", "passed": True}
 
 
+def release_additions(manifest_name):
+    """Plan verified additions without hydrating or replacing existing assets."""
+    lock_path, mapping_path = ROOT / LOCK, ROOT / MAPPINGS
+    lock_raw, mapping_raw = lock_path.read_bytes(), mapping_path.read_bytes()
+    original = validate_lock(json.loads(lock_raw))
+    if not original["storage"].get("revision"):
+        raise ValueError("Asset additions require a pinned existing release")
+    manifest_path = (ROOT / manifest_name).resolve()
+    input_root = (ROOT / ".analysis/inputs").resolve()
+    if not manifest_path.is_relative_to(input_root) or manifest_path.is_symlink():
+        raise ValueError("Asset addition manifest must belong to analysis inputs")
+    manifest_raw = manifest_path.read_bytes()
+    manifest = json.loads(manifest_raw)
+    if set(manifest) != {"schema_version", "files"} or manifest["schema_version"] != 1 or not manifest["files"]:
+        raise ValueError("Invalid asset addition manifest")
+    lock = json.loads(lock_raw)
+    mappings = validate_resource_mappings(json.loads(mapping_raw))
+    existing = {row["path"]: row for row in rows_for(lock)}
+    aliases = {row["key"]: row["path"] for table in mappings["tables"] for row in table["entries"]}
+    tables = {table["name"]: table["entries"] for table in mappings["tables"]}
+    groups = {group["name"]: group for group in lock["groups"]}
+    additions, used, snapshots = [], set(), [(lock_path, lock_raw), (mapping_path, mapping_raw), (manifest_path, manifest_raw)]
+    for item in manifest["files"]:
+        if set(item) != {"path", "source", "acquisition", "alias", "table"}:
+            raise ValueError("Invalid asset addition fields")
+        target = canonical(item["path"])
+        if in_git(target) or target == RUNTIME_METADATA or target.casefold() in used:
+            raise ValueError("Asset addition repeats or replaces an installation resource")
+        used.add(target.casefold())
+        source, receipt_row = item["source"], item["acquisition"]
+        for row in (source, receipt_row):
+            if set(row) != {"path", "bytes", "sha256"}:
+                raise ValueError("Asset addition lacks a complete source identity")
+            path = ROOT / row["path"]
+            if (not path.resolve().is_relative_to(input_root) or path.is_symlink()
+                    or path.stat().st_size != row["bytes"] or digest(path) != row["sha256"]):
+                raise ValueError("Asset addition source or receipt identity differs")
+        receipt_path = ROOT / receipt_row["path"]
+        receipt_raw = receipt_path.read_bytes()
+        receipt = json.loads(receipt_raw)
+        if not any(all(row.get(key) == source[key] for key in ("path", "bytes", "sha256"))
+                   for row in receipt.get("files", []) + receipt.get("resources", [])):
+            raise ValueError("Asset addition source is not declared by its acquisition receipt")
+        snapshots.append((receipt_path, receipt_raw))
+        row = {"path": target, "bytes": source["bytes"], "sha256": source["sha256"]}
+        if target in existing and existing[target] != row:
+            raise ValueError("Asset additions cannot replace existing resource bytes")
+        if target not in existing:
+            name = group_name(target)
+            if name not in groups:
+                raise ValueError("Asset addition requires an existing product resource group")
+            groups[name]["files"].append(row)
+            groups[name]["files"].sort(key=lambda entry: entry["path"])
+            existing[target] = row
+        if item["table"] not in tables:
+            raise ValueError("Asset addition has no maintained alias table")
+        if item["alias"] in aliases and aliases[item["alias"]] != target:
+            raise ValueError("Asset addition cannot replace an existing alias")
+        if item["alias"] not in aliases:
+            tables[item["table"]].append({"key": item["alias"], "path": target})
+            aliases[item["alias"]] = target
+        additions.append({"asset": row, "source": source, "acquisition": receipt_row,
+                          "alias": item["alias"], "table": item["table"]})
+    lock["source_sha256"] = content_hash({"groups": lock["groups"], "git_files": lock["git_files"]})
+    lock["tag"] = "assets-" + lock["source_sha256"][:20]
+    validate_lock(lock)
+    validate_resource_mappings(mappings)
+    return original, lock, mappings, additions, snapshots
+
+
+def publish_additions(manifest_name, *, dry_run=False, prune_maintenance_tables=False):
+    """Publish only verified new files through an isolated LFS pointer clone."""
+    with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        old, lock, mappings, additions, snapshots = release_additions(manifest_name)
+        report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
+            "tool": {"path": "tools/asset_release.py", "sha256": digest(Path(__file__))},
+            "repository": lock["storage"]["repository"], "base_revision": old["storage"]["revision"],
+            "previous_tag": old["tag"], "tag": lock["tag"], "additions": additions,
+            "target_execution": False, "payload_hydration": False,
+            "status": "prepared", "remote_publication": False}
+        report_path = ROOT / ".analysis/results/asset-release-update.json"
+        if report_path.is_file():
+            previous = json.loads(report_path.read_bytes())
+            if previous.get("repository") == report["repository"]:
+                cleanup = previous.get("preceding_maintenance_cleanup")
+                if previous.get("status") == "published_and_verified" and previous.get("removed_obsolete_maintenance_files"):
+                    cleanup = {"base_revision": previous["base_revision"], "revision": previous["revision"],
+                               "verified_removed_files": previous["removed_obsolete_maintenance_files"],
+                               "verification": "Pinned Git/LFS byte identities verified before the publication",
+                               "verification_checkout": previous.get("verification_checkout")}
+                if cleanup:
+                    report["preceding_maintenance_cleanup"] = cleanup
+        analysis.save(report_path, report)
+        if dry_run:
+            return {"report": report_path.relative_to(ROOT).as_posix(), "files": len(additions),
+                    "bytes": sum(row["asset"]["bytes"] for row in additions), "status": "prepared"}
+        repository = lock["storage"]["repository"]
+        uploads = ROOT / OUTPUT / "uploads"
+        uploads.mkdir(parents=True, exist_ok=True)
+        upload = Path(tempfile.mkdtemp(prefix=lock["tag"] + "-", dir=uploads))
+        report["verification_checkout"] = upload.relative_to(ROOT).as_posix()
+        git("-c", "core.autocrlf=false", "clone", "--depth", "1",
+            "https://huggingface.co/datasets/" + repository, str(upload))
+        revision = git("rev-parse", "HEAD", cwd=upload).strip()
+        if revision != old["storage"]["revision"]:
+            if (upload / "release-index.json").read_bytes() != encoded(published_manifest(lock)):
+                raise ValueError("HF main advanced beyond the pinned release; refusing to overwrite it")
+            lock["storage"]["revision"] = revision
+            verification = verify_remote(lock, evidence_roots=(upload,))
+        else:
+            remote_manifest = upload / "release-index.json"
+            if remote_manifest.is_file():
+                remote_lock = json.loads(remote_manifest.read_bytes())
+                remote_lock["storage"] = dict(old["storage"])
+                validate_lock(remote_lock)
+                verify_remote(remote_lock, evidence_roots=(upload,))
+                remote_tree_rows = None
+            else:
+                remote_lock = old
+                remote_tree_rows = remote_tree(repository, revision)
+                allowed = {row["path"] for row in rows_for(old) + old["git_files"]} | META_FILES
+                extra = remote_tree_rows.keys() - allowed
+                if (extra and not prune_maintenance_tables) or any(
+                        not re.fullmatch(r"assets/synapse/tables/[A-Za-z0-9_-]+\.rs", name) for name in extra):
+                    raise ValueError("Pinned HF snapshot has unowned files outside the explicit maintenance-table cleanup")
+                verify_remote_files(old, {name: value for name, value in remote_tree_rows.items() if name not in extra}, (upload,))
+            git("lfs", "install", "--local", cwd=upload)
+            git("config", "core.autocrlf", "false", cwd=upload)
+            git("config", "core.longpaths", "true", cwd=upload)
+            remote_rows = {row["path"]: row for row in rows_for(remote_lock)}
+            expected = set(remote_rows)
+            if remote_tree_rows is not None:
+                expected.update(name for name in remote_tree_rows if name.startswith("assets/synapse/tables/"))
+            retained = {row["path"] for row in remote_lock["git_files"]}
+            tracked = set(git("ls-files", "-z", cwd=upload).strip("\0").split("\0"))
+            if not expected <= tracked or tracked - expected - retained - META_FILES:
+                raise ValueError("HF checkout has files outside the pinned release")
+            target_rows = {row["path"]: row for row in rows_for(lock)}
+            for name in target_rows.keys() & remote_rows.keys():
+                if target_rows[name] != remote_rows[name]:
+                    raise ValueError("Targeted publication cannot replace existing remote resource bytes")
+            obsolete = sorted(expected - target_rows.keys())
+            if (obsolete and not prune_maintenance_tables) or any(
+                    not re.fullmatch(r"assets/synapse/tables/[A-Za-z0-9_-]+\.rs", name) for name in obsolete):
+                raise ValueError("Targeted publication cannot remove unrelated remote resources")
+            removal_records = []
+            for name in obsolete:
+                path = source_path(name, upload)
+                if remote_tree_rows is not None:
+                    entry = remote_tree_rows[name]
+                    raw = path.read_bytes()
+                    lfs = entry.get("lfs")
+                    if lfs:
+                        expected_pointer = ("version https://git-lfs.github.com/spec/v1\n"
+                                            f"oid sha256:{lfs['oid']}\nsize {lfs['size']}\n").encode()
+                        if raw != expected_pointer or entry["size"] != lfs["size"]:
+                            raise ValueError("Obsolete maintenance-table LFS pointer differs from the pinned remote identity")
+                        removal_records.append({"path": name, "bytes": lfs["size"], "sha256": lfs["oid"],
+                                                "payload_downloaded": False})
+                    else:
+                        oid = hashlib.sha1(b"blob " + str(len(raw)).encode() + b"\0" + raw).hexdigest()
+                        if len(raw) != entry["size"] or oid != entry["oid"]:
+                            raise ValueError("Obsolete maintenance-table Git blob differs from the pinned remote identity")
+                        removal_records.append({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+                                                "payload_downloaded": False})
+                else:
+                    removal_records.append(remote_rows[name])
+            if obsolete:
+                git("rm", "--", *obsolete, cwd=upload)
+            report["removed_obsolete_maintenance_files"] = removal_records
+            report["previous_remote_manifest_present"] = remote_tree_rows is None
+            for item in additions:
+                row, source = item["asset"], ROOT / item["source"]["path"]
+                if row["path"] in expected:
+                    continue
+                target = source_path(row["path"], upload)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with source.open("rb") as source_stream, target.open("xb") as output:
+                    shutil.copyfileobj(source_stream, output, 1024 * 1024)
+                if target.stat().st_size != row["bytes"] or digest(target) != row["sha256"]:
+                    raise ValueError("Asset addition changed during publication preparation")
+                git("lfs", "track", "--filename", row["path"], cwd=upload)
+            (upload / "release-index.json").write_bytes(encoded(published_manifest(lock)))
+            if (upload / "README.md").is_file():
+                text = (upload / "README.md").read_bytes().replace(remote_lock["tag"].encode(), lock["tag"].encode())
+                (upload / "README.md").write_bytes(text)
+            else:
+                (upload / "README.md").write_text(
+                    "---\npretty_name: Razer UI local product resources\ntags:\n- desktop-ui\n---\n\n"
+                    f"Raw resources for `{lock['tag']}`. Applications request only files used by the current interface.\n",
+                    encoding="utf-8")
+            git("add", "--", ".gitattributes", "release-index.json", "README.md", *(row["asset"]["path"] for row in additions), cwd=upload)
+            for path, raw in snapshots:
+                if path.read_bytes() != raw:
+                    raise ValueError("Asset addition maintenance inputs changed before publication")
+            for row in additions:
+                source = ROOT / row["source"]["path"]
+                if source.stat().st_size != row["source"]["bytes"] or digest(source) != row["source"]["sha256"]:
+                    raise ValueError("Asset addition source changed before publication")
+            if git("status", "--porcelain", cwd=upload).strip():
+                git("-c", "user.name=Razer UI asset maintenance", "-c", "user.email=assets@local.invalid",
+                    "commit", "-m", lock["tag"], cwd=upload)
+                git("push", "origin", "HEAD:refs/heads/main", cwd=upload)
+            revision = git("rev-parse", "HEAD", cwd=upload).strip()
+            lock["storage"]["revision"] = revision
+            report.update(status="uploaded_pending_verification", revision=revision, remote_publication=True)
+            analysis.save(report_path, report)
+            verification = verify_remote(lock, evidence_roots=(upload,))
+        for path, raw in snapshots:
+            if path.read_bytes() != raw:
+                raise ValueError("Asset addition maintenance inputs changed during publication")
+        analysis.save(ROOT / LOCK, lock)
+        save_resource_mappings(mappings)
+        report.update(status="published_and_verified", revision=revision, remote_publication=True, verification=verification)
+        analysis.save(report_path, report)
+        return {"report": report_path.relative_to(ROOT).as_posix(), "files": len(additions),
+                "revision": revision, "status": report["status"], "source_files_verified": verification["source_files_verified"]}
+
+
 def publish():
     lock = load_lock()
     directory = ROOT / OUTPUT / lock["tag"]
@@ -820,7 +1039,10 @@ def add_commands(commands):
     p.add_argument("--product", type=int, action="append", help="PID plus shared/dependency sources; omit for all")
     p.add_argument("--from-dir", help="Prepared raw snapshot directory; no network")
     p.add_argument("--replace-existing", action="store_true", help="Explicitly replace modified resource files")
-    commands.add_parser("publish-asset-release", help="Push raw files with Git LFS, verify and pin the HF commit")
+    p = commands.add_parser("publish-asset-release", help="Push raw files with Git LFS, verify and pin the HF commit")
+    p.add_argument("--add-files", help="Verified analysis-input manifest of additions; preserve existing remote payloads")
+    p.add_argument("--dry-run", action="store_true", help="Prepare the exact addition plan without network or publication")
+    p.add_argument("--prune-maintenance-tables", action="store_true", help="Remove only obsolete assets/synapse/tables/*.rs after verifying their pinned remote identities")
     p = commands.add_parser("pin-asset-release", help="Verify an existing HF upload and pin it without uploading or downloading payloads")
     p.add_argument("--revision", required=True)
 
@@ -829,10 +1051,15 @@ def run(args):
     if args.command == "prepare-asset-release":
         return prepare(args.repository)
     if args.command == "verify-asset-release":
-        return verify_remote() if args.remote else verify(args.from_dir, args.check_local)
+        roots = (Path(args.from_dir).resolve(),) if args.from_dir else ()
+        return verify_remote(evidence_roots=roots) if args.remote else verify(args.from_dir, args.check_local)
     if args.command == "fetch-asset-release":
         return restore(args.product, args.from_dir, args.replace_existing)
     if args.command == "publish-asset-release":
+        if args.add_files:
+            return publish_additions(args.add_files, dry_run=args.dry_run, prune_maintenance_tables=args.prune_maintenance_tables)
+        if args.dry_run or args.prune_maintenance_tables:
+            raise ValueError("Targeted publication options require --add-files")
         return publish()
     if args.command == "pin-asset-release":
         return pin_remote(args.revision)

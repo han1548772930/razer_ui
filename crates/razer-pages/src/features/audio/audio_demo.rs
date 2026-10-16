@@ -1,17 +1,30 @@
-//! Current 1392/1442/3942 demo entry surface. Playback needs an audible native
-//! player; a silent tutorial animation cannot implement this audio demo.
-use gpui_kit::component::{
-    ActiveTheme,
-    slider::{Slider, SliderState},
-    tooltip::Tooltip,
-};
+//! Current 1392/1442/3942 mounted demo and its profile-independent preference.
+use super::audio_media::AudioMedia;
+use gpui_kit::base::ElementExt as _;
+use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use razer_i18n::t;
-use razer_widgets::surface;
-use razer_widgets::theme::AudioDemoColors as Colors;
+use razer_widgets::{surface, theme::AudioDemoColors as Colors};
 use serde::Deserialize;
-use std::sync::OnceLock;
+use std::{cell::Cell, rc::Rc, sync::OnceLock};
+
+const FLOATING_WIDTH: f32 = 400.;
+const FLOATING_HEIGHT: f32 = 225.;
+const FLOATING_MARGIN: f32 = 20.;
+
+fn clamp_floating(position: Point<f32>, viewport: Size<f32>) -> Point<f32> {
+    point(
+        position
+            .x
+            .min(viewport.width - FLOATING_WIDTH - FLOATING_MARGIN)
+            .max(FLOATING_MARGIN),
+        position
+            .y
+            .min(viewport.height - FLOATING_HEIGHT - FLOATING_MARGIN)
+            .max(FLOATING_MARGIN),
+    )
+}
 
 #[derive(Deserialize)]
 struct Spec {
@@ -39,7 +52,7 @@ enum PosterFit {
 fn specification(pid: u32) -> Option<&'static Spec> {
     static SPECS: OnceLock<Vec<Spec>> = OnceLock::new();
     SPECS
-        .get_or_init(|| read_audio_demo_catalog())
+        .get_or_init(read_audio_demo_catalog)
         .iter()
         .find(|spec| spec.product_id == pid)
 }
@@ -49,32 +62,266 @@ pub(super) fn supports(pid: u32) -> bool {
 
 pub(super) struct AudioDemo {
     spec: &'static Spec,
-    // floatingVideoReducer is outside the audio profile in all three sources.
-    // Keep this preference across tabs/profile changes without marking a draft.
     floating: bool,
-    // The native audio/video player service is not part of this workspace.
-    // Keep the poster action visible and report that boundary after a click.
-    playback_requested: bool,
-    // Source disables default controls and mounts only play/progress/fullscreen.
-    // With no media transport the progress control is disabled, not a fake clock.
-    progress: Entity<SliderState>,
+    inline: bool,
+    floating_open: bool,
+    position: Option<Point<f32>>,
+    drag_offset: Option<Point<f32>>,
+    bounds: Rc<Cell<Bounds<Pixels>>>,
+    media: Entity<AudioMedia>,
+    _bounds_changed: Subscription,
 }
 impl AudioDemo {
-    pub(super) fn for_product(pid: u32, cx: &mut App) -> Option<Entity<Self>> {
+    pub(super) fn for_product(pid: u32, window: &mut Window, cx: &mut App) -> Option<Entity<Self>> {
         let spec = specification(pid)?;
-        Some(cx.new(|cx| {
-            let progress = cx.new(|_| SliderState::new().max(100.).step(1.));
+        Some(cx.new(|cx: &mut Context<Self>| {
+            let media =
+                AudioMedia::new(pid, spec.asset.clone(), spec.width, spec.height, window, cx);
+            media.update(cx, |media, cx| {
+                media.set_presentation(
+                    match spec.object_fit {
+                        PosterFit::Fill => ObjectFit::Fill,
+                        PosterFit::Cover => ObjectFit::Cover,
+                    },
+                    spec.presentation.button_width,
+                    spec.presentation.glyph_size,
+                );
+                media.preload(window, cx);
+            });
+            let bounds_changed = cx.observe_window_bounds(window, |this, window, cx| {
+                if let Some(position) = this.position {
+                    this.position = Some(clamp_floating(position, this.viewport(window)));
+                }
+                this.drag_offset = None;
+                cx.notify();
+            });
             Self {
                 spec,
                 floating: spec.floating_default,
-                playback_requested: false,
-                progress,
+                inline: false,
+                floating_open: false,
+                position: None,
+                drag_offset: None,
+                bounds: Rc::new(Cell::new(Bounds::default())),
+                media,
+                _bounds_changed: bounds_changed,
             }
         }))
+    }
+    pub(super) fn stop(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.floating_open = false;
+        self.drag_offset = None;
+        self.media.update(cx, |media, cx| media.stop(window, cx));
+        cx.notify();
+    }
+    pub(super) fn is_floating(&self) -> bool {
+        !self.inline && self.floating_open
+    }
+
+    pub(super) fn set_page(&mut self, inline: bool, window: &mut Window, cx: &mut Context<Self>) {
+        if self.inline == inline {
+            return;
+        }
+        let leaving_inline = self.inline && !inline;
+        self.inline = inline;
+        self.drag_offset = None;
+        self.position = None;
+        let has_position = self.media.read(cx).has_position();
+        let playing = self.media.read(cx).is_playing();
+        self.floating_open = !inline
+            && self.floating
+            && (has_position || self.spec.product_id != 1392 && playing);
+        let show_inline = if self.spec.product_id == 1442 { playing } else { has_position };
+        self.media.update(cx, |media, cx| {
+            media.leave_fullscreen(window, cx);
+            // The current 1442 inline cleanup explicitly clears the reducer
+            // when floating is disabled; 1392 and 3942 preserve its time.
+            if leaving_inline && !self.floating && self.spec.product_id == 1442 {
+                media.stop(window, cx);
+                return;
+            }
+            if inline {
+                media.set_size(self.spec.width, self.spec.height, cx);
+                media.remount_presentation(show_inline, window, cx);
+                media.preload(window, cx);
+            } else if self.floating_open {
+                media.set_size(FLOATING_WIDTH, FLOATING_HEIGHT, cx);
+                media.remount_presentation(true, window, cx);
+            } else {
+                media.pause(window, cx);
+            }
+        });
+        cx.notify();
+    }
+
+    fn close_floating(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.floating_open = false;
+        self.drag_offset = None;
+        self.media.update(cx, |media, cx| {
+            // Current 1442/3942 close handlers dispatch both time=0 and
+            // isPlaying=false. The 1392 handler only closes the mounted player.
+            if self.spec.product_id == 1392 {
+                media.pause(window, cx);
+            } else {
+                media.stop(window, cx);
+            }
+        });
+        cx.notify();
+    }
+
+    fn viewport(&self, window: &Window) -> Size<f32> {
+        let scale = f32::from(window.rem_size()) / 16.;
+        let bounds = self.bounds.get();
+        size(
+            f32::from(window.viewport_size().width) / scale,
+            f32::from(window.viewport_size().height - bounds.origin.y) / scale,
+        )
+    }
+    fn floating_player(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        let viewport = self.viewport(window);
+        let position = clamp_floating(
+            self.position
+                .unwrap_or(point(viewport.width, viewport.height)),
+            viewport,
+        );
+        let bounds = self.bounds.clone();
+        let dragging = self.drag_offset.is_some();
+        div()
+            .id("audio-demo-floating-parent")
+            .absolute()
+            .inset_0()
+            .on_prepaint({
+                let owner = cx.entity().downgrade();
+                move |rect, window, cx| {
+                    let previous = bounds.replace(rect);
+                    if previous != rect {
+                        let owner = owner.clone();
+                        window.defer(cx, move |_, cx| {
+                            let _ = owner.update(cx, |_, cx| cx.notify());
+                        });
+                    }
+                }
+            })
+            .when(dragging, |parent| {
+                parent
+                    .occlude()
+                    .cursor(CursorStyle::ClosedHand)
+                    .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, window, cx| {
+                        if let Some(offset) = this.drag_offset {
+                            let scale = f32::from(window.rem_size()) / 16.;
+                            let origin = this.bounds.get().origin;
+                            let position = point(
+                                f32::from(event.position.x - origin.x) / scale - offset.x,
+                                f32::from(event.position.y - origin.y) / scale - offset.y,
+                            );
+                            this.position = Some(clamp_floating(position, this.viewport(window)));
+                            cx.notify();
+                        }
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.drag_offset = None;
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_up_out(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.drag_offset = None;
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_exit(cx.listener(|this, _, _, cx| {
+                        this.drag_offset = None;
+                        cx.notify();
+                    }))
+            })
+            .child(
+                div()
+                    .absolute()
+                    .when_some(self.position, |player, _| {
+                        player
+                            .left(surface::css(position.x))
+                            .top(surface::css(position.y))
+                    })
+                    .when(self.position.is_none(), |player| {
+                        player
+                            .right(surface::css(FLOATING_MARGIN))
+                            .bottom(surface::css(FLOATING_MARGIN))
+                    })
+                    .w(surface::css(FLOATING_WIDTH))
+                    .h(surface::css(FLOATING_HEIGHT))
+                    .child(self.media.clone())
+                    .child(
+                        gpui_kit::base::Button::new("audio-demo-drag")
+                            .group("audio-demo-drag")
+                            .absolute()
+                            .top_0()
+                            .left_0()
+                            .p(surface::css(5.))
+                            .cursor(if dragging {
+                                CursorStyle::ClosedHand
+                            } else {
+                                CursorStyle::OpenHand
+                            })
+                            .accessibility_label(t("REPOSITION"))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, event: &MouseDownEvent, window, cx| {
+                                    let scale = f32::from(window.rem_size()) / 16.;
+                                    let origin = this.bounds.get().origin;
+                                    this.position = Some(position);
+                                    this.drag_offset = Some(point(
+                                        f32::from(event.position.x - origin.x) / scale - position.x,
+                                        f32::from(event.position.y - origin.y) / scale - position.y,
+                                    ));
+                                    cx.stop_propagation();
+                                    cx.notify();
+                                }),
+                            )
+                            .child(img("synapse/audio-demo-drag.svg"))
+                            .child(
+                                div()
+                                    .absolute()
+                                    .left(surface::css(0.))
+                                    .top(surface::css(44.))
+                                    .whitespace_nowrap()
+                                    .border_1()
+                                    .border_color(rgb(0x5d5d5d))
+                                    .px(surface::css(10.))
+                                    .py(surface::css(8.))
+                                    .text_size(surface::css(14.))
+                                    .text_color(rgb(0xcccccc))
+                                    .bg(rgb(0x111111))
+                                    .invisible()
+                                    .group_hover("audio-demo-drag", |style| style.visible())
+                                    .child(t("REPOSITION")),
+                            ),
+                    )
+                    .child(
+                        gpui_kit::base::Button::new("audio-demo-floating-close")
+                            .absolute()
+                            .right(surface::css(-26.))
+                            .top(surface::css(-26.))
+                            .p(surface::css(5.))
+                            .accessibility_label("Close video")
+                            .on_click(cx.listener(|this, _, window, cx| this.close_floating(window, cx)))
+                            .child(img("synapse/audio-demo-close.svg")),
+                    ),
+            )
+            .into_any_element()
     }
 }
 impl Render for AudioDemo {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.inline {
+            return if self.floating_open {
+                self.floating_player(window, cx)
+            } else {
+                div().into_any_element()
+            };
+        }
         super::super::product_surface::body()
             .id("audio-demo-page")
             .flex()
@@ -82,19 +329,17 @@ impl Render for AudioDemo {
             .text_color(cx.theme().foreground)
             .text_size(surface::css(14.))
             .child(div().text_center().child(t(&self.spec.title)))
-            .child(self.player(cx))
-            .when(self.playback_requested, |view| {
-                view.child(
-                    div()
-                        .id("audio-demo-playback-unavailable")
-                        .w(surface::css(self.spec.width))
-                        .mx_auto()
-                        .text_size(surface::css(12.))
-                        .line_height(surface::css(15.))
-                        .text_color(cx.theme().muted_foreground)
-                        .child("音频演示播放服务未接入，播放、进度与全屏控件暂不可用"),
-                )
-            })
+            .child(
+                div()
+                    .id("audio-demo-player")
+                    .relative()
+                    .w(surface::css(self.spec.width))
+                    .h(surface::css(self.spec.height))
+                    .flex_shrink_0()
+                    .mt(surface::css(20.))
+                    .mx_auto()
+                    .child(self.media.clone()),
+            )
             .child(
                 div()
                     .w(surface::css(self.spec.width))
@@ -119,120 +364,31 @@ impl Render for AudioDemo {
                         })),
                     ),
             )
+            .into_any_element()
     }
 }
 
-impl AudioDemo {
-    fn player(&self, cx: &mut Context<Self>) -> AnyElement {
-        let progress = self.progress.clone();
-        div()
-            .id("audio-demo-player")
-            .test_support()
-            .relative()
-            .w(surface::css(self.spec.width))
-            .h(surface::css(self.spec.height))
-            .flex_shrink_0()
-            .mt(surface::css(20.))
-            .mx_auto()
-            .tooltip(|window, cx| Tooltip::new("演示视频播放服务未接入").build(window, cx))
-            .child(
-                img(SharedString::from(self.spec.asset.clone()))
-                    .size_full()
-                    .object_fit(match self.spec.object_fit {
-                        PosterFit::Cover => ObjectFit::Cover,
-                        PosterFit::Fill => ObjectFit::Fill,
-                    }),
-            )
-            .when(!self.playback_requested, |player| {
-                player.child(
-                    gpui_kit::base::Button::new("audio-demo-play")
-                        .absolute()
-                        .inset_0()
-                        .p_0()
-                        .accessibility_label("Play demo video")
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.playback_requested = true;
-                            cx.notify();
-                        }))
-                        .child(
-                            div()
-                                .absolute()
-                                .inset_0()
-                                .pb(surface::css(28.))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    div()
-                                        .size(surface::css(100.))
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .border_3()
-                                        .border_color(Colors::play_foreground())
-                                        .rounded_full()
-                                        .bg(Colors::play_background())
-                                        .child(
-                                            img("synapse/audio-demo-play.svg")
-                                                .size(surface::css(48.))
-                                                .ml(surface::css(2.)),
-                                        ),
-                                ),
-                        ),
-                )
-            })
-            .when(self.playback_requested, |player| {
-                player.child(
-                    div()
-                        .id("audio-demo-control-bar")
-                        .absolute()
-                        .left_0()
-                        .right_0()
-                        .bottom_0()
-                        .h(surface::css(40.))
-                        .p_0()
-                        .rounded(surface::css(5.))
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        .bg(Colors::control_background())
-                        .text_color(Colors::play_foreground())
-                        .child(
-                            Slider::new(&progress)
-                                .absolute()
-                                .left_0()
-                                .bottom(surface::css(16.))
-                                .w_full()
-                                .h(surface::css(8.))
-                                .disabled(true),
-                        )
-                        .child(
-                            gpui_kit::base::Button::new("audio-demo-toggle")
-                                .w(surface::css(self.spec.presentation.button_width))
-                                .h_full()
-                                .p_0()
-                                .accessibility_label("播放演示视频")
-                                .disabled(true)
-                                .child(
-                                    img("synapse/audio-demo-control-play.svg")
-                                        .size(surface::css(self.spec.presentation.glyph_size)),
-                                ),
-                        )
-                        .child(
-                            gpui_kit::base::Button::new("audio-demo-fullscreen")
-                                .w(surface::css(self.spec.presentation.button_width))
-                                .h_full()
-                                .p_0()
-                                .accessibility_label("全屏")
-                                .disabled(true)
-                                .child(
-                                    img("synapse/audio-demo-control-fullscreen.svg")
-                                        .size(surface::css(self.spec.presentation.glyph_size)),
-                                ),
-                        ),
-                )
-            })
-            .into_any_element()
+#[cfg(test)]
+mod tests {
+    use super::clamp_floating;
+    use gpui_kit::{point, size};
+    #[test]
+    fn floating_position_keeps_source_twenty_pixel_margin_after_drag_and_resize() {
+        assert_eq!(
+            clamp_floating(point(2000., 1000.), size(1200., 700.)),
+            point(780., 455.)
+        );
+        assert_eq!(
+            clamp_floating(point(-50., -60.), size(1200., 700.)),
+            point(20., 20.)
+        );
+        let shrunk = clamp_floating(point(780., 455.), size(600., 400.));
+        assert_eq!(shrunk, point(180., 155.));
+        assert_eq!(clamp_floating(shrunk, size(1200., 700.)), shrunk);
+        assert_eq!(
+            clamp_floating(point(0., 0.), size(300., 200.)),
+            point(20., 20.)
+        );
     }
 }
 

@@ -66,6 +66,7 @@ impl AppShell {
             mouse_dpi: None,
             mouse_current_dpi: None,
             mouse_current_power: None,
+            controller_lighting: None,
             controller_trigger: Some(ControllerTriggerSave {
                 workspace,
                 request,

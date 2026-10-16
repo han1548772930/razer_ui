@@ -225,6 +225,156 @@ def inspect_pe(raw):
     return result
 
 
+def pe_resource_entries(raw):
+    """Read complete PE resource leaves and byte ranges without loading the image."""
+    metadata = inspect_pe(raw)
+    if metadata["format"] not in ("pe32", "pe32+"):
+        raise ValueError("Resource input is not a PE image")
+
+    def read(fmt, offset):
+        if offset < 0 or offset + struct.calcsize(fmt) > len(raw):
+            raise ValueError("PE resource structure exceeds input bytes")
+        return struct.unpack_from(fmt, raw, offset)
+
+    pe, = read("<I", 0x3c)
+    optional = pe + 24
+    directory = optional + (112 if metadata["format"] == "pe32+" else 96)
+    count, = read("<I", directory - 4)
+    if count <= 2:
+        return []
+    resource_rva, resource_size = read("<II", directory + 16)
+    if not resource_rva or not resource_size:
+        return []
+    header_size, = read("<I", optional + 60)
+
+    def at_rva(rva, size):
+        if size < 0:
+            raise ValueError("Invalid PE resource length")
+        if 0 <= rva and rva + size <= min(header_size, len(raw)):
+            return rva
+        for section in metadata["sections"]:
+            delta = rva - section["rva"]
+            if 0 <= delta and delta + size <= section["bytes"]:
+                return section["file_offset"] + delta
+        raise ValueError("PE resource RVA is not backed by input bytes: " + hex(rva))
+
+    def relative(offset, size):
+        if offset < 0 or offset + size > resource_size:
+            raise ValueError("PE resource directory exceeds declared bounds")
+        return at_rva(resource_rva + offset, size)
+
+    def identifier(value):
+        if value & 0x80000000:
+            offset = value & 0x7fffffff
+            length, = read("<H", relative(offset, 2))
+            begin = relative(offset + 2, length * 2)
+            return raw[begin:begin + length * 2].decode("utf-16-le")
+        if value > 0xffff:
+            raise ValueError("PE resource numeric identifier uses reserved bits")
+        return value
+
+    leaves, routes = [], set()
+
+    def visit(offset, route, parents):
+        if offset in parents or len(route) > 2:
+            raise ValueError("PE resource directory is cyclic or too deep")
+        base = relative(offset, 16)
+        named, numbered = read("<HH", base + 12)
+        relative(offset + 16, (named + numbered) * 8)
+        siblings = set()
+        for index in range(named + numbered):
+            name, child = read("<II", relative(offset + 16 + index * 8, 8))
+            key = identifier(name)
+            if key in siblings:
+                raise ValueError("PE resource directory repeats an identifier")
+            siblings.add(key)
+            branch = (*route, key)
+            if child & 0x80000000:
+                visit(child & 0x7fffffff, branch, (*parents, offset))
+                continue
+            if len(branch) != 3 or branch in routes:
+                raise ValueError("PE resource leaf has an invalid type/name/language route")
+            routes.add(branch)
+            data_rva, size, codepage, reserved = read("<IIII", relative(child, 16))
+            if reserved:
+                raise ValueError("PE resource data uses reserved fields")
+            data_offset = at_rva(data_rva, size)
+            leaves.append({"type": branch[0], "name": branch[1], "language": branch[2],
+                           "rva": hex(data_rva), "file_offset": data_offset, "bytes": size,
+                           "sha256": hashlib.sha256(raw[data_offset:data_offset + size]).hexdigest(),
+                           "codepage": codepage})
+
+    visit(0, (), ())
+    return leaves
+
+
+def pe_cursor_groups(raw, group_id=None):
+    """Reconstruct CUR directories while preserving original hotspots and DIB bytes."""
+    entries = pe_resource_entries(raw)
+    groups = [row for row in entries if row["type"] == 12 and (group_id is None or row["name"] == group_id)]
+    if group_id is not None and not groups:
+        raise ValueError("Requested PE cursor group is absent")
+
+    def data(row):
+        return raw[row["file_offset"]:row["file_offset"] + row["bytes"]]
+
+    results = []
+    for group in groups:
+        directory = data(group)
+        if len(directory) < 6:
+            raise ValueError("PE cursor group header is truncated")
+        reserved, kind, count = struct.unpack_from("<HHH", directory)
+        if reserved or kind != 2 or not count or len(directory) != 6 + count * 14:
+            raise ValueError("Invalid PE cursor group directory")
+        frames, payloads = [], []
+        offset = 6 + count * 16
+        cur = bytearray(struct.pack("<HHH", 0, 2, count))
+        for index in range(count):
+            width, combined_height, planes, bit_count, size, identifier = struct.unpack_from("<HHHHIH", directory, 6 + index * 14)
+            matches = [row for row in entries if row["type"] == 1 and row["name"] == identifier
+                       and row["language"] == group["language"]]
+            if not matches:
+                matches = [row for row in entries if row["type"] == 1 and row["name"] == identifier and row["language"] == 0]
+            if len(matches) != 1:
+                raise ValueError("PE cursor image language/identifier is missing or ambiguous")
+            original = matches[0]
+            image = data(original)
+            if len(image) != size or len(image) < 44:
+                raise ValueError("PE cursor group and image lengths differ")
+            hotspot_x, hotspot_y = struct.unpack_from("<HH", image)
+            dib = image[4:]
+            header, dib_width, dib_height, dib_planes, dib_bits, compression, image_size, _, _, colors, _ = struct.unpack_from("<IiiHHIIiiII", dib)
+            if (header != 40 or compression != 0 or dib_planes != 1 or dib_bits not in (1, 4, 8, 16, 24, 32)
+                    or dib_width != width or dib_height != combined_height or dib_height <= 0 or dib_height % 2
+                    or planes != dib_planes or bit_count != dib_bits or not 1 <= width <= 256):
+                raise ValueError("Cursor extraction supports only matching uncompressed BITMAPINFOHEADER frames")
+            height = dib_height // 2
+            if not 1 <= height <= 256 or hotspot_x >= width or hotspot_y >= height:
+                raise ValueError("PE cursor dimensions or hotspot are out of range")
+            palette = colors or (1 << dib_bits if dib_bits <= 8 else 0)
+            if (dib_bits <= 8 and palette > 1 << dib_bits) or (dib_bits > 8 and palette):
+                raise ValueError("Unsupported PE cursor palette")
+            xor_bytes = ((width * dib_bits + 31) // 32) * 4 * height
+            and_bytes = ((width + 31) // 32) * 4 * height
+            if len(dib) != header + palette * 4 + xor_bytes + and_bytes or image_size not in (0, xor_bytes):
+                raise ValueError("PE cursor bitmap or mask length differs from its dimensions")
+            color_count = palette if palette < 256 else 0
+            cur.extend(struct.pack("<BBBBHHII", width % 256, height % 256, color_count, 0,
+                                   hotspot_x, hotspot_y, len(dib), offset))
+            frames.append({"ordinal": index, "width": width, "height": height, "hotspot_x": hotspot_x,
+                           "hotspot_y": hotspot_y, "planes": planes, "bit_count": bit_count,
+                           "group_height": combined_height, "group_image_bytes": size, "resource_id": identifier,
+                           "original": original, "cur_image_offset": offset, "cur_image_bytes": len(dib),
+                           "cur_image_sha256": hashlib.sha256(dib).hexdigest()})
+            offset += len(dib)
+            if offset > 0xffffffff:
+                raise ValueError("CUR directory offset exceeds its 32-bit field")
+            payloads.append(dib)
+        cur.extend(b"".join(payloads))
+        results.append({"group": group, "frames": frames, "data": bytes(cur)})
+    return results
+
+
 def prepare_managed_analyzer():
     """Restore only exact pinned ILSpy bytes declared by the existing receipt."""
     import analysis as a
@@ -399,12 +549,124 @@ def inno_archive_entries(raw):
     return names
 
 
+def recheck_installed(args):
+    """Compare live code files with retained originals without reading user state."""
+    import analysis as a
+    baseline_path = a.ROOT / ".analysis/inputs/installed-current/acquisition.json"
+    baseline_raw = baseline_path.read_bytes()
+    baseline = json.loads(baseline_raw)
+    roots = {"app-engine": Path(args.app_engine_root), "apps": Path(args.user_data_root) / "Apps"}
+    if args.services_root:
+        roots["services"] = Path(args.services_root)
+    rows, failures = [], []
+    for old in baseline["files"]:
+        if old["source_root"] == "cache-storage":
+            continue
+        record = {"source_root": old["source_root"], "source_relative_path": old["source_relative_path"],
+                  "baseline": {key: old[key] for key in ("path", "bytes", "sha256")}}
+        rows.append(record)
+        try:
+            root = roots[old["source_root"]].resolve()
+            relative = Path(old["source_relative_path"])
+            if relative.is_absolute() or ".." in relative.parts:
+                raise ValueError("Installed source path is not relative")
+            source = root / relative
+            if source.is_symlink() or source.is_junction() or not source.resolve().is_relative_to(root):
+                raise ValueError("Installed source path escaped its declared root")
+            before = source.stat()
+            raw = source.read_bytes()
+            current_sha = hashlib.sha256(raw).hexdigest()
+            after = source.stat()
+            if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns) or a.sha(source) != current_sha:
+                raise ValueError("Installed source changed during verification")
+            copy = a.ROOT / old["path"]
+            if copy.stat().st_size != old["bytes"] or a.sha(copy) != old["sha256"]:
+                raise ValueError("Retained installed original differs from its receipt")
+            record.update(bytes=len(raw), sha256=current_sha,
+                          matches_retained_original=len(raw) == old["bytes"] and current_sha == old["sha256"])
+            if old["source_root"] == "app-engine" and relative.name == "RazerAppEngine.exe":
+                record["version_resources"] = inspect_pe(raw)["version_resources"]
+            if not record["matches_retained_original"]:
+                raise ValueError("Live installed code differs from the retained original")
+        except (OSError, ValueError, KeyError) as error:
+            record["error_kind"] = type(error).__name__
+            failures.append({"source_root": record["source_root"], "source_relative_path": record["source_relative_path"],
+                             "error_kind": type(error).__name__})
+    metadata_path = a.ROOT / ".analysis/inputs/host-current/metadata-recheck.json"
+    metadata_raw = metadata_path.read_bytes()
+    metadata = json.loads(metadata_raw)
+    acquisition_path = a.ROOT / ".analysis/inputs/host-current/acquisition.json"
+    acquisition_raw = acquisition_path.read_bytes()
+    acquisition = json.loads(acquisition_raw)
+    if (not metadata.get("deployment_metadata_stable") or not metadata.get("matches_previous_metadata")
+            or metadata["baseline"]["sha256"] != hashlib.sha256(acquisition_raw).hexdigest()):
+        raise ValueError("Current official host deployment does not match the retained package acquisition")
+    for row in metadata["files"]:
+        path = a.ROOT / row["path"]
+        if path.stat().st_size != row["bytes"] or a.sha(path) != row["sha256"]:
+            raise ValueError("Current official metadata original differs")
+    inspection_path = a.ROOT / ".analysis/results/host-current/inspection.json"
+    inspection_raw = inspection_path.read_bytes()
+    inspection = json.loads(inspection_raw)
+    packages, matched = [], 0
+    for package in acquisition["files"]:
+        if package["kind"] != "official_stable_host_package" or package["declaration"]["name"] != "Razer App Engine":
+            continue
+        declaration = package["declaration"]
+        if not any(module == declaration for product in metadata["stable_products"] for module in product["modules"]):
+            raise ValueError("Retained host package is not declared by the current official stable metadata")
+        package_raw = (a.ROOT / package["path"]).read_bytes()
+        if (len(package_raw) != declaration["file_size"] or hashlib.sha256(package_raw).hexdigest() != package["sha256"]
+                or hashlib.md5(package_raw).hexdigest() != declaration["download_file_checksum"]):
+            raise ValueError("Official host package byte identity differs")
+        container = next(row for row in inspection["containers"] if row["input"] == package["path"])
+        if not container.get("extracted") or container.get("extraction_exit_code") != 0 or container["sha256"] != package["sha256"]:
+            raise ValueError("Official host package has no successful static extraction")
+        official = {}
+        for row in container["files"]:
+            path = a.ROOT / row["path"]
+            if path.stat().st_size != row["bytes"] or a.sha(path) != row["sha256"]:
+                raise ValueError("Official static extraction original differs")
+            official.setdefault((row["bytes"], row["sha256"]), []).append(row["path"])
+        for row in rows:
+            if row["source_root"] != "app-engine" or row.get("error_kind"):
+                continue
+            row["current_official_package_matches"] = official.get((row["bytes"], row["sha256"]), [])
+            matched += bool(row["current_official_package_matches"])
+        packages.append({"path": package["path"], "sha256": package["sha256"], "version": declaration["version"],
+                         "static_extraction_files_verified": len(container["files"])})
+    if not packages:
+        raise ValueError("Current stable metadata lacks a retained App Engine package")
+    report = {"schema_version": 1, "recorded_at_utc": a.stamp(),
+        "tool": {"path": "tools/host.py", "sha256": a.sha(Path(__file__))},
+        "baseline": {"path": a.rel(baseline_path), "bytes": len(baseline_raw), "sha256": hashlib.sha256(baseline_raw).hexdigest()},
+        "metadata_recheck": {"path": a.rel(metadata_path), "sha256": hashlib.sha256(metadata_raw).hexdigest()},
+        "static_extraction_receipt": {"path": a.rel(inspection_path), "sha256": hashlib.sha256(inspection_raw).hexdigest()},
+        "official_host_packages": packages, "files": rows, "failures": failures,
+        "scope": "Live installed static code versus retained originals and current official host package bytes; excludes caches, user state and runtime acceptance",
+        "target_execution": False, "real_device_operations": False,
+        "summary": {"files": len(rows), "matches_retained_original": sum(row.get("matches_retained_original", False) for row in rows),
+                    "app_engine_current_official_matches": matched, "failures": len(failures)},
+        "host_package_closure_complete": False}
+    for path, raw in ((baseline_path, baseline_raw), (metadata_path, metadata_raw), (inspection_path, inspection_raw), (acquisition_path, acquisition_raw)):
+        if path.read_bytes() != raw:
+            raise ValueError("Installed recheck evidence changed during verification")
+    receipt = a.ROOT / ".analysis/inputs/installed-current/recheck.json"
+    a.save(receipt, report)
+    a.index_files([{"path": a.rel(receipt), "bytes": receipt.stat().st_size, "sha256": a.sha(receipt), "kind": "installed_static_recheck"}])
+    print(json.dumps({"receipt": a.rel(receipt), **report["summary"]}), flush=True)
+    if failures:
+        raise SystemExit(1)
+
+
 def acquire_installed(args):
     """Snapshot installed files and public static Service Worker resources as data.
 
     Cache provenance is kept separate from a live official deployment audit.
     No browser, vendor process, JavaScript, native export or device is invoked.
     """
+    if getattr(args, "verify_only", False):
+        return recheck_installed(args)
     import analysis as a
     tool_root = a.ROOT / "tools/analyzers/ccl-chromium-reader"
     tool_receipt = tool_root / "acquisition.json"
@@ -1432,11 +1694,12 @@ def extract_asar():
 
 def add_commands(parsers):
     local = parsers.add_parser("audit-host-local", help="Trace current local host UI, storage, service and native source chains without executing targets")
-    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder"])
+    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color"])
     installed = parsers.add_parser("acquire-installed", help="Read-only snapshot of installed Razer files and public official Service Worker resources")
     installed.add_argument("--app-engine-root", required=True)
     installed.add_argument("--user-data-root", required=True)
     installed.add_argument("--services-root")
+    installed.add_argument("--verify-only", action="store_true", help="Recheck installed code against retained bytes and current official host package without copying cache or user state")
     fetch = parsers.add_parser("acquire-host", help="Acquire stable official host installer and declared local resources as inert evidence")
     fetch.add_argument("--inspect", action="store_true", help="List containers with 7-Zip without running target code")
     fetch.add_argument("--seven-zip", default="C:/Program Files/7-Zip/7z.exe")
@@ -2884,9 +3147,157 @@ def audit_host_macro_recorder(args):
         raise ValueError("Local macro recorder source query remains unresolved")
 
 
+def audit_host_screen_color(args):
+    audit = HostLocalAudit()
+    a, families = audit.a, audit.families
+    report = {"recorded_at_utc": a.stamp(), "tool": families.identity(Path(__file__)),
+              "parser": audit.parser_versions, "source_sets": [], "failures": [],
+              "source_chain_complete": False, "product_code_modified": False,
+              "target_execution": False, "real_device_operations": False, "runtime_acceptance": "unverified"}
+    try:
+        for name in ("tools/host.py", "tools/evidence.py", "tools/families.py", "tools/analysis.py"):
+            audit.artifact(a.ROOT / name)
+        mouse_set, mouse_files = audit.source_set("mouse-70-current")
+        studio_set, studio_files = audit.source_set("synapse-chroma-studio-current")
+        report["source_sets"] = [mouse_set, studio_set]
+        report["reused_complete_captures"] = [audit.frontend_capture(name, files) for name, files in (
+            ("mouse-70-current", mouse_files), ("synapse-chroma-studio-current", studio_files))]
+
+        def source(files, needle):
+            matches = [row for row in files if Path(row["path"]).suffix == ".js" and needle.encode() in audit.read(row)]
+            if len(matches) != 1:
+                raise ValueError("Screen color source owner is absent or ambiguous: " + needle)
+            return matches[0]
+
+        ordinary = source(mouse_files, 'this.onColorPickerDoneHandler=()=>{console.log("onColorPickerDone")}')
+        studio = source(studio_files, 'case"onColorPickerDone":me(W.current)')
+        studio_native = source(studio_files, 'this.channelName="chromaStudioNativeAction"')
+        for role, original, needle, kinds in (
+            ("ordinary_complete_color_picker", ordinary, 'this.onColorPickerHandler=', {"class", "class_declaration"}),
+            ("ordinary_show_with_registration_gate", ordinary, 'this.showColorPicker=async()=>', {"assignment_expression"}),
+            ("ordinary_close_with_registration_gate", ordinary, 'this.closeColorPicker=async()=>', {"assignment_expression"}),
+            ("ordinary_native_color_dispatch", ordinary, 's.response("onColorPicker",e=>', {"call_expression"}),
+            ("ordinary_native_done_dispatch", ordinary, 's.response("onColorPickerDone",()=>', {"call_expression"}),
+            ("ordinary_shared_event_lifetime", ordinary, 'const iO=_O,oO="onColorPicker"', {"lexical_declaration"}),
+            ("studio_complete_color_picker", studio, 'function y(e){let{canvasWidth:t,canvasHeight:n,mixedValues:o', {"function_declaration"}),
+            ("studio_native_complete_owner", studio_native, 'async showColorPicker(){', {"class", "class_declaration"}),
+            ("studio_native_show", studio_native, 'async showColorPicker(){', {"method_definition"}),
+            ("studio_native_close", studio_native, 'async closeColorPicker(){', {"method_definition"}),
+            ("studio_native_callback_done_close_before_emit", studio_native, 'this.handleEvent=e=>', {"assignment_expression"}),
+            ("studio_native_terminate", studio_native, 'async terminate(){', {"method_definition"}),
+        ):
+            audit.retain(role, original, needle, kinds)
+        host = verified_host_owners(audit, ("electron/modules/sysutil/win/index.js", "electron/main.js"))
+        report["complete_host_sources"] = list(host.values())
+        sysutil = host["electron/modules/sysutil/win/index.js"]["original"]
+        main = host["electron/main.js"]["original"]
+        for role, original, needle, kinds in (
+            ("host_picker_ffi_declarations_and_callback_lifetime", sysutil, 'ShowColorPicker:["bool",[]]', {"class", "class_declaration"}),
+            ("host_picker_command_dispatch", sysutil, 'callDLL=async', {"field_definition"}),
+            ("host_picker_callback_to_living_webcontents", sysutil, 'handleFFIEvent=async', {"field_definition"}),
+            ("host_shared_sysutils_dispatch_caller", main, 'case"ShowColorPicker":', {"switch_statement"}),
+        ):
+            audit.retain(role, original, needle, kinds)
+
+        sysutil_native, host_provenance = verified_host_native(audit, "CommonDLL/SysUtilsNative.dll")
+        native_receipt_path = a.ROOT / ".analysis/inputs/official-native-current/acquisition.json"
+        native_receipt = json.loads(audit.artifact(native_receipt_path))
+        candidates = [row for row in native_receipt["resources"] if row.get("status") == "verified"
+                      and any(item.get("resource_name") == "ChromaStudioNativeDLL" for item in row.get("manifests", []))]
+        if len(candidates) != 1:
+            raise ValueError("Current declared Studio native picker is absent or ambiguous")
+        studio_input = candidates[0]
+        audit.read(studio_input)
+        manifests = [item for item in studio_input["manifests"] if item.get("resource_name") == "ChromaStudioNativeDLL"]
+        for manifest in manifests:
+            audit.artifact(a.ROOT / manifest["path"], manifest)
+        studio_provenance = {"original": studio_input, "acquisition": families.identity(native_receipt_path),
+                             "current_manifests": manifests}
+        roles = {
+            "host": {0x73180: "show", 0x73330: "color_callback", 0x735a0: "done_callback",
+                     0x737c0: "close_impl", 0x73850: "close_export", 0xa9e0: "create_callbacks_and_thread",
+                     0xabd0: "close_wait_join", 0x7b830: "destructor", 0x9f30: "window_procedure",
+                     0xa220: "window_and_snapshot_loop", 0xae10: "initial_and_button_down_sample",
+                     0x87490: "window_base"},
+            "studio": {0x2cd0: "show", 0x2e60: "color_callback", 0x30f0: "done_callback",
+                       0x3360: "close", 0x5a20: "destructor", 0x8150: "window_procedure",
+                       0x83d0: "window_and_snapshot_loop", 0x8b50: "create_callbacks_and_thread",
+                       0x8ca0: "close_send_message_and_join", 0x8dc0: "initial_and_button_down_sample",
+                       0x3a3b0: "window_base"},
+        }
+        report["native"] = []
+        for name, original, provenance in (("host", sysutil_native, host_provenance),
+                                            ("studio", studio_input, studio_provenance)):
+            verified = families.verify_native_functions(original, roles[name])
+            # Full bodies are retained once in native_slice; the verification
+            # metadata binds every selected role to actual file-backed chunks.
+            for function in verified["complete_selected_functions"]:
+                function.pop("capture")
+            regions = ({"role": "window_background_brush_constant", "rva": 0xe2c60, "bytes": 16},) if name == "host" else ()
+            native = audit.native_slice(original, ["ShowColorPicker", "CloseColorPicker"], depth=0,
+                                       rvas=tuple(roles[name]), regions=regions)
+            if native["failures"] or native["decompiler_failures"]:
+                raise ValueError("Selected native screen picker functions are incomplete: " + name)
+            report["native"].append({"owner": name, **provenance, "verification": verified, "slice": native})
+
+        cursor_path = a.ROOT / ".analysis/inputs/native-resources/acquisition.json"
+        cursor_receipt = json.loads(audit.artifact(cursor_path))
+        cursors = []
+        for original in (sysutil_native, studio_input):
+            groups = pe_cursor_groups(audit.read(original), 102)
+            if len(groups) != 1:
+                raise ValueError("Current picker cursor language is ambiguous")
+            group = groups[0]
+            matches = [row for row in cursor_receipt["derivations"]
+                       if row["original"]["sha256"] == original["sha256"] and row["group"] == group["group"]]
+            if len(matches) != 1 or matches[0]["frames"] != group["frames"]:
+                raise ValueError("Current picker cursor derivation differs from actual PE bytes")
+            output = matches[0]["output"]
+            if audit.read(output) != group["data"]:
+                raise ValueError("Delivered picker cursor differs from the source PE frames")
+            cursors.append({"input": original, "group": group["group"], "frames": group["frames"], "output": output})
+        if cursors[0]["output"]["sha256"] != cursors[1]["output"]["sha256"]:
+            raise ValueError("Host and Studio picker cursor resources differ")
+        report["cursor"] = {"acquisition": families.identity(cursor_path), "derivations": cursors,
+                            "host_and_studio_frames_byte_identical": True}
+        report["semantics"] = {
+            "sampling": "Both current native owners create a layered/tool/topmost popup with alpha 1, capture the virtual desktop into a compatible memory DC, then sample that fixed snapshot with GetPixel; mouse moves do not capture a new live desktop.",
+            "coordinates": "The initial WM_START_COLOR_PICKER calls GetCursorPos and passes global coordinates directly to the snapshot sample without subtracting virtual left/top. Later WM_MOUSEMOVE/WM_LBUTTONDOWN use signed 16-bit client coordinates. The source coordinate difference remains explicit; CLR_INVALID must not be reported as an observed white pixel.",
+            "color": "Native COLORREF bytes are converted to RGB24 by swapping the red and blue positions. The custom source CUR group is 102; all hotspots, DIB pixels and AND masks are preserved.",
+            "stacking": "Initial HandleLButtonDown selects the custom cursor, publishes one color and calls SetWindowPos HWND_NOTOPMOST. WM_MOUSEMOVE and WM_KILLFOCUS select the same cursor and restore HWND_TOPMOST with NOMOVE|NOSIZE.",
+            "ordinary_picker": "Color calls onChangeHex and updates local selectedColor/fields/markers only. Done only logs. Only saveColor invokes the parent save callback; cancelColor invokes the parent cancel callback. Unmount removes mouse and picker event listeners.",
+            "ordinary_wrapper": "show sets isRegisterColorPicker before invoking ShowColorPicker; close clears it before invoking CloseColorPicker. Callback delivery is gated by that flag; Done is emitted before the gate is cleared. The retained complete ordinary picker does not call closeColorPicker.",
+            "studio_picker": "Color calls ae for onChange and local RGB/HSV/field preview. Done calls me(W.current), producing onAfterChange with rgbData and numeric color. The enclosing owner retains native event subscription and cleanup.",
+            "studio_wrapper": "The native Done callback is deferred, then closeColorPicker is awaited before emitting to UI. show sets isOnColorPicker before its native request; close clears it first. Termination closes an existing region window, releases FFI and clears native initialization state.",
+            "native_lifetime": "SysUtils Done posts WM_USER+0x67 before publishing its event. Studio Done publishes its event and relies on the JS close/send-message/join chain. Replacement destroys and joins the previous owner before creating another. The Rust adapter closes its worker-owned window/DC/bitmap/cursor and restores thread DPI/cursor state before emitting Done or Canceled.",
+        }
+        report["remaining_chains"] = [
+            "Audit every product/version/accessory mounted color-picker caller and parent save/cancel/device write-back branch. The representative complete ordinary picker and Studio owner do not establish all-product or all-page closure.",
+            "Resolve the retained native indirect/import and unexpanded helper edges where they change local behavior; unrelated whole-module decompiler failures are retained separately from the selected picker functions.",
+            "Real window, multi-monitor/DPI, cancellation and device/service acceptance are unverified under the current execution limits."]
+    except (OSError, ValueError, KeyError, TypeError, StopIteration) as error:
+        report["failures"].append(str(error))
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
+    destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
+    previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+    previous["screen_color"] = report
+    a.save(destination, previous)
+    print(json.dumps({"receipt": a.rel(destination), "query": args.query,
+                      "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Local screen color source query remains unresolved")
+
+
 def audit_host_local(args):
     if args.query == "macro-recorder":
         return audit_host_macro_recorder(args)
+    if args.query == "screen-color":
+        return audit_host_screen_color(args)
     audit = HostLocalAudit()
     a, families = audit.a, audit.families
     report = {"recorded_at_utc": a.stamp(), "tool": families.identity(Path(__file__)),

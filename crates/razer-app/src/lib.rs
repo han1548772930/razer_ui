@@ -234,6 +234,10 @@ pub fn run() {
         eprintln!("本地表情数据库无法加载：{error:#}");
         std::process::exit(1);
     }
+    if let Err(error) = razer_catalog::initialize_registry() {
+        eprintln!("本地产品目录无法加载：{error:#}");
+        std::process::exit(1);
+    }
     let application = gpui_kit::application().with_assets(resources::SynapseAssets);
 
     application.run(move |cx| {

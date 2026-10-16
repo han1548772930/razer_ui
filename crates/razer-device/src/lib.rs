@@ -37,6 +37,10 @@ pub mod controller_calibration;
 pub mod controller_calibration_protocol;
 #[path = "gamepad/controller_input.rs"]
 pub mod controller_input;
+#[path = "gamepad/controller_feature.rs"]
+pub(crate) mod controller_feature;
+#[path = "gamepad/controller_lighting.rs"]
+pub mod controller_lighting;
 #[path = "gamepad/controller_triggers.rs"]
 pub mod controller_triggers;
 #[path = "identity/device_identity.rs"]

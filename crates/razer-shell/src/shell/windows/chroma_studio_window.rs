@@ -76,6 +76,9 @@ pub(super) struct StudioSession {
 pub(super) struct StudioSaveFinished(pub(super) bool);
 impl EventEmitter<StudioSaveFinished> for StudioSession {}
 impl StudioSession {
+    pub(super) fn deactivate(&self, cx: &mut App) {
+        self.page.update(cx, |page, cx| page.deactivate(cx));
+    }
     pub(super) fn focus(&self, window: &mut Window, cx: &mut App) {
         self.page.update(cx, |page, cx| page.focus(window, cx));
     }

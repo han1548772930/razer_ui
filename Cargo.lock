@@ -5814,6 +5814,7 @@ dependencies = [
  "razer-device",
  "razer-ipc",
  "razer-model",
+ "serde",
  "serde_json",
  "uuid",
 ]
@@ -5866,6 +5867,7 @@ name = "razer-pages"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-channel",
  "chrono",
  "gpui-kit",
  "image",

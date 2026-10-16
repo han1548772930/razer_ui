@@ -19,8 +19,17 @@ use razer_widgets::surface;
 #[path = "gamepad_calibration.rs"]
 mod calibration;
 pub use calibration::state::{CalibrationIntent, CalibrationObservation};
+#[path = "gamepad_lighting.rs"]
+mod lighting;
+#[path = "gamepad_lighting_runtime.rs"]
+mod lighting_runtime;
+#[path = "gamepad_lighting_state.rs"]
+mod lighting_state;
 #[path = "gamepad_navigation.rs"]
 mod navigation;
+#[path = "gamepad_profile.rs"]
+mod profile;
+pub use lighting_runtime::ControllerLightingRequested;
 #[path = "gamepad_trigger_calibration.rs"]
 mod trigger_calibration;
 #[path = "gamepad_trigger_calibration_state.rs"]
@@ -182,6 +191,8 @@ pub struct GamepadProductWorkspace {
     trigger_calibration_popup: Option<trigger_calibration::TriggerDialog>,
     trigger_frame_pending: bool,
     trigger_runtime: trigger_runtime::TriggerRuntime,
+    lighting_runtime: lighting_runtime::LightingRuntime,
+    lighting_ui: lighting::LightingUi,
     trigger_visualization: trigger_visualization::TriggerVisualization,
     controller_input_sample: Option<razer_device::controller_input::Sample>,
     controller_notifications: std::collections::VecDeque<razer_device::controller_input::Event>,
@@ -225,6 +236,8 @@ impl GamepadProductWorkspace {
             trigger_calibration_popup: None,
             trigger_frame_pending: false,
             trigger_runtime: Default::default(),
+            lighting_runtime: lighting_runtime::LightingRuntime::new(pid),
+            lighting_ui: lighting::LightingUi::new(window, cx),
             trigger_visualization: Default::default(),
             controller_input_sample: None,
             controller_notifications: Default::default(),
@@ -235,6 +248,9 @@ impl GamepadProductWorkspace {
             subscriptions: Vec::new(),
             syncing: false,
         };
+        if let Err(error) = this.restore_lighting_profile() {
+            eprintln!("[controller-lighting] Invalid initial profile: {error:#}");
+        }
         if spec.pages.iter().any(|p| p == "TRIGGERS") {
             for side in ["leftTrigger", "rightTrigger"] {
                 this.range_drags
@@ -292,6 +308,9 @@ impl GamepadProductWorkspace {
 
     pub fn set_page(&mut self, key: &str, window: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
+            if self.page == "TAB_LIGHTING" {
+                self.lighting_ui.cancel(cx);
+            }
             self.customize_hover = None;
             self.cancel_range_edits(cx);
             self.cancel_thumbstick_edits(cx);
@@ -332,6 +351,8 @@ impl GamepadProductWorkspace {
 
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
         self.trigger_runtime.invalidate();
+        self.lighting_runtime.invalidate();
+        self.lighting_ui.cancel(cx);
         self.cancel_range_edits(cx);
         self.cancel_thumbstick_edits(cx);
         self.leave_calibration(window, cx);
@@ -340,15 +361,26 @@ impl GamepadProductWorkspace {
             saved.filter(|v| v["profile"].is_object() && v["controller"].is_object())
         {
             merge_known(&mut self.draft, saved);
+            if let Err(error) =
+                profile::restore_features(&mut self.draft["profile"], &saved["profile"], self.spec)
+            {
+                eprintln!(
+                    "[controller-profile] Saved feature records could not be restored: {error:#}"
+                );
+            }
         }
         self.selected_button = None;
         self.customize_hover = None;
         self.dismiss_deadzone(false, window, cx);
         self.low_deadzone = None;
+        if let Err(error) = self.restore_lighting_profile() {
+            eprintln!("[controller-lighting] Saved settings could not be restored: {error:#}");
+        }
         self.sync_sliders(window, cx);
         self.refresh_trigger_visualization();
         self.refresh_thumbstick_artwork();
         self.request_trigger_read(cx);
+        self.request_controller_lighting(cx);
         cx.notify();
     }
 
@@ -409,6 +441,9 @@ impl GamepadProductWorkspace {
         if let Some(target) = self.draft.pointer_mut(path) {
             if *target != value {
                 *target = value;
+                if path.starts_with("/profile/brightness/") {
+                    self.controller_brightness_changed(path, cx);
+                }
                 if let Some((root, _)) = path.rsplit_once('/') {
                     if matches!(root, "/controller/leftTrigger" | "/controller/rightTrigger") {
                         self.trigger_changed(root, cx);
@@ -1080,42 +1115,24 @@ impl GamepadProductWorkspace {
     /// （`SWITCH_OFF_LIGHTING_HEADER` + `SWITCH_OFF_LIGHTING_TOOLTIP`，两个
     /// `.check-item` 与 1–15 滑条），右侧快速效果。
     fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        let enabled = self.checked("/profile/brightness/isEnabled");
+        if self.spec.controller_lighting {
+            return surface::page_columns()
+                .child(surface::page_column(
+                    self.controller_brightness_panel(window, cx),
+                ))
+                .child(surface::page_column(self.controller_preset_panel(cx)))
+                .into_any_element();
+        }
         surface::page_columns()
             .child(surface::page_column(
                 v_flex()
-                    .child(
-                        surface::panel_with_title_switch(
-                            t("BRIGHTNESS_HEADER"),
-                            surface::SynapseSwitch::new("gamepad-brightness")
-                                .accessibility_label(t("BRIGHTNESS_HEADER"))
-                                .checked(enabled)
-                                .on_change(cx.listener(|this, next: &bool, _, cx| {
-                                    this.write("/profile/brightness/isEnabled", json!(*next), cx);
-                                })),
-                            surface::help_control(
-                                "gamepad-brightness-help",
-                                t("BRIGHTNESS_TOOLTIP"),
-                            ),
-                            cx,
-                        )
-                        .child(surface::slider_tags("0", None, "100", None))
-                        .child(self.range(
-                            "/profile/brightness/value",
-                            razer_i18n::t("BRIGHTNESS_HEADER"),
-                            enabled,
-                        )),
-                    )
+                    .child(self.controller_brightness_panel(window, cx))
                     .when(!self.spec.controller_lighting, |column| {
                         column.child(self.switch_off_lighting(window, cx))
                     }),
             ))
             .child(surface::page_column({
-                let path = if self.spec.controller_lighting {
-                    "/controller/lighting/effectId"
-                } else {
-                    "/profile/quickEffects/selectedEffectId"
-                };
+                let path = "/profile/quickEffects/selectedEffectId";
                 surface::panel(t("EFFECTS"), cx).children(self.spec.effects.iter().filter_map(
                     |effect| {
                         Some(self.choice(

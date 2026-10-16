@@ -1,6 +1,7 @@
 //! Current Studio 1698 color editor and 9170 RGB/HSV/HEX helpers.
 //! Independent of the device-product color picker; emits only completed edits.
 use super::theme::Colors;
+use crate::features::screen_color::{ScreenColorCapture, ScreenColorUpdate, ScreenColorUpdateKind};
 use gpui_kit::base::{Button, Slider, SliderIndicator, SliderThumb, SliderTrack};
 use gpui_kit::component::{
     input::{Input, InputEvent, InputState},
@@ -8,6 +9,7 @@ use gpui_kit::component::{
     slider::{SliderEvent, SliderState},
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use razer_widgets::source_tooltip::{SourceTooltip, SourceTooltipKind};
 use razer_widgets::surface;
 use std::{cell::Cell, rc::Rc};
 
@@ -74,6 +76,7 @@ pub(super) struct StudioColor {
     dirty: bool,
     dragging: bool,
     enabled: bool,
+    screen_color: Entity<ScreenColorCapture>,
     _subscriptions: Vec<Subscription>,
 }
 
@@ -138,7 +141,17 @@ impl StudioColor {
                 .step(1.)
                 .default_value(100.)
         });
+        let screen_color = cx.new(|cx| ScreenColorCapture::new(window, cx));
         let mut subscriptions = Vec::new();
+        subscriptions.push(cx.subscribe_in(
+            &screen_color,
+            window,
+            |this, capture, update: &ScreenColorUpdate, window, cx| {
+                if this.enabled && capture.read(cx).is_current(update) {
+                    this.receive_screen_color(update.kind, window, cx);
+                }
+            },
+        ));
         subscriptions.push(cx.observe_global::<StudioCustomColors>(|_, cx| cx.notify()));
         for (index, input) in fields.iter().enumerate() {
             subscriptions.push(cx.subscribe_in(
@@ -225,6 +238,7 @@ impl StudioColor {
             dirty: false,
             dragging: false,
             enabled: true,
+            screen_color,
             _subscriptions: subscriptions,
         };
         this.set_value(value, window, cx);
@@ -233,6 +247,11 @@ impl StudioColor {
 
     pub(super) fn value(&self) -> Option<u32> {
         self.value
+    }
+
+    #[cfg(test)]
+    pub(super) fn screen_color_capture(&self) -> Entity<ScreenColorCapture> {
+        self.screen_color.clone()
     }
 
     pub(super) fn new_dropdown(
@@ -254,6 +273,7 @@ impl StudioColor {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.cancel_screen_color(cx);
         self.dragging = false;
         self.brightness_pointer = false;
         self.dirty = false;
@@ -261,6 +281,39 @@ impl StudioColor {
         self.receive_color(value, window, cx);
         self.write_fields(None, window, cx);
         cx.notify();
+    }
+
+    pub(super) fn cancel_screen_color(&mut self, cx: &mut Context<Self>) {
+        self.screen_color.update(cx, |capture, _| capture.cancel());
+    }
+
+    fn start_screen_color(&mut self, cx: &mut Context<Self>) {
+        if self.enabled {
+            self.screen_color
+                .update(cx, |capture, cx| capture.start(cx));
+        }
+    }
+
+    fn receive_screen_color(
+        &mut self,
+        update: ScreenColorUpdateKind,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match update {
+            ScreenColorUpdateKind::Color(value) => {
+                self.receive_color(Some(value), window, cx);
+                self.write_fields(None, window, cx);
+                self.dirty = true;
+                cx.notify();
+            }
+            ScreenColorUpdateKind::Done => {
+                // Current useY calls onAfterChange with WRef.current even if
+                // no new color arrived; it never calls onBeforeChange here.
+                self.dirty = true;
+                self.commit(cx);
+            }
+        }
     }
 
     pub(super) fn set_enabled(
@@ -408,6 +461,44 @@ impl StudioColor {
             cx.emit(StudioColorEvent::Changed(self.value));
         }
         cx.notify();
+    }
+
+    fn eyedropper(&self, cx: &mut Context<Self>) -> AnyElement {
+        let button = Button::new("studio-eyedropper")
+            .accessibility_label(super::label("TEXT_PICK_COLOR"))
+            .disabled(!self.enabled)
+            .size(surface::css(20.))
+            .text_color(Colors::text())
+            .when(self.enabled, |button| {
+                button
+                    .hover(|style| style.text_color(Colors::selected()))
+                    .active(|style| style.opacity(0.7))
+            })
+            .when(!self.enabled, |button| button.opacity(0.3))
+            .child(
+                svg()
+                    .path("synapse/chroma-studio-eyedropper-white.svg")
+                    .size_full(),
+            )
+            .on_click(cx.listener(|this, event, _, cx| {
+                if matches!(event, ClickEvent::Keyboard(_)) {
+                    this.start_screen_color(cx);
+                }
+            }))
+            .on_any_mouse_down(cx.listener(|this, _, _, cx| this.start_screen_color(cx)));
+        div()
+            .ml(surface::css(13.))
+            .child(
+                SourceTooltip::new(
+                    "studio-eyedropper-tip",
+                    super::label("TEXT_PICK_COLOR"),
+                    300.,
+                )
+                .kind(SourceTooltipKind::Studio)
+                .dismiss_on_press()
+                .trigger(move |_, _, _| button.into_any_element()),
+            )
+            .into_any_element()
     }
 
     fn plane(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -915,20 +1006,7 @@ impl Render for StudioColor {
                             .when(self.value.is_none(), |view| view.child(checkered())),
                     )
                     .child(self.brightness(cx))
-                    .child(
-                        Button::new("studio-eyedropper")
-                            .accessibility_label(super::label("TEXT_PICK_COLOR"))
-                            .disabled(true)
-                            .ml(surface::css(13.))
-                            .size(surface::css(20.))
-                            .opacity(if self.enabled { 0.3 } else { 1. })
-                            .child(
-                                svg()
-                                    .path("synapse/chroma-studio-eyedropper-white.svg")
-                                    .size_full()
-                                    .text_color(Colors::text()),
-                            ),
-                    ),
+                    .child(self.eyedropper(cx)),
             )
             .child(fields)
             .child(
@@ -938,5 +1016,61 @@ impl Render for StudioColor {
                     .bg(Palette::input_border()),
             )
             .child(presets)
+    }
+}
+
+#[cfg(test)]
+mod screen_color_tests {
+    use super::{StudioColor, StudioColorEvent};
+    use crate::features::screen_color::ScreenColorUpdateKind;
+    use gpui_kit::component::Root;
+    use gpui_kit::{AppContext as _, TestAppContext, px, size};
+    use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn screen_color_previews_do_not_commit_and_done_uses_the_latest_value(cx: &mut TestAppContext) {
+        cx.update(gpui_kit::init);
+        let mut color = None;
+        let handle = cx.open_window(size(px(300.), px(500.)), |window, cx| {
+            let editor = cx.new(|cx| StudioColor::new(Some(0x112233), window, cx));
+            color = Some(editor.clone());
+            Root::new(editor, window, cx)
+        });
+        let color = color.unwrap();
+        let changes = Rc::new(RefCell::new(Vec::new()));
+        let history = changes.clone();
+        let _subscription = cx.update(|cx| {
+            cx.subscribe(&color, move |_, event: &StudioColorEvent, _| {
+                let StudioColorEvent::Changed(value) = event;
+                history.borrow_mut().push(*value);
+            })
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            color.update(cx, |color, cx| {
+                color.receive_screen_color(ScreenColorUpdateKind::Color(0xabcdef), window, cx);
+                assert_eq!(color.value(), Some(0xabcdef));
+                assert_eq!(color.committed, Some(0x112233));
+                assert_eq!(color.fields[0].read(cx).value().as_ref(), "abcdef");
+            });
+        })
+        .unwrap();
+        assert!(changes.borrow().is_empty());
+        cx.update_window(handle.into(), |_, window, cx| {
+            color.update(cx, |color, cx| {
+                color.receive_screen_color(ScreenColorUpdateKind::Color(0x123456), window, cx);
+                color.receive_screen_color(ScreenColorUpdateKind::Done, window, cx);
+                assert_eq!(color.committed, Some(0x123456));
+            });
+        })
+        .unwrap();
+        assert_eq!(*changes.borrow(), [Some(0x123456)]);
+        cx.update_window(handle.into(), |_, window, cx| {
+            color.update(cx, |color, cx| {
+                color.set_value(Some(0x654321), window, cx);
+                color.receive_screen_color(ScreenColorUpdateKind::Done, window, cx);
+            });
+        })
+        .unwrap();
+        assert_eq!(*changes.borrow(), [Some(0x123456), Some(0x654321)]);
     }
 }

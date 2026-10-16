@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-c8bf65a13baaa4218f7c",
-  "source_sha256": "c8bf65a13baaa4218f7cec4e569ab2220ff0fc84ea9459a7f3e0e9539da31c4e",
+  "tag": "assets-3fe552bde612424a1c6e",
+  "source_sha256": "3fe552bde612424a1c6e974e2093da098b51580832884afc1013cdd36215ba76",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -2323,6 +2323,11 @@
           "sha256": "b876bc24b2a1e8260512e02292255d4eb50bd7727e7a6ef079771e920be82db2"
         },
         {
+          "path": "assets/synapse/products/1352/bc9ac130ca9cb459-fullscreen.svg",
+          "bytes": 622,
+          "sha256": "bc9ac130ca9cb459528cfa6111b290bbd0680e5041d8ce3bb2a446fb7a4eb2b3"
+        },
+        {
           "path": "assets/synapse/products/1352/cb5bd96f8c867173-audio-volume-external-sprite.svg",
           "bytes": 1135,
           "sha256": "2cc62a3a0e70b2fde232d1f68d8d424d9824fbc2af65cc12d2e3f99ac20a1173"
@@ -3987,9 +3992,19 @@
           "sha256": "123508360971111bc0fac9813711f6e44bdbb2a22ed41142cd7e5717a58a57b5"
         },
         {
+          "path": "assets/synapse/products/1392/282f3c4f97f6180e-audio-demo-close.svg",
+          "bytes": 2309,
+          "sha256": "282f3c4f97f6180ef3acae3115d58e366f30cb741d4c77065490d944f4818b13"
+        },
+        {
           "path": "assets/synapse/products/1392/73a868eeca3ce79f38451847e7e282c96b487daf7c7757265de180825cac8265.svg",
           "bytes": 1443,
           "sha256": "73a868eeca3ce79f38451847e7e282c96b487daf7c7757265de180825cac8265"
+        },
+        {
+          "path": "assets/synapse/products/1392/7ca7feaf57221001-audio-demo-drag.svg",
+          "bytes": 853,
+          "sha256": "7ca7feaf572210018a2c840515c4717862f019d4e9972ad3502813b8237a637e"
         },
         {
           "path": "assets/synapse/products/1392/8b3ecb59e0e752de-audio-demo-control-fullscreen.svg",
@@ -33513,6 +33528,11 @@
           "sha256": "af7e155050b33b396cf1df568a40b09ebb179f739c88e72a6c489e0b33d792ea"
         },
         {
+          "path": "assets/synapse/shared/cursors/d99b9c33f3257a5e-screen-color-picker.cur",
+          "bytes": 435430,
+          "sha256": "d99b9c33f3257a5eecdba55204ec93e30839c1702917b2e51889fdef018312f3"
+        },
+        {
           "path": "assets/synapse/shared/fonts/0fa0aefa2bf1e00b-RazerF5-Thin.ttf",
           "bytes": 70784,
           "sha256": "0fa0aefa2bf1e00b99a9e331f4caf2650b309dad1a4e54a49c481461d8d48e66"
@@ -41558,6 +41578,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "bf645f811bd14e5ab654eb64f835a79d6a69b2df"
+    "revision": "ce7ba4dd6cd039f9b1e955c9872ce83ac754867e"
   }
 }

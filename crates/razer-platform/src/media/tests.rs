@@ -40,6 +40,8 @@ struct SimulatedOutput {
     starts: u32,
     resets: u32,
     packets: Vec<Vec<u8>>,
+    volume: f32,
+    volume_failure: bool,
 }
 impl Output for SimulatedOutput {
     fn capacity(&self) -> u32 {
@@ -68,12 +70,59 @@ impl Output for SimulatedOutput {
         self.resets += 1;
         Ok(())
     }
+    fn set_volume(&mut self, volume: f32) -> anyhow::Result<()> {
+        ensure!(!self.volume_failure, "Simulated endpoint volume failure");
+        self.volume = volume;
+        Ok(())
+    }
+}
+
+#[test]
+fn prepared_media_waits_for_play_and_seek_while_paused_stays_paused() {
+    let clip = Arc::new(Clip::parse(resource(10, 2).into()).unwrap());
+    let mut playback = Playback::new(clip, false);
+    let mut output = SimulatedOutput::default();
+    playback.tick(&mut output).unwrap();
+    assert!(output.packets.is_empty());
+    assert!(!playback.status.is_playing());
+    playback
+        .command(
+            Command::Seek {
+                cursor: 6,
+                revision: 1,
+            },
+            &mut output,
+        )
+        .unwrap();
+    playback.tick(&mut output).unwrap();
+    assert_eq!(playback.status.cursor(), 6);
+    assert_eq!(playback.status.seek_revision(), 1);
+    assert!(output.packets.is_empty());
+    playback.command(Command::Play, &mut output).unwrap();
+    playback.tick(&mut output).unwrap();
+    assert!(output.started);
+    assert_eq!(output.packets.len(), 1);
+    playback.command(Command::Pause, &mut output).unwrap();
+    playback
+        .command(
+            Command::Seek {
+                cursor: 3,
+                revision: 2,
+            },
+            &mut output,
+        )
+        .unwrap();
+    playback.tick(&mut output).unwrap();
+    assert_eq!(playback.status.cursor(), 3);
+    assert_eq!(playback.status.seek_revision(), 2);
+    assert!(!output.started);
+    assert_eq!(output.packets.len(), 1);
 }
 
 #[test]
 fn media_clock_tracks_consumed_frames_and_preserves_pause_buffer() {
     let clip = Arc::new(Clip::parse(resource(10, 2).into()).unwrap());
-    let mut playback = Playback::new(clip);
+    let mut playback = Playback::new(clip, true);
     let mut output = SimulatedOutput::default();
     playback.tick(&mut output).unwrap();
     assert_eq!(playback.status.cursor(), 0);
@@ -98,12 +147,21 @@ fn media_clock_tracks_consumed_frames_and_preserves_pause_buffer() {
 fn media_seek_flushes_old_audio_and_end_waits_for_real_queue_drain() {
     let clip = Arc::new(Clip::parse(resource(10, 2).into()).unwrap());
     let expected = clip.pcm(8, 2).unwrap().to_vec();
-    let mut playback = Playback::new(clip);
+    let mut playback = Playback::new(clip, true);
     let mut output = SimulatedOutput::default();
     playback.tick(&mut output).unwrap();
-    playback.command(Command::Seek(8), &mut output).unwrap();
+    playback
+        .command(
+            Command::Seek {
+                cursor: 8,
+                revision: 1,
+            },
+            &mut output,
+        )
+        .unwrap();
     assert_eq!(output.queued, 0);
     assert_eq!(output.resets, 1);
+    assert_eq!(playback.status.seek_revision(), 1);
     playback.tick(&mut output).unwrap();
     assert_eq!(output.packets.last().unwrap(), &expected);
     assert!(!playback.status.is_ended());
@@ -124,12 +182,109 @@ fn media_seek_flushes_old_audio_and_end_waits_for_real_queue_drain() {
 #[test]
 fn media_rejects_invalid_endpoint_observation_and_out_of_range_seek() {
     let clip = Arc::new(Clip::parse(resource(10, 2).into()).unwrap());
-    let mut playback = Playback::new(clip);
+    let mut playback = Playback::new(clip, true);
     let mut output = SimulatedOutput::default();
     output.queued = 1;
     assert!(playback.tick(&mut output).is_err());
-    assert!(playback.command(Command::Seek(11), &mut output).is_err());
+    assert!(
+        playback
+            .command(
+                Command::Seek {
+                    cursor: 11,
+                    revision: 1
+                },
+                &mut output
+            )
+            .is_err()
+    );
     assert_eq!(output.resets, 0);
+}
+
+#[test]
+fn volume_ack_and_rate_changes_preserve_the_consumed_cursor() {
+    let clip = Arc::new(Clip::parse(resource(20, 2).into()).unwrap());
+    let mut playback = Playback::new(clip, true);
+    let mut output = SimulatedOutput::default();
+    playback.tick(&mut output).unwrap();
+    output.queued = 1;
+    playback
+        .command(Command::Volume(0.35), &mut output)
+        .unwrap();
+    assert_eq!(output.volume, 0.35);
+    assert_eq!(playback.status.volume(), 0.35);
+    output.volume_failure = true;
+    assert!(playback.command(Command::Volume(0.1), &mut output).is_err());
+    assert_eq!(playback.status.volume(), 0.35);
+    for invalid in [f32::NAN, f32::INFINITY, -0.1, 1.1] {
+        assert!(
+            playback
+                .command(Command::Volume(invalid), &mut output)
+                .is_err()
+        );
+    }
+    playback
+        .command(Command::Rate(PlaybackRate::Double), &mut output)
+        .unwrap();
+    assert_eq!(playback.status.cursor(), 3);
+    assert_eq!(playback.status.playback_rate(), PlaybackRate::Double);
+    assert_eq!(output.queued, 0);
+    playback.tick(&mut output).unwrap();
+    output.queued = 2;
+    playback.tick(&mut output).unwrap();
+    assert_eq!(playback.status.cursor(), 7);
+    playback.command(Command::Pause, &mut output).unwrap();
+    playback
+        .command(Command::Rate(PlaybackRate::Half), &mut output)
+        .unwrap();
+    assert_eq!(playback.status.cursor(), 7);
+    playback.tick(&mut output).unwrap();
+    assert!(!playback.status.is_playing());
+}
+
+#[test]
+fn tempo_preserves_pitch_multichannel_phase_and_rate_duration() {
+    let samples = 8000;
+    let mut bytes = resource(samples, 2);
+    let pcm_offset = 120;
+    for frame in 0..samples as usize {
+        let value = ((frame as f64 * 2. * std::f64::consts::PI * 440. / 8000.).sin() * 12000.)
+            .round() as i16;
+        let at = pcm_offset + frame * 4;
+        bytes[at..at + 2].copy_from_slice(&value.to_le_bytes());
+        bytes[at + 2..at + 4].copy_from_slice(&(-value).to_le_bytes());
+    }
+    let clip = Arc::new(Clip::parse(bytes.into()).unwrap());
+    for rate in [
+        PlaybackRate::Quarter,
+        PlaybackRate::Half,
+        PlaybackRate::Normal,
+        PlaybackRate::FiveQuarters,
+        PlaybackRate::ThreeHalves,
+        PlaybackRate::Double,
+    ] {
+        let mut tempo = tempo::Tempo::new(clip.clone(), 0, rate);
+        let mut result = Vec::new();
+        while tempo.remaining() > 0 {
+            result.extend(tempo.read(127));
+        }
+        assert_eq!(result.len(), rate.output_frames(samples) as usize * 4);
+        let frames = result
+            .chunks_exact(4)
+            .map(|frame| {
+                let a = i16::from_le_bytes([frame[0], frame[1]]);
+                let b = i16::from_le_bytes([frame[2], frame[3]]);
+                assert_eq!(i32::from(a), -i32::from(b));
+                a
+            })
+            .collect::<Vec<_>>();
+        let region = &frames[800..frames.len() - 800];
+        let crossings = region.windows(2).filter(|w| w[0] <= 0 && w[1] > 0).count();
+        let frequency = crossings as f64 * 8000. / region.len() as f64;
+        assert!(
+            (frequency - 440.).abs() < 12.,
+            "{rate:?}: shifted pitch to {frequency}"
+        );
+    }
 }
 
 #[test]

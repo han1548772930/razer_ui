@@ -41,6 +41,8 @@ pub mod macro_inputs;
 pub mod macro_library;
 #[path = "module_service.rs"]
 pub mod module_service;
+#[path = "lighting/screen_color.rs"]
+mod screen_color;
 #[path = "mouse/dpi/sensitivity.rs"]
 mod sensitivity;
 pub use razer_model::settings;

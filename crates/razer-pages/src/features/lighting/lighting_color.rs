@@ -1,5 +1,6 @@
 //! Source 653 `JM` / 777 `Ah` palette and their `BM` / `Oh` custom picker.
 //! The palette is shared product data; a custom-color editor owns an uncommitted draft.
+use super::screen_color::{ScreenColorCapture, ScreenColorUpdate, ScreenColorUpdateKind};
 use gpui_kit::base::{
     Button as BaseButton, ColorPicker as ColorPickerRoot, Popover, Slider as BaseSlider,
     SliderIndicator, SliderThumb, SliderTrack,
@@ -71,6 +72,7 @@ impl LightingColorPicker {
 
 struct LightingColorView {
     props: LightingColorPicker,
+    editor_only: bool,
     trigger_bounds: Rc<Cell<Bounds<Pixels>>>,
     plane_bounds: Rc<Cell<Bounds<Pixels>>>,
     upward: bool,
@@ -88,7 +90,59 @@ struct LightingColorView {
     plane_focus: FocusHandle,
     brightness_focus: FocusHandle,
     editor_focus: FocusHandle,
+    screen_color: Entity<ScreenColorCapture>,
     _subscriptions: Vec<Subscription>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum CustomColorEditorEvent {
+    Saved([u8; 3]),
+    Canceled,
+}
+impl EventEmitter<CustomColorEditorEvent> for LightingColorView {}
+
+/// Current VC/YC add-only editor. Its colors belong to its caller's list;
+/// editing or saving never changes the shared product palette.
+pub(crate) struct CustomColorEditor {
+    view: Entity<LightingColorView>,
+    _subscription: Subscription,
+}
+impl EventEmitter<CustomColorEditorEvent> for CustomColorEditor {}
+impl CustomColorEditor {
+    pub(crate) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let state = cx.new(|cx| ColorPickerState::new(window, cx));
+        let view = cx.new(|cx| {
+            let mut view = LightingColorView::new(&state, "COLOR".into(), window, cx);
+            view.editor_only = true;
+            view
+        });
+        let subscription = cx.subscribe(&view, |_, _, event: &CustomColorEditorEvent, cx| {
+            cx.emit(*event);
+        });
+        Self {
+            view,
+            _subscription: subscription,
+        }
+    }
+    pub(crate) fn begin(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.view
+            .update(cx, |view, cx| view.open_editor(0, window, cx));
+    }
+    pub(crate) fn cancel(&mut self, cx: &mut Context<Self>) {
+        self.view.update(cx, |view, cx| {
+            view.cancel_screen_color(cx);
+            view.editing = None;
+            cx.notify();
+        });
+    }
+    pub(crate) fn focus_handle(&self, cx: &App) -> FocusHandle {
+        self.view.read(cx).plane_focus.clone()
+    }
+}
+impl Render for CustomColorEditor {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        self.view.clone()
+    }
 }
 
 impl RenderOnce for LightingColorPicker {
@@ -97,106 +151,138 @@ impl RenderOnce for LightingColorPicker {
         let label = self.label.clone();
         let view =
             window.use_keyed_state(("lighting-color", state.entity_id()), cx, |window, cx| {
-                CustomColors::ensure(cx);
-                let fields = std::array::from_fn(|index| {
-                    cx.new(|cx| {
-                        InputState::new(window, cx).validate(move |text, _| {
-                            text.len() <= if index == 0 { 6 } else { 3 }
-                                && text.bytes().all(|b| {
-                                    if index == 0 {
-                                        b.is_ascii_hexdigit()
-                                    } else {
-                                        b.is_ascii_digit()
-                                    }
-                                })
-                        })
-                    })
-                });
-                let brightness = cx.new(|_| {
-                    SliderState::new()
-                        .min(0.)
-                        .max(1.)
-                        .step(0.001)
-                        .default_value(1.)
-                });
-                let mut subscriptions = vec![
-                    cx.observe(&state, |this: &mut LightingColorView, state, cx| {
-                        let value = state.read(cx).value().map(color_bytes);
-                        if value != this.last_value {
-                            this.selected_slot = None;
-                            this.last_value = value;
-                        }
-                        if !state.read(cx).is_open() {
-                            this.editing = None;
-                            this.context_slot = None;
-                        }
-                        cx.notify();
-                    }),
-                    cx.observe_global::<CustomColors>(|this, cx| {
-                        let colors = cx.global::<CustomColors>().colors();
-                        if this
-                            .selected_slot
-                            .is_some_and(|slot| colors[slot] != this.last_value)
-                        {
-                            this.selected_slot = colors
-                                .iter()
-                                .position(|color| color.is_some() && *color == this.last_value);
-                        }
-                        cx.notify();
-                    }),
-                    cx.subscribe_in(
-                        &brightness,
-                        window,
-                        |this: &mut LightingColorView, slider, _: &SliderEvent, window, cx| {
-                            this.value = slider.read(cx).value().start();
-                            this.update_from_hsv(window, cx);
-                        },
-                    ),
-                ];
-                for (index, field) in fields.iter().enumerate() {
-                    subscriptions.push(cx.subscribe_in(
-                        field,
-                        window,
-                        move |this: &mut LightingColorView, field, event, window, cx| match event {
-                            InputEvent::Change => {
-                                let text = field.read(cx).value().to_string();
-                                if text != this.written_fields[index] && this.editing.is_some() {
-                                    this.change_field(index, &text, window, cx);
-                                }
-                            }
-                            InputEvent::Blur => this.write_fields(None, window, cx),
-                            InputEvent::PressEnter { .. } => {
-                                this.write_fields(None, window, cx);
-                                this.editor_focus.focus(window, cx);
-                            }
-                            _ => {}
-                        },
-                    ));
-                }
-                LightingColorView {
-                    props: LightingColorPicker::new(&state, label),
-                    trigger_bounds: Rc::new(Cell::new(Bounds::default())),
-                    plane_bounds: Rc::new(Cell::new(Bounds::default())),
-                    upward: false,
-                    editing: None,
-                    selected_slot: None,
-                    last_value: state.read(cx).value().map(color_bytes),
-                    context_slot: None,
-                    draft: [68, 214, 44],
-                    hue: 0.,
-                    saturation: 1.,
-                    value: 1.,
-                    fields,
-                    written_fields: std::array::from_fn(|_| String::new()),
-                    brightness,
-                    plane_focus: cx.focus_handle(),
-                    brightness_focus: cx.focus_handle(),
-                    editor_focus: cx.focus_handle(),
-                    _subscriptions: subscriptions,
-                }
+                LightingColorView::new(&state, label, window, cx)
             });
-        view.update(cx, |view, _| view.props = self);
+        view.update(cx, |view, cx| {
+            if self.disabled && !view.props.disabled {
+                view.cancel_screen_color(cx);
+            }
+            view.props = self;
+        });
         view
+    }
+}
+
+impl LightingColorView {
+    fn new(
+        state: &Entity<ColorPickerState>,
+        label: SharedString,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        CustomColors::ensure(cx);
+        let fields = std::array::from_fn(|index| {
+            cx.new(|cx| {
+                InputState::new(window, cx).validate(move |text, _| {
+                    text.len() <= if index == 0 { 6 } else { 3 }
+                        && text.bytes().all(|b| {
+                            if index == 0 {
+                                b.is_ascii_hexdigit()
+                            } else {
+                                b.is_ascii_digit()
+                            }
+                        })
+                })
+            })
+        });
+        let brightness = cx.new(|_| {
+            SliderState::new()
+                .min(0.)
+                .max(1.)
+                .step(0.001)
+                .default_value(1.)
+        });
+        let screen_color = cx.new(|cx| ScreenColorCapture::new(window, cx));
+        let mut subscriptions = vec![
+            cx.observe(&state, |this: &mut LightingColorView, state, cx| {
+                let value = state.read(cx).value().map(color_bytes);
+                if value != this.last_value {
+                    this.selected_slot = None;
+                    this.last_value = value;
+                }
+                if !state.read(cx).is_open() {
+                    this.cancel_screen_color(cx);
+                    this.editing = None;
+                    this.context_slot = None;
+                }
+                cx.notify();
+            }),
+            cx.subscribe_in(
+                &screen_color,
+                window,
+                |this: &mut LightingColorView, capture, update: &ScreenColorUpdate, window, cx| {
+                    if !this.props.disabled
+                        && this.editing.is_some()
+                        && capture.read(cx).is_current(update)
+                    {
+                        this.receive_screen_color(update.kind, window, cx);
+                    }
+                },
+            ),
+            cx.observe_global::<CustomColors>(|this, cx| {
+                let colors = cx.global::<CustomColors>().colors();
+                if this
+                    .selected_slot
+                    .is_some_and(|slot| colors[slot] != this.last_value)
+                {
+                    this.selected_slot = colors
+                        .iter()
+                        .position(|color| color.is_some() && *color == this.last_value);
+                }
+                cx.notify();
+            }),
+            cx.subscribe_in(
+                &brightness,
+                window,
+                |this: &mut LightingColorView, slider, _: &SliderEvent, window, cx| {
+                    this.value = slider.read(cx).value().start();
+                    this.update_from_hsv(window, cx);
+                },
+            ),
+        ];
+        for (index, field) in fields.iter().enumerate() {
+            subscriptions.push(cx.subscribe_in(
+                field,
+                window,
+                move |this: &mut LightingColorView, field, event, window, cx| match event {
+                    InputEvent::Change => {
+                        let text = field.read(cx).value().to_string();
+                        if text != this.written_fields[index] && this.editing.is_some() {
+                            this.change_field(index, &text, window, cx);
+                        }
+                    }
+                    InputEvent::Blur => this.write_fields(None, window, cx),
+                    InputEvent::PressEnter { .. } => {
+                        this.write_fields(None, window, cx);
+                        this.editor_focus.focus(window, cx);
+                    }
+                    _ => {}
+                },
+            ));
+        }
+        LightingColorView {
+            props: LightingColorPicker::new(&state, label),
+            editor_only: false,
+            trigger_bounds: Rc::new(Cell::new(Bounds::default())),
+            plane_bounds: Rc::new(Cell::new(Bounds::default())),
+            upward: false,
+            editing: None,
+            selected_slot: None,
+            last_value: state.read(cx).value().map(color_bytes),
+            context_slot: None,
+            draft: [68, 214, 44],
+            hue: 0.,
+            saturation: 1.,
+            value: 1.,
+            fields,
+            written_fields: std::array::from_fn(|_| String::new()),
+            brightness,
+            plane_focus: cx.focus_handle(),
+            brightness_focus: cx.focus_handle(),
+            editor_focus: cx.focus_handle(),
+            screen_color,
+            _subscriptions: subscriptions,
+        }
     }
 }
 
@@ -212,6 +298,32 @@ fn hex_value(color: [u8; 3]) -> String {
 }
 
 impl LightingColorView {
+    fn receive_screen_color(
+        &mut self,
+        update: ScreenColorUpdateKind,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let ScreenColorUpdateKind::Color(color) = update {
+            self.draft = [(color >> 16) as u8, (color >> 8) as u8, color as u8];
+            self.read_hsv(window, cx);
+            self.write_fields(None, window, cx);
+            cx.notify();
+        }
+        // Current BM/Oh logs Done; Save is a separate action.
+    }
+
+    fn cancel_screen_color(&mut self, cx: &mut Context<Self>) {
+        self.screen_color.update(cx, |capture, _| capture.cancel());
+    }
+
+    fn start_screen_color(&mut self, cx: &mut Context<Self>) {
+        if !self.props.disabled && self.editing.is_some() {
+            self.screen_color
+                .update(cx, |capture, cx| capture.start(cx));
+        }
+    }
+
     fn set_open(&mut self, open: bool, window: &mut Window, cx: &mut Context<Self>) {
         if open && !self.props.disabled {
             let scale = window.rem_size() / px(16.);
@@ -219,6 +331,7 @@ impl LightingColorView {
             self.upward = self.trigger_bounds.get().bottom() + px(252. * scale)
                 >= window.viewport_size().height;
         } else {
+            self.cancel_screen_color(cx);
             self.editing = None;
             self.context_slot = None;
         }
@@ -234,6 +347,7 @@ impl LightingColorView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.cancel_screen_color(cx);
         self.last_value = color;
         self.selected_slot = slot;
         self.context_slot = None;
@@ -250,29 +364,50 @@ impl LightingColorView {
         cx.notify();
     }
     fn open_editor(&mut self, requested: usize, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_screen_color(cx);
         let slots = cx.global::<CustomColors>().colors();
-        let slot = slots
-            .iter()
-            .position(Option::is_none)
-            .filter(|first| *first < requested)
-            .unwrap_or(requested);
+        let slot = if self.editor_only {
+            0
+        } else {
+            slots
+                .iter()
+                .position(Option::is_none)
+                .filter(|first| *first < requested)
+                .unwrap_or(requested)
+        };
         self.editing = Some(slot);
         self.context_slot = None;
-        self.draft = slots[slot].unwrap_or([68, 214, 44]);
+        self.draft = if self.editor_only {
+            [68, 214, 44]
+        } else {
+            slots[slot].unwrap_or([68, 214, 44])
+        };
         self.read_hsv(window, cx);
         self.write_fields(None, window, cx);
         self.plane_focus.focus(window, cx);
         cx.notify();
     }
     fn cancel_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_screen_color(cx);
         self.editing = None;
+        if self.editor_only {
+            cx.emit(CustomColorEditorEvent::Canceled);
+            cx.notify();
+            return;
+        }
         self.props.state.read(cx).focus_handle(cx).focus(window, cx);
         cx.notify();
     }
     fn save_editor(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.cancel_screen_color(cx);
         let Some(slot) = self.editing.take() else {
             return;
         };
+        if self.editor_only {
+            cx.emit(CustomColorEditorEvent::Saved(self.draft));
+            cx.notify();
+            return;
+        }
         let mut colors = cx.global::<CustomColors>().colors();
         colors[slot] = Some(self.draft);
         CustomColors::replace(colors, cx);
@@ -863,13 +998,13 @@ impl LightingColorView {
                     .child(
                         Button::new("screen-color")
                             .accessibility_label("从屏幕选取颜色")
-                            .tooltip("尚未连接系统拾色服务")
-                            .disabled(true)
+                            .disabled(self.props.disabled)
                             .ghost()
                             .p_0()
                             .size(surface::css(24.))
                             .ml(surface::css(12.))
-                            .child(img("synapse/color-picker.svg").size(surface::css(16.))),
+                            .child(img("synapse/color-picker.svg").size(surface::css(16.)))
+                            .on_click(cx.listener(|this, _, _, cx| this.start_screen_color(cx))),
                     ),
             )
             .child(
@@ -958,7 +1093,10 @@ impl LightingColorView {
 }
 
 impl Render for LightingColorView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        if self.editor_only {
+            return self.render_editor(cx);
+        }
         let palette = PaletteColors;
         let state = self.props.state.clone();
         let current = state.read(cx).value();
@@ -1108,5 +1246,89 @@ impl Render for LightingColorView {
                         })
                     }),
             )
+            .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod screen_color_tests {
+    use super::{LightingColorView, ScreenColorUpdate, ScreenColorUpdateKind};
+    use gpui_kit::component::{Root, color_picker::ColorPickerState};
+    use gpui_kit::{AppContext as _, Context, TestAppContext, px, size};
+    use razer_state::CustomColors;
+    use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn sampled_product_color_stays_a_draft_until_save_and_canceled_editor_rejects_events(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(gpui_kit::init);
+        let commits = Rc::new(RefCell::new(Vec::new()));
+        let mut retained = None;
+        let handle = cx.open_window(size(px(350.), px(600.)), |window, cx| {
+            let state = cx.new(|cx| ColorPickerState::new(window, cx));
+            state.update(cx, |state, cx| state.set_open(true, cx));
+            let view = cx.new(|cx| LightingColorView::new(&state, "Color".into(), window, cx));
+            view.update(cx, |view, cx| {
+                let commits = commits.clone();
+                view.props = super::LightingColorPicker::new(&state, "Color")
+                    .on_custom_colors_commit(move |colors, _, _| {
+                        commits.borrow_mut().push(*colors)
+                    });
+                view.open_editor(0, window, cx);
+            });
+            retained = Some((view.clone(), state));
+            Root::new(view, window, cx)
+        });
+        let (view, state) = retained.unwrap();
+        cx.update(|cx| {
+            let capture = view.read(cx).screen_color.clone();
+            capture.update(cx, |capture, cx| {
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Color(0x123456),
+                ));
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Done,
+                ));
+            });
+        });
+        cx.update(|cx| {
+            assert_eq!(view.read(cx).draft, [0x12, 0x34, 0x56]);
+            assert!(state.read(cx).value().is_none());
+            assert!(cx.global::<CustomColors>().colors()[0].is_none());
+            assert!(commits.borrow().is_empty());
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            view.update(cx, |view, cx| view.save_editor(window, cx));
+        })
+        .unwrap();
+        cx.update(|cx| {
+            assert_eq!(commits.borrow().len(), 1);
+            assert_eq!(
+                cx.global::<CustomColors>().colors()[0],
+                Some([0x12, 0x34, 0x56])
+            );
+            assert!(state.read(cx).value().is_some());
+        });
+        let mut stale = None;
+        cx.update_window(handle.into(), |_, window, cx| {
+            view.update(cx, |view, cx: &mut Context<LightingColorView>| {
+                view.open_editor(1, window, cx);
+                stale = Some(ScreenColorUpdate::simulated(
+                    view.screen_color.read(cx),
+                    ScreenColorUpdateKind::Color(0xff0000),
+                ));
+                view.cancel_editor(window, cx);
+                view.open_editor(1, window, cx);
+            });
+        })
+        .unwrap();
+        cx.update(|cx| {
+            let capture = view.read(cx).screen_color.clone();
+            capture.update(cx, |_, cx| cx.emit(stale.take().unwrap()));
+        });
+        cx.update(|cx| assert_eq!(view.read(cx).draft, [68, 214, 44]));
     }
 }

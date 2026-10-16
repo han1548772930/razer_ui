@@ -18,6 +18,7 @@ import urllib.parse
 
 import analysis as a
 import asset_release as resource_sources
+import resource_database
 
 FAMILY_CANDIDATES = {
     "mouse": "MOUSE_PRODUCTS_DATA",
@@ -55,6 +56,8 @@ def candidates(path):
     return ids
 
 
+
+
 def family_candidate_scope(family):
     """Union every registered product locator with the existing family locators.
 
@@ -64,12 +67,12 @@ def family_candidate_scope(family):
     scopes = {name: set(candidates(a.builtin_data_path("razer-pages", source)))
               for name, source in FAMILY_CANDIDATES.items()}
     existing = set().union(*scopes.values())
-    registry = a.ROOT / "crates/razer-catalog/src/registry_data.rs"
-    text = registry.read_text(encoding="utf-8")
+    registry = a.ROOT / resource_database.PRODUCT_REGISTRY
+    registry_inputs = [identity(registry)]
     registered = {}
-    for match in re.finditer(r'RegisteredProduct \{ id: (\d+),[^\n]*?categories: &\[(.*?)\]', text):
-        pid = int(match[1])
-        categories = re.findall(r'"([^"\\]+)"', match[2])
+    for product in resource_database.product_registry():
+        pid = product["id"]
+        categories = product["categories"]
         registered[pid] = categories
         if pid in existing:
             continue
@@ -99,6 +102,7 @@ def family_candidate_scope(family):
         retained_endpoints[owner] = sorted(retained)
     return sorted(scopes[family]), {
         "registry_locator": identity(registry), "registered_products": len(registered),
+        "registry_source_inputs": registry_inputs,
         "family_locator_union": len(existing), "expanded_union": len(set().union(*scopes.values())),
         "products_added_from_registry": sorted(set(registered) - existing),
         "retained_endpoint_locators": retained_endpoints[family],
@@ -827,7 +831,7 @@ class SharedArtifacts:
         return acquired
 
 
-def acquire_product(row, shared, retry_transient=False, index_artifacts=None):
+def acquire_product(row, shared, retry_transient=False, index_artifacts=None, retry_declared_missing=False):
     index_artifacts = index_artifacts or a.index_files
     print(json.dumps({"acquiring": row["input"], "repair": retry_transient}), flush=True)
     output = a.ROOT / row["input"]
@@ -844,10 +848,13 @@ def acquire_product(row, shared, retry_transient=False, index_artifacts=None):
             # crawling the retained old hashes and fails the same final audit.
             stale_urls = {item["url"] for item in previous.get("stability", [])
                           if not item.get("unchanged")}
+            declared_urls = {previous["entry_url"], *(edge["to"] for edge in previous.get("edges", []))}
             for index, item in enumerate(previous["files"]):
                 damaged = "path" in item and not valid(item)
                 stale_deployment = item["url"] in stale_urls
-                if damaged or stale_deployment or ("error" in item and "HTTP Error 404" not in item["error"]):
+                declared_missing = (retry_declared_missing and "error" in item and item["url"] in declared_urls
+                                    and not urllib.parse.urlsplit(item["url"]).path.endswith(".map"))
+                if damaged or stale_deployment or declared_missing or ("error" in item and "HTTP Error 404" not in item["error"]):
                     unverified_retained = "path" not in item and a.raw_path(output, item["url"]).is_file()
                     replacement = (shared.reacquire if damaged or stale_deployment or unverified_retained
                                    else shared.download)(item["url"], output)
@@ -859,6 +866,8 @@ def acquire_product(row, shared, retry_transient=False, index_artifacts=None):
                         replacement["repair_reason"] = "Deployment identity changed or stability recheck failed"
                     elif unverified_retained:
                         replacement["repair_reason"] = "Retained URL bytes have no verified acquisition identity"
+                    elif declared_missing:
+                        replacement["repair_reason"] = "Explicit retry of a source-declared non-map missing resource"
                     previous["files"][index] = replacement
             # Old stability describes the old acquisition. A failed resumed
             # crawl must not inherit its completion claim.
@@ -1142,6 +1151,10 @@ def _run(args, shared=None):
                 if (result.get("reference_parser_version") != a.FRONTEND_REFERENCE_VERSION
                     or not result.get("source_current_during_acquisition")
                     or damaged
+                    or (getattr(args, "retry_declared_missing", False) and any(
+                        "error" in item and not urllib.parse.urlsplit(item["url"]).path.endswith(".map")
+                        and item["url"] in {result.get("entry_url"), *(edge["to"] for edge in result.get("edges", []))}
+                        for item in result.get("files", [])))
                     or any("error" in item and "HTTP Error 404" not in item["error"] for item in result.get("files", []))):
                     pending.append(row)
         print(json.dumps({"family": args.family, "layer": args.layer,
@@ -1153,7 +1166,8 @@ def _run(args, shared=None):
                 indexed.extend(rows)
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(args.workers, 3)) as pool:
             futures = {pool.submit(bounded_call, ACQUISITION_SLOTS, acquire_product,
-                                   row, shared, args.stage == "repair", collect_index): row for row in pending}
+                                   row, shared, args.stage == "repair", collect_index,
+                                   getattr(args, "retry_declared_missing", False)): row for row in pending}
             for future in concurrent.futures.as_completed(futures):
                 row = futures[future]
                 try:
@@ -6355,9 +6369,13 @@ def audit_audio_demo(args):
     if media["original"]["url"] != media_url or not valid(media["original"]):
         raise ValueError("The current shared audible original differs")
     prepared_path = a.ROOT / ".analysis/results/frontend/audio-MapAudio-audit.json"
-    prepared = json.loads(prepared_path.read_bytes())["leviathan"]["products"][0]["local_demo_preparation"]
-    if prepared["original"]["sha256"] != media["original"]["sha256"] or not valid(prepared["prepared"]):
-        raise ValueError("Prepared audible media differs from the current original receipt")
+    prepared_report = json.loads(prepared_path.read_bytes()) if prepared_path.is_file() else {}
+    prepared_products = prepared_report.get("leviathan", {}).get("products", [])
+    prepared = prepared_products[0].get("local_demo_preparation") if prepared_products else None
+    preparation_ready = (prepared is not None and prepared["original"]["sha256"] == media["original"]["sha256"]
+                         and valid(prepared["prepared"]))
+    if preparation_ready:
+        index_media_preparation("audible_demo", prepared, [prepared["prepared"]])
     rows, descriptors = [], []
     for pid in args.product or [1352, 1392, 1442, 3942]:
         if pid not in {1352, 1392, 1442, 3942}:
@@ -6370,13 +6388,18 @@ def audit_audio_demo(args):
         if acquired.get("source_current_during_acquisition") is not True or deployment["failures"]:
             raise ValueError("Current demo deployment is unverified: " + str(pid))
         capture_inputs = {item["path"]: item for item in captured["original_inputs"]}
+        reachable = {acquired["entry_url"], urllib.parse.urljoin(acquired["entry_url"], "asset-manifest.json")}
+        while True:
+            next_urls = reachable | {edge["to"] for edge in acquired.get("edges", []) if edge["from"] in reachable}
+            if next_urls == reachable: break
+            reachable = next_urls
         row = {"product_id": pid, "acquisition": identity(acquisition_path), "capture": identity(capture_path),
                "original_inputs": [], "complete_owners": [], "styles": [], "failures": [],
                "closure_unresolved": acquired.get("unresolved", []), "target_execution": False,
                "runtime_acceptance": "unverified"}
         seen, rules = set(), set()
         for original in acquired["files"]:
-            if not original.get("path"): continue
+            if not original.get("path") or original["url"] not in reachable: continue
             if not valid(original): raise ValueError("Current demo original differs: " + original["path"])
             row["original_inputs"].append(original)
             raw = (a.ROOT / original["path"]).read_bytes()
@@ -6384,7 +6407,12 @@ def audit_audio_demo(args):
                 if capture_inputs.get(original["path"], {}).get("sha256") != original["sha256"]:
                     raise ValueError("Current demo capture differs: " + original["path"])
                 anchors = [b'"/synapse/assets/videos/audio_mode.mov"', b'custom-fullscreen-toggle',
-                           b'demoFloatingVideoEnabled', b'video-react-play-control', b'video-react-fullscreen-control']
+                           b'demoFloatingVideoEnabled', b'video-react-play-control', b'video-react-fullscreen-control',
+                           b'dragAndDropWrapper', b'className:"am-selector"', b'defaultShortcuts',
+                           b'key:"canBeClicked",value:', b'key:"handleFullscreenChange",value:',
+                           b'FULLSCREEN_CHANGE:return', b'key:"toggleFullscreen",value:', b'fullscreenchange',
+                           b'demo-play-wrapper', b'key:"getActions",value:', b'key:"dispatch",value:',
+                           b'dG=e=>', b'rm=e=>', b'Ln=e=>']
                 if not any(anchor in raw for anchor in anchors): continue
                 tree = parser.parse(raw)
                 for anchor in anchors:
@@ -6416,7 +6444,9 @@ def audit_audio_demo(args):
                             "anchor": anchor.decode(), "body": body.decode("utf-8")})
             elif original["path"].endswith(".css"):
                 for anchor in [b'.demo-body', b'.demo-preview', b'.custom-video-react', b'.custom-control-bar',
-                               b'.video-react', b'.floating-video', b'.fullscreen-selector']:
+                               b'.video-react', b'.floating-video', b'.fullscreen-selector',
+                               b'.custom-play-toggle', b'.custom-fullscreen-toggle', b'.custom-progress-bar',
+                               b'dragAndDrop', b'.repositionText', b'.am-selector']:
                     start = 0
                     while (offset := raw.find(anchor, start)) >= 0:
                         start = offset + len(anchor)
@@ -6431,7 +6461,8 @@ def audit_audio_demo(args):
                             "body_sha256": hashlib.sha256(body).hexdigest(), "body": body.decode("utf-8")})
         callers = [owner for owner in row["complete_owners"] if '"/synapse/assets/videos/audio_mode.mov"' in owner["body"]]
         if not callers or not row["styles"]: raise ValueError("Mounted audible player is unresolved: " + str(pid))
-        row["media"] = {"acquisition": identity(receipt), "original": media["original"], "prepared": prepared}
+        row["media"] = {"acquisition": identity(receipt), "original": media["original"],
+                        "prepared": prepared, "preparation_verified": preparation_ready}
         row["semantics"] = {"loop": pid != 1352, "custom_controls": pid != 1352,
                             "system_default_render_endpoint": True, "muted": False,
                             "profile_owned": False, "floating": pid != 1352}
@@ -6445,7 +6476,16 @@ def audit_audio_demo(args):
             raise ValueError("Demo inputs changed during the static query")
     result = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
         "static_parser": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
-        "products": rows, "runtime_acceptance": "unverified"}
+        "products": rows, "media_preparation_verified": preparation_ready, "runtime_acceptance": "unverified"}
+    independent_preparation = a.ROOT / ".analysis/inputs/prepared-media/preparation.json"
+    if independent_preparation.is_file():
+        controls = json.loads(independent_preparation.read_bytes()).get("preparations", {}).get("video_controls")
+        if controls is not None:
+            originals = {original["path"]: original for row in rows for original in row["original_inputs"]}
+            if (all(valid(item["prepared"]) for item in controls["glyphs"])
+                    and all(item["original"] == originals.get(item["original"]["path"])
+                            for item in controls["sources"])):
+                result["prepared_controls"] = controls
     a.save(a.ROOT / ".analysis/results/frontend/audio-demo-audit.json", result)
     if getattr(args, "prepare", False):
         if {row["product_id"] for row in descriptors} != {1392,1442,3942}:
@@ -6455,7 +6495,8 @@ def audit_audio_demo(args):
         a.save(a.ROOT / ".analysis/results/frontend/audio-demo-audit.json", result)
     print(json.dumps({"receipt": ".analysis/results/frontend/audio-demo-audit.json",
         "products": [row["product_id"] for row in rows], "owners": sum(len(row["complete_owners"]) for row in rows),
-        "failures": [failure for row in rows for failure in row["failures"]]}), flush=True)
+        "failures": [failure for row in rows for failure in row["failures"]],
+        "media_preparation_verified": preparation_ready}), flush=True)
 
 
 def prepare_audio_demo_icons(rows):
@@ -6501,17 +6542,38 @@ def prepare_audio_demo_icons(rows):
         glyph.draw(pen)
         svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {glyph.width} {units}">'
                f'<path fill="white" transform="translate(0 {ascent}) scale(1 -1)" d="{pen.getCommands()}"/></svg>').encode()
-        target = a.ROOT / f"assets/synapse/products/1392/audio-demo-control-{name}.svg"
+        target = a.ROOT / f".analysis/inputs/prepared-media/audio-demo-control-{name}.svg"
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(svg)
         key = f"synapse/audio-demo-control-{name}.svg"
-        entries.append({"key": key, "path": target.relative_to(a.ROOT).as_posix()})
-        generated.append({"key": key, "codepoint": code, "glyph": cmap[code], "prepared": identity(target)})
+        resource_path = f"assets/synapse/products/1392/audio-demo-control-{name}.svg"
+        entries.append({"key": key, "path": resource_path})
+        generated.append({"key": key, "codepoint": code, "glyph": cmap[code],
+                          "resource_path": resource_path, "prepared": identity(target)})
     mappings = resource_sources.load_resource_mappings(root=a.ROOT)
-    mappings["audio_demo_controls"] = entries
-    resource_sources.save_resource_mappings(mappings, root=a.ROOT)
-    return {"sources": [{key: value for key, value in item.items() if key != "font"} for item in fonts],
+    if mappings.get("audio_demo_controls") != entries:
+        mappings["audio_demo_controls"] = entries
+        resource_sources.save_resource_mappings(mappings, root=a.ROOT)
+    result = {"sources": [{key: value for key, value in item.items() if key != "font"} for item in fonts],
             "tool": {"fonttools": fontTools.__version__}, "glyphs": generated,
             "provider": identity(a.ROOT / resource_sources.MAPPINGS)}
+    index_media_preparation("video_controls", result, [item["prepared"] for item in generated])
+    return result
+
+
+def index_media_preparation(name, preparation, artifacts):
+    """Index derived resources independently of acquired official original bytes."""
+    if any(not valid(artifact) for artifact in artifacts):
+        raise ValueError("Prepared media artifact identity differs")
+    receipt = a.ROOT / ".analysis/inputs/prepared-media/preparation.json"
+    with a.index_lock(receipt.with_suffix(".lock")):
+        record = json.loads(receipt.read_bytes()) if receipt.is_file() else {"schema_version": 1, "preparations": {}}
+        record["preparations"][name] = preparation
+        record["tool"] = identity(Path(__file__))
+        record["recorded_at_utc"] = a.stamp()
+        a.save(receipt, record)
+    a.index_files([{**artifact, "kind": "prepared_frontend_resource", "preparation_receipt": a.rel(receipt)}
+                   for artifact in artifacts] + [{**identity(receipt), "kind": "media_preparation_receipt"}])
 
 
 
@@ -6529,7 +6591,7 @@ def prepare_audible_demo(original):
     import av
     if not valid(original): raise ValueError("Demo original identity differs before preparation")
     source = a.ROOT / original["path"]
-    destination = a.ROOT / "assets/synapse/products/1352/audio-mode.rzav"
+    destination = a.ROOT / ".analysis/inputs/prepared-media/audio-mode.rzav"
     raw = source.read_bytes()
     chan = raw.rfind(b"chan") - 4
     if chan < 0 or struct.unpack_from(">I", raw, chan)[0] != 184:
@@ -6584,13 +6646,15 @@ def prepare_audible_demo(original):
     finally:
         container.close()
         if pending.exists(): pending.unlink()
-    return {"original": original, "prepared": identity(destination),
+    result = {"original": original, "prepared": identity(destination),
             "tool": {"pyav": av.__version__, "libraries": {name: list(version) for name, version in av.library_versions.items()}},
             "video": {"width": video.width, "height": video.height, "frames": frames,
                       "fps": [fps.numerator, fps.denominator], "codec": "mjpeg", "qscale": 3},
             "audio": {"rate": rate, "channels": channels, "frames": samples, "bits": 16,
                       "pcm_sha256": pcm_sha.hexdigest(), "channel_mask": 0, "mov_channel_descriptions": descriptions},
             "target_execution": False, "runtime_acceptance": "unverified"}
+    index_media_preparation("audible_demo", result, [result["prepared"]])
+    return result
 
 
 def audit_audio_seiren_eq(args):
@@ -11079,24 +11143,238 @@ def inline_product_names(receipt_path, main):
     return {"declared_product_id": declared_pid, "product_translations": translations, "evidence": evidence}
 
 
-def audit_registry_identity(prepare=False):
-    registry = a.ROOT / "crates/razer-catalog/src/registry_data.rs"
-    text = registry.read_text(encoding="utf-8")
-    pattern = re.compile(r'RegisteredProduct \{ id: (\d+), name: ("[^"\n]*"), categories: &\[(.*?)\], edition_ids: &\[(.*?)\], navigations: &\[')
-    headers = {int(match[1]): match for match in pattern.finditer(text)}
+def missing_registry_navigation(pid, acquired, main):
+    """Recover explicit lazy roots and connection-specific navigation from originals."""
+    import importlib.metadata
+    import sys
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    sources, modules = {}, {}
+    evidence = {"parsers": {name: importlib.metadata.version(name)
+                            for name in ("tree-sitter", "tree-sitter-javascript")},
+                "complete_original_owners": [], "display_roots": [], "navigation_branches": [],
+                "scope": "Source navigation descriptors only; page implementations and backend acceptance are separate"}
+
+    def source(row):
+        if row["path"] not in sources:
+            if not valid(row):
+                raise ValueError("Current navigation original bytes differ: " + row["path"])
+            text = (a.ROOT / row["path"]).read_text(encoding="utf-8")
+            raw = text.encode("utf-8")
+            tree = parser.parse(raw)
+            if tree.root_node.has_error:
+                raise ValueError("Current navigation original has an AST error")
+            sources[row["path"]] = row, text, raw, tree
+            for owner in keyboard_source_modules(text):
+                modules.setdefault(owner["module_id"], []).append((row, owner))
+        return sources[row["path"]]
+
+    def retain(row, owner, role):
+        item = {"role": role, "original": {key: row[key] for key in ("path", "bytes", "sha256")}, **owner}
+        item["sha256"] = hashlib.sha256(item["body"].encode("utf-8")).hexdigest()
+        evidence["complete_original_owners"].append(item)
+        return item
+
+    main_row, text, raw, tree = source(main)
+    root_nodes = [owner for key, found in modules.items() if isinstance(key, str) and key.startswith("concatenated-entry@")
+                  for row, owner in found if 'createRoot(document.getElementById("root"))' in owner["body"]]
+    if not root_nodes:
+        raise ValueError("Current product root mount is unresolved")
+    retain(main_row, min(root_nodes, key=lambda node: node["byte_end"] - node["byte_start"]), "mounted_entry")
+    root_pattern = re.compile(r'(macro|chromaApp|default):(?P<mount>\(0,[\w$.]+\.jsx\)\([\w$.]+,\{(?:macro:[\w$]+,)?lazy:\(\)=>Promise\.all\((?P<chunks>\[[^\]]+\])\)\.then\((?P<require>[\w$]+)\.bind\((?P=require),(?P<module>\d+)\)\)\}\))')
+    for match in root_pattern.finditer(text):
+        chunk_ids = [int(value) for value in re.findall(r'\.e\((\d+)\)', match["chunks"])]
+        for chunk_id in chunk_ids:
+            found = [row for row in acquired["files"] if Path(row.get("path", "")).name.startswith(str(chunk_id) + ".")
+                     and row.get("path", "").endswith(".js")]
+            if len(found) != 1:
+                raise ValueError("Current display-root chunk is absent or ambiguous: " + str(chunk_id))
+            source(found[0])
+        found = modules.get(int(match["module"]), [])
+        if len(found) != 1:
+            raise ValueError("Current display-root module is absent or ambiguous")
+        row, owner = found[0]
+        evidence["display_roots"].append({"display_mode": match[1], "selector": "displayMode query parameter",
+            "original": main_row, "character_start": match.start(), "character_end": match.end(),
+            "expression": match["mount"], "chunk_ids": chunk_ids, "module_id": int(match["module"]),
+            "complete_owner": retain(row, owner, match[1] + "_root")})
+    roots = {row["display_mode"]: row for row in evidence["display_roots"]}
+    if set(roots) != {"macro", "chromaApp", "default"}:
+        raise ValueError("Current display-mode branches are not completely resolved")
+    default = roots["default"]["complete_owner"]
+    original, text, raw, tree = source(default["original"])
+    nav_pattern = re.compile(r'\{id:(\d+),name:([\w$]+)\.([\w$]+),renderComponent:\(\)=>(\(0,[\w$.]+\.jsx\)\(([\w$.]+),)')
+    matches = list(nav_pattern.finditer(text, default["character_start"], default["character_end"]))
+    if not matches:
+        raise ValueError("Current mounted default navigation is absent")
+    owners, unresolved = source_component_regions(text, {"navigation_owner": [matches[0][0]]})
+    if unresolved or len(owners) != 1:
+        raise ValueError("Current complete navigation class is unresolved")
+    owner = retain(original, owners[0], "navigation_owner")
+    owner_name = re.match(r'class ([\w$]+)', owner["body"])[1]
+    exported = re.search(r'default:\(\)=>([\w$]+)', default["body"])
+    if exported is None:
+        raise ValueError("Current default-root export is unresolved")
+    root_binding = re.search(re.escape(exported[1]) + r'=\(0,[\w$.]+\.connect\)\(.*?\)\(([\w$]+)\)', default["body"])
+    if root_binding is None:
+        raise ValueError("Current root export wrapper is unresolved")
+    gate, unresolved = source_component_regions(text, {"setup_gate": ["class " + root_binding[1] + " extends "]})
+    if unresolved or len(gate) != 1:
+        raise ValueError("Current setup-state wrapper is unresolved")
+    gate = retain(original, gate[0], "setup_gate")
+    branch = re.search(r'setupStatus===[\w$.]+\.READY\?(\(0,[\w$.]+\.jsx\)\(([\w$]+),\{\}\)):', gate["body"])
+    if branch is None:
+        raise ValueError("Current ready-state page mount is unresolved")
+    connected = re.search(re.escape(branch[2]) + r'=\(0,[\w$.]+\.connect\)\(.*?\)\(' + re.escape(owner_name) + r'\)', default["body"])
+    if connected is None:
+        raise ValueError("Current navigation owner is not mounted by the ready-state root")
+    evidence["mounted_alias_chain"] = {"default_export": exported[1], "setup_gate": root_binding[1],
+        "ready_branch": branch[1], "connected_alias": branch[2], "navigation_owner": owner_name,
+        "export_wrapper": root_binding[0], "owner_wrapper": connected[0]}
+    locale_aliases = {match[2] for match in matches}
+    if len(locale_aliases) != 1:
+        raise ValueError("Current navigation localization imports are ambiguous")
+    locale_alias = next(iter(locale_aliases))
+    locale_import = re.search(r'(?<![\w$])' + re.escape(locale_alias) + r'=[\w$]+\((\d+)\)', default["body"])
+    found = modules.get(int(locale_import[1]), []) if locale_import else []
+    if len(found) != 1:
+        raise ValueError("Current navigation localization provider is unresolved")
+    locale = retain(*found[0], "navigation_localization")
+    groups = {}
+    for match in matches:
+        if not owner["character_start"] < match.start() < owner["character_end"]:
+            raise ValueError("Current navigation entry has another owner")
+        byte_start = len(text[:match.start()].encode("utf-8"))
+        node = tree.root_node.descendant_for_byte_range(byte_start, byte_start + 1)
+        while node is not None and node.type != "array":
+            node = node.parent
+        if node is None or node.parent.type != "variable_declarator":
+            raise ValueError("Current navigation branch is not a retained literal array")
+        name_node = node.parent.child_by_field_name("name")
+        name = raw[name_node.start_byte:name_node.end_byte].decode("utf-8")
+        group = groups.setdefault(name, {"byte_start": node.start_byte, "byte_end": node.end_byte,
+                                        "body": raw[node.start_byte:node.end_byte].decode("utf-8"), "pages": []})
+        locale_export = re.search(re.escape(match[3]) + r':\(\)=>([\w$]+)', locale["body"])
+        label = re.search(r'(?<![\w$])' + re.escape(locale_export[1]) + r'="([^"]+)"', locale["body"]) if locale_export else None
+        if label is None:
+            raise ValueError("Current navigation localization key is unresolved")
+        end = javascript_delimited(text, match.start())
+        body = text[match.start():end]
+        component = body[body.index("renderComponent:()=>") + len("renderComponent:()=>"):-1]
+        group["pages"].append({"source_id": int(match[1]), "kind": label[1], "component": component,
+                               "mounted_alias": match[5], "offset": match.start(), "body": body})
+    selection = re.search(r'navs:(this\.props\.isBle)\?([\w$]+):([\w$]+)', owner["body"])
+    if selection is None or set(groups) != {selection[2], selection[3]}:
+        raise ValueError("Current connection-specific navigation selection is unresolved")
+    navigations = []
+    for name, condition, primary in ((selection[3], "!" + selection[1], True), (selection[2], selection[1], False)):
+        group = groups[name]
+        group.update({"binding": name, "condition": condition})
+        evidence["navigation_branches"].append(group)
+        navigations.append({"owner": owner_name, "display_mode": "default", "source": original,
+            "offset": group["pages"][0]["offset"], "primary": primary, "branch": name,
+            "reachability": {"kind": "current_lazy_root_and_connection_branch", "root": roots["default"]["expression"],
+                             "mounted_alias_chain": evidence["mounted_alias_chain"], "condition": condition},
+            "pages": group["pages"]})
+    chroma = roots["chromaApp"]["complete_owner"]
+    chroma_match = re.search(r'children:\[\s*(\(0,[\w$.]+\.jsx\)\(([\w$]+)\.([\w$]+),\{\}\))', chroma["body"])
+    imported = re.search(r'(?<![\w$])' + re.escape(chroma_match[2]) + r'=[\w$]+\((\d+)\)', chroma["body"]) if chroma_match else None
+    found = modules.get(int(imported[1]), []) if imported else []
+    if len(found) != 1 or 'lightingEffectsReducer' not in found[0][1]["body"]:
+        raise ValueError("Current standalone ChromaApp lighting owner is unresolved")
+    retain(*found[0], "chroma_lighting_owner")
+    navigations.append({"owner": "ChromaAppRoot", "display_mode": "chromaApp", "source": chroma["original"],
+        "offset": chroma["character_start"], "primary": False, "branch": "chromaApp",
+        "reachability": {"kind": "current_lazy_root", "root": roots["chromaApp"]["expression"]},
+        "pages": [{"source_id": None, "kind": "TAB_LIGHTING", "component": chroma_match[1],
+                   "offset": chroma["character_start"], "standalone": True}]})
+    evidence["shared_macro_mode"] = "Captured separately above; shared macro UI is owned by the module registry"
+    return navigations, evidence
+
+
+def current_registry_peer(pid, ui_receipt, name, category):
+    namespace = ui_receipt.parent.name.removesuffix(f"-{pid}-current")
+    receipt = ui_receipt.parent.parent / f"{namespace}-mw-{pid}-current/acquisition.json"
+    acquired = json.loads(receipt.read_bytes())
+    files = {row.get("url"): row for row in acquired["files"]}
+    prefix = f"https://apps.razer.com/synapse/products/{pid}/mw/"
+    entry, manifest = files.get(prefix + "index.html"), files.get(prefix + "manifest.json")
+    for row in (entry, manifest):
+        stable = next((item for item in acquired.get("stability", []) if row and item["url"] == row["url"]), {})
+        if (not row or not valid(row) or not acquired.get("source_current_during_acquisition")
+                or not stable.get("unchanged") or stable.get("before_sha256") != row["sha256"]
+                or stable.get("after_sha256") != row["sha256"]):
+            raise ValueError("Current middleware identity entry/manifest provenance does not verify")
+    mains = re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']*\bmain\.[\w]+\.js)["\']',
+                       (a.ROOT / entry["path"]).read_text(encoding="utf-8"))
+    main = files.get(urllib.parse.urljoin(entry["url"], mains[0])) if len(mains) == 1 else None
+    if not main or not valid(main):
+        raise ValueError("Current middleware mounted main is unresolved")
+    text = (a.ROOT / main["path"]).read_text(encoding="utf-8")
+    found = [owner for owner in keyboard_source_modules(text)
+             if isinstance(owner["module_id"], int) and "DeviceInfo:()=>" in owner["body"]]
+    if len(found) != 1:
+        raise ValueError("Current middleware DeviceInfo owner is unresolved")
+    owner = found[0]
+    body = owner["body"]
+    exported = re.search(r'DeviceInfo:\(\)=>([\w$]+)', body)
+    declaration = re.search(r'\b' + re.escape(exported[1]) + r'=\{', body)
+    end = javascript_delimited(body, declaration.end() - 1)
+    literal = body[declaration.end() - 1:end]
+    declared_pid = re.search(r'\bproductId:(\d+)\b', literal)
+    declared_category = re.search(r'\bcategory:"([A-Z_]+)"', literal)
+    declared_name = re.search(r'\bdeviceName:([\w$]+)\b', literal)
+    name_value = re.search(r'(?<![\w$])' + re.escape(declared_name[1]) + r'="([^"]+)"', body) if declared_name else None
+    if (not declared_pid or int(declared_pid[1]) != pid or not declared_category or declared_category[1] != category
+            or not name_value or name_value[1] != name):
+        raise ValueError("Current UI and middleware manufacturer identities disagree")
+    return {"acquisition": identity(receipt), "entry": entry, "manifest": manifest, "mounted_main": main,
+            "complete_owner": owner, "declaration": literal,
+            "manufacturer_name": name, "declared_product_id": pid, "category": category,
+            "scope": "Manufacturer identity agreement only; native payload verification is independent"}
+
+
+def registry_product_record(pid, name, category, editions, navigations, previous=None):
+    product = {"id": pid, "name": name, "categories": [category], "edition_ids": editions, "navigations": []}
+    for navigation in navigations:
+        key = f'product-{pid}-{Path(navigation["source"]["path"]).stem}-{navigation["branch"]}-{navigation["offset"]}'
+        previous_navigation = next((row for row in (previous or [])
+            if row["display_mode"] == navigation["display_mode"] and row["primary"] == navigation["primary"]), None)
+        if previous_navigation:
+            key = previous_navigation["key"]
+        nav = {"key": key, "display_mode": navigation["display_mode"], "primary": navigation["primary"], "pages": []}
+        for page in navigation["pages"]:
+            role = "StandaloneMode" if page.get("standalone") else "Help" if page["kind"] == "HELP" else "Page"
+            previous_page = next((row for row in (previous_navigation or {}).get("pages", [])
+                if row["kind"] == page["kind"]), None)
+            page_key = previous_page["key"] if previous_page else key + "-" + str(page["offset"])
+            nav["pages"].append({"key": page_key, "kind": page["kind"], "role": role, "help_selector": page["offset"]})
+        product["navigations"].append(nav)
+    return product
+
+
+def audit_registry_identity(prepare=False, products=None):
+    registry = a.ROOT / resource_database.PRODUCT_REGISTRY
+    headers = {row["id"]: row for row in resource_database.product_registry()}
     destination = a.ROOT / ".analysis/results/registry-identity-current.json"
-    retained_candidates = {row["endpoint_product_id"] for row in json.loads(destination.read_bytes()).get("products", [])} if destination.exists() else set()
+    retained = json.loads(destination.read_bytes()).get("products", []) if destination.exists() else []
+    retained_candidates = {row["endpoint_product_id"] for row in retained}
+    mounted_candidates = {row["endpoint_product_id"] for row in retained if row.get("mounted_navigation")}
     report = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
               "registry_before": identity(registry), "products": [], "failures": [],
-              "scope": "Repair PWA icon-derived registry identities using complete current DeviceInfo declarations; other navigation audits are unchanged",
+              "scope": "Repair PWA icon-derived identities and recover omitted products from current DeviceInfo and complete mounted navigation declarations",
               "target_execution": False, "runtime_acceptance": "unverified"}
-    edits = []
+    edits = {}
     for manifest in sorted((a.ROOT / ".analysis/inputs/frontend").glob("*-current/raw/apps.razer.com/synapse/products/*/ui/manifest.json")):
         data = json.loads(manifest.read_bytes())
         pid = int(manifest.parts[-3])
-        malformed_header = pid in headers and '"productCategoryIcon"' in headers[pid][3]
+        malformed_header = pid in headers and "productCategoryIcon" in headers[pid]["categories"]
         placeholder_icon = any(Path(icon.get("src", "")).stem == "productCategoryIcon" for icon in data.get("icons", []))
-        if not malformed_header and not placeholder_icon and pid not in retained_candidates:
+        if products is not None and pid not in products:
+            continue
+        if not malformed_header and not placeholder_icon and pid not in retained_candidates and pid in headers:
             continue
         row = {"endpoint_product_id": pid, "manifest": identity(manifest),
                "manifest_role": "web_application_metadata_not_product_identity"}
@@ -11162,23 +11440,34 @@ def audit_registry_identity(prepare=False):
                 row["disposition"] = "exclude_mismatched_endpoint_from_product_registry_keep_acquisition_locator"
                 row["unresolved"] = "No current source establishes this endpoint ID as an independent product; declared product has its own separate endpoint"
                 if header:
-                    next_header = re.search(r'\nRegisteredProduct \{', text[header.end():])
-                    if next_header is None:
-                        raise ValueError("Cannot isolate mismatched registry block")
-                    edits.append((header.start(), header.end() + next_header.start() + 1, ""))
-            elif header:
+                    edits[pid] = None
+            elif header and pid not in mounted_candidates:
                 row["disposition"] = "repair_category_and_editions_from_declared_product_owner"
-                replacement = (f'RegisteredProduct {{ id: {pid}, name: {header[2]}, categories: &[{json.dumps(category[1])}], '
-                               f'edition_ids: &[{",".join(str(value) for value in edition_ids)}], navigations: &[')
-                edits.append((header.start(), header.end(), replacement))
+                edits[pid] = {**header, "categories": [category[1]], "edition_ids": edition_ids}
             else:
-                row["disposition"] = "verified_product_not_yet_registered"
+                name_alias = re.search(r'\bdeviceName:([\w$]+)\b', declaration)
+                name = re.search(r'(?<![\w$])' + re.escape(name_alias[1]) + r'="([^"]+)"', body) if name_alias else None
+                if name is None:
+                    raise ValueError("Current missing-product manufacturer name is unresolved")
+                navigations, mounted = missing_registry_navigation(pid, acquired, main)
+                row.update({"disposition": ("verify_registered_product_current_mounted_navigation" if header else
+                                             "register_declared_product_with_current_mounted_navigation"),
+                            "manufacturer_name": name[1], "mounted_navigation": mounted,
+                            "middleware_identity": current_registry_peer(pid, acquired_path, name[1], category[1])})
+                previous = header["navigations"] if header else []
+                row["preserved_navigation_ids"] = previous
+                edits[pid] = registry_product_record(pid, name[1], category[1], edition_ids, navigations, previous)
         except (OSError, ValueError, KeyError) as error:
             report["failures"].append({"product_id": pid, "error": str(error)})
     if prepare and not report["failures"]:
-        for start, end, replacement in sorted(edits, reverse=True):
-            text = text[:start] + replacement + text[end:]
-        registry.write_text(text, encoding="utf-8", newline="\n")
+        for pid, replacement in edits.items():
+            if replacement is None:
+                headers.pop(pid, None)
+            else:
+                headers[pid] = replacement
+        a.save(registry, {"schema_version": 1, "products": [headers[pid] for pid in sorted(headers)]})
+        resource_database.product_registry()
+        a.index_files([{**identity(registry), "kind": "product_registry_maintenance_source"}])
     report["prepared"] = prepare and not report["failures"]
     report["registry_after"] = identity(registry)
     a.save(destination, report)
@@ -14190,6 +14479,7 @@ def add_commands(parsers):
     linked.add_argument("--product", type=int, action="append")
     registry = parsers.add_parser("audit-registry-identity", help="Reject PWA icons and mismatched endpoints as product identities")
     registry.add_argument("--prepare", action="store_true")
+    registry.add_argument("--product", type=int, action="append", help="Audit selected endpoint identities; repeat for multiple products")
     audit = parsers.add_parser("audit-family-function", help="Verify and reuse complete current Wakaru function chunks")
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
@@ -14205,6 +14495,8 @@ def add_commands(parsers):
     parser.add_argument("--stage", choices=["probe", "acquire", "repair", "analyze", "native", "extract-native", "report", "all"], default="all")
     parser.add_argument("--workers", type=int, choices=range(1, 17), default=12)
     parser.add_argument("--no-refresh-gaps", action="store_true", help="Leave final global ledger refresh to an owning workflow")
+    parser.add_argument("--retry-declared-missing", action="store_true",
+                        help="Repair also retries source-declared non-map 404s; speculative probes and source maps remain separate")
     parser.add_argument("--seven-zip", default="C:/Program Files/7-Zip/7z.exe")
     parser.add_argument("--include-manifest-mismatches", action="store_true",
                         help="Statically investigate quarantined official bytes without treating them as manifest-verified resources")

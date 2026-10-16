@@ -5,7 +5,8 @@ use anyhow::ensure;
 use windows::Win32::{
     Media::Audio::*,
     System::Com::{
-        CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
+        CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateGuid, CoCreateInstance, CoInitializeEx,
+        CoUninitialize,
     },
 };
 
@@ -26,6 +27,7 @@ impl Drop for Apartment {
 pub(super) struct Endpoint {
     // Field drop order releases interfaces before the apartment.
     render: IAudioRenderClient,
+    volume: ISimpleAudioVolume,
     client: IAudioClient,
     _device: IMMDevice,
     capacity: u32,
@@ -64,6 +66,7 @@ impl Endpoint {
         format[20..24].copy_from_slice(&clip.channel_mask().to_le_bytes());
         // KSDATAFORMAT_SUBTYPE_PCM, little-endian GUID fields.
         format[24..].copy_from_slice(&[1, 0, 0, 0, 0, 0, 16, 0, 128, 0, 0, 170, 0, 56, 155, 113]);
+        let session_id = unsafe { CoCreateGuid()? };
         unsafe {
             client.Initialize(
                 AUDCLNT_SHAREMODE_SHARED,
@@ -71,7 +74,7 @@ impl Endpoint {
                 1_000_000,
                 0,
                 format.as_ptr().cast::<WAVEFORMATEX>(),
-                None,
+                Some(&session_id),
             )?;
         }
         let capacity = unsafe { client.GetBufferSize()? };
@@ -80,8 +83,10 @@ impl Endpoint {
             "Native media render capacity exceeds limit"
         );
         let render = unsafe { client.GetService::<IAudioRenderClient>()? };
+        let volume = unsafe { client.GetService::<ISimpleAudioVolume>()? };
         Ok(Self {
             render,
+            volume,
             client,
             _device: device,
             capacity,
@@ -142,6 +147,14 @@ impl Output for Endpoint {
         unsafe {
             self.client.Reset()?;
         }
+        Ok(())
+    }
+    fn set_volume(&mut self, volume: f32) -> anyhow::Result<()> {
+        ensure!(
+            volume.is_finite() && (0.0..=1.0).contains(&volume),
+            "Native media volume exceeds range"
+        );
+        unsafe { self.volume.SetMasterVolume(volume, std::ptr::null())? };
         Ok(())
     }
 }

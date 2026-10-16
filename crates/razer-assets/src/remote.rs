@@ -274,8 +274,8 @@ mod database_tests {
     #[test]
     fn database_index_retains_duplicate_priority_list_order_and_svg_viewports() {
         let manifest = manifest().unwrap();
-        assert_eq!(manifest.entries.len(), 11973);
-        assert_eq!(manifest.files.len(), 7777);
+        assert_eq!(manifest.entries.len(), 11977);
+        assert_eq!(manifest.files.len(), 7781);
         assert_eq!(manifest.fonts.len(), 14);
         let duplicate = "synapse/mouse-customize/f4f5f13b5ea47e5816fbf38f.png";
         let positions = manifest
@@ -284,7 +284,7 @@ mod database_tests {
             .enumerate()
             .filter_map(|(index, entry)| (entry.key == duplicate).then_some(index))
             .collect::<Vec<_>>();
-        assert_eq!(positions, [1255, 11861]);
+        assert_eq!(positions, [1255, 11865]);
         assert_eq!(manifest.keys[duplicate], positions[0]);
         assert_eq!(
             list("synapse/mouse-customize/")
@@ -298,6 +298,34 @@ mod database_tests {
             &manifest.entries[manifest.keys["synapse/audio-volume-external-sprite.svg#hover"]];
         assert_eq!(hover.view_box.as_deref(), Some("0 20 20 20"));
         assert_eq!((hover.width, hover.height), (Some(20), Some(20)));
+        for (key, path, bytes, sha256) in [
+            (
+                "synapse/audio-demo-drag.svg",
+                "assets/synapse/products/1392/7ca7feaf57221001-audio-demo-drag.svg",
+                853,
+                "7ca7feaf572210018a2c840515c4717862f019d4e9972ad3502813b8237a637e",
+            ),
+            (
+                "synapse/audio-demo-close.svg",
+                "assets/synapse/products/1392/282f3c4f97f6180e-audio-demo-close.svg",
+                2309,
+                "282f3c4f97f6180ef3acae3115d58e366f30cb741d4c77065490d944f4818b13",
+            ),
+            (
+                "synapse/audio-1352-fullscreen.svg",
+                "assets/synapse/products/1352/bc9ac130ca9cb459-fullscreen.svg",
+                622,
+                "bc9ac130ca9cb459528cfa6111b290bbd0680e5041d8ce3bb2a446fb7a4eb2b3",
+            ),
+            (
+                "synapse/screen-color-picker.cur",
+                "assets/synapse/shared/cursors/d99b9c33f3257a5e-screen-color-picker.cur",
+                435430,
+                "d99b9c33f3257a5eecdba55204ec93e30839c1702917b2e51889fdef018312f3",
+            ),
+        ] {
+            assert_eq!(identity(key), Some((path, bytes, sha256)));
+        }
         assert!(list("synapse/audio-demo-control-").unwrap().is_empty());
         assert_eq!(
             &list("synapse/").unwrap()[..4],

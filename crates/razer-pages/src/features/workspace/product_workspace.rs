@@ -818,6 +818,26 @@ impl ProductWorkspace {
     ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).controller_trigger_request_matches(request,cx))
     }
+    pub fn controller_lighting_request_matches(
+        &self,
+        request: &super::gamepad_products::ControllerLightingRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).controller_lighting_request_matches(request,cx))
+    }
+    pub fn finish_controller_lighting(
+        &mut self,
+        request: &super::gamepad_products::ControllerLightingRequested,
+        result: Result<razer_device::controller_lighting::LightingResult, String>,
+        window: Option<&mut Window>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.finish_controller_lighting(request, result, window, cx)
+            });
+        }
+    }
     pub fn observe_controller_input(
         &mut self,
         sample: Option<&razer_device::controller_input::Sample>,
@@ -1561,6 +1581,9 @@ impl ProductWorkspace {
                     WorkspaceEvent::ControllerTriggerRequested(request) => {
                         WorkspaceEvent::ControllerTriggerRequested(request.clone())
                     }
+                    WorkspaceEvent::ControllerLightingRequested(request) => {
+                        WorkspaceEvent::ControllerLightingRequested(request.clone())
+                    }
                     WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                         WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
                     }
@@ -1834,6 +1857,9 @@ impl ProductWorkspace {
                     }
                     WorkspaceEvent::ControllerTriggerRequested(request) => {
                         WorkspaceEvent::ControllerTriggerRequested(request.clone())
+                    }
+                    WorkspaceEvent::ControllerLightingRequested(request) => {
+                        WorkspaceEvent::ControllerLightingRequested(request.clone())
                     }
                     WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                         WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())

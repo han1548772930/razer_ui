@@ -2,7 +2,7 @@
 //! mounted product injection. Evidence: `gamepad_triggers` in the maintained
 //! gamepad-main-audit. Protocol bytes and timings do not depend on the OS.
 use crate::backend::FeatureTransport;
-use anyhow::{bail, ensure};
+use anyhow::ensure;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -369,51 +369,12 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
         let transaction = self.transaction;
         self.transaction = (transaction + 1) % 31;
         let request = command.report(self.capability.report_id, transaction);
-        let mut error = String::from("No trigger reply");
-        for _ in 0..20 {
-            (self.wait)(self.capability.delay())?;
-            if let Err(e) = self.transport.send_feature(&request) {
-                error = e.to_string();
-                continue;
-            }
-            (self.wait)(self.capability.delay())?;
-            for retry in 0..10 {
-                if retry != 0 {
-                    (self.wait)(self.capability.delay())?;
-                }
-                let mut response = [0; 91];
-                response[0] = self.capability.report_id;
-                let count = match self.transport.get_feature(&mut response) {
-                    Ok(count) => count,
-                    Err(e) => {
-                        error = e.to_string();
-                        break;
-                    }
-                };
-                ensure!(
-                    count == 91 && response[0] == self.capability.report_id,
-                    "Truncated or wrong controller Feature report"
-                );
-                if response[2] != transaction || response[7..9] != request[7..9] {
-                    error = "Stale controller response".into();
-                    break;
-                }
-                match response[1] {
-                    0 | 3 | 4 => {
-                        error = format!("Controller retry status {}", response[1]);
-                        break;
-                    }
-                    1 => error = "Controller busy".into(),
-                    2 => {
-                        let size = usize::from(response[6]);
-                        ensure!(size <= 80, "Invalid controller response payload length");
-                        return Ok(response[9..9 + size].to_vec());
-                    }
-                    status => bail!("Controller trigger command rejected with status {status}"),
-                }
-            }
-        }
-        bail!("Controller trigger retries exhausted: {error}")
+        crate::controller_feature::exchange(
+            self.transport,
+            &request,
+            self.capability.delay(),
+            &mut self.wait,
+        )
     }
     pub fn execute(
         &mut self,

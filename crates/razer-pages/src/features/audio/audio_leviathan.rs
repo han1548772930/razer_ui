@@ -231,9 +231,10 @@ pub(super) struct State {
     windows_11: bool,
     bass: Option<Entity<SliderState>>,
     bass_timer: Option<Task<()>>,
+    pub(super) media: Option<Entity<super::audio_media::AudioMedia>>,
 }
 impl State {
-    pub(super) fn new(pid: u32, _window: &mut Window, cx: &mut App) -> Self {
+    pub(super) fn new(pid: u32, window: &mut Window, cx: &mut App) -> Self {
         Self {
             visible: LeviathanObservation {
                 subwoofer_level: 4,
@@ -262,6 +263,16 @@ impl State {
                 })
             }),
             bass_timer: None,
+            media: (pid == 1352).then(|| {
+                super::audio_media::AudioMedia::new(
+                    pid,
+                    "synapse/audio-1352-demo.png",
+                    520.,
+                    292.5,
+                    window,
+                    cx,
+                )
+            }),
         }
     }
 }
@@ -312,6 +323,12 @@ impl AudioProductWorkspace {
         cx.notify();
     }
     pub(super) fn subscribe_leviathan(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(media) = &self.leviathan.media {
+            self.subscriptions.push(cx.subscribe(
+                media,
+                |_, _, _: &super::audio_media::MediaPresentationChanged, cx| cx.notify(),
+            ));
+        }
         let Some(bass) = self.leviathan.bass.clone() else {
             return;
         };
@@ -674,6 +691,7 @@ impl AudioProductWorkspace {
                             .child(self.leviathan_properties(cx)),
                     )),
             )
+            .children(self.leviathan_media_overlay(window, cx))
             .into_any_element()
     }
     fn leviathan_subwoofer(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
@@ -886,12 +904,6 @@ impl AudioProductWorkspace {
     }
     fn leviathan_modes(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let state = &self.leviathan.visible;
-        let labels = [
-            ("", "STEREO"),
-            ("THX_SPATIAL_AUDIO", "VIRTUAL_HEADSET"),
-            ("THX_SPATIAL_AUDIO", "VIRTUAL_SPEAKER"),
-            ("", "ROOM_FILL"),
-        ];
         let descriptions = [
             "AUDIO_MODE_DESC",
             "AUDIO_MODE_DESC2",
@@ -962,51 +974,7 @@ impl AudioProductWorkspace {
             cx,
         )
         .relative()
-        .child(
-            h_flex()
-                .opacity(opacity)
-                .gap(surface::css(12.))
-                .mb(surface::css(20.))
-                .items_stretch()
-                .children(labels.into_iter().enumerate().map(|(id, (title, body))| {
-                    gpui_kit::base::Button::new(("leviathan-mode", id as u64))
-                        .flex()
-                        .flex_col()
-                        .justify_center()
-                        .items_center()
-                        .px(surface::css(20.))
-                        .py(surface::css(6.))
-                        .rounded(surface::css(3.))
-                        .border_1()
-                        .border_color(if id == mode { rgb(0x44d62c) } else { rgb(0x5d5d5d) })
-                        .bg(if id == mode { rgb(0x292929) } else { rgb(0x111111) })
-                        .child(
-                            div()
-                                .text_size(surface::css(10.))
-                                .line_height(surface::css(12.))
-                                .mb(surface::css(2.))
-                                .child(if title.is_empty() {
-                                    String::new()
-                                } else {
-                                    t(title).to_uppercase()
-                                }),
-                        )
-                        .child(
-                            div()
-                                .text_size(surface::css(12.))
-                                .child(t(body).to_uppercase()),
-                        )
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            if !this.leviathan.visible.headset_output {
-                                this.request_leviathan(
-                                    LeviathanOperation::AudioMode { mode: id as u8 },
-                                    window,
-                                    cx,
-                                );
-                            }
-                        }))
-                })),
-        )
+        .child(self.leviathan_mode_selector(false, cx))
         .child(
             v_flex()
                 .opacity(opacity)
@@ -1086,42 +1054,11 @@ impl AudioProductWorkspace {
                 }),
         )
         .child(
-            gpui_kit::base::Button::new("leviathan-demo-play")
+            div()
                 .opacity(opacity)
-                .relative()
-                .w_full()
                 .mt(surface::css(20.))
                 .mb(surface::css(30.))
-                .child(
-                    img("synapse/audio-1352-demo.png")
-                        .w_full()
-                        .object_fit(ObjectFit::Contain),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(
-                            div()
-                                .size(surface::css(100.))
-                                .rounded_full()
-                                .border_3()
-                                .border_color(rgb(0xffffff))
-                                .bg(rgba(0x000000cc))
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(img("synapse/audio-1352-play.svg").size(surface::css(48.))),
-                        ),
-                )
-                .on_click(cx.listener(|this, _, window, cx| {
-                    if !this.leviathan.visible.headset_output {
-                        window.push_notification("音频演示播放服务尚未接入", cx);
-                    }
-                })),
+                .children(self.leviathan.media.clone()),
         )
         .into_any_element();
         disabled_card(
@@ -1131,6 +1068,98 @@ impl AudioProductWorkspace {
             t("SOUNDBAR_DISABLED_TIP"),
             window,
             cx,
+        )
+    }
+    fn leviathan_mode_selector(&self, fullscreen: bool, cx: &mut Context<Self>) -> AnyElement {
+        let labels = [
+            ("", "STEREO"),
+            ("THX_SPATIAL_AUDIO", "VIRTUAL_HEADSET"),
+            ("THX_SPATIAL_AUDIO", "VIRTUAL_SPEAKER"),
+            ("", "ROOM_FILL"),
+        ];
+        let mode = usize::from(self.leviathan.visible.audio_mode);
+        h_flex()
+            .opacity(if self.leviathan.visible.headset_output {
+                0.3
+            } else {
+                1.
+            })
+            .gap(surface::css(12.))
+            .mb(surface::css(20.))
+            .items_stretch()
+            .children(labels.into_iter().enumerate().map(|(id, (title, body))| {
+                gpui_kit::base::Button::new((
+                    if fullscreen {
+                        "leviathan-fullscreen-mode"
+                    } else {
+                        "leviathan-mode"
+                    },
+                    id as u64,
+                ))
+                .flex()
+                .flex_col()
+                .justify_center()
+                .items_center()
+                .px(surface::css(20.))
+                .py(surface::css(6.))
+                .rounded(surface::css(3.))
+                .border_1()
+                .border_color(if id == mode { rgb(0x44d62c) } else { rgb(0x5d5d5d) })
+                .bg(if id == mode { rgb(0x292929) } else { rgb(0x111111) })
+                .child(
+                    div()
+                        .text_size(surface::css(10.))
+                        .line_height(surface::css(12.))
+                        .mb(surface::css(2.))
+                        .child(if title.is_empty() {
+                            String::new()
+                        } else {
+                            t(title).to_uppercase()
+                        }),
+                )
+                .child(
+                    div()
+                        .text_size(surface::css(12.))
+                        .child(t(body).to_uppercase()),
+                )
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    if !this.leviathan.visible.headset_output {
+                        this.request_leviathan(
+                            LeviathanOperation::AudioMode { mode: id as u8 },
+                            window,
+                            cx,
+                        );
+                    }
+                }))
+            }))
+            .into_any_element()
+    }
+    fn leviathan_media_overlay(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        if !self.leviathan.media.as_ref()?.read(cx).is_fullscreen() {
+            return None;
+        }
+        Some(
+            deferred(
+                gpui_kit::base::Positioner::corner(
+                    Anchor::TopLeft,
+                    point(px(0.), window.rem_size() * (100. / 16.)),
+                )
+                .margin(px(0.))
+                .child(
+                    div()
+                        .w(window.viewport_size().width)
+                        .flex()
+                        .justify_center()
+                        .font_family("Roboto")
+                        .child(self.leviathan_mode_selector(true, cx)),
+                ),
+            )
+            .with_priority(260)
+            .into_any_element(),
         )
     }
     fn leviathan_properties(&self, cx: &mut Context<Self>) -> AnyElement {

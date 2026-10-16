@@ -4,7 +4,8 @@
 pub mod emoji;
 mod registry;
 pub use registry::{
-    ProductNavigation, ProductPage, ProductPageId, ProductPageRole, registered, registry,
+    ProductNavigation, ProductPage, ProductPageId, ProductPageRole, initialize_registry,
+    registered, registry,
 };
 
 pub const AUDITED_MOUSE_MAT_IDS: [u32; 7] = [3072, 3073, 3074, 3076, 3077, 3078, 3080];

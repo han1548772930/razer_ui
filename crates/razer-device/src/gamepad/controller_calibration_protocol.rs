@@ -59,10 +59,9 @@ pub fn decode_feature(
     command: CalibrationCommand,
     transaction: u8,
 ) -> anyhow::Result<CalibrationReply> {
-    ensure!(
-        report.len() == 91 && report[0] == 10,
-        "Truncated or wrong SagePC Feature report"
-    );
+    ensure!(report.len() == 91, "Truncated SagePC Feature report");
+    // The host's slice(1) discards the returned Report ID. The actual
+    // collection and GET selector remain the caller's verified identity.
     let packet = &report[1..];
     let header = command.header();
     if packet[1] != transaction || packet[6] != header[1] || packet[7] != header[2] {
@@ -113,7 +112,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
             // Host sendFeatureReport provides the source OUT delay. The Rust
             // adapter supplies that same delay here through the wait callback.
             (self.wait)(Duration::from_millis(30))?;
-            if let Err(error) = self.transport.send_feature(&report) {
+            if let Err(error) = self.transport.send_feature_at_collection_max(&report) {
                 last_error = error.to_string();
                 continue;
             }
@@ -124,7 +123,7 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                 }
                 let mut incoming = [0; 91];
                 incoming[0] = 10;
-                let length = match self.transport.get_feature(&mut incoming) {
+                let length = match self.transport.get_feature_at_collection_max(&mut incoming) {
                     Ok(length) => length,
                     Err(error) => {
                         last_error = error.to_string();
@@ -205,11 +204,18 @@ mod tests {
         responses: RefCell<VecDeque<Vec<u8>>>,
     }
     impl FeatureTransport for Transport {
-        fn send_feature(&self, report: &[u8]) -> anyhow::Result<()> {
+        fn send_feature(&self, _: &[u8]) -> anyhow::Result<()> {
+            panic!("Source calibration SET must use collection Feature framing")
+        }
+        fn get_feature(&self, _: &mut [u8]) -> anyhow::Result<usize> {
+            panic!("Source calibration GET must use the host-compatible byte count")
+        }
+        fn send_feature_at_collection_max(&self, report: &[u8]) -> anyhow::Result<()> {
             self.sends.borrow_mut().push(report.to_vec());
             Ok(())
         }
-        fn get_feature(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+        fn get_feature_at_collection_max(&self, report: &mut [u8]) -> anyhow::Result<usize> {
+            assert_eq!(report[0], 10);
             let bytes = self
                 .responses
                 .borrow_mut()
@@ -236,6 +242,27 @@ mod tests {
         assert_eq!(&report[6..9], &[80, 12, 152]);
         assert_eq!(&report[9..12], &[80, 12, 152]);
         assert_eq!(report[89], report[3..89].iter().fold(0, |s, b| s ^ b));
+    }
+    #[test]
+    fn raw_query_uses_host_framing_without_rejecting_the_discarded_prefix() {
+        let mut bytes = response(
+            CalibrationCommand::RawInput,
+            0,
+            2,
+            &[0, 1, 0, 2, 0, 3, 0, 4, 1, 44, 7, 208],
+        );
+        bytes[0] = 0x7f;
+        let io = Transport {
+            sends: RefCell::new(vec![]),
+            responses: RefCell::new([bytes].into()),
+        };
+        let actual = CalibrationProtocolSession::new(&io, |_| Ok(()))
+            .raw_analog_input()
+            .unwrap();
+        assert_eq!(actual.lt, 300.);
+        assert_eq!(actual.rt, 2000.);
+        assert_eq!(io.sends.borrow()[0][0], 10);
+        assert!(io.responses.borrow().is_empty());
     }
     #[test]
     fn right_trigger_range_is_big_endian_at_source_offsets() {

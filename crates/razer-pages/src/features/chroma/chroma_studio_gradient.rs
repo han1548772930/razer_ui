@@ -48,6 +48,11 @@ pub(super) struct StudioGradient {
 }
 
 impl StudioGradient {
+    pub(super) fn cancel_screen_color(&mut self, cx: &mut Context<Self>) {
+        self.color
+            .update(cx, |color, cx| color.cancel_screen_color(cx));
+    }
+
     pub(super) fn custom_cache(&self) -> Option<Vec<Stop>> {
         self.custom_cache.clone()
     }
@@ -190,6 +195,10 @@ impl StudioGradient {
     fn set_open(&mut self, open: bool, window: &mut Window, cx: &mut Context<Self>) {
         if open && !self.enabled {
             return;
+        }
+        if !open {
+            self.color
+                .update(cx, |color, cx| color.cancel_screen_color(cx));
         }
         if open {
             if self.open && !self.closing {
@@ -652,5 +661,76 @@ impl Render for StudioGradient {
                     .when(!revealed, |view| view.h_0().overflow_hidden())
                     .child(body)
             })
+    }
+}
+
+#[cfg(test)]
+mod screen_color_tests {
+    use super::{GradientChanged, GradientKind, StudioGradient};
+    use crate::features::screen_color::{ScreenColorUpdate, ScreenColorUpdateKind};
+    use gpui_kit::component::Root;
+    use gpui_kit::{AppContext as _, TestAppContext, px, size};
+    use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn studio_gradient_keeps_screen_previews_in_the_selected_stop_until_done(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(gpui_kit::init);
+        let mut retained = None;
+        let handle =
+            cx.open_window(size(px(350.), px(600.)), |window, cx| {
+                let view = cx.new(|cx| StudioGradient::new(window, cx));
+                view.update(cx, |view, cx| {
+                    view.configure("wheel", GradientKind::Default,
+                    &serde_json::json!([{"Stop":0,"Color":0x112233},{"Stop":100,"Color":0x445566}]),
+                    true, true, false, true, window, cx);
+                    view.set_open(true, window, cx);
+                });
+                retained = Some(view.clone());
+                Root::new(view, window, cx)
+            });
+        let view = retained.unwrap();
+        let changes = Rc::new(RefCell::new(Vec::new()));
+        let history = changes.clone();
+        let _subscription = cx.update(|cx| {
+            cx.subscribe(&view, move |_, event: &GradientChanged, _| {
+                history.borrow_mut().push(event.stops.clone())
+            })
+        });
+        let capture = cx.update(|cx| view.read(cx).color.read(cx).screen_color_capture());
+        cx.update(|cx| {
+            capture.update(cx, |capture, cx| {
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Color(0xabcdef),
+                ));
+            })
+        });
+        cx.update(|cx| {
+            assert_eq!(view.read(cx).stops[0].color, Some(0xabcdef));
+            assert_eq!(view.read(cx).stops[1].color, Some(0x445566));
+        });
+        assert!(changes.borrow().is_empty());
+        cx.update(|cx| {
+            capture.update(cx, |capture, cx| {
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Done,
+                ));
+            })
+        });
+        assert_eq!(changes.borrow().len(), 1);
+        assert_eq!(changes.borrow()[0][0]["Color"], 0xabcdef);
+        let stale = cx.update(|cx| {
+            ScreenColorUpdate::simulated(capture.read(cx), ScreenColorUpdateKind::Color(0xff0000))
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            view.update(cx, |view, cx| view.set_open(false, window, cx));
+        })
+        .unwrap();
+        cx.update(|cx| capture.update(cx, |_, cx| cx.emit(stale)));
+        cx.update(|cx| assert_eq!(view.read(cx).stops[0].color, Some(0xabcdef)));
+        assert_eq!(changes.borrow().len(), 1);
     }
 }

@@ -29,13 +29,94 @@ def installation_policy(root=None):
 OUTPUT = installation_policy()["catalog_source"]
 SCHEMA = "crates/razer-resource-db/src/schema.sql"
 APPLICATION_ID = 0x525A5549
-VERSION = 2
+VERSION = 3
+PRODUCT_REGISTRY = ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
+PRODUCT_REGISTRY_EVIDENCE = ".analysis/results/registry-source-evidence.json"
 INPUTS = {
     "mapping": ".analysis/inputs/typed-tables/razer-pages/keyboard_mapping_text_emoji_data.json",
     "mouse": ".analysis/inputs/typed-tables/razer-pages/mouse_mapping_text_current_data.json",
     "shortcuts": ".analysis/inputs/typed-tables/razer-pages/shortcuts_current.json",
     "macro": ".analysis/inputs/typed-tables/razer-app-pages/text_data.json",
 }
+
+
+def product_registry(path=None):
+    """Validated maintenance source; the installed product only reads SQLite."""
+    document = json.loads((path or ROOT / PRODUCT_REGISTRY).read_bytes())
+    if type(document) is not dict or set(document) != {"schema_version", "products"} or document["schema_version"] != 1:
+        raise ValueError("Invalid product registry maintenance schema")
+    products = document["products"]
+    if type(products) is not list or not products:
+        raise ValueError("Empty product registry")
+    ids, navigation_keys, page_keys = set(), set(), set()
+    for product in products:
+        if (type(product) is not dict or set(product) != {"id", "name", "categories", "edition_ids", "navigations"}
+                or type(product["id"]) is not int or not 0 < product["id"] <= 0xFFFFFFFF
+                or product["id"] in ids or type(product["name"]) is not str or not product["name"]):
+            raise ValueError("Invalid or duplicate product registry identity")
+        ids.add(product["id"])
+        for key, typ in (("categories", str), ("edition_ids", int)):
+            values = product[key]
+            if (type(values) is not list or not values or any(type(value) is not typ for value in values)
+                    or len(values) != len(set(values)) or (typ is str and any(not value for value in values))
+                    or (typ is int and any(not 0 <= value <= 0xFFFFFFFF for value in values))):
+                raise ValueError("Invalid product registry " + key)
+        if type(product["navigations"]) is not list or not product["navigations"]:
+            raise ValueError("Product has no navigation branches")
+        primary_count = 0
+        for navigation in product["navigations"]:
+            if (type(navigation) is not dict or set(navigation) != {"key", "display_mode", "primary", "pages"}
+                    or type(navigation["key"]) is not str or not navigation["key"] or navigation["key"] in navigation_keys
+                    or type(navigation["display_mode"]) is not str or not navigation["display_mode"]
+                    or type(navigation["primary"]) is not bool):
+                raise ValueError("Invalid or duplicate product navigation")
+            navigation_keys.add(navigation["key"])
+            primary_count += navigation["primary"]
+            if type(navigation["pages"]) is not list or not navigation["pages"]:
+                raise ValueError("Navigation branch has no pages")
+            for page in navigation["pages"]:
+                if (type(page) is not dict or set(page) != {"key", "kind", "role", "help_selector"}
+                        or type(page["key"]) is not str or not page["key"] or page["key"] in page_keys
+                        or type(page["kind"]) is not str or not page["kind"]
+                        or page["role"] not in {"Page", "Help", "StandaloneMode"}
+                        or type(page["help_selector"]) is not int or not 0 <= page["help_selector"] <= 0xFFFFFFFFFFFFFFFF):
+                    raise ValueError("Invalid or duplicate product page")
+                page_keys.add(page["key"])
+        if primary_count != 1:
+            raise ValueError("Product must retain exactly one primary navigation")
+    if [row["id"] for row in products] != sorted(ids):
+        raise ValueError("Product registry order is not strictly increasing")
+    return products
+
+
+
+
+def product_registry_tables(products):
+    tables = {name: [] for name in ("ui_product", "ui_product_category", "ui_product_edition", "ui_navigation", "ui_page")}
+    for product in products:
+        pid = product["id"]
+        tables["ui_product"].append((pid, product["name"]))
+        tables["ui_product_category"].extend((pid, index, value) for index, value in enumerate(product["categories"]))
+        tables["ui_product_edition"].extend((pid, index, value) for index, value in enumerate(product["edition_ids"]))
+        for index, navigation in enumerate(product["navigations"]):
+            tables["ui_navigation"].append((navigation["key"], pid, index, navigation["display_mode"], int(navigation["primary"])))
+            tables["ui_page"].extend((page["key"], navigation["key"], position, page["kind"], page["role"], page["help_selector"])
+                                     for position, page in enumerate(navigation["pages"]))
+    return tables
+
+
+def fill_product_registry(connection, products):
+    tables = product_registry_tables(products)
+    orders = {"ui_product": "id", "ui_product_category": "product_id, position", "ui_product_edition": "product_id, position",
+              "ui_navigation": "product_id, position", "ui_page": "navigation_key, position"}
+    for name, rows in tables.items():
+        connection.executemany("INSERT INTO " + name + " VALUES (" + ",".join("?" for _ in rows[0]) + ")", rows)
+        restored = connection.execute("SELECT * FROM " + name + " ORDER BY " + orders[name]).fetchall()
+        expected = sorted(rows, key=(lambda row: (row[1], row[2])) if name == "ui_page" else
+                          (lambda row: (row[1], row[2])) if name == "ui_navigation" else (lambda row: row))
+        if restored != expected:
+            raise ValueError("Complete product registry fields/order/branches differ: " + name)
+    return {name: len(rows) for name, rows in tables.items()}
 def selector_rows(manifest, input_rows=None):
     import asset_release
     mappings = asset_release.load_resource_mappings(input_rows=input_rows)
@@ -230,6 +311,7 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
     import asset_release
     import rust_data
     import catalog_data
+    products = product_registry()
     if migrate_data:
         if check:
             raise ValueError("A migration cannot run in check-only mode")
@@ -248,6 +330,7 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
         connection.execute("PRAGMA page_size=4096")
         connection.execute("PRAGMA foreign_keys=ON")
         fill(connection, manifest, datasets, search)
+        product_counts = fill_product_registry(connection, products)
         fill_selectors(connection, selectors)
         connection.executemany("INSERT INTO typed_catalog VALUES (?, ?, ?, ?)",
                                ((doc["id"], doc["codec"], hashlib.sha256(doc["raw"]).hexdigest(), doc["raw"]) for doc in documents))
@@ -279,10 +362,12 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
               "list_entries": len(manifest["list_entries"]), "files": len(manifest["files"]),
               "fonts": len(manifest["fonts"]), "original_sources": sources,
               "typed_catalogs": typed_reports,
+              "product_registry": {"source": PRODUCT_REGISTRY, "tables": product_counts,
+                                   "full_field_and_branch_roundtrip_verified": True},
               "selectors": {name: len(rows) for name, rows in selectors.items()},
               "inputs": [{"path": path, "bytes": (ROOT / path).stat().st_size,
                           "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest()}
-                         for path in [SCHEMA, INSTALLATION, rust_data.EMOJI_SEARCH_INPUT, *INPUTS.values(), asset_release.LOCK,
+                         for path in [SCHEMA, INSTALLATION, PRODUCT_REGISTRY, rust_data.EMOJI_SEARCH_INPUT, *INPUTS.values(), asset_release.LOCK,
                                       "tools/resource_database.py", "tools/asset_release.py", "tools/rust_data.py", "tools/catalog_data.py",
                                       *[item["source"] for item in recipes["tables"] if catalog_data.selected(item)]]]
                         + table_inputs,

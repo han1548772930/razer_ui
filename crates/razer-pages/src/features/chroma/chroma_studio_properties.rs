@@ -95,6 +95,89 @@ mod current_layout_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod screen_color_tests {
+    use super::{ChromaStudio, StudioPropertiesChanged, source};
+    use crate::features::screen_color::{ScreenColorUpdate, ScreenColorUpdateKind};
+    use gpui_kit::component::Root;
+    use gpui_kit::{AppContext as _, TestAppContext, px, size};
+    use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn static_properties_commit_screen_color_on_done_and_deactivation_rejects_old_events(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(gpui_kit::init);
+        let mut retained = None;
+        let handle = cx.open_window(size(px(360.), px(900.)), |window, cx| {
+            let studio = cx.new(ChromaStudio::new);
+            let properties = studio.read(cx).properties.clone();
+            properties.update(cx, |properties, cx| {
+                let defaults = source()
+                    .effects
+                    .iter()
+                    .find(|effect| effect.name == "static")
+                    .unwrap();
+                properties.current = Some((1, "static".into()));
+                properties.tool = "pen".into();
+                properties.params = defaults.paint_params.clone();
+                properties.layer_params = defaults.params.clone();
+                properties.paint_params = defaults.paint_params.clone();
+                properties.attach(window, cx);
+            });
+            retained = Some(properties.clone());
+            Root::new(properties, window, cx)
+        });
+        let properties = retained.unwrap();
+        let changes = Rc::new(RefCell::new(Vec::new()));
+        let history = changes.clone();
+        let _subscription = cx.update(|cx| {
+            cx.subscribe(&properties, move |_, event: &StudioPropertiesChanged, _| {
+                history.borrow_mut().push(event.paint_params.clone());
+            })
+        });
+        let capture = cx.update(|cx| {
+            properties
+                .read(cx)
+                .color
+                .as_ref()
+                .unwrap()
+                .read(cx)
+                .screen_color_capture()
+        });
+        cx.update(|cx| {
+            capture.update(cx, |capture, cx| {
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Color(0x123456),
+                ));
+            })
+        });
+        cx.update(|cx| assert_ne!(properties.read(cx).params["color"], 0x123456));
+        assert!(changes.borrow().is_empty());
+        cx.update(|cx| {
+            capture.update(cx, |capture, cx| {
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Done,
+                ));
+            })
+        });
+        cx.update(|cx| assert_eq!(properties.read(cx).params["color"], 0x123456));
+        assert_eq!(changes.borrow().len(), 1);
+        let stale = cx.update(|cx| {
+            ScreenColorUpdate::simulated(capture.read(cx), ScreenColorUpdateKind::Color(0xff0000))
+        });
+        cx.update_window(handle.into(), |_, _, cx| {
+            properties.update(cx, |properties, cx| properties.deactivate(cx));
+        })
+        .unwrap();
+        cx.update(|cx| capture.update(cx, |_, cx| cx.emit(stale)));
+        cx.update(|cx| assert_eq!(properties.read(cx).params["color"], 0x123456));
+        assert_eq!(changes.borrow().len(), 1);
+    }
+}
 impl EventEmitter<StudioPropertiesChanged> for StudioProperties {}
 
 pub(super) struct StudioProperties {
@@ -121,6 +204,20 @@ pub(super) struct StudioProperties {
 }
 
 impl StudioProperties {
+    pub(super) fn deactivate(&mut self, cx: &mut Context<Self>) {
+        if let Some(color) = &self.color {
+            color.update(cx, |color, cx| color.cancel_screen_color(cx));
+        }
+        if let Some(gradient) = &self.gradient {
+            gradient.update(cx, |gradient, cx| gradient.cancel_screen_color(cx));
+        }
+        if let Some(colors) = &self.colors {
+            for color in colors {
+                color.update(cx, |color, cx| color.cancel_screen_color(cx));
+            }
+        }
+    }
+
     pub(super) fn new(owner: &Entity<ChromaStudio>, cx: &mut Context<Self>) -> Self {
         let blur = cx.new(|_| Self::blur_state(5.));
         let duration = cx.new(StudioDuration::new);
@@ -296,7 +393,15 @@ impl StudioProperties {
         // retained session may have outlived its previous Chroma host window.
         let color = cx.new(|cx| StudioColor::new(self.color_value(), window, cx));
         color.update(cx, |color, cx| {
-            color.set_enabled(self.enabled(), window, cx)
+            color.set_enabled(
+                self.enabled()
+                    && self
+                        .current
+                        .as_ref()
+                        .is_some_and(|(_, name)| name == "static"),
+                window,
+                cx,
+            )
         });
         self.color_subscription = Some(cx.subscribe(&color, |this, _, event, cx| {
             if !this.enabled()
@@ -632,7 +737,11 @@ impl StudioProperties {
             return;
         };
         let value = self.color_value();
-        let enabled = self.enabled();
+        let enabled = self.enabled()
+            && self
+                .current
+                .as_ref()
+                .is_some_and(|(_, name)| name == "static");
         // Plain parent observation is not tied to a stale window. Defer the
         // window-bound input synchronization out of the properties update.
         cx.defer(move |cx| {

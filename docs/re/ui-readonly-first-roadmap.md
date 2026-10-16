@@ -2,16 +2,18 @@
 
 从原始输入生成全量分析，完整实现所有本地功能，包括设备变更、写回和持久化。[本地优先范围](local-first-scope.md) 排除的联网功能须从 UI 和 dispatch 清除。
 
-## 2026-10-16 主任务与子任务交接
+## 2026-10-16 全产品并行实现
 
-全产品、本地全页面的原始任务尚未完成。鼠标、键盘／游戏手柄、附件／摄像头／系统三个子任务的代码保留在当前工作区，已按用户要求暂停。以下记录用于继续实现，不能作为整页完成结论；分析缺项仍集中维护在 [gaps.json](../../.analysis/results/gaps.json)。
+全产品、本地全页面的原始任务尚未完成，当前主任务保持进行中。三个子任务分别负责当前来源与资源、全部产品 UI 对照、本地平台／设备调用链；主任务负责集成、音频及统一验证。以下记录区分已落地具体链与仍需继续实现的部分，不能作为整页完成结论；缺项仍集中维护在 [gaps.json](../../.analysis/results/gaps.json)。
 
 | 负责人／范围 | 已落地位置与行为 | 继续位置 |
 | --- | --- | --- |
 | `mouse_source_integration`：鼠标滚轮 153／170／203／204／214／226／45066 | [页面任务](../../crates/razer-pages/src/features/mouse/scrolling/mouse_scroll_task.rs)、[串行保存](../../crates/razer-shell/src/shell/mouse/mouse_scroll.rs)、[直连传输](../../crates/razer-discovery/src/direct/mouse_scroll.rs)：用户编辑、300ms 模式 debounce、53 位 profile 版本保存、typed IPC、接收器分支、226 mask→mode、取消与清理；保存仅合并本次操作的字段，保留原版乐观 UI | startup／profile restore 的滚轮初始化和事件、Smart Reel 实际 OBM GUID、45066 实际首匹配 slot；详见 [MW 证据](../../.analysis/results/frontend/mouse-mw-audit.json) |
-| `keyboard_gamepad_ui`：八款游戏手柄的新旧摇杆分支 | [摇杆页面](../../crates/razer-pages/src/features/gamepad/gamepad_thumbsticks.rs)：死区／双死区／灵敏度／圆度读写与服务队列，Assign 和校准导航，源 SVG／视频素材、禁用焦点与 Tutorial 点击时序；保存合并限制于操作字段；`razer_i18n::has` 对齐锁定版本 API | 新资源包下重跑完整 gamepad 页面测试，继续完整 profile restore／通知及其余整页交互；详见 [main 证据](../../.analysis/results/frontend/gamepad-main-audit.json) 与 [MW 证据](../../.analysis/results/frontend/gamepad-mw-audit.json) |
+| `product_ui_parity`：八款游戏手柄及共用控件 | [配置恢复](../../crates/razer-pages/src/features/gamepad/gamepad_profile.rs) 恢复扳机、摇杆与 OBM slot 的已保存字段，校验 side、值域与产品分支，保留扩展字段；[Stepper](../../crates/razer-widgets/src/stepper.rs) 按当前完整组件仅在点击输入后注册窗口滚轮，失焦清理 | 通用调色板与 Studio 三类取屏色 owner 正在接线；随后继续手柄 lighting 的完整 mounted 子树。现有部分控件、profile 恢复与模拟测试不代表八款整页完成；详见 [main 证据](../../.analysis/results/frontend/gamepad-main-audit.json) 与 [MW 证据](../../.analysis/results/frontend/gamepad-mw-audit.json) |
 | `accessories_camera_system`：Kiyo V2 PID3595 MIC | [MIC 控件](../../crates/razer-pages/src/features/workspace/source_controls/camera_mic.rs)：`CAMERA_MIC_SETTINGS`→`setAudioFunction(1/0)`→10ms→flash save→10ms→reboot；保留 dirty／pending／reboot 状态及取消／清理；刷新当前 native 静态捕获并保留反编译失败 | 新增编译测试及统一测试仍待复跑，继续其余摄像头／附件／系统页面。当前 [摄像头报告](../../.analysis/results/frontend/accessories-camera-local-pages-audit.json) 对应 gaps 仍有未解语义／失败及整页待验收项 |
-| 主任务：音频／视频 | [平台播放后端](../../crates/razer-platform/src/media.rs) 及 [页面播放器文件](../../crates/razer-pages/src/features/audio/audio_media.rs) 已写入；原始示例已转为保留时序、帧及原八通道 PCM 的 RZAV；GPUI 视频参考留在 `.analysis/inputs/references/gpui-video/` | `audio_media.rs` 尚未挂载到音频模块／demo／Leviathan，播放器控制、全屏、seek 过期结果、循环偏好及生命周期仍须接线；不宣称播放功能完成；见 [音频 demo 证据](../../.analysis/results/frontend/audio-demo-audit.json) |
+| 主任务：音频／视频 | [页面播放器](../../crates/razer-pages/src/features/audio/audio_media.rs) 已挂载 1352／1392／1442／3942，连接按需媒体、原八通道 PCM、实际已消费音频时钟、后台帧解码、拖动 seek 及旧代次隔离、播放／暂停／全屏；后三款保留循环和跨页浮动播放／拖动／关闭，1352 保留专用尺寸与音频模式选择器 | 继续原版全部快捷键、点击／双击与焦点语义，真实音量／保音高变速、forceOpen 分支及 SURROUND 完整组件／后端；全屏事件顺序仍须逐完整库函数核对。没有真实窗口／播放验收；见 [音频 demo 证据](../../.analysis/results/frontend/audio-demo-audit.json) |
+| `local_backend_parity`：手柄／混音器及平台链 | 八款手柄 Feature collection 与三款 V3 校准接通 source-host 语义；Mixer PID1342 的 Feature64→18 与 Output66→Input16 接线、20 次重试及取消／身份门禁；HID GetInput 返回长度按当前原生完整函数修正 | 正在连接取屏色的后台窗口、截图、流式回调、Done／取消和释放；继续所有产品的原生协议／服务链，模拟传输通过不等于真实设备写回 |
+| `current_source_audit`：来源／依赖／资源 | 官方当前稳定通道及本机活动主程序 4.0.827 已复核，138 个宿主文件与官方提取字节一致；664 个 UI／MW 入口本批复核稳定，保留原件未发现字节损坏；补充精确原版 SVG、媒体分析器与资源发布验证 | 继续实际声明缺失文件、拆包失败、间接调用及完整依赖闭包；原生全语料由统一 IDA 队列继续补捕获；source map 缺失、未声明 manifest probe 与实际运行依赖缺失分别记录 |
 
 私有 Dataset `han1548772930/razer-ui-assets` 已完成网页上传，[资源锁](../../tools/asset-release.json) 固定提交 `bf645f811bd14e5ab654eb64f835a79d6a69b2df`。332 个产品分组、7,768 个载荷文件、1,513,885,677 字节已逐项核对：5,275 个 LFS 对象核对 SHA-256 和长度；2,493 个普通 Git 对象以维护快照的 SHA-256、长度及 Git blob OID 交叉验证。主仓库仅保留 Rust 元数据表及 9 个原生托盘／菜单图标。不要重新启动批量下载、上传或推送 GitHub。
 

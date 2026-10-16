@@ -4,7 +4,7 @@ from __future__ import annotations
 import struct
 import unittest
 
-from tools.host import inspect_pe
+from tools.host import inspect_pe, pe_cursor_groups, pe_resource_entries
 
 
 def pe_fixture(bits=64):
@@ -22,6 +22,31 @@ def pe_fixture(bits=64):
     struct.pack_into("<I", raw, directory - 4, 16)
     struct.pack_into("<8sIIII", raw, optional + size, b".rdata\0\0", 0xe00, 0x1000, 0xe00, 0x200)
     return raw, directory
+
+
+def cursor_fixture():
+    raw, directory = pe_fixture()
+    struct.pack_into("<II", raw, directory + 16, 0x1200, 0x400)
+
+    def node(offset, entries):
+        base = 0x400 + offset
+        struct.pack_into("<IIHHHH", raw, base, 0, 0, 0, 0, 0, len(entries))
+        for index, entry in enumerate(entries):
+            struct.pack_into("<II", raw, base + 16 + index * 8, *entry)
+
+    node(0, [(1, 0x80000030), (12, 0x80000060)])
+    node(0x30, [(7, 0x80000090)])
+    node(0x60, [(102, 0x800000b0)])
+    node(0x90, [(1033, 0xd0)])
+    node(0xb0, [(1033, 0xe0)])
+    dib = struct.pack("<IiiHHIIiiII", 40, 2, 4, 1, 32, 0, 0, 0, 0, 0, 0) + bytes(range(16)) + b"\x80\0\0\0" * 2
+    cursor = struct.pack("<HH", 1, 0) + dib
+    group = struct.pack("<HHHHHHHIH", 0, 2, 1, 2, 4, 1, 32, len(cursor), 7)
+    struct.pack_into("<IIII", raw, 0x4d0, 0x1400, len(cursor), 0, 0)
+    struct.pack_into("<IIII", raw, 0x4e0, 0x1500, len(group), 0, 0)
+    raw[0x600:0x600 + len(cursor)] = cursor
+    raw[0x700:0x700 + len(group)] = group
+    return raw, dib
 
 
 class StaticPeTests(unittest.TestCase):
@@ -91,6 +116,45 @@ class StaticPeTests(unittest.TestCase):
         self.assertEqual(inspect_pe(b"\x7fELF"), {"format": "elf", "kind": "other"})
         with self.assertRaisesRegex(ValueError, "exceeds input"):
             inspect_pe(b"MZ")
+
+
+class StaticCursorTests(unittest.TestCase):
+    def test_reconstruction_preserves_dib_mask_hotspot_and_resource_identity(self):
+        raw, dib = cursor_fixture()
+        leaves = pe_resource_entries(raw)
+        self.assertEqual([(row["type"], row["name"], row["language"]) for row in leaves], [(1, 7, 1033), (12, 102, 1033)])
+        result, = pe_cursor_groups(raw, 102)
+        self.assertEqual(result["data"][:22], struct.pack("<HHHBBBBHHII", 0, 2, 1, 2, 2, 0, 0, 1, 0, len(dib), 22))
+        self.assertEqual(result["data"][22:], dib)
+        self.assertEqual(result["frames"][0]["group_height"], 4)
+        self.assertEqual(result["frames"][0]["original"], leaves[0])
+
+    def test_missing_or_foreign_language_frame_is_rejected(self):
+        raw, _ = cursor_fixture()
+        struct.pack_into("<I", raw, 0x4a0, 1031)
+        with self.assertRaisesRegex(ValueError, "language/identifier"):
+            pe_cursor_groups(raw, 102)
+
+    def test_hotspot_and_truncated_and_mask_are_rejected(self):
+        raw, _ = cursor_fixture()
+        struct.pack_into("<H", raw, 0x600, 2)
+        with self.assertRaisesRegex(ValueError, "hotspot"):
+            pe_cursor_groups(raw, 102)
+        raw, _ = cursor_fixture()
+        struct.pack_into("<I", raw, 0x4d4, 64)
+        struct.pack_into("<I", raw, 0x70e, 64)
+        with self.assertRaisesRegex(ValueError, "mask length"):
+            pe_cursor_groups(raw, 102)
+
+    def test_cyclic_and_out_of_directory_references_are_rejected(self):
+        raw, _ = cursor_fixture()
+        struct.pack_into("<I", raw, 0x414, 0x80000000)
+        with self.assertRaisesRegex(ValueError, "cyclic"):
+            pe_resource_entries(raw)
+        raw, _ = cursor_fixture()
+        struct.pack_into("<I", raw, 0x4a4, 0x10000)
+        with self.assertRaisesRegex(ValueError, "declared bounds"):
+            pe_resource_entries(raw)
 
 
 if __name__ == "__main__":

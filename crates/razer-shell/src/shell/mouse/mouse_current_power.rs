@@ -61,6 +61,7 @@ impl AppShell {
             seiren_eq: None,
             mouse_dpi: None,
             mouse_current_dpi: None,
+            controller_lighting: None,
             controller_trigger: None,
             mouse_current_power: Some(MouseCurrentPowerSave {
                 workspace,
