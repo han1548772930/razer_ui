@@ -700,7 +700,7 @@ impl MouseProductWorkspace {
                             .object_fit(ObjectFit::Contain),
                     ),
                 )
-                .popup(div().absolute().inset_0().child(panel))
+                .popup(razer_assets::resource_scope(div().absolute().inset_0().child(panel)))
                 .into_any_element(),
         )
     }

@@ -975,7 +975,7 @@ impl Render for DeviceGamesDialog {
                     ),
             )
             .popup(
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     .id("profiles-device-games-dialog")
                     .test_support()
                     .aria_label(title.clone())
@@ -1086,7 +1086,7 @@ impl Render for DeviceGamesDialog {
                                     ),
                             ),
                     )
-                    .children(self.transfer.clone()),
+                    .children(self.transfer.clone())),
             )
             .into_any_element()
     }

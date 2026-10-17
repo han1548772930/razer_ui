@@ -259,6 +259,20 @@ impl SmartSwitchColors {
 /// Current mouse Customize `.config-btns`, canvas constants and Hypershift CSS.
 pub struct MouseCustomizeColors;
 impl MouseCustomizeColors {
+    /// Current `.require-synape-icon` ordinary mapping background.
+    pub fn requires_synapse() -> Hsla {
+        rgb(0x008900).into()
+    }
+    /// Current `.left-click-disable-message` explanatory strip.
+    pub fn remapping_blocked_message() -> Hsla {
+        rgba(0x6d6b6bf5).into()
+    }
+    pub fn tooltip_secondary_text() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub fn tooltip_banner_text() -> Hsla {
+        rgb(0x000000).into()
+    }
     /// `.config-btn.remap-2-disabled`: Disable and disconnected Inter-Device.
     pub fn unavailable_mapping() -> Hsla {
         rgb(0xc8323c).into()

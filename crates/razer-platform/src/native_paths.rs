@@ -171,9 +171,7 @@ pub fn resource_candidates(
     product_id: Option<u32>,
 ) -> Vec<(&NativeResource, PathBuf)> {
     let installed = EnginePaths::discover();
-    let user_data = std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .map(|root| root.join("Razer/RazerAppEngine/User Data/Apps"));
+    let user_data = host_user_data_root().ok().map(|root| root.join("Apps"));
     let mut candidates = Vec::new();
     for resource in &library.resources {
         for binding in &resource.bindings {
@@ -228,17 +226,34 @@ pub fn native_library_candidates(
         .and_then(|directory| directory.parent())
         .and_then(|directory| directory.parent())
         .map(PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("LOCALAPPDATA")
-                .map(PathBuf::from)
-                .map(|root| root.join("Razer/RazerAppEngine/User Data"))
-        })?;
+        .or_else(|| host_user_data_root().ok())?;
     Some(
         native_library::candidate_paths(library, product_id, &programs_root, &user_data_root)
             .into_iter()
             .map(|(rule, path)| (format!("{rule:?}"), path))
             .collect(),
     )
+}
+
+/// Current host constants.js userDataDir. Installation observations and native
+/// resource discovery share this source-confirmed platform path.
+pub fn host_user_data_root() -> anyhow::Result<PathBuf> {
+    #[cfg(windows)]
+    {
+        return std::env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .map(|root| root.join("Razer/RazerAppEngine/User Data"))
+            .ok_or_else(|| anyhow::anyhow!("LOCALAPPDATA is unavailable"));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        return std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .map(|root| root.join("Library/Application Support/Razer/RazerAppEngine/User Data"))
+            .ok_or_else(|| anyhow::anyhow!("The user home directory is unavailable"));
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    anyhow::bail!("The current Razer host has no installation path for this platform")
 }
 
 pub fn resolve_path(stem: &str) -> Option<PathBuf> {

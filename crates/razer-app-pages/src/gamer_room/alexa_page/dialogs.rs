@@ -199,7 +199,7 @@ impl AlexaPage {
                     .bg(cx.theme().title_bar.opacity(0.7 * opacity))
                     .on_scroll_wheel(|_, _, cx| cx.stop_propagation()),
             )
-            .popup(popup)
+            .popup(razer_assets::resource_scope(popup))
             .into_any_element()
     }
     fn logout(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {

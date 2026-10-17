@@ -605,12 +605,12 @@ impl DeviceWorkspace {
             let entity = entity.clone();
             let cancel = entity.clone();
             dialog
-                .title("选择布局按键")
+                .title(razer_assets::resource_scope("选择布局按键"))
                 .child(
-                    Select::new(&picker)
+                    razer_assets::resource_scope(Select::new(&picker)
                         .id("snap-layout-key")
                         .placeholder("按名称查找按键")
-                        .w_full(),
+                        .w_full()),
                 )
                 .on_close(move |_, window, cx| {
                     entity.update(cx, |this, cx| {
@@ -620,7 +620,7 @@ impl DeviceWorkspace {
                         }
                     });
                 })
-                .footer(h_flex().justify_end().child(
+                .footer(razer_assets::resource_scope(h_flex().justify_end().child(
                     Button::new("snap-layout-cancel").label("取消").on_click(
                         move |_, window, cx| {
                             window.close_dialog(cx);
@@ -632,7 +632,7 @@ impl DeviceWorkspace {
                             });
                         },
                     ),
-                ))
+                )))
         });
     }
 

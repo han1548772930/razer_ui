@@ -615,14 +615,14 @@ impl Render for DeviceDialog {
             // hit region transparent instead of inventing a darkened surface.
             .backdrop(div().absolute().inset_0())
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .inset_0()
                     .flex()
                     .items_start()
                     .justify_center()
                     .pt(surface::css(113.))
-                    .child(body),
+                    .child(body)),
             )
             .into_any_element()
     }

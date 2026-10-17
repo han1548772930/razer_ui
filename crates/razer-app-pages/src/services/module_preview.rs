@@ -80,12 +80,12 @@ pub fn open(owner: WeakEntity<ModuleCatalog>, window: &mut Window, cx: &mut App)
     let preview = cx.new(|cx| ModulePreview::new(owner, window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title("设备与模块 · 界面预览")
+            .title(razer_assets::resource_scope("设备与模块 · 界面预览"))
             .width(
                 (window.rem_size() * (1280. / 16.))
                     .min(window.viewport_size().width - window.rem_size() * 2.),
             )
-            .child(preview.clone())
+            .child(razer_assets::resource_scope(preview.clone()))
     });
 }
 

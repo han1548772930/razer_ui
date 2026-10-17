@@ -37,9 +37,9 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     });
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title("Aether Light Strip · 界面预览")
+            .title(razer_assets::resource_scope("Aether Light Strip · 界面预览"))
             .w(window.rem_size() * (1100. / 16.))
-            .child(preview.clone())
+            .child(razer_assets::resource_scope(preview.clone()))
     });
 }
 fn apply(view: &mut AetherStrip, scene: &str, window: &mut Window, cx: &mut Context<AetherStrip>) {

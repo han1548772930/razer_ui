@@ -445,6 +445,7 @@ fn run_checked(
                     operation,
                     response,
                 }) => {
+                    let suspend_request = matches!(operation, LightingOperation::SuspendSoftware { .. });
                     let result = (|| -> anyhow::Result<LightingResult> {
                         if let LightingOperation::SuspendSoftware { suspended } = operation {
                             if !suspended {
@@ -453,15 +454,16 @@ fn run_checked(
                                     state.acknowledged_writes += 1;
                                 }
                             }
-                            session.suspend(suspended)?;
+                            let transition = session.suspend(suspended);
                             let mut state = status
                                 .lock()
                                 .map_err(|_| anyhow::anyhow!("Lighting status poisoned"))?;
-                            state.phase = if suspended {
+                            state.phase = if session.suspended {
                                 SoftwarePhase::Suspended
                             } else {
                                 SoftwarePhase::Running
                             };
+                            transition?;
                             return Ok(LightingResult {
                                 acknowledged_writes: u32::from(!suspended),
                                 software: Some(state.clone()),
@@ -485,7 +487,9 @@ fn run_checked(
                         }
                         Ok(result)
                     })();
+                    let fatal = suspend_request.then(|| result.as_ref().err().map(|error| format!("{error:#}"))).flatten();
                     let _ = response.send(result.map_err(|error| format!("{error:#}")));
+                    if let Some(error) = fatal { return Err(anyhow::anyhow!(error)); }
                 }
                 Ok(Message::Wake) => {}
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,

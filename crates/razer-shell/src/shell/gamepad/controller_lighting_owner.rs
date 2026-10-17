@@ -4,6 +4,8 @@ use super::*;
 use anyhow::{Context as _, ensure};
 use razer_device::controller_input::Event;
 use razer_device::controller_lighting::{SoftwarePhase, SoftwareStatus};
+use razer_device::controller_lighting::power_policy::{Event as PowerEvent, Policy};
+use crate::shell::controller_power::Configuration as PowerConfiguration;
 use razer_discovery::discovery::ObservedDevice;
 use std::sync::{
     Arc, Mutex,
@@ -55,6 +57,7 @@ struct ClientState {
     connection: Option<Box<dyn Connection>>,
     software_started: bool,
     advanced: bool,
+    power: Option<(String, Policy)>,
 }
 impl ClientState {
     fn request(&mut self, operation: &LightingOperation) -> anyhow::Result<LightingResult> {
@@ -117,6 +120,7 @@ pub(crate) struct RetainedOwner {
     state: Mutex<ClientState>,
     predecessor: Option<Arc<RetainedOwner>>,
     input: Mutex<InputQueue>,
+    power_configuration: Mutex<Option<PowerConfiguration>>,
 }
 #[derive(Default)]
 struct InputQueue {
@@ -124,6 +128,33 @@ struct InputQueue {
     pumping: bool,
 }
 impl RetainedOwner {
+    pub(in crate::shell) fn matches_route(&self,route:&ObservedDevice)->bool {same_route(&self.route,route)}
+    pub(in crate::shell) fn configure_power(&self,configuration:PowerConfiguration)->anyhow::Result<()> {
+        configuration.settings.validate()?;
+        configuration.brightness.validate()?;
+        *self.power_configuration.lock().map_err(|_|anyhow::anyhow!("Controller power configuration lock failed"))?=Some(configuration);
+        Ok(())
+    }
+    pub(in crate::shell) fn apply_power_event(&self,event:PowerEvent)->anyhow::Result<Option<LightingResult>> {
+        let mut state=self.state.lock().map_err(|_|anyhow::anyhow!("Controller lighting owner lock failed"))?;
+        if !self.accepting.load(Ordering::Acquire) {return Ok(None);}
+        // Configuration publication never holds the I/O lock on the GUI thread.
+        // Read it after taking that lock so a queued event uses the current profile.
+        let Some(configuration)=self.power_configuration.lock().map_err(|_|anyhow::anyhow!("Controller power configuration lock failed"))?.clone() else {return Ok(None);};
+        match &mut state.power {
+            Some((id,policy)) if *id==configuration.profile_id=>policy.update(configuration.settings,configuration.brightness)?,
+            _=>state.power=Some((configuration.profile_id,Policy::new(configuration.settings,configuration.brightness)?)),
+        }
+        let Some(value)=state.power.as_mut().expect("power policy initialized").1.apply(event) else {return Ok(None);};
+        if state.connection.is_none() {
+            if let Some(predecessor)=&self.predecessor {predecessor.release()?;}
+            state.connection=Some(Box::new(LocalConnection::open(&self.route)?));
+        }
+        ensure!(self.accepting.load(Ordering::Acquire),"Controller lighting owner was retired");
+        let result=state.request(&LightingOperation::Brightness {value})?;
+        ensure!(self.accepting.load(Ordering::Acquire),"Controller runtime brightness response belongs to a retired owner");
+        Ok(Some(result))
+    }
     pub(in crate::shell) fn set_advanced(
         &self,
         enabled: bool,
@@ -132,6 +163,7 @@ impl RetainedOwner {
         ensure!(self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire), "Controller lighting owner was retired");
         let mut state = self.state.lock().map_err(|_| anyhow::anyhow!("Controller lighting owner lock failed"))?;
         ensure!(self.accepting.load(Ordering::Acquire) && guard.load(Ordering::Acquire), "Controller lighting owner was retired");
+        if state.advanced==enabled {return Ok(None);}
         state.advanced = enabled;
         if !state.software_started {
             return Ok(None);
@@ -312,6 +344,8 @@ impl AppShell {
     }
     pub(in crate::shell) fn install_controller_lighting_cleanup(&mut self, cx: &mut Context<Self>) {
         self.subscriptions.push(cx.on_app_quit(|this, cx| {
+            this.controller_power.stop.store(true,Ordering::Release);
+            let power=this.controller_power.task.take();
             let mut owners = std::mem::take(&mut this.controller_lighting_owners)
                 .into_values()
                 .map(Session::retire)
@@ -324,11 +358,12 @@ impl AppShell {
                     }
                 }
             });
-            async move { cleanup.await }
+            async move { if let Some(power)=power {power.await;} cleanup.await }
         }));
     }
 
     pub(in crate::shell) fn retire_controller_lighting_owners(&mut self, cx: &mut Context<Self>) {
+        self.controller_power.stop.store(true,Ordering::Release);
         for (_, session) in std::mem::take(&mut self.controller_lighting_owners) {
             self.release_controller_lighting_owner(session.retire(), cx);
         }
@@ -395,6 +430,7 @@ impl AppShell {
                 self.release_controller_lighting_owner(session.retire(), cx);
             }
         }
+        self.refresh_controller_power_configuration(cx);
     }
 
     pub(in crate::shell) fn controller_lighting_owner(
@@ -436,6 +472,7 @@ impl AppShell {
             }),
             predecessor,
             input: Mutex::new(InputQueue::default()),
+            power_configuration: Mutex::new(None),
         });
         let retained = owner.clone();
         let key = identity.to_owned();
@@ -499,6 +536,7 @@ impl AppShell {
                 _poll: poll,
             },
         );
+        self.start_controller_power_monitor(cx);
         owner
     }
 }
@@ -559,6 +597,7 @@ mod tests {
                 })),
                 advanced: false,
                 software_started: false,
+                power: None,
             },
             calls,
         )

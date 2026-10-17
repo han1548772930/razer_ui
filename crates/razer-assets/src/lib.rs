@@ -15,7 +15,7 @@ mod remote;
 pub use remote::{
     ResourceChanged, ResourcePending, is_resource_pending, observe_resources, resource_errors,
     resource_generation, resource_image_cache, retry_resources, start_resources,
-    ResourceScope, deferred_resource, resource_scope,
+    ResourceLayer, ResourceScope, deferred_resource, resource_scope,
 };
 
 /// Request one original file by its manifest path, without hydrating its product.

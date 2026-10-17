@@ -47,10 +47,12 @@ pub struct Configuration {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     current_profile: Option<String>,
     enabled: bool,
+    #[serde(flatten)]
+    extensions: Map<String, Value>,
 }
 impl Configuration {
     fn empty_local() -> Self {
-        Self { profiles: Vec::new(), current_profile: None, enabled: false }
+        Self { profiles: Vec::new(), current_profile: None, enabled: false, extensions:Map::new() }
     }
     pub fn profiles(&self) -> &[Profile] { &self.profiles }
     pub fn selected_profile(&self) -> Option<&str> { self.current_profile.as_deref() }
@@ -77,11 +79,13 @@ pub struct Snapshot {
     configuration: Option<Configuration>,
     origin: Option<Origin>,
     dynamic_lighting: Option<bool>,
+    module_installed: Option<bool>,
 }
 impl Snapshot {
     pub fn configuration(&self) -> Option<&Configuration> { self.configuration.as_ref() }
     pub fn origin(&self) -> Option<Origin> { self.origin }
     pub fn dynamic_lighting(&self) -> Option<bool> { self.dynamic_lighting }
+    pub fn module_installed(&self) -> Option<bool> { self.module_installed }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -89,6 +93,8 @@ struct Document {
     version: u32,
     revision: u64,
     configuration: Configuration,
+    #[serde(flatten)]
+    extensions: Map<String, Value>,
 }
 
 #[derive(Deserialize)]
@@ -116,8 +122,14 @@ pub fn load(path: &Path, source_path: &Path) -> anyhow::Result<Snapshot> {
         crate::read_document(source_path, |text| Ok(serde_json::from_str(text)?))?.unwrap_or_default();
     let dynamic_lighting = entries.get(SOURCE_DYNAMIC_LIGHTING)
         .map(|raw| serde_json::from_str::<bool>(raw)).transpose()?;
+    let module_installed = if let Some(raw) = entries.get("installedModules") {
+        let installed: std::collections::BTreeMap<String, Value> = serde_json::from_str(raw)?;
+        let removing: Vec<String> = entries.get("uninstallingModules")
+            .map(|raw| serde_json::from_str(raw)).transpose()?.unwrap_or_default();
+        Some(installed.contains_key("chroma-app") && !removing.iter().any(|name| name == "chroma-app"))
+    } else { None };
     if let Some(document) = crate::read_document(path, decode)? {
-        return Ok(Snapshot { configuration: Some(document.configuration), origin: Some(Origin::LocalConfiguration), dynamic_lighting });
+        return Ok(Snapshot { configuration: Some(document.configuration), origin: Some(Origin::LocalConfiguration), dynamic_lighting, module_installed });
     }
     let configuration = match (entries.get(SOURCE_CURRENT_USER), entries.get(SOURCE_USERS)) {
         (Some(current), Some(users)) => {
@@ -126,13 +138,14 @@ pub fn load(path: &Path, source_path: &Path) -> anyhow::Result<Snapshot> {
                 profiles: user.profiles,
                 current_profile: user.current_profile,
                 enabled: user.enabled,
+                extensions:Map::new(),
             })
         }
         _ => None,
     };
     if let Some(configuration) = &configuration { configuration.validate()?; }
     let origin = configuration.as_ref().map(|_| Origin::ImportedProjection);
-    Ok(Snapshot { configuration, origin, dynamic_lighting })
+    Ok(Snapshot { configuration, origin, dynamic_lighting, module_installed })
 }
 
 fn lock(path: &Path, guard: &AtomicBool) -> anyhow::Result<File> {
@@ -187,7 +200,7 @@ pub fn update(
     configuration.validate()?;
     let revision = previous.as_ref().map_or(0, |document| document.revision)
         .checked_add(1).context("Chroma configuration revision exhausted")?;
-    let document = Document { version: VERSION, revision, configuration };
+    let document = Document { version: VERSION, revision, configuration, extensions: previous.as_ref().map(|document| document.extensions.clone()).unwrap_or_default() };
     ensure!(guard.load(Ordering::Acquire), "Chroma configuration request was canceled");
     crate::write_document(path, &document, |text| {
         ensure!(guard.load(Ordering::Acquire), "Chroma configuration request was canceled");

@@ -1070,7 +1070,7 @@ impl KeyboardProductWorkspace {
                     .on_ok(|_, _, _| false)
                     .backdrop(div().absolute().inset_0().bg(Colors::backdrop()))
                     .popup(
-                        div()
+                        razer_assets::resource_scope(div()
                             .absolute()
                             .left_0()
                             .bottom(relative(0.5))
@@ -1105,7 +1105,7 @@ impl KeyboardProductWorkspace {
                                             .child(t("EXIT_ADJUSTMENT_MODE").to_uppercase()),
                                     )
                                     .child(t("EXIT_ADJUSTMENT_MODE_DES")),
-                            ),
+                            )),
                     )
                     .into_any_element(),
             );

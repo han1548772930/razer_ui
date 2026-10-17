@@ -1148,7 +1148,7 @@ impl Render for BindingDialog {
                     ),
             )
             .popup(
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     .id("macro-binding-dialog")
                     .absolute()
                     .left((viewport.width - width) / 2.)
@@ -1226,7 +1226,7 @@ impl Render for BindingDialog {
                                     self.chooser(cx)
                                 },
                             )),
-                    ),
+                    )),
             )
             .into_any_element()
     }

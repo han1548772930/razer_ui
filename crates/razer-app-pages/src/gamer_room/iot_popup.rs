@@ -1361,7 +1361,7 @@ impl Render for IotPopup {
                     .bg(MainPageColors.banner_shade().opacity(0.7 * opacity)),
             )
             .popup(
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     .id("gamer-room-add-dialog")
                     .test_support()
                     .opacity(opacity)
@@ -1465,7 +1465,7 @@ impl Render for IotPopup {
                                         .child(self.notice.clone()),
                                 )
                             }),
-                    ),
+                    )),
             )
             .into_any_element()
     }

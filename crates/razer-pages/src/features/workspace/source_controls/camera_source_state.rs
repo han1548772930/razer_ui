@@ -814,7 +814,7 @@ impl SourceControls {
                     .bg(super::camera_theme::modal_backdrop()),
             )
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .inset_0()
                     .flex()
@@ -822,7 +822,7 @@ impl SourceControls {
                     .justify_center()
                     .px(surface::css(15.))
                     .py(surface::css(30.))
-                    .child(body),
+                    .child(body)),
             )
             .into_any_element()
     }

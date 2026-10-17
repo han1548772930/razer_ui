@@ -745,7 +745,7 @@ impl AudioProductWorkspace {
                 })
                 .backdrop(div().size_full().bg(C::wizard_overlay()))
                 .popup(
-                    v_flex()
+                    razer_assets::resource_scope(v_flex()
                         .min_w(surface::css(544.))
                         .max_w(relative(0.9))
                         .max_h(relative(0.9))
@@ -790,7 +790,7 @@ impl AudioProductWorkspace {
                                 .min_h_0()
                                 .overflow_y_scroll()
                                 .child(content),
-                        ),
+                        )),
                 )
                 .into_any_element(),
         )

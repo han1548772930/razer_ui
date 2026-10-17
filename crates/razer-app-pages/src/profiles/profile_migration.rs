@@ -50,12 +50,12 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     let page = cx.new(|cx| MigrationPage::new_preview(window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title(i18n::t("PROFILE_MIGRATION"))
+            .title(razer_assets::resource_scope(i18n::t("PROFILE_MIGRATION")))
             .width(
                 (window.rem_size() * 80.)
                     .min(window.viewport_size().width - window.rem_size() * 2.),
             )
-            .child(page.clone())
+            .child(razer_assets::resource_scope(page.clone()))
     });
 }
 
@@ -827,7 +827,7 @@ impl MigrationPage {
                     .bg(cx.theme().title_bar.opacity(0.7)),
             )
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .inset_0()
                     .w(window.viewport_size().width)
@@ -846,7 +846,7 @@ impl MigrationPage {
                             .text_size(surface::css(12.))
                             .text_color(PaletteColors.white())
                             .child("界面预览 · 示例状态；按 Esc 返回"),
-                    ),
+                    )),
             )
             .into_any_element()
     }

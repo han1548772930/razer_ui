@@ -41,12 +41,16 @@ impl QuickColor {
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SourceSetting {
+    #[serde(skip_serializing_if = "Option::is_none")] effect_id: Option<QuickEffectId>,
     #[serde(skip_serializing_if = "Option::is_none")] color1: Option<QuickColor>,
     #[serde(skip_serializing_if = "Option::is_none")] color2: Option<QuickColor>,
     #[serde(skip_serializing_if = "Option::is_none")] is_random: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")] duration: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")] direction: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")] speed: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")] index_direction: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")] number_of_wave_direction: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")] total_idx_direction: Option<u8>,
     #[serde(flatten)] extensions: BTreeMap<String, Value>,
 }
 
@@ -139,11 +143,20 @@ impl CachedSetting {
 #[serde(rename_all = "camelCase")]
 struct SourceCached { effect_id: QuickEffectId, #[serde(flatten)] setting: SourceSetting }
 #[derive(Clone, Debug, Deserialize, Serialize)]
+struct SourceCustomColor {
+    color: String,
+    #[serde(flatten)] extensions: BTreeMap<String,Value>,
+}
+impl SourceCustomColor {
+    fn validate(&self)->anyhow::Result<()> {if self.color=="#111" {Ok(())}else{HexColor::try_from(self.color.clone()).map(|_|())}}
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SourceQuick {
     selected_effect_id: QuickEffectId,
     #[serde(skip_serializing_if = "Option::is_none")] selected_effect_setting: Option<SourceSetting>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")] effect_settings: Vec<SourceCached>,
+    #[serde(skip_serializing_if = "Option::is_none")] custom_colors: Option<Vec<SourceCustomColor>>,
     #[serde(flatten)] extensions: BTreeMap<String,Value>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -151,10 +164,11 @@ struct SourceQuick {
 pub(super) struct QuickLightingSettings {
     pub(super) selected: QuickEffectId,
     cache: Vec<CachedSetting>,
+    custom_colors: Option<Vec<SourceCustomColor>>,
     extensions: BTreeMap<String,Value>,
 }
 impl Default for QuickLightingSettings {
-    fn default() -> Self { Self {selected:QuickEffectId::Spectrum,cache:Vec::new(),extensions:BTreeMap::new()} }
+    fn default() -> Self { Self {selected:QuickEffectId::Spectrum,cache:Vec::new(),custom_colors:None,extensions:BTreeMap::new()} }
 }
 impl TryFrom<SourceQuick> for QuickLightingSettings {
     type Error = anyhow::Error;
@@ -165,21 +179,53 @@ impl TryFrom<SourceQuick> for QuickLightingSettings {
             cache.push(CachedSetting {id:saved.effect_id,setting:QuickSetting::parse(saved.effect_id,&saved.setting)?,source:saved.setting});
         }
         if let Some(selected)=source.selected_effect_setting {
+            ensure!(selected.effect_id.is_none_or(|id|id==source.selected_effect_id),"Selected quick effect identity does not match its settings");
             let setting=QuickSetting::parse(source.selected_effect_id,&selected)?;
             cache.retain(|c|c.id!=source.selected_effect_id);
             cache.push(CachedSetting {id:source.selected_effect_id,setting,source:selected});
         }
-        Ok(Self {selected:source.selected_effect_id,cache,extensions:source.extensions})
+        if let Some(colors)=&source.custom_colors {for color in colors {color.validate()?;}}
+        Ok(Self {selected:source.selected_effect_id,cache,custom_colors:source.custom_colors,extensions:source.extensions})
     }
 }
 impl From<QuickLightingSettings> for SourceQuick {
     fn from(state: QuickLightingSettings) -> Self {
         let selected_effect_setting=state.cache.iter().find(|c|c.id==state.selected).map(CachedSetting::source);
-        let effect_settings=state.cache.into_iter().map(|c|SourceCached {effect_id:c.id,setting:c.source()}).collect();
-        Self {selected_effect_id:state.selected,selected_effect_setting,effect_settings,extensions:state.extensions}
+        let effect_settings=state.cache.into_iter().map(|c| {let mut setting=c.source();setting.effect_id=None;SourceCached {effect_id:c.id,setting}}).collect();
+        Self {selected_effect_id:state.selected,selected_effect_setting,effect_settings,custom_colors:state.custom_colors,extensions:state.extensions}
     }
 }
 impl QuickLightingSettings {
+    pub(super) fn apply_sync(&mut self,payload:&Value)->anyhow::Result<bool> {
+        #[derive(Deserialize)]
+        #[serde(rename_all="camelCase")]
+        struct Identity {selected_effect_id:u8}
+        #[derive(Deserialize)]
+        #[serde(rename_all="camelCase")]
+        struct Envelope {effect_settings:SourceSetting,custom_colors:Option<Vec<SourceCustomColor>>}
+        let identity:Identity=serde_json::from_value(payload.clone())?;
+        let Ok(id)=QuickEffectId::try_from(identity.selected_effect_id) else{return Ok(false);};
+        let mut envelope:Envelope=serde_json::from_value(payload.clone())?;
+        let source=&mut envelope.effect_settings;
+        ensure!(source.effect_id.is_none_or(|effect_id|effect_id==id),"Synchronized quick effect identity does not match its settings");
+        // Current ON_SET_EFFECTS calls Rp only for indexDirection + totalIdxDirection.
+        // 4115's LeftRight mapping has no WAVE_DIRECTION_ID_AVAILABLE override.
+        if let (Some(ix),Some(total))=(source.index_direction,source.total_idx_direction) {
+            source.direction=match total {2=>Some(if ix==1 {2}else{1}),4=>Some(ix%2+1),_=>source.direction};
+            source.index_direction=None;source.total_idx_direction=None;
+        }
+        let setting=QuickSetting::parse(id,source)?;
+        if let Some(colors)=&envelope.custom_colors {for color in colors {color.validate()?;}}
+        if let Some(colors)=envelope.custom_colors {
+            let current=self.custom_colors.get_or_insert_with(Vec::new);
+            let known= current.iter().map(|entry|entry.color.clone()).collect::<std::collections::BTreeSet<_>>();
+            current.extend(colors.into_iter().filter(|entry|!known.contains(&entry.color)));
+        }
+        self.selected=id;
+        self.cache.retain(|cached|cached.id!=id);
+        self.cache.push(CachedSetting {id,setting,source:envelope.effect_settings});
+        Ok(true)
+    }
     pub(super) fn setting(&self) -> QuickSetting { self.cache.iter().find(|c|c.id==self.selected).map(|c|c.setting.clone()).unwrap_or_else(||QuickSetting::source_default(self.selected)) }
     pub(super) fn select(&mut self,id: QuickEffectId) {
         self.selected=id;
@@ -226,5 +272,55 @@ mod tests {
         for invalid in [json!({"selectedEffectId":6}),json!({"selectedEffectId":1,"selectedEffectSetting":{"color1":"no-color"}}),json!({"selectedEffectId":4,"selectedEffectSetting":{"direction":3}}),json!({"selectedEffectId":3,"selectedEffectSetting":{"duration":0}})] { assert!(serde_json::from_value::<QuickLightingSettings>(invalid).is_err()); }
         let mut setting=QuickSetting::source_default(QuickEffectId::Static);
         assert!(setting.set_color(0,QuickColor::None).is_err());
+    }
+    #[test]
+    fn synchronized_effect_replaces_only_its_cache_and_retains_source_extensions() {
+        let mut state:QuickLightingSettings=serde_json::from_value(json!({
+            "selectedEffectId":1,"profileExtension":{"revision":7},
+            "selectedEffectSetting":{"color1":"#112233","oldExtension":true},
+            "effectSettings":[{"effectId":4,"direction":2,"cachedExtension":"wave"}],
+            "customColors":[{"color":"#112233","picked":false,"slotExtension":2}]
+        })).unwrap();
+        assert!(state.apply_sync(&json!({"selectedEffectId":2,"effectSettings":{"effectId":2,"color1":"#abcdef","color2":"no-color","isRandom":false,"sourceExtension":{"keep":true}},"customColors":[{"color":"#112233","picked":true},{"color":"#abcdef","picked":true}],"timerTick":7})).unwrap());
+        let value=serde_json::to_value(&state).unwrap();
+        assert_eq!(value["selectedEffectId"],2);
+        assert_eq!(value["profileExtension"],json!({"revision":7}));
+        assert_eq!(value["effectSettings"].as_array().unwrap().iter().map(|entry|entry["effectId"].as_u64().unwrap()).collect::<Vec<_>>(),[4,1,2]);
+        assert_eq!(value["effectSettings"][0]["cachedExtension"],"wave");
+        assert_eq!(value["selectedEffectSetting"]["sourceExtension"],json!({"keep":true}));
+        assert!(value["selectedEffectSetting"].get("duration").is_none());
+        assert_eq!(value["customColors"],json!([{"color":"#112233","picked":false,"slotExtension":2},{"color":"#abcdef","picked":true}]));
+        // Cached effects serialize one effectId even when the incoming selected
+        // settings include the vendor envelope's own effectId field.
+        let encoded=serde_json::to_string(&state).unwrap();
+        let roundtrip:QuickLightingSettings=serde_json::from_str(&encoded).unwrap();
+        assert_eq!(serde_json::to_value(roundtrip).unwrap(),value);
+        assert!(state.apply_sync(&json!({"selectedEffectId":1,"effectSettings":{"color1":"#445566"}})).unwrap());
+        assert!(serde_json::to_value(state).unwrap()["selectedEffectSetting"].get("oldExtension").is_none());
+    }
+    #[test]
+    fn synchronized_effect_validates_atomically_and_ignores_unmounted_effects() {
+        let mut state=QuickLightingSettings::default();
+        let before=serde_json::to_value(&state).unwrap();
+        assert!(!state.apply_sync(&json!({"selectedEffectId":7,"effectSettings":{"color1":{}}})).unwrap());
+        for invalid in [json!({"selectedEffectId":1}),json!({"selectedEffectId":1,"effectSettings":{"color1":"no-color"}}),json!({"selectedEffectId":2,"effectSettings":{"color1":"#00ff00","color2":"no-color","isRandom":false,"duration":4}}),json!({"selectedEffectId":1,"effectSettings":{"color1":"#112233","effectId":4}}),json!({"selectedEffectId":1,"effectSettings":{"color1":"#112233"},"customColors":[{"color":"invalid"}]})] {
+            assert!(state.apply_sync(&invalid).is_err());
+            assert_eq!(serde_json::to_value(&state).unwrap(),before);
+        }
+    }
+    #[test]
+    fn synchronized_direction_uses_only_the_current_receiver_field_pair() {
+        let mut state=QuickLightingSettings::default();
+        state.apply_sync(&json!({"selectedEffectId":4,"effectSettings":{"effectId":4,"direction":2,"indexDirection":0,"numberOfWaveDirection":2}})).unwrap();
+        assert_eq!(state.setting(),QuickSetting::Wave {direction:razer_device::controller_lighting::WaveDirection::Right,speed:None});
+        let value=serde_json::to_value(&state).unwrap();
+        assert_eq!(value["selectedEffectSetting"]["indexDirection"],0);
+        assert_eq!(value["selectedEffectSetting"]["numberOfWaveDirection"],2);
+        state.apply_sync(&json!({"selectedEffectId":4,"effectSettings":{"direction":2,"indexDirection":2,"totalIdxDirection":4}})).unwrap();
+        assert_eq!(state.setting(),QuickSetting::Wave {direction:razer_device::controller_lighting::WaveDirection::Left,speed:None});
+        let value=serde_json::to_value(state).unwrap();
+        assert!(value["selectedEffectSetting"].get("indexDirection").is_none());
+        assert!(value["selectedEffectSetting"].get("totalIdxDirection").is_none());
+        assert!(value["selectedEffectSetting"].get("speed").is_none());
     }
 }

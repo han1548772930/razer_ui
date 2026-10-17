@@ -11,6 +11,8 @@ pub mod file_dialog;
 pub mod foreground_monitor;
 #[path = "observation/game_monitor.rs"]
 pub mod game_monitor;
+#[path = "observation/chroma_installation.rs"]
+pub mod chroma_installation;
 #[path = "input/global_shortcuts.rs"]
 pub mod global_shortcuts;
 #[path = "input/keyboard_capture.rs"]
@@ -28,6 +30,8 @@ pub mod native_paths;
 pub mod screen_color;
 #[path = "observation/session_changes.rs"]
 pub mod session_changes;
+#[path = "observation/power_idle.rs"]
+pub mod power_idle;
 pub mod startup;
 #[path = "system.rs"]
 pub mod system;

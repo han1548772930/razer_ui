@@ -18,6 +18,17 @@ pub(super) struct QuickLightingUi {
 fn effect_choices()->Vec<Choice> {QuickEffectId::ORDER.into_iter().map(|id|Choice::localized(u8::from(id).to_string(),id.label())).collect()}
 
 impl GamepadProductWorkspace {
+    pub fn apply_controller_sync_quick(&mut self,source_effect:&serde_json::Value,window:&mut Window,cx:&mut Context<Self>)->Result<bool,String> {
+        if self.spec.product_id!=4115 {return Ok(false);}
+        let settings=self.lighting_runtime.quick.as_mut().ok_or_else(||"Kitsune quick settings are missing".to_string())?;
+        if !settings.apply_sync(source_effect).map_err(|error|format!("Invalid synchronized Kitsune effect: {error:#}"))? {return Ok(false);}
+        self.dismiss_quick_lighting_controls(cx);
+        self.chroma_runtime.advanced=false;
+        self.chroma_runtime.observation=self.chroma_runtime.observation.clone().with_enabled(false);
+        self.submit_quick_lighting(cx);
+        self.sync_quick_lighting_controls(window,cx);
+        Ok(true)
+    }
     pub(super) fn initialize_quick_lighting_controls(&mut self,window:&mut Window,cx:&mut Context<Self>) {
         if self.spec.product_id!=4115 {return;}
         razer_state::CustomColors::ensure(cx);
@@ -37,8 +48,9 @@ impl GamepadProductWorkspace {
         self.subscriptions.push(cx.subscribe_in(&chroma_profile,window,|this,_,event,_,cx| {
             if this.syncing||!this.checked("/profile/brightness/isEnabled")||this.chroma_runtime.observation.visualizer_enabled()==Some(true){return;}
             if let SelectEvent::Confirm(Some(id))=event {
-                if this.chroma_runtime.observation.profiles().is_some_and(|profiles|profiles.iter().any(|profile|profile.id()==id)) {
+                if this.chroma_runtime.observation.select_profile(id) {
                     this.request_controller_chroma(ControllerChromaCommand::SelectProfile {id:id.clone()},cx);
+                    cx.notify();
                 }
             }
         }));
@@ -129,10 +141,7 @@ impl GamepadProductWorkspace {
                     .on_click(cx.listener(|this,_,_,cx|{
                         if !this.chroma_runtime.sync_started.is_some_and(|start|start.elapsed()<std::time::Duration::from_millis(1200)){this.chroma_runtime.sync_started=Some(std::time::Instant::now());this.chroma_runtime.sync_generation=this.chroma_runtime.sync_generation.wrapping_add(1);}
                         if let Some(settings)=&this.lighting_runtime.quick {
-                            let mut source_effect=settings.sync_payload();
-                            let colors=cx.global::<razer_state::CustomColors>().colors();
-                            let selected=[settings.setting().color(0).and_then(QuickColor::rgb),settings.setting().color(1).and_then(QuickColor::rgb)];
-                            source_effect["customColors"]=json!(colors.iter().filter_map(|color|color.filter(|color|selected.contains(&Some(*color)))).map(|color|json!({"color":String::from(super::lighting_state::HexColor(color)),"picked":true})).collect::<Vec<_>>());
+                            let source_effect=settings.sync_payload();
                             this.request_controller_chroma(ControllerChromaCommand::SyncQuick {source_effect},cx);
                         }
                         cx.notify();
@@ -213,7 +222,7 @@ impl GamepadProductWorkspace {
         div().absolute().inset_0().flex().items_center().justify_center().bg(Colors::backdrop())
             .child(v_flex().w(surface::css(400.)).p(surface::css(20.)).rounded(surface::css(3.)).border_1().border_color(Colors::warning()).bg(Colors::background()).text_color(GamepadTriggerColors::text()).text_size(surface::css(14.)).line_height(surface::css(17.)).text_center()
                 .child(img("synapse/gamepad-lighting/warning.svg").size(surface::css(20.)).self_center())
-                .child(div().my(surface::css(10.)).child(t("POPUP_WARNING_DYNAMIC_LIGHTING_AUDIO_VISUALIZER")))
+                .child(div().my(surface::css(10.)).child(gpui_kit::base::TextView::html("kitsune-dynamic-description",t("POPUP_WARNING_DYNAMIC_LIGHTING_AUDIO_VISUALIZER")).selectable(false).scrollable(false)))
                 .child(BaseButton::new("kitsune-dynamic-settings").text_color(Colors::text()).underline().hover(|style|style.text_color(Colors::accent())).child(t("MANAGE_SYNAPSE_SETTINGS")).on_click(cx.listener(|this,_,_,cx|this.request_controller_chroma(ControllerChromaCommand::OpenSettings,cx)))))
             .into_any_element()
     }

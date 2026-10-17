@@ -472,13 +472,13 @@ impl Render for ProfileTransfer {
             .close_on_backdrop_press(false)
             .backdrop(div().absolute().inset_0().bg(Colors::backdrop()).occlude())
             .popup(
-                DialogPopup::new()
+                razer_assets::resource_scope(DialogPopup::new()
                     .absolute()
                     .left(
                         window.viewport_size().width / 2. - css(300.).to_pixels(window.rem_size()),
                     )
                     .top(css(104.))
-                    .child(panel),
+                    .child(panel)),
             )
     }
 }

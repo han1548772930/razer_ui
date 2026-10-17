@@ -110,6 +110,7 @@ impl AppShell {
             mouse_dpi: None,
             mouse_current_power: None,
             controller_lighting: None,
+            controller_chroma: None,
             controller_trigger: None,
             seiren_eq: None,
             mouse_current_dpi: Some(MouseCurrentDpiSave {

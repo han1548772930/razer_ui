@@ -610,11 +610,11 @@ impl Render for SourceProfileTransfer {
             .close_on_backdrop_press(false)
             .backdrop(div().absolute().inset_0().bg(rgba(0x000000b3)).occlude())
             .popup(
-                DialogPopup::new()
+                razer_assets::resource_scope(DialogPopup::new()
                     .absolute()
                     .left(left)
                     .top(surface::css(g.top))
-                    .child(panel),
+                    .child(panel)),
             )
     }
 }

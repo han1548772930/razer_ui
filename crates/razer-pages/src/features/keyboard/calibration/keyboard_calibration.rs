@@ -516,7 +516,7 @@ impl Render for CalibrationModal {
                     .bg(rgba(0x00000080))
                     .opacity(opacity),
             )
-            .popup(div().absolute().inset_0().child(panel))
+            .popup(razer_assets::resource_scope(div().absolute().inset_0().child(panel)))
             .into_any_element()
     }
 }
@@ -984,9 +984,9 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     let preview = cx.new(|cx| CalibrationPreview::new(740, window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title("磁轴键盘校准 · 界面预览")
+            .title(razer_assets::resource_scope("磁轴键盘校准 · 界面预览"))
             .w(window.rem_size() * (1100. / 16.))
-            .child(preview.clone())
+            .child(razer_assets::resource_scope(preview.clone()))
     });
 }
 impl Render for CalibrationPreview {

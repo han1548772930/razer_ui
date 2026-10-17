@@ -478,11 +478,11 @@ impl SourceControls {
             let editor_for_apply = editor_for_apply.clone();
             let parent = parent.clone();
             dialog
-                .title(t("CUSTOMIZE_MODAL_SYSTEM_INFO_TITLE"))
+                .title(razer_assets::resource_scope(t("CUSTOMIZE_MODAL_SYSTEM_INFO_TITLE")))
                 .width(width)
-                .child(editor.clone())
+                .child(razer_assets::resource_scope(editor.clone()))
                 .footer(
-                    h_flex()
+                    razer_assets::resource_scope(h_flex()
                         .justify_end()
                         .gap_2()
                         .child(
@@ -510,7 +510,7 @@ impl SourceControls {
                                     });
                                     window.close_dialog(cx);
                                 }),
-                        ),
+                        )),
                 )
         });
     }

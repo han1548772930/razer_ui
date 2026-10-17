@@ -10,6 +10,7 @@
 | [asset_release.py](asset_release.py) | 私有资源仓库快照、上传核验、固定提交与有类型运行时索引 |
 | [catalog_data.py](catalog_data.py) | 完整构造 AST 等价校验、去重目录编码及所属模块的普通有类型读取函数 |
 | [resource_database.py](resource_database.py) | 生成／回读核验随程序交付的 SQLite 表情词表、页面分支与资源索引 |
+| [resource_scope.py](resource_scope.py) | 检查 Rust overlay／延迟绘制边界的资源缓存所有者，由统一维护入口调用 |
 | [rust_data.py](rust_data.py)、[typed_tables.py](typed_tables.py) | 按实际 Rust schema 校验并生成可读 Rust 数据表、协议能力与本地默认值 |
 | [windows_installer.py](windows_installer.py) | Windows 安装包静态输入准备、PE 依赖闭包和封装校验 |
 | `analyzers/wakaru-1.14.0/` | 专业静态前端恢复工具及动态 SHA／获取来源记录；可执行文件不入 Git |
@@ -44,6 +45,8 @@ python tools/workspace.py capture-native --input PROJECTREL
 python tools/workspace.py supplement-native --input PROJECTREL --pointer-table-rva 0x1000 --pointer-count 7 --no-refresh-gaps
 python tools/workspace.py verify-resources
 python tools/workspace.py verify-runtime-assets
+python tools/workspace.py audit-runtime-resources
+python tools/workspace.py prepare-app-picker --check
 python tools/workspace.py prepare-static-python
 python tools/workspace.py prepare-media-analyzer
 python tools/workspace.py prepare-native-cursors --sources INPUTJSON --group 102
@@ -63,6 +66,10 @@ python tools/workspace.py validate-rust --suite asset-pack-core
 `PROJECTREL` 为 `.analysis/inputs/` 下已登记的 DLL／NODE／EXE。`capture-native` 使用 IDA 批处理与 Hex-Rays 保存全函数、汇编、CFG、xref、类型、字符串、导出／导入和失败；结束后正常退出。`--resume` 补齐同一输入的缺失结果，`--mcp-only` 使用独立私有副本启动查询会话。
 
 `prepare-static-python` 按当前 Python ABI 恢复项目内固定版本的 JavaScript／Rust 解析器，校验发行元数据、wheel 字节及两种语法的静态解析。`prepare-typed-data` 支持重复的 `--crate`／`--symbol` 定向选择；选项不匹配时失败，不能把零张表记为验证通过。
+
+`audit-runtime-resources` 用 Rust AST 遍历根程序与全部 crate 的生产资源 literal、宏 token、完整函数所有者及生产目录维护输入，核对固定资源目录；动态站点单独列出 caller 有限域与尚未证明的分支，通配命中不能证明覆盖。`--repair` 先依据当前 3884／3886 完整 JS／CSS 原件及固定载荷验证无线 ARGB 交互图层并补 alias，不恢复媒体到源码目录。统一结果保存在 `.analysis/results/resource-audit.json`；文件缺项、资源作用域违规或输入快照变化使命令失败。`resource_scope.py` 检查 overlay 回调、early return、导入别名与显式宏诊断，`organize-sources` 调用同一所有者；它不做 Rust 类型推导或宏展开，间接回调保持显式诊断。
+
+`prepare-app-picker --check` 从当前 RzAppMenu 原件核验 34 个分类向量与 331 个产品的首个 favicon fallback，检查固定 alias 字节及原始选择顺序，不依赖已删除的开发媒体目录。目录元数据、两张所属小型 SVG 夹具的纯 CPU 解码、资源作用域结构与真实窗口绘制分别验证，静态通过不代表窗口验收。
 
 `prepare-media-analyzer` 按当前 Python ABI 恢复固定 PyAV 16.0.1 的官方 PyPI wheel，逐项验证发布长度、SHA-256、完整 RECORD 清单和成员字节后写入 `tools/analyzers/media-python/`。获取收据保存 PyPI 原始元数据、wheel、全部提取文件及实际 FFmpeg 库版本；分析器用于静态解码／准备已核验的媒体，不属于产品运行依赖，也不执行厂商代码。
 

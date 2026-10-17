@@ -43,8 +43,11 @@ impl<E: EngineAdapter> Session<E> {
         config: &LedConfiguration,
         effect: &SoftwareEffect,
     ) -> anyhow::Result<()> {
-        self.engine_handle = Some(self.engine.create_engine()?);
+        let engine = self.engine.create_engine()?;
+        anyhow::ensure!(engine != 0, "Native lighting engine returned a null handle");
+        self.engine_handle = Some(engine);
         let device = self.engine.create_device(config)?;
+        anyhow::ensure!(device != 0, "Native lighting device returned a null handle");
         self.device_handle = Some(device);
         self.engine
             .add_device(self.engine_handle.unwrap(), device)?;
@@ -60,7 +63,9 @@ impl<E: EngineAdapter> Session<E> {
         // Remove queued frames from the previous effect before the generation
         // becomes active. They are observations of a superseded effect.
         self.engine.frames()?;
-        self.effect_handle = Some(self.engine.add_effect(engine, &effect.engine_effect())?);
+        let effect = self.engine.add_effect(engine, &effect.engine_effect())?;
+        anyhow::ensure!(effect != 0, "Native lighting effect returned a null handle");
+        self.effect_handle = Some(effect);
         self.engine.enable(engine, true)?;
         self.suspended = false;
         Ok(())

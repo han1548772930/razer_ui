@@ -570,7 +570,7 @@ impl OnboardMemoryPanel {
                     .bg(cx.theme().title_bar.opacity(0.5)),
             )
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .top_0()
                     .left_0()
@@ -579,7 +579,7 @@ impl OnboardMemoryPanel {
                     .flex()
                     .items_end()
                     .justify_center()
-                    .child(panel),
+                    .child(panel)),
             )
             .into_any_element()
     }

@@ -43,6 +43,10 @@ mod chroma_window;
 mod controller_calibration;
 #[path = "shell/gamepad/controller_calibration_focus.rs"]
 mod controller_calibration_focus;
+#[path = "shell/gamepad/controller_chroma.rs"]
+mod controller_chroma;
+#[path = "shell/gamepad/controller_power.rs"]
+mod controller_power;
 #[path = "shell/gamepad/controller_input.rs"]
 mod controller_input;
 #[path = "shell/gamepad/controller_lighting.rs"]
@@ -100,6 +104,7 @@ mod mouse_runtime_artwork;
 #[path = "shell/mouse/mouse_scroll.rs"]
 mod mouse_scroll;
 use controller_lighting::ControllerLightingSave;
+use controller_chroma::ControllerChromaSave;
 use controller_triggers::ControllerTriggerSave;
 use mouse_current_dpi::MouseCurrentDpiSave;
 use mouse_current_power::MouseCurrentPowerSave;
@@ -177,6 +182,7 @@ struct PreparedSave {
     mouse_current_power: Option<MouseCurrentPowerSave>,
     controller_trigger: Option<ControllerTriggerSave>,
     controller_lighting: Option<ControllerLightingSave>,
+    controller_chroma: Option<ControllerChromaSave>,
     seiren_eq: Option<seiren_eq::SeirenEqSave>,
     mouse_profile: Option<MouseLegacyProfileSave>,
     keyboard_actuation: Option<keyboard_actuation_write::KeyboardActuationSave>,
@@ -339,6 +345,8 @@ pub struct AppShell {
     controller_lighting_owners: BTreeMap<String, controller_lighting::Session>,
     controller_lighting_cleanup: Vec<std::sync::Arc<controller_lighting::RetainedOwner>>,
     controller_software_status: BTreeMap<String, razer_device::controller_lighting::SoftwareStatus>,
+    controller_chroma: controller_chroma::State,
+    controller_power: controller_power::State,
     seiren_eq_workers: usize,
     seiren_microphone_setup: seiren_microphone_setup::State,
     seiren_audio_captures: BTreeMap<u64, seiren_audio_capture::Worker>,
@@ -573,6 +581,8 @@ impl AppShell {
             controller_trigger_workers: 0,
             controller_lighting_workers: 0,
             controller_lighting_owners: BTreeMap::new(),
+            controller_chroma: controller_chroma::State::default(),
+            controller_power: controller_power::State::default(),
             controller_lighting_cleanup: Vec::new(),
             controller_software_status: BTreeMap::new(),
             seiren_eq_workers: 0,
@@ -1204,6 +1214,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::MouseLightingRequested(request) => {
                     this.request_mouse_lighting(entity.clone(), request, window, cx);
+                }
+                WorkspaceEvent::ControllerChromaRequested(request) => {
+                    this.request_controller_chroma(entity.clone(), request, window, cx);
                 }
                 WorkspaceEvent::HelpCamoRequested(request) => {
                     if entity.read(cx).accepts_help_camo(request, cx) {
@@ -2172,6 +2185,7 @@ impl AppShell {
             mouse_current_dpi: None,
             mouse_current_power: None,
             controller_lighting: None,
+            controller_chroma: None,
             controller_trigger: None,
             seiren_eq: None,
             keyboard_actuation: None,
@@ -2239,6 +2253,7 @@ impl AppShell {
             mouse_current_dpi: None,
             mouse_current_power: None,
             controller_lighting: None,
+            controller_chroma: None,
             controller_trigger: None,
             seiren_eq: None,
             keyboard_actuation: None,
@@ -2288,6 +2303,14 @@ impl AppShell {
             self.status = format!("手柄灯效本地保存失败：{error:#}");
             if let Some(lighting) = request.controller_lighting.take() {
                 self.finish_controller_lighting_save(lighting, false, request.window, cx);
+            }
+            self.continue_save_queue(false, cx);
+            return false;
+        }
+        if let Err(error) = self.rebase_controller_chroma_save(&mut request, cx) {
+            self.status = format!("Chroma 本地保存失败：{error:#}");
+            if let Some(chroma) = request.controller_chroma.take() {
+                self.finish_controller_chroma_save(chroma, false, request.window, cx);
             }
             self.continue_save_queue(false, cx);
             return false;
@@ -2404,6 +2427,9 @@ impl AppShell {
                 if let Some(lighting) = request.controller_lighting.take() {
                     self.finish_controller_lighting_save(lighting, false, request.window, cx);
                 }
+                if let Some(chroma) = request.controller_chroma.take() {
+                    self.finish_controller_chroma_save(chroma, false, request.window, cx);
+                }
                 if let Some(eq) = request.seiren_eq.take() {
                     self.finish_seiren_eq_save(eq, false, request.window, cx);
                 }
@@ -2445,6 +2471,7 @@ impl AppShell {
             mouse_current_power,
             controller_trigger,
             controller_lighting,
+            controller_chroma,
             seiren_eq,
             mouse_profile,
             keyboard_actuation,
@@ -2459,6 +2486,7 @@ impl AppShell {
             && mouse_current_power.is_none()
             && controller_trigger.is_none()
             && controller_lighting.is_none()
+            && controller_chroma.is_none()
             && seiren_eq.is_none()
             && leviathan.is_none()
             && keyboard_actuation.is_none()
@@ -2537,6 +2565,7 @@ impl AppShell {
                             && mouse_current_power.is_none()
                             && controller_trigger.is_none()
                             && controller_lighting.is_none()
+                            && controller_chroma.is_none()
                             && seiren_eq.is_none()
                             && leviathan.is_none()
                             && keyboard_actuation.is_none()
@@ -2551,6 +2580,7 @@ impl AppShell {
                             && mouse_current_power.is_none()
                             && controller_trigger.is_none()
                             && controller_lighting.is_none()
+                            && controller_chroma.is_none()
                             && seiren_eq.is_none()
                             && leviathan.is_none()
                             && keyboard_actuation.is_none()
@@ -2653,6 +2683,9 @@ impl AppShell {
                         if let Some(lighting) = controller_lighting {
                             this.finish_controller_lighting_save(lighting, true, window, cx);
                         }
+                        if let Some(chroma) = controller_chroma {
+                            this.finish_controller_chroma_save(chroma, true, window, cx);
+                        }
                         if let Some(sound) = leviathan {
                             this.finish_leviathan_save(sound, true, cx);
                         }
@@ -2703,6 +2736,9 @@ impl AppShell {
                         }
                         if let Some(lighting) = controller_lighting {
                             this.finish_controller_lighting_save(lighting, false, window, cx);
+                        }
+                        if let Some(chroma) = controller_chroma {
+                            this.finish_controller_chroma_save(chroma, false, window, cx);
                         }
                         if let Some(sound) = leviathan {
                             this.finish_leviathan_save(sound, false, cx);

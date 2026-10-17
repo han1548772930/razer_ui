@@ -7,7 +7,7 @@ use std::time::Instant;
 /// Deferred layers retain the containing scroll/banner clip and do not perform
 /// Base Popup's viewport clamping, which is absent from 19388's marketing tree.
 pub struct SourceLayer {
-    child: Option<AnyElement>,
+    child: Option<razer_assets::ResourceLayer>,
     x: f32,
     y: f32,
     priority: Option<usize>,
@@ -15,7 +15,7 @@ pub struct SourceLayer {
 impl SourceLayer {
     pub fn new(child: impl IntoElement, x: f32, y: f32) -> Self {
         Self {
-            child: Some(razer_assets::resource_scope(child).into_any_element()),
+            child: Some(razer_assets::ResourceLayer::new(child)),
             x,
             y,
             priority: None,
@@ -63,7 +63,12 @@ impl Element for SourceLayer {
         if let Some(priority) = self.priority {
             let offset = window.element_offset() + delta;
             let mask = window.content_mask();
-            window.defer_draw(self.child.take().unwrap(), offset, priority, Some(mask));
+            self.child.take().unwrap().schedule(
+                window,
+                offset,
+                priority,
+                Some(mask),
+            );
         } else {
             window.with_element_offset(delta, |window| {
                 self.child.as_mut().unwrap().prepaint(window, cx);

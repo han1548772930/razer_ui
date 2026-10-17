@@ -480,8 +480,8 @@ impl SourceHelp {
         let owner = cx.weak_entity();
         window.open_dialog(cx, move |dialog, _, _cx| {
             dialog
-                .title(title.clone())
-                .child(message.clone())
+                .title(razer_assets::resource_scope(title.clone()))
+                .child(razer_assets::resource_scope(message.clone()))
                 .on_close({
                     let owner = owner.clone();
                     move |_, _, cx| {
@@ -494,7 +494,7 @@ impl SourceHelp {
                     }
                 })
                 .footer(
-                    h_flex()
+                    razer_assets::resource_scope(h_flex()
                         .justify_end()
                         .gap_3()
                         .child(
@@ -571,7 +571,7 @@ impl SourceHelp {
                                         }
                                     }
                                 }),
-                        ),
+                        )),
                 )
         });
     }

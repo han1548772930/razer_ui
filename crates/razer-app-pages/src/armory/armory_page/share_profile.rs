@@ -577,6 +577,6 @@ impl Render for ShareProfileDialog {
                     .occlude()
                     .bg(cx.theme().background.opacity(0.8)),
             )
-            .popup(DialogPopup::new().max_w_full().child(panel))
+            .popup(razer_assets::resource_scope(DialogPopup::new().max_w_full().child(panel)))
     }
 }

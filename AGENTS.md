@@ -1,3 +1,10 @@
+# Engineering rules
+
+- Read [.agents/rules/engineering.md](.agents/rules/engineering.md) before diagnosis, implementation or review. These rules apply across the workspace; the scope and execution limits in this file take precedence.
+- Before changing Rust state or task ownership, read [.agents/rules/rust-lifecycle.md](.agents/rules/rust-lifecycle.md); for IPC, protocols or persistence, also read [.agents/rules/contracts-storage.md](.agents/rules/contracts-storage.md).
+- For platform adapters or native code, read [.agents/rules/platform-ffi.md](.agents/rules/platform-ffi.md). For GUI or localization, read [.agents/rules/gui.md](.agents/rules/gui.md) together with the applicable GPUI skills.
+- Select and report checks using [.agents/rules/verification.md](.agents/rules/verification.md). It also covers maintenance tools, generators, static guards and installation inputs.
+
 # Local-first product scope
 
 - The product must work without an account or Internet connection. Implement all local device configuration, host/background services, native libraries and plugins, storage, OS integration, local installation and lifecycle paths. See `docs/re/local-first-scope.md`.

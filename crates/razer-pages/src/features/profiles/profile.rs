@@ -951,7 +951,7 @@ impl Render for ProfileDialog {
                     .bg(cx.theme().title_bar.opacity(0.7)),
             )
             .popup(
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     .id("profile-dialog-frame")
                     .test_support()
                     .aria_label(self.title.clone())
@@ -1010,7 +1010,7 @@ impl Render for ProfileDialog {
                             .min_h_0()
                             .w_full()
                             .child(div().absolute().inset_0().child(self.content.clone())),
-                    ),
+                    )),
             )
     }
 }

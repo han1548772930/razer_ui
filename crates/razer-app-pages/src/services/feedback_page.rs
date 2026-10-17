@@ -668,14 +668,14 @@ impl FeedbackPage {
             // The popup owns hit testing; a press on its explanatory text
             // must not reach the dismissing backdrop beneath it.
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .inset_0()
                     .flex()
                     .justify_center()
                     .items_end()
                     .pb(surface::css(98.))
-                    .child(gpui_kit::base::DialogPopup::new().child(panel)),
+                    .child(gpui_kit::base::DialogPopup::new().child(panel))),
             )
             .into_any_element()
     }

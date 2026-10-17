@@ -93,15 +93,15 @@ impl Automation {
                                 let preview = this.preview;
                                 window.open_dialog(cx, move |dialog, _, cx| {
                                     dialog
-                                        .title(text("ACTIVATION_CODE_FOR_THX_SPATIAL_AUDIO"))
-                                        .child(surface::note(
+                                        .title(razer_assets::resource_scope(text("ACTIVATION_CODE_FOR_THX_SPATIAL_AUDIO")))
+                                        .child(razer_assets::resource_scope(surface::note(
                                             if preview {
                                                 "Preview activation code is unavailable."
                                             } else {
                                                 "Activation code service unavailable; try again later."
                                             },
                                             cx,
-                                        ))
+                                        )))
                                 });
                             })),
                     )

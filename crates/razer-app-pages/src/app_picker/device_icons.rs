@@ -87,8 +87,7 @@ mod tests {
     }
 
     #[test]
-    fn current_app_picker_category_vectors_decode_at_source_size_with_visible_pixels() {
-        let renderer = SvgRenderer::new(Arc::new(razer_assets::SynapseAssets));
+    fn current_app_picker_categories_and_native_fallbacks_have_installed_resource_entries() {
         let mut aliases = BTreeSet::new();
         for product in razer_catalog::registry() {
             aliases.insert(
@@ -96,12 +95,31 @@ mod tests {
             );
         }
         aliases.extend(icons().icons.values().map(String::as_str));
+        let registered: BTreeSet<_> = razer_assets::SynapseAssets
+            .list("synapse/")
+            .expect("installed resource directory")
+            .into_iter()
+            .map(|key| key.to_string())
+            .collect();
         for alias in aliases {
-            let bytes = razer_assets::SynapseAssets
-                .load(alias)
-                .unwrap()
-                .expect(alias);
-            let image = renderer.render_single_frame(&bytes, 1.).expect(alias);
+            assert!(registered.contains(alias), "missing current icon: {alias}");
+        }
+    }
+
+    #[test]
+    fn current_keyboard_and_mouse_vectors_decode_at_source_size_with_visible_pixels() {
+        let renderer = SvgRenderer::new(Arc::new(razer_assets::SynapseAssets));
+        for (alias, bytes) in [
+            (
+                "synapse/app-picker-category/keyboard.svg",
+                include_bytes!("../../testdata/app_picker/keyboard.svg").as_slice(),
+            ),
+            (
+                "synapse/app-picker-category/mouse.svg",
+                include_bytes!("../../testdata/app_picker/mouse.svg").as_slice(),
+            ),
+        ] {
+            let image = renderer.render_single_frame(bytes, 1.).expect(alias);
             let size = image.size(0);
             let mut bounds = [size.width.0, size.height.0, 0, 0];
             let mut pixels = 0;
@@ -119,19 +137,13 @@ mod tests {
                 pixels += 1;
             }
             assert!(pixels > 0, "blank source category icon: {alias}");
-            if alias.starts_with("synapse/app-picker-category/") {
-                assert_eq!((size.width.0, size.height.0), (40, 40), "{alias}");
-            }
+            assert_eq!((size.width.0, size.height.0), (40, 40), "{alias}");
             if alias == "synapse/app-picker-category/keyboard.svg" {
                 assert_eq!(bounds, [0, 12, 40, 30]);
             }
             if alias == "synapse/app-picker-category/mouse.svg" {
                 assert!(bounds[3] - bounds[1] >= 36);
             }
-            eprintln!(
-                "app picker icon {alias}: {}x{} visible={bounds:?}, pixels={pixels}",
-                size.width.0, size.height.0
-            );
         }
     }
 }

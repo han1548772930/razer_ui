@@ -642,7 +642,7 @@ impl Render for ProfileLinkedGames {
                     }),
             )
             .popup(
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     .id("source-profile-linked-games")
                     .absolute()
                     .left((viewport.width - width) / 2.)
@@ -693,7 +693,7 @@ impl Render for ProfileLinkedGames {
                                     ),
                             ),
                     )
-                    .child(body),
+                    .child(body)),
             )
             .into_any_element()
     }

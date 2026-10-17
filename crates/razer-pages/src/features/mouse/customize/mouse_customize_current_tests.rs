@@ -5,6 +5,59 @@ use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 use serde_json::json;
 
+struct LabelFixture {
+    owner:gpui_kit::Entity<MouseProductWorkspace>,
+    button:serde_json::Value,
+    _subscription:gpui_kit::Subscription,
+}
+impl gpui_kit::Render for LabelFixture {
+    fn render(&mut self,window:&mut gpui_kit::Window,cx:&mut gpui_kit::Context<Self>)->impl gpui_kit::IntoElement {
+        use gpui_kit::{Styled,ParentElement};
+        gpui_kit::div().p(gpui_kit::rems(12.)).child(self.owner.update(cx,|owner,cx|owner.current_customize_label(&self.button,7,true,0.,false,window,cx)))
+    }
+}
+
+#[gpui_kit::test]
+fn source_label_hover_uses_disabled_wrapper_and_independent_synapse_icon(cx:&mut TestAppContext) {
+    cx.update(|cx| {gpui_kit::init(cx);cx.set_reduce_motion(true);});
+    let mut fixture=None;
+    let handle=cx.open_window(size(px(1000.),px(700.)),|window,cx| {
+        let label=cx.new(|cx| {
+            let owner=cx.new(|cx|MouseProductWorkspace::new(229,window,cx));
+            let subscription=cx.observe(&owner,|_,_,cx|cx.notify());
+            LabelFixture {owner,button:json!({"inputID":"DKM_SB_03","assignment":"MOUSE_FUNCTION","assignmentValue":"SCROLL_MODE_SWITCH","isEnabled":false,"disabled":true}),_subscription:subscription}
+        });
+        fixture=Some(label.clone());Root::new(label,window,cx)
+    });
+    let fixture=fixture.unwrap();
+    cx.update_window(handle.into(),|_,window,cx| {
+        window.render_frame(cx);
+        window.click("mouse-229-input-DKM_SB_03",cx);
+        assert!(fixture.read(cx).owner.read(cx).mapping_input.is_none());
+        window.hover("mouse-source-label-wrapper-DKM_SB_03",cx);
+        assert!(window.try_find("mouse-source-label-tip").is_some());
+        let label_bounds=window.find("mouse-229-input-DKM_SB_03").bounds();
+        assert_eq!(window.find("mouse-source-label-tip").bounds().size.width,px(305.));
+        assert_eq!(window.find("mouse-229-input-DKM_SB_03").bounds(),label_bounds);
+        fixture.update(cx,|fixture,cx| {
+            fixture.button=json!({"inputID":"DKM_SB_03","assignment":"MOUSE_FUNCTION","assignmentValue":"SCROLL_MODE_SWITCH","isEnabled":true,"isMapped":true,"isRequireSynapse":true});cx.notify();
+        });
+        window.render_frame(cx);
+        window.hover("mouse-229-input-DKM_SB_03",cx);
+        assert!(window.try_find("mouse-source-label-tip").is_some());
+        assert!(window.try_find("mouse-source-label-requires-tip").is_none());
+        let before=fixture.read(cx).owner.read(cx).snapshot();
+        window.hover("mouse-source-label-requires-DKM_SB_03",cx);
+        assert!(window.try_find("mouse-source-label-tip").is_none());
+        assert!(window.try_find("mouse-source-label-requires-tip").is_some());
+        assert!(fixture.read(cx).owner.read(cx).customize_hover.is_none());
+        assert_eq!(fixture.read(cx).owner.read(cx).snapshot(),before);
+        window.hover("mouse-229-input-DKM_SB_03",cx);
+        assert!(window.try_find("mouse-source-label-tip").is_some());
+        assert!(window.try_find("mouse-source-label-requires-tip").is_none());
+    }).unwrap();
+}
+
 #[::core::prelude::v1::test]
 fn mouse_label_tip_priority_and_scroll_animation_follow_current_source() {
     let mut button = json!({

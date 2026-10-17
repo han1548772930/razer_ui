@@ -448,10 +448,14 @@ def organize_sources(apply=False):
         plan["applied"] = False
     if (ROOT / "Cargo.toml").is_file():
         plan["workspace_inventory"] = source_structure_inventory()
+        import resource_scope
+        plan["resource_scope"] = resource_scope.audit_sources(ROOT)
     write_json(receipt, plan)
     print(json.dumps({"receipt": relative(receipt), "moves": len(plan["moves"]),
                       "rewrite_files": len(rewrites), "unresolved": plan["unresolved"],
-                      "applied": plan["applied"]}), flush=True)
+                      "applied": plan["applied"],
+                      "resource_scope_passed": plan.get("resource_scope", {}).get("passed")}), flush=True)
+    return plan
 
 
 def audit_git_lfs():
@@ -1282,15 +1286,434 @@ def rust_resource_literals(raw, *, owner="", test_only=False):
     return rows
 
 
+def repair_current_resource_aliases():
+    """Verify missing ARGB interaction layers against complete current originals."""
+    import analysis
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    import json5
+    import tree_sitter
+    import tree_sitter_javascript
+    parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_javascript.language()))
+    lock = resource_sources.load_lock()
+    files = resource_sources.rows_for(lock)
+    headers = None
+    repaired, inputs = [], []
+    mappings = resource_sources.load_resource_mappings()
+    table = resource_sources.resource_table("ASSETS", mappings=mappings)
+    layer_names = ("refresh-hover", "warning-hover", "remove-hover", "power-hover", "power_off-hover",
+                   "power-base", "power_off-base", "auto_on-ring", "auto_on-glyph",
+                   "auto_off-glyph", "auto_off-green", "auto_off-gray")
+    markers = {"refresh": 'd:"M15.649', "warning": 'd:"M9.156',
+               "remove": 'className:"icon-close-glitter"', "power": 'd:"M11 7a1',
+               "power_off": 'd:"M11 7a1', "auto_on": 'className:"icon-detection--active"',
+               "auto_off": 'className:"icon-detection ".concat'}
+    for pid in (3884, 3886):
+        receipt_path = ROOT / f".analysis/inputs/frontend/accessories-{pid}-current/acquisition.json"
+        receipt = json.loads(receipt_path.read_bytes())
+        if receipt.get("source_current_during_acquisition") is not True:
+            raise ValueError("ARGB layer repair requires stable current originals")
+        originals = [row for row in receipt["files"] if row.get("http_status") == 200]
+        selected = {}
+        for extension in ("js", "css"):
+            matches = [r for r in originals if re.search(r"/static/" + extension + r"/main\.[^/]+\." + extension + "$", r["url"])]
+            if len(matches) != 1:
+                raise ValueError("ARGB layer source main bundle is absent or ambiguous")
+            row = matches[0]
+            path = asset_pack_identity(row)
+            selected[extension] = (row, path.read_bytes())
+        js_row, raw = selected["js"]
+        css_row, css_raw = selected["css"]
+        text, css = raw.decode("utf-8"), css_raw.decode("utf-8")
+        tree = parser.parse(raw)
+        if tree.root_node.has_error:
+            raise ValueError("ARGB current original has a JS AST error")
+        css_rules = [(m[1], m[2], m[0]) for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", css)]
+        owners = {}
+        for role, marker in markers.items():
+            if text.count(marker) != 1:
+                raise ValueError("ARGB current layer owner is ambiguous: " + role)
+            begin = len(text[:text.index(marker)].encode("utf-8"))
+            node = tree.root_node.descendant_for_byte_range(begin, begin + len(marker))
+            while node is not None and node.type not in ("class_declaration", "variable_declarator"):
+                node = node.parent
+            if node is None:
+                raise ValueError("ARGB current layer has no complete owner: " + role)
+            body = raw[node.start_byte:node.end_byte].decode("utf-8")
+            owners[role] = {"byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body": body, "body_sha256": hashlib.sha256(body.encode()).hexdigest()}
+        input_proof = {"product_id": pid, "acquisition": {"path": relative(receipt_path),
+            "sha256": digest(receipt_path)}, "js": js_row, "css": css_row,
+            "complete_owners": owners,
+            "complete_original_input": js_row,
+            "css_rules": [body for selector, _, body in css_rules if any(name in selector
+                for name in ("icon-detection", "icon-refreshing", "icon-power", "icon-warning", "icon-close-glitter"))]}
+        inputs.append(input_proof)
+        for name in layer_names:
+            source_pid = pid if name.endswith("-base") else 3884
+            suffix = f"-wireless-argb-{source_pid}-{name}.svg"
+            known = [row for row in files if row["path"].endswith(suffix)]
+            if len(known) != 1:
+                raise ValueError("Pinned ARGB interaction layer is absent or ambiguous: " + name)
+            locked = known[0]
+            cache = safe(ROOT / ".work/resource-closure/payloads" / Path(locked["path"]).name)
+            if not cache.is_file() or cache.stat().st_size != locked["bytes"] or digest(cache) != locked["sha256"]:
+                headers = headers or resource_sources.hf_headers()
+                url = ("https://huggingface.co/datasets/" + lock["storage"]["repository"] + "/resolve/"
+                       + lock["storage"]["revision"] + "/" + locked["path"])
+                with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as response:
+                    content = response.read(locked["bytes"] + 1)
+                if len(content) != locked["bytes"] or hashlib.sha256(content).hexdigest() != locked["sha256"]:
+                    raise ValueError("Pinned ARGB layer payload byte identity differs")
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                cache.write_bytes(content)
+            content = cache.read_bytes()
+            svg = ET.fromstring(content)
+            role = name.rsplit("-", 1)[0]
+            owner = owners[role]["body"]
+            shapes = []
+            for match in re.finditer(r'\("(path|rect)",(\{[^{}]*\})\)', owner):
+                shapes.append((match[1], json5.loads(match[2])))
+            evidence = []
+            for element in svg:
+                tag = element.tag.split("}")[-1]
+                if tag == "style":
+                    # Prepared bases omit animation declarations. Check every
+                    # retained selector/declaration against the actual CSS.
+                    for rule in re.finditer(r"([^{}]+)\{([^{}]*)\}", element.text or ""):
+                        selectors = rule[1].split(",")
+                        expected = dict(part.split(":", 1) for part in rule[2].split(";") if part)
+                        for selector in selectors:
+                            candidates = [(s, b, full) for s, b, full in css_rules
+                                if any(part.endswith(selector) for part in s.split(","))]
+                            found = [full for _, body, full in candidates
+                                if {k: v for k, v in (p.split(":", 1) for p in body.split(";") if p)
+                                    if k not in ("animation", "-webkit-animation")} == expected]
+                            if not found:
+                                raise ValueError("Prepared ARGB base CSS differs from the current source: " + selector)
+                            evidence.extend(found)
+                    continue
+                if tag not in ("path", "rect"):
+                    raise ValueError("Unresolved ARGB SVG geometry: " + tag)
+                geometry = {key: value for key, value in element.attrib.items()
+                            if key not in ("fill", "stroke", "stroke-width")}
+                found = [props for kind, props in shapes if kind == tag and all(str(props.get(k)) == v
+                    for k, v in geometry.items())]
+                if not found:
+                    raise ValueError("Prepared ARGB geometry differs from current complete source: " + name)
+                evidence.append({"tag": tag, "attributes": geometry, "current_source_properties": found})
+                if element.get("fill") == "#111" and not any(".detect-b" in selector and "fill:#111" in body
+                    for selector, body, _ in css_rules):
+                    raise ValueError("ARGB active glyph paint is unverified")
+                if element.get("fill") in ("#44d62c", "#666") and element.get("fill") not in css:
+                    raise ValueError("ARGB animation paint is unverified")
+                if element.get("stroke-width") and not any(".detect-a" in selector and "stroke-width:10px" in body
+                    for selector, body, _ in css_rules):
+                    raise ValueError("ARGB ring stroke is unverified")
+            alias = f"synapse/wireless-argb-{pid}-{name}.svg"
+            previous = [r for r in table if r["key"] == alias]
+            if previous and previous != [{"key": alias, "path": locked["path"]}]:
+                raise ValueError("ARGB alias repair conflicts with an existing mapping")
+            if not previous:
+                table.append({"key": alias, "path": locked["path"]})
+            repaired.append({"display_paths": [alias], "output": locked["path"],
+                "sha256": locked["sha256"], "output_bytes": locked["bytes"],
+                "resource_revision": lock["storage"]["revision"], "product_id": pid,
+                "source": js_row, "source_css": css_row, "source_role": role,
+                "verified_geometry_and_css": evidence,
+                "paint_projection": "Current original geometry retained; the Rust owner supplies the source idle/hover/pressed colors through currentColor",
+                "media_materialized_in_source_assets": False})
+    with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        resource_sources.save_resource_mappings(mappings)
+        result_path = ROOT / ".analysis/results/typed-data.json"
+        result = json.loads(result_path.read_bytes()) if result_path.is_file() else {"schema_version": 1}
+        result["current_inline_layer_aliases"] = {"inputs": inputs, "aliases": repaired,
+            "target_execution": False, "runtime_acceptance": "unverified"}
+        write_json(result_path, result)
+    return {"aliases": len(repaired), "files": len({row["output"] for row in repaired})}
+
+
+def rust_named_item_strings(path, name):
+    """Capture one complete Rust item and its literal values for branch audits."""
+    import resource_scope
+    source = safe(ROOT / path)
+    raw = source.read_bytes()
+    tree = resource_scope.parser(ROOT).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Rust branch owner has an AST error: " + path)
+    matches = []
+    def visit(node):
+        identity = node.child_by_field_name("name")
+        if node.type in ("function_item", "const_item", "static_item") and identity is not None:
+            if raw[identity.start_byte:identity.end_byte].decode("utf-8") == name:
+                matches.append(node)
+        for child in node.named_children:
+            visit(child)
+    visit(tree.root_node)
+    if len(matches) != 1:
+        raise ValueError(f"Expected one Rust branch owner {path}/{name}, found {len(matches)}")
+    node, strings = matches[0], []
+    def literals(node):
+        if node.type in ("string_literal", "raw_string_literal"):
+            literal = raw[node.start_byte:node.end_byte].decode("utf-8")
+            if node.type == "raw_string_literal":
+                strings.append(re.sub(r'^r#*"|"#*$', '', literal))
+            elif "\\" not in literal[1:-1]:
+                strings.append(literal[1:-1])
+            else:
+                raise ValueError(f"Escaped branch literal requires Rust decoding: {path}/{name}")
+            return
+        for child in node.named_children:
+            literals(child)
+    literals(node)
+    body = raw[node.start_byte:node.end_byte]
+    return strings, {"path": path, "name": name, "byte_start": node.start_byte,
+        "byte_end": node.end_byte, "body": body.decode("utf-8"),
+        "body_sha256": hashlib.sha256(body).hexdigest()}
+
+
+def finite_resource_domain(row):
+    """Enumerate audited caller branches independently of the resource directory."""
+    value = row["literal"]
+    text = (ROOT / row["owner"]).read_text(encoding="utf-8")
+    expected, constraints, owners = None, [], []
+    def choices(prefix, names, suffix=".svg"):
+        return [prefix + str(name) + suffix for name in names]
+    if value == "synapse/audio-footstep-{frame:03}.svg":
+        constraints = ["min(329)", "phase * 330."]
+        expected = [f"synapse/audio-footstep-{i:03}.svg" for i in range(330)]
+    elif value in ("synapse/keyboard-chroma-sync-{:02}.png", "synapse/keyboard-chroma-sync-{frame:02}.png"):
+        constraints = ["phase * 108.", "% 36"]
+        expected = [f"synapse/keyboard-chroma-sync-{i:02}.png" for i in range(36)]
+    elif value == "synapse/wired-argb-3871-detecting-ring-{frame:03}.svg":
+        constraints = ["min(119)", "phase * 120."]
+        expected = [f"synapse/wired-argb-3871-detecting-ring-{i:03}.svg" for i in range(120)]
+    elif value == "synapse/wired-argb-3871-detecting-led-{side}{number}.svg":
+        constraints = ['["left", "right"]', "1..=9"]
+        expected = [f"synapse/wired-argb-3871-detecting-led-{side}{i}.svg" for side in ("left", "right") for i in range(1, 10)]
+    elif value in ("synapse/tray-widget-battery-{}.svg", "synapse/tray-widget-battery-paused-{}.svg"):
+        constraints = ["(level / 10) * 10", "100"]
+        prefix = "synapse/tray-widget-battery-" + ("paused-" if "paused" in value else "")
+        expected = choices(prefix, range(0, 101, 10))
+    elif value == "synapse/tray-widget-category-{}.svg":
+        names, owner = rust_named_item_strings(row["owner"], "NAMES")
+        owners.append(owner)
+        constraints = ["NAMES.contains(&name)"]
+        expected = choices("synapse/tray-widget-category-", [name.lower() for name in names])
+    elif value == "synapse/service-category-{}.svg":
+        data = json.loads((ROOT / ".analysis/inputs/typed-tables/razer-app-pages/module_service_source.json").read_bytes())
+        constraints = ["source.categories.contains(first)", "source.categories.contains(&category)", "key.to_ascii_lowercase()"]
+        expected = choices("synapse/service-category-", [name.lower() for name in data["categories"]])
+    elif value == "synapse/{file}":
+        constraints = ["(0..=100).contains(&bucket)", '"paused-"', '"battery-error.svg"']
+        expected = ["synapse/battery-charging.svg", "synapse/battery-error.svg", "synapse/battery-charging-100.svg",
+            *choices("synapse/battery-", range(0, 101, 10)), *choices("synapse/battery-paused-", range(0, 101, 10))]
+    elif value.startswith("synapse/wireless-argb-{}-"):
+        constraints = ["3884", "3886"]
+        if value.endswith("-{name}-base.svg"):
+            names = ["power-base", "power_off-base"]
+        elif value.endswith("-{name}-hover.svg"):
+            names = ["refresh-hover", "warning-hover", "remove-hover", "power-hover", "power_off-hover"]
+        elif value.endswith("-detecting.svg"):
+            names = ["detecting"]
+        elif value.endswith("-{name}.png"):
+            names = ["fan", "strip-1", "strip-2", "strip-3", "strip-4", "prd-3x"]
+        elif any(owner["name"] == "plain_icon" for owner in row["context"]):
+            names = ["rename"]
+        else:
+            names = ["auto_on-ring", "auto_on-glyph", "auto_off-glyph", "auto_off-green", "auto_off-gray"]
+        extension = ".png" if value.endswith(".png") else ".svg"
+        expected = [f"synapse/wireless-argb-{pid}-{name}{extension}" for pid in (3884, 3886) for name in names]
+    elif value == "synapse/hyperflux-207/product-{edition}-3x.png":
+        constraints = ["128", "edition"]
+        expected = [f"synapse/hyperflux-207/product-{edition}-3x.png" for edition in (0, 128)]
+    elif value == "synapse/automation-icon_direction_{name}{}.svg":
+        constraints = ['[(3, "up"), (4, "down")]', '"_999"']
+        expected = [f"synapse/automation-icon_direction_{name}{suffix}.svg" for name in ("up", "down") for suffix in ("", "_999")]
+    elif value in ("synapse/automation-quick-macro-{kind}.svg", "synapse/automation-quick-macro-{}.svg"):
+        names = ("keyboard", "launch", "runCommand", "text")
+        constraints = ['value: "' + name + '"' for name in names]
+        expected = choices("synapse/automation-quick-macro-", names)
+    elif value == "synapse/audio-mixer-{icon}.svg":
+        names = ("playback-mix", "stream-mix", "line-out", "voice-chat")
+        constraints = ['"' + name + '"' for name in names] + ["BUSES[1..]", "BUSES[0]"]
+        expected = choices("synapse/audio-mixer-", names)
+    elif value == "synapse/stepper-{direction}.svg":
+        constraints = ['[(1, "up"), (-1, "down")]']
+        expected = choices("synapse/stepper-", ("up", "down"))
+    elif value == "synapse/controller_icon_{name}.svg":
+        constraints = ['"wasd"', '"qe"', "groups.map"]
+        expected = choices("synapse/controller_icon_", ("wasd", "qe"))
+    elif value == "synapse/xbox-trigger-{name}.svg":
+        constraints = ['trigger("left"', 'trigger("right"']
+        expected = choices("synapse/xbox-trigger-", ("left", "right"))
+    elif value == "synapse/chroma-dashboard_{icon}.svg":
+        names = ("spectrumcycling", "static_green", "breathing_green", "wave", "fire", "starlight", "wheel")
+        constraints = ['"' + name + '"' for name in names]
+        expected = choices("synapse/chroma-dashboard_", names)
+    elif value == "synapse/chroma-settings-{asset}.svg":
+        constraints = ['"chroma-settings-back"', '"chroma-settings-forward"', '"chroma-settings-refresh"']
+        expected = choices("synapse/chroma-settings-", ("back", "forward", "refresh"))
+    elif value == "synapse/audio-mixer-lighting-direction-{}{}.svg":
+        names = ("cw", "ccw", "left", "right")
+        constraints = ['"' + name + '"' for name in names] + ['"-active"']
+        expected = [f"synapse/audio-mixer-lighting-direction-{name}{suffix}.svg" for name in names for suffix in ("", "-active")]
+    elif value == "synapse/audio-oled-artwork-{kind}.svg":
+        constraints = ['artwork_icon("replace"', 'artwork_icon("reset"']
+        expected = choices("synapse/audio-oled-artwork-", ("replace", "reset"))
+    elif value in ("synapse/seiren-eq-tutorial-{kind}.svg", "synapse/seiren-eq-tutorial-{}.png"):
+        names = ("peaking", "highpass", "lowpass", "highshelf", "lowshelf")
+        constraints = ['"' + name + '"' for name in names]
+        expected = choices("synapse/seiren-eq-tutorial-", range(1, 6), ".png") if value.endswith(".png") else choices("synapse/seiren-eq-tutorial-", names)
+    elif value == "synapse/seiren-eq-{name}{}.svg":
+        strings, owner = rust_named_item_strings("crates/razer-pages/src/features/audio/seiren/audio_seiren_eq.rs", "MONITORS")
+        owners.append(owner)
+        names = strings[::2]
+        constraints = ["let (name, _) = MONITORS[index]", 'if muted { "-off" } else { "" }']
+        expected = [f"synapse/seiren-eq-{name}{suffix}.svg" for name in names for suffix in ("", "-off")]
+    elif value == "synapse/keyboard679-current/{icon}":
+        strings, owner = rust_named_item_strings(row["owner"], "special_icons")
+        owners.append(owner)
+        constraints = ["special_icons(default)", "let Some((normal_icon, pressed_icon))", "return None"]
+        expected = ["synapse/keyboard679-current/" + name for name in strings if name.endswith(".svg")]
+    elif value == "synapse/keyboard-mapping-dynamic/{}":
+        data = json.loads((ROOT / ".analysis/inputs/typed-tables/razer-pages/keyboard_mapping_dynamic_data.json").read_bytes())
+        constraints = ["for (index, h) in m.headers.iter().enumerate()", "h.icon"]
+        expected = ["synapse/keyboard-mapping-dynamic/" + header["icon"] for product in data for header in product["headers"]]
+    elif value == "synapse/keyboard-mapping-notices/{icon}":
+        names = []
+        for item in ("mapping_chroma_install_element", "mapping_prerequisite_element"):
+            strings, owner = rust_named_item_strings(row["owner"], item)
+            owners.append(owner)
+            names.extend(name for name in strings if name.endswith((".svg", ".png")))
+        constraints = ["prerequisite_notice(", "for (show, icon, label, tooltip) in"]
+        expected = ["synapse/keyboard-mapping-notices/" + name for name in names]
+    elif value in ("synapse/direction-{asset}{}.svg", "synapse/direction-{name}{}.svg"):
+        names = [name for name in ("out", "in", "cw", "ccw", "left", "right") if '"' + name + '"' in text]
+        constraints = ['"-active"']
+        expected = [f"synapse/direction-{name}{suffix}.svg" for name in names for suffix in ("", "-active")]
+    elif value == "synapse/{}direction-{name}{}.svg":
+        names = [name for name in ("out", "in", "cw", "ccw", "left", "right", "up", "down") if '"' + name + '"' in text]
+        constraints = ['"mouse-lighting/"', '"-active"']
+        expected = ["synapse/" + ("mouse-lighting/" if name in ("up", "down") else "")
+            + f"direction-{name}{suffix}.svg" for name in names for suffix in ("", "-active")]
+    elif value == "synapse/mapping-{stem}{}.{}":
+        names = ("profile", "sensitivity", "lighting", "macro", "text", "launch", "multimedia", "windows")
+        constraints = ['"' + name + '"' for name in names]
+        expected = [f"synapse/mapping-{name}{suffix}." + ("png" if name == "lighting" else "svg") for name in names for suffix in ("", "-active")]
+    elif value == "synapse/mapping-{}{}.{}":
+        names = ("default", "keyboard", "mouse", "sensitivity", "macro", "interdevice", "profile", "lighting",
+                 "brightness", "hypershift", "launch", "multimedia", "windows", "text", "disable")
+        constraints = ['=> "' + name + '"' for name in names]
+        expected = [f"synapse/mapping-{name}{suffix}." + ("png" if name == "lighting" else "svg") for name in names for suffix in ("", "-active")]
+    elif value == "synapse/macro/{kind}.svg":
+        names = ("delay", "keyboard", "mouse", "macro", "launch", "command", "text", "loop")
+        constraints = ['("' + name + '",' for name in names] + ["PALETTE.into_iter()"]
+        expected = choices("synapse/macro/", names)
+    elif value == "synapse/macro/{icon}{}.svg":
+        names = ("record", "delete") if row["owner"].endswith("phased.rs") else ("duplicate", "delete")
+        constraints = ['"' + name + '"' for name in names] + ['"-hover"']
+        expected = [*choices("synapse/macro/", names), "synapse/macro/delete-hover.svg"]
+    elif value == "synapse/macro/{kind}{suffix}.svg":
+        callers = (ROOT / "crates/razer-app-pages/src/macros/macro_page/body.rs").read_text(encoding="utf-8")
+        if all('history_icon("' + name + '"' in callers for name in ("undo", "redo")):
+            constraints = ['"-enable"', '"-hover"']
+            expected = [f"synapse/macro/{name}{suffix}.svg" for name in ("undo", "redo") for suffix in ("", "-enable", "-hover")]
+    elif value in ("synapse/macro/{}.svg", "synapse/macro/drag-{icon}.svg"):
+        owner = ROOT / "crates/razer-pages/src/features/macros/macro_library.rs"
+        source = owner.read_text(encoding="utf-8")
+        match = re.search(r"pub fn icon\(self\).*?match self\s*\{(.*?)\n\s*\}", source, re.S)
+        if match:
+            names = re.findall(r'=> "([\w-]+)"', match[1])
+            if value == "synapse/macro/{}.svg":
+                constraints = ['"mouse-movement"', "kind.icon()"]
+                expected = choices("synapse/macro/", [*names, "mouse-movement"])
+            else:
+                constraints = ['"layers"', "self.drag.kind.icon()"]
+                expected = choices("synapse/macro/drag-", [*names, "layers"])
+    elif value == "synapse/wired-argb-{}-dots.svg":
+        data = json.loads((ROOT / ".analysis/inputs/typed-tables/razer-pages/wired_argb_data.json").read_bytes())
+        constraints = ["self.spec.product_id"]
+        expected = [f"synapse/wired-argb-{row['product_id']}-dots.svg" for row in data]
+    elif value.startswith("synapse/gamepad-"):
+        products = json.loads((ROOT / ".analysis/inputs/typed-tables/razer-pages/gamepad_products_data.json").read_bytes())
+        pages = lambda page: [p["product_id"] for p in products if page in p["pages"]]
+        modern = (2676, 2684)
+        sticks = pages("THUMBSTICKS")
+        legacy = [pid for pid in sticks if pid not in modern]
+        if value == "synapse/gamepad-thumbstick-device/{}/{edition}.svg":
+            constraints = ["matches!(self.spec.product_id, 2676 | 2684)", "load_edition_resource"]
+            expected = [f"synapse/gamepad-thumbstick-device/{pid}/0.svg" for pid in modern]
+        elif value == "synapse/gamepad-thumbsticks/{pid}/highlight.svg":
+            constraints = ["self.modern_thumbsticks()", "thumbstick_legacy"]
+            expected = [f"synapse/gamepad-thumbsticks/{pid}/highlight.svg" for pid in legacy]
+        elif value in ("synapse/gamepad-thumbsticks/{pid}/{mode}-min.svg", "synapse/gamepad-thumbsticks/{pid}/{mode}-max.svg"):
+            constraints = ['let mode = if sensitivity { "sensitivity" } else { "deadzone" }']
+            bound = "min" if "-min.svg" in value else "max"
+            expected = [f"synapse/gamepad-thumbsticks/{pid}/{mode}-{bound}.svg" for pid in legacy for mode in ("sensitivity", "deadzone")]
+        elif value in ("synapse/gamepad-thumbsticks/{}/info.svg", "synapse/gamepad-thumbsticks/{}/warning.svg"):
+            constraints = ["self.spec.product_id"]
+            name = "info" if "info.svg" in value else "warning"
+            expected = [f"synapse/gamepad-thumbsticks/{pid}/{name}.svg" for pid in sticks]
+        elif value == "synapse/gamepad-trigger-reset/{}.svg":
+            constraints = ["self.spec.product_id"]
+            expected = [f"synapse/gamepad-trigger-reset/{pid}.svg" for pid in pages("TRIGGERS")]
+        elif value == "synapse/gamepad-trigger-device/{pid}/{edition}.{extension}":
+            constraints = ["matches!(pid, 2676 | 2684 | 4144)", "load_edition_resource"]
+            registry = json.loads((ROOT / ".analysis/inputs/typed-tables/razer-catalog/product_registry.json").read_bytes())["products"]
+            expected = [f"synapse/gamepad-trigger-device/{p['id']}/{edition}." + ("svg" if p["id"] in (*modern, 4144) else "png")
+                for p in registry if p["id"] in pages("TRIGGERS") for edition in p["edition_ids"]]
+        elif value == "synapse/gamepad-{pid}-calibration-edition-{edition}.png":
+            constraints = ["(2629 | 2636 | 2647 | 4133, 128) => 128", "(2636 | 4133, 129) => 129", "let is_svg = pid == 4144"]
+            expected = [f"synapse/gamepad-{pid}-calibration-edition-{edition}.png" for pid in legacy if pid != 4144
+                for edition in ([0, 128, 129] if pid in (2636, 4133) else [0, 128] if pid in (2629, 2647) else [0])]
+        elif value == "synapse/gamepad-{pid}-calibration-close.svg":
+            constraints = ["calibration-close.svg"]
+            expected = [f"synapse/gamepad-{pid}-calibration-close.svg" for pid in modern]
+        elif value == "synapse/gamepad-{pid}-calibration-connectors-{}.svg":
+            constraints = ["hovered_part.unwrap_or(0)"]
+            expected = [f"synapse/gamepad-{pid}-calibration-connectors-{part}.svg" for pid in modern for part in range(5)]
+        elif value == "synapse/gamepad-{pid}-trigger-steps-{}.svg":
+            constraints = ["if !error && view.step >= 11 { 2 } else { 1 }"]
+            expected = [f"synapse/gamepad-{pid}-trigger-steps-{step}.svg" for pid in modern for step in (1, 2)]
+        elif value == "synapse/gamepad-{pid}-trigger-warning.svg":
+            constraints = ["let error = view.step == -1"]
+            expected = [f"synapse/gamepad-{pid}-trigger-warning.svg" for pid in modern]
+        elif value in ("synapse/gamepad-2636-calibration-steps-{}.svg", "synapse/gamepad-2636-calibration-direction-{}-{}.svg"):
+            state = (ROOT / "crates/razer-pages/src/features/gamepad/gamepad_calibration_state.rs").read_text(encoding="utf-8")
+            if "!(-1..=6).contains(&step)" in state:
+                constraints = ["state.step"]
+                if "-steps-" in value:
+                    expected = [f"synapse/gamepad-2636-calibration-steps-{step}.svg" for step in range(1, 7)]
+                else:
+                    expected = [f"synapse/gamepad-2636-calibration-direction-{step}-{edge}.svg" for step in range(1, 6) for edge in ("edge", "rest")]
+    elif value == "synapse/hue-light-{name}.svg":
+        path = ROOT / ".analysis/inputs/typed-tables/razer-pages/hue_data.json"
+        data = json.loads(path.read_bytes())
+        names = [row["name"] for row in data["archetypes"]] + ["default"]
+        constraints = ["spec().archetypes.iter().any", '"default"']
+        expected = choices("synapse/hue-light-", names)
+    if expected is None:
+        return None
+    compact = re.sub(r"\s+", "", text)
+    absent = [constraint for constraint in constraints if re.sub(r"\s+", "", constraint) not in compact]
+    if absent:
+        return {"verified": False, "unresolved_constraints": absent, "expected_aliases": expected}
+    return {"verified": True, "constraints": constraints, "owners": owners,
+        "expected_aliases": sorted(set(expected)),
+        "basis": "Enumerated caller branches and bounded animation/state ranges from the captured Rust owner; independent of registered alias candidates"}
+
+
 def audit_runtime_resources():
     """Audit the installed alias closure without requiring hydrated media."""
     import analysis
     import resource_database
+    import resource_scope
     from importlib.metadata import version
     metadata_inputs = []
     manifest = resource_sources.runtime_metadata(input_rows=metadata_inputs)
     keys = {row["key"] for row in manifest["entries"]}
     paths = {row["path"] for row in manifest["files"]}
+    registered = keys | paths
     files = sorted({*ROOT.glob("*.rs"), *(ROOT / "app").rglob("*.rs"),
                     *(ROOT / "crates").rglob("*.rs")})
     snapshots, literals, fixtures, patterns, missing = [], [], [], [], []
@@ -1308,9 +1731,16 @@ def audit_runtime_resources():
             if "{" in value:
                 expression = re.sub(r"\\\{[^}]*\\\}", ".*", re.escape(value))
                 matches = sorted(key for key in candidates if re.fullmatch(expression, key))
-                patterns.append({**row, "registered_candidates": matches,
-                    "finite_domain_verified": False,
-                    "remaining": "Trace the caller and the complete typed product/state domain; wildcard matches do not establish coverage"})
+                domain = finite_resource_domain(row)
+                verified = domain is not None and domain["verified"]
+                expected = domain["expected_aliases"] if verified else []
+                absent = [key for key in expected if key not in candidates]
+                if absent:
+                    missing.append({**row, "missing_aliases": absent})
+                patterns.append({**row, "registered_candidates": matches, "finite_domain": domain,
+                    "expected_missing": absent,
+                    "finite_domain_verified": verified,
+                    "remaining": None if verified else "Trace the caller and the complete typed product/state domain; wildcard matches do not establish coverage"})
             else:
                 literals.append(row)
                 if value not in candidates:
@@ -1327,7 +1757,7 @@ def audit_runtime_resources():
                     and re.search(r"\.(?:svg|png|jpe?g|webp|avif|gif|bmp|ico|mp4|woff2?|ttf)(?:#.*)?$", value)):
                 row = {"owner": owner, "json_pointer": pointer, "literal": value}
                 data_references.append(row)
-                if value not in keys | paths:
+                if value not in registered:
                     missing.append(row)
         elif isinstance(value, list):
             for index, child in enumerate(value):
@@ -1342,7 +1772,8 @@ def audit_runtime_resources():
         inspect(json.loads(raw), name)
     inputs = [*snapshots, *documents,
         *({"path": name, "bytes": (ROOT / name).stat().st_size, "sha256": digest(ROOT / name)}
-          for name in (resource_sources.LOCK, resource_sources.MAPPINGS, "tools/typed-data.json"))]
+          for name in (resource_sources.LOCK, resource_sources.MAPPINGS, "tools/typed-data.json",
+                       "tools/resource_scope.py"))]
     report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
         "tool": {"path": relative(Path(__file__)), "sha256": digest(Path(__file__)),
             "python": sys.version.split()[0], "tree_sitter": version("tree-sitter"),
@@ -1354,12 +1785,18 @@ def audit_runtime_resources():
         "summary": {"rust_files": len(snapshots), "catalog_inputs": len(documents),
             "production_literals": len(literals), "catalog_references": len(data_references),
             "dynamic_sites": len(patterns), "dynamic_patterns": len({r["literal"] for r in patterns}),
+            "finite_dynamic_sites_verified": sum(row["finite_domain_verified"] for row in patterns),
             "test_references": len(fixtures), "missing_references": len(missing)},
         "literal_references_passed": not missing, "dynamic_domain_acceptance": "unverified",
         "target_execution": False, "real_device_operations": False,
         "application_runtime_acceptance": "not performed"}
+    report["resource_scope"] = resource_scope.audit_sources(ROOT, files)
     report["inputs_unchanged"] = all((ROOT / row["path"]).stat().st_size == row["bytes"]
         and digest(ROOT / row["path"]) == row["sha256"] for row in inputs)
+    report["summary"]["overlay_edges"] = report["resource_scope"]["summary"]["edges"]
+    report["summary"]["overlay_violations"] = report["resource_scope"]["summary"]["violations"]
+    report["passed"] = (report["literal_references_passed"] and report["inputs_unchanged"]
+                        and report["resource_scope"]["passed"])
     previous = json.loads(RESOURCE_AUDIT.read_bytes()) if RESOURCE_AUDIT.is_file() else {"schema_version": 1}
     previous["runtime_reference_closure"] = report
     write_json(RESOURCE_AUDIT, previous)
@@ -5273,8 +5710,10 @@ def main():
     import resource_database
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "audit-runtime-resources", "prepare-product-names", "prepare-keyboard-identity"):
+    for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
+    runtime_audit = commands.add_parser("audit-runtime-resources", help="Trace Rust/catalog resource references against the fixed installed directory")
+    runtime_audit.add_argument("--repair", action="store_true", help="Verify current inline ARGB layers and attach missing aliases; do not restore source media")
     pack_audit = commands.add_parser("audit-asset-pack")
     pack_audit.add_argument("--prepare", action="store_true", help="Generate the exact ordered production asset-list.json")
     validation = commands.add_parser("validate-rust")
@@ -5362,11 +5801,14 @@ def main():
         import test_evidence
         return test_evidence.run()
     elif args.command == "audit-runtime-resources":
+        if args.repair:
+            print(json.dumps({"current_source_alias_repair": repair_current_resource_aliases()}), flush=True)
         report = audit_runtime_resources()
         print(json.dumps({"resource_audit": relative(RESOURCE_AUDIT), **report["summary"],
                           "literal_references_passed": report["literal_references_passed"],
-                          "dynamic_domain_acceptance": report["dynamic_domain_acceptance"]}), flush=True)
-        return 0 if report["literal_references_passed"] and report["inputs_unchanged"] else 1
+                          "dynamic_domain_acceptance": report["dynamic_domain_acceptance"],
+                          "inputs_unchanged": report["inputs_unchanged"], "passed": report["passed"]}), flush=True)
+        return 0 if report["passed"] else 1
     elif args.command == "verify-resources":
         report = verify_resources()
         print(json.dumps({"resource_audit": relative(RESOURCE_AUDIT), "passed": report["passed"],
@@ -5419,7 +5861,8 @@ def main():
         report = deduplicate_resources(apply=args.apply, plan=args.plan)
         print(json.dumps({"report": args.plan, "mode": report["mode"], **report["summary"]}, ensure_ascii=False))
     elif args.command == "organize-sources":
-        organize_sources(apply=args.apply)
+        report = organize_sources(apply=args.apply)
+        return 0 if not report["unresolved"] and report.get("resource_scope", {}).get("passed", True) else 1
     elif args.command == "audit-lfs":
         report = audit_git_lfs()
         print(json.dumps({"report": ".analysis/results/git-lfs-audit.json", "passed": report["passed"], **report["summary"]}))
@@ -5437,4 +5880,17 @@ def main():
         prepare_dashboard_images(args.workers, refresh_ledger=not args.no_refresh_gaps,
                                  products=args.product, source_preview_only=args.source_preview_only)
     elif args.command == "audit-family-function":
-        families.audit_fami
+        families.audit_family_function(args)
+    elif args.command == "audit-runtime-setup":
+        families.audit_runtime_setup(args)
+    elif args.command == "audit-registry-identity":
+        families.audit_registry_identity(args.prepare, args.product)
+    elif args.command == "acquire-family":
+        families.run(args, refresh=not args.no_refresh_gaps)
+    else:
+        analysis.run(args)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

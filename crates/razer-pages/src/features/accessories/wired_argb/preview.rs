@@ -32,12 +32,12 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     });
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title(local(
+            .title(razer_assets::resource_scope(local(
                 "ARGB 端口 · 界面预览",
                 "ARGB ports · Interface preview",
-            ))
+            )))
             .w(window.rem_size() * (1220. / 16.))
-            .child(preview.clone())
+            .child(razer_assets::resource_scope(preview.clone()))
     });
 }
 struct Preview {

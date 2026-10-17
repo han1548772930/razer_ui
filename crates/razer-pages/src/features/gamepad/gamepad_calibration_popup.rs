@@ -269,12 +269,12 @@ impl GamepadProductWorkspace {
             .on_ok(|_, _, _| false)
             .backdrop(div())
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .inset_0()
                     .flex()
                     .justify_center()
-                    .child(panel),
+                    .child(panel)),
             )
             .into_any_element()
     }

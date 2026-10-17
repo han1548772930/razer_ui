@@ -176,6 +176,7 @@ impl AppShell {
                 identity,
                 profile_id,
             }),
+            controller_chroma: None,
             seiren_eq: None,
             mouse_profile: None,
             keyboard_actuation: None,
@@ -231,6 +232,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if succeeded && !self.close_requested {
+            self.refresh_controller_power_configuration(cx);
             self.submit_controller_lighting(save.workspace, save.request, window, cx);
         } else {
             self.finish_controller_lighting_result(

@@ -185,5 +185,48 @@ class FrontendClosureTests(unittest.TestCase):
             self.assertIn("exports", capture["statements"])
 
 
+class RuntimeResourceReferenceTests(unittest.TestCase):
+    def test_rust_ast_distinguishes_comments_raw_strings_macros_and_test_owners(self):
+        source = b'''// "synapse/comment.svg"
+fn display() { let _ = img(r#"synapse/current.svg"#); format!("synapse/current-{frame:03}.svg"); }
+#[cfg(test)]
+mod tests { fn fake() { let _ = "synapse/fixture.svg"; } }
+#[test]
+fn verify() { let _ = "synapse/check.svg"; }
+'''
+        rows = workspace.rust_resource_literals(source, owner="fixture.rs")
+        self.assertEqual([r["literal"] for r in rows], ["synapse/current.svg", "synapse/current-{frame:03}.svg",
+            "synapse/fixture.svg", "synapse/check.svg"])
+        self.assertEqual([r["test_only"] for r in rows], [False, False, True, True])
+        for row in rows:
+            self.assertIn(row["literal"].encode(), source[row["byte_start"]:row["byte_end"]])
+            for owner in row["context"]:
+                self.assertEqual(hashlib.sha256(source[owner["byte_start"]:owner["byte_end"]]).hexdigest(), owner["body_sha256"])
+
+    def test_include_expression_preserves_original_literal_byte_offsets(self):
+        source = '// 数据\n&[("asset", "synapse/expression.svg")]'.encode()
+        [row] = workspace.rust_resource_literals(source, owner="expression.rs")
+        self.assertEqual(row["line"], 2)
+        self.assertEqual(source[row["byte_start"]:row["byte_end"]], b'"synapse/expression.svg"')
+
+    def test_named_branch_item_keeps_complete_bytes_and_ignores_other_items(self):
+        raw = '// 分支\nconst OTHER: &str = "unrelated.svg";\nconst NAMES: &[&str] = &["one", r#"two"#];'.encode()
+        with tempfile.TemporaryDirectory(dir=workspace.ROOT) as directory:
+            path = Path(directory) / "branches.rs"
+            path.write_bytes(raw)
+            names, owner = workspace.rust_named_item_strings(workspace.relative(path), "NAMES")
+        self.assertEqual(names, ["one", "two"])
+        body = raw[owner["byte_start"]:owner["byte_end"]]
+        self.assertEqual(body.decode(), owner["body"])
+        self.assertEqual(hashlib.sha256(body).hexdigest(), owner["body_sha256"])
+
+    def test_ambiguous_named_branch_item_is_rejected(self):
+        with tempfile.TemporaryDirectory(dir=workspace.ROOT) as directory:
+            path = Path(directory) / "branches.rs"
+            path.write_text('mod a { const NAMES: &str = "one"; } mod b { const NAMES: &str = "two"; }', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "found 2"):
+                workspace.rust_named_item_strings(workspace.relative(path), "NAMES")
+
+
 if __name__ == "__main__":
     unittest.main()

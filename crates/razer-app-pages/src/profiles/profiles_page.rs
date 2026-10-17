@@ -724,7 +724,7 @@ impl Render for AddGameDialog {
                     .bg(cx.theme().title_bar.opacity((128. / 255.) * opacity)),
             )
             .popup(
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     .id("profiles-add-dialog")
                     .absolute()
                     .left((viewport.width - width) / 2.)
@@ -794,7 +794,7 @@ impl Render for AddGameDialog {
                                     .min_h_0()
                                     .scrollable_y(),
                             ),
-                    ),
+                    )),
             )
             .into_any_element()
     }

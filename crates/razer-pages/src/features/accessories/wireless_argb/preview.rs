@@ -23,9 +23,9 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     });
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title("无线 ARGB 控制器 · 界面预览")
+            .title(razer_assets::resource_scope("无线 ARGB 控制器 · 界面预览"))
             .w(window.rem_size() * (1150. / 16.))
-            .child(preview.clone())
+            .child(razer_assets::resource_scope(preview.clone()))
     });
 }
 struct ArgbPreview {

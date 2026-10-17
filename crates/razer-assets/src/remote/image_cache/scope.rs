@@ -2,8 +2,8 @@
 //! cache with the child through layout, prepaint and paint without adding a box.
 use super::resource_image_cache;
 use gpui_kit::{
-    AnyElement, AnyImageCache, App, Bounds, Deferred, Element, ElementId, GlobalElementId,
-    ImageCacheProvider as _, InspectorElementId, IntoElement, LayoutId, Pixels, Window,
+    AnyElement, AnyImageCache, App, Bounds, ContentMask, Deferred, Element, ElementId, GlobalElementId,
+    ImageCacheProvider as _, InspectorElementId, IntoElement, LayoutId, Pixels, Point, Window,
 };
 
 pub struct ResourceScope {
@@ -21,6 +21,43 @@ pub fn resource_scope(child: impl IntoElement) -> ResourceScope {
 /// Use the normal deferred layer while retaining its resource-loading owner.
 pub fn deferred_resource(child: impl IntoElement) -> Deferred {
     gpui_kit::deferred(resource_scope(child))
+}
+
+/// A resource-scoped child retained by a custom element through its drawing phases.
+/// Wrapping happens before layout; scheduling must not create an unlaid-out wrapper.
+pub struct ResourceLayer {
+    child: AnyElement,
+}
+
+impl ResourceLayer {
+    pub fn new(child: impl IntoElement) -> Self {
+        Self {
+            child: resource_scope(child).into_any_element(),
+        }
+    }
+
+    pub fn request_layout(&mut self, window: &mut Window, cx: &mut App) -> LayoutId {
+        self.child.request_layout(window, cx)
+    }
+
+    pub fn prepaint(&mut self, window: &mut Window, cx: &mut App) {
+        self.child.prepaint(window, cx);
+    }
+
+    pub fn paint(&mut self, window: &mut Window, cx: &mut App) {
+        self.child.paint(window, cx);
+    }
+
+    /// Consume the laid-out child during prepaint, as required by GPUI.
+    pub fn schedule(
+        self,
+        window: &mut Window,
+        absolute_offset: Point<Pixels>,
+        priority: usize,
+        content_mask: Option<ContentMask<Pixels>>,
+    ) {
+        window.defer_draw(self.child, absolute_offset, priority, content_mask);
+    }
 }
 
 impl IntoElement for ResourceScope {

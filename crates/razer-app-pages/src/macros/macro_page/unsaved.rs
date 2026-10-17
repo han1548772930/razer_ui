@@ -217,7 +217,7 @@ impl MacroPage {
             .on_close(cx.listener(|this, _, window, cx| this.cancel_suspended_action(window, cx)))
             .backdrop(div().absolute().inset_0().bg(rgba(0x00000080)))
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .left_0()
                     .top_0()
@@ -226,7 +226,7 @@ impl MacroPage {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .child(panel),
+                    .child(panel)),
             )
             .into_any_element()
     }

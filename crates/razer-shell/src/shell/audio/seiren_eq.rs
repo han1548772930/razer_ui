@@ -68,6 +68,7 @@ impl AppShell {
             mouse_current_dpi: None,
             mouse_current_power: None,
             controller_lighting: None,
+            controller_chroma: None,
             controller_trigger: None,
             seiren_eq: Some(SeirenEqSave::MixerVersion(SeirenMixerVersionSave {
                 workspace,
@@ -141,6 +142,7 @@ impl AppShell {
             mouse_current_dpi: None,
             mouse_current_power: None,
             controller_lighting: None,
+            controller_chroma: None,
             controller_trigger: None,
             seiren_eq: Some(SeirenEqSave::Settings(SeirenEqSettingsSave {
                 workspace,

@@ -61,6 +61,8 @@ pub struct ControllerChromaObservation {
 }
 impl ControllerChromaObservation {
     pub fn new()->Self { Self::default() }
+    pub fn with_fully_installed(mut self,installed:bool)->Self {self.fully_installed=Some(installed);self}
+    pub fn with_module_installed(mut self,installed:bool)->Self {self.module_installed=Some(installed);self}
     pub fn with_installation(mut self,fully_installed:bool,module_installed:bool)->Self {self.fully_installed=Some(fully_installed);self.module_installed=Some(module_installed);self}
     pub fn with_profiles(mut self,profiles:Vec<ControllerChromaProfile>,selected:Option<String>)->anyhow::Result<Self> {
         let mut ids=std::collections::BTreeSet::new();
@@ -76,6 +78,10 @@ impl ControllerChromaObservation {
     pub fn module_installed(&self)->Option<bool> {self.module_installed}
     pub fn profiles(&self)->Option<&[ControllerChromaProfile]> {self.profiles.as_deref()}
     pub fn selected_profile(&self)->Option<&str> {self.selected_profile.as_deref()}
+    pub(super) fn select_profile(&mut self,id:&str)->bool {
+        if !self.profiles.as_ref().is_some_and(|profiles|profiles.iter().any(|profile|profile.id==id)) {return false;}
+        self.selected_profile=Some(id.to_owned());true
+    }
     pub fn enabled(&self)->Option<bool> {self.enabled}
     pub fn connected_products(&self)->Option<&[u32]> {self.connected_products.as_deref()}
     pub fn visualizer_enabled(&self)->Option<bool> {self.visualizer_enabled}

@@ -487,7 +487,7 @@ impl AudioProductWorkspace {
                         .opacity(opacity),
                 )
                 .popup(
-                    div()
+                    razer_assets::resource_scope(div()
                         .absolute()
                         .left_0()
                         .bottom(relative(0.5))
@@ -495,7 +495,7 @@ impl AudioProductWorkspace {
                         .flex()
                         .justify_center()
                         .opacity(opacity)
-                        .child(panel),
+                        .child(panel)),
                 )
                 .into_any_element(),
         )

@@ -1604,7 +1604,7 @@ impl AudioProductWorkspace {
             .on_cancel(|_, _, _| false)
             .backdrop(div().size_full().bg(C::overlay()))
             .popup(
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     // Current warning-alert uses top:50%, translateY(-100%).
                     // Base centers the 164px popup; move it by half its height.
                     .relative()
@@ -1668,7 +1668,7 @@ impl AudioProductWorkspace {
                                         );
                                     })),
                             ),
-                    ),
+                    )),
             )
             .into_any_element()
     }

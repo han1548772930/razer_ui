@@ -104,7 +104,7 @@ impl AppShell {
             workspace.complete_mouse_lighting(request, result, window, cx);
         });
     }
-    fn manage_product_chroma_apps(
+    pub(super) fn manage_product_chroma_apps(
         &mut self,
         install_required: bool,
         cx: &mut Context<Self>,

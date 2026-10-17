@@ -2,6 +2,7 @@
 //! PID229 main.551458e6.js oT / main.377583f3.css `.config-btns-wrapper`.
 use super::*;
 use razer_widgets::theme::TooltipColors;
+use gpui_kit::base::motion::{transition,Transition};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HoverPart {
@@ -164,23 +165,23 @@ impl MouseProductWorkspace {
             window,
             cx,
         );
-        let tip_opacity = surface::fade_opacity(
+        let tip_opacity = transition(
             (
                 ElementId::from(("mouse-source-label-tip-opacity", cx.entity_id())),
                 input.clone(),
             ),
             if tip_hovered && !requires_hovered { 1. } else { 0. },
-            300,
+            Transition::new(Duration::from_millis(300)).easing(Easing::Linear),
             window,
             cx,
         );
-        let requires_opacity = surface::fade_opacity(
+        let requires_opacity = transition(
             (
                 ElementId::from(("mouse-source-label-requires-opacity", cx.entity_id())),
                 input.clone(),
             ),
             if requires_hovered { 1. } else { 0. },
-            300,
+            Transition::new(Duration::from_millis(300)).easing(Easing::Linear),
             window,
             cx,
         );
@@ -284,7 +285,7 @@ impl MouseProductWorkspace {
                     .bg(if self.hypershift {
                         Colors::hypershift()
                     } else {
-                        rgb(0x008900).into()
+                        Colors::requires_synapse()
                     })
                     .flex()
                     .items_center()
@@ -398,7 +399,7 @@ impl MouseProductWorkspace {
                         .child(
                             div()
                                 .mt(surface::css(5.))
-                                .bg(rgba(0x6d6b6bf5))
+                                .bg(Colors::remapping_blocked_message())
                                 .text_size(surface::css(12.))
                                 .py(surface::css(3.))
                                 .px(surface::css(20.))
@@ -449,14 +450,14 @@ impl MouseProductWorkspace {
                                 .child(
                                     div()
                                         .mt(surface::css(5.))
-                                        .text_color(rgb(0x707070))
+                                        .text_color(Colors::tooltip_secondary_text())
                                         .text_size(surface::css(14.))
                                         .child(
                                             t(button["defaultValue"].as_str().unwrap_or_default())
                                                 .to_uppercase(),
                                         ),
                                 )
-                                .child(div().mt(surface::css(5.)).text_color(rgb(0x707070)).child(
+                                .child(div().mt(surface::css(5.)).text_color(Colors::tooltip_secondary_text()).child(
                                     group["name"].as_str().unwrap_or_default().to_uppercase(),
                                 ))
                                 .children(button.get("assignmentGroup").map(|_| {
@@ -479,7 +480,7 @@ impl MouseProductWorkspace {
                         div()
                             .mt(surface::css(5.))
                             .bg(accent)
-                            .text_color(rgb(0x000000))
+                            .text_color(Colors::tooltip_banner_text())
                             .text_size(surface::css(12.))
                             .py(surface::css(3.))
                             .px(surface::css(26.))

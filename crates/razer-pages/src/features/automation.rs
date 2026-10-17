@@ -271,7 +271,7 @@ impl Automation {
                 .p_0()
                 .bg(Colors::panel())
                 .rounded(surface::css(3.))
-                .child(editor.clone())
+                .child(razer_assets::resource_scope(editor.clone()))
         });
     }
     fn summary(rule: &Rule) -> String {

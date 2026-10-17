@@ -950,14 +950,14 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     let page = cx.new(|cx| AlexaPage::new_preview(window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title("Alexa · 界面预览")
+            .title(razer_assets::resource_scope("Alexa · 界面预览"))
             .w((window.rem_size() * 80.)
                 .min((window.viewport_size().width - window.rem_size() * 2.).max(px(0.))))
             .child(
-                div()
+                razer_assets::resource_scope(div()
                     .w_full()
                     .h((window.viewport_size().height - window.rem_size() * 8.).max(px(0.)))
-                    .child(page.clone()),
+                    .child(page.clone())),
             )
     });
 }

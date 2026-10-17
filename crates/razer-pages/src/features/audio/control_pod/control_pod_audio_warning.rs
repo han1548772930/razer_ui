@@ -187,7 +187,7 @@ impl AudioEditor {
             // CSS top:50%; transform:translateY(-100%) places the panel's
             // bottom edge at half of the viewport, not its center there.
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .left_0()
                     .bottom(relative(0.5))
@@ -195,7 +195,7 @@ impl AudioEditor {
                     .flex()
                     .justify_center()
                     .opacity(opacity)
-                    .child(panel),
+                    .child(panel)),
             )
             .into_any_element()
     }

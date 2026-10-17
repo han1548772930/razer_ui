@@ -307,7 +307,7 @@ impl AutomationEditor {
                 .p_0()
                 .bg(Colors::panel())
                 .rounded(surface::css(3.))
-                .child(picker.clone())
+                .child(razer_assets::resource_scope(picker.clone()))
         });
     }
     fn choices(ids: &[u32]) -> Vec<Choice> {

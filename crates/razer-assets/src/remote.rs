@@ -18,7 +18,9 @@ mod credentials;
 mod image_cache;
 mod runtime;
 mod transport;
-pub use image_cache::{ResourceScope, deferred_resource, resource_image_cache, resource_scope};
+pub use image_cache::{
+    ResourceLayer, ResourceScope, deferred_resource, resource_image_cache, resource_scope,
+};
 pub use runtime::{
     ResourceChanged, observe_resources, resource_errors, retry_resources, start_resources,
 };
@@ -274,8 +276,8 @@ mod database_tests {
     #[test]
     fn database_index_retains_duplicate_priority_list_order_and_svg_viewports() {
         let manifest = manifest().unwrap();
-        assert_eq!(manifest.entries.len(), 11981);
-        assert_eq!(manifest.files.len(), 7781);
+        assert_eq!(manifest.entries.len(), 12011);
+        assert_eq!(manifest.files.len(), 7783);
         assert_eq!(manifest.fonts.len(), 14);
         let duplicate = "synapse/mouse-customize/f4f5f13b5ea47e5816fbf38f.png";
         let positions = manifest
@@ -284,7 +286,7 @@ mod database_tests {
             .enumerate()
             .filter_map(|(index, entry)| (entry.key == duplicate).then_some(index))
             .collect::<Vec<_>>();
-        assert_eq!(positions, [1255, 11869]);
+        assert_eq!(positions, [1255, 11899]);
         assert_eq!(manifest.keys[duplicate], positions[0]);
         assert_eq!(
             list("synapse/mouse-customize/")
@@ -346,6 +348,30 @@ mod database_tests {
                 "assets/synapse/products/1422/863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f.svg",
                 643,
                 "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
+            ),
+            (
+                "synapse/mouse-customize/scrollmode-switch-bg.svg",
+                "assets/synapse/shared/products/20708f1406af7dcf-scrollmode-switch-bg.svg",
+                696,
+                "20708f1406af7dcfac00890c8cd5be4ff4c246358e7153e193afbfdef5b87c78",
+            ),
+            (
+                "synapse/mouse-customize/scrollmode-switch-top.svg",
+                "assets/synapse/shared/products/4c9e234418bb0197-scrollmode-switch-top.svg",
+                585,
+                "4c9e234418bb019740060a4662835a0738426faeae6c032e4985d0ac931810a7",
+            ),
+            (
+                "synapse/wireless-argb-3884-refresh-hover.svg",
+                "assets/synapse/shared/products/141769f9885e1f51-wireless-argb-3884-refresh-hover.svg",
+                222,
+                "141769f9885e1f51aef92722fe55af46982d16ca5d397615350b95ee77325072",
+            ),
+            (
+                "synapse/wireless-argb-3886-power-base.svg",
+                "assets/synapse/products/3886/6844a1a2812121f0-wireless-argb-3886-power-base.svg",
+                1169,
+                "6844a1a2812121f0801780528331a228c879c9c1b60ec11e23e50a267935602d",
             ),
         ] {
             assert_eq!(identity(key), Some((path, bytes, sha256)));

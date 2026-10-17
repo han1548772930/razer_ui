@@ -20,9 +20,9 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     let preview = cx.new(|_| AutomationPreview { page });
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title("Base Station V3 Chroma - Automation Preview")
+            .title(razer_assets::resource_scope("Base Station V3 Chroma - Automation Preview"))
             .w(window.rem_size() * (1000. / 16.))
-            .child(preview.clone())
+            .child(razer_assets::resource_scope(preview.clone()))
     });
 }
 

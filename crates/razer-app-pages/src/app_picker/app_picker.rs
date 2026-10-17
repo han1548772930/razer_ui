@@ -1054,9 +1054,9 @@ pub fn open_preview(window: &mut Window, cx: &mut App) {
     let preview = cx.new(|cx| AppPickerPreview::new(window, cx));
     window.open_dialog(cx, move |dialog, window, _| {
         dialog
-            .title("更多应用 · 界面预览")
+            .title(razer_assets::resource_scope("更多应用 · 界面预览"))
             .width(window.rem_size() * (560. / 16.))
-            .child(preview.clone())
+            .child(razer_assets::resource_scope(preview.clone()))
     });
 }
 const PREVIEW_SCENES: [(&str, &str); 6] = [

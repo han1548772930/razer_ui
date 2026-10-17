@@ -1180,11 +1180,11 @@ impl PresetEditor {
             let crop_for_apply = crop.clone();
             let parent = parent.clone();
             dialog
-                .title(t("ANIMATION_CROPPER_TITLE"))
+                .title(razer_assets::resource_scope(t("ANIMATION_CROPPER_TITLE")))
                 .width(width)
-                .child(crop.clone())
+                .child(razer_assets::resource_scope(crop.clone()))
                 .footer(
-                    h_flex()
+                    razer_assets::resource_scope(h_flex()
                         .justify_end()
                         .gap_2()
                         .child(
@@ -1221,7 +1221,7 @@ impl PresetEditor {
                                     });
                                     window.close_dialog(cx);
                                 }),
-                        ),
+                        )),
                 )
         });
     }
@@ -1302,11 +1302,11 @@ impl SourceControls {
             let editor_for_apply = editor_for_apply.clone();
             let parent = parent.clone();
             dialog
-                .title(t("CUSTOMIZE_MODAL_AUDIO_METER_TITLE"))
+                .title(razer_assets::resource_scope(t("CUSTOMIZE_MODAL_AUDIO_METER_TITLE")))
                 .width(width)
-                .child(editor.clone())
+                .child(razer_assets::resource_scope(editor.clone()))
                 .footer(
-                    h_flex()
+                    razer_assets::resource_scope(h_flex()
                         .justify_end()
                         .gap_2()
                         .child(
@@ -1334,7 +1334,7 @@ impl SourceControls {
                                     });
                                     window.close_dialog(cx);
                                 }),
-                        ),
+                        )),
                 )
         });
     }
@@ -1358,11 +1358,11 @@ impl SourceControls {
             let editor_for_apply = editor.clone();
             let parent = parent.clone();
             dialog
-                .title(t(kind.editor_title()))
+                .title(razer_assets::resource_scope(t(kind.editor_title())))
                 .width(width)
-                .child(editor.clone())
+                .child(razer_assets::resource_scope(editor.clone()))
                 .footer(
-                    h_flex()
+                    razer_assets::resource_scope(h_flex()
                         .justify_end()
                         .gap_2()
                         .child(
@@ -1392,7 +1392,7 @@ impl SourceControls {
                                     });
                                     window.close_dialog(cx);
                                 }),
-                        ),
+                        )),
                 )
         });
     }

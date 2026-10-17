@@ -535,14 +535,14 @@ impl GamepadProductWorkspace {
             .on_ok(|_, _, _| false)
             .backdrop(div())
             .popup(
-                div()
+                razer_assets::resource_scope(div()
                     .absolute()
                     .top(self.calibration_bounds.get().origin.y + window.rem_size() * (100. / 16.))
                     .left_0()
                     .w(window.viewport_size().width)
                     .flex()
                     .justify_center()
-                    .child(panel),
+                    .child(panel)),
             )
             .into_any_element()
     }

@@ -19,6 +19,8 @@ pub(crate) mod services;
 pub(crate) mod screen_color;
 #[path = "session_changes.rs"]
 pub(crate) mod session_changes;
+#[path = "power_idle.rs"]
+pub(crate) mod power_idle;
 pub(crate) mod startup;
 #[path = "system.rs"]
 pub(crate) mod system;
