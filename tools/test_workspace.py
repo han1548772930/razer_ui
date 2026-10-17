@@ -14,6 +14,7 @@ import tempfile
 
 import workspace
 import resource_database
+import families
 
 
 def wheel_bytes(members, *, records=None, extra=()):
@@ -103,6 +104,30 @@ class ProductRegistryTests(unittest.TestCase):
             with self.assertRaises(sqlite3.IntegrityError):
                 connection.execute("INSERT INTO ui_page VALUES ('orphan', 'missing-navigation', 0, 'HELP', 'Help', 1)")
 
+    def test_source_reaudit_retains_help_identity_when_source_positions_change(self):
+        previous = self.records()["products"][0]["navigations"]
+        current = [{"source": {"path": "new-current.chunk.js"}, "branch": "wired", "offset": 1000,
+                    "display_mode": "default", "primary": True,
+                    "pages": [{"kind": "TAB_CALIBRATION", "offset": 1000}, {"kind": "HELP", "offset": 2000}]},
+                   {"source": {"path": "new-current.chunk.js"}, "branch": "ble", "offset": 3000,
+                    "display_mode": "default", "primary": False, "pages": [{"kind": "HELP", "offset": 4000}]}]
+        product = families.registry_product_record(756, "Keyboard", "KEYBOARD", [0, 128], current, previous)
+        self.assertEqual(product, self.records()["products"][0])
+        bindings = [{"product_id": 756, "pages": [{"offset": 11}, {"offset": 21}]}]
+        self.assertEqual(resource_database.validate_product_help_bindings([product], bindings), 2)
+        product["navigations"][1]["pages"][0]["help_selector"] = 11
+        bindings[0]["pages"] = [{"offset": 21}]
+        with self.assertRaisesRegex(ValueError, "no local presentation record"):
+            resource_database.validate_product_help_bindings([product], bindings)
+
+    def test_help_binding_rejects_ambiguous_presentation_records(self):
+        products = self.records()["products"]
+        for records in ([{"product_id": 756, "pages": [{"offset": 11}, {"offset": 11}]}],
+                        [{"product_id": 756, "pages": []}, {"product_id": 756, "pages": []}]):
+            with self.subTest(records=records):
+                with self.assertRaisesRegex(ValueError, "Ambiguous"):
+                    resource_database.validate_product_help_bindings(products, records)
+
     def test_duplicate_stable_ids_missing_primary_unknown_fields_and_bad_editions_fail(self):
         cases = []
         duplicate = self.records()
@@ -125,6 +150,39 @@ class ProductRegistryTests(unittest.TestCase):
             with self.subTest(document=document):
                 with self.assertRaises(ValueError):
                     self.load(document)
+
+
+class FrontendClosureTests(unittest.TestCase):
+    def test_declared_resources_maps_and_exploratory_probes_remain_separate(self):
+        document = {"files": [{"url": "https://official/main.js", "path": "original.js"},
+                              {"url": "https://official/main.js.map", "error": "404"},
+                              {"url": "https://official/favicon.svg", "error": "404"},
+                              {"url": "https://official/asset-manifest.json", "error": "404"},
+                              {"url": "https://official/unknown.bin", "error": "404"}],
+                    "edges": [{"from": "https://official/main.js", "to": "https://official/main.js.map", "kind": "source-map"},
+                              {"from": "https://official/index.html", "to": "https://official/favicon.svg", "kind": "html:link"}],
+                    "probes": [{"url": "https://official/asset-manifest.json", "declared": False}],
+                    "unresolved": [{"kind": "chunk_unresolved", "asset": {"template": "[id].js"}}]}
+        gaps = families.frontend_reference_gaps(document)
+        self.assertEqual(gaps["declared_source_maps_missing"], 1)
+        self.assertEqual([row["url"] for row in gaps["declared_non_map_missing"]], ["https://official/favicon.svg"])
+        self.assertEqual([row["url"] for row in gaps["undeclared_probes_unavailable"]], ["https://official/asset-manifest.json"])
+        self.assertEqual([row["url"] for row in gaps["unattributed_non_map_missing"]], ["https://official/unknown.bin"])
+        self.assertFalse(gaps["all_declared_non_map_references_retained"])
+        self.assertEqual(gaps["unresolved_by_kind"], {"chunk_unresolved": 1})
+
+    def test_opaque_original_keeps_parameter_reuse_free_exports_and_unicode_byte_ranges(self):
+        for body in ('21:function(e,t,n){e.exports=t=function(e,t){return n(e,t)};t.methods=exports}',
+                     '21(e,t,n){n.d(t,{A:()=>exports});e=n.hmd(e)}'):
+            source = 'const label="原始";const modules={' + body + '};'
+            module = next(row for row in families.keyboard_source_modules(source) if row["module_id"] == 21)
+            capture = families.webpack_factory_snapshot(module)
+            raw = source.encode("utf-8")
+            self.assertEqual(capture["body"], body)
+            self.assertEqual(capture["parameters"], "(e,t,n)")
+            self.assertEqual(raw[capture["byte_start"]:capture["byte_end"]], body.encode())
+            self.assertEqual(raw[capture["statements_byte_start"]:capture["statements_byte_end"]], capture["statements"].encode())
+            self.assertIn("exports", capture["statements"])
 
 
 if __name__ == "__main__":

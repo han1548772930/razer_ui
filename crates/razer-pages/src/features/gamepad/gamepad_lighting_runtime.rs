@@ -1,6 +1,7 @@
 //! Serialized controller lighting intents and persistence projections. Current
 //! source setters keep their optimistic UI values after transport failure.
 use super::lighting_state::ControllerLightingSettings;
+use super::quick_lighting_state::QuickLightingSettings;
 use super::{GamepadProductChanged, GamepadProductWorkspace};
 use gpui_kit::*;
 use razer_device::controller_lighting::{LightingOperation, LightingResult};
@@ -71,6 +72,11 @@ impl ControllerLightingRequested {
                 brightness.validate()?;
                 profile.insert("brightness".into(), saved.clone());
             }
+            LightingOperation::Software {..} => {
+                let saved=self.profile.get("quickEffects").ok_or_else(||anyhow::anyhow!("Kitsune quick-effect settings are missing"))?;
+                let _:QuickLightingSettings=serde_json::from_value(saved.clone())?;
+                profile.insert("quickEffects".into(),saved.clone());
+            }
             _ => {}
         }
         Ok(())
@@ -99,6 +105,7 @@ impl Brightness {
 
 pub(super) struct LightingRuntime {
     pub(super) settings: Option<ControllerLightingSettings>,
+    pub(super) quick: Option<QuickLightingSettings>,
     guard: Arc<AtomicBool>,
     sequence: u64,
     revision: u64,
@@ -111,6 +118,7 @@ impl LightingRuntime {
     pub(super) fn new(product_id: u32) -> Self {
         Self {
             settings: (product_id == 2636).then(ControllerLightingSettings::default),
+            quick: (product_id==4115).then(QuickLightingSettings::default),
             guard: Arc::new(AtomicBool::new(true)),
             sequence: 0,
             revision: 0,
@@ -164,6 +172,12 @@ impl Drop for LightingRuntime {
 
 impl GamepadProductWorkspace {
     pub(super) fn restore_lighting_profile(&mut self) -> anyhow::Result<()> {
+        if self.spec.product_id==4115 {
+            let saved=self.draft["profile"].get("quickEffects").ok_or_else(||anyhow::anyhow!("Kitsune source profile has no quick effects"))?;
+            self.lighting_runtime.quick=Some(serde_json::from_value(saved.clone())?);
+            self.project_quick_lighting();
+            return Ok(());
+        }
         if self.spec.product_id != 2636 {
             return Ok(());
         }
@@ -232,7 +246,7 @@ impl GamepadProductWorkspace {
         })();
         self.enqueue_lighting(operation, cx);
     }
-    fn enqueue_lighting(
+    pub(super) fn enqueue_lighting(
         &mut self,
         operation: anyhow::Result<LightingOperation>,
         cx: &mut Context<Self>,
@@ -270,6 +284,7 @@ impl GamepadProductWorkspace {
             self.enqueue_lighting(operation, cx);
         }
         self.controller_brightness_changed("/profile/brightness/isEnabled", cx);
+        if self.spec.product_id==4115&&!self.chroma_runtime.advanced {self.submit_quick_lighting(cx);}
     }
     pub fn controller_lighting_request_matches(
         &self,

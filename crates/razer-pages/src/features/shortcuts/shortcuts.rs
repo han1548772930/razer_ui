@@ -1054,7 +1054,7 @@ impl Shortcuts {
                     let _ = owner.update(cx, |page, cx| page.dismiss_delete(window, cx));
                 }
             })
-            .content(move |_, _, cx| {
+            .content(move |_, _, cx| razer_assets::resource_scope({
                 let popup = cx.entity().downgrade();
                 let owner = confirm_owner.clone();
                 let id = id.clone();
@@ -1127,7 +1127,7 @@ impl Shortcuts {
                             }),
                     )
                     .into_any_element()
-            })
+            }))
             .into_any_element()
     }
     fn start_recording(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {

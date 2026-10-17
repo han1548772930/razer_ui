@@ -153,11 +153,11 @@ impl HueWorkspace {
                                 cx.notify();
                             }
                         }))
-                        .content(move |_, _, cx| {
+                        .content(move |_, _, cx| razer_assets::resource_scope({
                             owner
                                 .update(cx, |this, cx| this.bridge_alert(cx))
                                 .unwrap_or_else(|_| div().into_any_element())
-                        }),
+                        })),
                 ),
         )
         .into_any_element()

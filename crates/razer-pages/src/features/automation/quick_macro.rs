@@ -326,7 +326,7 @@ impl QuickMacroEditor {
                             this.type_focus.focus(window, cx);
                         }))
                 }));
-            selector = selector.child(deferred(menu).priority(3));
+            selector = selector.child(razer_assets::deferred_resource(menu).priority(3));
         }
         selector.into_any_element()
     }

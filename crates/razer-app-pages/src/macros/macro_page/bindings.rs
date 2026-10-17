@@ -189,7 +189,7 @@ impl MacroPage {
                     this.binding_menu = open.then(|| key.clone());
                     cx.notify();
                 }))
-                .content(move |_, _, _| {
+                .content(move |_, _, _| razer_assets::resource_scope({
                     let owner = owner.clone();
                     let key = remove_key.clone();
                     BaseButton::new("macro-remove-binding")
@@ -212,7 +212,7 @@ impl MacroPage {
                             });
                         })
                         .into_any_element()
-                });
+                }));
                 let image = resources::dashboard_image(
                     device.product_id,
                     device.edition_id,

@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "format": "files",
-  "tag": "assets-3fe552bde612424a1c6e",
-  "source_sha256": "3fe552bde612424a1c6e974e2093da098b51580832884afc1013cdd36215ba76",
+  "tag": "assets-ae86321089438246753f",
+  "source_sha256": "ae86321089438246753f7288a0a07e8df493614d9990e3700c68d56b9fd55d9d",
   "git_files": [
     {
       "path": "assets/synapse/shared/pending-source-audit/33892a0b56b91958-tray-gear-light.rgba",
@@ -34243,6 +34243,11 @@
           "sha256": "200091f53fc607aab0254f3135e02486f9a870cf20722fbc9d8fc1e6fd6a8a99"
         },
         {
+          "path": "assets/synapse/shared/products/20708f1406af7dcf-scrollmode-switch-bg.svg",
+          "bytes": 696,
+          "sha256": "20708f1406af7dcfac00890c8cd5be4ff4c246358e7153e193afbfdef5b87c78"
+        },
+        {
           "path": "assets/synapse/shared/products/20b392f7915e59d4-preview-source-1339-0-0-3x.png",
           "bytes": 80339,
           "sha256": "20b392f7915e59d4ef5f801190fd963169d91de5c5ffbfa5624b370c9e42e867"
@@ -35146,6 +35151,11 @@
           "path": "assets/synapse/shared/products/4c242d0b5f5fe35a-1-1x.d90f5e25.png",
           "bytes": 62044,
           "sha256": "4c242d0b5f5fe35af65838e32f9c3ed7605c03abc5553915ee4a19b09a70cf28"
+        },
+        {
+          "path": "assets/synapse/shared/products/4c9e234418bb0197-scrollmode-switch-top.svg",
+          "bytes": 585,
+          "sha256": "4c9e234418bb019740060a4662835a0738426faeae6c032e4985d0ac931810a7"
         },
         {
           "path": "assets/synapse/shared/products/4cb039e68e0ecb06-mapping-interdevice-active.svg",
@@ -41578,6 +41588,6 @@
   "storage": {
     "provider": "huggingface",
     "repository": "han1548772930/razer-ui-assets",
-    "revision": "ce7ba4dd6cd039f9b1e955c9872ce83ac754867e"
+    "revision": "a05bdbc7f67cfdbe141728b1f91d19f5396635f6"
   }
 }

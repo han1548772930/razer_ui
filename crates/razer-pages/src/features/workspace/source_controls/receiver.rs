@@ -400,7 +400,7 @@ impl SourceControls {
         let content_top = unit * 42.;
         let content_height = (size.height - content_top).max(px(0.));
         let width = (unit * 850.).min(size.width);
-        deferred(
+        razer_assets::deferred_resource(
             anchored()
                 .anchor(Anchor::TopLeft)
                 .position(point(px(0.), content_top))

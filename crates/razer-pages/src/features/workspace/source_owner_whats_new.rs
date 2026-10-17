@@ -177,13 +177,13 @@ impl SourceHelpOwner {
             .bg(Colors::accent())
             .rounded(surface::css(4.5))
             .child(card);
-        deferred(
+        razer_assets::deferred_resource(
             anchored()
                 .anchor(Anchor::TopLeft)
                 .position(point(px(0.), host_tab))
                 .child(
                     div().w(size.width).h(height).bg(Colors::shade()).child(
-                        deferred(CenteredAt {
+                        razer_assets::deferred_resource(CenteredAt {
                             center: point(size.width / 2., host_tab + height / 2. + unit * 42.),
                             child: outlined.into_any_element(),
                         })

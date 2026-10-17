@@ -371,7 +371,7 @@ impl KeyboardProductWorkspace {
                 .unwrap_or(&data().switches[0]);
             let travel = switch.and_then(|s| s["keyTravel"].as_f64()).unwrap_or(40.);
             keyboard = keyboard.child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored()
                         .anchor(Anchor::BottomCenter)
                         .position(point(

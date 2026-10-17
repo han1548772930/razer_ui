@@ -284,7 +284,7 @@ impl KeyboardProductWorkspace {
                     })),
             )
             .child(
-                deferred(SourceTip {
+                razer_assets::deferred_resource(SourceTip {
                     label: t(tip),
                     trigger: state.help_bounds[slot].clone(),
                     bounds: state.help_tip_bounds[slot].clone(),
@@ -999,7 +999,7 @@ impl KeyboardProductWorkspace {
                 });
             }
             adjustment = adjustment.child(
-                deferred(SourceTip {
+                razer_assets::deferred_resource(SourceTip {
                     label: t("RESET_TO_DEFAULT"),
                     trigger: state.reset_bounds[slot].clone(),
                     bounds: state.reset_tip_bounds[slot].clone(),
@@ -1016,7 +1016,7 @@ impl KeyboardProductWorkspace {
                 .with_priority(1001),
             );
             body = body.child(
-                deferred(Adjustment {
+                razer_assets::deferred_resource(Adjustment {
                     content: adjustment.into_any_element(),
                     header: state.header_bounds[slot][index].clone(),
                     bounds: state.adjustment_bounds[slot].clone(),

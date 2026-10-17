@@ -24,14 +24,23 @@ struct WindowsInterface {
 
 #[cfg(any(windows, test))]
 impl WindowsInterface {
-    fn matches(&self, node: &HidNode, physical_product_id: u32, container: &str, interface: i32) -> bool {
+    fn matches(
+        &self,
+        node: &HidNode,
+        physical_product_id: u32,
+        container: &str,
+        interface: i32,
+    ) -> bool {
         self.vendor_id == 5426
             && self.product_id == physical_product_id
             && self.claim_interface == Some(interface)
             && self.feature_report_bytes == Some(91)
-            && self.device_container_id.as_deref().is_some_and(|observed_container| {
-                observed_container.eq_ignore_ascii_case(container)
-            })
+            && self
+                .device_container_id
+                .as_deref()
+                .is_some_and(|observed_container| {
+                    observed_container.eq_ignore_ascii_case(container)
+                })
             && std::str::from_utf8(&node.path)
                 .is_ok_and(|path| path.eq_ignore_ascii_case(&self.path))
     }
@@ -50,7 +59,11 @@ pub(super) fn resolve(
     let reply: NodesReply = serde_json::from_value(client.request(ServiceRequest::HidNodes)?)
         .context("Invalid controller HID collection observation")?;
     let matching = if let Some(retained) = observed.hid_node() {
-        reply.nodes.into_iter().filter(|node| node == retained).collect::<Vec<_>>()
+        reply
+            .nodes
+            .into_iter()
+            .filter(|node| node == retained)
+            .collect::<Vec<_>>()
     } else {
         #[cfg(windows)]
         {
@@ -61,11 +74,20 @@ pub(super) fn resolve(
             let reply_interfaces: InterfacesReply =
                 serde_json::from_value(client.request(ServiceRequest::HidDevices)?)
                     .context("Invalid Windows controller interface observation")?;
-            reply.nodes.into_iter().filter(|node| {
-                reply_interfaces.interfaces.iter().any(|candidate| {
-                    candidate.matches(node, observed.physical_product_id(), observed.container(), claim_interface)
+            reply
+                .nodes
+                .into_iter()
+                .filter(|node| {
+                    reply_interfaces.interfaces.iter().any(|candidate| {
+                        candidate.matches(
+                            node,
+                            observed.physical_product_id(),
+                            observed.container(),
+                            claim_interface,
+                        )
+                    })
                 })
-            }).collect::<Vec<_>>()
+                .collect::<Vec<_>>()
         }
         #[cfg(not(windows))]
         {

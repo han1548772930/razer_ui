@@ -234,7 +234,7 @@ impl MacroPage {
         }
         if opened {
             root = root.child(
-                deferred(TextOverlay {
+                razer_assets::deferred_resource(TextOverlay {
                     content: self.text_modal(index, window, cx),
                     anchor: TextAnchor::Modal {
                         row,
@@ -299,7 +299,7 @@ impl MacroPage {
             )
             .when(emoji_hovered, |button| {
                 button.child(
-                    deferred(
+                    razer_assets::deferred_resource(
                         tip_surface(tooltip_alpha)
                             .absolute()
                             .left_0()

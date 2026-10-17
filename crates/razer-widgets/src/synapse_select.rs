@@ -554,7 +554,7 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                         .when(visible, |this| {
                             this.content(
                                 // Resolve against the final size throughout the animation.
-                                div().w(width).h(css(menu_height)).child(
+                                razer_assets::resource_scope(div().w(width).h(css(menu_height)).child(
                                     div()
                                         .id("source-options")
                                         .test_support()
@@ -593,7 +593,7 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                                                 .h(css(menu_height - 2.))
                                                 .scrollbar_visible(open && reveal.is_finished()),
                                         ),
-                                ),
+                                )),
                             )
                         })
                         .into_any_element()
@@ -610,7 +610,7 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                                 _ = popup_change
                                     .update(cx, |view, cx| view.set_open(*open, window, cx));
                             })
-                            .content(move |_, window, cx| {
+                            .content(move |_, window, cx| razer_assets::resource_scope({
                                 // height:auto; max-height:0 -> 180px, CSS ease.
                                 // Closing sets height:0 without a slide or fade.
                                 let reveal = Presence::new("options-reveal", true)
@@ -637,7 +637,7 @@ impl<I: SelectItem<Value = String> + 'static> Render for SynapseSelectView<I> {
                                         .overflow_hidden()
                                         .child(List::new(&list).p_0().h(css(menu_height - 2.))),
                                 )
-                            })
+                            }))
                             .into_any_element()
                     }),
             )

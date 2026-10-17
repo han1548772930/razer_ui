@@ -362,7 +362,7 @@ impl AudioProductWorkspace {
         let mut layers = vec![];
         if !state.connection.is_dongle {
             layers.push(
-                deferred(warning(
+                razer_assets::deferred_resource(warning(
                     window,
                     "1383-oled-wired",
                     "QAd",
@@ -377,7 +377,7 @@ impl AudioProductWorkspace {
         }
         if state.loading.kind == "simple" {
             layers.push(
-                deferred(
+                razer_assets::deferred_resource(
                     div()
                         .absolute()
                         .inset_0()
@@ -408,7 +408,7 @@ impl AudioProductWorkspace {
             )
         {
             layers.push(
-                deferred(self.oled_progress(window, cx))
+                razer_assets::deferred_resource(self.oled_progress(window, cx))
                     .with_priority(100)
                     .into_any_element(),
             );
@@ -431,7 +431,7 @@ impl AudioProductWorkspace {
                 .child(div().h(surface::css(17.)))
                 .child(text("ZV_"));
             layers.push(
-                deferred(warning(
+                razer_assets::deferred_resource(warning(
                     window,
                     "1383-oled-error",
                     "JQR",
@@ -474,7 +474,7 @@ impl AudioProductWorkspace {
                     ),
                 );
             layers.push(
-                deferred(warning(
+                razer_assets::deferred_resource(warning(
                     window,
                     "1383-oled-language-impact",
                     "QWf",

@@ -845,7 +845,7 @@ impl KeyboardProductWorkspace {
                     .items_start()
                     .children(
                         (self.button_drawer_open && !keypad_panel::supported(self.spec.product_id))
-                            .then(|| deferred(self.analog_mapping_drawer(cx)).with_priority(150)),
+                            .then(|| razer_assets::deferred_resource(self.analog_mapping_drawer(cx)).with_priority(150)),
                     )
                     // Current Keypad body left/width use the literal 230px;
                     // the independent fixed drawer is actually 430px wide.
@@ -867,10 +867,10 @@ impl KeyboardProductWorkspace {
             )
             .children(
                 (self.button_drawer_open && keypad_panel::supported(self.spec.product_id))
-                    .then(|| deferred(self.keypad_mapping_drawer(cx)).with_priority(10)),
+                    .then(|| razer_assets::deferred_resource(self.keypad_mapping_drawer(cx)).with_priority(10)),
             )
             .children((!keypad_panel::supported(self.spec.product_id)).then(|| {
-                deferred(panel_value::Tip {
+                razer_assets::deferred_resource(panel_value::Tip {
                     data: self.analog_gamepad.mapping.panel_value.data.clone(),
                     shown: self.analog_gamepad.mapping.panel_value.shown,
                     position: self.analog_gamepad.mapping.panel_value.position.clone(),
@@ -880,7 +880,7 @@ impl KeyboardProductWorkspace {
             }))
             .children(self.analog_mapping_popup(window, cx).map(|popup| {
                 if let Some(edit) = self.analog_gamepad.mapping.edit.as_ref() {
-                    return deferred(position::PopupPosition::new(self, edit, popup))
+                    return razer_assets::deferred_resource(position::PopupPosition::new(self, edit, popup))
                         .with_priority(103)
                         .into_any_element();
                 }
@@ -1174,7 +1174,7 @@ impl KeyboardProductWorkspace {
                     .child(self.analog_mapping_slot(0, cx))
                     .when(expanded, |row| row.child(self.analog_mapping_slot(1, cx)))
                     .when(ordinary, |row| {
-                        row.child(deferred(self.mapping_function_blade(0, cx)).with_priority(105))
+                        row.child(razer_assets::deferred_resource(self.mapping_function_blade(0, cx)).with_priority(105))
                     }),
             )
             .into_any_element();
@@ -1409,7 +1409,7 @@ impl KeyboardProductWorkspace {
                 .min_h_0()
                 .child(popup)
                 .when(has_blade, |panel| {
-                    panel.child(deferred(self.mapping_function_blade(slot, cx)).with_priority(105))
+                    panel.child(razer_assets::deferred_resource(self.mapping_function_blade(slot, cx)).with_priority(105))
                 })
                 .into_any_element()
         }
@@ -1423,7 +1423,7 @@ impl KeyboardProductWorkspace {
         }
         if self.analog_gamepad.mapping.hypershift_confirmation {
             return Some(
-                deferred(confirmation::Dialog {
+                razer_assets::deferred_resource(confirmation::Dialog {
                     content: self.mapping_hypershift_confirmation_card(cx),
                 })
                 .with_priority(106)
@@ -1432,7 +1432,7 @@ impl KeyboardProductWorkspace {
         }
         self.analog_gamepad.mapping.pending_save.as_ref()?;
         Some(
-            deferred(confirmation::Dialog {
+            razer_assets::deferred_resource(confirmation::Dialog {
                 content: self.mapping_confirmation_card(cx),
             })
             .with_priority(106)

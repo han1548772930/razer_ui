@@ -1309,7 +1309,7 @@ impl DeviceWorkspace {
                     cx.notify();
                 });
             })
-            .content(move |_, _, cx| {
+            .content(move |_, _, cx| razer_assets::resource_scope({
                 let popup = cx.entity().downgrade();
                 // The source delete box is left:-141px; translateX(-50%).
                 // At its 300px width that puts its right edge 11px before the
@@ -1324,7 +1324,7 @@ impl DeviceWorkspace {
                         focus,
                         cx,
                     ))
-            })
+            }))
     }
 }
 

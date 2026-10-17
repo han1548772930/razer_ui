@@ -45,10 +45,10 @@ mod controller_calibration;
 mod controller_calibration_focus;
 #[path = "shell/gamepad/controller_input.rs"]
 mod controller_input;
-#[path = "shell/gamepad/controller_triggers.rs"]
-mod controller_triggers;
 #[path = "shell/gamepad/controller_lighting.rs"]
 mod controller_lighting;
+#[path = "shell/gamepad/controller_triggers.rs"]
+mod controller_triggers;
 #[path = "shell/devices/device_discovery.rs"]
 mod device_discovery;
 #[path = "shell/windows/display_window.rs"]
@@ -99,8 +99,8 @@ mod mouse_receiver_indicator;
 mod mouse_runtime_artwork;
 #[path = "shell/mouse/mouse_scroll.rs"]
 mod mouse_scroll;
-use controller_triggers::ControllerTriggerSave;
 use controller_lighting::ControllerLightingSave;
+use controller_triggers::ControllerTriggerSave;
 use mouse_current_dpi::MouseCurrentDpiSave;
 use mouse_current_power::MouseCurrentPowerSave;
 use mouse_dpi_stages::MouseDpiStagesSave;
@@ -336,6 +336,9 @@ pub struct AppShell {
     current_power_workers: usize,
     controller_trigger_workers: usize,
     controller_lighting_workers: usize,
+    controller_lighting_owners: BTreeMap<String, controller_lighting::Session>,
+    controller_lighting_cleanup: Vec<std::sync::Arc<controller_lighting::RetainedOwner>>,
+    controller_software_status: BTreeMap<String, razer_device::controller_lighting::SoftwareStatus>,
     seiren_eq_workers: usize,
     seiren_microphone_setup: seiren_microphone_setup::State,
     seiren_audio_captures: BTreeMap<u64, seiren_audio_capture::Worker>,
@@ -569,6 +572,9 @@ impl AppShell {
             current_power_workers: 0,
             controller_trigger_workers: 0,
             controller_lighting_workers: 0,
+            controller_lighting_owners: BTreeMap::new(),
+            controller_lighting_cleanup: Vec::new(),
+            controller_software_status: BTreeMap::new(),
             seiren_eq_workers: 0,
             seiren_microphone_setup: seiren_microphone_setup::State::default(),
             seiren_audio_captures: BTreeMap::new(),
@@ -1099,6 +1105,7 @@ impl AppShell {
         this.install_mouse_runtime_artwork_cleanup(cx);
         this.install_mouse_receiver_indicator_cleanup(cx);
         this.install_controller_input_cleanup(cx);
+        this.install_controller_lighting_cleanup(cx);
         this.install_seiren_audio_capture_cleanup(window, cx);
         this.install_seiren_audio_playback_cleanup(cx);
         this.install_seiren_microphone_setup_cleanup(cx);
@@ -2451,7 +2458,7 @@ impl AppShell {
             && mouse_current_dpi.is_none()
             && mouse_current_power.is_none()
             && controller_trigger.is_none()
-                            && controller_lighting.is_none()
+            && controller_lighting.is_none()
             && seiren_eq.is_none()
             && leviathan.is_none()
             && keyboard_actuation.is_none()
@@ -2949,6 +2956,7 @@ impl AppShell {
         runtime.update(cx, |runtime, cx| runtime.prepare_exit(cx));
         self.cancel_seiren_audio_captures(cx);
         self.cancel_seiren_audio_playbacks();
+        self.retire_controller_lighting_owners(cx);
         for workspace in self.devices.clone() {
             workspace.update(cx, |workspace, cx| workspace.prepare_mouse_scroll_exit(cx));
             let eq = workspace.update(cx, |workspace, cx| workspace.prepare_seiren_eq_exit(cx));
@@ -3001,7 +3009,7 @@ impl AppShell {
             || self.mouse_scroll_workers > 0
             || self.current_power_workers > 0
             || self.controller_trigger_workers > 0
-                || self.controller_lighting_workers > 0
+            || self.controller_lighting_workers > 0
             || self.seiren_eq_workers > 0
             || !self.seiren_audio_captures.is_empty()
             || !self.seiren_audio_playbacks.is_empty()

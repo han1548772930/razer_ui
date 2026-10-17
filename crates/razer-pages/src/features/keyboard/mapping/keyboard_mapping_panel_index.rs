@@ -215,7 +215,7 @@ impl RenderOnce for Index {
                     .child(part)
             }))
             .child(
-                deferred(header::tip_position(
+                razer_assets::deferred_resource(header::tip_position(
                     trigger,
                     point(
                         surface::css(20.).to_pixels(window.rem_size()),

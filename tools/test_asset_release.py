@@ -97,6 +97,34 @@ class AssetAdditionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "replace an existing alias"):
             self.plan()
 
+    def test_alias_reuse_verifies_existing_bytes_without_hydrating_or_mutating_files(self):
+        before = (self.root / assets.LOCK).read_bytes()
+        result = assets.verified_alias_reuse(b"base", "synapse/base.svg")
+        self.assertEqual(result["locked_file"]["sha256"], hashlib.sha256(b"base").hexdigest())
+        self.assertEqual(result["transformation"], "identity")
+        self.assertTrue(result["inverse_restores_original_bytes"])
+        self.assertFalse((self.root / "assets").exists())
+        self.assertEqual((self.root / assets.LOCK).read_bytes(), before)
+        with self.assertRaisesRegex(ValueError, "differ"):
+            assets.verified_alias_reuse(b"same-name-but-different-content", "synapse/base.svg")
+
+    def test_alias_reuse_requires_exact_reversible_line_ending_conversion(self):
+        lock = json.loads((self.root / assets.LOCK).read_bytes())
+        original = b"first\nsecond\n"
+        prepared = original.replace(b"\n", b"\r\n")
+        lock["groups"][1]["files"][0].update(bytes=len(prepared), sha256=hashlib.sha256(prepared).hexdigest())
+        lock["source_sha256"] = assets.content_hash({"groups": lock["groups"], "git_files": lock["git_files"]})
+        lock["tag"] = "assets-" + lock["source_sha256"][:20]
+        self.write(assets.LOCK, lock)
+        result = assets.verified_alias_reuse(original, "synapse/base.svg", normalize_source_lf=True)
+        self.assertTrue(result["inverse_restores_original_bytes"])
+        self.assertEqual(result["source_lf_count"], 2)
+        self.assertFalse((self.root / "assets").exists())
+        with self.assertRaisesRegex(ValueError, "differ"):
+            assets.verified_alias_reuse(original, "synapse/base.svg")
+        with self.assertRaisesRegex(ValueError, "existing CR"):
+            assets.verified_alias_reuse(prepared, "synapse/base.svg", normalize_source_lf=True)
+
 
 if __name__ == "__main__":
     unittest.main()

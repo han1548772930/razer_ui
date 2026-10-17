@@ -5,6 +5,9 @@ use gpui_kit::{
 };
 use std::{collections::HashMap, sync::Arc};
 
+mod scope;
+pub use scope::{ResourceScope, deferred_resource, resource_scope};
+
 struct ResourceImageCache {
     images: HashMap<Resource, ImageCacheItem>,
 }

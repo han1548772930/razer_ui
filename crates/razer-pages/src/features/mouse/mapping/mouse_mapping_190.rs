@@ -1124,7 +1124,7 @@ impl MouseProductWorkspace {
             )
             .when(height > 0., |el| {
                 el.child(
-                    deferred(DropdownLayer::new(
+                    razer_assets::deferred_resource(DropdownLayer::new(
                         options_surface.into_any_element(),
                         geometry,
                         height,
@@ -2458,7 +2458,7 @@ impl MouseProductWorkspace {
             .border_color(rgb(0x5d5d5d))
             .rounded(surface::css(5.))
             .child(
-                deferred(
+                razer_assets::deferred_resource(
                     h_flex()
                         .absolute()
                         .top(surface::css(-36.))
@@ -2499,7 +2499,7 @@ impl MouseProductWorkspace {
                             .overflow_y_scroll()
                             .child(self.mapping_190_body(window, cx)),
                     )
-                    .child(deferred(menu).with_priority(105)),
+                    .child(razer_assets::deferred_resource(menu).with_priority(105)),
             )
             .into_any_element()
     }

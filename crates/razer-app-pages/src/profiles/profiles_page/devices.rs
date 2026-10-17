@@ -521,7 +521,7 @@ impl DeviceGamesDialog {
             .sample(window, cx)
             .progress;
         Some(
-            deferred(
+            razer_assets::deferred_resource(
                 v_flex()
                     .id("profiles-profile-delete-confirmation")
                     .test_support()
@@ -595,7 +595,7 @@ impl DeviceGamesDialog {
                 }
                 cx.notify();
             }))
-            .content(move |_, window, cx| {
+            .content(move |_, window, cx| razer_assets::resource_scope({
                 let mut menu = v_flex()
                     .min_w(css(155.))
                     .max_w(css(280.))
@@ -653,7 +653,7 @@ impl DeviceGamesDialog {
                     );
                 }
                 menu.into_any_element()
-            })
+            }))
             .into_any_element()
     }
 

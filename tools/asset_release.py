@@ -205,6 +205,36 @@ def resource_table(name, *, root=None, mappings=None):
     return found[0]
 
 
+def verified_alias_reuse(original, alias, *, normalize_source_lf=False, root=None, mappings=None):
+    """Verify source bytes against a pinned file without materializing media."""
+    if type(original) is not bytes or type(normalize_source_lf) is not bool:
+        raise ValueError("Alias reuse requires original bytes and an explicit normalization flag")
+    root = (root or ROOT).resolve()
+    mappings = load_resource_mappings(root=root) if mappings is None else mappings
+    paths = {row["path"] for table in mappings["tables"] for row in table["entries"] if row["key"] == alias}
+    if len(paths) != 1:
+        raise ValueError("Existing resource alias is absent or ambiguous")
+    path = paths.pop()
+    lock = validate_lock(json.loads((root / LOCK).read_bytes()))
+    files = [row for row in lock["git_files"] if row["path"] == path]
+    files.extend(row for group in lock["groups"] for row in group["files"] if row["path"] == path)
+    if len(files) != 1:
+        raise ValueError("Existing alias has no unique pinned resource")
+    content = original
+    if normalize_source_lf:
+        if b"\r" in original:
+            raise ValueError("Source LF normalization requires no existing CR bytes")
+        content = original.replace(b"\n", b"\r\n")
+    locked = files[0]
+    if len(content) != locked["bytes"] or hashlib.sha256(content).hexdigest() != locked["sha256"]:
+        raise ValueError("Current original bytes differ from the existing pinned resource")
+    return {"existing_alias": alias, "locked_file": locked, "resource_revision": lock["storage"]["revision"],
+            "source_sha256": hashlib.sha256(original).hexdigest(), "source_bytes": len(original),
+            "transformation": "Replace each 0A with 0D 0A; all other bytes unchanged" if normalize_source_lf else "identity",
+            "source_lf_count": original.count(b"\n") if normalize_source_lf else None,
+            "inverse_restores_original_bytes": content.replace(b"\r\n", b"\n") == original if normalize_source_lf else True}
+
+
 def identity(name):
     path = source_path(name)
     if not path.is_file():

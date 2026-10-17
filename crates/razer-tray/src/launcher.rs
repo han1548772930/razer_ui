@@ -148,7 +148,7 @@ struct LauncherState {
 /// The version is supplied by the audited source bundle rather than Cargo's
 /// package version, which is a different product identifier.
 pub fn version_badge(version: impl Into<SharedString>) -> AnyElement {
-    deferred(
+    razer_assets::deferred_resource(
         div()
             .id("tray-app-version")
             .absolute()

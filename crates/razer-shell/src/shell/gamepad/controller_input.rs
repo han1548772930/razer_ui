@@ -414,6 +414,11 @@ impl AppShell {
                                     }
                                 }
                                 Update::Notifications(events) => {
+                                    this.forward_controller_lighting_input(
+                                        &identity_copy,
+                                        &events,
+                                        cx,
+                                    );
                                     workspace.update(cx, |workspace, cx| {
                                         workspace.observe_controller_input(None, &events, cx)
                                     });

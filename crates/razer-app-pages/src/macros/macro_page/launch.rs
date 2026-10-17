@@ -307,7 +307,7 @@ impl MacroPage {
             .child(trigger)
             .when(opened, |view| {
                 view.child(
-                    deferred(TextOverlay {
+                    razer_assets::deferred_resource(TextOverlay {
                         content: self.launch_modal(index, window, cx),
                         anchor,
                     })

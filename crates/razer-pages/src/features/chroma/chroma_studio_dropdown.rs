@@ -122,7 +122,7 @@ impl RenderOnce for StudioDropdown {
             .on_open_change(move |open, _, cx| {
                 owner.update(cx, |state, cx| state.set_open(enabled && *open, cx));
             })
-            .content(move |_, _, cx| {
+            .content(move |_, _, cx| razer_assets::resource_scope({
                 div()
                     .w(surface::css(self.width))
                     .when(self.block, |view| {
@@ -135,7 +135,7 @@ impl RenderOnce for StudioDropdown {
                     .when(shown, |view| view.border_y_1())
                     .when(!shown, |view| view.h_0().overflow_hidden())
                     .child(self.body)
-            })
+            }))
     }
 }
 

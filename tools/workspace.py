@@ -1223,6 +1223,149 @@ def image_resource_inputs():
     return [row for row in rust_inputs(include_asset_pack=False) if Path(row["path"]).suffix.lower() in IMAGE_RESOURCE_EXTENSIONS]
 
 
+def rust_resource_literals(raw, *, owner="", test_only=False):
+    """Read actual Rust literals and their complete owners, including macro tokens."""
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    import tree_sitter
+    import tree_sitter_rust
+    parser = tree_sitter.Parser(tree_sitter.Language(tree_sitter_rust.language()))
+    tree = parser.parse(raw)
+    offset = 0
+    if tree.root_node.has_error:
+        # Some include! owners are Rust expressions rather than source files.
+        # Parse their complete bytes in a grammar wrapper and preserve offsets.
+        prefix = b"const RESOURCE_AUDIT_EXPRESSION: () = "
+        wrapped = parser.parse(prefix + raw + b";")
+        if wrapped.root_node.has_error:
+            raise ValueError("Rust resource owner has an AST error: " + owner)
+        raw = prefix + raw + b";"
+        tree, offset = wrapped, len(prefix)
+    rows = []
+    def attributes(node):
+        result = []
+        sibling = node.prev_named_sibling
+        while sibling is not None and sibling.type in ("attribute_item", "line_comment", "block_comment"):
+            if sibling.type == "attribute_item":
+                result.append(raw[sibling.start_byte:sibling.end_byte].decode("utf-8"))
+            sibling = sibling.prev_named_sibling
+        return result
+    def visit(node, context=(), fixture=test_only):
+        if node.type in ("function_item", "mod_item", "impl_item"):
+            fixture = fixture or any(re.search(r"\b(?:test|test_context)\b", a) for a in attributes(node))
+            name = node.child_by_field_name("name")
+            body = raw[node.start_byte:node.end_byte]
+            context = (*context, {"kind": node.type,
+                "name": raw[name.start_byte:name.end_byte].decode("utf-8") if name else "impl",
+                "byte_start": node.start_byte - offset, "byte_end": node.end_byte - offset,
+                "body_sha256": hashlib.sha256(body).hexdigest()})
+        if node.type in ("string_literal", "raw_string_literal"):
+            literal = raw[node.start_byte:node.end_byte].decode("utf-8")
+            if node.type == "raw_string_literal":
+                value = re.sub(r'^r#*"|"#*$', '', literal)
+            else:
+                # Resource identifiers are ASCII paths; reject escapes instead
+                # of applying Python's different string escape semantics.
+                value = literal[1:-1]
+                if "\\" in value:
+                    if value.startswith(("synapse/", "assets/")):
+                        raise ValueError("Escaped runtime resource path requires explicit decoding: " + owner)
+                    return
+            media = re.search(r"\.(?:svg|png|jpe?g|webp|avif|gif|bmp|ico|mp4|woff2?|ttf)(?:#.*)?$", value)
+            if value.startswith(("synapse/", "assets/")) and (media or "{" in value):
+                rows.append({"owner": owner, "line": node.start_point.row + 1,
+                    "byte_start": node.start_byte - offset, "byte_end": node.end_byte - offset,
+                    "literal": value, "test_only": fixture, "context": list(context)})
+            return
+        for child in node.named_children:
+            visit(child, context, fixture)
+    visit(tree.root_node)
+    return rows
+
+
+def audit_runtime_resources():
+    """Audit the installed alias closure without requiring hydrated media."""
+    import analysis
+    import resource_database
+    from importlib.metadata import version
+    metadata_inputs = []
+    manifest = resource_sources.runtime_metadata(input_rows=metadata_inputs)
+    keys = {row["key"] for row in manifest["entries"]}
+    paths = {row["path"] for row in manifest["files"]}
+    files = sorted({*ROOT.glob("*.rs"), *(ROOT / "app").rglob("*.rs"),
+                    *(ROOT / "crates").rglob("*.rs")})
+    snapshots, literals, fixtures, patterns, missing = [], [], [], [], []
+    for path in files:
+        raw = path.read_bytes()
+        snapshots.append({"path": relative(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+        fixture = ("tests" in path.relative_to(ROOT).parts or "testdata" in path.relative_to(ROOT).parts
+                   or path.stem.endswith(("_test", "_tests")) or path.stem == "tests")
+        for row in rust_resource_literals(raw, owner=relative(path), test_only=fixture):
+            if row["test_only"]:
+                fixtures.append(row)
+                continue
+            value = row["literal"]
+            candidates = keys if value.startswith("synapse/") else paths
+            if "{" in value:
+                expression = re.sub(r"\\\{[^}]*\\\}", ".*", re.escape(value))
+                matches = sorted(key for key in candidates if re.fullmatch(expression, key))
+                patterns.append({**row, "registered_candidates": matches,
+                    "finite_domain_verified": False,
+                    "remaining": "Trace the caller and the complete typed product/state domain; wildcard matches do not establish coverage"})
+            else:
+                literals.append(row)
+                if value not in candidates:
+                    missing.append(row)
+    recipes = json.loads((ROOT / "tools/typed-data.json").read_bytes())
+    catalog_inputs = {row["source"] for row in recipes["tables"] if row.get("storage") in ("sqlite", "sqlite-profile")}
+    catalog_inputs.update(resource_database.INPUTS.values())
+    catalog_inputs.update((resource_database.PRODUCT_REGISTRY, resource_database.PRODUCT_HELP))
+    catalog_inputs.update(row["path"] for row in metadata_inputs)
+    documents, data_references = [], []
+    def inspect(value, owner, pointer=""):
+        if isinstance(value, str):
+            if (value.startswith(("synapse/", "assets/"))
+                    and re.search(r"\.(?:svg|png|jpe?g|webp|avif|gif|bmp|ico|mp4|woff2?|ttf)(?:#.*)?$", value)):
+                row = {"owner": owner, "json_pointer": pointer, "literal": value}
+                data_references.append(row)
+                if value not in keys | paths:
+                    missing.append(row)
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                inspect(child, owner, pointer + "/" + str(index))
+        elif isinstance(value, dict):
+            for key, child in value.items():
+                inspect(child, owner, pointer + "/" + key.replace("~", "~0").replace("/", "~1"))
+    for name in sorted(catalog_inputs):
+        path = safe(ROOT / name)
+        raw = path.read_bytes()
+        documents.append({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+        inspect(json.loads(raw), name)
+    inputs = [*snapshots, *documents,
+        *({"path": name, "bytes": (ROOT / name).stat().st_size, "sha256": digest(ROOT / name)}
+          for name in (resource_sources.LOCK, resource_sources.MAPPINGS, "tools/typed-data.json"))]
+    report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
+        "tool": {"path": relative(Path(__file__)), "sha256": digest(Path(__file__)),
+            "python": sys.version.split()[0], "tree_sitter": version("tree-sitter"),
+            "tree_sitter_rust": version("tree-sitter-rust")},
+        "resource_revision": manifest["storage"]["revision"], "inputs": inputs,
+        "literal_references": literals, "catalog_references": data_references,
+        "test_references": fixtures, "dynamic_references": patterns,
+        "missing_references": missing,
+        "summary": {"rust_files": len(snapshots), "catalog_inputs": len(documents),
+            "production_literals": len(literals), "catalog_references": len(data_references),
+            "dynamic_sites": len(patterns), "dynamic_patterns": len({r["literal"] for r in patterns}),
+            "test_references": len(fixtures), "missing_references": len(missing)},
+        "literal_references_passed": not missing, "dynamic_domain_acceptance": "unverified",
+        "target_execution": False, "real_device_operations": False,
+        "application_runtime_acceptance": "not performed"}
+    report["inputs_unchanged"] = all((ROOT / row["path"]).stat().st_size == row["bytes"]
+        and digest(ROOT / row["path"]) == row["sha256"] for row in inputs)
+    previous = json.loads(RESOURCE_AUDIT.read_bytes()) if RESOURCE_AUDIT.is_file() else {"schema_version": 1}
+    previous["runtime_reference_closure"] = report
+    write_json(RESOURCE_AUDIT, previous)
+    return report
+
+
 def verify_resources():
     """Decode the actual product image include closure without opening a window."""
     import io
@@ -1283,6 +1426,10 @@ def verify_resources():
     report["summary"] = {"total": len(baseline), "verified": sum(row["passed"] for row in report["entries"]),
                          "failed": sum(not row["passed"] for row in report["entries"]), "formats": dict(counts)}
     report["passed"] = report["inputs_unchanged"] and not report["summary"]["failed"]
+    if RESOURCE_AUDIT.is_file():
+        previous = json.loads(RESOURCE_AUDIT.read_bytes())
+        if "runtime_reference_closure" in previous:
+            report["runtime_reference_closure"] = previous["runtime_reference_closure"]
     write_json(RESOURCE_AUDIT, report)
     return report
 
@@ -3208,11 +3355,14 @@ def prepare_resources_locked(acquisition, resources=None):
             for request in (values if isinstance(values, list) else [values]):
                 request = request if isinstance(request, dict) else {"display": request}
                 requests.append((source_name, {**request, "_acquisition": acquired}))
+    reuse_only = bool(requests) and all("reuse_locked_alias" in request for _, request in requests)
+    if not reuse_only and any("reuse_locked_alias" in request for _, request in requests):
+        raise ValueError("Pinned alias reuse must be prepared separately from media generation")
     manifest_path = ROOT / "assets/synapse/manifests/manifest.json"
     mappings = resource_sources.load_resource_mappings(root=ROOT)
     aliases = resource_sources.resource_table("ASSETS", mappings=mappings)
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    content_pool = resource_payload_index()
+    manifest = {"entries": []} if reuse_only else json.loads(manifest_path.read_text(encoding="utf-8"))
+    content_pool = None if reuse_only else resource_payload_index()
     registered_products = registered_resource_products()
     favicon_cache = {}
     favicon_metadata = json.loads(analysis.builtin_data_path("razer-shell", "HOST_DEVICE_FAVICONS").read_bytes())
@@ -3256,6 +3406,25 @@ def prepare_resources_locked(acquisition, resources=None):
         conversion = None
         transformation = None
         favicon_sources = []
+        if "reuse_locked_alias" in request:
+            if not receipt.get("source_current_during_acquisition"):
+                raise ValueError("Reused media requires a stable current acquisition")
+            alias_proof = resource_sources.verified_alias_reuse(content, request["reuse_locked_alias"],
+                normalize_source_lf=request.get("source_lf_to_prepared_crlf", False), root=ROOT, mappings=mappings)
+            locked = alias_proof["locked_file"]
+            entry = {"source": relative(source), "source_url": row["url"],
+                     "source_sha256": source_hash, "source_bytes": len(content),
+                     "output": locked["path"], "sha256": locked["sha256"], "display_paths": [display],
+                     "acquisition": relative(receipt_path), "locked_alias_reuse": alias_proof,
+                     "preparation": "Current original bytes verified against the existing fixed resource; no media materialized"}
+            manifest["entries"] = [known for known in manifest["entries"] if display not in known.get("display_paths", [])]
+            manifest["entries"].append(entry)
+            aliases[:] = [known for known in aliases if known["key"] != display]
+            aliases.append({"key": display, "path": locked["path"]})
+            prepared.append({"display": display, "source_sha256": source_hash,
+                             "output_sha256": locked["sha256"], "output": locked["path"],
+                             "locked_alias_reuse": alias_proof})
+            continue
         if "host_favicon_sources" in request:
             if source.suffix.lower() != ".svg" or not receipt.get("source_current_during_acquisition"):
                 raise ValueError("Host favicon preparation requires current acquired SVG originals")
@@ -3513,7 +3682,16 @@ def prepare_resources_locked(acquisition, resources=None):
                           "transformation": {key: value for key, value in transformation.items()
                                              if key not in {"producer", "source_regions", "source_buttons", "complete_css_rules", "source_css"}}
                             if transformation else None})
-    write_json(manifest_path, manifest)
+    if reuse_only:
+        result_path = ROOT / ".analysis/results/typed-data.json"
+        result = json.loads(result_path.read_bytes()) if result_path.is_file() else {"schema_version": 1}
+        retained = result.setdefault("resource_alias_reuse", [])
+        changed_aliases = {display for row in manifest["entries"] for display in row["display_paths"]}
+        retained[:] = [row for row in retained if not changed_aliases.intersection(row["display_paths"])]
+        retained.extend(manifest["entries"])
+        write_json(result_path, result)
+    else:
+        write_json(manifest_path, manifest)
     resource_sources.save_resource_mappings(mappings, root=ROOT)
     return prepared
 
@@ -3559,8 +3737,8 @@ def prepare_host_favicons():
                 "prepared": prepared, "target_execution": False}
 
 
-def prepare_app_picker():
-    """Capture and prepare the current mounted menu's category art and defaults."""
+def prepare_app_picker(*, check=False):
+    """Audit current menu art against pinned files without restoring media."""
     import analysis
     import families
     sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
@@ -3608,35 +3786,45 @@ def prepare_app_picker():
         aliases = {name: "synapse/app-picker-category/" + name.lower().replace("_", "-") + ".svg"
                    for name in shapes}
         registered = registered_resource_products()
-        manifest = json.loads((ROOT / "assets/synapse/manifests/manifest.json").read_bytes())
-        host_alias_set = set(json.loads(analysis.builtin_data_path("razer-shell", "HOST_DEVICE_FAVICONS").read_bytes()).values())
+        host_aliases = json.loads(analysis.builtin_data_path("razer-shell", "HOST_DEVICE_FAVICONS").read_bytes())
         products, proofs, cache = {}, [], {}
-        for entry in manifest["entries"]:
-            sources = entry.get("host_favicon_sources", [])
-            if not sources:
-                continue
-            host_aliases = [alias for alias in entry["display_paths"] if alias in host_alias_set]
-            if len(host_aliases) != 1:
-                raise ValueError("Current first favicon alias is ambiguous")
-            for retained in sources:
-                proof = current_product_favicon(retained["product_id"], retained["acquisition"]["path"], cache)
-                if proof != retained:
-                    raise ValueError("Current first favicon provenance changed")
-                pid = proof["product_id"]
-                category, _, subcategory = Path(proof["first_favicon_element"]["href"]).stem.partition("_")
-                chosen = selected(category, subcategory)
-                # This is native catalog presentation when category observations
-                # are absent. It is never published as service/device state.
-                asset = aliases[chosen] if chosen else host_aliases[0]
-                if str(pid) in products:
-                    raise ValueError("Duplicate app-menu product fallback")
-                products[str(pid)] = {"category": category, "sub_category": subcategory or None,
-                                      "asset": asset}
-                proofs.append({"product_id": pid, "first_favicon": proof,
-                    "selected_category": chosen, "runtime_alias": asset,
-                    "local_fallback": "current first favicon classification" if chosen else "current first favicon SVG; no category vector exists in U"})
+        mappings = resource_sources.load_resource_mappings()
+        for pid in sorted(registered):
+            acquisitions = [path for family in families.FAMILY_CANDIDATES
+                            if (path := ROOT / f".analysis/inputs/frontend/{family}-{pid}-current/acquisition.json").is_file()]
+            if len(acquisitions) != 1:
+                raise ValueError("Current product favicon acquisition is absent or ambiguous: " + str(pid))
+            proof = current_product_favicon(pid, relative(acquisitions[0]), cache)
+            category, _, subcategory = Path(proof["first_favicon_element"]["href"]).stem.partition("_")
+            chosen = selected(category, subcategory)
+            # Category fallback supplies presentation only, never device state.
+            asset = aliases[chosen] if chosen else host_aliases[str(pid)]
+            products[str(pid)] = {"asset": asset}
+            record = {"product_id": pid, "first_favicon": proof,
+                "selected_category": chosen, "runtime_alias": asset,
+                "local_fallback": "current first favicon classification" if chosen else "current first favicon SVG; no category vector exists in U"}
+            if chosen is None:
+                content = (ROOT / proof["original"]["path"]).read_bytes()
+                try:
+                    record["locked_alias_reuse"] = resource_sources.verified_alias_reuse(content, asset, mappings=mappings)
+                except ValueError:
+                    record["locked_alias_reuse"] = resource_sources.verified_alias_reuse(
+                        content, asset, normalize_source_lf=True, mappings=mappings)
+            proofs.append(record)
         if set(map(int, products)) != registered:
             raise ValueError("App menu local category fallbacks do not cover the exact registry")
+        prepared = []
+        for category, alias in aliases.items():
+            content, transformation = static_app_picker_category_svg(root_text, category)
+            prepared.append({"display": alias, "transformation": transformation,
+                "locked_alias_reuse": resource_sources.verified_alias_reuse(content, alias, mappings=mappings)})
+        output = analysis.builtin_data_path("razer-app-pages", "APP_PICKER_ICONS_DATA")
+        document = {"subcategory_categories": list(categories), "icons": aliases, "products": products}
+        equivalent = output.is_file() and json.loads(output.read_bytes()) == document
+        if check and not equivalent:
+            raise ValueError("Current app picker directory differs from its packaged maintenance source")
+        if not equivalent:
+            write_json(output, document)
         css_rules = [match[0] for match in re.finditer(r"[^{}]+\{[^{}]*\}", css_text)
                      if any(value in match[0].split("{", 1)[0] for value in (
                          ".app-explorer-popup", ".app-module-wrapper", ".item-wrapper", ".discover-app"))]
@@ -3660,18 +3848,15 @@ def prepare_app_picker():
                     "hover": "display:block; height:auto; overflow:initial; natural wrapping within 110px above next row"},
                 "excluded_online_branch": "discover-app image, external software-catalog link and its 10/15/20 padding removed together",
                 "device_category_policy": "Observed category/subCategory uses U exactly, including absent result. Native previews and snapshots without source_category use the separately audited current first-favicon presentation fallback without writing it to device state."},
+            "output": families.identity(output), "prepared": prepared,
+            "packaged_maintenance_projection_matches_current_source": True,
+            "media_materialized": False, "check_only": check,
             "runtime_acceptance": "unverified; no application/window/vendor execution"}
         report_path = ROOT / ".analysis/results/frontend/rz-app-menu-current/device-artwork.json"
         write_json(report_path, report)
-        output = analysis.builtin_data_path("razer-app-pages", "APP_PICKER_ICONS_DATA")
-        write_json(output, {"subcategory_categories": list(categories), "icons": aliases, "products": products})
-        prepared = prepare_resources_locked(relative(receipt_path), {root_row["path"]: [
-            {"display": alias, "app_picker_category": category} for category, alias in aliases.items()]})
-        report["output"] = families.identity(output)
-        report["prepared"] = prepared
-        write_json(report_path, report)
         return {"report": relative(report_path), "registered_products": len(products),
-                "category_icons": len(aliases), "target_execution": False}
+                "category_icons": len(aliases), "target_execution": False,
+                "media_materialized": False, "check_only": check}
 
 
 @contextmanager
@@ -4787,6 +4972,9 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("controller-trigger-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::trigger_runtime::tests"]),
         ("controller-profile", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::profile::tests"]),
         ("controller-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "controller_"]),
+        ("controller-feature-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "controller_feature"]),
+        ("controller-lighting-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_products::lighting"]),
+        ("controller-lighting-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "controller_lighting"]),
         ("audio-demo-media", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "media::tests"]),
         ("screen-color-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "screen_color"]),
         ("screen-color-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "screen_color"]),
@@ -5085,7 +5273,7 @@ def main():
     import resource_database
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "prepare-product-names", "prepare-keyboard-identity"):
+    for name in ("inventory", "clean", "verify", "audit-inputs", "recover-inputs", "prepare-analysis", "prepare-static-python", "verify-resources", "audit-runtime-resources", "prepare-product-names", "prepare-keyboard-identity"):
         commands.add_parser(name)
     pack_audit = commands.add_parser("audit-asset-pack")
     pack_audit.add_argument("--prepare", action="store_true", help="Generate the exact ordered production asset-list.json")
@@ -5112,7 +5300,8 @@ def main():
     locale_keys.add_argument("--bindings", required=True, help="JSON locale-to-original-path map; '-' reads stdin")
     locale_keys.add_argument("--key", action="append", required=True)
     commands.add_parser("prepare-host-favicons", help="Verify all current product HTML first favicons and attach existing bytes to resource provenance")
-    commands.add_parser("prepare-app-picker", help="Prepare current mounted app-menu category vectors and native catalog presentation fallbacks")
+    app_picker = commands.add_parser("prepare-app-picker", help="Verify current menu category vectors against pinned media and maintain native presentation fallbacks")
+    app_picker.add_argument("--check", action="store_true", help="Require the existing typed directory to match; never materialize media")
     deduplicate = commands.add_parser("deduplicate-resources")
     deduplicate.add_argument("--apply", action="store_true", help="Apply only an unchanged, previously reviewed dry-run")
     deduplicate.add_argument("--plan", default=".analysis/results/resource-deduplication.json")
@@ -5172,6 +5361,12 @@ def main():
     elif args.command == "verify-analysis-tools":
         import test_evidence
         return test_evidence.run()
+    elif args.command == "audit-runtime-resources":
+        report = audit_runtime_resources()
+        print(json.dumps({"resource_audit": relative(RESOURCE_AUDIT), **report["summary"],
+                          "literal_references_passed": report["literal_references_passed"],
+                          "dynamic_domain_acceptance": report["dynamic_domain_acceptance"]}), flush=True)
+        return 0 if report["literal_references_passed"] and report["inputs_unchanged"] else 1
     elif args.command == "verify-resources":
         report = verify_resources()
         print(json.dumps({"resource_audit": relative(RESOURCE_AUDIT), "passed": report["passed"],
@@ -5219,7 +5414,7 @@ def main():
     elif args.command == "prepare-host-favicons":
         print(json.dumps(prepare_host_favicons(), ensure_ascii=False))
     elif args.command == "prepare-app-picker":
-        print(json.dumps(prepare_app_picker(), ensure_ascii=False))
+        print(json.dumps(prepare_app_picker(check=args.check), ensure_ascii=False))
     elif args.command == "deduplicate-resources":
         report = deduplicate_resources(apply=args.apply, plan=args.plan)
         print(json.dumps({"report": args.plan, "mode": report["mode"], **report["summary"]}, ensure_ascii=False))
@@ -5242,17 +5437,4 @@ def main():
         prepare_dashboard_images(args.workers, refresh_ledger=not args.no_refresh_gaps,
                                  products=args.product, source_preview_only=args.source_preview_only)
     elif args.command == "audit-family-function":
-        families.audit_family_function(args)
-    elif args.command == "audit-runtime-setup":
-        families.audit_runtime_setup(args)
-    elif args.command == "audit-registry-identity":
-        families.audit_registry_identity(args.prepare, args.product)
-    elif args.command == "acquire-family":
-        families.run(args, refresh=not args.no_refresh_gaps)
-    else:
-        analysis.run(args)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+        families.audit_fami

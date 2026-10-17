@@ -252,7 +252,7 @@ pub(super) fn factory_warning(window: &Window) -> AnyElement {
     );
     // Aa's .factory-default overrides the common warning-alert position,
     // dimensions and title color; the common translateY(-100%) remains active.
-    deferred(
+    razer_assets::deferred_resource(
         anchored()
             .anchor(Anchor::BottomCenter)
             .position(point(

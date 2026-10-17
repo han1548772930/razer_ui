@@ -1363,6 +1363,51 @@ impl SourceProductWorkspace {
     ) -> bool {
         matches!(&self.body, FamilyBody::Gamepad(body) if body.read(cx).controller_lighting_request_matches(request))
     }
+    pub fn accepts_controller_chroma(
+        &self,
+        request: &super::gamepad_products::ControllerChromaRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Gamepad(body) if body.read(cx).accepts_controller_chroma(request))
+    }
+    pub fn observe_controller_chroma(
+        &mut self,
+        observation: super::gamepad_products::ControllerChromaObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Gamepad(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_controller_chroma(observation, window, cx);
+            });
+        }
+    }
+    pub fn apply_controller_sync_quick(
+        &mut self,
+        source_effect: &serde_json::Value,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<bool, String> {
+        match &self.body {
+            FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
+                body.apply_controller_sync_quick(source_effect, window, cx)
+            }),
+            _ => Ok(false),
+        }
+    }
+    pub fn complete_controller_chroma(
+        &mut self,
+        request: &super::gamepad_products::ControllerChromaRequested,
+        result: Result<Option<super::gamepad_products::ControllerChromaObservation>, String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::Gamepad(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_controller_chroma(request, result, window, cx);
+            });
+        }
+    }
     pub fn finish_controller_lighting(
         &mut self,
         request: &super::gamepad_products::ControllerLightingRequested,
@@ -2686,6 +2731,16 @@ impl SourceProductWorkspace {
                  cx| {
                     this.capture(body.read(cx).snapshot(), cx);
                     cx.emit(WorkspaceEvent::ControllerLightingRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |this: &mut Self,
+                 body,
+                 request: &super::gamepad_products::ControllerChromaRequested,
+                 cx| {
+                    this.capture(body.read(cx).snapshot(), cx);
+                    cx.emit(WorkspaceEvent::ControllerChromaRequested(request.clone()));
                 },
             ));
             FamilyBody::Gamepad(body)

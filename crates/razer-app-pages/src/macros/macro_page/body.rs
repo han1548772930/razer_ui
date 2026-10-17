@@ -289,7 +289,7 @@ impl MacroPage {
                     this.choice_action = if *open { Some(index) } else { None };
                     cx.notify();
                 }))
-                .content(move |_, _, cx| {
+                .content(move |_, _, cx| razer_assets::resource_scope({
                     owner
                         .update(cx, |_, cx| {
                             v_flex()
@@ -318,7 +318,7 @@ impl MacroPage {
                                 .into_any_element()
                         })
                         .unwrap_or_else(|_| div().into_any_element())
-                })
+                }))
                 .into_any_element();
         }
         if kind == ActionKind::Loop {
@@ -693,7 +693,7 @@ impl MacroPage {
                             )
                         })
                         .when(self.record_ui.open, |v| {
-                            v.child(deferred(self.record_options(window, cx)).with_priority(99))
+                            v.child(razer_assets::deferred_resource(self.record_options(window, cx)).with_priority(99))
                         }),
                 ),
             )

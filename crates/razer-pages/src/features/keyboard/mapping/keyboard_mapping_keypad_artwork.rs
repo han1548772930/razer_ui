@@ -406,7 +406,7 @@ impl RenderOnce for ModeTip {
             cx,
         );
         div().children((opacity > 0.).then(|| {
-            deferred(LabelPosition {
+            razer_assets::deferred_resource(LabelPosition {
                 child: div()
                     .px(surface::css(10.))
                     .py(surface::css(6.))
@@ -1244,7 +1244,7 @@ impl KeyboardProductWorkspace {
                 })
                 .when(self.analog_gamepad.mapping.keypad_help_shown, |panel| {
                     panel.child(
-                        deferred(WidgetHelpPosition {
+                        razer_assets::deferred_resource(WidgetHelpPosition {
                             child: v_flex()
                                 .max_w(surface::css(300.))
                                 .px(surface::css(10.))

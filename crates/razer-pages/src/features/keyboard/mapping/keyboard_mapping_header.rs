@@ -68,7 +68,7 @@ impl RenderOnce for Title {
                 })
                 .child(self.label)
                 .into_any_element();
-            deferred(tip_position(
+            razer_assets::deferred_resource(tip_position(
                 self.bounds,
                 point(
                     surface::css(-105.).to_pixels(window.rem_size()),

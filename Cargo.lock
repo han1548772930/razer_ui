@@ -5933,6 +5933,7 @@ dependencies = [
  "razer-ipc",
  "razer-platform",
  "razer-storage",
+ "serde",
  "serde_json",
  "tokio",
  "windows 0.61.3",

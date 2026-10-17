@@ -328,6 +328,7 @@ pub struct MouseProductWorkspace {
     hypershift: bool,
     group_ix: usize,
     customize_hover: Option<usize>,
+    customize_label_hover: Option<customize_current::LabelHover>,
     customize_cycle: Option<customize_current::CyclePosition>,
     mouse_customize_observation: Value,
     customize_attachment: customize_current::AttachmentState,
@@ -420,6 +421,7 @@ impl MouseProductWorkspace {
             hypershift: false,
             group_ix: 0,
             customize_hover: None,
+            customize_label_hover: None,
             customize_cycle: None,
             mouse_customize_observation: json!({}),
             customize_attachment: customize_current::AttachmentState::default(),
@@ -513,6 +515,7 @@ impl MouseProductWorkspace {
             if key != "TAB_CUSTOMIZE" {
                 self.customize_cycle = None;
                 self.customize_hover = None;
+                self.customize_label_hover = None;
             }
             self.mapping_190_state.clear();
             self.mapping_assignment = None;
@@ -558,6 +561,7 @@ impl MouseProductWorkspace {
         }
     }
     pub fn dismiss_editors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.customize_label_hover = None;
         self.dismiss_receiver_guide(window, cx);
         self.mapping_current_state.launch.cancel_picker();
         self.mapping_current_state.keyboard.stop();

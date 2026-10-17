@@ -664,6 +664,7 @@ impl AppShell {
         self.sync_keyboard_wristrest(window, cx);
         self.sync_mouse_runtime_artwork(window, cx);
         self.sync_controller_inputs(cx);
+        self.sync_controller_lighting_owners(self.receiver_devices_complete, cx);
         self.sync_audio_preset_shortcut_cleanup(cx);
         self.sync_thx_render_lifecycle(self.receiver_devices_complete, window, cx);
         self.refresh_thx_spatial(window, cx);

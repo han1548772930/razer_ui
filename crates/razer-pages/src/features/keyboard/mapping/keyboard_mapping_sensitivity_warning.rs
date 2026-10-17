@@ -115,7 +115,7 @@ impl KeyboardProductWorkspace {
             .sensitivity_warning
             .shown
             .then(|| {
-                deferred(Warning { owner: cx.entity() })
+                razer_assets::deferred_resource(Warning { owner: cx.entity() })
                     .with_priority(107)
                     .into_any_element()
             })

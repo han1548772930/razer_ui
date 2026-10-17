@@ -661,7 +661,7 @@ impl AudioProductWorkspace {
 
     fn seiren_stream_reset(&self, cx: &mut Context<Self>) -> AnyElement {
         let pid = self.spec.product_id;
-        deferred(
+        razer_assets::deferred_resource(
             v_flex()
                 .id("seiren-stream-reset")
                 .absolute()
@@ -1356,7 +1356,7 @@ impl AudioProductWorkspace {
                     )
                     .child(self.seiren_stream_add_content(cx));
                 trigger.child(
-                    deferred(AddOptions {
+                    razer_assets::deferred_resource(AddOptions {
                         bounds,
                         content: Some(content.into_any_element()),
                     })

@@ -847,7 +847,7 @@ impl KeyboardProductWorkspace {
                         .border_color(border),
                 )
                 .child(rows);
-            panels.push(deferred(popup).with_priority(102).into_any_element());
+            panels.push(razer_assets::deferred_resource(popup).with_priority(102).into_any_element());
         }
         panels
     }

@@ -547,11 +547,11 @@ impl MouseProductWorkspace {
                     ),
             )
             .children(state.open.then(|| {
-                deferred(self.current_sidebar_filter_options(policy, filter_height, cx))
+                razer_assets::deferred_resource(self.current_sidebar_filter_options(policy, filter_height, cx))
                     .with_priority(151)
             }))
             .children(state.tooltip.as_ref().filter(|_| state.open).map(|label| {
-                deferred(Layer::new(
+                razer_assets::deferred_resource(Layer::new(
                     LayerKind::Binding(state.tooltip_anchor.clone()),
                     tip()
                         .max_w(surface::css(358.))
@@ -561,7 +561,7 @@ impl MouseProductWorkspace {
                 .with_priority(999)
             }))
             .children(state.pending.as_ref().map(|_| {
-                deferred(self.current_sidebar_confirmation(policy, confirm_opacity, cx))
+                razer_assets::deferred_resource(self.current_sidebar_confirmation(policy, confirm_opacity, cx))
                     .with_priority(1100)
             }))
     }

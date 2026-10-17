@@ -7,7 +7,7 @@ pub(super) fn place(
     root: Rc<Cell<Bounds<Pixels>>>,
     anchor: Rc<Cell<Bounds<Pixels>>>,
 ) -> AnyElement {
-    deferred(Popup {
+    razer_assets::deferred_resource(Popup {
         content,
         root,
         anchor,

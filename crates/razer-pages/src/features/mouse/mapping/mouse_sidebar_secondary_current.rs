@@ -235,7 +235,7 @@ impl RenderOnce for Marker {
                 })
             })
             .child(
-                deferred(Layer::new(
+                razer_assets::deferred_resource(Layer::new(
                     LayerKind::Secondary(self.position),
                     tooltip.into_any_element(),
                 ))

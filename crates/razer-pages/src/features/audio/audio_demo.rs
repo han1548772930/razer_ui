@@ -128,10 +128,13 @@ impl AudioDemo {
         self.position = None;
         let has_position = self.media.read(cx).has_position();
         let playing = self.media.read(cx).is_playing();
-        self.floating_open = !inline
-            && self.floating
-            && (has_position || self.spec.product_id != 1392 && playing);
-        let show_inline = if self.spec.product_id == 1442 { playing } else { has_position };
+        self.floating_open =
+            !inline && self.floating && (has_position || self.spec.product_id != 1392 && playing);
+        let show_inline = if self.spec.product_id == 1442 {
+            playing
+        } else {
+            has_position
+        };
         self.media.update(cx, |media, cx| {
             media.leave_fullscreen(window, cx);
             // The current 1442 inline cleanup explicitly clears the reducer
@@ -306,7 +309,9 @@ impl AudioDemo {
                             .top(surface::css(-26.))
                             .p(surface::css(5.))
                             .accessibility_label("Close video")
-                            .on_click(cx.listener(|this, _, window, cx| this.close_floating(window, cx)))
+                            .on_click(
+                                cx.listener(|this, _, window, cx| this.close_floating(window, cx)),
+                            )
                             .child(img("synapse/audio-demo-close.svg")),
                     ),
             )

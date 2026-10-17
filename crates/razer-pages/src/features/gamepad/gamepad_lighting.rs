@@ -250,7 +250,7 @@ impl GamepadProductWorkspace {
                             .mouse_button(MouseButton::Right)
                             .offset(surface::css(-10.).to_pixels(cx.theme().font_size))
                             .open(self.lighting_ui.context_color == Some(identity))
-                            .on_open_change(cx.listener(move |this, open, _, cx| {
+                            .on_open_change(cx.listener(move |this, open: &bool, _, cx| {
                                 this.lighting_ui.context_color = open.then_some(identity);
                                 cx.notify();
                             }))
@@ -296,7 +296,7 @@ impl GamepadProductWorkspace {
                                                     cx.notify();
                                                 })),
                                         );
-                                    popover.content(move |_, _, _| content)
+                                    popover.content(move |_, _, _| razer_assets::resource_scope(content))
                                 },
                             )
                             .into_any_element()
@@ -364,7 +364,7 @@ impl GamepadProductWorkspace {
                                 }
                             },
                         ));
-                        popover.content(move |_, _, _| content)
+                        popover.content(move |_, _, _| razer_assets::resource_scope(content))
                     }),
             )
             .into_any_element()
@@ -411,5 +411,132 @@ impl GamepadProductWorkspace {
                 .range_labels("0", "100", Colors::text()),
         )
         .into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CustomColorEditorEvent, EffectId, GamepadProductWorkspace};
+    use crate::features::gamepad_products::ControllerLightingRequested;
+    use gpui_kit::component::Root;
+    use gpui_kit::{AppContext as _, TestAppContext, px, size};
+    use razer_device::controller_lighting::{ControllerEffect, LightingOperation, LightingResult};
+    use razer_state::CustomColors;
+    use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn controller_editor_save_enqueues_the_exact_palette_and_cancel_rejects_queued_events(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(gpui_kit::init);
+        let requests = Rc::new(RefCell::new(Vec::new()));
+        let mut retained = None;
+        let handle = cx.open_window(size(px(1200.), px(900.)), |window, cx| {
+            let owner = cx.new(|cx| GamepadProductWorkspace::new(2636, 0, window, cx));
+            let requests = requests.clone();
+            let subscription = cx.subscribe(
+                &owner,
+                move |_, _, request: &ControllerLightingRequested, _| {
+                    requests.borrow_mut().push(request.clone());
+                },
+            );
+            retained = Some((owner.clone(), subscription));
+            Root::new(owner, window, cx)
+        });
+        let (owner, _subscription) = retained.unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            owner.update(cx, |owner, cx| {
+                owner.page = "TAB_LIGHTING".into();
+                owner.lighting_runtime.settings.as_mut().unwrap().effect_id = EffectId::Static;
+                owner.lighting_ui.editor_open = true;
+                owner
+                    .lighting_ui
+                    .editor
+                    .update(cx, |editor, cx| editor.begin(window, cx));
+                owner.lighting_ui.editor.update(cx, |_, cx| {
+                    cx.emit(CustomColorEditorEvent::Saved([1, 2, 3]))
+                });
+            });
+        })
+        .unwrap();
+        cx.update(|cx| {
+            let owner = owner.read(cx);
+            assert!(!owner.lighting_ui.editor_open);
+            assert_eq!(
+                owner.snapshot()["profile"]["controllerLightingEffects"]["index"],
+                8
+            );
+            assert!(
+                cx.global::<CustomColors>()
+                    .colors()
+                    .iter()
+                    .all(Option::is_none)
+            );
+            let requests = requests.borrow();
+            assert_eq!(requests.len(), 1);
+            assert_eq!(
+                requests[0].operation(),
+                &LightingOperation::Set {
+                    profile_slot: 1,
+                    effect: ControllerEffect::Static {
+                        index: 8,
+                        custom_colors: vec![[1, 2, 3]]
+                    }
+                }
+            );
+        });
+        let first = requests.borrow()[0].clone();
+        cx.update_window(handle.into(), |_, window, cx| {
+            owner.update(cx, |owner, cx| {
+                owner.finish_controller_lighting(
+                    &first,
+                    Err("simulated HID failure".into()),
+                    Some(window),
+                    cx,
+                );
+                assert_eq!(
+                    owner.snapshot()["profile"]["controllerLightingEffects"]["index"],
+                    8
+                );
+                owner.lighting_ui.editor_open = true;
+                owner
+                    .lighting_ui
+                    .editor
+                    .update(cx, |editor, cx| editor.begin(window, cx));
+                owner.lighting_ui.cancel(cx);
+                owner.lighting_ui.editor.update(cx, |_, cx| {
+                    cx.emit(CustomColorEditorEvent::Saved([4, 5, 6]))
+                });
+            });
+        })
+        .unwrap();
+        cx.update(|cx| {
+            assert_eq!(
+                owner
+                    .read(cx)
+                    .lighting_runtime
+                    .settings
+                    .as_ref()
+                    .unwrap()
+                    .color_list
+                    .len(),
+                9
+            );
+            assert_eq!(requests.borrow().len(), 1);
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            owner.update(cx, |owner, cx| {
+                owner.submit_controller_effect(cx);
+                owner.observe_controller_connection(false, cx);
+                owner.finish_controller_lighting(
+                    &first,
+                    Ok(LightingResult::default()),
+                    Some(window),
+                    cx,
+                );
+                assert!(!owner.controller_lighting_request_matches(&first));
+            });
+        })
+        .unwrap();
     }
 }

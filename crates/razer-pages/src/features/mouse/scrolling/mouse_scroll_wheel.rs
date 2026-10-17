@@ -701,7 +701,7 @@ impl Render for ScrollWheelEditor {
                 )
             }));
         let tooltip = self.tooltip.filter(|_| self.locked()).map(|position| {
-            deferred(
+            razer_assets::deferred_resource(
                 Positioner::corner(Anchor::TopLeft, position + point(px(16.), px(12.)))
                     .margin(px(0.))
                     .child(

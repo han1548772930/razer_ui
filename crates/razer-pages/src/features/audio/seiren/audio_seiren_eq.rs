@@ -1372,7 +1372,7 @@ impl AudioProductWorkspace {
                     cx.notify();
                 });
             })
-            .content(move |_, window, cx| {
+            .content(move |_, window, cx| razer_assets::resource_scope({
                 let up = owner.clone();
                 let down = owner.clone();
                 let confirm = owner.clone();
@@ -1468,7 +1468,7 @@ impl AudioProductWorkspace {
                             },
                         ));
                 div().w(css(96.)).h(css(162.)).child(options)
-            });
+            }));
         select.child(popup).into_any_element()
     }
     fn seiren_confirm_filter(&mut self, kind: &str, window: &mut Window, cx: &mut Context<Self>) {

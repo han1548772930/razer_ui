@@ -75,6 +75,7 @@ struct Features {
     controller_sensitivity: Option<Sensitivity>,
     controller_analog_circularity: Option<Circularity>,
     controller_lighting_effects: Option<super::lighting_state::ControllerLightingSettings>,
+    quick_effects: Option<super::quick_lighting_state::QuickLightingSettings>,
 }
 
 fn validate_ids(ids: impl Iterator<Item = u8>) -> anyhow::Result<()> {
@@ -95,6 +96,7 @@ impl Features {
             spec.product_id == 2636 || self.controller_lighting_effects.is_none(),
             "Saved controller preset effects do not belong to this product"
         );
+        ensure!(spec.product_id==4115||self.quick_effects.is_none(),"Saved quick effects do not belong to this product");
         ensure!(
             supported
                 || self.controller_analog_actuation.is_none()
@@ -178,6 +180,7 @@ pub(super) fn restore_features(
             "controllerLightingEffects",
             features.controller_lighting_effects.is_some(),
         ),
+        ("quickEffects",features.quick_effects.is_some()),
     ] {
         if present {
             // Keep file extension fields and list order at this boundary.

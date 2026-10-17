@@ -211,7 +211,7 @@ impl Render for SystrayActionSelector {
                     }
                 })
             })
-            .content(move |_, _, _| {
+            .content(move |_, _, _| razer_assets::resource_scope({
                 div()
                     .w(css(200.))
                     .h(css(height))
@@ -221,6 +221,6 @@ impl Render for SystrayActionSelector {
                     .border_color(Palette::border())
                     .when(shown, |view| view.border_y_1())
                     .child(option)
-            })
+            }))
     }
 }

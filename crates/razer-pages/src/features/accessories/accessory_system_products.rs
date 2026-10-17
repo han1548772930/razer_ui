@@ -2340,7 +2340,7 @@ impl AccessorySystemProductWorkspace {
         // `SSA` puts the widget in `.widgetZIndex{z-index:6}` so the floating
         // alert covers the neighbouring widgets; `deferred` paints it in a later
         // pass with the same priority.
-        deferred(
+        razer_assets::deferred_resource(
             div()
                 .id("accessory-input-source-alert")
                 .test_support()

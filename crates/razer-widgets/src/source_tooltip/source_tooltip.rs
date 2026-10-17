@@ -49,6 +49,11 @@ pub enum SourceTooltipKind {
     /// Controller `.actuation-tooltip .tip`: left aligned at top:20px, with
     /// `show-top{bottom:10px}` only when the measured lower space is too small.
     GamepadTrigger,
+    /// Current Effects `.status-chroma-app .help .tip`: 410px, right:15px,
+    /// top:15px with immediate visibility and a 300ms linear opacity change.
+    ChromaStatus,
+    /// `.manage .tip` overrides width with fit-content and min-width:165px.
+    ChromaManage,
 }
 
 type Trigger = Box<dyn FnOnce(bool, &mut Window, &mut App) -> AnyElement>;
@@ -167,6 +172,8 @@ impl SourceTooltip {
             SourceTooltipKind::HypershiftHelp
                 | SourceTooltipKind::HypershiftHelp231
                 | SourceTooltipKind::GamepadTrigger
+                | SourceTooltipKind::ChromaStatus
+                | SourceTooltipKind::ChromaManage
         ) {
             if hovered { 100 } else { 99 }
         } else if self.kind == SourceTooltipKind::Studio {
@@ -297,7 +304,7 @@ impl RenderOnce for SourceTooltip {
             })
             .child((self.trigger)(hovered, window, cx))
             .child(
-                deferred(TipOverlay {
+                razer_assets::deferred_resource(TipOverlay {
                     id: self.id,
                     text: self.text,
                     width: self.width,
@@ -401,6 +408,7 @@ impl Element for TipOverlay {
         let width = if matches!(
             self.kind,
             SourceTooltipKind::HypershiftHelp | SourceTooltipKind::HypershiftHelp231
+                | SourceTooltipKind::ChromaStatus | SourceTooltipKind::ChromaManage
         ) {
             // CSS min-width/max-width are both 300px; there is no edge fallback.
             width
@@ -422,6 +430,10 @@ impl Element for TipOverlay {
             // JS copies clientWidth/clientHeight (border excluded) to the
             // portal's border-box width/height. Its `.on` height is auto.
             measured.map(|length| (length - px(2.)).max(px(1.)))
+        } else if self.kind == SourceTooltipKind::ChromaManage {
+            let mut measurement=tip_surface((self.id.clone(),"tip-measure").into(),self.text.clone(),width).w_auto().min_w(width).into_any_element();
+            let measured=measurement.layout_as_root(size(AvailableSpace::MaxContent,AvailableSpace::MinContent),window,cx);
+            size(measured.width.max(width),measured.height)
         } else if self.kind == SourceTooltipKind::ProfilesNav {
             let mut measurement = tip_surface(
                 (self.id.clone(), "tip-measure").into(),
@@ -558,6 +570,8 @@ impl Element for TipOverlay {
             SourceTooltipKind::HypershiftHelp
                 | SourceTooltipKind::HypershiftHelp231
                 | SourceTooltipKind::GamepadTrigger
+                | SourceTooltipKind::ChromaStatus
+                | SourceTooltipKind::ChromaManage
         ) {
             // Base Positioner always clamps to the viewport. The source CSS
             // sibling has no clamp, so retain Base Tooltip semantics and place
@@ -655,6 +669,10 @@ impl Element for TipOverlay {
                 layout.source_size.height,
                 window.viewport_size(),
                 window.rem_size(),
+            ),
+            SourceTooltipKind::ChromaStatus | SourceTooltipKind::ChromaManage => point(
+                trigger.right()-window.rem_size()*(15./16.)-layout.source_size.width,
+                trigger.top()+window.rem_size()*(15./16.),
             ),
             SourceTooltipKind::HypershiftHelp => self
                 .hypershift_layout

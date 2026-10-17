@@ -691,7 +691,7 @@ pub(super) fn fader(
     if index == 2 && disabled {
         if let Some(position) = workspace.seiren_eq.sidetone_tooltip {
             channel = channel.child(
-                deferred(CursorTip {
+                razer_assets::deferred_resource(CursorTip {
                     position,
                     content: div()
                         .w(css(300.))

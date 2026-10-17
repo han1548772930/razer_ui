@@ -812,7 +812,7 @@ impl Render for AppPicker {
             )
             .when_some(content, |view, content| {
                 view.child(
-                    deferred(
+                    razer_assets::deferred_resource(
                         Positioner::corner(Anchor::TopRight, position)
                             .margin(window.rem_size() * 0.5)
                             .occlude()
@@ -990,7 +990,7 @@ impl RenderOnce for PickerTile {
         tile_grid_slot(SharedString::from(format!("{id}-slot")))
             .test_support()
             .child(if hovered {
-                deferred(button)
+                razer_assets::deferred_resource(button)
                     .with_priority(gpui_kit::base::POPUP_PRIORITY + 1)
                     .into_any_element()
             } else {

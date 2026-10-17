@@ -172,7 +172,14 @@ fn brightness_uses_observed_region_and_source_floor_and_ceil_conversions() {
     let io = Simulated::new([(2, vec![4, 60, 0, 1, 1]), (2, vec![1, 4, 127]), (2, vec![])]);
     let result = run(&io, &LightingOperation::Brightness { value: 50 }).unwrap();
     assert_eq!(result.acknowledged_writes, 1);
-    assert!(result.brightness.is_none());
+    assert_eq!(
+        result.brightness,
+        Some(ObservedBrightness {
+            profile_slot: 1,
+            region_id: 4,
+            value: 50,
+        })
+    );
     let sent = io.sent.borrow();
     assert_eq!(&sent[0][6..9], &[80, 15, 128]);
     assert_eq!(&sent[1][6..12], &[3, 15, 132, 1, 4, 0]);
@@ -180,6 +187,11 @@ fn brightness_uses_observed_region_and_source_floor_and_ceil_conversions() {
     let io = Simulated::new([(2, vec![]), (2, vec![1, 0, 127])]);
     let result = run(&io, &LightingOperation::ReadBrightness).unwrap();
     assert_eq!(result.brightness.unwrap().value, 50);
+    let io = Simulated::new([(2, vec![]), (2, vec![1, 0, 127])]);
+    let result = run(&io, &LightingOperation::Brightness { value: 50 }).unwrap();
+    assert_eq!(result.acknowledged_writes, 0);
+    assert_eq!(result.brightness.unwrap().value, 50);
+    assert_eq!(io.sent.borrow().len(), 2);
 }
 
 #[test]

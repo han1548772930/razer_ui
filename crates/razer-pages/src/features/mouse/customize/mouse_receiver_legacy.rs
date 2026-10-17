@@ -394,7 +394,7 @@ impl RenderOnce for LegacyTooltip {
             cx,
         );
         div().child(
-            deferred(
+            razer_assets::deferred_resource(
                 div()
                     .absolute()
                     .left(surface::css(100.))

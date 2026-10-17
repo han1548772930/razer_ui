@@ -784,7 +784,7 @@ impl MouseProductWorkspace {
         // parts without adding that behavior (190 main.js ja complete owner).
         let viewport = window.viewport_size();
         Some(
-            deferred(
+            razer_assets::deferred_resource(
                 anchored().position(point(px(0.), px(0.))).child(
                     div()
                         .id("mouse-receiver-guide-overlay")
@@ -1139,7 +1139,7 @@ impl Render for Help {
             )
             .when(open, |element| {
                 element.child(
-                    deferred(
+                    razer_assets::deferred_resource(
                         div()
                             .absolute()
                             .left(relative(0.36))

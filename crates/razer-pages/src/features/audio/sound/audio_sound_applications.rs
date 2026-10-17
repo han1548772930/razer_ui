@@ -574,7 +574,7 @@ impl AudioProductWorkspace {
                 .contains(&search)
         });
         apps.sort_by_key(|app| app["name"].as_str().unwrap_or_default().to_uppercase());
-        deferred(div().absolute().inset_0().flex().items_center().justify_center().bg(rgba(0x000000b3)).child(
+        razer_assets::deferred_resource(div().absolute().inset_0().flex().items_center().justify_center().bg(rgba(0x000000b3)).child(
             v_flex().w(surface::css(950.)).max_h(window.viewport_size().height*0.98).bg(rgb(0x222222)).p(surface::css(20.)).border_1().border_color(Colors::border())
                 .child(h_flex().justify_between().child(message(row,"ADD_GAME_TITLE"))
                     .child(gpui_kit::base::Button::new("current-installed-apps-close").child("×").on_click(cx.listener(|this,_,window,cx|this.close_sound_apps(window,cx)))))

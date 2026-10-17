@@ -15,7 +15,7 @@ pub struct SourceLayer {
 impl SourceLayer {
     pub fn new(child: impl IntoElement, x: f32, y: f32) -> Self {
         Self {
-            child: Some(child.into_any_element()),
+            child: Some(razer_assets::resource_scope(child).into_any_element()),
             x,
             y,
             priority: None,

@@ -8,6 +8,12 @@ use gpui_kit::base::motion::Easing;
 use razer_widgets::theme::MouseCustomizeColors as Colors;
 use std::time::{Duration, Instant};
 use std::{cell::Cell, rc::Rc};
+#[path = "mouse_customize_labels_current.rs"]
+mod labels;
+pub(super) use labels::LabelHover;
+#[cfg(test)]
+#[path = "mouse_customize_current_tests.rs"]
+mod tests;
 
 fn physical_cover_contains(bounds: Bounds<Pixels>, position: Point<Pixels>, rounded: bool) -> bool {
     let width = f32::from(bounds.size.width);
@@ -365,6 +371,27 @@ struct Artwork {
     request: String,
     asset: String,
 }
+impl Surface {
+    fn cycle_artwork(&self, edition: u32) -> Option<&Artwork> {
+        let cycle = self.cycle.as_ref()?;
+        let edition = cycle.fixed_edition.unwrap_or(edition);
+        self.cycle_images
+            .iter()
+            .filter(|image| image.edition == edition)
+            .max_by_key(|image| if image.request.contains("3x") { 2 } else { 1 })
+            .or_else(|| {
+                cycle
+                    .edition_zero_fallback
+                    .then(|| {
+                        self.cycle_images
+                            .iter()
+                            .filter(|image| image.edition == 0)
+                            .max_by_key(|image| if image.request.contains("3x") { 2 } else { 1 })
+                    })
+                    .flatten()
+            })
+    }
+}
 #[derive(Deserialize)]
 struct SourcePathHit {
     index: usize,
@@ -598,6 +625,7 @@ impl MouseProductWorkspace {
     /// Scope teardown is the source component unmount, separate from a failed
     /// getter. Cancel old animation work and restore source reducer defaults.
     pub fn reset_mouse_customize_runtime(&mut self, cx: &mut Context<Self>) {
+        self.customize_label_hover = None;
         self.mouse_customize_observation = json!({});
         self.customize_attachment.reset();
         self.reset_mouse_runtime_lighting();
@@ -664,29 +692,7 @@ impl MouseProductWorkspace {
                 .and_then(|cycle| cycle.visual_hover_index)
                 .is_some_and(|index| self.customize_hover == Some(index));
         let cycle_index = surface.cycle.as_ref().map(|cycle| cycle.index);
-        let cycle_edition = surface
-            .cycle
-            .as_ref()
-            .and_then(|cycle| cycle.fixed_edition)
-            .unwrap_or(edition);
-        let cycle_image = surface
-            .cycle_images
-            .iter()
-            .filter(|image| image.edition == cycle_edition)
-            .max_by_key(|image| if image.request.contains("3x") { 2 } else { 1 })
-            .or_else(|| {
-                surface
-                    .cycle
-                    .as_ref()
-                    .filter(|cycle| cycle.edition_zero_fallback)
-                    .and_then(|_| {
-                        surface
-                            .cycle_images
-                            .iter()
-                            .filter(|image| image.edition == 0)
-                            .max_by_key(|image| if image.request.contains("3x") { 2 } else { 1 })
-                    })
-            });
+        let cycle_image = surface.cycle_artwork(edition);
         let cycle_selected = self.current_cycle_selected(self.mapping_input.as_deref());
         let hyper = self.hypershift;
         let enabled = buttons
@@ -856,6 +862,7 @@ impl MouseProductWorkspace {
             .children(self.customize_attachment_layers(surface, edition, false))
             .children(image.map(|image| {
                 img(SharedString::from(image.asset.clone()))
+                    .id("mouse-current-front-image")
                     .absolute()
                     .left(surface::css(surface.image_left))
                     .top(surface::css(surface.image_top))
@@ -867,6 +874,7 @@ impl MouseProductWorkspace {
                         image.max_h(surface::css(340.))
                     })
                     .object_fit(ObjectFit::Contain)
+                    .test_support()
             }))
             .children(self.customize_attachment_layers(surface, edition, true))
             .children(if separate_cycle_canvas {
@@ -882,12 +890,14 @@ impl MouseProductWorkspace {
                         .zip(cycle_image)
                         .map(|(cycle, image)| {
                             img(SharedString::from(image.asset.clone()))
+                                .id("mouse-current-cycle-image")
                                 .absolute()
                                 .left(surface::css(cycle.left))
                                 .top(surface::css(cycle.top))
                                 .w(surface::css(cycle.width))
                                 .h(surface::css(cycle.height))
                                 .object_fit(ObjectFit::Contain)
+                                .test_support()
                         }),
                 )
             })
@@ -983,8 +993,8 @@ impl MouseProductWorkspace {
                         })),
                 )
             }))
-            .child(self.customize_current_labels(surface, buttons, true, unavailable, cx))
-            .child(self.customize_current_labels(surface, buttons, false, unavailable, cx))
+            .child(self.customize_current_labels(surface, buttons, true, unavailable, window, cx))
+            .child(self.customize_current_labels(surface, buttons, false, unavailable, window, cx))
             .children(surface.cycle.as_ref().and_then(|cycle| {
                 cycle.physical_cover.as_ref().map(|cover| {
                     let index = cycle.index;
@@ -1271,6 +1281,7 @@ impl MouseProductWorkspace {
                             this.set_current_customize_input(None, false);
                             this.group_ix = index;
                             this.customize_hover = None;
+                            this.customize_label_hover = None;
                             this.customize_cycle = None;
                             this.customize_attachment.side_draw_repeat = false;
                             this.mapping_assignment = None;
@@ -1524,7 +1535,8 @@ impl MouseProductWorkspace {
         buttons: &[Value],
         left: bool,
         unavailable: bool,
-        cx: &Context<Self>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
     ) -> AnyElement {
         // 211 mounts filtered button props in original array order. Its idx is
         // the combined label position, while button_index owns the real action.
@@ -1580,57 +1592,15 @@ impl MouseProductWorkspace {
                         // original button prop owns its action; idx is only the row label.
                         let index = control.button_index.unwrap_or(control.index);
                         let button = &buttons[index];
-                        let input = button["inputID"].as_str().unwrap_or_default().to_owned();
-                        let enabled =
-                            !unavailable && button["isEnabled"].as_bool().unwrap_or(false);
-                        let active = self.mapping_input.as_deref() == Some(input.as_str());
-                        let value = button["assignmentValue"].as_str().unwrap_or("DEFAULT");
-                        let measured_input = input.clone();
-                        let anchors = self.mapping_menu_current_state.anchors.clone();
-                        BaseButton::new(SharedString::from(format!(
-                            "mouse-{}-input-{input}",
-                            self.spec.product_id
-                        )))
-                        .accessibility_label(t(value))
-                        .on_prepaint(move |bounds, _, _| {
-                            anchors.borrow_mut().insert(measured_input.clone(), bounds);
-                        })
-                        .h(surface::css(30.))
-                        .mb(surface::css(20.))
-                        .mt(surface::css(control.margin_top))
-                        .px(surface::css(10.))
-                        .py_0()
-                        .when(left, |button| button.mr(surface::css(10.)))
-                        .when(!left, |button| button.ml(surface::css(10.)))
-                        .rounded(surface::css(3.))
-                        .text_size(surface::css(14.))
-                        .line_height(surface::css(17.))
-                        .text_color(if enabled {
-                            Colors::text()
-                        } else {
-                            Colors::disabled_text()
-                        })
-                        .bg(if active {
-                            Colors::selected_surface()
-                        } else {
-                            Colors::transparent()
-                        })
-                        .disabled(!enabled)
-                        .hover(|style| style.bg(Colors::hover()))
-                        .active(|style| style.bg(Colors::selected_surface()))
-                        .child(t(value))
-                        .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
-                            this.hover_current_customize(index, *hovered);
-                            cx.notify();
-                        }))
-                        .on_click(cx.listener(
-                            move |this, _, window, cx| {
-                                if this.mapping_input.as_deref() == Some(input.as_str()) {
-                                    return;
-                                }
-                                this.open_current_mouse_mapping(input.clone(), window, cx);
-                            },
-                        ))
+                        self.current_customize_label(
+                            button,
+                            index,
+                            left,
+                            control.margin_top,
+                            unavailable,
+                            window,
+                            cx,
+                        )
                     }),
             )
             .into_any_element()

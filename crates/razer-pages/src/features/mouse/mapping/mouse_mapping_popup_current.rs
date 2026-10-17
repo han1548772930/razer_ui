@@ -47,7 +47,7 @@ impl MouseProductWorkspace {
         content: impl IntoElement,
     ) -> AnyElement {
         let state = &self.mapping_menu_current_state;
-        deferred(Popup {
+        razer_assets::deferred_resource(Popup {
             content: content.into_any_element(),
             root: state.root.clone(),
             drawer: state.drawer.clone(),

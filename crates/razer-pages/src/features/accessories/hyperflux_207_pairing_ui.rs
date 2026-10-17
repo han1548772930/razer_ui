@@ -710,7 +710,7 @@ impl SourceControls {
             .child(body);
         let mut root = div()
             .child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored()
                         .anchor(Anchor::TopLeft)
                         .position(point(px(0.), content_top))
@@ -725,7 +725,7 @@ impl SourceControls {
                 .priority(1000),
             )
             .child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored()
                         .anchor(Anchor::TopLeft)
                         .position(point((size.width - width) / 2., content_top + unit * 100.))
@@ -809,7 +809,7 @@ impl SourceControls {
                             ),
                     );
             root = root.child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored()
                         .anchor(Anchor::TopLeft)
                         .position(point(px(0.), content_top + content_height * 0.035))

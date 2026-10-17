@@ -361,7 +361,7 @@ impl AudioProductWorkspace {
         .child(cards)
         .when(ble_tooltip, |panel| {
             panel.child(
-                deferred(
+                razer_assets::deferred_resource(
                     div()
                         .absolute()
                         .left(surface::css(20.))

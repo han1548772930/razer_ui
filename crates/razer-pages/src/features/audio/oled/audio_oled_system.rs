@@ -533,7 +533,7 @@ impl SystemEditor {
                     // Its absolute layout participates in the scroll owner's
                     // overflow; only z-index paint ordering is deferred.
                     slide.child(
-                        deferred(menu::ClippedMenu::new(
+                        razer_assets::deferred_resource(menu::ClippedMenu::new(
                             self.menu_options(index, side, window, cx),
                             mask,
                         ))

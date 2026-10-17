@@ -242,7 +242,7 @@ impl Shortcuts {
                 )
                 .when(menu, |view| {
                     view.child(
-                        deferred(
+                        razer_assets::deferred_resource(
                             v_flex()
                                 .id(SharedString::from(format!("shortcut-menu-{}", item.id)))
                                 .absolute()

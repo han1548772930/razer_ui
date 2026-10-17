@@ -846,7 +846,7 @@ impl Render for AudioMedia {
         if self.fullscreen {
             inline
                 .child(
-                    deferred(
+                    razer_assets::deferred_resource(
                         gpui_kit::base::Positioner::corner(Anchor::TopLeft, point(px(0.), px(0.)))
                             .margin(px(0.))
                             .child(

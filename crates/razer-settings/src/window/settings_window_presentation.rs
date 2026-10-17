@@ -73,7 +73,7 @@ pub fn toolbar_button(
         );
     if hovered {
         wrapper = wrapper.child(
-            deferred(
+            razer_assets::deferred_resource(
                 tip((ElementId::from(id), "tooltip").into(), label)
                     .absolute()
                     .left_0()

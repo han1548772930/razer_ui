@@ -8,6 +8,10 @@ use razer_hid::with_backend;
 use serde_json::{Value, json};
 use std::time::{Duration, Instant};
 
+#[path = "controller_lighting_owner.rs"]
+mod owner;
+pub(super) use owner::Controller;
+
 pub(super) fn execute(
     node: &HidNode,
     product_id: u32,

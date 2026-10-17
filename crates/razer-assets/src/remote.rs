@@ -18,7 +18,7 @@ mod credentials;
 mod image_cache;
 mod runtime;
 mod transport;
-pub use image_cache::resource_image_cache;
+pub use image_cache::{ResourceScope, deferred_resource, resource_image_cache, resource_scope};
 pub use runtime::{
     ResourceChanged, observe_resources, resource_errors, retry_resources, start_resources,
 };
@@ -274,7 +274,7 @@ mod database_tests {
     #[test]
     fn database_index_retains_duplicate_priority_list_order_and_svg_viewports() {
         let manifest = manifest().unwrap();
-        assert_eq!(manifest.entries.len(), 11977);
+        assert_eq!(manifest.entries.len(), 11981);
         assert_eq!(manifest.files.len(), 7781);
         assert_eq!(manifest.fonts.len(), 14);
         let duplicate = "synapse/mouse-customize/f4f5f13b5ea47e5816fbf38f.png";
@@ -284,7 +284,7 @@ mod database_tests {
             .enumerate()
             .filter_map(|(index, entry)| (entry.key == duplicate).then_some(index))
             .collect::<Vec<_>>();
-        assert_eq!(positions, [1255, 11865]);
+        assert_eq!(positions, [1255, 11869]);
         assert_eq!(manifest.keys[duplicate], positions[0]);
         assert_eq!(
             list("synapse/mouse-customize/")
@@ -322,6 +322,30 @@ mod database_tests {
                 "assets/synapse/shared/cursors/d99b9c33f3257a5e-screen-color-picker.cur",
                 435430,
                 "d99b9c33f3257a5eecdba55204ec93e30839c1702917b2e51889fdef018312f3",
+            ),
+            (
+                "synapse/gamepad-lighting/settings.svg",
+                "assets/synapse/shared/products/7bf93d2d7e3c9c40-settings.svg",
+                830,
+                "7bf93d2d7e3c9c409f10383fbfdd21dc7dfbb06fc0eeeea11b3b62ddf9da75e5",
+            ),
+            (
+                "synapse/gamepad-lighting/studio.svg",
+                "assets/synapse/shared/products/2c32261f123494c4a00331f5cbbad1eaf2d3cc632ef90c9b279486d366e2d57c.svg",
+                1275155,
+                "2c32261f123494c4a00331f5cbbad1eaf2d3cc632ef90c9b279486d366e2d57c",
+            ),
+            (
+                "synapse/gamepad-lighting/visualizer.svg",
+                "assets/synapse/shared/products/9a03a852d178f619a0fb87c80ebd650eaaa408448550c4be6b02f449fb2c18a3.svg",
+                322580,
+                "9a03a852d178f619a0fb87c80ebd650eaaa408448550c4be6b02f449fb2c18a3",
+            ),
+            (
+                "synapse/gamepad-lighting/warning.svg",
+                "assets/synapse/products/1422/863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f.svg",
+                643,
+                "863d6b3c0cb80e81929ab6e647c5aa12a460372dc0602e3a062770d6f46a4c0f",
             ),
         ] {
             assert_eq!(identity(key), Some((path, bytes, sha256)));

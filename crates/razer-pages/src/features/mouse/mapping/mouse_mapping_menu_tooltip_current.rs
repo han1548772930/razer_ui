@@ -14,7 +14,7 @@ struct Layer {
     clamp: bool,
 }
 pub(super) fn render(tip: &Tip, policy: &Policy, opacity: f32) -> AnyElement {
-    deferred(Layer {
+    razer_assets::deferred_resource(Layer {
         content: div()
             .w(surface::css(300.))
             .flex()

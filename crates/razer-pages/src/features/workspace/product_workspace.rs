@@ -825,6 +825,51 @@ impl ProductWorkspace {
     ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).controller_lighting_request_matches(request,cx))
     }
+    pub fn accepts_controller_chroma(
+        &self,
+        request: &super::gamepad_products::ControllerChromaRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).accepts_controller_chroma(request,cx))
+    }
+    pub fn observe_controller_chroma(
+        &mut self,
+        observation: super::gamepad_products::ControllerChromaObservation,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.observe_controller_chroma(observation, window, cx);
+            });
+        }
+    }
+    pub fn apply_controller_sync_quick(
+        &mut self,
+        source_effect: &serde_json::Value,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Result<bool, String> {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.apply_controller_sync_quick(source_effect, window, cx)
+            }),
+            _ => Ok(false),
+        }
+    }
+    pub fn complete_controller_chroma(
+        &mut self,
+        request: &super::gamepad_products::ControllerChromaRequested,
+        result: Result<Option<super::gamepad_products::ControllerChromaObservation>, String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_controller_chroma(request, result, window, cx);
+            });
+        }
+    }
     pub fn finish_controller_lighting(
         &mut self,
         request: &super::gamepad_products::ControllerLightingRequested,
@@ -1584,6 +1629,9 @@ impl ProductWorkspace {
                     WorkspaceEvent::ControllerLightingRequested(request) => {
                         WorkspaceEvent::ControllerLightingRequested(request.clone())
                     }
+                    WorkspaceEvent::ControllerChromaRequested(request) => {
+                        WorkspaceEvent::ControllerChromaRequested(request.clone())
+                    }
                     WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                         WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())
                     }
@@ -1860,6 +1908,9 @@ impl ProductWorkspace {
                     }
                     WorkspaceEvent::ControllerLightingRequested(request) => {
                         WorkspaceEvent::ControllerLightingRequested(request.clone())
+                    }
+                    WorkspaceEvent::ControllerChromaRequested(request) => {
+                        WorkspaceEvent::ControllerChromaRequested(request.clone())
                     }
                     WorkspaceEvent::KeyboardIndicatorLedRequested(request) => {
                         WorkspaceEvent::KeyboardIndicatorLedRequested(request.clone())

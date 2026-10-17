@@ -74,7 +74,7 @@ fn disabled_card(
         })
         .when(shown, |wrapper| {
             wrapper.child(
-                deferred(
+                razer_assets::deferred_resource(
                     gpui_kit::base::Positioner::corner(Anchor::TopLeft, position)
                         .margin(px(0.))
                         .child(
@@ -1143,7 +1143,7 @@ impl AudioProductWorkspace {
             return None;
         }
         Some(
-            deferred(
+            razer_assets::deferred_resource(
                 gpui_kit::base::Positioner::corner(
                     Anchor::TopLeft,
                     point(px(0.), window.rem_size() * (100. / 16.)),

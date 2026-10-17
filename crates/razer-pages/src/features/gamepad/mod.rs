@@ -6,7 +6,7 @@ use gpui_kit::component::{
     Disableable, Selectable, StyledExt,
     button::Button,
     h_flex,
-    slider::{Slider, SliderEvent, SliderState},
+    slider::{SliderEvent, SliderState},
     v_flex,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
@@ -25,6 +25,13 @@ mod lighting;
 mod lighting_runtime;
 #[path = "gamepad_lighting_state.rs"]
 mod lighting_state;
+#[path = "gamepad_quick_lighting_state.rs"]
+mod quick_lighting_state;
+#[path = "gamepad_quick_lighting.rs"]
+mod quick_lighting;
+#[path = "gamepad_chroma_runtime.rs"]
+mod chroma_runtime;
+pub use chroma_runtime::{ControllerChromaRequested, ControllerChromaCommand, ControllerChromaObservation, ControllerChromaProfile, ControllerSwitchOffLighting};
 #[path = "gamepad_navigation.rs"]
 mod navigation;
 #[path = "gamepad_profile.rs"]
@@ -193,6 +200,8 @@ pub struct GamepadProductWorkspace {
     trigger_runtime: trigger_runtime::TriggerRuntime,
     lighting_runtime: lighting_runtime::LightingRuntime,
     lighting_ui: lighting::LightingUi,
+    quick_lighting_ui: Option<quick_lighting::QuickLightingUi>,
+    chroma_runtime: chroma_runtime::ChromaRuntime,
     trigger_visualization: trigger_visualization::TriggerVisualization,
     controller_input_sample: Option<razer_device::controller_input::Sample>,
     controller_notifications: std::collections::VecDeque<razer_device::controller_input::Event>,
@@ -238,6 +247,8 @@ impl GamepadProductWorkspace {
             trigger_runtime: Default::default(),
             lighting_runtime: lighting_runtime::LightingRuntime::new(pid),
             lighting_ui: lighting::LightingUi::new(window, cx),
+            quick_lighting_ui: None,
+            chroma_runtime: Default::default(),
             trigger_visualization: Default::default(),
             controller_input_sample: None,
             controller_notifications: Default::default(),
@@ -251,6 +262,7 @@ impl GamepadProductWorkspace {
         if let Err(error) = this.restore_lighting_profile() {
             eprintln!("[controller-lighting] Invalid initial profile: {error:#}");
         }
+        this.initialize_quick_lighting_controls(window, cx);
         if spec.pages.iter().any(|p| p == "TRIGGERS") {
             for side in ["leftTrigger", "rightTrigger"] {
                 this.range_drags
@@ -310,6 +322,7 @@ impl GamepadProductWorkspace {
         if self.page != key {
             if self.page == "TAB_LIGHTING" {
                 self.lighting_ui.cancel(cx);
+                self.dismiss_quick_lighting_controls(cx);
             }
             self.customize_hover = None;
             self.cancel_range_edits(cx);
@@ -341,6 +354,7 @@ impl GamepadProductWorkspace {
             self.dismiss_deadzone(false, window, cx);
             self.low_deadzone = None;
             self.request_trigger_read(cx);
+            if key == "TAB_LIGHTING" {self.refresh_controller_chroma(cx);}
             cx.notify();
         }
     }
@@ -352,7 +366,9 @@ impl GamepadProductWorkspace {
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
         self.trigger_runtime.invalidate();
         self.lighting_runtime.invalidate();
+        self.chroma_runtime.invalidate();
         self.lighting_ui.cancel(cx);
+        self.dismiss_quick_lighting_controls(cx);
         self.cancel_range_edits(cx);
         self.cancel_thumbstick_edits(cx);
         self.leave_calibration(window, cx);
@@ -377,6 +393,7 @@ impl GamepadProductWorkspace {
             eprintln!("[controller-lighting] Saved settings could not be restored: {error:#}");
         }
         self.sync_sliders(window, cx);
+        self.sync_quick_lighting_controls(window,cx);
         self.refresh_trigger_visualization();
         self.refresh_thumbstick_artwork();
         self.request_trigger_read(cx);
@@ -444,6 +461,7 @@ impl GamepadProductWorkspace {
                 if path.starts_with("/profile/brightness/") {
                     self.controller_brightness_changed(path, cx);
                 }
+                if self.spec.product_id==4115 && path.starts_with("/profile/switchOffLighting/") {self.controller_switch_off_changed(cx);}
                 if let Some((root, _)) = path.rsplit_once('/') {
                     if matches!(root, "/controller/leftTrigger" | "/controller/rightTrigger") {
                         self.trigger_changed(root, cx);
@@ -498,22 +516,6 @@ impl GamepadProductWorkspace {
                     this.write(&path, value.clone(), cx);
                 }
             }))
-    }
-
-    fn range(&self, path: &str, label: String, enabled: bool) -> AnyElement {
-        let Some(slider) = self.sliders.get(path) else {
-            return div().into_any_element();
-        };
-        v_flex()
-            .gap_3()
-            .child(
-                h_flex()
-                    .justify_between()
-                    .child(label)
-                    .child(format!("{}%", self.number(path))),
-            )
-            .child(Slider::new(slider).disabled(!enabled))
-            .into_any_element()
     }
 
     /// `QP`：`.rangeSlider` 双柄滑条。两条 6px、圆角 5px 的条
@@ -1115,6 +1117,7 @@ impl GamepadProductWorkspace {
     /// （`SWITCH_OFF_LIGHTING_HEADER` + `SWITCH_OFF_LIGHTING_TOOLTIP`，两个
     /// `.check-item` 与 1–15 滑条），右侧快速效果。
     fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+        if self.spec.product_id==4115 {return self.kitsune_lighting(window,cx);}
         if self.spec.controller_lighting {
             return surface::page_columns()
                 .child(surface::page_column(
@@ -1201,9 +1204,10 @@ impl GamepadProductWorkspace {
         .child({
             let mut column = v_flex().ml(surface::css(30.)).w(surface::css(490.));
             if let Some(slider) = self.sliders.get("/profile/switchOffLighting/idleMinutes") {
-                column = column.child(Slider::new(slider).disabled(!(brightness_on && idle_on)));
+                let value=self.number("/profile/switchOffLighting/idleMinutes") as f32;
+                column = column.child(razer_widgets::source_slider::SourceSlider::new(slider,(value-1.)/14.).enabled(brightness_on&&idle_on).tip(Some(value.to_string())).range_labels("1","15",razer_widgets::theme::GamepadTriggerColors::text()));
             }
-            column.child(surface::slider_tags("1", None, "15", None))
+            column
         });
         widget.into_any_element()
     }

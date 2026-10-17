@@ -232,6 +232,13 @@ def _save_matrix(path, matrix):
         "retained_bytes": sum(row.get("acquisition", {}).get("bytes", 0) for row in products),
         "semantic_audit_completed": sum(row.get("semantic_audit") == "complete" for row in products),
         "implementation_acceptance_completed": sum(row.get("implementation_acceptance") == "complete" for row in products),
+        "reference_gaps": {
+            "declared_source_maps_missing": sum(row.get("acquisition", {}).get("reference_gaps", {}).get("declared_source_maps_missing", 0) for row in products),
+            "unattributed_source_maps_missing": sum(row.get("acquisition", {}).get("reference_gaps", {}).get("unattributed_source_maps_missing", 0) for row in products),
+            "declared_non_map_missing": sum(len(row.get("acquisition", {}).get("reference_gaps", {}).get("declared_non_map_missing", [])) for row in products),
+            "undeclared_probes_unavailable": sum(len(row.get("acquisition", {}).get("reference_gaps", {}).get("undeclared_probes_unavailable", [])) for row in products),
+            "unattributed_non_map_missing": sum(len(row.get("acquisition", {}).get("reference_gaps", {}).get("unattributed_non_map_missing", [])) for row in products),
+            "original_opaque_factories_verified": sum(row.get("analysis", {}).get("opaque_factory_originals", {}).get("verified_factories", 0) for row in products)},
     }
     a.save(path, {key: value for key, value in matrix.items() if not key.startswith("_")})
 
@@ -325,7 +332,40 @@ def acquisition_details(receipt):
             "unavailable_files": sum("path" not in item for item in data["files"]),
             "bytes": sum(item.get("bytes", 0) for item in data["files"]),
             "deployment_stable": data.get("source_current_during_acquisition", False),
-            "declared_references_fetched": data.get("declared_references_fetched", False)}
+            "declared_references_fetched": data.get("declared_references_fetched", False),
+            "reference_gaps": frontend_reference_gaps(data)}
+
+
+def frontend_reference_gaps(data):
+    """Keep unavailable debug maps, exploratory probes and declared assets separate."""
+    declared = {}
+    for edge in data.get("edges", []):
+        declared.setdefault(edge["to"], []).append(edge)
+    probes = {row["url"] for row in data.get("probes", []) if row.get("declared") is False}
+    counts = Counter()
+    missing, speculative, unknown = [], [], []
+    for row in data["files"]:
+        if "path" in row:
+            continue
+        url = row["url"]
+        is_map = urllib.parse.urlsplit(url).path.endswith(".map")
+        if url in declared and is_map:
+            counts["declared_source_maps"] += 1
+        elif url in declared:
+            missing.append({**row, "declared_by": declared[url]})
+        elif url in probes:
+            speculative.append(row)
+        elif is_map:
+            counts["unattributed_source_maps"] += 1
+        else:
+            unknown.append(row)
+    return {"declared_source_maps_missing": counts["declared_source_maps"],
+            "unattributed_source_maps_missing": counts["unattributed_source_maps"],
+            "declared_non_map_missing": missing, "undeclared_probes_unavailable": speculative,
+            "unattributed_non_map_missing": unknown,
+            "all_declared_non_map_references_retained": not missing,
+            "unresolved_by_kind": dict(Counter(item["kind"] for item in data.get("unresolved", []))),
+            "unresolved_chunk_selectors": [item for item in data.get("unresolved", []) if item["kind"] == "chunk_unresolved"]}
 
 
 def extract_native_packages(args, ids):
@@ -992,6 +1032,7 @@ def analyze_product(row, recover=True, refresh_ledger=True):
                 findings["validation_report_unavailable"] += 1
     failed = [{"stage": command["stage"], "exit_code": command["exit_code"]}
               for command in result["commands"] if command["exit_code"]]
+    supplements = supplement_opaque_factories(result, receipt) if outputs_valid and inputs_valid else None
     return {"completed": outputs_valid and inputs_valid and result.get("input_bytes_unchanged", False) and not failed,
             "run_finished": True, "receipt": a.rel(receipt), "original_js_inputs": len(result["original_js_inputs"]),
             "outputs": len(result["outputs"]), "outputs_verified": outputs_valid,
@@ -999,7 +1040,68 @@ def analyze_product(row, recover=True, refresh_ledger=True):
             "validation_findings": dict(findings), "translations": translation_routes(originals),
             "validation_origins": [{"kind": kind, "original_inputs": list(sources), "findings": count}
                                    for (kind, sources), count in sorted(finding_origins.items())],
-            "semantic_audit": "pending"}
+            "opaque_factory_originals": supplements or {"verified_factories": 0}, "semantic_audit": "pending"}
+
+
+def supplement_opaque_factories(captured, receipt):
+    """Retain complete original ASTs when safe factory normalization fails."""
+    import importlib.metadata
+    outputs = {row["path"]: row for row in captured["outputs"]}
+    warnings = []
+    for command in captured["commands"]:
+        if command["stage"] != "unpack":
+            continue
+        stdout = outputs.get(command["stdout"])
+        if stdout is None or not valid(stdout):
+            raise ValueError("Factory recovery diagnostics do not verify")
+        warnings.extend(row for row in json.loads((a.ROOT / stdout["path"]).read_bytes()).get("warnings", [])
+                        if row.get("is_error") and row.get("kind") == "webpack_factory_recovery_failed")
+    if not warnings:
+        return None
+    provenance_row = next((row for row in outputs.values() if row["path"].endswith("/modules/provenance.json")), None)
+    if provenance_row is None or not valid(provenance_row):
+        raise ValueError("Opaque factory provenance does not verify")
+    provenance = json.loads((a.ROOT / provenance_row["path"]).read_bytes())
+    raw_root = (a.ROOT / captured["input"] / "raw").resolve()
+    originals = {row["path"]: row for row in captured["original_inputs"]}
+    factories, source_cache = [], {}
+    for warning in warnings:
+        name = warning["filename"]
+        match = re.fullmatch(r"module-(\d+)\.js", name)
+        owner = provenance["modules"].get(name)
+        if match is None or owner is None or owner.get("extraction") != "structural":
+            raise ValueError("Opaque factory has no numeric structural owner")
+        source_path = (raw_root / owner["input"].replace("\\", "/")).resolve()
+        if not source_path.is_relative_to(raw_root):
+            raise ValueError("Opaque factory original escapes its input root")
+        source = originals.get(a.rel(source_path))
+        if source is None or not valid(source):
+            raise ValueError("Opaque factory original input bytes differ")
+        if source["path"] not in source_cache:
+            text = source_path.read_text(encoding="utf-8")
+            source_cache[source["path"]] = (text, keyboard_source_modules(text))
+        text, modules = source_cache[source["path"]]
+        selected = [module for module in modules if module["module_id"] == int(match[1])]
+        if len(selected) != 1:
+            raise ValueError("Opaque factory original module is absent or ambiguous")
+        factory = webpack_factory_snapshot(selected[0])
+        if owner["ranges"] != [[factory["statements_byte_start"], factory["statements_byte_end"]]]:
+            raise ValueError("Opaque factory complete statement boundaries differ from analyzer provenance")
+        output = outputs.get(a.rel(receipt.parent / "modules" / name))
+        if output is None or not valid(output):
+            raise ValueError("Opaque transformed module bytes differ")
+        factories.append({"original": source, "warning": warning, "analyzer_provenance": owner,
+                          "opaque_transformed_output": output, **factory})
+    supplement = {"tool": identity(Path(__file__)), "recovery_analyzer": captured["tool"],
+                  "parsers": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
+                  "provenance": provenance_row, "factories": factories,
+                  "complete_original_factory_bytes_verified": True,
+                  "safe_factory_transformation": "unresolved; original analyzer failures retained",
+                  "target_execution": False, "semantic_audit": "pending", "runtime_acceptance": "unverified"}
+    captured["opaque_factory_supplement"] = supplement
+    a.save(receipt, captured)
+    return {"receipt": identity(receipt), "verified_factories": len(factories),
+            "original_inputs": sorted(source_cache), "safe_factory_transformation": "unresolved"}
 
 
 def run(args, shared=None, refresh=True):
@@ -1027,6 +1129,8 @@ def refresh_family_scope_index():
     ids = set()
     endpoint_probes = 0
     receipts = []
+    reference_counts, unresolved_counts = Counter(), Counter()
+    declared_missing = []
     for family in FAMILY_CANDIDATES:
         expected, _ = family_candidate_scope(family)
         ids.update(expected)
@@ -1040,6 +1144,12 @@ def refresh_family_scope_index():
                 raise ValueError("Family matrix does not match the full current locator scope: " + a.rel(path))
             endpoint_probes += matrix["summary"]["probed"]
             receipts.append(identity(path))
+            reference_counts.update(matrix["summary"].get("reference_gaps", {}))
+            for product in matrix["products"]:
+                gaps = product.get("acquisition", {}).get("reference_gaps", {})
+                unresolved_counts.update(gaps.get("unresolved_by_kind", {}))
+                declared_missing.extend({"family": family, "layer": layer, "product_id": product["product_id"], **row}
+                                        for row in gaps.get("declared_non_map_missing", []))
     with a.index_lock():
         path = a.ROOT / ".analysis/inputs.json"
         index = json.loads(path.read_bytes())
@@ -1048,9 +1158,12 @@ def refresh_family_scope_index():
                       family_matrices=".analysis/results/families",
                       locator_scope={"recorded_at_utc": a.stamp(), "product_ids": sorted(ids),
                                      "matrix_receipts": receipts,
-                                     "usage": "Endpoint discovery only; does not prove current source closure or implementation acceptance"})
+                                      "usage": "Endpoint discovery only; does not prove current source closure or implementation acceptance"},
+                      reference_closure={"counts": dict(reference_counts), "unresolved_by_kind": dict(unresolved_counts),
+                                         "declared_non_map_missing": declared_missing,
+                                         "usage": "Verified retained acquisition and analyzer receipts; missing maps, exploratory probes, declared files and unresolved loaders are separate"})
         a.save(path, index)
-    return {"candidate_products": len(ids), "ui_mw_endpoint_probes": endpoint_probes}
+    return {"candidate_products": len(ids), "ui_mw_endpoint_probes": endpoint_probes, "reference_closure": dict(reference_counts)}
 
 
 def _run(args, shared=None):
@@ -1292,6 +1405,8 @@ def audit_family_function(args):
         return audit_gamepad_input(args)
     if getattr(args, "query", None) == "gamepad-thumbsticks":
         return audit_gamepad_thumbsticks(args)
+    if getattr(args, "query", None) == "gamepad-lighting":
+        return audit_gamepad_lighting(args)
     if getattr(args, "query", None) == "mapping-engine":
         return audit_mapping_engine_literals(args)
     if getattr(args, "query", None) == "audio-firmware-selector":
@@ -1302,6 +1417,8 @@ def audit_family_function(args):
         return audit_audio_leviathan(args)
     if getattr(args, "query", None) == "audio-demo":
         return audit_audio_demo(args)
+    if getattr(args, "query", None) == "audio-surround":
+        return audit_audio_surround(args)
     if getattr(args, "query", None) == "camera-local-pages":
         return audit_camera_local_pages(args)
     if getattr(args, "query", None) == "camera-source-review":
@@ -4604,6 +4721,44 @@ def keyboard_source_modules(text):
     return result
 
 
+def webpack_factory_snapshot(module):
+    """Capture parameter and statement nodes without renaming or rewriting them."""
+    import sys
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    raw = module["body"].encode("utf-8")
+    wrapper = b"({" + raw + b"});"
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(wrapper)
+    if tree.root_node.has_error:
+        raise ValueError("Complete original factory cannot be parsed as an object member")
+    objects = [node for expression in tree.root_node.named_children for node in expression.named_children
+               if node.type == "parenthesized_expression"]
+    if len(objects) != 1 or len(objects[0].named_children) != 1:
+        raise ValueError("Complete original factory wrapper is ambiguous")
+    members = objects[0].named_children[0].named_children
+    if len(members) != 1:
+        raise ValueError("Complete original factory is not one object member")
+    member = members[0]
+    factory = member.child_by_field_name("value") if member.type == "pair" else member
+    if factory.type not in {"function_expression", "arrow_function", "method_definition"}:
+        raise ValueError("Complete original factory is not callable")
+    parameters, body = factory.child_by_field_name("parameters"), factory.child_by_field_name("body")
+    if parameters is None or body is None or body.type != "statement_block":
+        raise ValueError("Complete original factory parameters or statements are unresolved")
+    base = module["byte_start"] - 2
+    statements = wrapper[body.start_byte + 1:body.end_byte - 1]
+    return {**module, "factory_node_type": factory.type,
+            "factory_sha256": hashlib.sha256(raw).hexdigest(),
+            "parameters": parameters.text.decode("utf-8"),
+            "parameters_byte_start": base + parameters.start_byte,
+            "parameters_byte_end": base + parameters.end_byte,
+            "statements_byte_start": base + body.start_byte + 1,
+            "statements_byte_end": base + body.end_byte - 1,
+            "statements_sha256": hashlib.sha256(statements).hexdigest(),
+            "statements": statements.decode("utf-8")}
+
+
 def audit_keyboard_artwork(args):
     """Current entry/manifest reachable artwork and physical layout projection."""
     import sys
@@ -6497,6 +6652,156 @@ def audit_audio_demo(args):
         "products": [row["product_id"] for row in rows], "owners": sum(len(row["complete_owners"]) for row in rows),
         "failures": [failure for row in rows for failure in row["failures"]],
         "media_preparation_verified": preparation_ready}), flush=True)
+
+
+def audit_audio_surround(args):
+    """Retain mounted Clio Surround pages and complete local MW task owners."""
+    import importlib.metadata
+    import sys
+    import evidence
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    if args.family != "audio":
+        raise ValueError("audio-surround requires the audio family")
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    products = args.product or [1392, 1442, 3942]
+    rows = []
+    for pid in products:
+        if pid not in {1392, 1442, 3942}:
+            raise ValueError("Product does not mount the audited Clio Surround branch")
+        row = {"product_id": pid, "scopes": [], "complete_owners": [], "styles": [],
+               "binding_resolutions": [], "failures": [], "unresolved_chains": [],
+               "target_execution": False, "runtime_acceptance": "unverified"}
+        seen = set()
+        for scope in (f"audio-{pid}-current", f"audio-mw-{pid}-current"):
+            acquisition = a.ROOT / f".analysis/inputs/frontend/{scope}/acquisition.json"
+            capture = a.ROOT / f".analysis/results/frontend/{scope}/analysis.json"
+            acquired, captured = json.loads(acquisition.read_bytes()), json.loads(capture.read_bytes())
+            if not acquired.get("source_current_during_acquisition") or not captured.get("input_bytes_unchanged"):
+                raise ValueError("Current Surround acquisition/capture is unverified: " + scope)
+            deployment = evidence.frontend_deployment_sources(acquired)
+            if deployment["failures"]:
+                raise ValueError("Current Surround deployment receipt differs: " + scope)
+            capture_inputs = {item["path"]: item for item in captured["original_inputs"]}
+            roots = {acquired["entry_url"]}
+            for manifest in ("webpackManifest.json", "asset-manifest.json", "manifest.json"):
+                roots.add(urllib.parse.urljoin(acquired["entry_url"], manifest))
+            reachable = set(roots)
+            while True:
+                following = reachable | {edge["to"] for edge in acquired.get("edges", []) if edge["from"] in reachable}
+                if following == reachable:
+                    break
+                reachable = following
+            sources = [original for original in acquired["files"] if original.get("path") and original["url"] in reachable]
+            if any(not valid(original) for original in sources):
+                raise ValueError("Current Surround original bytes differ: " + scope)
+            row["scopes"].append({"acquisition": identity(acquisition), "capture": identity(capture),
+                                  "original_inputs": sources, "closure_unresolved": acquired.get("unresolved", [])})
+            is_mw = "-mw-" in scope
+            for original in sources:
+                raw = (a.ROOT / original["path"]).read_bytes()
+                if original["path"].endswith(".js"):
+                    if capture_inputs.get(original["path"], {}).get("sha256") != original["sha256"]:
+                        raise ValueError("Current Surround capture input differs")
+                    anchors = ([b'taskMakerSetTHXCombo', b'taskRunnerSetTHXCombo',
+                                b'ON_SET_THX_COMBO_', b'thxComboModeAction', b'getComboMode',
+                                b'taskMakerTHXComboModeMemoryStorageCache', b'comboMode:{',
+                                b'onAudioDevice', b'setComboMode(', b'this.setComboMode=',
+                                b'this.setFrontEndpoint=', b'this.setComboDelay=', b'this.setFrontEqBand=',
+                                b'this.setRearEqBand=', b'this.playDelayTestSignal=', b'this.setFrontVolume=',
+                                b'this.setRearVolume=', b'this.setReplicate='] if is_mw else
+                               [b'className:"surround-container"', b'front-speaker-selector-popup',
+                                b'time-alignment-container', b'EqualizerAdjustments_',
+                                b'replicate-front-stereo ', b'demo-play-wrapper',
+                                b'setComboMode:', b'setComboDelay:', b'setComboDelayTestSignal:',
+                                b'setComboReplicateFrontStereo:', b'setComboSpeakerVolume:',
+                                b'setFrontSpeaker:', b'setSpeakerEqualizer:',
+                                b'comboModeReducer:', b'frontSpeakerId:', b'floatingVideoReducer:'])
+                    offsets = [(anchor, match.start()) for anchor in anchors for match in re.finditer(re.escape(anchor), raw)]
+                    if not offsets:
+                        continue
+                    tree = parser.parse(raw)
+                    if tree.root_node.has_error:
+                        row["failures"].append({"scope": scope, "original": original["path"], "reason": "AST parse errors"})
+                        continue
+                    def retain_node(node, anchor, offset, role="source_owner"):
+                        key = (original["sha256"], node.start_byte, node.end_byte)
+                        if key not in seen:
+                            seen.add(key)
+                            body = raw[node.start_byte:node.end_byte]
+                            row["complete_owners"].append({"scope": scope, "original": original,
+                                "byte_start": node.start_byte, "byte_end": node.end_byte,
+                                "syntax": node.type, "body_sha256": hashlib.sha256(body).hexdigest(),
+                                "body": body.decode("utf-8"), "anchors": [], "roles": []})
+                        owner = next(item for item in row["complete_owners"] if item["original"]["sha256"] == key[0]
+                                     and item["byte_start"] == key[1] and item["byte_end"] == key[2])
+                        reference = {"anchor": anchor.decode("utf-8"), "byte_offset": offset}
+                        if reference not in owner["anchors"]:
+                            owner["anchors"].append(reference)
+                        if role not in owner["roles"]:
+                            owner["roles"].append(role)
+                    for anchor, offset in offsets:
+                        node = tree.root_node.descendant_for_byte_range(offset, offset + len(anchor))
+                        ancestors = []
+                        while node is not None:
+                            ancestors.append(node)
+                            node = node.parent
+                        callable_types = {"function_declaration", "function_expression", "arrow_function", "method_definition"}
+                        owner = next((node for node in ancestors if node.type in callable_types and node.end_byte-node.start_byte < 300000), None)
+                        if owner is not None:
+                            # A nested generator/callback depends on its enclosing
+                            # function's arguments; retain every finite caller.
+                            for candidate in ancestors:
+                                if candidate.type in callable_types | {"class_declaration", "class"} and candidate.end_byte-candidate.start_byte < 300000:
+                                    retain_node(candidate, anchor, offset)
+                        else:
+                            owner = next((node for node in ancestors if node.type in {"variable_declarator", "pair"}
+                                          and node.end_byte-node.start_byte < 300000), None)
+                            if owner is None:
+                                row["unresolved_chains"].append({"original": original["path"], "anchor": anchor.decode(), "byte_offset": offset})
+                            else:
+                                retain_node(owner, anchor, offset)
+                        if not is_mw and anchor in {b'setComboMode:', b'setComboDelay:', b'setComboDelayTestSignal:',
+                                b'setComboReplicateFrontStereo:', b'setComboSpeakerVolume:', b'setFrontSpeaker:',
+                                b'setSpeakerEqualizer:', b'comboModeReducer:', b'floatingVideoReducer:'}:
+                            match = re.match(re.escape(anchor) + rb'(?:\(\)=>)?([A-Za-z_$][\w$]*)', raw[offset:])
+                            if match:
+                                resolved = evidence.javascript_binding(raw, tree, match[1].decode(), offset+match.start(1))
+                                row["binding_resolutions"].append({"original": original, "anchor": anchor.decode(), **resolved})
+                elif original["path"].endswith(".css") and not is_mw:
+                    anchors = [b'.surround-container', b'.front-speaker-selector-popup', b'.time-alignment',
+                               b'.alignment-', b'.EqualizerAdjustments_', b'.replicate-front-stereo',
+                               b'.surrounded-containerV2', b'.demo-play-wrapper', b'.speaker-',
+                               b'.VolumeMixer_', b'.vertical-slider__', b'.sliderChart__']
+                    for anchor in anchors:
+                        for match in re.finditer(re.escape(anchor), raw):
+                            left = max(raw.rfind(b'}', 0, match.start()), raw.rfind(b'{', 0, match.start())) + 1
+                            right = raw.find(b'}', match.end())
+                            if right < 0:
+                                continue
+                            key = (original["sha256"], left, right+1)
+                            if key in seen:
+                                continue
+                            seen.add(key)
+                            body = raw[left:right+1]
+                            row["styles"].append({"original": original, "byte_start": left, "byte_end": right+1,
+                                "body_sha256": hashlib.sha256(body).hexdigest(), "body": body.decode("utf-8")})
+            if any(not valid(original) for original in sources):
+                raise ValueError("Surround input changed during static query")
+        for required in (b'demo-play-wrapper', b'time-alignment-container', b'taskRunnerSetTHXComboMode'):
+            if not any(required.decode() in owner["body"] for owner in row["complete_owners"]):
+                row["failures"].append({"required_owner": required.decode(), "reason": "Mounted source chain is absent"})
+        rows.append(row)
+    result = {"schema_version": 1, "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+              "static_parser": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
+              "products": rows, "target_execution": False, "runtime_acceptance": "unverified"}
+    destination = a.ROOT / ".analysis/results/frontend/audio-surround-audit.json"
+    a.save(destination, result)
+    print(json.dumps({"receipt": a.rel(destination), "products": products,
+        "complete_owners": sum(len(row["complete_owners"]) for row in rows),
+        "failures": [failure for row in rows for failure in row["failures"]],
+        "unresolved": sum(len(row["unresolved_chains"]) for row in rows)}), flush=True)
 
 
 def prepare_audio_demo_icons(rows):
@@ -10040,6 +10345,240 @@ def gamepad_input_ui(pid):
     return result
 
 
+def audit_gamepad_lighting(args):
+    """Retain current mounted gates, complete lighting owners and native ABI.
+
+    Selection is a reproducible static query. Available originals and failed
+    acquisition/indirect branches remain separate from implementation/runtime.
+    """
+    import importlib.metadata
+    import sys
+    from collections import defaultdict, deque
+    sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    if args.family != "gamepad" or args.function != "main":
+        raise ValueError("gamepad-lighting requires current gamepad main captures")
+    selected = sorted(set(args.product or candidates(a.builtin_data_path(
+        "razer-pages", FAMILY_CANDIDATES["gamepad"]))))
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    module_bodies, callable_bodies, checked = {}, {}, {}
+    middleware_ids = {
+        70784: "controller_hardware_effect_read_write_and_initialization",
+        65430: "controller_brightness_protocol", 50207: "sage_extended_static_adapter",
+        78786: "sage_pc_frame_adapter", 98773: "controller_parent_adapter",
+        87969: "protocol25_parent", 41863: "feature_transport_lifecycle",
+        68560: "protocol_constants", 87887: "device_factory_and_identity",
+        69427: "product_definition_and_defaults", 93305: "feature_configuration",
+        47973: "feature_injector", 84910: "hardware_notification_consumers",
+        21445: "controller_effect_queue_and_profile_persistence",
+        97901: "controller_brightness_queue", 77846: "local_storage_boundary",
+        52448: "profile_model", 30525: "local_task_makers",
+        85191: "local_task_runners", 90012: "setup_profile_and_shutdown_lifecycle",
+    }
+    ui_ids = {22127: "product_lighting_options_and_defaults", 13254: "quick_effect_defaults"}
+    engine_ids = {2198: "native_ffi_owner_and_frame_dispatch", 2578: "engine_effect_facade",
+        6394: "ui_to_quick_effect_converter", 8905: "quick_effect_parameters_and_lifecycle",
+        4921: "protocol25_software_frame_parent"}
+    anchors = {
+        "source_controller_mount": b'.useFeature("controllerDevice","config",',
+        "static_palette_editor": b'useOm',
+        "source_optimistic_effect_reducer": b'ON_SET_EFFECTS',
+        "source_quick_effect_cache": b'cachedEffectSettings',
+        "source_software_apply": b'applyCustomQuickEffect',
+        "source_software_destroy": b'destroyDeviceLightingEngine',
+        "source_native_input_bridge": b'simulateInputEvent',
+        "source_software_frame_writer": b'setChromaFrameLightingEngine',
+        "source_software_exit": b'quickEffectOnExit',
+    }
+
+    def read(original):
+        name = original["path"]
+        if not name.startswith(".analysis/inputs/") or not valid(original):
+            raise ValueError("Lighting original bytes differ: " + name)
+        checked[name] = {key: original[key] for key in ("path", "bytes", "sha256")}
+        return (a.ROOT / name).read_bytes()
+
+    def keep(raw, node, store):
+        body = raw[node.start_byte:node.end_byte]
+        digest = hashlib.sha256(body).hexdigest()
+        store[digest] = {"bytes": len(body), "sha256": digest,
+                         "complete_body": body.decode("utf-8")}
+        return {"syntax": node.type, "byte_start": node.start_byte,
+                "byte_end": node.end_byte, "body_sha256": digest}
+
+    def source_set(name, kind):
+        receipt_path = a.ROOT / ".analysis/inputs/frontend" / name / "acquisition.json"
+        acquired = json.loads(receipt_path.read_bytes())
+        if acquired.get("source_current_during_acquisition") is not True:
+            raise ValueError("Current lighting deployment stability receipt is absent: " + name)
+        originals = [item for item in acquired["files"] if item.get("path")]
+        files = {item["url"]: item for item in originals}
+        root = files[acquired["entry_url"]]
+        html = a.References()
+        html.feed(read(root).decode("utf-8"))
+        mounted = {urllib.parse.urljoin(acquired["entry_url"], literal)
+                   for literal, reference_kind in html.refs if reference_kind == "html:script:src"}
+        graph = defaultdict(set)
+        for edge in acquired.get("edges", []):
+            graph[edge["from"]].add(edge["to"])
+        roots = {acquired["entry_url"]}
+        roots.update(item["url"] for item in originals
+                     if Path(item["path"]).name in {"manifest.json", "asset-manifest.json"})
+        reachable, pending = set(roots), deque(roots)
+        while pending:
+            for url in graph[pending.popleft()]:
+                if url not in reachable:
+                    reachable.add(url); pending.append(url)
+        result = {"name": name, "acquisition": identity(receipt_path),
+            "source_current_during_acquisition": True, "stability": acquired.get("stability", []),
+            "declared_references_fetched": acquired.get("declared_references_fetched"),
+            "unresolved_acquisition": acquired.get("unresolved", []),
+            "failed_acquisition": [item for item in acquired["files"] if not item.get("path")],
+            "complete_original_inputs": originals, "manifests": [], "source_css": [],
+            "mounted_scripts": [], "complete_modules": [], "complete_callables": [],
+            "adapter_classes": [], "rz_device_assignments": []}
+        ids = middleware_ids if kind == "middleware" else engine_ids if kind == "engine" else ui_ids
+        for original in originals:
+            raw = read(original)
+            path = original["path"]
+            if Path(path).name in {"manifest.json", "asset-manifest.json"} or "DeviceManifest_4115_" in path:
+                result["manifests"].append({"original": original, "complete_manifest": json.loads(raw)})
+            if original["url"] in mounted:
+                result["mounted_scripts"].append(original)
+            if path.endswith(".css") and original["url"] in reachable:
+                result["source_css"].append({"original": original, "complete_body": raw.decode("utf-8")})
+            if not path.endswith(".js") or original["url"] not in reachable:
+                continue
+            if not any(anchor in raw for anchor in anchors.values()) and not any(
+                    re.search(rb'(?<![\w$])' + str(mid).encode() + rb'(?=[(:])', raw) for mid in ids):
+                continue
+            modules = keyboard_source_modules(raw.decode("utf-8"))
+            tree = parser.parse(raw)
+            if tree.root_node.has_error:
+                raise ValueError("Current lighting JavaScript grammar failed: " + path)
+            selected_modules = []
+            for module in modules:
+                body = module["body"].encode("utf-8")
+                roles = [role for role, anchor in anchors.items() if anchor in body]
+                if module["module_id"] in ids:
+                    roles.append(ids[module["module_id"]])
+                if not roles:
+                    continue
+                if not isinstance(module["module_id"], int) and any(
+                        module["byte_start"] < other["byte_start"] < other["byte_end"] < module["byte_end"]
+                        and any(anchor in other["body"].encode("utf-8") for anchor in anchors.values())
+                        for other in modules):
+                    continue
+                node = tree.root_node.descendant_for_byte_range(module["byte_start"], module["byte_end"] - 1)
+                while node is not None and (node.start_byte != module["byte_start"] or node.end_byte != module["byte_end"]):
+                    node = node.parent
+                if node is None:
+                    raise ValueError("Lighting complete module boundary differs")
+                reference = {"original": original, "module_id": module["module_id"],
+                             "roles": sorted(set(roles)), **keep(raw, node, module_bodies)}
+                result["complete_modules"].append(reference)
+                selected_modules.append((module, node))
+            seen_callables = set()
+            for module, node in selected_modules:
+                pending_nodes = [node]
+                while pending_nodes:
+                    current = pending_nodes.pop()
+                    pending_nodes.extend(reversed(current.named_children))
+                    if current.type in {"class", "class_declaration"} and module["module_id"] in {50207, 78786, 98773, 87969, 41863}:
+                        class_body = current.child_by_field_name("body")
+                        result["adapter_classes"].append({"module_id": module["module_id"],
+                            "original": original, **keep(raw, current, callable_bodies),
+                            "methods": [method.child_by_field_name("name").text.decode("utf-8")
+                                for method in class_body.named_children if method.type == "method_definition"],
+                            "heritage": [child.text.decode("utf-8") for child in current.named_children
+                                         if child.type == "class_heritage"]})
+                    if current.type not in {"function_declaration", "function_expression", "arrow_function", "method_definition"}:
+                        continue
+                    roles = [role for role, anchor in anchors.items() if anchor in current.text]
+                    if roles and current.start_byte not in seen_callables:
+                        seen_callables.add(current.start_byte)
+                        result["complete_callables"].append({"original": original,
+                            "module_id": module["module_id"], "roles": roles,
+                            **keep(raw, current, callable_bodies)})
+            for match in re.finditer(rb'\.rzDevice\s*=(?!=)', raw):
+                owner = tree.root_node.descendant_for_byte_range(match.start(), match.end() - 1)
+                while owner is not None and owner.type not in {"variable_declarator", "function_declaration", "method_definition", "arrow_function", "function_expression"}:
+                    owner = owner.parent
+                if owner is not None:
+                    result["rz_device_assignments"].append({"original": original,
+                        "reference_byte": match.start(), **keep(raw, owner, callable_bodies)})
+        if not result["mounted_scripts"] or not valid(result["acquisition"]):
+            raise ValueError("Lighting mounted source or acquisition receipt changed")
+        return result
+
+    products = []
+    for pid in selected:
+        row = {"product_id": pid, "source_sets": [], "failures": [], "unresolved_chains": []}
+        products.append(row)
+        for kind, name in [("ui", f"gamepad-{pid}-current"), ("middleware", f"gamepad-mw-{pid}-current")]:
+            try:
+                row["source_sets"].append(source_set(name, kind))
+            except (KeyError, ValueError, OSError, IndexError, TypeError) as error:
+                row["failures"].append({"source_set": name, "error": str(error)})
+        if pid == 2676:
+            row["source_review"] = {
+                "mount": "Current bootstrap sets supportsLighting=false and rzDevice25SagePC with reportId10 and30ms waits; UI mount must be assessed independently of shared helper presence",
+                "class_branch": "SagePC78786 inherits98773, not sibling Sage50207; only sibling Sage declares extended-static methods",
+                "notification_branch": "84910 dispatches non-chroma notifications through the shared handler;70784 still contains extended-static references. No guessed sibling protocol is substituted for that current-source discrepancy"}
+            row["unresolved_chains"].append("Current2676 shared notification/OBM calls into extended-static helper require full indirect dispatch resolution despite the unmounted Lighting page; presence of helper bodies is not a capability proof")
+        print(f"gamepad-lighting {pid}: sets={len(row['source_sets'])} failures={len(row['failures'])}", flush=True)
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "analyzers": {name: importlib.metadata.version(name) for name in ("tree-sitter", "tree-sitter-javascript")},
+        "products": products, "complete_module_bodies": module_bodies,
+        "complete_callable_bodies": callable_bodies, "target_execution": False,
+        "runtime_acceptance": "unverified", "failures": [],
+        "source_semantics": {
+            "hardware": "2636 Sage uses a second observedGET when effectId13; observed index>8 selects custom mode. Optimistic profile edits are distinct from acknowledged writes.2636/4115 brightness compares a realGET and uses source floor/ceil conversion",
+            "software": "4115 uses current RzLightingEngineApi at25fps,8x10 perimeter mapped to1x32,source BGR conversion/no-color sentinel and fractional wave speed; frameOUT chunks25+7 have noIN/deviceACK",
+            "lifecycle": "Retained engine/device/effect handles, generation-aware frame discard, source input bridge, suspend without device destruction, exit spectrum restore and all native releases are distinct operations",
+            "verification": "Rust/static/simulated checks and real service/device/UI acceptance remain separate; source acquisition and selected bodies do not establish whole-page completion"}}
+    try:
+        result["lighting_engine"] = source_set("synapse-lighting-engine-current", "engine")
+        native_path = a.ROOT / ".analysis/inputs/host-current/blobs/cd9fc2a61ff920b9b73e1f5e27632020e2f8586f443e426a875ad3b042b714fa/RzLightingEngineApi_v4.0.55.0.dll"
+        result["native_engine"] = verify_native_functions(identity(native_path), {
+            "0x33490": "json_api_export", "0x33600": "json_parse_dispatch_and_COM_initialize",
+            "0x33b60": "json_no_return_export", "0x1fd90": "typed_action_dispatch_and_status",
+            "0x20300": "create_device", "0x20c50": "destroy_device", "0x20e10": "create_engine",
+            "0x21190": "destroy_engine", "0x21270": "add_device", "0x21ac0": "add_effect_all_branches",
+            "0x24330": "remove_effect", "0x24cd0": "enable_disable", "0x27d60": "native_input_event",
+            "0x2a5c0": "terminate_all_handles", "0x32d00": "operating_mode",
+            "0x32d90": "poll_owned_event_batch", "0x4980": "frame_geometry_and_RGB_event_serialization",
+            "0x32cb0": "frame_notification_dispatch", "0x33cf0": "version_owned_allocation",
+            "0x33300": "json_response_owned_allocation", "0x153480": "response_allocator_thunk",
+            "0x16b220": "response_HeapAlloc", "0x14d5c0": "version_calloc_thunk",
+            "0x1717d0": "version_zeroed_HeapAlloc", "0x340c0": "returned_allocation_free_export",
+            "0x14fba0": "free_thunk", "0x16b1c0": "returned_allocation_HeapFree",
+            "0xb730": "native_number_conversion_preserves_vendor_fraction_truncation",
+            "0x3f950": "DLL_initializer_registers_COM_uninitialize_and_global_cleanup",
+            "0x32230": "DLL_unload_COM_uninitialize", "0x32320": "DLL_unload_engine_cleanup",
+            "0x323c0": "DLL_unload_event_queue_cleanup"})
+    except (KeyError, ValueError, OSError, IndexError, TypeError) as error:
+        result["failures"].append({"source_set": "software_engine", "error": str(error)})
+    result["complete_original_inputs_checked"] = list(checked.values())
+    if not all(valid(original) for original in checked.values()):
+        raise ValueError("Lighting original changed during static query")
+    report_path = a.ROOT / ".analysis/results/frontend/gamepad-main-audit.json"
+    report = json.loads(report_path.read_bytes()) if report_path.is_file() else {"schema_version": 1}
+    old_lighting = report.get("gamepad_lighting", {})
+    previous = {row["product_id"]: row for row in old_lighting.get("products", [])}
+    previous.update({row["product_id"]: row for row in products})
+    result["products"] = [previous[pid] for pid in sorted(previous)]
+    result["complete_module_bodies"] = {**old_lighting.get("complete_module_bodies", {}), **module_bodies}
+    result["complete_callable_bodies"] = {**old_lighting.get("complete_callable_bodies", {}), **callable_bodies}
+    report["gamepad_lighting"] = result
+    a.save(report_path, report)
+    print(json.dumps({"receipt": a.rel(report_path), "query": "gamepad_lighting", "products": len(products),
+        "complete_modules": len(module_bodies), "complete_callables": len(callable_bodies),
+        "failures": len(result["failures"]) + sum(len(row["failures"]) for row in products),
+        "target_execution": False, "runtime_acceptance": "unverified"}), flush=True)
+
+
 def audit_gamepad_input(args):
     """One retained query for all nine source input/notification branches."""
     import importlib.metadata
@@ -11350,7 +11889,8 @@ def registry_product_record(pid, name, category, editions, navigations, previous
             previous_page = next((row for row in (previous_navigation or {}).get("pages", [])
                 if row["kind"] == page["kind"]), None)
             page_key = previous_page["key"] if previous_page else key + "-" + str(page["offset"])
-            nav["pages"].append({"key": page_key, "kind": page["kind"], "role": role, "help_selector": page["offset"]})
+            selector = previous_page["help_selector"] if previous_page else page["offset"] + int(role == "Help")
+            nav["pages"].append({"key": page_key, "kind": page["kind"], "role": role, "help_selector": selector})
         product["navigations"].append(nav)
     return product
 
@@ -11457,6 +11997,8 @@ def audit_registry_identity(prepare=False, products=None):
                 previous = header["navigations"] if header else []
                 row["preserved_navigation_ids"] = previous
                 edits[pid] = registry_product_record(pid, name[1], category[1], edition_ids, navigations, previous)
+                row["runtime_directory_projection"] = edits[pid]
+                row["existing_directory_matches_projection"] = edits[pid] == header
         except (OSError, ValueError, KeyError) as error:
             report["failures"].append({"product_id": pid, "error": str(error)})
     if prepare and not report["failures"]:
@@ -14487,7 +15029,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "mapping-engine", "audio-firmware-selector", "audio-seiren-eq", "audio-leviathan", "audio-demo", "camera-local-pages", "camera-source-review"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh mouse-customize or mouse-dpi-backend evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

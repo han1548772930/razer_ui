@@ -219,7 +219,7 @@ impl RenderOnce for Marker {
             })
             .child(img(self.asset).size_full())
             .child(
-                deferred(header::tip_position(
+                razer_assets::deferred_resource(header::tip_position(
                     self.position,
                     point(px(0.), px(0.)),
                     false,

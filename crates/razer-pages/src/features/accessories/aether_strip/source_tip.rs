@@ -174,7 +174,7 @@ impl RenderOnce for TipCommand {
             })
             .child(button)
             .child(
-                deferred(TipLayer {
+                razer_assets::deferred_resource(TipLayer {
                     id: self.id,
                     label: self.label,
                     bounds,
@@ -305,7 +305,7 @@ impl RenderOnce for SourceTipItem {
             })
             .child(button)
             .child(
-                deferred(TipLayer {
+                razer_assets::deferred_resource(TipLayer {
                     id: self.id,
                     label: self.label,
                     bounds,
@@ -383,7 +383,7 @@ impl RenderOnce for SourceTipWrap {
             })
             .child(self.child)
             .child(
-                deferred(TipLayer {
+                razer_assets::deferred_resource(TipLayer {
                     id: self.id,
                     label: self.label,
                     bounds,

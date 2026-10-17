@@ -563,7 +563,7 @@ impl AudioProductWorkspace {
         row: &Product,
         cx: &Context<Self>,
     ) -> AnyElement {
-        deferred(
+        razer_assets::deferred_resource(
             div()
                 .absolute()
                 .inset_0()

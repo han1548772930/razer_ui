@@ -633,7 +633,7 @@ impl DeviceWorkspace {
                             }
                         }
                     })
-                    .content(move |_, window, cx| {
+                    .content(move |_, window, cx| razer_assets::resource_scope({
                         let popup = cx.entity().downgrade();
                         if let Some(confirmation) = confirmation {
                             // Source bP keeps the reset/delete nodes mounted
@@ -651,7 +651,7 @@ impl DeviceWorkspace {
                             )
                             .sample(window, cx)
                             .progress;
-                            return div()
+                            return razer_assets::resource_scope(div()
                                 .opacity(opacity)
                                 .child(profile_confirmation(
                                     confirmation,
@@ -661,7 +661,7 @@ impl DeviceWorkspace {
                                     confirmation_focus,
                                     cx,
                                 ))
-                                .into_any_element();
+                                .into_any_element());
                         }
                         list.update(cx, |list, _| list.delegate_mut().popup = Some(popup));
                         // List sections share footer geometry. Clip its last separator,
@@ -679,7 +679,7 @@ impl DeviceWorkspace {
                             .overflow_hidden()
                             .child(List::new(&list).p_0().h(surface::css(menu_height)))
                             .into_any_element()
-                    }),
+                    })),
             )
             .when(has_obm, |bar| {
                 bar.child(onboard_memory::OnboardMemoryControl::new(obm_workspace))

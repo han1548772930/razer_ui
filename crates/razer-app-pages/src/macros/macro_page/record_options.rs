@@ -726,7 +726,7 @@ impl MacroPage {
             )
             .when(hovered, |v| {
                 v.child(
-                    deferred(super::record_help::RecordHelp {
+                    razer_assets::deferred_resource(super::record_help::RecordHelp {
                         anchor,
                         upward: index == 4,
                         content: div()

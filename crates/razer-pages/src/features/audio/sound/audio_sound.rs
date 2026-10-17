@@ -849,7 +849,7 @@ impl AudioProductWorkspace {
                     )
                     .when(self.sound.thx_help_hovered, |body| {
                         body.child(
-                            deferred(
+                            razer_assets::deferred_resource(
                                 div()
                                     .absolute()
                                     .top(surface::css(24.))

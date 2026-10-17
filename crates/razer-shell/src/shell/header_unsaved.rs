@@ -382,7 +382,7 @@ impl Render for UnsavedProfiles {
             )
             .when(open || self.rendered, |root| {
                 root.child(
-                    deferred(
+                    razer_assets::deferred_resource(
                         Positioner::corner(Anchor::TopRight, anchor)
                             .margin(px(8.))
                             .when(interactive, |positioner| positioner.occlude())

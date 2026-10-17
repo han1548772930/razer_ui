@@ -427,7 +427,7 @@ impl SourceHelpOwner {
             );
         let size = window.viewport_size();
         let host_tab = window.rem_size() / 16. * 42.;
-        deferred(
+        razer_assets::deferred_resource(
             anchored()
                 .anchor(Anchor::TopLeft)
                 .position(point(px(0.), host_tab))

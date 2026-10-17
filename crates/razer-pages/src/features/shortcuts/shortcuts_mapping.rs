@@ -388,7 +388,7 @@ impl Shortcuts {
             } else {
                 296.
             };
-        deferred(ShortcutMappingPosition {
+        razer_assets::deferred_resource(ShortcutMappingPosition {
             origin: point(
                 window.rem_size() * (left / 16.),
                 window.rem_size() * (106. / 16.),

@@ -192,7 +192,7 @@ impl RenderOnce for Index {
                     .child(part)
             }))
             .child(
-                deferred(Layer::new(
+                razer_assets::deferred_resource(Layer::new(
                     LayerKind::Index(trigger),
                     tooltip.into_any_element(),
                 ))

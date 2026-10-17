@@ -208,7 +208,7 @@ pub fn nav_overflow(
                 cx.notify();
             })
         })
-        .content(move |_, _, cx| {
+        .content(move |_, _, cx| razer_assets::resource_scope({
             let popup = cx.entity().downgrade();
             gpui_kit::component::v_flex()
                 .bg(rgb(0x000000))
@@ -244,7 +244,7 @@ pub fn nav_overflow(
                         })
                 }))
                 .into_any_element()
-        })
+        }))
         .into_any_element()
 }
 

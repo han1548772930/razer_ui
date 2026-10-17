@@ -46,6 +46,7 @@ python tools/workspace.py verify-resources
 python tools/workspace.py verify-runtime-assets
 python tools/workspace.py prepare-static-python
 python tools/workspace.py prepare-media-analyzer
+python tools/workspace.py prepare-native-cursors --sources INPUTJSON --group 102
 python tools/workspace.py prepare-emoji-search --check
 python tools/workspace.py prepare-resource-database --check
 python tools/workspace.py prepare-typed-data --check
@@ -66,6 +67,10 @@ python tools/workspace.py validate-rust --suite asset-pack-core
 `prepare-media-analyzer` 按当前 Python ABI 恢复固定 PyAV 16.0.1 的官方 PyPI wheel，逐项验证发布长度、SHA-256、完整 RECORD 清单和成员字节后写入 `tools/analyzers/media-python/`。获取收据保存 PyPI 原始元数据、wheel、全部提取文件及实际 FFmpeg 库版本；分析器用于静态解码／准备已核验的媒体，不属于产品运行依赖，也不执行厂商代码。
 
 `prepare-resource-database` 生成唯一的 `assets/synapse/resource-catalog.sqlite3`；`prepare-emoji-search` 和 `prepare-runtime-assets` 使用同一实现。四份原始 JS 核验获取收据、实际字节和完整搜索字符串，数据库保存 1,857 条唯一记录与 1,936 项原始顺序。分组值、变体和排除列表分别去重，Mapping、无排除项的 Mouse 分支和 Macro 保留各自的标签、分组顺序、tab 目标及系统版本规则。工具逐字段回读所有表情与完整资源索引，记录 SQLite 实际版本、输入／输出 SHA；`--check` 校验同一数据库。旧重复词表和生成 Rust 资源索引不再保留。新 JS 来源由 `prepare-emoji-search --source PROJECTREL` 重复登记；完整 callable owner、解析器版本和等价性记录位于 `.analysis/results/typed-data.json`。产品不读取分析目录或远程词表。
+
+schema 3 的 `ui_product`、`ui_product_category`、`ui_product_edition`、`ui_navigation`、`ui_page` 保存完整产品目录，包含 331 个产品、365 条导航分支及 1,459 个页面。维护输入为 `.analysis/inputs/typed-tables/razer-catalog/product_registry.json`，生成时检查全字段、顺序、稳定身份、primary／连接分支和 333 个 Help 展示记录选择键并完整回读；`audit-registry-identity --product PID --prepare` 依据当前原始挂载链更新同一维护源与数据库，保留原有导航／页面身份和展示记录选择键。启动在窗口创建前保留一次有类型的目录快照，未使用的源码路径、哈希、组件表达式与分析状态仅保存在 `.analysis/results/registry-source-evidence.json`，不进入运行时目录。迁移等价性、单独的 Help 连接修复和当前源码覆盖分别记录。
+
+`prepare-native-cursors --sources INPUTJSON --group 102` 接受包含 `path` 和 `acquisition` 的 JSON 列表，`--sources -` 从 stdin 读取。它核验原始 PE／获取收据后静态解析 `RT_GROUP_CURSOR` 与 `RT_CURSOR`，校验 RVA、资源边界、尺寸、热点与 DIB／AND 数据，重建完整 CUR；不加载 DLL。原件、解析范围、实际 SHA 和八帧光标位于 `.analysis/inputs/native-resources/acquisition.json`；输出通过统一资源映射与固定版本按需交付。PE 资源恢复不代替原生函数分析或真实取屏色验收。
 
 四份表的维护输入由现有 Rust 构造数据恢复生产字段投影，`tools/typed-data.json` 的 `maintenance_recovery` 保留原文件字节摘要、缺失维护输入的旧摘要和未恢复的证据字段。该恢复不代表找回原始证据 JSON；搜索字符串另与实际原始 JS 全序列比较，其他字段通过迁移前后 Rust token 等价性核对。原件部署稳定性、完整来源闭包和运行验收仍分别判断。
 
@@ -107,7 +112,7 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `refresh-gaps` 对 bootstrap／metadata 复核分别建立 owner，核对收据索引字节、官方 HTTP 200、两份实际样本及稳定摘要，保留未完成、失败及与原 acquisition 的部署差异；旧主收据不能覆盖新的复核失败。
 
-`acquire-family` 不截断候选产品 ID，UI 与 middleware 分别保存原件及覆盖矩阵；获取识别 asset-manifest 和 middleware 的 webpackManifest。`--stage repair` 保留上次失败记录并重试非 404 下载及部署稳定性失败；`--stage analyze` 仅在原件与全部产物的当前字节吻合时复用结果，最多同时运行两个恢复任务。`--stage native` 根据已验证的官方 middleware manifest 获取全部声明资源，并合并已保留的其他产品端点；只校验文件大小、SHA、integrity 与来源，不运行下载的安装器或库。执行完毕、图验证通过、语义审计和产品实现验收分别记录。
+`acquire-family` 不截断候选产品 ID，UI 与 middleware 分别保存原件及覆盖矩阵；获取识别 asset-manifest 和 middleware 的 webpackManifest。`--stage repair` 保留上次失败记录并重试非 404 下载及部署稳定性失败；加 `--retry-declared-missing` 还会重取实际源码声明的非 map 404，未声明的探测和缺失 source map 分别保留，不扩成猜测下载。`--stage analyze` 仅在原件与全部产物的当前字节吻合时复用结果，最多同时运行两个恢复任务。`--stage native` 根据已验证的官方 middleware manifest 获取全部声明资源，并合并已保留的其他产品端点；只校验文件大小、SHA、integrity 与来源，不运行下载的安装器或库。执行完毕、图验证通过、语义审计和产品实现验收分别记录。
 
 `--family` 支持 mouse、keyboard、audio、gamepad、system、accessories 及 all；`--layer both` 同时处理 UI／MW。`--product` 可重复指定单个产品族中的 ID，其余产品的矩阵行保留。批量任务共用已核验的同 URL 资源，并将完整获取和静态恢复分别限制为三项和两项并发；不会随产品族数量乘倍。候选表仅提供端点 ID，不能作为协议或页面证据。矩阵中的获取运行结束、字节核验、声明资源获取、部署稳定性与实现验收分别计数。
 
@@ -115,13 +120,15 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 拥有完整收尾流程的调用方可向 `acquire-family` 传 `--no-refresh-gaps`，串行完成矩阵复核、缺失／过期 capture 补齐和源码查询后再统一 `refresh-gaps`；默认行为不变。矩阵复核从实际获取收据和输入／产物字节重新计算状态，不按旧计数跳过刚补获的产品或依赖。
 
+`--stage report` 将缺失的源码声明 source map、未声明 manifest 探测、实际声明的非 map 文件和未解析 chunk loader 分开计入完整矩阵与 `current_sources.devices.reference_closure`。Wakaru 无法安全规范化的 factory 会在既有 `analysis.json` 中补充完整原始 AST、参数、声明体边界、实际字节 SHA、转换器失败和 provenance 对照；保留原始参数复用及自由变量，不把原件可读等同于转换或语义审计通过。
+
 `shared-page-layout` 查询按 HTML／manifest 可达关系核对原件，保留完整 BodyWidgets、WidgetCol、WidgetContainer、CheckItem AST owner、CSS／media 规则和解析器版本，并复用六族当前完整 capture。缺少完整 capture 时仍从已核验的当前原件提取完整 AST，但保留 capture 失败，不将查询标为完整成功。默认使用该族完整 locator 并集，不限已连接设备；带 `--product` 可定向补查。查询失败、源码恢复器失败和缺失资源分别保留，不能把共享容器核对当作整页实现或窗口验收。
 
 `inventory` 盘点目录；`verify` 核对输入字节、完整前端／原生产物 SHA、函数 RVA／原始 bytes、Markdown 链接、Rust 嵌入文件及已有测试记录对应的代码身份。`refresh-gaps` 从现有获取／分析记录重建缺项关联，保留每条图校验问题，不重跑分析器；获取与分析分别归属，补资源不会覆盖已有分析问题。`validate-rust` 执行纯／模拟 library 测试及 workspace 全目标静态检查。`clean` 仅删除 `.work/`，分析器会话仍活动时拒绝清理。
 
 前端恢复使用固定 Wakaru 1.14.0，IDA 路径为 `E:/IDA`（9.1）或 `D:/ida/IDA Pro 8.3`（8.3）。每份捕获核验实际工具版本、输入和产物字节，保留反编译失败。全量提取需保存所有输入、完整函数体、模块／资源引用和失败项；调用、状态、持久化与清理语义逐链核对。结果存 `.analysis/results/`，缺项集中于同一清单。详见 [工具说明](../docs/re/tooling.md)。
 
-`prepare-resources` 核验获取收据和原始 bytes 后准备实际媒体文件并更新统一资源映射，支持静态 AVIF 转换、受限字面量 React SVG 和已实现的 SMIL 动画采样。`prepare-dashboard-images` 按当前完整 Dashboard 图片调用方，对全部产品 ID 及版本／布局／腕托／鼠标垫请求进行获取和稳定性核验；参数 locator 不提供图片或当前语义。资源失败保持失败，不能生成虚假替代图。全族 scope 合并 registry 与产品候选共 332 个唯一 PID；`--stage report` 从实际获取／probe 收据恢复矩阵字段，分别核对原件与分析产物，不依赖缺失的旧汇总字段。
+`prepare-resources` 核验获取收据和原始 bytes 后准备实际媒体文件并更新统一资源映射，支持静态 AVIF 转换、受限字面量 React SVG 和已实现的 SMIL 动画采样。请求带 `reuse_locked_alias` 时，核验原件与已有固定资源的长度和 SHA 后只增加 alias，不恢复媒体或改变固定版本；显式 `source_lf_to_prepared_crlf: true` 只接受不含 CR 的原件，并验证可逆换行转换后的全部 bytes。alias 复用批次与媒体生成批次分别提交，来源与转换记录进入既有 `typed-data.json`。`prepare-dashboard-images` 按当前完整 Dashboard 图片调用方，对全部产品 ID 及版本／布局／腕托／鼠标垫请求进行获取和稳定性核验；参数 locator 不提供图片或当前语义。资源失败保持失败，不能生成虚假替代图。全族 scope 合并 registry 与产品候选共 332 个唯一 PID；`--stage report` 从实际获取／probe 收据恢复矩阵字段，分别核对原件与分析产物，不依赖缺失的旧汇总字段。
 
 `python -B tools/workspace.py deduplicate-resources` 只生成 `.analysis/results/resource-deduplication.json`，不移动资源。检查归属、逐字节共享关系、全部生产引用及历史 provenance 差异后，`--apply` 仅接受未变化的完整 dry-run 快照；异常会恢复被改写和删除的文件。单产品图片及配置归入 `products/<PID>/`，跨产品内容显式共享，无可证归属的内容隔离至 `shared/source-unverified/`。迁移保持逻辑 alias 顺序、实际 bytes、各来源记录及历史 `original_paths`；源码未核验与物理去重分别记录。资源准备与迁移共用 OS 文件锁和实际内容索引，后续准备复用已有相同 bytes；准备引入新的跨产品使用后，应再次运行此布局核对。apply 后须明确重新准备资源发布快照、固定提交与运行时索引，复做相关族审计及适用纯测试；该工具不修改 Git 索引、历史或 LFS 配置，也不执行应用或厂商代码。
 
@@ -135,7 +142,7 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 
 `verify-asset-release --remote` 核对已固定远端清单及 LFS 文件身份；`publish-asset-release` 在核验后固定新提交；`pin-asset-release --revision COMMIT` 核验已上传版本。`fetch-asset-release --product PID` 仅为维护人员显式恢复选定产品与共享依赖，普通编译和产品启动均不调用。完整原图核验须明确使用维护来源，不将其复制到 crate 测试夹具。
 
-`publish-asset-release --add-files .analysis/inputs/resource-publication.json --dry-run` 核对选定原件、获取收据和新增 alias，准备具体增量而不联网；去掉 `--dry-run` 后只复制新文件至禁止 LFS 自动下载及换行转换的隔离仓库，保留既有媒体指针，验证固定基线与全部远端身份后发布并固定新提交。清单必须包含每份原件及获取收据的路径、长度和 SHA-256；已有文件或 alias 的不同内容会明确失败。`--prune-maintenance-tables` 仅允许逐项核对固定远端身份后移除已迁移的 `assets/synapse/tables/*.rs` 维护片段，删除清单和实际身份保留在统一 `.analysis/results/asset-release-update.json`。独立复核远端普通 Git blob 时可用 `verify-asset-release --remote --from-dir SOURCE` 提供同一隔离仓库作为 SHA-256 字节依据；不会恢复源码 `assets/` 或下载 LFS 载荷。发布后运行 `prepare-resource-database` 同步目录库中的固定版本和新增 alias。
+`publish-asset-release --add-files .analysis/inputs/resource-publication.json --dry-run` 核对选定原件、获取收据和新增 alias，准备具体增量而不联网；去掉 `--dry-run` 后只复制新文件至禁止 LFS 自动下载及换行转换的隔离仓库，保留既有媒体指针，新增路径逐项使用 `git lfs track --filename`，验证固定基线与全部远端身份后发布并固定新提交。清单必须包含每份原件及获取收据的路径、长度和 SHA-256；已有文件或 alias 的不同内容会明确失败。`--prune-maintenance-tables` 仅允许逐项核对固定远端身份后移除已迁移的 `assets/synapse/tables/*.rs` 维护片段，删除清单和实际身份保留在统一 `.analysis/results/asset-release-update.json`。独立复核远端普通 Git blob 时可用 `verify-asset-release --remote --from-dir SOURCE` 提供同一隔离仓库作为 SHA-256 字节依据；不会恢复源码 `assets/` 或下载 LFS 载荷。发布后运行 `prepare-resource-database` 同步目录库中的固定版本和新增 alias。
 
 `prepare-typed-data [--check] [--crate CRATE]` 使用 `tools/typed-data.json` 和 `.analysis/inputs/typed-tables/` 的维护输入，按实际 Rust struct／enum、字段、值域和产品分支生成普通有类型构造函数；界面目录由 `catalog_data.py` 路由到同一 SQLite，并在领域所有者中生成普通读取函数；专用设备写入、读取／身份／接收器、存储默认值分别由 `prepare-device-write-table`、`prepare-local-protocol-tables`、`prepare-storage-tables` 维护。固定协议构造函数随程序编译，界面目录随独立数据库安装，产品不解析这些维护 JSON；外部报文、动态扩展和用户配置只在有类型的边界读写。原 JSON 不在 crates 中保留第二份生产数据。
 

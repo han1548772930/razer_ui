@@ -572,7 +572,7 @@ impl ModulePreview {
                             cx.notify();
                         });
                     })
-                    .content(move |_, _, _| panel)
+                    .content(move |_, _, _| razer_assets::resource_scope(panel))
                     .into_any_element()
             })
             .into_any_element()

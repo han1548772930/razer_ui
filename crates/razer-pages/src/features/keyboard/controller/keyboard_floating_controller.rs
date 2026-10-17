@@ -195,28 +195,28 @@ impl KeyboardProductWorkspace {
         }
         div()
             .children(self.analog_gamepad.floating.panel_drag_moved.then(|| {
-                deferred(FloatingLayer {
+                razer_assets::deferred_resource(FloatingLayer {
                     owner: cx.entity(),
                     kind: LayerKind::Area,
                 })
                 .with_priority(9)
             }))
             .child(
-                deferred(FloatingLayer {
+                razer_assets::deferred_resource(FloatingLayer {
                     owner: cx.entity(),
                     kind: LayerKind::Panel,
                 })
                 .with_priority(10),
             )
             .children(self.analog_gamepad.floating.hover.map(|index| {
-                deferred(FloatingLayer {
+                razer_assets::deferred_resource(FloatingLayer {
                     owner: cx.entity(),
                     kind: LayerKind::Tooltip(index),
                 })
                 .with_priority(100)
             }))
             .children(self.analog_gamepad.floating.button_drag.map(|index| {
-                deferred(FloatingLayer {
+                razer_assets::deferred_resource(FloatingLayer {
                     owner: cx.entity(),
                     kind: LayerKind::Preview(index),
                 })

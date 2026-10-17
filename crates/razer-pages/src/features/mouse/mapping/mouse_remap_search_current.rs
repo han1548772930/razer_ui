@@ -294,7 +294,7 @@ impl MouseProductWorkspace {
                     }
                 }
                 search = search.child(
-                    deferred(Suggestions {
+                    razer_assets::deferred_resource(Suggestions {
                         content: options.into_any_element(),
                         anchor: state.anchor.clone(),
                     })

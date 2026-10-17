@@ -66,7 +66,7 @@ impl AudioProductWorkspace {
                 )
                 .when(state.preview_popup, |indicator| {
                     indicator.child(
-                        deferred(
+                        razer_assets::deferred_resource(
                             v_flex()
                                 .id("audio-mic-preview-popup")
                                 .absolute()

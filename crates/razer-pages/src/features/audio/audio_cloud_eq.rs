@@ -1222,7 +1222,7 @@ impl AudioProductWorkspace {
                         ),
                 )
             });
-        deferred(
+        razer_assets::deferred_resource(
             div()
                 .absolute()
                 .inset_0()

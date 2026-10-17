@@ -95,7 +95,7 @@ fn text_toolbar_button(
         )
         .when(show_tip && visible, |button| {
             button.child(
-                deferred(text_tip_surface(label, opacity).bottom(surface::css(-38.))).priority(105),
+                razer_assets::deferred_resource(text_tip_surface(label, opacity).bottom(surface::css(-38.))).priority(105),
             )
         })
 }
@@ -586,7 +586,7 @@ impl Shortcuts {
                             .absolute()
                             .inset_0(),
                         );
-                    item = item.child(deferred(tip).priority(105));
+                    item = item.child(razer_assets::deferred_resource(tip).priority(105));
                 }
                 group = group.child(item);
             }
@@ -672,7 +672,7 @@ impl Shortcuts {
                             }))
                             .when(visible, |button| {
                                 button.child(
-                                    deferred(
+                                    razer_assets::deferred_resource(
                                         text_tip_surface(label, tip_opacity * opacity)
                                             .top(relative(1.)),
                                     )
@@ -759,7 +759,7 @@ impl Shortcuts {
                     }),
             )
             .child(main.scrollable_y().track_scroll(&self.emoji_scroll));
-        deferred(ShortcutEmojiPosition {
+        razer_assets::deferred_resource(ShortcutEmojiPosition {
             owner: cx.entity().downgrade(),
             child: panel.into_any_element(),
         })

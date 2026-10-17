@@ -3,6 +3,8 @@
 //! Chromium database or vendor profile file formats.
 #[path = "app_features.rs"]
 pub mod app_features;
+#[path = "chroma_profiles.rs"]
+pub mod chroma_profiles;
 #[path = "game_catalog.rs"]
 pub mod game_catalog;
 #[path = "host.rs"]

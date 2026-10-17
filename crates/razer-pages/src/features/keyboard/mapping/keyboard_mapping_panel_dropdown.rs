@@ -265,7 +265,7 @@ impl RenderOnce for Control {
                     }),
             )
             .child(
-                deferred(OptionsPosition {
+                razer_assets::deferred_resource(OptionsPosition {
                     child: options,
                     anchor: self.anchor,
                     above: self.above,

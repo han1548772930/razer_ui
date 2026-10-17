@@ -318,7 +318,7 @@ impl MacroPage {
                 })
                 .into_any_element();
             root = root.child(
-                deferred(NestedMenuOverlay {
+                razer_assets::deferred_resource(NestedMenuOverlay {
                     content,
                     trigger: state.read(cx).trigger.clone(),
                     viewport: self.source_viewport.clone(),

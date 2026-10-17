@@ -57,7 +57,7 @@ impl MouseProductWorkspace {
             )
             .child(content)
             .children(self.mapping_input.as_ref().map(|_| {
-                deferred(source_mapping::PopupLayer::new(
+                razer_assets::deferred_resource(source_mapping::PopupLayer::new(
                     self.mapping_190_drawer(window, cx),
                     &self.mapping_190_state,
                     self.mapping_input.as_deref().unwrap_or(""),
@@ -65,7 +65,7 @@ impl MouseProductWorkspace {
                 .with_priority(103)
             }))
             .children(state.panel_tooltip.as_ref().map(|text| {
-                deferred(source_mapping::BindingTooltip::new(
+                razer_assets::deferred_resource(source_mapping::BindingTooltip::new(
                     text.clone(),
                     state,
                     window,
@@ -74,7 +74,7 @@ impl MouseProductWorkspace {
             }))
             .children(
                 self.mapping_190_confirmation(window, cx)
-                    .map(|content| deferred(content).with_priority(1100)),
+                    .map(|content| razer_assets::deferred_resource(content).with_priority(1100)),
             )
             .into_any_element()
     }

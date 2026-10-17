@@ -1111,7 +1111,7 @@ impl KeyboardProductWorkspace {
             );
         }
         state.tooltip.map(|position| {
-            deferred(
+            razer_assets::deferred_resource(
                 gpui_kit::base::Positioner::corner(
                     Anchor::TopLeft,
                     position + point(px(10.), px(20.)),

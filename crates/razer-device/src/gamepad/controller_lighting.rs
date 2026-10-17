@@ -6,6 +6,12 @@ use anyhow::{Context as _, ensure};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
+#[path = "controller_software_lighting.rs"]
+pub mod software;
+pub use software::{
+    QuickEffectLevel, SoftwareEffect, SoftwarePhase, SoftwareStatus, WaveDirection,
+};
+
 #[derive(Clone, Copy, Debug)]
 pub struct LightingCapability {
     product_id: u32,
@@ -95,7 +101,7 @@ impl ControllerEffect {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum LightingOperation {
     Read {
@@ -112,6 +118,18 @@ pub enum LightingOperation {
     ReadBrightness,
     Brightness {
         value: u8,
+    },
+    Software {
+        edition: u8,
+        effect: SoftwareEffect,
+    },
+    PollSoftware,
+    StopSoftware,
+    SuspendSoftware {
+        suspended: bool,
+    },
+    SoftwareInput {
+        event: crate::controller_input::Event,
     },
 }
 impl LightingOperation {
@@ -141,6 +159,28 @@ impl LightingOperation {
                 product_id == 2636,
                 "Controller preset effects are mounted only by this source Sage branch"
             );
+        }
+        if matches!(
+            self,
+            Self::Software { .. }
+                | Self::PollSoftware
+                | Self::StopSoftware
+                | Self::SuspendSoftware { .. }
+                | Self::SoftwareInput { .. }
+        ) {
+            ensure!(
+                product_id == 4115,
+                "Software controller lighting requires the current Kitsune branch"
+            );
+            if let Self::Software { edition, .. } = self {
+                software::led_configuration(*edition)?;
+            }
+            if let Self::SoftwareInput { event } = self {
+                ensure!(
+                    matches!(event, crate::controller_input::Event::Buttons { .. }),
+                    "Only observed Kitsune button events enter the software lighting input chain"
+                );
+            }
         }
         self.validate()
     }
@@ -211,6 +251,7 @@ pub struct LightingResult {
     pub brightness: Option<ObservedBrightness>,
     pub initialization: Option<InitializationReport>,
     pub acknowledged_writes: u32,
+    pub software: Option<SoftwareStatus>,
 }
 
 pub struct LightingProtocol<
@@ -349,6 +390,14 @@ impl<'a, T: FeatureTransport + ?Sized, W: FnMut(Duration) -> anyhow::Result<()>>
                     self.exchange([3, 15, 4], &[1, 0, wire])?;
                     result.acknowledged_writes += 1;
                 }
+                result.brightness = Some(observed);
+            }
+            LightingOperation::Software { .. }
+            | LightingOperation::PollSoftware
+            | LightingOperation::StopSoftware
+            | LightingOperation::SuspendSoftware { .. }
+            | LightingOperation::SoftwareInput { .. } => {
+                anyhow::bail!("Software lighting requires its retained engine owner")
             }
         }
         Ok(result)

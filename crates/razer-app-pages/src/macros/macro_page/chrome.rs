@@ -559,7 +559,7 @@ impl MacroPage {
                 }
                 cx.notify();
             }))
-            .content(move |_, window, cx| {
+            .content(move |_, window, cx| razer_assets::resource_scope({
                 owner
                     .update(cx, |this, cx| match menu {
                         Menu::Selector => this.selector_menu(window, cx),
@@ -568,7 +568,7 @@ impl MacroPage {
                         Menu::Tree(id) => this.tree_menu(id, window, cx),
                     })
                     .unwrap_or_else(|_| div().into_any_element())
-            })
+            }))
             .into_any_element()
     }
 

@@ -104,7 +104,7 @@ impl ProfileTransfer {
             )
             .when(hovered, |v| {
                 v.child(
-                    deferred(
+                    razer_assets::deferred_resource(
                         div()
                             .absolute()
                             .left(css(if warning { -113. } else { 0. }))

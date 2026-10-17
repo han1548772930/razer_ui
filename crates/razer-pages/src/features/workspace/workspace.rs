@@ -60,6 +60,7 @@ pub enum WorkspaceEvent {
     MouseReceiverMonitorRequested(super::mouse_products::MouseReceiverMonitorRequested),
     ControllerTriggerRequested(super::gamepad_products::ControllerTriggerRequested),
     ControllerLightingRequested(super::gamepad_products::ControllerLightingRequested),
+    ControllerChromaRequested(super::gamepad_products::ControllerChromaRequested),
     SeirenEqRequested(super::audio_products::SeirenEqRequested),
     SeirenStreamMixerRequested(super::audio_products::SeirenStreamMixerRequested),
     SeirenStreamMixerCaptureChanged(super::audio_products::SeirenStreamMixerCaptureChanged),

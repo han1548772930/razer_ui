@@ -47,6 +47,7 @@ pub(super) struct PortableRuntime {
     foreground_monitor: razer_platform::foreground_monitor::ForegroundMonitor,
     global_shortcuts: razer_platform::global_shortcuts::GlobalShortcuts,
     controller_calibration: super::controller_calibration::Controller,
+    controller_lighting: super::controller_lighting::Controller,
     keyboard_submission: super::keyboard_submission_controller::Controller,
     keyboard_wristrest: super::keyboard_wristrest_controller::Controller,
     mouse_runtime_artwork: super::mouse_runtime_artwork_controller::Controller,
@@ -394,7 +395,7 @@ impl PortableRuntime {
             ServiceRequest::ControllerTriggers { node, product_id, trigger_operation } =>
                 super::controller_triggers::execute(&node, product_id, &trigger_operation),
             ServiceRequest::ControllerLighting { node, product_id, lighting_operation } =>
-                super::controller_lighting::execute(&node, product_id, &lighting_operation),
+                self.controller_lighting.execute(&node, product_id, &lighting_operation),
             ServiceRequest::ControllerTriggerCalibrationStart { operation_id, node, product_id, part_id } =>
                 self.controller_calibration.start(operation_id, node, product_id, part_id),
             ServiceRequest::ControllerTriggerCalibrationPoll { operation_id } =>

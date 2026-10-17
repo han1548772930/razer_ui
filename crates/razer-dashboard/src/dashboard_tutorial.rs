@@ -152,18 +152,18 @@ impl Render for DashboardTutorial {
                             this.complete(cx);
                         }
                     }))
-                    .content(move |_, window, cx| {
+                    .content(move |_, window, cx| razer_assets::resource_scope({
                         owner
                             .update(cx, |this, cx| this.content(window, cx))
                             .unwrap_or_else(|_| div().into_any_element())
-                    }),
+                    })),
             )
             .when(ready, |view| {
                 // Source uses position:fixed for this marker, independently of
                 // the panel. Keep it on the navigation target when Base clamps
                 // the panel to a small viewport; escape ancestor clipping only.
                 view.child(
-                    deferred(
+                    razer_assets::deferred_resource(
                         TutorialIndicator::new("dashboard-tutorial-indicator")
                             .absolute()
                             .left(surface::css(124.))

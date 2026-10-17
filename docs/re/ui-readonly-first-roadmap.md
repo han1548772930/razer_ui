@@ -15,13 +15,13 @@
 | `local_backend_parity`：手柄／混音器及平台链 | 八款手柄 Feature collection 与三款 V3 校准接通 source-host 语义；Mixer PID1342 的 Feature64→18 与 Output66→Input16 接线、20 次重试及取消／身份门禁；HID GetInput 返回长度按当前原生完整函数修正 | 正在连接取屏色的后台窗口、截图、流式回调、Done／取消和释放；继续所有产品的原生协议／服务链，模拟传输通过不等于真实设备写回 |
 | `current_source_audit`：来源／依赖／资源 | 官方当前稳定通道及本机活动主程序 4.0.827 已复核，138 个宿主文件与官方提取字节一致；664 个 UI／MW 入口本批复核稳定，保留原件未发现字节损坏；补充精确原版 SVG、媒体分析器与资源发布验证 | 继续实际声明缺失文件、拆包失败、间接调用及完整依赖闭包；原生全语料由统一 IDA 队列继续补捕获；source map 缺失、未声明 manifest probe 与实际运行依赖缺失分别记录 |
 
-私有 Dataset `han1548772930/razer-ui-assets` 已完成网页上传，[资源锁](../../tools/asset-release.json) 固定提交 `bf645f811bd14e5ab654eb64f835a79d6a69b2df`。332 个产品分组、7,768 个载荷文件、1,513,885,677 字节已逐项核对：5,275 个 LFS 对象核对 SHA-256 和长度；2,493 个普通 Git 对象以维护快照的 SHA-256、长度及 Git blob OID 交叉验证。主仓库仅保留 Rust 元数据表及 9 个原生托盘／菜单图标。不要重新启动批量下载、上传或推送 GitHub。
+私有 Dataset `han1548772930/razer-ui-assets` 的[资源锁](../../tools/asset-release.json)固定提交 `ce7ba4dd6cd039f9b1e955c9872ce83ac754867e`。332 个产品分组、7,772 个载荷文件、1,514,324,891 字节已逐项核对：5,276 个 LFS 对象核对 SHA-256 和长度；2,496 个普通 Git 对象以维护快照的 SHA-256、长度及 Git blob OID 交叉验证。主仓库保留独立 SQLite 目录库、9 个原生托盘／菜单 RGBA 图标与 4 个窗口控制 SVG。原生取屏色光标从已验证 PE 资源静态重建，保留八个尺寸、热点及图像数据，按实际界面请求进入同一资源缓存。不要重新启动批量下载、上传或推送 GitHub。
 
 资源运行时通过统一 manifest、安装目录 `assets/cache` 和 4 个异步 worker 按实际请求获取单个文件；相同文件去重，先验证缓存、长度与 SHA-256，缓存命中不联网；下载后原子发布。页面订阅加载完成事件，保留失败及重试，生命周期结束取消任务；不预取其他产品，不恢复源码 `assets/`。共享字体按实际依赖请求，本机凭据不写入源码、清单、安装包或日志。安装生命周期统一在 [安装配置](../../packaging/windows/RazerUI.iss) 和 [维护工具](../../tools/windows_installer.py)；当前尚无 release EXE／ISCC，未生成或执行安装包。其余账户／云同步／联网业务仍排除，遵循 [集中配置、类型化数据与安装资源规则](../../AGENTS.md)。
 
 应用启动、编译和安装均不依赖 `synapse.pack`；独立 pack 工具仅用于维护验证。无人调用的 `assets/native/razer-hid-0.0.31.node` 已删除，字节相同的静态分析原件保留在 `.analysis/inputs/`。固定设备能力、配对规则和默认值随 Rust 类型化表交付，不依赖远程资源。
 
-固定设备表由 `prepare-typed-data` 及专用协议表生成器维护，使用所属能力模块的普通构造函数；界面静态目录由 `prepare-resource-database` 生成独立 SQLite，使用普通有类型读取函数。生成时校验真实 Rust 字段、值域、可选字段和产品分支，维护投影保留于 `.analysis/inputs/typed-tables/` 并标明其与原始证据的区别。旧 `src/data/`、分区、读取宏、重复 JSON 和空注册模块已清理。`razer-pages/testdata` 的完整图片和生产 JSON 已删除，仅保留验证具体行为所需的三个小型 Rust 夹具。所有转换仍须通过调用接线、等价性测试与编译；文件／服务报文和导入导出的动态 JSON 边界单独保留。
+固定设备表由 `prepare-typed-data` 及专用协议表生成器维护，使用所属能力模块的普通构造函数；界面静态目录由 `prepare-resource-database` 生成独立 SQLite，使用普通有类型读取函数。schema 3 同时包含 331 个产品、365 条完整导航分支和 1,459 个页面；五张规范化表保留产品类别、版本顺序、稳定页面身份、连接分支和 Help 记录选择键。启动加载一次有类型快照，源文件路径、源码哈希及分析状态仅留在分析证据。生成时逐字段回读全部目录并核对 333 个 Help 页面与各自展示记录的连接，不能用当前 JS 位置覆盖稳定选择键。维护投影保留于 `.analysis/inputs/typed-tables/` 并标明其与原始证据的区别；目录等价性与 Help 连接修复分别记录于统一 typed-data 证据。旧巨量目录字面量、`src/data/`、分区、读取宏、重复 JSON 和空注册模块已清理。`razer-pages/testdata` 的完整图片和生产 JSON 已删除，仅保留验证具体行为所需的三个小型 Rust 夹具。目录迁移不代表页面行为与后端已全部实现；文件／服务报文和导入导出的动态 JSON 边界单独保留。
 
 验证须区分范围：鼠标子任务报告 123 项纯 Rust／模拟测试通过；gamepad 的协议、i18n、保存回归和摄像头 MIC 的局部测试通过，完整合并后测试未完成。最新统一入口收据 [validation.json](../../.analysis/validation.json) 为 `2026-10-16T06:57:15.697066+00:00`，仅运行 `mouse-scroll-persistence` 四项，命令通过但 `inputs_unchanged=false`、整体 `passed=false`，不代表当前全工作区通过。逐命令日志在 `.analysis/verification/`。资源包迁移后的定向 `cargo check` 与包校验已通过，仍不能替代全工作区检查。应用、安装程序、厂商代码、真实窗口及设备验收均未运行。
 

@@ -93,7 +93,10 @@ impl GamepadProductWorkspace {
         )
     }
     pub fn set_edition_id(&mut self, edition_id: u32, cx: &mut Context<Self>) {
+        if self.edition_id==edition_id {return;}
+        self.lighting_runtime.invalidate();
         self.edition_id = edition_id;
+        self.request_controller_lighting(cx);
         self.refresh_trigger_visualization();
         self.refresh_thumbstick_artwork();
         cx.notify();

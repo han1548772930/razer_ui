@@ -791,7 +791,7 @@ impl LightingColorView {
                                                     },
                                                 )),
                                         );
-                                    menu.content(move |_, _, _| content)
+                                    menu.content(move |_, _, _| razer_assets::resource_scope(content))
                                 }),
                         )
                     })),
@@ -1226,7 +1226,7 @@ impl Render for LightingColorView {
                             self.render_palette(cx)
                         };
                         let editing = self.editing.is_some();
-                        popover.content(move |_, window, cx| {
+                        popover.content(move |_, window, cx| razer_assets::resource_scope({
                             // The secondary picker uses display:none/block;
                             // only the palette has the .1s opacity transition.
                             let opacity = if editing {
@@ -1243,7 +1243,7 @@ impl Render for LightingColorView {
                                     .progress
                             };
                             div().opacity(opacity).child(content)
-                        })
+                        }))
                     }),
             )
             .into_any_element()
@@ -1252,11 +1252,95 @@ impl Render for LightingColorView {
 
 #[cfg(test)]
 mod screen_color_tests {
-    use super::{LightingColorView, ScreenColorUpdate, ScreenColorUpdateKind};
+    use super::{
+        CustomColorEditor, CustomColorEditorEvent, LightingColorView, ScreenColorUpdate,
+        ScreenColorUpdateKind,
+    };
     use gpui_kit::component::{Root, color_picker::ColorPickerState};
     use gpui_kit::{AppContext as _, Context, TestAppContext, px, size};
     use razer_state::CustomColors;
     use std::{cell::RefCell, rc::Rc};
+
+    #[gpui_kit::test]
+    fn add_only_editor_keeps_source_drafts_and_saved_colors_out_of_the_shared_palette(
+        cx: &mut TestAppContext,
+    ) {
+        cx.update(gpui_kit::init);
+        let events = Rc::new(RefCell::new(Vec::new()));
+        let mut retained = None;
+        let handle = cx.open_window(size(px(350.), px(600.)), |window, cx| {
+            CustomColors::ensure(cx);
+            let mut slots = cx.global::<CustomColors>().colors();
+            slots[0] = Some([255, 0, 0]);
+            CustomColors::replace(slots, cx);
+            let editor = cx.new(|cx| CustomColorEditor::new(window, cx));
+            editor.update(cx, |editor, cx| editor.begin(window, cx));
+            let events = events.clone();
+            let subscription =
+                cx.subscribe(&editor, move |_, _, event: &CustomColorEditorEvent, _| {
+                    events.borrow_mut().push(*event);
+                });
+            retained = Some((editor.clone(), subscription));
+            Root::new(editor, window, cx)
+        });
+        let (editor, _subscription) = retained.unwrap();
+        let view = cx.update(|cx| editor.read(cx).view.clone());
+        cx.update(|cx| assert_eq!(view.read(cx).draft, [68, 214, 44]));
+        cx.update(|cx| {
+            let capture = view.read(cx).screen_color.clone();
+            capture.update(cx, |capture, cx| {
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Color(0x123456),
+                ));
+                cx.emit(ScreenColorUpdate::simulated(
+                    capture,
+                    ScreenColorUpdateKind::Done,
+                ));
+            });
+        });
+        cx.update(|cx| {
+            assert_eq!(view.read(cx).draft, [0x12, 0x34, 0x56]);
+            assert!(events.borrow().is_empty());
+            assert_eq!(cx.global::<CustomColors>().colors()[0], Some([255, 0, 0]));
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            view.update(cx, |view, cx| view.save_editor(window, cx));
+        })
+        .unwrap();
+        cx.update(|cx| {
+            assert_eq!(
+                events.borrow().as_slice(),
+                &[CustomColorEditorEvent::Saved([0x12, 0x34, 0x56])]
+            );
+            assert_eq!(cx.global::<CustomColors>().colors()[0], Some([255, 0, 0]));
+        });
+        let mut stale = None;
+        cx.update_window(handle.into(), |_, window, cx| {
+            editor.update(cx, |editor, cx| editor.begin(window, cx));
+            view.update(cx, |view, cx| {
+                stale = Some(ScreenColorUpdate::simulated(
+                    view.screen_color.read(cx),
+                    ScreenColorUpdateKind::Color(0xff0000),
+                ));
+                view.cancel_editor(window, cx);
+            });
+            editor.update(cx, |editor, cx| editor.begin(window, cx));
+        })
+        .unwrap();
+        cx.update(|cx| {
+            let capture = view.read(cx).screen_color.clone();
+            capture.update(cx, |_, cx| cx.emit(stale.take().unwrap()));
+        });
+        cx.update(|cx| {
+            assert_eq!(
+                events.borrow().last(),
+                Some(&CustomColorEditorEvent::Canceled)
+            );
+            assert_eq!(view.read(cx).draft, [68, 214, 44]);
+            assert_eq!(cx.global::<CustomColors>().colors()[0], Some([255, 0, 0]));
+        });
+    }
 
     #[gpui_kit::test]
     fn sampled_product_color_stays_a_draft_until_save_and_canceled_editor_rejects_events(

@@ -183,7 +183,7 @@ fn ble_warning(window: &Window) -> AnyElement {
         "{{dots}}",
         &format!("<img src=\"factory-profile-dots\" width=\"{icon}\" height=\"{icon}\" />"),
     );
-    deferred(
+    razer_assets::deferred_resource(
         anchored()
             .anchor(Anchor::LeftCenter)
             .position(point(window.viewport_size().width / 2., unit * 250.))

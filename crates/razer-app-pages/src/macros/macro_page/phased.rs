@@ -589,7 +589,7 @@ fn phase_button(
         })
         .when(hovered, |button| {
             button.child(
-                deferred(
+                razer_assets::deferred_resource(
                     div()
                         .absolute()
                         .right(css(-45.))
@@ -637,7 +637,7 @@ fn phase_help(phase: usize, key: &'static str, window: &mut Window, cx: &mut App
         })
         .when(hovered, |v| {
             v.child(
-                deferred(
+                razer_assets::deferred_resource(
                     div()
                         .absolute()
                         .left_0()

@@ -394,6 +394,8 @@ mod tests {
             "synapse--products--756--ui--TAB_CUSTOMIZE--337399"
         );
         assert_eq!(ble.pages().last().unwrap().role(), ProductPageRole::Help);
+        assert_eq!(primary.pages().last().unwrap().offset(), 337_238);
+        assert_eq!(ble.pages().last().unwrap().offset(), 337_754);
         assert_eq!(
             product
                 .navigations()

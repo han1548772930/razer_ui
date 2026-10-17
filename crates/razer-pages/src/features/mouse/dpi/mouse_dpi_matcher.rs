@@ -320,7 +320,7 @@ impl MouseDpiMatcher {
                             cx.notify();
                         }),
                     );
-            dots = dots.child(deferred(menu).with_priority(111));
+            dots = dots.child(razer_assets::deferred_resource(menu).with_priority(111));
         }
         h_flex()
             .w(relative(0.95))
@@ -760,7 +760,7 @@ impl MouseDpiMatcher {
             }))
             .children(
                 (self.state.phase() == Some("error"))
-                    .then(|| deferred(self.warning(window, cx)).with_priority(999)),
+                    .then(|| razer_assets::deferred_resource(self.warning(window, cx)).with_priority(999)),
             )
             // dS.componentDidMount applies overflow:auto to the popup itself.
             // Keep the body's own min-height and scroll limit on the body;
@@ -843,13 +843,13 @@ impl Render for MouseDpiMatcher {
                 .children(
                     self.state
                         .delete_all_open()
-                        .then(|| deferred(self.delete_all_popup(window, cx)).with_priority(112)),
+                        .then(|| razer_assets::deferred_resource(self.delete_all_popup(window, cx)).with_priority(112)),
                 ),
         )
         .children(
             self.state
                 .popup()
-                .then(|| deferred(self.overlay(window, cx)).with_priority(106)),
+                .then(|| razer_assets::deferred_resource(self.overlay(window, cx)).with_priority(106)),
         )
         .on_click(cx.listener(|this, _, _, cx| {
             let actions = this.state.window_click(false);

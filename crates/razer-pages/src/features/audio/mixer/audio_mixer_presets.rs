@@ -544,7 +544,7 @@ impl AudioProductWorkspace {
         use gpui_kit::base::Button as BaseButton;
         // useBU/nR: an anchored source popup, one destructive button and
         // outside-click dismissal. No modal backdrop or extra Cancel action.
-        deferred(
+        razer_assets::deferred_resource(
             v_flex()
                 .id("audio-effects-preset-confirmation")
                 .absolute()

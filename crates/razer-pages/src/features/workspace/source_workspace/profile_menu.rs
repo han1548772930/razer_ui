@@ -339,7 +339,7 @@ impl SourceProductWorkspace {
                     cx.notify();
                 });
             })
-            .content(move |_, window, cx| {
+            .content(move |_, window, cx| razer_assets::resource_scope({
                 let popup = cx.entity().downgrade();
                 list.update(cx, |state, _| {
                     state.delegate_mut().popup = Some(popup.clone())
@@ -352,7 +352,7 @@ impl SourceProductWorkspace {
                         )
                         .sample(window, cx)
                         .progress;
-                    return div()
+                    return razer_assets::resource_scope(div()
                         .opacity(opacity)
                         .child(confirmation_element(
                             confirmation,
@@ -362,7 +362,7 @@ impl SourceProductWorkspace {
                             confirm_focus,
                             cx,
                         ))
-                        .into_any_element();
+                        .into_any_element());
                 }
                 let opacity = motion::Presence::new("source-profile-menu-opacity", true)
                     .transition(
@@ -388,7 +388,7 @@ impl SourceProductWorkspace {
                             .h(surface::css(height + 9.)),
                     )
                     .into_any_element()
-            })
+            }))
             .into_any_element()
     }
 }

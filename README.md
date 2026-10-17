@@ -4,7 +4,7 @@
 
 静态图片、字体和视频存放在私有 Hugging Face Dataset `han1548772930/razer-ui-assets`，按产品和共享资源保留原文件，不需要 ZIP 或整套 pack。程序只请求当前界面实际使用的文件，在当前 EXE 所在目录的 `assets/cache/` 校验并缓存；有效缓存不请求网络，支持下次启动及离线复用。尚未缓存的资源离线时会保留真实加载失败状态。静态资源获取是用户授权的交付例外，账户、云同步、在线目录和远程更新等业务仍不在范围内。
 
-源码 `assets/` 保留独立 SQLite 目录库、安装／托盘／菜单必需的 9 个 RGBA 图标，以及 4 个固定窗口控制 SVG，其余载荷由 `.gitignore` 排除。`tools/asset-release.json` 固定资源仓库提交及每个文件的长度、SHA-256 和产品依赖；`assets/synapse/resource-catalog.sqlite3` 保存完整表情词表、分组、变体、版本过滤及资源索引，以独立文件随安装交付，不内嵌 EXE；`crates/razer-resource-db/installation.json` 统一维护文件名与缓存目录。启动在当前安装的 `assets/cache/catalogs/` 原子发布按内容版本区分的只读数据库，缺失或损坏可从 EXE 旁的独立目录库文件离线恢复；业务读入有类型的快照，render 不执行 SQL。Cargo 检查不下载资源、不恢复媒体，也不要求 `synapse.pack`。资源仓库使用独立 Git LFS；主仓库其余 JSON 的 LFS 规则见 `.gitattributes`，克隆后使用 `git lfs install --local` 和 `git lfs pull` 获取被跟踪的维护文件。
+源码 `assets/` 保留独立 SQLite 目录库、安装／托盘／菜单必需的 9 个 RGBA 图标，以及 4 个固定窗口控制 SVG，其余载荷由 `.gitignore` 排除。`tools/asset-release.json` 固定资源仓库提交及每个文件的长度、SHA-256 和产品依赖；`assets/synapse/resource-catalog.sqlite3` 保存 331 个产品、365 条导航分支、1,459 个页面的完整目录，以及表情词表、分组、变体、版本过滤及资源索引，以独立文件随安装交付，不内嵌 EXE；`crates/razer-resource-db/installation.json` 统一维护文件名与缓存目录。启动在当前安装的 `assets/cache/catalogs/` 原子发布按内容版本区分的只读数据库，缺失或损坏可从 EXE 旁的独立目录库文件离线恢复；业务读入有类型的快照，render 不执行 SQL。Cargo 检查不下载资源、不恢复媒体，也不要求 `synapse.pack`。资源仓库使用独立 Git LFS；主仓库其余 JSON 的 LFS 规则见 `.gitattributes`，克隆后使用 `git lfs install --local` 和 `git lfs pull` 获取被跟踪的维护文件。
 
 私有资源凭据从本机凭据存储、`hf auth login` 的本地令牌文件或显式 `HF_TOKEN` 读取，不进入源码、资源索引或安装包。资源请求异步执行、按文件去重、限制并发并校验内容，失败可重试。完整流程与保留的独立容器格式见 [资源交付与容器格式](docs/asset-pack-format.md)。
 

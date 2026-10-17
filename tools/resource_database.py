@@ -32,6 +32,7 @@ APPLICATION_ID = 0x525A5549
 VERSION = 3
 PRODUCT_REGISTRY = ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
 PRODUCT_REGISTRY_EVIDENCE = ".analysis/results/registry-source-evidence.json"
+PRODUCT_HELP = ".analysis/inputs/typed-tables/razer-pages/source_help_data.json"
 INPUTS = {
     "mapping": ".analysis/inputs/typed-tables/razer-pages/keyboard_mapping_text_emoji_data.json",
     "mouse": ".analysis/inputs/typed-tables/razer-pages/mouse_mapping_text_current_data.json",
@@ -93,6 +94,25 @@ def validate_product_registry(document):
     return products
 
 
+def validate_product_help_bindings(products, help_records):
+    """Help selectors address retained local presentation records, not JS offsets."""
+    selectors = {}
+    for record in help_records:
+        pid = record["product_id"]
+        values = [page["offset"] for page in record["pages"]]
+        if pid in selectors or len(values) != len(set(values)):
+            raise ValueError("Ambiguous product Help records")
+        selectors[pid] = set(values)
+    count = 0
+    for product in products:
+        for navigation in product["navigations"]:
+            for page in navigation["pages"]:
+                if page["role"] != "Help":
+                    continue
+                if page["help_selector"] not in selectors.get(product["id"], set()):
+                    raise ValueError(f"Product {product['id']} Help selector has no local presentation record: {page['key']}")
+                count += 1
+    return count
 
 
 def product_registry_tables(products):
@@ -121,6 +141,8 @@ def fill_product_registry(connection, products):
         if restored != expected:
             raise ValueError("Complete product registry fields/order/branches differ: " + name)
     return {name: len(rows) for name, rows in tables.items()}
+
+
 def selector_rows(manifest, input_rows=None):
     import asset_release
     mappings = asset_release.load_resource_mappings(input_rows=input_rows)
@@ -316,6 +338,7 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
     import rust_data
     import catalog_data
     products = product_registry()
+    help_bindings = validate_product_help_bindings(products, json.loads((ROOT / PRODUCT_HELP).read_bytes()))
     if migrate_data:
         if check:
             raise ValueError("A migration cannot run in check-only mode")
@@ -367,7 +390,8 @@ def prepare(*, check=False, sources=None, check_local=False, migrate_data=False)
               "fonts": len(manifest["fonts"]), "original_sources": sources,
               "typed_catalogs": typed_reports,
               "product_registry": {"source": PRODUCT_REGISTRY, "tables": product_counts,
-                                   "full_field_and_branch_roundtrip_verified": True},
+                                    "full_field_and_branch_roundtrip_verified": True,
+                                    "help_presentation_bindings_verified": help_bindings},
               "selectors": {name: len(rows) for name, rows in selectors.items()},
               "inputs": [{"path": path, "bytes": (ROOT / path).stat().st_size,
                           "sha256": hashlib.sha256((ROOT / path).read_bytes()).hexdigest()}

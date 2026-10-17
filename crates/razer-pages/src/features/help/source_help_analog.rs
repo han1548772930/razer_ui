@@ -254,13 +254,13 @@ impl SourceHelpOwner {
         let size = window.viewport_size();
         let host_tab = window.rem_size() / 16. * 42.;
         let height = (size.height - host_tab).max(px(0.));
-        deferred(
+        razer_assets::deferred_resource(
             anchored()
                 .anchor(Anchor::TopLeft)
                 .position(point(px(0.), host_tab))
                 .child(
                     div().w(size.width).h(height).bg(Colors::shade()).child(
-                        deferred(CenteredAt {
+                        razer_assets::deferred_resource(CenteredAt {
                             center: point(size.width / 2., host_tab + height * 0.45),
                             child: card.into_any_element(),
                         })

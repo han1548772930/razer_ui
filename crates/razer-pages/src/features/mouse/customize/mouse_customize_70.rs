@@ -473,7 +473,7 @@ impl MouseProductWorkspace {
                     };
                     if require_hovered {
                         icon = icon.child(
-                            deferred(
+                            razer_assets::deferred_resource(
                                 source_tip()
                                     .opacity(require_opacity)
                                     .top(relative(1.1))
@@ -493,7 +493,10 @@ impl MouseProductWorkspace {
                     .children(
                         tooltip
                             .filter(|_| tooltip_hovered && !require_hovered)
-                            .map(|tip| deferred(tip.opacity(tooltip_opacity)).with_priority(100)),
+                            .map(|tip| {
+                                razer_assets::deferred_resource(tip.opacity(tooltip_opacity))
+                                    .with_priority(100)
+                            }),
                     )
                     .on_hover(cx.listener(move |_, hovered: &bool, _, cx| {
                         wrapper_state.update(cx, |state, cx| {
@@ -512,135 +515,7 @@ impl MouseProductWorkspace {
         connected: bool,
         top: f32,
     ) -> Option<Div> {
-        // Current sT.rederTip prioritizes the sole-primary-click and blocked
-        // Hypershift notices, then Inter-Device, then the derived generic tip.
-        if disabled
-            && (button["isRemappedDisabled"] == true || button["assignmentValue"] == "LEFT_CLICK")
-        {
-            let remapped_disabled = button["isRemappedDisabled"] == true;
-            let name = if remapped_disabled {
-                button["defaultValue"].as_str().unwrap_or_default()
-            } else {
-                "LEFT_CLICK"
-            };
-            return Some(
-                source_tip()
-                    .w(surface::css(if remapped_disabled { 280. } else { 315. }))
-                    .top(relative(if remapped_disabled { 0.6 } else { 0.9 }))
-                    .left(surface::css(if remapped_disabled { -70. } else { -113. }))
-                    .p_0()
-                    .text_center()
-                    .child(
-                        div()
-                            .mt(surface::css(5.))
-                            .text_size(surface::css(12.))
-                            .child(t("MOUSE")),
-                    )
-                    .child(
-                        div()
-                            .mt(surface::css(5.))
-                            .text_size(surface::css(18.))
-                            .mb(surface::css(11.))
-                            .child(t(name)),
-                    )
-                    .child(
-                        div()
-                            .mt(surface::css(5.))
-                            .bg(rgba(0x6d6b6bf5))
-                            .text_size(surface::css(12.))
-                            .py(surface::css(3.))
-                            .px(surface::css(20.))
-                            .child(t(if remapped_disabled {
-                                "BUTTON_CANNOT_BE_REMAPPED"
-                            } else {
-                                "LEFT_CLICK_DISABLE_MESSAGE"
-                            })),
-                    ),
-            );
-        }
-        if button["assignment"] == "INTERDEVICE" {
-            let accent = if !connected {
-                Colors::unavailable_mapping()
-            } else if self.hypershift {
-                Colors::hypershift()
-            } else {
-                Colors::selected()
-            };
-            let group = &button["assignmentGroup"];
-            let function = match group["interDeviceType"].as_str() {
-                Some("profileNavigationGroup") => "SWITCH_PROFILE",
-                Some("sensitivityGroup") => "SENSITIVITY",
-                _ => "",
-            };
-            let mapping_name = t(button["assignmentValue"].as_str().unwrap_or_default());
-            let mapping_name = if group["interDeviceType"] == "profileNavigationGroup" {
-                mapping_name.to_string()
-            } else {
-                sidebar_current::capitalize(&mapping_name)
-            };
-            let requires = mapping_target_info(70).is_some_and(|info| info["isOBMDevice"] == true);
-            let mut tip = source_tip()
-                .top(relative(if top <= 225. { 0.65 } else { -2.56 }))
-                .left(surface::css(-45.))
-                .border_color(accent)
-                .whitespace_nowrap()
-                .when(!connected || requires, |tip| tip.p_0())
-                .child(
-                    v_flex()
-                        .pt(surface::css(3.))
-                        .pb(surface::css(6.))
-                        .text_center()
-                        .text_size(surface::css(12.))
-                        .child(
-                            div()
-                                .mt(surface::css(5.))
-                                .text_color(rgb(0x707070))
-                                .text_size(surface::css(14.))
-                                .child(
-                                    t(button["defaultValue"].as_str().unwrap_or_default())
-                                        .to_uppercase(),
-                                ),
-                        )
-                        .child(
-                            div()
-                                .mt(surface::css(5.))
-                                .text_color(rgb(0x707070))
-                                .child(group["name"].as_str().unwrap_or_default().to_uppercase()),
-                        )
-                        .child(div().mt(surface::css(5.)).child(t(function).to_uppercase()))
-                        .child(
-                            div()
-                                .mt(surface::css(5.))
-                                .text_size(surface::css(18.))
-                                .child(mapping_name),
-                        ),
-                );
-            if !connected || requires {
-                tip = tip.child(
-                    div()
-                        .mt(surface::css(5.))
-                        .bg(accent)
-                        .text_color(rgb(0x000000))
-                        .text_size(surface::css(12.))
-                        .py(surface::css(3.))
-                        .px(surface::css(26.))
-                        .text_center()
-                        .child(t(if connected {
-                            "MAPPING_REQUIRES_RAZER_SYNAPSE"
-                        } else {
-                            "DEVICE_NOT_CONNECTED"
-                        })),
-                );
-            }
-            return Some(tip);
-        }
-        (button["isTooltipVisible"] == true).then(|| {
-            source_tip()
-                .top(relative(1.))
-                .w(surface::css(300.))
-                .whitespace_normal()
-                .child(t(button["toolTip"].as_str().unwrap_or_default()))
-        })
+        self.current_customize_label_tip(button, disabled, connected, top)
     }
 
     fn mapping_70(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {

@@ -117,7 +117,7 @@ impl SourceHelp {
                         ),
                 )
             });
-        deferred(
+        razer_assets::deferred_resource(
             anchored()
                 .anchor(Anchor::TopLeft)
                 .position(point(px(0.), top))

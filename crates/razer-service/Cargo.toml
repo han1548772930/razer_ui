@@ -8,6 +8,7 @@ razer-catalog.workspace = true
 razer-ipc.workspace = true
 razer-platform.workspace = true
 anyhow.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 libloading.workspace = true
 md5.workspace = true

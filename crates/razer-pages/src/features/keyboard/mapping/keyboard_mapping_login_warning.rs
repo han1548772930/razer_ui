@@ -47,7 +47,7 @@ impl KeyboardProductWorkspace {
                 Some("SYSTEM" | "KEYBOARD")
             ))
         .then(|| {
-            deferred(Warning { owner: cx.entity() })
+            razer_assets::deferred_resource(Warning { owner: cx.entity() })
                 .with_priority(106)
                 .into_any_element()
         })

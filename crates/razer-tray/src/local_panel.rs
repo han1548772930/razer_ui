@@ -111,7 +111,7 @@ impl TrayPopup {
                     )
                     .when(self.settings_tip_mounted, |button| {
                         button.child(
-                            deferred(
+                            razer_assets::deferred_resource(
                                 div()
                                     .absolute()
                                     .top_full()

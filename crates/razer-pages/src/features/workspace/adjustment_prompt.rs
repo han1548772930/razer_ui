@@ -8,7 +8,7 @@ use razer_widgets::theme::KeyboardRgbEffectColors as Colors;
 pub(super) fn render(window: &Window) -> AnyElement {
     let viewport = window.viewport_size();
     let unit = window.rem_size() / 16.;
-    deferred(
+    razer_assets::deferred_resource(
         anchored()
             .anchor(Anchor::TopLeft)
             .position(point(px(0.), px(0.)))

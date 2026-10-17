@@ -182,7 +182,7 @@ impl MacroPage {
                                 }))
                         }));
                     item = item.child(
-                        deferred(TextOverlay {
+                        razer_assets::deferred_resource(TextOverlay {
                             content: tip.into_any_element(),
                             anchor: TextAnchor::Variant {
                                 cell: cell_bounds,
@@ -239,7 +239,7 @@ impl MacroPage {
                             )
                             .when(hovered, |button| {
                                 button.child(
-                                    deferred(
+                                    razer_assets::deferred_resource(
                                         tip_surface(alpha * opacity)
                                             .absolute()
                                             .left_0()
@@ -369,7 +369,7 @@ impl MacroPage {
             .child(header)
             .child(search)
             .child(main.scrollable_y().track_scroll(&scroll));
-        deferred(TextOverlay {
+        razer_assets::deferred_resource(TextOverlay {
             content: panel.into_any_element(),
             anchor: TextAnchor::Emoji {
                 modal: row.borrow().modal.clone(),

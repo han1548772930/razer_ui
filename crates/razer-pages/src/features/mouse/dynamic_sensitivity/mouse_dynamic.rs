@@ -697,7 +697,7 @@ impl MouseProductWorkspace {
         let mut root = div().child(panel);
         if let Some(position) = self.dynamic_state.firmware_hover {
             root = root.child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored().position(position).child(
                         div()
                             .w(surface::css(300.))
@@ -1024,7 +1024,7 @@ impl MouseProductWorkspace {
             // Deferred window overlay preserves fixed client coordinates and
             // escapes the page scroll mask, as the original tooltip does.
             root = root.child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored()
                         .position(point(position.x - px(55.), position.y - px(45.)))
                         .child(
@@ -1127,7 +1127,7 @@ impl MouseProductWorkspace {
                                                             .child(t(shortcut)),
                                                     ),
                                             );
-                                        deferred(tip.with_animation(
+                                        razer_assets::deferred_resource(tip.with_animation(
                                             SharedString::from(format!(
                                                 "mouse-dynamic-zoom-tip-motion-{axis}-{plus}"
                                             )),

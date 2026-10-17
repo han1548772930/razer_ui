@@ -1008,7 +1008,7 @@ impl KeyboardProductWorkspace {
         if saving {
             let bounds = state.artwork.keyboard_bounds();
             body = body.child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored()
                         .anchor(Anchor::TopCenter)
                         .position(point(
@@ -1045,7 +1045,7 @@ impl KeyboardProductWorkspace {
         }
         if calibrating && (1..=15).contains(&state.seconds) {
             body = body.child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored()
                         .anchor(Anchor::TopRight)
                         .position(point(
@@ -1106,7 +1106,7 @@ impl KeyboardProductWorkspace {
         }
         if let Some(position) = state.selected_count_tip.filter(|_| state.switch_segment) {
             body = body.child(
-                deferred(
+                razer_assets::deferred_resource(
                     anchored().position(position).child(
                         div()
                             .max_w(surface::css(260.))
@@ -1358,7 +1358,7 @@ impl KeyboardProductWorkspace {
         let bottom_out = state.prompt == Prompt::BottomOut;
         if matches!(state.prompt, Prompt::ResetCalibration | Prompt::ResetSwitch) {
             let bounds = state.panel_bounds.get();
-            return deferred(
+            return razer_assets::deferred_resource(
                 div()
                     .child(
                         anchored()
@@ -1426,7 +1426,7 @@ impl KeyboardProductWorkspace {
         if bottom_out {
             content = content.h(viewport.height - unit * 106.);
         }
-        deferred(
+        razer_assets::deferred_resource(
             div()
                 .child(
                     anchored()

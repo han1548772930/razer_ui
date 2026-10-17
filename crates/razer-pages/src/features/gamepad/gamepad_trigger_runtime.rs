@@ -310,12 +310,15 @@ impl GamepadProductWorkspace {
     pub fn observe_controller_connection(&mut self, connected: bool, cx: &mut Context<Self>) {
         self.trigger_runtime.invalidate();
         self.lighting_runtime.invalidate();
+        self.chroma_runtime.invalidate();
         self.lighting_ui.cancel(cx);
+        self.dismiss_quick_lighting_controls(cx);
         self.cancel_thumbstick_edits(cx);
         self.observe_controller_input(None, &[], cx);
         if connected {
             self.request_trigger_read(cx);
             self.request_controller_lighting(cx);
+            if self.page=="TAB_LIGHTING" {self.refresh_controller_chroma(cx);}
         }
     }
     pub fn observe_controller_input(

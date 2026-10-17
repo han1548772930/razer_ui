@@ -334,7 +334,7 @@ fn dropdown(
         );
     if open {
         row = row.child(
-            deferred(
+            razer_assets::deferred_resource(
                 v_flex()
                     .id(SharedString::from(format!(
                         "joystick-options-{slot}-{movement}"

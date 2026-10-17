@@ -82,7 +82,7 @@ fn trigger(
         .child(content)
         .when(hovered, |el| {
             el.child(
-                deferred(SourceOverlay {
+                razer_assets::deferred_resource(SourceOverlay {
                     id,
                     anchor,
                     text,

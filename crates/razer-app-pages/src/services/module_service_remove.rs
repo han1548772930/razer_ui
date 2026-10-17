@@ -392,6 +392,6 @@ impl ModuleCatalog {
                         }
                     })),
             );
-        deferred(panel).priority(3).into_any_element()
+        razer_assets::deferred_resource(panel).priority(3).into_any_element()
     }
 }

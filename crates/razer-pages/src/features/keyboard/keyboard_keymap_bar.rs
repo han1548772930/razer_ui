@@ -520,7 +520,7 @@ impl KeyboardProductWorkspace {
             let profile = profile.clone();
             let guid = guid.clone();
             bar = bar.child(
-                deferred(
+                razer_assets::deferred_resource(
                     v_flex()
                         .id("keyboard-keymap-delete-alert")
                         .absolute()

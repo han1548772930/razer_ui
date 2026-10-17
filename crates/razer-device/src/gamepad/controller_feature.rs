@@ -30,6 +30,17 @@ pub(crate) fn exchange<T: FeatureTransport + ?Sized>(
     delay: Duration,
     wait: &mut impl FnMut(Duration) -> anyhow::Result<()>,
 ) -> anyhow::Result<Vec<u8>> {
+    exchange_with_in_limit(transport, request, delay, wait, 10)
+}
+
+pub(crate) fn exchange_with_in_limit<T: FeatureTransport + ?Sized>(
+    transport: &T,
+    request: &[u8; 91],
+    delay: Duration,
+    wait: &mut impl FnMut(Duration) -> anyhow::Result<()>,
+    max_retry_in: u8,
+) -> anyhow::Result<Vec<u8>> {
+    ensure!(max_retry_in > 0, "Controller reply retry count is zero");
     let mut error = String::from("No controller Feature reply");
     for _ in 0..20 {
         wait(delay)?;
@@ -38,7 +49,7 @@ pub(crate) fn exchange<T: FeatureTransport + ?Sized>(
             continue;
         }
         wait(delay)?;
-        for retry in 0..10 {
+        for retry in 0..max_retry_in {
             if retry != 0 {
                 wait(delay)?;
             }

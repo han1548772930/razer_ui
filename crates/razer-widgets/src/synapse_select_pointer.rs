@@ -183,7 +183,7 @@ impl<I: SelectItem<Value = String> + 'static> SynapseSelectView<I> {
                     )
                     .into_any_element();
                 root.child(
-                    deferred(PointerOptions {
+                    razer_assets::deferred_resource(PointerOptions {
                         bounds,
                         height: css(menu_height).to_pixels(window.rem_size()),
                         content: Some(content),

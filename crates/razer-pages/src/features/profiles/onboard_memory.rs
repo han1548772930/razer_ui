@@ -1210,7 +1210,7 @@ impl Render for OnboardMemoryPanel {
                             })
                             .into_any_element()
                     })
-                    .content(move |_, window, cx| {
+                    .content(move |_, window, cx| razer_assets::resource_scope({
                         let popup = cx.entity().downgrade();
                         let content = panel
                             .update(cx, |panel, cx| {
@@ -1223,7 +1223,7 @@ impl Render for OnboardMemoryPanel {
                             .w(surface::css(272.))
                             .pl(surface::css(2.))
                             .children(content)
-                    }),
+                    })),
             )
             .when(
                 self.readback
