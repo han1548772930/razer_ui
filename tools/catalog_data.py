@@ -457,7 +457,7 @@ class Codec(rust_data.RustData):
                 raw.extend(struct.pack("<I", child))
         if len(raw) > MAX_DOCUMENT:
             raise ValueError("Typed catalog document exceeds the bounded reader")
-        return {"id": row["crate"] + "/" + row["macro"], "codec": codec, "raw": bytes(raw), "code": code,
+        return {"id": catalog_identity(row), "codec": codec, "raw": bytes(raw), "code": code,
                 "decoder": decoder, "type": typ, "roots": roots, "nodes": len(self.nodes)}
 
     def pool_last(self):
@@ -508,8 +508,13 @@ def verify_constructors(row, value, schema):
     return before.hex()
 
 
+def catalog_identity(row):
+    # Moving a Rust owner must not change the identity of an installed catalog.
+    return row.get("catalog_id", row["crate"] + "/" + row["macro"])
+
+
 def constant(row):
-    return (row["crate"] + "_" + row["macro"]).upper().replace("-", "_")
+    return catalog_identity(row).upper().replace("/", "_").replace("-", "_")
 
 
 def reader_name(row):
@@ -517,13 +522,13 @@ def reader_name(row):
 
 
 def format_reader(row, body, return_type):
-    marker = "// Generated catalog reader: " + row["crate"] + "/" + row["macro"] + ".\n"
+    marker = "// Generated catalog reader: " + catalog_identity(row) + ".\n"
     source = marker + "fn " + reader_name(row) + "() -> " + return_type + " {\n" + body + "\n}\n"
     test = "packaged_catalog_" + row["macro"] + "_decodes"
     verification = ("for (_, factory) in super::" + reader_name(row) + "() { let _ = factory(); }") if row.get("product_factory") else ("let _ = super::" + reader_name(row) + "();")
     source += ("\n#[cfg(test)]\nmod " + row["macro"] + "_catalog_tests {\n"
                + "#[test]\nfn " + test + "() { " + verification + " }\n}\n")
-    source += "// End generated catalog reader: " + row["crate"] + "/" + row["macro"] + ".\n"
+    source += "// End generated catalog reader: " + catalog_identity(row) + ".\n"
     formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"],
                                input=source.encode("utf-8"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ROOT, check=False)
     if formatted.returncode:

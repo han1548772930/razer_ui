@@ -178,7 +178,6 @@ impl AppShell {
 #[cfg(test)]
 mod tests {
     use super::picker_device;
-    use gpui_kit::AssetSource;
     use razer_model::{model::Device, product_preview::registered_preview};
 
     #[test]
@@ -205,8 +204,7 @@ mod tests {
                 format!("synapse/app-picker-category/{category}.svg")
             );
             assert!(
-                razer_assets::SynapseAssets
-                    .list(item.icon())
+                razer_assets::list_resources(item.icon())
                     .unwrap()
                     .iter()
                     .any(|alias| alias.as_ref() == item.icon())

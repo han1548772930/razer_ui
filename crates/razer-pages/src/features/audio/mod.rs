@@ -668,7 +668,7 @@ impl AudioProductWorkspace {
             }
             self.page = page.into();
             if page == "TAB_LIGHTING" {
-                self.refresh_mixer_lighting_previews();
+                self.refresh_mixer_lighting_previews(cx);
             }
             self.sync_seiren_audio_runtime(cx);
             if page == "TAB_EQ" {

@@ -4,38 +4,19 @@ use gpui_kit::test::TestWindowExt;
 use gpui_kit::{AppContext, TestAppContext, px, size};
 
 fn shortcut(id: &str) -> Shortcut {
-    Shortcut {
-        id: id.into(),
-        input: "KEY_K".into(),
-        modifiers: vec!["KEY_LEFT_CTRL".into()],
-        hypershift: false,
-        output: ShortcutOutput::Text {
+    Shortcut::new(
+        id.into(),
+        "KEY_K".into(),
+        vec!["KEY_LEFT_CTRL".into()],
+        false,
+        ShortcutOutput::Text {
             text: "你好\nshortcut".into(),
         },
-    }
+    )
 }
 
 #[::core::prelude::v1::test]
-fn shortcut_storage_rejects_invalid_or_duplicate_chords_without_losing_unicode() {
-    let original = shortcut("first");
-    let decoded: Shortcut =
-        serde_json::from_str(&serde_json::to_string(&original).unwrap()).unwrap();
-    assert_eq!(decoded, original);
-    assert!(validate_shortcuts(&[original.clone()]).is_ok());
-    assert!(validate_shortcuts(&[original.clone(), shortcut("second")]).is_err());
-    assert!(validate_stored_shortcuts(&[original.clone(), shortcut("second")]).is_ok());
-    let mut invalid = original.clone();
-    invalid.modifiers.push("KEY_LEFT_CTRL".into());
-    assert!(invalid.validate().is_err());
-    invalid = original.clone();
-    invalid.input = "KEY_LEFT_SHIFT".into();
-    assert!(invalid.validate().is_err());
-    invalid = original;
-    invalid.output = ShortcutOutput::Website {
-        target: "javascript:alert(1)".into(),
-    };
-    assert!(invalid.validate().is_err());
-    assert!(serde_json::from_str::<Shortcut>(r#"{"id":"a","input":"KEY_K","modifiers":[],"hypershift":false,"output":{"kind":"future"}}"#).is_err());
+fn text_truncation_preserves_utf16_budget_and_suffix() {
     let previous = format!("{}end", "a".repeat(240));
     let changed = format!("{}{}end", "a".repeat(240), "🙂".repeat(5));
     let (range, limited) = super::limit_shortcut_text(&previous, &changed).unwrap();

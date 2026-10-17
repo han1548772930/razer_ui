@@ -194,7 +194,7 @@ impl AppShell {
         save: &mut PreparedSave,
         cx: &App,
     ) -> anyhow::Result<()> {
-        let Some(polling) = &save.mouse_polling else {
+        let Some(ProductSave::MousePolling(polling)) = &save.product else {
             return Ok(());
         };
         save.file.devices = self

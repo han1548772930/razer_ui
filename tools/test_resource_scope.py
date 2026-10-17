@@ -58,7 +58,7 @@ class ResourceScopeTests(unittest.TestCase):
         self.assertEqual([v["kind"] for v in result["violations"]], ["overlay_macro_requires_audit"])
 
     def test_direct_use_asset_is_limited_to_the_owner_and_local_import(self):
-        owner = "crates/razer-assets/src/remote/image_cache.rs"
+        owner = "crates/razer-assets/src/image_cache.rs"
         local = "crates/razer-pages/src/features/workspace/source_controls/oled_crop.rs"
         self.assertEqual(
             self.inspect("fn load(window: &mut Window, cx: &mut App) { window.use_asset::<Foo>(&x, cx); }", owner)["violations"],

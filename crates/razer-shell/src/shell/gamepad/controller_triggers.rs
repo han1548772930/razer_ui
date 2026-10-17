@@ -40,45 +40,27 @@ impl AppShell {
         }
         let identity = workspace.read(cx).identity(cx);
         let profile_id = workspace.read(cx).device(cx).active_profile.clone();
-        let file = store::WorkspaceFile::new(
+        let file = self.workspace_file(
             self.devices
                 .iter()
                 .map(|e| e.read(cx).saved_snapshot(cx))
                 .collect(),
-            self.tracking_intro_seen,
-        )
-        .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
-        .with_preferences(self.settings.read(cx).snapshot())
-        .with_custom_colors(cx.global::<CustomColors>().colors())
-        .with_host_tab_order(self.host_tabs.order())
-        .with_dashboard(self.dashboard_state.read(cx).snapshot())
-        .with_module_services(self.module_catalog.read(cx).service_snapshot())
-        .with_macros(self.macro_library.read(cx).snapshot());
+            cx,
+        );
         self.pending_saves.push_back(PreparedSave {
-            leviathan: None,
             window: window.window_handle(),
             file,
-            mouse_polling: None,
-            mouse_dpi_stages: None,
-            mouse_profile: None,
-            keyboard_actuation: None,
-            seiren_eq: None,
-            mouse_dpi: None,
-            mouse_current_dpi: None,
-            mouse_current_power: None,
-            controller_lighting: None,
-            controller_chroma: None,
-            controller_trigger: Some(ControllerTriggerSave {
+            product: Some(ProductSave::ControllerTrigger(ControllerTriggerSave {
                 workspace,
                 request,
                 identity,
                 profile_id,
-            }),
+            })),
         });
         self.start_pending_save(cx);
     }
     pub(super) fn rebase_controller_trigger_save(&self, save: &mut PreparedSave, cx: &App) {
-        let Some(trigger) = &save.controller_trigger else {
+        let Some(ProductSave::ControllerTrigger(trigger)) = &save.product else {
             return;
         };
         save.file.devices = self

@@ -1,0 +1,21 @@
+[package]
+name = "razer-resources"
+version.workspace = true
+edition.workspace = true
+
+[features]
+# Explicit synchronous inspection for fixture/installed-cache verification only.
+cache-inspection = []
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+async-channel.workspace = true
+futures = "=0.3.34"
+sha2 = "=0.10.9"
+razer-resource-db.workspace = true
+reqwest = { package = "gpui-pre-reqwest", version = "=0.12.15", default-features = false, features = ["rustls-tls-native-roots"] }
+tokio.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Security_Credentials", "Win32_Storage_FileSystem"] }

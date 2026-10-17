@@ -1,9 +1,10 @@
 use super::*;
+use crate::catalog::{Storage, remote_url};
 use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 
-pub(super) struct TemporaryDirectory(pub(super) PathBuf);
+pub(crate) struct TemporaryDirectory(pub(crate) PathBuf);
 impl TemporaryDirectory {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let directory = std::env::temp_dir().join(format!(
             "razer-resource-tests-{}-{}",
@@ -32,7 +33,7 @@ impl Drop for TemporaryDirectory {
     }
 }
 
-pub(super) fn file(path: &str, bytes: &[u8]) -> ResourceFile {
+pub(crate) fn file(path: &str, bytes: &[u8]) -> ResourceFile {
     ResourceFile {
         path: path.into(),
         bytes: bytes.len() as u64,
@@ -75,6 +76,54 @@ fn corrupt_truncated_and_wrong_version_bytes_are_never_loaded() {
 }
 
 #[test]
+fn concurrent_cache_repair_keeps_the_complete_verified_result() {
+    let directory = TemporaryDirectory::new();
+    let entry = file("assets/synapse/products/182/icon.svg", b"complete");
+    let cache = Cache {
+        root: directory.0.clone(),
+    };
+    let path = cache.path(&entry).unwrap();
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, b"corrupt").unwrap();
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(3));
+    let workers: Vec<_> = (0..2)
+        .map(|_| {
+            let barrier = barrier.clone();
+            let cache = Cache {
+                root: directory.0.clone(),
+            };
+            let entry = entry.clone();
+            std::thread::spawn(move || {
+                barrier.wait();
+                cache.publish(&entry, b"complete")
+            })
+        })
+        .collect();
+    barrier.wait();
+    for worker in workers {
+        worker.join().unwrap().unwrap();
+    }
+    assert_eq!(cache.read(&entry).unwrap().unwrap(), b"complete");
+    assert_eq!(fs::read_dir(path.parent().unwrap()).unwrap().count(), 1);
+}
+
+#[test]
+fn failed_staging_creation_preserves_the_existing_file() {
+    let directory = TemporaryDirectory::new();
+    let path = directory.0.join("occupied.partial");
+    fs::write(&path, b"owned by another publisher").unwrap();
+    assert!(TemporaryFile::create(path.clone()).is_err());
+    assert_eq!(fs::read(path).unwrap(), b"owned by another publisher");
+
+    let path = directory.0.join("owned.partial");
+    let (staging, output) = TemporaryFile::create(path.clone()).unwrap();
+    drop(output);
+    assert!(path.exists());
+    drop(staging);
+    assert!(!path.exists());
+}
+
+#[test]
 fn unrelated_products_are_neither_created_nor_requested() {
     let directory = TemporaryDirectory::new();
     let cache = Cache {
@@ -101,40 +150,6 @@ fn untrusted_paths_cannot_escape_or_address_alternate_streams() {
         "assets\\x",
     ] {
         assert!(safe_relative(path).is_err(), "{path}");
-    }
-}
-
-#[test]
-fn metadata_keeps_first_alias_original_list_order_and_native_fallback() {
-    for (key, _) in crate::window_icons::ICONS {
-        assert!(available(key).unwrap());
-    }
-    let manifest = manifest().unwrap();
-    assert!(manifest.entries.len() > 11_000);
-    assert_eq!(manifest.fonts.len(), 14);
-    for (key, ix) in &manifest.keys {
-        assert_eq!(
-            *ix,
-            manifest
-                .entries
-                .iter()
-                .position(|entry| entry.key == *key)
-                .unwrap()
-        );
-    }
-    assert!(list("synapse/audio-demo-control-play").unwrap().is_empty());
-    assert!(
-        list("synapse/")
-            .unwrap()
-            .iter()
-            .any(|key| *key == "synapse/audio-demo-control-play.svg")
-    );
-    for file in manifest
-        .files
-        .iter()
-        .filter(|file| embedded(&file.path).is_some())
-    {
-        assert!(verified(file, embedded(&file.path).unwrap()));
     }
 }
 

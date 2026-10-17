@@ -124,7 +124,7 @@ impl ScreenColorCapture {
         if self.picker.is_none() {
             // The asset service only checks memory and queues missing bytes.
             // Disk, credentials, HTTP and native screen I/O have worker owners.
-            match razer_assets::SynapseAssets.load(CURSOR) {
+            match cx.asset_source().load(CURSOR) {
                 Ok(Some(bytes)) => match ScreenColorPicker::start(bytes.into_owned()) {
                     Ok(picker) => self.picker = Some(picker),
                     Err(error) => self.fail(format!("{error:#}")),

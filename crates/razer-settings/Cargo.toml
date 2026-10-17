@@ -25,4 +25,5 @@ razer-storage.workspace=true
 razer-discovery.workspace=true
 
 [dev-dependencies]
+razer-resources = { workspace = true, features = ["cache-inspection"] }
 gpui-kit={workspace=true,features=["test-support"]}

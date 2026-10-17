@@ -242,21 +242,6 @@ mod tests {
     // built-in attribute so this remains an ordinary Rust test.
     use std::prelude::v1::test;
     #[test]
-    fn legacy_uuid_migration_is_stable_and_needs_persistence() {
-        let file = MacroLibraryFile {
-            next_id: 2,
-            entries: vec![entry(1, MacroType::Standard, vec![])],
-            ..Default::default()
-        };
-        let library = MacroLibrary::new(file);
-        assert!(library.pending());
-        let mut snapshot = library.snapshot();
-        let uuid = snapshot.entries[0].xml_guid.clone();
-        snapshot.ensure_guids();
-        assert_eq!(snapshot.entries[0].xml_guid, uuid);
-        assert!(uuid::Uuid::parse_str(uuid.as_deref().unwrap()).is_ok());
-    }
-    #[test]
     fn nested_macro_compiles_to_target_uuid_and_never_local_id() {
         let mut nested = ActionItem::new(ActionKind::Macro);
         nested.macro_id = Some(2);

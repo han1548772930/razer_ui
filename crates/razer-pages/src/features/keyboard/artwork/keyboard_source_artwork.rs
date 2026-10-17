@@ -847,7 +847,11 @@ impl KeyboardProductWorkspace {
                         .border_color(border),
                 )
                 .child(rows);
-            panels.push(razer_assets::deferred_resource(popup).with_priority(102).into_any_element());
+            panels.push(
+                razer_assets::deferred_resource(popup)
+                    .with_priority(102)
+                    .into_any_element(),
+            );
         }
         panels
     }
@@ -860,12 +864,10 @@ mod tests {
     #[::core::prelude::v1::test]
     fn formal_legacy_keyboard_pages_decode_the_mounted_artwork_in_its_source_frame() {
         use super::super::{SourceBaseArtwork, layout::KeyboardImageFrame, source_product};
-        use gpui_kit::{
-            AssetSource as _, Bounds, Image, ImageFormat, ObjectFit, SvgRenderer, point, px, size,
-        };
+        use gpui_kit::{Bounds, Image, ImageFormat, ObjectFit, SvgRenderer, point, px, size};
         use razer_model::{model::Device, product_preview::registered_preview};
         use std::{collections::BTreeMap, sync::Arc};
-        let renderer = SvgRenderer::new(Arc::new(razer_assets::SynapseAssets));
+        let renderer = SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets));
         let mut decoded_assets = BTreeMap::new();
         for pid in [579, 689, 720] {
             let legacy = registered_preview(pid).unwrap();
@@ -906,8 +908,7 @@ mod tests {
                         .unwrap_or_else(|| panic!("PID {pid} formal page lost artwork"));
                     let (dimensions, visible) =
                         decoded_assets.entry(artwork.asset).or_insert_with(|| {
-                            let bytes = razer_assets::SynapseAssets
-                                .load(artwork.asset)
+                            let bytes = razer_resources::inspect_cached(artwork.asset)
                                 .unwrap()
                                 .unwrap();
                             let format = if artwork.asset.ends_with(".svg") {
@@ -915,7 +916,7 @@ mod tests {
                             } else {
                                 ImageFormat::Png
                             };
-                            let decoded = Image::from_bytes(format, bytes.into_owned())
+                            let decoded = Image::from_bytes(format, bytes)
                                 .to_image_data(renderer.clone())
                                 .unwrap();
                             let dimensions = decoded.size(0);
@@ -1353,15 +1354,13 @@ mod tests {
 
     #[::core::prelude::v1::test]
     fn current_family_loads_every_registered_base_and_customize_image_without_a_window() {
-        use gpui_kit::AssetSource as _;
         let mut checked = std::collections::BTreeSet::new();
         for product in &super::atlas().products {
             for image in product.images.iter().chain(&product.customize_images) {
                 if !checked.insert(image.asset.as_str()) {
                     continue;
                 }
-                let bytes = razer_assets::SynapseAssets
-                    .load(&image.asset)
+                let bytes = razer_resources::inspect_cached(&image.asset)
                     .unwrap()
                     .unwrap_or_else(|| panic!("Missing current keyboard artwork: {}", image.asset));
                 assert!(!bytes.is_empty(), "{}", image.asset);
@@ -1464,7 +1463,6 @@ mod tests {
 
     #[::core::prelude::v1::test]
     fn source_preview_layouts_preserve_declared_variants_and_prepared_density_identity() {
-        use gpui_kit::AssetSource as _;
         for product in &super::atlas().products {
             let layouts = super::source_preview_layouts(product.product_id);
             assert!(!layouts.is_empty(), "{}", product.product_id);
@@ -1499,8 +1497,7 @@ mod tests {
                             )
                         });
                         assert!(
-                            razer_assets::SynapseAssets
-                                .load(image.asset)
+                            razer_resources::inspect_cached(image.asset)
                                 .unwrap()
                                 .is_some(),
                             "{}",

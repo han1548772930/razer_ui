@@ -2,7 +2,7 @@
 //! Runtime registration is separate from storing a user's configuration.
 use super::{
     controls::Choice,
-    workspace::{MEDIA, WINDOWS, canonical_key, key_label, normalized_website},
+    workspace::{canonical_key, normalized_website},
 };
 use gpui_kit::component::{
     button::{Button, ButtonVariants},
@@ -11,81 +11,13 @@ use gpui_kit::component::{
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
-use razer_catalog::emoji::EmojiSearchTable;
 use razer_i18n as i18n;
+pub use razer_model::shortcuts::*;
 use razer_widgets::source_alert::AlertAction;
 use razer_widgets::source_alert::AlertPlacement;
 use razer_widgets::source_alert::SourceAlert;
 use razer_widgets::surface;
-use serde::{Deserialize, Serialize};
-use std::{
-    sync::OnceLock,
-    time::{Duration, Instant},
-};
-
-#[derive(Deserialize)]
-struct SourceShortcutChoice {
-    id: String,
-    content: String,
-}
-struct SourceShortcutData {
-    functions: Vec<String>,
-    key_names: std::collections::BTreeMap<String, String>,
-    media: Vec<SourceShortcutChoice>,
-    windows: Vec<SourceShortcutChoice>,
-    macro_playback: Vec<SourceShortcutChoice>,
-    macro_sequence_playback: Vec<SourceShortcutChoice>,
-    macro_phased_playback: Vec<SourceShortcutChoice>,
-    profile_actions: Vec<SourceShortcutChoice>,
-    sensitivity_actions: Vec<SourceShortcutChoice>,
-    excluded_keys: Vec<String>,
-    emoji: SourceEmojiData,
-}
-struct SourceEmojiData {
-    groups: Vec<SourceEmojiGroup>,
-    tabs: Vec<SourceEmojiTab>,
-    search: &'static EmojiSearchTable,
-    variants: std::collections::BTreeMap<String, Vec<String>>,
-    excluded_without_windows_10: Vec<String>,
-}
-impl SourceEmojiData {
-    fn from_catalog(id: razer_catalog::emoji::DatasetId) -> Self {
-        let source = razer_catalog::emoji::dataset(id);
-        Self {
-            groups: source
-                .groups()
-                .iter()
-                .map(|group| SourceEmojiGroup {
-                    values: group.values().to_vec(),
-                })
-                .collect(),
-            tabs: source
-                .tabs()
-                .iter()
-                .map(|tab| SourceEmojiTab {
-                    emo: tab.emoji().to_owned(),
-                    name: tab.name().to_owned(),
-                })
-                .collect(),
-            search: razer_catalog::emoji::search(),
-            variants: source.variants().clone(),
-            excluded_without_windows_10: source.exclusions().to_vec(),
-        }
-    }
-}
-#[derive(Deserialize)]
-struct SourceEmojiGroup {
-    values: Vec<String>,
-}
-#[derive(Deserialize)]
-struct SourceEmojiTab {
-    emo: String,
-    name: String,
-}
-fn source_shortcuts() -> &'static SourceShortcutData {
-    static DATA: OnceLock<SourceShortcutData> = OnceLock::new();
-    DATA.get_or_init(|| read_shortcuts_current_catalog())
-}
+use std::time::{Duration, Instant};
 
 /// HTML textarea maxlength counts UTF-16 units. Trim only the inserted span,
 /// keeping the existing suffix when a paste or IME replacement exceeds 250.
@@ -127,296 +59,12 @@ pub fn limit_shortcut_text(
     ))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Shortcut {
-    id: String,
-    input: String,
-    modifiers: Vec<String>,
-    hypershift: bool,
-    output: ShortcutOutput,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-pub enum ShortcutOutput {
-    Program {
-        target: String,
-    },
-    Website {
-        target: String,
-    },
-    Multimedia {
-        action: String,
-    },
-    Windows {
-        action: String,
-    },
-    Text {
-        text: String,
-    },
-    /// Persistent identity in this workspace's local Macro library. This is
-    /// deliberately not a native Synapse GUID or an executable engine output.
-    Macro {
-        macro_id: u64,
-        name: String,
-        playback: String,
-        repeat_count: u8,
-    },
-}
-
-impl ShortcutOutput {
-    fn category(&self) -> &'static str {
-        match self {
-            Self::Program { .. } | Self::Website { .. } => "LAUNCH_PROGRAM",
-            Self::Multimedia { .. } => "MULTIMEDIA",
-            Self::Windows { .. } => "WINDOWS_SHORTCUT",
-            Self::Text { .. } => "TEXT_FUNCTION",
-            Self::Macro { .. } => "MACRO",
-        }
-    }
-    fn kind(&self) -> &'static str {
-        match self {
-            Self::Program { .. } => "program",
-            Self::Website { .. } => "website",
-            Self::Multimedia { .. } => "multimedia",
-            Self::Windows { .. } => "windows",
-            Self::Text { .. } => "text",
-            Self::Macro { .. } => "macro",
-        }
-    }
-    fn value(&self) -> &str {
-        match self {
-            Self::Program { target } | Self::Website { target } => target,
-            Self::Multimedia { action } | Self::Windows { action } => action,
-            Self::Text { text } => text,
-            Self::Macro { name, .. } => name,
-        }
-    }
-    fn from_kind(kind: &str) -> Self {
-        match kind {
-            "website" => Self::Website {
-                target: String::new(),
-            },
-            "multimedia" => Self::Multimedia {
-                action: MEDIA[0].0.into(),
-            },
-            "windows" => Self::Windows {
-                action: WINDOWS[0].0.into(),
-            },
-            "text" => Self::Text {
-                text: String::new(),
-            },
-            "macro" => Self::Macro {
-                macro_id: 0,
-                name: String::new(),
-                playback: "Once".into(),
-                repeat_count: 2,
-            },
-            _ => Self::Program {
-                target: String::new(),
-            },
-        }
-    }
-    fn label(&self) -> String {
-        let table = match self {
-            Self::Multimedia { .. } => MEDIA,
-            Self::Windows { .. } => WINDOWS,
-            _ => &[],
-        };
-        table
-            .iter()
-            .find(|(id, _)| *id == self.value())
-            .map(|(_, key)| i18n::t(key))
-            .unwrap_or_else(|| self.value().into())
-    }
-    fn error(&self) -> Option<&'static str> {
-        match self {
-            Self::Program { target } if target.trim().is_empty() => Some("请选择程序文件。"),
-            Self::Website { target } if normalized_website(target).is_none() => {
-                Some("请输入有效的网站地址。")
-            }
-            Self::Text { text } if text.is_empty() || text.encode_utf16().count() > 250 => {
-                Some("请输入 1–250 个字符的文本。")
-            }
-            Self::Multimedia { action } if !MEDIA.iter().any(|(id, _)| id == action) => {
-                Some("请选择有效的多媒体操作。")
-            }
-            Self::Windows { action } if !WINDOWS.iter().any(|(id, _)| id == action) => {
-                Some("请选择有效的 Windows 操作。")
-            }
-            Self::Macro {
-                macro_id,
-                name,
-                playback,
-                repeat_count,
-            } if *macro_id == 0
-                || name.trim().is_empty()
-                || playback == "NTimes" && !(1..=99).contains(repeat_count)
-                || !source_shortcuts()
-                    .macro_playback
-                    .iter()
-                    .chain(&source_shortcuts().macro_sequence_playback)
-                    .chain(&source_shortcuts().macro_phased_playback)
-                    .any(|item| item.id == *playback) =>
-            {
-                Some("宏引用或播放选项无效。")
-            }
-            _ => None,
-        }
-    }
-}
-
-// Accessors for the retained pure native encoder (no transport is connected).
-#[allow(dead_code)]
-impl Shortcut {
-    pub fn id(&self) -> &str {
-        &self.id
-    }
-    pub fn input(&self) -> &str {
-        &self.input
-    }
-    pub fn modifiers(&self) -> &[String] {
-        &self.modifiers
-    }
-    pub fn hypershift(&self) -> bool {
-        self.hypershift
-    }
-    pub fn output(&self) -> &ShortcutOutput {
-        &self.output
-    }
-}
-impl Shortcut {
-    fn chord(&self) -> String {
-        self.modifiers
-            .iter()
-            .map(|key| modifier_label(key))
-            .chain(self.hypershift.then(|| "Hypershift".into()))
-            .chain((!self.input.is_empty()).then(|| input_label(&self.input)))
-            .collect::<Vec<_>>()
-            .join(" + ")
-    }
-    fn same_chord(&self, other: &Self) -> bool {
-        self.input == other.input
-            && self.modifiers == other.modifiers
-            && self.hypershift == other.hypershift
-    }
-    pub fn validate(&self) -> Result<(), String> {
-        if self.id.is_empty() {
-            return Err("快捷键缺少身份。".into());
-        }
-        if self.input.is_empty()
-            || !(canonical_key(&self.input).is_some()
-                || MOUSE_INPUTS.iter().any(|(id, _)| *id == self.input))
-            || self.input.contains("SHIFT")
-            || self.input.ends_with("CTRL")
-            || self.input.ends_with("ALT")
-            || self.input.ends_with("GUI")
-        {
-            return Err("请录制一个按键或选择鼠标输入。".into());
-        }
-        let families = self
-            .modifiers
-            .iter()
-            .map(|key| modifier_family(key))
-            .collect::<Option<Vec<_>>>()
-            .ok_or("辅助键无效。")?;
-        if families.windows(2).any(|pair| pair[0] >= pair[1]) {
-            return Err("辅助键无效或重复。".into());
-        }
-        if let Some(error) = self.output.error() {
-            return Err(error.into());
-        }
-        Ok(())
-    }
-}
-
-const MODIFIERS: &[(&str, &str)] = &[
-    ("CTRL", "Ctrl"),
-    ("ALT", "Alt"),
-    ("SHIFT", "Shift"),
-    ("GUI", "Win"),
-];
-fn modifier_family(key: &str) -> Option<usize> {
-    match key {
-        "CTRL" | "KEY_LEFT_CTRL" | "KEY_RIGHT_CTRL" => Some(0),
-        "ALT" | "KEY_LEFT_ALT" | "KEY_RIGHT_ALT" => Some(1),
-        "SHIFT" | "KEY_LEFT_SHIFT" | "KEY_RIGHT_SHIFT" => Some(2),
-        "GUI" | "KEY_LEFT_GUI" | "KEY_RIGHT_GUI" => Some(3),
-        _ => None,
-    }
-}
-fn modifier_label(key: &str) -> String {
-    let Some(family) = modifier_family(key) else {
-        return key_label(key);
-    };
-    // 46114/i names left modifiers Ctrl/Alt/Shift without an invented prefix.
-    // GPUI's side-independent aliases use that source left-key spelling.
-    let source_key = if key.starts_with("KEY_") {
-        key.to_owned()
-    } else {
-        format!("KEY_LEFT_{}", MODIFIERS[family].0)
-    };
-    source_shortcuts()
-        .key_names
-        .get(&source_key)
-        .cloned()
-        .unwrap_or_else(|| key_label(key))
-}
 fn default_modifiers(value: &mut Shortcut) {
     // Current 94608/Te.updateMapping calls getModifiers for an empty
     // recording. GPUI supplies side-independent modifier booleans.
     if value.modifiers.is_empty() {
         value.modifiers = vec!["CTRL".into(), "SHIFT".into()];
     }
-}
-/// Strict native registration contract, retained with the pure encoder.
-#[allow(dead_code)]
-pub fn validate_shortcuts(items: &[Shortcut]) -> Result<(), String> {
-    for (ix, item) in items.iter().enumerate() {
-        item.validate()?;
-        if items[..ix]
-            .iter()
-            .any(|prior| prior.id == item.id || prior.same_chord(item))
-        {
-            return Err("快捷键身份或按键组合重复。".into());
-        }
-    }
-    Ok(())
-}
-/// Oe saves output mappings before be records an input. Conflicts remain visible
-/// as Te warnings; they are never accepted by validate_shortcuts/encode_shortcuts.
-pub fn validate_stored_shortcuts(items: &[Shortcut]) -> Result<(), String> {
-    for (index, item) in items.iter().enumerate() {
-        if item.id.is_empty() || items[..index].iter().any(|other| other.id == item.id) {
-            return Err("快捷键身份无效或重复。".into());
-        }
-        if item.input.is_empty() {
-            if !item.modifiers.is_empty() {
-                return Err("尚未录制按键的快捷键不能包含辅助键。".into());
-            }
-            if let Some(error) = item.output.error() {
-                return Err(error.into());
-            }
-        } else {
-            item.validate()?;
-        }
-    }
-    Ok(())
-}
-const MOUSE_INPUTS: &[(&str, &str)] = &[
-    ("ScrollButton", "SCROLL_CLICK"),
-    ("RightClick", "RIGHT_CLICK"),
-    ("Button4", "MOUSE_BUTTON_4"),
-    ("Button5", "MOUSE_BUTTON_5"),
-];
-fn input_label(input: &str) -> String {
-    MOUSE_INPUTS
-        .iter()
-        .find(|(id, _)| *id == input)
-        .map(|(_, label)| i18n::t(label))
-        .or_else(|| source_shortcuts().key_names.get(input).cloned())
-        .unwrap_or_else(|| key_label(input))
 }
 fn kinds() -> Vec<Choice> {
     [
@@ -863,12 +511,14 @@ impl Shortcuts {
         self.reset_emoji_mapping(window, cx);
         self.draft_generation = self.draft_generation.wrapping_add(1);
         let original = source.and_then(|id| self.items.iter().find(|item| item.id == id).cloned());
-        let mut value = original.clone().unwrap_or_else(|| Shortcut {
-            id: String::new(),
-            input: String::new(),
-            modifiers: vec![],
-            hypershift: false,
-            output: ShortcutOutput::from_kind("program"),
+        let mut value = original.clone().unwrap_or_else(|| {
+            Shortcut::new(
+                String::new(),
+                String::new(),
+                vec![],
+                false,
+                ShortcutOutput::from_kind("program"),
+            )
         });
         if duplicate || original.is_none() {
             let seed = std::time::SystemTime::now()
@@ -1054,80 +704,82 @@ impl Shortcuts {
                     let _ = owner.update(cx, |page, cx| page.dismiss_delete(window, cx));
                 }
             })
-            .content(move |_, _, cx| razer_assets::resource_scope({
-                let popup = cx.entity().downgrade();
-                let owner = confirm_owner.clone();
-                let id = id.clone();
-                let danger = razer_widgets::theme::ProfileAlertColors::new().danger();
-                v_flex()
-                    .id("shortcut-delete-confirmation")
-                    .test_support()
-                    .role(Role::Dialog)
-                    .aria_label(format!("{}：{chord}", i18n::t("DELETE_SHORTCUT")))
-                    .w(surface::css(300.))
-                    .p(surface::css(20.))
-                    .items_center()
-                    .rounded(surface::css(3.))
-                    .border_1()
-                    .border_color(danger)
-                    .bg(cx.theme().group_box)
-                    .text_size(surface::css(14.))
-                    .line_height(surface::css(17.))
-                    .shadow(vec![BoxShadow {
-                        color: cx.theme().title_bar.opacity(0.2),
-                        offset: point(Pixels::ZERO, cx.theme().font_size * (6. / 16.)),
-                        blur_radius: cx.theme().font_size * (10. / 16.),
-                        spread_radius: Pixels::ZERO,
-                        inset: false,
-                    }])
-                    .child(
-                        div()
-                            .text_center()
-                            .text_color(danger)
-                            .mb(surface::css(10.))
-                            .child(i18n::t("DELETE_SHORTCUT")),
-                    )
-                    .child(
-                        div()
-                            .w_full()
-                            .text_center()
-                            .whitespace_normal()
-                            .mb(surface::css(10.))
-                            .child(i18n::t("DELETE_SHORTCUT_MESSAGE")),
-                    )
-                    .child(
-                        Button::new("shortcut-delete-confirm")
-                            .label(i18n::t("REMOVE"))
-                            .h(surface::css(27.))
-                            .min_w(surface::css(90.))
-                            .px(surface::css(5.))
-                            .py_0()
-                            .text_size(surface::css(12.))
-                            .line_height(surface::css(14.))
-                            .rounded(cx.theme().font_size * (3. / 16.))
-                            .border_1()
-                            .border_color(cx.theme().title_bar.opacity(0.3))
-                            .custom(
-                                button::ButtonCustomVariant::new(cx)
-                                    .color(danger)
-                                    .foreground(cx.theme().primary_foreground)
-                                    .hover(danger.opacity(0.8))
-                                    .active(danger.opacity(0.6)),
-                            )
-                            .on_click(move |_, window, cx| {
-                                let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
-                                let _ = owner.update(cx, |page, cx| {
-                                    page.delete_confirmation = None;
-                                    page.delete_return_focus = None;
-                                    page.items.retain(|item| item.id != id);
-                                    page.discard_editor(window, cx);
-                                    window.focus(&page.list_focus, cx);
-                                    page.changed(cx);
-                                });
-                            }),
-                    )
-                    .into_any_element()
-            }))
+            .content(move |_, _, cx| {
+                razer_assets::resource_scope({
+                    let popup = cx.entity().downgrade();
+                    let owner = confirm_owner.clone();
+                    let id = id.clone();
+                    let danger = razer_widgets::theme::ProfileAlertColors::new().danger();
+                    v_flex()
+                        .id("shortcut-delete-confirmation")
+                        .test_support()
+                        .role(Role::Dialog)
+                        .aria_label(format!("{}：{chord}", i18n::t("DELETE_SHORTCUT")))
+                        .w(surface::css(300.))
+                        .p(surface::css(20.))
+                        .items_center()
+                        .rounded(surface::css(3.))
+                        .border_1()
+                        .border_color(danger)
+                        .bg(cx.theme().group_box)
+                        .text_size(surface::css(14.))
+                        .line_height(surface::css(17.))
+                        .shadow(vec![BoxShadow {
+                            color: cx.theme().title_bar.opacity(0.2),
+                            offset: point(Pixels::ZERO, cx.theme().font_size * (6. / 16.)),
+                            blur_radius: cx.theme().font_size * (10. / 16.),
+                            spread_radius: Pixels::ZERO,
+                            inset: false,
+                        }])
+                        .child(
+                            div()
+                                .text_center()
+                                .text_color(danger)
+                                .mb(surface::css(10.))
+                                .child(i18n::t("DELETE_SHORTCUT")),
+                        )
+                        .child(
+                            div()
+                                .w_full()
+                                .text_center()
+                                .whitespace_normal()
+                                .mb(surface::css(10.))
+                                .child(i18n::t("DELETE_SHORTCUT_MESSAGE")),
+                        )
+                        .child(
+                            Button::new("shortcut-delete-confirm")
+                                .label(i18n::t("REMOVE"))
+                                .h(surface::css(27.))
+                                .min_w(surface::css(90.))
+                                .px(surface::css(5.))
+                                .py_0()
+                                .text_size(surface::css(12.))
+                                .line_height(surface::css(14.))
+                                .rounded(cx.theme().font_size * (3. / 16.))
+                                .border_1()
+                                .border_color(cx.theme().title_bar.opacity(0.3))
+                                .custom(
+                                    button::ButtonCustomVariant::new(cx)
+                                        .color(danger)
+                                        .foreground(cx.theme().primary_foreground)
+                                        .hover(danger.opacity(0.8))
+                                        .active(danger.opacity(0.6)),
+                                )
+                                .on_click(move |_, window, cx| {
+                                    let _ = popup.update(cx, |popup, cx| popup.dismiss(window, cx));
+                                    let _ = owner.update(cx, |page, cx| {
+                                        page.delete_confirmation = None;
+                                        page.delete_return_focus = None;
+                                        page.items.retain(|item| item.id != id);
+                                        page.discard_editor(window, cx);
+                                        window.focus(&page.list_focus, cx);
+                                        page.changed(cx);
+                                    });
+                                }),
+                        )
+                        .into_any_element()
+                })
+            })
             .into_any_element()
     }
     fn start_recording(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
@@ -1251,100 +903,3 @@ include!("shortcuts_macro.rs");
 #[cfg(test)]
 #[path = "shortcuts_tests.rs"]
 mod tests;
-
-// Generated catalog reader: razer-pages/shortcuts_current.
-fn read_shortcuts_current_catalog() -> SourceShortcutData {
-    fn decode_0(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceShortcutData> {
-        let value = match r.tag()? {
-            0 => SourceShortcutData {
-                functions: r.child(decode_1)?,
-                key_names: r.child(decode_3)?,
-                media: r.child(decode_4)?,
-                windows: r.child(decode_4)?,
-                macro_playback: r.child(decode_4)?,
-                macro_sequence_playback: r.child(decode_4)?,
-                macro_phased_playback: r.child(decode_4)?,
-                profile_actions: r.child(decode_4)?,
-                sensitivity_actions: r.child(decode_4)?,
-                excluded_keys: r.child(decode_1)?,
-                emoji: r.child(decode_6)?,
-            },
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_1(
-        r: &mut razer_resource_db::NodeReader<'_>,
-    ) -> anyhow::Result<std::vec::Vec<String>> {
-        let value = match r.tag()? {
-            0 => r.sequence(decode_2)?,
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_2(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<String> {
-        let value = match r.tag()? {
-            0 => r.string()?.into(),
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_3(
-        r: &mut razer_resource_db::NodeReader<'_>,
-    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
-        let value = match r.tag()? {
-            0 => r.map(decode_2, decode_2)?,
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_4(
-        r: &mut razer_resource_db::NodeReader<'_>,
-    ) -> anyhow::Result<std::vec::Vec<SourceShortcutChoice>> {
-        let value = match r.tag()? {
-            0 => r.sequence(decode_5)?,
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceShortcutChoice> {
-        let value = match r.tag()? {
-            0 => SourceShortcutChoice {
-                id: r.child(decode_2)?,
-                content: r.child(decode_2)?,
-            },
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<SourceEmojiData> {
-        let value = match r.tag()? {
-            0 => SourceEmojiData::from_catalog(razer_catalog::emoji::DatasetId::Mapping),
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    razer_resource_db::read_document(
-        razer_resource_db::catalogs::RAZER_PAGES_SHORTCUTS_CURRENT,
-        0,
-        "540f9e8fbf9cd9f3da2b4b36b61cbfa65a439a1d90404068b61e4fa79060b84a",
-        decode_0,
-    )
-    .expect("Packaged typed catalog must match its domain schema")
-}
-
-#[cfg(test)]
-mod shortcuts_current_catalog_tests {
-    #[test]
-    fn packaged_catalog_shortcuts_current_decodes() {
-        let _ = super::read_shortcuts_current_catalog();
-    }
-}
-// End generated catalog reader: razer-pages/shortcuts_current.

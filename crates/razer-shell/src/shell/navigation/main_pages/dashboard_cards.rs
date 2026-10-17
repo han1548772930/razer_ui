@@ -257,7 +257,6 @@ fn module_content(asset: &'static str, label: &str, cx: &App) -> AnyElement {
 
 #[cfg(test)]
 mod preview_artwork_tests {
-    use gpui_kit::AssetSource;
     use razer_dashboard::dashboard_device_card::product_card_image;
     use razer_settings::{products, settings_page};
     use std::collections::BTreeSet;
@@ -358,8 +357,7 @@ mod preview_artwork_tests {
         );
         for image in &images {
             assert!(
-                razer_assets::SynapseAssets
-                    .list(image)
+                razer_assets::list_resources(image)
                     .unwrap()
                     .iter()
                     .any(|alias| alias.as_ref() == *image),

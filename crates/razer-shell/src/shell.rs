@@ -1,10 +1,13 @@
 //! App navigation and persistence. Device feature state lives in DeviceWorkspace.
 use crate::store;
+#[path = "shell/persistence.rs"]
+mod persistence;
 use gpui_kit::component::{
     button::{Button, ButtonCustomVariant, ButtonRounded, ButtonVariants},
     *,
 };
 use gpui_kit::{prelude::FluentBuilder as _, *};
+use persistence::{PreparedSave, ProductSave};
 use razer_model::model::Device;
 use razer_pages::features::ProductWorkspace;
 use razer_pages::features::WorkspaceEvent;
@@ -35,8 +38,6 @@ mod audio_mixer;
 mod audio_notifications;
 #[path = "shell/audio/audio_volume.rs"]
 mod audio_volume;
-#[path = "shell/accessories/hanbo_cooler.rs"]
-mod hanbo_cooler;
 #[path = "shell/windows/chroma_studio_window.rs"]
 mod chroma_studio_window;
 #[path = "shell/windows/chroma_window.rs"]
@@ -47,12 +48,12 @@ mod controller_calibration;
 mod controller_calibration_focus;
 #[path = "shell/gamepad/controller_chroma.rs"]
 mod controller_chroma;
-#[path = "shell/gamepad/controller_power.rs"]
-mod controller_power;
 #[path = "shell/gamepad/controller_input.rs"]
 mod controller_input;
 #[path = "shell/gamepad/controller_lighting.rs"]
 mod controller_lighting;
+#[path = "shell/gamepad/controller_power.rs"]
+mod controller_power;
 #[path = "shell/gamepad/controller_triggers.rs"]
 mod controller_triggers;
 #[path = "shell/devices/device_discovery.rs"]
@@ -63,6 +64,8 @@ mod display_window;
 mod firmware_update;
 #[path = "shell/host/game_monitor.rs"]
 mod game_monitor;
+#[path = "shell/accessories/hanbo_cooler.rs"]
+mod hanbo_cooler;
 #[path = "shell/header_status.rs"]
 mod header_status;
 #[path = "shell/help_owner.rs"]
@@ -105,8 +108,8 @@ mod mouse_receiver_indicator;
 mod mouse_runtime_artwork;
 #[path = "shell/mouse/mouse_scroll.rs"]
 mod mouse_scroll;
-use controller_lighting::ControllerLightingSave;
 use controller_chroma::ControllerChromaSave;
+use controller_lighting::ControllerLightingSave;
 use controller_triggers::ControllerTriggerSave;
 use mouse_current_dpi::MouseCurrentDpiSave;
 use mouse_current_power::MouseCurrentPowerSave;
@@ -172,22 +175,6 @@ enum Location {
     Macro,
     Chroma,
     Profiles,
-}
-struct PreparedSave {
-    leviathan: Option<leviathan::LeviathanSave>,
-    window: AnyWindowHandle,
-    file: store::WorkspaceFile,
-    mouse_polling: Option<MousePollingSave>,
-    mouse_dpi_stages: Option<MouseDpiStagesSave>,
-    mouse_dpi: Option<MouseLegacyDpiSave>,
-    mouse_current_dpi: Option<MouseCurrentDpiSave>,
-    mouse_current_power: Option<MouseCurrentPowerSave>,
-    controller_trigger: Option<ControllerTriggerSave>,
-    controller_lighting: Option<ControllerLightingSave>,
-    controller_chroma: Option<ControllerChromaSave>,
-    seiren_eq: Option<seiren_eq::SeirenEqSave>,
-    mouse_profile: Option<MouseLegacyProfileSave>,
-    keyboard_actuation: Option<keyboard_actuation_write::KeyboardActuationSave>,
 }
 struct MouseLegacyProfileSave {
     workspace: Entity<ProductWorkspace>,
@@ -2168,35 +2155,11 @@ impl AppShell {
             .iter()
             .map(|d| d.read(cx).snapshot(cx))
             .collect();
-        let shortcuts = self.shortcuts.read(cx).saved_snapshot();
-        let preferences = self.settings.read(cx).snapshot();
-        let custom_colors = cx.global::<CustomColors>().colors();
-        let intro = self.tracking_intro_seen;
-        let host_order = self.host_tabs.order();
-        let dashboard = self.dashboard_state.read(cx).snapshot();
-        let file = store::WorkspaceFile::new(devices, intro)
-            .with_shortcuts(shortcuts)
-            .with_preferences(preferences)
-            .with_custom_colors(custom_colors)
-            .with_host_tab_order(host_order)
-            .with_dashboard(dashboard)
-            .with_module_services(self.module_catalog.read(cx).service_snapshot());
-        let file = file.with_macros(self.macro_library.read(cx).snapshot());
+        let file = self.workspace_file(devices, cx);
         self.pending_saves.push_back(PreparedSave {
-            leviathan: None,
             window: window.window_handle(),
             file,
-            mouse_polling: None,
-            mouse_dpi_stages: None,
-            mouse_dpi: None,
-            mouse_current_dpi: None,
-            mouse_current_power: None,
-            controller_lighting: None,
-            controller_chroma: None,
-            controller_trigger: None,
-            seiren_eq: None,
-            keyboard_actuation: None,
-            mouse_profile: None,
+            product: None,
         });
         self.start_pending_save(cx);
     }
@@ -2228,43 +2191,25 @@ impl AppShell {
             });
             return;
         }
-        let file = store::WorkspaceFile::new(
+        let file = self.workspace_file(
             self.devices
                 .iter()
                 .map(|entity| entity.read(cx).saved_snapshot(cx))
                 .collect(),
-            self.tracking_intro_seen,
-        )
-        .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
-        .with_preferences(self.settings.read(cx).snapshot())
-        .with_custom_colors(cx.global::<CustomColors>().colors())
-        .with_host_tab_order(self.host_tabs.order())
-        .with_dashboard(self.dashboard_state.read(cx).snapshot())
-        .with_module_services(self.module_catalog.read(cx).service_snapshot())
-        .with_macros(self.macro_library.read(cx).snapshot());
+            cx,
+        );
         let identity = workspace.read(cx).identity(cx);
         self.pending_saves.push_back(PreparedSave {
-            leviathan: None,
             window: window.window_handle(),
             file,
-            mouse_polling: Some(MousePollingSave {
+            product: Some(ProductSave::MousePolling(MousePollingSave {
                 workspace,
                 scope,
                 field,
                 hz,
                 identity,
                 profile: profile.expect("checked active profile"),
-            }),
-            mouse_dpi_stages: None,
-            mouse_dpi: None,
-            mouse_current_dpi: None,
-            mouse_current_power: None,
-            controller_lighting: None,
-            controller_chroma: None,
-            controller_trigger: None,
-            seiren_eq: None,
-            keyboard_actuation: None,
-            mouse_profile: None,
+            })),
         });
         self.start_pending_save(cx);
     }
@@ -2282,7 +2227,10 @@ impl AppShell {
         request.file.macros = self.macro_library.read(cx).snapshot();
         if let Err(error) = self.rebase_current_dpi_save(&mut request, cx) {
             self.status = format!("DPI 本地保存失败：{error:#}");
-            if let Some(dpi) = request.mouse_current_dpi.take() {
+            if let Some(ProductSave::MouseCurrentDpi(dpi)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::MouseCurrentDpi(_)))
+            {
                 self.finish_current_dpi_save(dpi, false, request.window, cx);
             }
             self.continue_save_queue(false, cx);
@@ -2290,7 +2238,10 @@ impl AppShell {
         }
         if let Err(error) = self.rebase_leviathan_save(&mut request, cx) {
             self.status = format!("???????????{error:#}");
-            if let Some(sound) = request.leviathan.take() {
+            if let Some(ProductSave::Leviathan(sound)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::Leviathan(_)))
+            {
                 self.finish_leviathan_save(sound, false, cx);
             }
             self.continue_save_queue(false, cx);
@@ -2299,7 +2250,10 @@ impl AppShell {
         self.rebase_current_power_save(&mut request, cx);
         if let Err(error) = self.rebase_mouse_scroll_save(&mut request, cx) {
             self.status = format!("滚轮配置保存失败：{error:#}");
-            if let Some(profile) = request.mouse_profile.take() {
+            if let Some(ProductSave::MouseProfile(profile)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::MouseProfile(_)))
+            {
                 self.finish_mouse_scroll_save(profile, false, request.window, cx);
             }
             self.continue_save_queue(false, cx);
@@ -2308,7 +2262,10 @@ impl AppShell {
         self.rebase_controller_trigger_save(&mut request, cx);
         if let Err(error) = self.rebase_controller_lighting_save(&mut request, cx) {
             self.status = format!("手柄灯效本地保存失败：{error:#}");
-            if let Some(lighting) = request.controller_lighting.take() {
+            if let Some(ProductSave::ControllerLighting(lighting)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::ControllerLighting(_)))
+            {
                 self.finish_controller_lighting_save(lighting, false, request.window, cx);
             }
             self.continue_save_queue(false, cx);
@@ -2316,7 +2273,10 @@ impl AppShell {
         }
         if let Err(error) = self.rebase_controller_chroma_save(&mut request, cx) {
             self.status = format!("Chroma 本地保存失败：{error:#}");
-            if let Some(chroma) = request.controller_chroma.take() {
+            if let Some(ProductSave::ControllerChroma(chroma)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::ControllerChroma(_)))
+            {
                 self.finish_controller_chroma_save(chroma, false, request.window, cx);
             }
             self.continue_save_queue(false, cx);
@@ -2324,7 +2284,10 @@ impl AppShell {
         }
         if let Err(error) = self.rebase_seiren_eq_save(&mut request, cx) {
             self.status = format!("麦克风设置本地保存失败：{error:#}");
-            if let Some(eq) = request.seiren_eq.take() {
+            if let Some(ProductSave::SeirenEq(eq)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::SeirenEq(_)))
+            {
                 self.finish_seiren_eq_save(eq, false, request.window, cx);
             }
             self.continue_save_queue(false, cx);
@@ -2332,7 +2295,10 @@ impl AppShell {
         }
         self.rebase_keyboard_actuation_save(&mut request, cx);
         if !self.rebase_mouse_dpi_stages_save(&mut request, cx) {
-            if let Some(dpi) = request.mouse_dpi_stages.take() {
+            if let Some(ProductSave::MouseDpiStages(dpi)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::MouseDpiStages(_)))
+            {
                 self.finish_mouse_dpi_stages_save(dpi, false, request.window, cx);
             }
             self.continue_save_queue(false, cx);
@@ -2340,7 +2306,10 @@ impl AppShell {
         }
         if let Err(error) = self.rebase_mouse_polling_save(&mut request, cx) {
             self.status = format!("??????????{error:#}");
-            if let Some(polling) = request.mouse_polling.take() {
+            if let Some(ProductSave::MousePolling(polling)) = request
+                .product
+                .take_if(|action| matches!(action, ProductSave::MousePolling(_)))
+            {
                 polling.workspace.update(cx, |workspace, cx| {
                     workspace.finish_mouse_polling(
                         polling.scope,
@@ -2354,7 +2323,7 @@ impl AppShell {
             self.continue_save_queue(false, cx);
             return false;
         }
-        if let Some(dpi) = &request.mouse_dpi {
+        if let Some(ProductSave::MouseLegacyDpi(dpi)) = &request.product {
             request.file.devices = self
                 .devices
                 .iter()
@@ -2379,7 +2348,7 @@ impl AppShell {
                 })
                 .collect();
         }
-        if let Some(profile) = &request.mouse_profile
+        if let Some(ProductSave::MouseProfile(profile)) = &request.product
             && profile.scroll.is_none()
         {
             request.file.devices = self
@@ -2416,42 +2385,72 @@ impl AppShell {
             if let Err(error) = mouse_dpi_70::prepare_mapping_document(device, &request.file.macros)
             {
                 self.status = format!("Mouse profile preparation failed: {error:#}");
-                if let Some(sound) = request.leviathan.take() {
+                if let Some(ProductSave::Leviathan(sound)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::Leviathan(_)))
+                {
                     self.finish_leviathan_save(sound, false, cx);
                 }
-                if let Some(control) = request.keyboard_actuation.take() {
+                if let Some(ProductSave::KeyboardActuation(control)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::KeyboardActuation(_)))
+                {
                     self.finish_keyboard_actuation_save(control, false, request.window, cx);
                 }
-                if let Some(dpi) = request.mouse_current_dpi.take() {
+                if let Some(ProductSave::MouseCurrentDpi(dpi)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::MouseCurrentDpi(_)))
+                {
                     self.finish_current_dpi_save(dpi, false, request.window, cx);
                 }
-                if let Some(power) = request.mouse_current_power.take() {
+                if let Some(ProductSave::MouseCurrentPower(power)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::MouseCurrentPower(_)))
+                {
                     self.finish_current_power_save(power, false, request.window, cx);
                 }
-                if let Some(trigger) = request.controller_trigger.take() {
+                if let Some(ProductSave::ControllerTrigger(trigger)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::ControllerTrigger(_)))
+                {
                     self.finish_controller_trigger_save(trigger, false, request.window, cx);
                 }
-                if let Some(lighting) = request.controller_lighting.take() {
+                if let Some(ProductSave::ControllerLighting(lighting)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::ControllerLighting(_)))
+                {
                     self.finish_controller_lighting_save(lighting, false, request.window, cx);
                 }
-                if let Some(chroma) = request.controller_chroma.take() {
+                if let Some(ProductSave::ControllerChroma(chroma)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::ControllerChroma(_)))
+                {
                     self.finish_controller_chroma_save(chroma, false, request.window, cx);
                 }
-                if let Some(eq) = request.seiren_eq.take() {
+                if let Some(ProductSave::SeirenEq(eq)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::SeirenEq(_)))
+                {
                     self.finish_seiren_eq_save(eq, false, request.window, cx);
                 }
-                if let Some(dpi) = request.mouse_dpi_stages.take() {
+                if let Some(ProductSave::MouseDpiStages(dpi)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::MouseDpiStages(_)))
+                {
                     self.finish_mouse_dpi_stages_save(dpi, false, request.window, cx);
                 }
-                if let Some(dpi) = &request.mouse_dpi {
+                if let Some(ProductSave::MouseLegacyDpi(dpi)) = &request.product {
                     dpi.workspace.update(cx, |workspace, cx| {
                         workspace.finish_legacy_dpi(&dpi.request, cx)
                     });
                 }
-                if let Some(profile) = request.mouse_profile.take() {
+                if let Some(ProductSave::MouseProfile(profile)) = request
+                    .product
+                    .take_if(|action| matches!(action, ProductSave::MouseProfile(_)))
+                {
                     self.finish_mouse_scroll_save(profile, false, request.window, cx);
                 }
-                if let Some(polling) = &request.mouse_polling {
+                if let Some(ProductSave::MousePolling(polling)) = &request.product {
                     polling.workspace.update(cx, |workspace, cx| {
                         workspace.finish_mouse_polling(
                             polling.scope,
@@ -2468,36 +2467,14 @@ impl AppShell {
             }
         }
         let PreparedSave {
-            leviathan,
             window,
             file,
-            mouse_polling,
-            mouse_dpi_stages,
-            mouse_dpi,
-            mouse_current_dpi,
-            mouse_current_power,
-            controller_trigger,
-            controller_lighting,
-            controller_chroma,
-            seiren_eq,
-            mouse_profile,
-            keyboard_actuation,
+            mut product,
         } = request;
         let snapshot = file.clone();
+        let save_owners = self.capture_save_owners(cx);
         let path = razer_storage::store_path();
-        if mouse_polling.is_none()
-            && mouse_dpi_stages.is_none()
-            && mouse_dpi.is_none()
-            && mouse_profile.is_none()
-            && mouse_current_dpi.is_none()
-            && mouse_current_power.is_none()
-            && controller_trigger.is_none()
-            && controller_lighting.is_none()
-            && controller_chroma.is_none()
-            && seiren_eq.is_none()
-            && leviathan.is_none()
-            && keyboard_actuation.is_none()
-        {
+        if product.is_none() {
             self.status = "正在保存到本机…".into();
         }
         cx.notify();
@@ -2521,7 +2498,12 @@ impl AppShell {
                             ..
                         } = snapshot;
                         // Commit exactly the captured revision. New edits during I/O stay dirty.
-                        for (entity, snapshot) in this.devices.clone().into_iter().zip(devices) {
+                        for snapshot in devices {
+                            let Some(entity) =
+                                this.saved_revision_owner(&save_owners, &snapshot, cx)
+                            else {
+                                continue;
+                            };
                             let product_id = snapshot.product_id;
                             let mapping = snapshot
                                 .source_device_settings
@@ -2564,33 +2546,10 @@ impl AppShell {
                         CustomColors::mark_saved(custom_colors, cx);
                         this.settings
                             .update(cx, |settings, cx| settings.mark_saved(preferences, cx));
-                        if mouse_polling.is_none()
-                            && mouse_dpi_stages.is_none()
-                            && mouse_dpi.is_none()
-                            && mouse_profile.is_none()
-                            && mouse_current_dpi.is_none()
-                            && mouse_current_power.is_none()
-                            && controller_trigger.is_none()
-                            && controller_lighting.is_none()
-                            && controller_chroma.is_none()
-                            && seiren_eq.is_none()
-                            && leviathan.is_none()
-                            && keyboard_actuation.is_none()
-                        {
+                        if product.is_none() {
                             this.status = "已保存到本机 · 尚未发送到设备".into();
                         }
-                        if mouse_polling.is_none()
-                            && mouse_dpi_stages.is_none()
-                            && mouse_dpi.is_none()
-                            && mouse_profile.is_none()
-                            && mouse_current_dpi.is_none()
-                            && mouse_current_power.is_none()
-                            && controller_trigger.is_none()
-                            && controller_lighting.is_none()
-                            && controller_chroma.is_none()
-                            && seiren_eq.is_none()
-                            && leviathan.is_none()
-                            && keyboard_actuation.is_none()
+                        if product.is_none()
                             && this.settings.read(cx).snapshot().notifications
                             && !this.close_requested
                         {
@@ -2602,7 +2561,9 @@ impl AppShell {
                                 });
                             });
                         }
-                        if let Some(polling) = mouse_polling {
+                        if let Some(ProductSave::MousePolling(polling)) =
+                            product.take_if(|action| matches!(action, ProductSave::MousePolling(_)))
+                        {
                             let owner = cx.entity().downgrade();
                             cx.defer(move |cx| {
                                 let workspace = polling.workspace.clone();
@@ -2631,7 +2592,9 @@ impl AppShell {
                                 }
                             });
                         }
-                        if let Some(dpi) = mouse_dpi {
+                        if let Some(ProductSave::MouseLegacyDpi(dpi)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseLegacyDpi(_)))
+                        {
                             let owner = cx.entity().downgrade();
                             cx.defer(move |cx| {
                                 let workspace = dpi.workspace.clone();
@@ -2653,7 +2616,9 @@ impl AppShell {
                                 }
                             });
                         }
-                        if let Some(profile) = mouse_profile {
+                        if let Some(ProductSave::MouseProfile(profile)) =
+                            product.take_if(|action| matches!(action, ProductSave::MouseProfile(_)))
+                        {
                             if profile.scroll.is_some() {
                                 this.finish_mouse_scroll_save(profile, true, window, cx);
                             } else if !this.close_requested
@@ -2675,40 +2640,62 @@ impl AppShell {
                                 }
                             }
                         }
-                        if let Some(dpi) = mouse_current_dpi {
+                        if let Some(ProductSave::MouseCurrentDpi(dpi)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseCurrentDpi(_)))
+                        {
                             this.finish_current_dpi_save(dpi, true, window, cx);
                         }
-                        if let Some(dpi) = mouse_dpi_stages {
+                        if let Some(ProductSave::MouseDpiStages(dpi)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseDpiStages(_)))
+                        {
                             this.finish_mouse_dpi_stages_save(dpi, true, window, cx);
                         }
-                        if let Some(power) = mouse_current_power {
+                        if let Some(ProductSave::MouseCurrentPower(power)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseCurrentPower(_)))
+                        {
                             this.finish_current_power_save(power, true, window, cx);
                         }
-                        if let Some(trigger) = controller_trigger {
+                        if let Some(ProductSave::ControllerTrigger(trigger)) = product
+                            .take_if(|action| matches!(action, ProductSave::ControllerTrigger(_)))
+                        {
                             this.finish_controller_trigger_save(trigger, true, window, cx);
                         }
-                        if let Some(lighting) = controller_lighting {
+                        if let Some(ProductSave::ControllerLighting(lighting)) = product
+                            .take_if(|action| matches!(action, ProductSave::ControllerLighting(_)))
+                        {
                             this.finish_controller_lighting_save(lighting, true, window, cx);
                         }
-                        if let Some(chroma) = controller_chroma {
+                        if let Some(ProductSave::ControllerChroma(chroma)) = product
+                            .take_if(|action| matches!(action, ProductSave::ControllerChroma(_)))
+                        {
                             this.finish_controller_chroma_save(chroma, true, window, cx);
                         }
-                        if let Some(sound) = leviathan {
+                        if let Some(ProductSave::Leviathan(sound)) =
+                            product.take_if(|action| matches!(action, ProductSave::Leviathan(_)))
+                        {
                             this.finish_leviathan_save(sound, true, cx);
                         }
-                        if let Some(eq) = seiren_eq {
+                        if let Some(ProductSave::SeirenEq(eq)) =
+                            product.take_if(|action| matches!(action, ProductSave::SeirenEq(_)))
+                        {
                             this.finish_seiren_eq_save(eq, true, window, cx);
                         }
-                        if let Some(control) = keyboard_actuation {
+                        if let Some(ProductSave::KeyboardActuation(control)) = product
+                            .take_if(|action| matches!(action, ProductSave::KeyboardActuation(_)))
+                        {
                             this.finish_keyboard_actuation_save(control, true, window, cx);
                         }
                         this.continue_save_queue(true, cx);
                     }
                     Err(error) => {
-                        if let Some(profile) = mouse_profile {
+                        if let Some(ProductSave::MouseProfile(profile)) =
+                            product.take_if(|action| matches!(action, ProductSave::MouseProfile(_)))
+                        {
                             this.finish_mouse_scroll_save(profile, false, window, cx);
                         }
-                        if let Some(polling) = mouse_polling {
+                        if let Some(ProductSave::MousePolling(polling)) =
+                            product.take_if(|action| matches!(action, ProductSave::MousePolling(_)))
+                        {
                             eprintln!("Mouse polling profile persistence failed: {error}");
                             polling.workspace.update(cx, |workspace, cx| {
                                 workspace.finish_mouse_polling(
@@ -2719,7 +2706,9 @@ impl AppShell {
                                     cx,
                                 );
                             });
-                        } else if let Some(dpi) = mouse_dpi {
+                        } else if let Some(ProductSave::MouseLegacyDpi(dpi)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseLegacyDpi(_)))
+                        {
                             eprintln!("Mouse DPI profile persistence failed: {error}");
                             dpi.workspace.update(cx, |workspace, cx| {
                                 workspace.finish_legacy_dpi(&dpi.request, cx)
@@ -2728,32 +2717,50 @@ impl AppShell {
                         } else {
                             this.status = format!("保存失败：{error}");
                         }
-                        if let Some(dpi) = mouse_current_dpi {
+                        if let Some(ProductSave::MouseCurrentDpi(dpi)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseCurrentDpi(_)))
+                        {
                             this.finish_current_dpi_save(dpi, false, window, cx);
                         }
-                        if let Some(dpi) = mouse_dpi_stages {
+                        if let Some(ProductSave::MouseDpiStages(dpi)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseDpiStages(_)))
+                        {
                             this.status = format!("DPI 本地保存失败：{error}");
                             this.finish_mouse_dpi_stages_save(dpi, false, window, cx);
                         }
-                        if let Some(power) = mouse_current_power {
+                        if let Some(ProductSave::MouseCurrentPower(power)) = product
+                            .take_if(|action| matches!(action, ProductSave::MouseCurrentPower(_)))
+                        {
                             this.finish_current_power_save(power, false, window, cx);
                         }
-                        if let Some(trigger) = controller_trigger {
+                        if let Some(ProductSave::ControllerTrigger(trigger)) = product
+                            .take_if(|action| matches!(action, ProductSave::ControllerTrigger(_)))
+                        {
                             this.finish_controller_trigger_save(trigger, false, window, cx);
                         }
-                        if let Some(lighting) = controller_lighting {
+                        if let Some(ProductSave::ControllerLighting(lighting)) = product
+                            .take_if(|action| matches!(action, ProductSave::ControllerLighting(_)))
+                        {
                             this.finish_controller_lighting_save(lighting, false, window, cx);
                         }
-                        if let Some(chroma) = controller_chroma {
+                        if let Some(ProductSave::ControllerChroma(chroma)) = product
+                            .take_if(|action| matches!(action, ProductSave::ControllerChroma(_)))
+                        {
                             this.finish_controller_chroma_save(chroma, false, window, cx);
                         }
-                        if let Some(sound) = leviathan {
+                        if let Some(ProductSave::Leviathan(sound)) =
+                            product.take_if(|action| matches!(action, ProductSave::Leviathan(_)))
+                        {
                             this.finish_leviathan_save(sound, false, cx);
                         }
-                        if let Some(eq) = seiren_eq {
+                        if let Some(ProductSave::SeirenEq(eq)) =
+                            product.take_if(|action| matches!(action, ProductSave::SeirenEq(_)))
+                        {
                             this.finish_seiren_eq_save(eq, false, window, cx);
                         }
-                        if let Some(control) = keyboard_actuation {
+                        if let Some(ProductSave::KeyboardActuation(control)) = product
+                            .take_if(|action| matches!(action, ProductSave::KeyboardActuation(_)))
+                        {
                             this.finish_keyboard_actuation_save(control, false, window, cx);
                         }
                         this.continue_save_queue(false, cx);
@@ -2828,19 +2835,15 @@ impl AppShell {
         let host_order = self.host_tabs.order();
         let dashboard = self.dashboard_state.read(cx).snapshot();
         let macros = self.macro_library.read(cx).snapshot();
-        let file = store::WorkspaceFile::new(
-            self.devices
-                .iter()
-                .map(|d| d.read(cx).saved_snapshot(cx))
-                .collect(),
-            intro,
-        )
-        .with_shortcuts(shortcuts.clone())
-        .with_preferences(preferences.clone())
-        .with_custom_colors(custom_colors)
-        .with_host_tab_order(host_order.clone())
-        .with_dashboard(dashboard.clone())
-        .with_module_services(self.module_catalog.read(cx).service_snapshot());
+        let file = self
+            .workspace_file(
+                self.devices
+                    .iter()
+                    .map(|d| d.read(cx).saved_snapshot(cx))
+                    .collect(),
+                cx,
+            )
+            .with_shortcuts(shortcuts.clone());
         let mut file = file.with_macros(macros.clone());
         let macros_pending = self.macro_library.read(cx).pending();
         let mut macro_devices = Vec::new();
@@ -2856,6 +2859,7 @@ impl AppShell {
                 }
             }
         }
+        let save_owners = self.capture_save_owners(cx);
         let path = razer_storage::store_path();
         self.save_task = Some(cx.spawn(async move |this, cx| {
             let result = cx
@@ -2868,17 +2872,8 @@ impl AppShell {
                     Ok(()) => {
                         this.saved_intro_seen = intro;
                         for snapshot in macro_devices {
-                            let identity = format!(
-                                "{}:{}:{}",
-                                snapshot.product_id,
-                                snapshot.serial_number,
-                                snapshot.device_container_id
-                            );
-                            let Some(entity) = this
-                                .devices
-                                .iter()
-                                .find(|entity| entity.read(cx).identity(cx) == identity)
-                                .cloned()
+                            let Some(entity) =
+                                this.saved_revision_owner(&save_owners, &snapshot, cx)
                             else {
                                 continue;
                             };
@@ -3496,101 +3491,94 @@ impl Render for AppShell {
                 .into_any_element(),
         };
         v_flex()
-                    .key_context("AppShell")
-                    .track_focus(&self.host_tabs.focus)
-                    // The source captures key releases at window scope, even after an
-                    // invalid outside click moves focus. Route only to the visible device.
-                    .capture_key_up(cx.listener(|this, event: &KeyUpEvent, _, cx| {
-                        if let Location::Device(key) = &this.location {
-                            if let Some(device) = this
-                                .devices
-                                .iter()
-                                .find(|d| d.read(cx).identity(cx) == *key)
-                                .cloned()
-                            {
-                                device
-                                    .update(cx, |device, cx| device.capture_snap_key_up(event, cx));
-                            }
+            .key_context("AppShell")
+            .track_focus(&self.host_tabs.focus)
+            // The source captures key releases at window scope, even after an
+            // invalid outside click moves focus. Route only to the visible device.
+            .capture_key_up(cx.listener(|this, event: &KeyUpEvent, _, cx| {
+                if let Location::Device(key) = &this.location {
+                    if let Some(device) = this
+                        .devices
+                        .iter()
+                        .find(|d| d.read(cx).identity(cx) == *key)
+                        .cloned()
+                    {
+                        device.update(cx, |device, cx| device.capture_snap_key_up(event, cx));
+                    }
+                }
+            }))
+            .capture_key_down(cx.listener(|this, _: &KeyDownEvent, _, cx| {
+                if let Location::Device(key) = &this.location {
+                    if this.devices.iter().any(|d| {
+                        d.read(cx).identity(cx) == *key && d.read(cx).captures_snap_keys(cx)
+                    }) {
+                        cx.stop_propagation();
+                    }
+                }
+            }))
+            .on_action(cx.listener(Self::close_current_host_tab))
+            .on_action(cx.listener(Self::reopen_host_tab))
+            .on_action(cx.listener(Self::next_host_tab))
+            .on_action(cx.listener(Self::previous_host_tab))
+            .on_action(cx.listener(Self::move_host_tab_left))
+            .on_action(cx.listener(Self::move_host_tab_right))
+            .size_full()
+            .bg(cx.theme().background)
+            .text_color(cx.theme().foreground)
+            .child(self.title_bar(window, cx))
+            .child(
+                v_flex()
+                    .id("source-application-frame")
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0()
+                    .on_prepaint(move |bounds, _, _| {
+                        if let Some(handle) = &keyboard_app_frame {
+                            handle.set(bounds);
                         }
-                    }))
-                    .capture_key_down(cx.listener(|this, _: &KeyDownEvent, _, cx| {
-                        if let Location::Device(key) = &this.location {
-                            if this.devices.iter().any(|d| {
-                                d.read(cx).identity(cx) == *key && d.read(cx).captures_snap_keys(cx)
-                            }) {
-                                cx.stop_propagation();
-                            }
-                        }
-                    }))
-                    .on_action(cx.listener(Self::close_current_host_tab))
-                    .on_action(cx.listener(Self::reopen_host_tab))
-                    .on_action(cx.listener(Self::next_host_tab))
-                    .on_action(cx.listener(Self::previous_host_tab))
-                    .on_action(cx.listener(Self::move_host_tab_left))
-                    .on_action(cx.listener(Self::move_host_tab_right))
-                    .size_full()
-                    .bg(cx.theme().background)
-                    .text_color(cx.theme().foreground)
-                    .child(self.title_bar(window, cx))
+                    })
+                    // The product toolbar is inside the original iframe.
+                    .child(self.toolbar(cx))
                     .child(
-                        v_flex()
-                            .id("source-application-frame")
+                        div()
+                            .id("shell-content-viewport")
+                            .relative()
                             .flex_1()
                             .min_h_0()
                             .min_w_0()
-                            .on_prepaint(move |bounds, _, _| {
-                                if let Some(handle) = &keyboard_app_frame {
-                                    handle.set(bounds);
-                                }
-                            })
-                            // The product toolbar is inside the original iframe.
-                            .child(self.toolbar(cx))
+                            .child(div().absolute().inset_0().child(content)),
+                    ),
+            )
+            .when_some(self.source_alert.clone(), |view, alert| view.child(alert))
+            .when_some(self.release_notes.clone(), |view, notes| view.child(notes))
+            .when_some(self.iot_popup.clone(), |view, popup| view.child(popup))
+            .child(
+                div()
+                    .h(surface::css(24.))
+                    .flex_shrink_0()
+                    .px_3()
+                    .flex()
+                    .items_center()
+                    .text_size(surface::css(12.))
+                    .text_color(cx.theme().muted_foreground)
+                    .gap_3()
+                    .child(div().flex_1().min_w_0().child(self.status.clone()))
+                    .when(!resource_errors.is_empty(), |bar| {
+                        bar.child(format!("界面资源加载失败（{}）", resource_errors.len()))
                             .child(
-                                div()
-                                    .id("shell-content-viewport")
-                                    .relative()
-                                    .flex_1()
-                                    .min_h_0()
-                                    .min_w_0()
-                                    .child(div().absolute().inset_0().child(content)),
-                            ),
-                    )
-                    .when_some(self.source_alert.clone(), |view, alert| view.child(alert))
-                    .when_some(self.release_notes.clone(), |view, notes| view.child(notes))
-                    .when_some(self.iot_popup.clone(), |view, popup| view.child(popup))
-                    .child(
-                        div()
-                            .h(surface::css(24.))
-                            .flex_shrink_0()
-                            .px_3()
-                            .flex()
-                            .items_center()
-                            .text_size(surface::css(12.))
-                            .text_color(cx.theme().muted_foreground)
-                            .gap_3()
-                            .child(div().flex_1().min_w_0().child(self.status.clone()))
-                            .when(!resource_errors.is_empty(), |bar| {
-                                bar.child(format!("界面资源加载失败（{}）", resource_errors.len()))
-                                    .child(
-                                        Button::new("retry-interface-resources")
-                                            .ghost()
-                                            .xsmall()
-                                            .label("重试资源")
-                                            .tooltip(
-                                                resource_errors
-                                                    .first()
-                                                    .cloned()
-                                                    .unwrap_or_default(),
-                                            )
-                                            .on_click(|_, _, cx| {
-                                                if let Err(error) = razer_assets::retry_resources(cx)
-                                                {
-                                                    eprintln!("资源重试失败：{error}");
-                                                }
-                                                cx.refresh_windows();
-                                            }),
-                                    )
-                            }),
-                    )
+                                Button::new("retry-interface-resources")
+                                    .ghost()
+                                    .xsmall()
+                                    .label("重试资源")
+                                    .tooltip(resource_errors.first().cloned().unwrap_or_default())
+                                    .on_click(|_, _, cx| {
+                                        if let Err(error) = razer_assets::retry_resources(cx) {
+                                            eprintln!("资源重试失败：{error}");
+                                        }
+                                        cx.refresh_windows();
+                                    }),
+                            )
+                    }),
+            )
     }
 }

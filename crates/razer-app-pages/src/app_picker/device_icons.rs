@@ -95,8 +95,7 @@ mod tests {
             );
         }
         aliases.extend(icons().icons.values().map(String::as_str));
-        let registered: BTreeSet<_> = razer_assets::SynapseAssets
-            .list("synapse/")
+        let registered: BTreeSet<_> = razer_assets::list_resources("synapse/")
             .expect("installed resource directory")
             .into_iter()
             .map(|key| key.to_string())
@@ -108,7 +107,7 @@ mod tests {
 
     #[test]
     fn current_keyboard_and_mouse_vectors_decode_at_locked_codec_density_with_visible_pixels() {
-        let renderer = SvgRenderer::new(Arc::new(razer_assets::SynapseAssets));
+        let renderer = SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets));
         for (alias, bytes) in [
             (
                 "synapse/app-picker-category/keyboard.svg",

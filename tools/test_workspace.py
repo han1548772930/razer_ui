@@ -17,6 +17,70 @@ import workspace
 import resource_database
 import families
 import typed_tables
+import catalog_data
+
+
+class ArchitectureBoundaryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import resource_scope
+        cls.rust_parser = resource_scope.parser(workspace.ROOT)
+
+    def inspect(self, source, owner):
+        return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
+
+    def test_product_factory_is_rejected_through_a_type_alias_but_unrelated_constructors_pass(self):
+        owner = "crates/razer-shell/src/shell/gamepad/controller_chroma.rs"
+        bad = self.inspect('use razer_storage::workspace::WorkspaceFile as File; fn save() { File::new(devices, false); }', owner)
+        self.assertEqual([row["kind"] for row in bad], ["product_recomposes_workspace"])
+        self.assertEqual(bad[0]["expected_owner"], "crates/razer-shell/src/shell/persistence.rs")
+        self.assertFalse(self.inspect('fn unrelated() { FilePicker::new(); }', owner))
+
+    def test_shared_snapshot_requires_host_order_and_all_other_common_fields(self):
+        owner = "crates/razer-shell/src/shell/persistence.rs"
+        source = 'fn workspace_file() { WorkspaceFile::new(devices,false).with_shortcuts(s).with_preferences(p).with_custom_colors(c).with_host_tab_order(o).with_dashboard(d).with_module_services(m).with_macros(l); }'
+        self.assertFalse(self.inspect(source, owner))
+        bad = self.inspect(source.replace('.with_host_tab_order(o)', ''), owner)
+        self.assertEqual(bad[0]["kind"], "incomplete_shared_workspace_snapshot")
+
+    def test_device_acknowledgement_cannot_zip_a_changed_list(self):
+        bad = self.inspect('fn finished() { for (owner,device) in self.devices.iter().zip(devices) {} }', "crates/razer-shell/src/shell.rs")
+        self.assertEqual(bad[0]["kind"], "positional_device_acknowledgement")
+        self.assertFalse(self.inspect('fn unrelated() { pairs.iter().zip(values); }', "crates/razer-shell/src/shell.rs"))
+
+    def test_persisted_contract_has_one_owner_and_test_fixtures_remain_legal(self):
+        self.assertFalse(self.inspect('pub struct AppPreferences { flag: bool }', "crates/razer-model/src/preferences.rs"))
+        bad = self.inspect('pub struct AppPreferences { flag: bool }', "crates/razer-pages/src/features/settings.rs")
+        self.assertEqual(bad[0]["kind"], "duplicate_persisted_contract")
+        self.assertFalse(self.inspect('#[cfg(test)] mod tests { struct AppPreferences; }', "crates/razer-pages/src/lib.rs"))
+
+    def test_resource_sessions_are_not_process_globals_and_catalogs_remain_legal(self):
+        owner = "crates/razer-resources/src/runtime.rs"
+        bad = self.inspect('static SERVICE: OnceLock<Arc<Service>> = OnceLock::new();', owner)
+        self.assertEqual(bad[0]["kind"], "process_global_resource_session")
+        self.assertFalse(self.inspect('static CATALOG: OnceLock<Manifest> = OnceLock::new();', owner))
+        self.assertEqual(self.inspect('fn load() { razer_resources::inspect_cached(path); }', "crates/razer-pages/src/lib.rs")[0]["kind"], "blocking_cache_inspection_in_product")
+        self.assertFalse(self.inspect('#[cfg(test)] mod tests { fn load() { razer_resources::inspect_cached(path); } }', "crates/razer-pages/src/lib.rs"))
+
+    def test_target_and_test_dependency_edges_cannot_smuggle_gui_into_storage(self):
+        packages = [{"name": "razer-storage", "internal_dependencies": [{"name": "bridge", "kind": "cfg(windows):test"}]},
+                    {"name": "bridge", "internal_dependencies": [{"name": "razer-pages", "kind": "build"}]},
+                    {"name": "razer-pages"}]
+        rows = workspace.dependency_boundaries(packages)
+        self.assertTrue(any(row["owner"] == "razer-storage" and row["chain"] == ["razer-storage", "bridge", "razer-pages"] for row in rows))
+        packages[1]["internal_dependencies"][0]["name"] = "razer-model"
+        self.assertFalse(workspace.dependency_boundaries(packages))
+
+    def test_moving_a_catalog_owner_preserves_installed_identity_and_constant(self):
+        original = {"crate": "razer-pages", "macro": "shortcuts_current", "catalog_id": "razer-pages/shortcuts_current"}
+        moved = {**original, "crate": "razer-model"}
+        self.assertEqual(catalog_data.catalog_identity(moved), "razer-pages/shortcuts_current")
+        self.assertEqual(catalog_data.constant(moved), catalog_data.constant(original))
+
+    def test_current_workspace_uses_the_guarded_owners(self):
+        for owner in ("crates/razer-shell/src/shell/persistence.rs", "crates/razer-resources/src/runtime.rs", "crates/razer-model/src/shortcuts.rs"):
+            with self.subTest(owner=owner):
+                self.assertFalse(workspace.inspect_architecture_source((workspace.ROOT / owner).read_bytes(), owner=owner, rust_parser=self.rust_parser))
 
 
 def wheel_bytes(members, *, records=None, extra=()):

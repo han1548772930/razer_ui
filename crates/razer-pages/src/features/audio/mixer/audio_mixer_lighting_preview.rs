@@ -41,7 +41,7 @@ fn replace_colors(template: &str, colors: &[String]) -> String {
         })
 }
 impl AudioProductWorkspace {
-    pub(in super::super) fn refresh_mixer_lighting_previews(&mut self) {
+    pub(in super::super) fn refresh_mixer_lighting_previews(&mut self, cx: &App) {
         if self.spec.product_id != 1342 || self.page != "TAB_LIGHTING" {
             return;
         }
@@ -60,7 +60,7 @@ impl AudioProductWorkspace {
             BLEEP,
             FOREGROUND_COLORS,
         ] {
-            self.mixer_lighting.resources.request(path);
+            self.mixer_lighting.resources.request(path, cx);
         }
         if self.mixer_lighting.foreground_colors.is_none() {
             if let Some(source) = self.mixer_lighting.resources.text(FOREGROUND_COLORS) {

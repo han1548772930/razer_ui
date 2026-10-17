@@ -481,7 +481,7 @@ impl MouseProductWorkspace {
         this.sync_babel_calibration_lift();
         this.subscriptions
             .push(razer_assets::observe_resources(cx, |this, _, cx| {
-                if this.rotation_resources.refresh() {
+                if this.rotation_resources.refresh(cx) {
                     cx.notify();
                 }
             }));
@@ -510,7 +510,7 @@ impl MouseProductWorkspace {
             self.sync_matcher_mount(cx);
             if key == "ADVANCED" {
                 if self.spec.rotation {
-                    self.rotation_resources.request();
+                    self.rotation_resources.request(cx);
                 }
                 self.dynamic_ui_command(cx);
             }

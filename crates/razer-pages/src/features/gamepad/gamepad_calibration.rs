@@ -67,9 +67,9 @@ fn calibration_svg(
 }
 
 impl GamepadProductWorkspace {
-    pub(super) fn request_calibration_resources(&mut self) {
+    pub(super) fn request_calibration_resources(&mut self, cx: &App) {
         if let Some(path) = source_path(self.spec.product_id) {
-            self.calibration_resources.request(path);
+            self.calibration_resources.request(path, cx);
         }
     }
 
@@ -93,12 +93,14 @@ impl GamepadProductWorkspace {
         )
     }
     pub fn set_edition_id(&mut self, edition_id: u32, cx: &mut Context<Self>) {
-        if self.edition_id==edition_id {return;}
+        if self.edition_id == edition_id {
+            return;
+        }
         self.lighting_runtime.invalidate();
         self.edition_id = edition_id;
         self.request_controller_lighting(cx);
-        self.refresh_trigger_visualization();
-        self.refresh_thumbstick_artwork();
+        self.refresh_trigger_visualization(cx);
+        self.refresh_thumbstick_artwork(cx);
         cx.notify();
     }
     pub fn calibration_generation(&self) -> Option<u64> {
@@ -534,16 +536,16 @@ impl GamepadProductWorkspace {
             .on_cancel(|_, _, _| false)
             .on_ok(|_, _, _| false)
             .backdrop(div())
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .top(self.calibration_bounds.get().origin.y + window.rem_size() * (100. / 16.))
                     .left_0()
                     .w(window.viewport_size().width)
                     .flex()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

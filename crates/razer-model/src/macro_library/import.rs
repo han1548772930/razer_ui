@@ -265,19 +265,6 @@ impl MacroLibraryFile {
     }
 }
 
-impl MacroLibrary {
-    pub fn import_source_documents(
-        &mut self,
-        documents: &[Value],
-        cx: &mut Context<Self>,
-    ) -> Result<(), String> {
-        let mut candidate = self.snapshot();
-        candidate.append_source_documents(documents)?;
-        self.replace(candidate, cx);
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,5 +1,4 @@
 //! Host windows, tray and local workspace composition.
 #[path = "shell.rs"]
 pub mod shell;
-#[path = "store.rs"]
-pub mod store;
+pub use razer_storage::workspace as store;

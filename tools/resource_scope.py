@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 
-OWNER = "crates/razer-assets/src/remote/image_cache/scope.rs"
+OWNER = "crates/razer-assets/src/image_cache/scope.rs"
 _COMMENTS = {"line_comment", "block_comment"}
 
 # GPUI's default `img(Resource::Embedded(..))` path is intentionally owned by

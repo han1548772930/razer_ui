@@ -271,7 +271,7 @@ impl AppShell {
         save: &mut PreparedSave,
         cx: &App,
     ) -> anyhow::Result<()> {
-        let Some(profile) = &save.mouse_profile else {
+        let Some(ProductSave::MouseProfile(profile)) = &save.product else {
             return Ok(());
         };
         let Some(request) = &profile.scroll else {

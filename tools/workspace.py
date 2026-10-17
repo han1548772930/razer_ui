@@ -203,16 +203,19 @@ def source_structure_inventory():
         for target, value in manifest.get("target", {}).items():
             sections.extend((target + ":" + kind, value.get(key, {})) for kind, key in
                             (("normal", "dependencies"), ("build", "build-dependencies"), ("test", "dev-dependencies")))
-        dependencies = []
+        dependencies, external = [], []
         for kind, items in sections:
             for alias, specification in items.items():
                 specification = shared[alias] if isinstance(specification, dict) and specification.get("workspace") else specification
                 if isinstance(specification, dict) and "path" in specification:
                     dependencies.append({"name": specification.get("package", alias), "kind": kind})
+                else:
+                    external.append({"name": specification.get("package", alias) if isinstance(specification, dict) else alias, "kind": kind})
         source = ROOT / "app" if path.parent == ROOT else path.parent / "src"
         files = sorted(source.rglob("*.rs"))
         packages.append({"name": manifest["package"]["name"], "manifest": relative(path),
                          "internal_dependencies": dependencies,
+                         "external_dependencies": external,
                          "rust_files": len(files), "rust_bytes": sum(item.stat().st_size for item in files),
                          "largest_sources": [{"path": relative(item), "bytes": item.stat().st_size}
                                              for item in sorted(files, key=lambda item: item.stat().st_size, reverse=True)[:3]]})
@@ -225,6 +228,133 @@ def source_structure_inventory():
             "installed_catalog_input": next((row for row in embedded if row["path"] == resource_sources.RUNTIME_METADATA), None),
             "obsolete_data_files": obsolete, "resource_macro_callers": stale_calls,
             "scope": "All workspace manifests, Rust source files, module/include closure and embedded input identities; not a source-to-device acceptance claim"}
+
+
+def dependency_boundaries(packages):
+    """Check normal, test, build and platform branches, including internal transitive edges."""
+    gui = {"gpui-kit", "gpui-fast", "gpui-component", "gpui-base", "gpui-pre"}
+    presentation = {"razer_ui", "razer-app", "razer-shell", "razer-pages", "razer-app-pages", "razer-state",
+                    "razer-widgets", "razer-assets", "razer-dashboard", "razer-settings", "razer-tray"}
+    domain = {"razer-device", "razer-model", "razer-catalog", "razer-i18n", "razer-resource-db"}
+    by_name = {row["name"]: row for row in packages}
+    violations = []
+    for package in packages:
+        name = package["name"]
+        pending, seen = [(name, [name])], set()
+        while pending:
+            current, chain = pending.pop()
+            if current in seen or current not in by_name:
+                continue
+            seen.add(current)
+            row = by_name[current]
+            for edge in row.get("internal_dependencies", []) + row.get("external_dependencies", []):
+                target = edge["name"]
+                reason = None
+                if name not in presentation and target in gui | presentation:
+                    reason = "non_gui_owner_depends_on_presentation"
+                elif name in domain and target.startswith("razer-") and target not in domain:
+                    reason = "domain_depends_on_runtime_or_storage"
+                elif target == "razer-shell" and name not in {"razer-app", "razer-shell", "razer_ui"}:
+                    reason = "feature_depends_on_shell"
+                if reason:
+                    violations.append({"owner": name, "kind": reason, "chain": chain + [target], "dependency_kind": edge["kind"]})
+                elif target in by_name:
+                    pending.append((target, chain + [target]))
+    return violations
+
+
+def inspect_architecture_source(raw, *, owner, rust_parser):
+    """Inspect actual Rust items and calls, with byte locations for actionable diagnostics."""
+    tree = rust_parser.parse(raw)
+    violations = []
+    if tree.root_node.has_error:
+        return [{"owner": owner, "kind": "architecture_rust_parse_error"}]
+    factory_owner = "crates/razer-shell/src/shell/persistence.rs"
+    contracts = {"Shortcut": "crates/razer-model/src/shortcuts.rs",
+                 "MacroLibraryFile": "crates/razer-model/src/macro_library.rs",
+                 "AppPreferences": "crates/razer-model/src/preferences.rs",
+                 "ModuleServiceSnapshot": "crates/razer-model/src/module_service.rs",
+                 "WorkspaceFile": "crates/razer-storage/src/workspace.rs"}
+    required_fields = {"with_shortcuts", "with_preferences", "with_custom_colors", "with_host_tab_order",
+                       "with_dashboard", "with_module_services", "with_macros"}
+    aliases = {"WorkspaceFile": "WorkspaceFile"}
+    def text(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8") if node is not None else ""
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    def fail(node, kind, expected_owner):
+        violations.append({"owner": owner, "kind": kind, "expected_owner": expected_owner,
+                           "byte_start": node.start_byte, "byte_end": node.end_byte})
+    def in_test(node):
+        path = Path(owner)
+        if path.stem.endswith(("_tests", "_test")) or path.stem in ("tests", "test") or "testdata" in path.parts:
+            return True
+        while node is not None:
+            sibling = node.prev_named_sibling
+            while sibling is not None and sibling.type in ("line_comment", "block_comment", "attribute_item"):
+                if sibling.type == "attribute_item":
+                    attribute = "".join(text(sibling).split())
+                    if "cfg(test)" in attribute or "prelude::v1::test" in attribute or attribute.startswith(("#[test]", "#[gpui_kit::test]")):
+                        return True
+                sibling = sibling.prev_named_sibling
+            node = node.parent
+        return False
+    for node in walk(tree.root_node):
+        if node.type == "use_as_clause" and text(node.child_by_field_name("path")).split("::")[-1] == "WorkspaceFile":
+            aliases[text(node.child_by_field_name("alias"))] = "WorkspaceFile"
+    for node in walk(tree.root_node):
+        if in_test(node):
+            continue
+        if node.type == "struct_item":
+            name = text(node.child_by_field_name("name"))
+            if name in contracts and owner != contracts[name]:
+                fail(node, "duplicate_persisted_contract", contracts[name])
+            if name == "PreparedSave":
+                fields = [item for item in node.child_by_field_name("body").named_children if item.type == "field_declaration"]
+                if {text(item.child_by_field_name("name")) for item in fields} != {"window", "file", "product"}:
+                    fail(node, "multiple_product_save_owners", factory_owner)
+        if node.type == "static_item" and owner.startswith("crates/razer-resources/src/"):
+            identifiers = {text(child) for child in walk(node.child_by_field_name("type")) if child.type == "type_identifier"}
+            if identifiers & {"Service", "ResourceClient", "ResourceRuntime", "State"}:
+                fail(node, "process_global_resource_session", "razer_resources::ResourceRuntime")
+        if node.type == "function_item" and owner == factory_owner:
+            name = text(node.child_by_field_name("name"))
+            if name == "workspace_file":
+                members = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                if not required_fields <= members:
+                    fail(node, "incomplete_shared_workspace_snapshot", factory_owner)
+            if name == "saved_revision_owner":
+                members = {text(child.child_by_field_name("field")) for child in walk(node) if child.type == "field_expression"}
+                if not {"upgrade", "contains", "identity", "workspace_identity"} <= members:
+                    fail(node, "unscoped_save_acknowledgement", factory_owner)
+        if node.type != "call_expression":
+            continue
+        function = node.child_by_field_name("function")
+        segments = text(function).split("::")
+        if owner.startswith("crates/razer-shell/src/") and len(segments) >= 2 and segments[-1] == "new" and aliases.get(segments[-2]) == "WorkspaceFile" and owner != factory_owner:
+            fail(node, "product_recomposes_workspace", factory_owner)
+        if segments[-1] == "inspect_cached":
+            fail(node, "blocking_cache_inspection_in_product", "razer_resources::ResourceClient")
+        if function is not None and function.type == "field_expression" and text(function.child_by_field_name("field")) == "zip" and owner.startswith("crates/razer-shell/src/"):
+            receiver = text(function.child_by_field_name("value"))
+            if ".devices" in receiver:
+                fail(node, "positional_device_acknowledgement", factory_owner)
+    return violations
+
+
+def architecture_audit(inventory):
+    import resource_scope
+    rust_parser = resource_scope.parser(ROOT)
+    violations = dependency_boundaries(inventory["packages"])
+    sources = sorted({*ROOT.glob("app/**/*.rs"), *ROOT.glob("crates/**/src/**/*.rs")})
+    for path in sources:
+        violations.extend(inspect_architecture_source(path.read_bytes(), owner=relative(path), rust_parser=rust_parser))
+    return {"packages_scanned": len(inventory["packages"]), "rust_files_scanned": len(sources),
+            "violations": violations, "passed": not violations,
+            "scope": "All workspace dependency branches and Rust item/call AST; compilation and runtime acceptance are separate",
+            "limits": ["No Rust type resolution or macro expansion", "Explicit owners do not prove page/device runtime behavior"]}
 
 
 def source_layout_plan():
@@ -448,12 +578,14 @@ def organize_sources(apply=False):
         plan["applied"] = False
     if (ROOT / "Cargo.toml").is_file():
         plan["workspace_inventory"] = source_structure_inventory()
+        plan["architecture"] = architecture_audit(plan["workspace_inventory"])
         import resource_scope
         plan["resource_scope"] = resource_scope.audit_sources(ROOT)
     write_json(receipt, plan)
     print(json.dumps({"receipt": relative(receipt), "moves": len(plan["moves"]),
                       "rewrite_files": len(rewrites), "unresolved": plan["unresolved"],
                       "applied": plan["applied"],
+                      "architecture_passed": plan.get("architecture", {}).get("passed"),
                       "resource_scope_passed": plan.get("resource_scope", {}).get("passed")}), flush=True)
     return plan
 
@@ -1878,7 +2010,7 @@ def finite_resource_domain(row):
             constraints = ['"-enable"', '"-hover"']
             expected = [f"synapse/macro/{name}{suffix}.svg" for name in ("undo", "redo") for suffix in ("", "-enable", "-hover")]
     elif value in ("synapse/macro/{}.svg", "synapse/macro/drag-{icon}.svg"):
-        owner = ROOT / "crates/razer-pages/src/features/macros/macro_library.rs"
+        owner = ROOT / "crates/razer-model/src/macro_library.rs"
         source = owner.read_text(encoding="utf-8")
         match = re.search(r"pub fn icon\(self\).*?match self\s*\{(.*?)\n\s*\}", source, re.S)
         if match:
@@ -6212,11 +6344,12 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("restart-notification-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "restart_notification::tests"]),
         ("mouse-dpi-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_70::tests"]),
         ("storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib"]),
-        ("shell-store-migration", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "store::tests"]),
+        ("shell-store-migration", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "workspace::tests"]),
+        ("workspace-domain", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
         ("catalog-registry", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "registry::tests"]),
         ("emoji-search", ["cargo", "test", "--locked", "--offline", "-p", "razer-catalog", "--lib", "emoji::tests"]),
         ("resource-database", ["cargo", "test", "--locked", "--offline", "-p", "razer-resource-db", "--lib"]),
-        ("resource-database-index", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "remote::database_tests"]),
+        ("resource-database-index", ["cargo", "test", "--locked", "--offline", "-p", "razer-resources", "--lib", "catalog::database_tests"]),
         ("packaged-catalogs", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "-p", "razer-app-pages", "-p", "razer-assets", "-p", "razer-model", "-p", "razer-catalog", "-p", "razer-shell", "-p", "razer-tray", "-p", "razer-settings", "--lib", "packaged_catalog_"]),
         ("model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
         ("i18n", ["cargo", "test", "--locked", "--offline", "-p", "razer-i18n", "--lib"]),
@@ -6299,7 +6432,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("assets", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib"]),
         ("asset-pack-core", ["cargo", "test", "--locked", "--offline", "-p", "razer-asset-pack", "--lib"]),
         ("assets-resource-identity", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests"]),
-        ("assets-resource-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "remote::"]),
+        ("assets-resource-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-resources", "--lib"]),
         ("assets-fixed-icons", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "icons::tests"]),
         ("workspace", ["cargo", "check", "--locked", "--offline", "--workspace", "--all-targets"]),
     ]
@@ -6644,7 +6777,7 @@ def main():
         print(json.dumps({"report": args.plan, "mode": report["mode"], **report["summary"]}, ensure_ascii=False))
     elif args.command == "organize-sources":
         report = organize_sources(apply=args.apply)
-        return 0 if not report["unresolved"] and report.get("resource_scope", {}).get("passed", True) else 1
+        return 0 if not report["unresolved"] and report.get("resource_scope", {}).get("passed", True) and report.get("architecture", {}).get("passed", True) else 1
     elif args.command == "audit-lfs":
         report = audit_git_lfs()
         print(json.dumps({"report": ".analysis/results/git-lfs-audit.json", "passed": report["passed"], **report["summary"]}))

@@ -16,6 +16,8 @@
 
 工作区按 UI、状态、本地 IPC、服务、协议与平台适配分层，见 [架构说明](docs/re/architecture.md)。外部项目用于学习安装、目录、缓存与生命周期等架构；Razer 协议依据当前 Razer 原始源码与二进制。证据 SHA 从实际输入字节计算，存于分析索引，不能作为产品运行门槛。
 
+偏好、快捷键、宏文档／编译和模块快照统一由无 GPUI 的 `razer-model` 提供，版本化工作区由 `razer-storage::workspace` 读写。产品保存共用快照入口，并绑定请求入队时的页面实体确认结果。资源 I/O 独立于 `razer-assets` 的 GPUI 适配，由应用注入的 `razer-resources::ResourceRuntime` 管理队列、HTTP、安装缓存与取消／关闭。`organize-sources` 维护全工作区模块、依赖和共享所有者检查；这些边界的验证不代表全部产品页面已经完成。
+
 设置中的“所有产品”列出 331 个已注册产品，支持搜索、分类、版本及布局选择，并进入正式产品工作区，而非产品演示弹窗。获取 locator 仍保留 332 个 PID；162 端点的完整 DeviceInfo 实际声明 163，身份错误项不作为额外产品展示。真实连接与未连接的本地预览明确分开；列表覆盖不代表全部页面及设备链已完成。
 
 `prepare-runtime-assets`／`verify-runtime-assets` 从 `tools/resource-mappings.json` 和已固定的资源清单生成／核验同一 SQLite 资源目录，无需本地图片载荷。`fetch-asset-release --product PID` 仅供维护人员明确恢复选定产品原文件，不属于启动或编译流程；普通使用无需执行。来源获取、静态逆向、Rust 实现、接线、纯测试与真实验收分别记录。

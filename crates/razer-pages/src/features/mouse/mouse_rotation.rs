@@ -17,13 +17,13 @@ pub(super) struct Resources {
 }
 
 impl Resources {
-    pub(super) fn request(&mut self) {
-        self.texts.request(SOURCE);
-        self.refresh();
+    pub(super) fn request(&mut self, cx: &App) {
+        self.texts.request(SOURCE, cx);
+        self.refresh(cx);
     }
 
-    pub(super) fn refresh(&mut self) -> bool {
-        self.texts.refresh();
+    pub(super) fn refresh(&mut self, cx: &App) -> bool {
+        self.texts.refresh(cx);
         if self.images.is_some() {
             return false;
         }

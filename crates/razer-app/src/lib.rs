@@ -226,7 +226,7 @@ pub fn run() {
 
     // 注册图标源：**必须用 `AllAssets`**（完整 Lucide 图标集，1830 个 SVG）。
     // 默认的 `Assets` 只有少量图标，用它会导致大部分 `IconName` 渲染为空白。
-    if let Err(error) = resources::SynapseAssets.validate() {
+    if let Err(error) = resources::validate() {
         eprintln!("资源索引无法加载：{error:#}");
         std::process::exit(1);
     }
@@ -238,13 +238,21 @@ pub fn run() {
         eprintln!("本地产品目录无法加载：{error:#}");
         std::process::exit(1);
     }
-    let application = gpui_kit::application().with_assets(resources::SynapseAssets);
+    let resource_runtime = match resources::ResourceRuntime::start() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            eprintln!("资源服务无法创建：{error:#}");
+            std::process::exit(1);
+        }
+    };
+    let assets = resources::SynapseAssets::new(resource_runtime.client());
+    let application = gpui_kit::application().with_assets(assets);
 
     application.run(move |cx| {
         // 使用任何组件前必须先初始化。
         gpui_kit::init(cx);
         razer_widgets::init(cx);
-        if let Err(error) = resources::start_resources(cx) {
+        if let Err(error) = resources::start_resources(resource_runtime, cx) {
             eprintln!("资源加载器无法初始化：{error:#}");
         }
         if let Err(error) = resources::register_fonts(cx) {

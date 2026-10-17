@@ -194,8 +194,6 @@ fn every_cycle_branch_keeps_its_current_product_and_edition_selector() {
 
 #[::core::prelude::v1::test]
 fn pid229_cycle_artwork_uses_a_registered_runtime_alias() {
-    use gpui_kit::AssetSource as _;
-
     let image = source_surface(229, 0)
         .and_then(|surface| surface.cycle_artwork(0))
         .expect("PID229 cycle artwork");
@@ -207,21 +205,13 @@ fn pid229_cycle_artwork_uses_a_registered_runtime_alias() {
         image.asset,
         "synapse/mouse-customize/8bd13c4f3a94a3834d2a05c6.svg"
     );
-    let listed = razer_assets::SynapseAssets
-        .list("synapse/mouse-customize/")
-        .expect("resource catalog");
+    let listed =
+        razer_assets::list_resources("synapse/mouse-customize/").expect("resource catalog");
     assert!(listed.iter().any(|key| key.as_ref() == image.asset));
 
-    // A cold installation queues this known alias and reports ResourcePending;
-    // an unknown alias would instead return Ok(None) and never be retried.
-    match razer_assets::SynapseAssets.load(&image.asset) {
-        Ok(Some(bytes)) => assert!(!bytes.is_empty()),
-        Err(error) => assert!(
-            razer_assets::is_resource_pending(&error),
-            "known PID229 alias failed as a non-pending resource: {error:#}"
-        ),
-        Ok(None) => panic!("PID229 cycle alias was not found by AssetSource"),
-    }
+    // Pending, download and verified loading are exercised by the resource
+    // runtime's simulated alias test; this assertion covers product selection.
+    assert!(razer_assets::resource_identity(&image.asset).is_some());
 }
 
 #[gpui_kit::test]

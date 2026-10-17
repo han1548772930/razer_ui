@@ -18,7 +18,7 @@ impl GamepadProductWorkspace {
         {
             return;
         }
-        self.request_calibration_resources();
+        self.request_calibration_resources(cx);
         self.calibration_state
             .set_reducer_valid(self.trigger_calibration_state.valid);
         let return_focus = window.focused(cx);
@@ -268,14 +268,14 @@ impl GamepadProductWorkspace {
             .on_cancel(|_, _, _| false)
             .on_ok(|_, _, _| false)
             .backdrop(div())
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .inset_0()
                     .flex()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

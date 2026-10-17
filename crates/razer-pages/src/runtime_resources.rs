@@ -31,8 +31,8 @@ pub(crate) struct TextResources {
 }
 
 impl TextResources {
-    pub(crate) fn request(&mut self, path: &'static str) {
-        self.request_with(path, &mut razer_assets::load_path);
+    pub(crate) fn request(&mut self, path: &'static str, cx: &gpui_kit::App) {
+        self.request_with(path, &mut |path| razer_assets::load_path(path, cx));
     }
 
     fn request_with(&mut self, path: &'static str, loader: &mut impl FnMut(&str) -> LoadResult) {
@@ -47,8 +47,8 @@ impl TextResources {
         self.refresh_path(path, loader);
     }
 
-    pub(crate) fn refresh(&mut self) -> bool {
-        self.refresh_with(&mut razer_assets::load_path)
+    pub(crate) fn refresh(&mut self, cx: &gpui_kit::App) -> bool {
+        self.refresh_with(&mut |path| razer_assets::load_path(path, cx))
     }
 
     fn refresh_with(&mut self, loader: &mut impl FnMut(&str) -> LoadResult) -> bool {

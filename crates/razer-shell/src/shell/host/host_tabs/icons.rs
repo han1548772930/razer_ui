@@ -12,7 +12,6 @@ pub(super) fn device_favicon(pid: u32) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::device_favicon;
-    use gpui_kit::AssetSource;
     use std::collections::BTreeSet;
 
     #[test]
@@ -26,8 +25,7 @@ mod tests {
         assert!(!images.is_empty());
         for icon in images {
             assert!(
-                razer_assets::SynapseAssets
-                    .list(icon)
+                razer_assets::list_resources(icon)
                     .unwrap()
                     .iter()
                     .any(|alias| alias.as_ref() == icon),

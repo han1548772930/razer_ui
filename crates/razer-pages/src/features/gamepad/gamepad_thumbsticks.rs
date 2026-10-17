@@ -3,7 +3,6 @@
 //! retained by `gamepad_thumbsticks` in gamepad-main-audit.json.
 use super::*;
 use gpui_kit::base::{Slider as BaseSlider, SliderIndicator, SliderThumb, SliderTrack};
-use razer_assets::SynapseAssets;
 use razer_widgets::theme::GamepadThumbstickColors as Colors;
 use std::{sync::Arc, time::Duration};
 
@@ -165,7 +164,7 @@ impl GamepadProductWorkspace {
                 ));
             }
         }
-        self.refresh_thumbstick_artwork();
+        self.refresh_thumbstick_artwork(cx);
     }
 
     fn delay_thumbstick_commit(
@@ -246,7 +245,7 @@ impl GamepadProductWorkspace {
         }
     }
 
-    pub(super) fn refresh_thumbstick_artwork(&mut self) {
+    pub(super) fn refresh_thumbstick_artwork(&mut self, cx: &App) {
         if !self.modern_thumbsticks() || self.page != "THUMBSTICKS" {
             return;
         }
@@ -259,7 +258,7 @@ impl GamepadProductWorkspace {
             };
             let bytes =
                 crate::runtime_resources::load_edition_resource(self.edition_id, |edition| {
-                    SynapseAssets.load(&path(edition))
+                    cx.asset_source().load(&path(edition))
                 })?
                 .ok_or_else(|| anyhow::anyhow!("Current sensitivity SVG is missing"))?;
             let mut svg = String::from_utf8(bytes.to_vec())?;

@@ -295,7 +295,6 @@ fn all_products_artwork_never_substitutes_unknown_editions() {
 
 #[::core::prelude::v1::test]
 fn all_products_artwork_covers_every_default_and_declared_variant_without_hiding_gaps() {
-    use gpui_kit::AssetSource as _;
     let mut variants = 0;
     let mut available = 0;
     let mut missing = Vec::new();
@@ -315,7 +314,7 @@ fn all_products_artwork_covers_every_default_and_declared_variant_without_hiding
                 if let Some(asset) = artwork(pid, edition, layout) {
                     available += 1;
                     assert!(
-                        razer_assets::SynapseAssets.load(asset).unwrap().is_some(),
+                        razer_resources::inspect_cached(asset).unwrap().is_some(),
                         "PID {pid} edition {edition} layout {layout}: {asset}"
                     );
                 } else {

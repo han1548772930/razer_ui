@@ -30,7 +30,7 @@ impl GamepadProductWorkspace {
             return;
         }
         self.trigger_calibration_resources
-            .request(self.spec.product_id);
+            .request(self.spec.product_id, cx);
         // Two popup views observe the same controllerCalibrationReducer.
         // Independent visual state must not reset its shared validity.
         self.trigger_calibration_state
@@ -262,14 +262,14 @@ impl GamepadProductWorkspace {
             .on_cancel(|_, _, _| false)
             .on_ok(|_, _, _| false)
             .backdrop(div())
-            .popup(
-                razer_assets::resource_scope(div()
+            .popup(razer_assets::resource_scope(
+                div()
                     .absolute()
                     .inset_0()
                     .flex()
                     .justify_center()
-                    .child(panel)),
-            )
+                    .child(panel),
+            ))
             .into_any_element()
     }
 }

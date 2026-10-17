@@ -39,6 +39,13 @@ fn windows_token() -> Option<String> {
             return None;
         }
         let value = &*credential;
+        if value.CredentialBlob.is_null()
+            || value.CredentialBlobSize == 0
+            || value.CredentialBlobSize % 2 != 0
+        {
+            CredFree(credential.cast());
+            return None;
+        }
         let bytes =
             std::slice::from_raw_parts(value.CredentialBlob, value.CredentialBlobSize as usize);
         let wide = bytes

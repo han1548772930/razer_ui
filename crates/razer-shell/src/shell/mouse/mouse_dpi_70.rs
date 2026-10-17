@@ -193,44 +193,26 @@ impl AppShell {
             cx.notify();
             return;
         }
-        let file = store::WorkspaceFile::new(
+        let file = self.workspace_file(
             self.devices
                 .iter()
                 .map(|entity| entity.read(cx).saved_snapshot(cx))
                 .collect(),
-            self.tracking_intro_seen,
-        )
-        .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
-        .with_preferences(self.settings.read(cx).snapshot())
-        .with_custom_colors(cx.global::<CustomColors>().colors())
-        .with_host_tab_order(self.host_tabs.order())
-        .with_dashboard(self.dashboard_state.read(cx).snapshot())
-        .with_module_services(self.module_catalog.read(cx).service_snapshot())
-        .with_macros(self.macro_library.read(cx).snapshot());
+            cx,
+        );
         let identity = workspace.read(cx).identity(cx);
         let device = workspace.read(cx).snapshot(cx);
         self.pending_saves.push_back(PreparedSave {
-            leviathan: None,
             window: window.window_handle(),
             file,
-            mouse_polling: None,
-            mouse_dpi_stages: None,
-            mouse_dpi: None,
-            mouse_current_dpi: None,
-            mouse_current_power: None,
-            controller_lighting: None,
-            controller_chroma: None,
-            controller_trigger: None,
-            seiren_eq: None,
-            keyboard_actuation: None,
-            mouse_profile: Some(MouseLegacyProfileSave {
+            product: Some(ProductSave::MouseProfile(MouseLegacyProfileSave {
                 workspace,
                 scope,
                 identity,
                 device,
                 apply,
                 scroll,
-            }),
+            })),
         });
         self.start_pending_save(cx);
     }
@@ -260,41 +242,23 @@ impl AppShell {
             });
             return;
         }
-        let file = store::WorkspaceFile::new(
+        let file = self.workspace_file(
             self.devices
                 .iter()
                 .map(|entity| entity.read(cx).saved_snapshot(cx))
                 .collect(),
-            self.tracking_intro_seen,
-        )
-        .with_shortcuts(self.shortcuts.read(cx).saved_snapshot())
-        .with_preferences(self.settings.read(cx).snapshot())
-        .with_custom_colors(cx.global::<CustomColors>().colors())
-        .with_host_tab_order(self.host_tabs.order())
-        .with_dashboard(self.dashboard_state.read(cx).snapshot())
-        .with_module_services(self.module_catalog.read(cx).service_snapshot())
-        .with_macros(self.macro_library.read(cx).snapshot());
+            cx,
+        );
         let identity = workspace.read(cx).identity(cx);
         self.pending_saves.push_back(PreparedSave {
-            leviathan: None,
             window: window.window_handle(),
             file,
-            mouse_polling: None,
-            mouse_dpi_stages: None,
-            mouse_profile: None,
-            mouse_current_dpi: None,
-            mouse_current_power: None,
-            controller_lighting: None,
-            controller_chroma: None,
-            controller_trigger: None,
-            seiren_eq: None,
-            keyboard_actuation: None,
-            mouse_dpi: Some(MouseLegacyDpiSave {
+            product: Some(ProductSave::MouseLegacyDpi(MouseLegacyDpiSave {
                 workspace,
                 request,
                 identity,
                 profile: profile.expect("checked active profile"),
-            }),
+            })),
         });
         self.start_pending_save(cx);
     }

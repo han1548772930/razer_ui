@@ -162,8 +162,8 @@ impl AudioProductWorkspace {
         }
         self.subscriptions
             .push(razer_assets::observe_resources(cx, |this, _, cx| {
-                if this.mixer_lighting.resources.refresh() {
-                    this.refresh_mixer_lighting_previews();
+                if this.mixer_lighting.resources.refresh(cx) {
+                    this.refresh_mixer_lighting_previews(cx);
                     cx.notify();
                 }
             }));
@@ -326,7 +326,7 @@ impl AudioProductWorkspace {
             };
             slider.update(cx, |s, cx| s.set_value(value as f32, window, cx));
         }
-        self.refresh_mixer_lighting_previews();
+        self.refresh_mixer_lighting_previews(cx);
     }
     fn change_mixer_lighting_effect(
         &mut self,

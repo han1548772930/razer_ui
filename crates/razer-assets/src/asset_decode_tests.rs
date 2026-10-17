@@ -6,10 +6,10 @@ use std::{collections::BTreeSet, sync::Arc};
 
 #[test]
 fn listed_product_aliases_have_complete_file_identities() {
-    let aliases = SynapseAssets.list("synapse/").unwrap();
+    let aliases = list_resources("synapse/").unwrap();
     let mut files = BTreeSet::new();
     for alias in &aliases {
-        let (path, bytes, hash) = remote::identity(alias)
+        let (path, bytes, hash) = resource_identity(alias)
             .unwrap_or_else(|| panic!("Listed resource has no file identity: {alias}"));
         assert!(path.starts_with("assets/synapse/"), "{alias}: {path}");
         assert!(bytes > 0, "Empty product resource: {alias}");
@@ -19,18 +19,18 @@ fn listed_product_aliases_have_complete_file_identities() {
     }
     assert!(aliases.len() > 1_000);
     assert!(files.len() > 1_000);
-    assert_eq!(SynapseAssets.list("synapse/").unwrap(), aliases);
-    assert!(remote::identity("synapse/absent-resource-for-identity-test").is_none());
+    assert_eq!(list_resources("synapse/").unwrap(), aliases);
+    assert!(resource_identity("synapse/absent-resource-for-identity-test").is_none());
 }
 
 #[test]
 fn sprite_views_share_one_download_and_special_providers_keep_list_rules() {
     let base = "synapse/audio-volume-external-sprite.svg";
-    let identity = remote::identity(base).unwrap();
+    let identity = resource_identity(base).unwrap();
     for view in ["link", "hover"] {
-        assert_eq!(remote::identity(&format!("{base}#{view}")), Some(identity));
+        assert_eq!(resource_identity(&format!("{base}#{view}")), Some(identity));
     }
-    assert!(remote::identity(&format!("{base}#unknown")).is_none());
+    assert!(resource_identity(&format!("{base}#unknown")).is_none());
     let controls = [
         "synapse/audio-demo-control-play.svg",
         "synapse/audio-demo-control-pause.svg",
@@ -38,20 +38,19 @@ fn sprite_views_share_one_download_and_special_providers_keep_list_rules() {
         "synapse/audio-demo-control-fullscreen-exit.svg",
     ];
     for prefix in ["", "synapse", "synapse/"] {
-        let listed = SynapseAssets.list(prefix).unwrap();
+        let listed = list_resources(prefix).unwrap();
         for control in controls {
             assert!(listed.iter().any(|key| key == control));
-            assert!(remote::identity(control).is_some());
+            assert!(resource_identity(control).is_some());
         }
     }
     assert!(
-        SynapseAssets
-            .list("synapse/audio-demo-control-")
+        list_resources("synapse/audio-demo-control-")
             .unwrap()
             .is_empty()
     );
     let fallback = gpui_kit::assets::AllAssets.list("").unwrap();
-    let listed = SynapseAssets.list("").unwrap();
+    let listed = list_resources("").unwrap();
     assert!(!fallback.is_empty());
     for key in fallback {
         assert!(listed.contains(&key), "GPUI fallback omitted: {key}");
@@ -81,7 +80,7 @@ fn current_gamepad_trigger_resources_have_source_identities() {
     );
     let mut payloads = BTreeSet::new();
     for alias in aliases {
-        let (_, bytes, hash) = remote::identity(&alias).expect(&alias);
+        let (_, bytes, hash) = resource_identity(&alias).expect(&alias);
         assert!(bytes > 0, "{alias}");
         payloads.insert((bytes, hash));
     }
@@ -107,7 +106,7 @@ fn inline_svg_codec_preserves_clips_and_rejects_invalid_input() {
 fn pid229_cycle_up_svg_matches_manifest_and_rasterizes_on_cpu() {
     const KEY: &str = "synapse/mouse-customize/8bd13c4f3a94a3834d2a05c6.svg";
     const SVG: &[u8] = include_bytes!("../testdata/mouse_customize/cycle-229.svg");
-    let (path, bytes, hash) = remote::identity(KEY).expect(KEY);
+    let (path, bytes, hash) = resource_identity(KEY).expect(KEY);
     assert_eq!(
         path,
         "assets/synapse/shared/products/8bd13c4f3a94a383-8bd13c4f3a94a3834d2a05c6.svg"
@@ -117,7 +116,7 @@ fn pid229_cycle_up_svg_matches_manifest_and_rasterizes_on_cpu() {
 
     // Keep this a pure codec check: no application/window or resource task is
     // involved. The fixture is the exact 102px PID229 cycle-up artwork.
-    let renderer = SvgRenderer::new(Arc::new(SynapseAssets));
+    let renderer = SvgRenderer::new(Arc::new(gpui_kit::assets::AllAssets));
     let rendered = renderer
         .render_single_frame(SVG, 1.)
         .expect("PID229 cycle-up SVG should rasterize");

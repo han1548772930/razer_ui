@@ -251,7 +251,7 @@ mod mapping_editor;
 mod mouse_dpi_profile;
 #[path = "../mouse/polling/mouse_polling_profile.rs"]
 mod mouse_polling_profile;
-pub(super) use mapping_editor::{MEDIA, WINDOWS, canonical_key, key_label, normalized_website};
+pub(super) use razer_model::mapping::{canonical_key, normalized_website};
 #[cfg(test)]
 #[path = "../mapping/mapping_focus_tests.rs"]
 mod mapping_focus_tests;

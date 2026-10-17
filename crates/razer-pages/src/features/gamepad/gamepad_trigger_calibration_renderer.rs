@@ -17,7 +17,7 @@ pub(super) struct Resources {
 }
 
 impl Resources {
-    pub(super) fn request(&mut self, pid: u32) {
+    pub(super) fn request(&mut self, pid: u32, cx: &App) {
         let path = match pid {
             2676 => {
                 "assets/synapse/products/2676/6a37b05df5932aee-gamepad-2676-calibration-trigger-artwork-edition-0.svg"
@@ -29,13 +29,13 @@ impl Resources {
         };
         self.artwork_path = Some(path);
         for path in [METER, TIMER, path] {
-            self.texts.request(path);
+            self.texts.request(path, cx);
         }
-        self.refresh();
+        self.refresh(cx);
     }
 
-    pub(super) fn refresh(&mut self) -> bool {
-        let changed = self.texts.refresh();
+    pub(super) fn refresh(&mut self, cx: &App) -> bool {
+        let changed = self.texts.refresh(cx);
         if self.artwork.is_none() {
             if let Some(source) = self.artwork_path.and_then(|path| self.texts.text(path)) {
                 self.artwork = Some(artwork_images(source));

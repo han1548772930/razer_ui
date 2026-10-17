@@ -5758,17 +5758,13 @@ name = "razer-assets"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-channel",
- "futures",
  "gpui-kit",
- "gpui-pre-reqwest",
  "image",
  "razer-resource-db",
+ "razer-resources",
  "serde",
  "serde_json",
  "sha2 0.10.9",
- "tokio",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5856,12 +5852,14 @@ name = "razer-model"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "razer-catalog",
  "razer-device",
  "razer-i18n",
  "razer-resource-db",
  "serde",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]
@@ -5884,6 +5882,7 @@ dependencies = [
  "razer-model",
  "razer-platform",
  "razer-resource-db",
+ "razer-resources",
  "razer-state",
  "razer-widgets",
  "regex",
@@ -5917,6 +5916,21 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "razer-resources"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-channel",
+ "futures",
+ "gpui-pre-reqwest",
+ "razer-resource-db",
+ "serde",
+ "sha2 0.10.9",
+ "tokio",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5961,6 +5975,7 @@ dependencies = [
  "razer-pages",
  "razer-platform",
  "razer-resource-db",
+ "razer-resources",
  "razer-state",
  "razer-storage",
  "razer-widgets",
@@ -6005,6 +6020,7 @@ name = "razer-state"
 version = "0.1.0"
 dependencies = [
  "gpui-kit",
+ "razer-model",
  "serde",
  "serde_json",
 ]
@@ -6017,9 +6033,11 @@ dependencies = [
  "anyhow",
  "base64 0.22.1",
  "md5",
+ "razer-model",
  "ring",
  "roxmltree 0.21.1",
  "serde",
+ "serde_ignored",
  "serde_json",
 ]
 

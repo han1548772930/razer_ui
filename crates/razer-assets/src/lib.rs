@@ -1,66 +1,83 @@
-//! Product resources are fetched individually and reused from the installation cache.
+//! Product image selection and GPUI adaptation of the resource service.
 use gpui_kit::{AssetSource, SharedString};
 use std::borrow::Cow;
-pub struct SynapseAssets;
+
+/// Application asset adapter. Its client borrows one explicitly owned runtime.
+#[derive(Clone)]
+pub struct SynapseAssets {
+    client: razer_resources::ResourceClient,
+}
+mod image_cache;
 mod image_selectors;
-mod native_icons;
-mod window_icons;
-pub use native_icons::NativeIcon;
 mod keyboard_source;
+mod native_icons;
+mod resource_runtime;
+mod window_icons;
+pub use image_cache::{
+    ResourceLayer, ResourceScope, deferred_resource, load_resource_image, resource_image_cache,
+    resource_scope,
+};
 pub use keyboard_source::{
     InputCounter, KeyboardSourceGroup, KeyboardSourceInput, keyboard_source_for_layout,
 };
-mod packed;
-mod remote;
-pub use remote::{
-    ResourceChanged, ResourcePending, is_resource_pending, load_resource_image, observe_resources, resource_errors,
-    resource_generation, resource_image_cache, retry_resources, start_resources,
-    ResourceLayer, ResourceScope, deferred_resource, resource_scope,
+pub use native_icons::NativeIcon;
+pub use razer_resources::{
+    ResourcePending, ResourceRuntime, identity as resource_identity, is_resource_pending,
+};
+pub use resource_runtime::{
+    ResourceChanged, observe_resources, register_fonts, resource_errors, retry_resources,
+    start_resources,
 };
 
-/// Request one original file by its manifest path, without hydrating its product.
-pub fn load_path(path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
-    remote::load_path(path).map(|bytes| bytes.map(Cow::Owned))
+/// Request through this application's injected asset source.
+pub fn load_path(path: &str, cx: &gpui_kit::App) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
+    cx.asset_source().load(path)
+}
+pub fn validate() -> anyhow::Result<()> {
+    razer_resource_db::initialize()?;
+    image_selectors::validate()?;
+    razer_resources::validate()
+}
+/// Query installed metadata without constructing a runtime or performing resource I/O.
+pub fn list_resources(path: &str) -> anyhow::Result<Vec<SharedString>> {
+    let mut items = gpui_kit::assets::AllAssets.list(path)?;
+    items.extend(
+        razer_resources::list(path)?
+            .into_iter()
+            .map(SharedString::from),
+    );
+    Ok(items)
 }
 impl SynapseAssets {
-    pub fn validate(&self) -> anyhow::Result<()> {
-        razer_resource_db::initialize()?;
-        image_selectors::validate()?;
-        packed::validate()
+    pub fn new(client: razer_resources::ResourceClient) -> Self {
+        Self { client }
     }
+}
+fn embedded_asset(path: &str) -> Option<&'static [u8]> {
+    if let Some(bytes) = window_icons::load(path) {
+        return Some(bytes);
+    }
+    if let Some(bytes) = native_icons::embedded(path) {
+        return Some(bytes);
+    }
+    let original = resource_identity(path).map_or(path, |(path, _, _)| path);
+    native_icons::embedded(original)
 }
 impl AssetSource for SynapseAssets {
     fn load(&self, path: &str) -> anyhow::Result<Option<Cow<'static, [u8]>>> {
-        if let Some(bytes) = window_icons::load(path) {
+        if let Some(bytes) = embedded_asset(path) {
             return Ok(Some(Cow::Borrowed(bytes)));
         }
-        if path.starts_with("assets/") {
-            return load_path(path);
-        }
-        if let Some(bytes) = packed::load(path)? {
+        if let Some(bytes) = self.client.load(path)? {
             return Ok(Some(Cow::Owned(bytes)));
         }
         gpui_kit::assets::AllAssets.load(path)
     }
     fn list(&self, path: &str) -> anyhow::Result<Vec<SharedString>> {
-        let mut items = gpui_kit::assets::AllAssets.list(path)?;
-        items.extend(remote::list(path)?.into_iter().map(SharedString::from));
-        Ok(items)
+        list_resources(path)
     }
 }
-/// Register cached fonts immediately; missing fonts are requested in the background.
-pub fn register_fonts(cx: &gpui_kit::App) -> anyhow::Result<()> {
-    let mut fonts = Vec::new();
-    for font in &remote::manifest()?.fonts {
-        if let Some(bytes) = remote::cached_or_request(font)? {
-            fonts.push(Cow::Owned(bytes));
-        }
-    }
-    if !fonts.is_empty() {
-        cx.text_system().add_fonts(fonts)?;
-    }
-    Ok(())
-}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum DeviceImage {
     Product,
@@ -284,7 +301,7 @@ mod tests {
     ) -> ResolvedDeviceImage {
         let image = resolve_device_image(pid, edition, layout, part)
             .expect("the device variant should have an image");
-        assert!(remote::identity(image.asset).is_some(), "{}", image.asset);
+        assert!(resource_identity(image.asset).is_some(), "{}", image.asset);
         assert_eq!(device_image(pid, edition, layout, part), Some(image.asset));
         image
     }
@@ -321,7 +338,7 @@ mod tests {
                 if density > 1. { 3 } else { 1 }
             );
             assert_eq!(wrist, expected);
-            assert!(remote::identity(wrist).is_some());
+            assert!(resource_identity(wrist).is_some());
         }
     }
 
@@ -339,7 +356,7 @@ mod tests {
                 image.density,
                 image.variant.asset.as_str(),
             );
-            let (_, bytes, _) = remote::identity(alias).unwrap_or_else(|| {
+            let (_, bytes, _) = resource_identity(alias).unwrap_or_else(|| {
                 panic!(
                     "missing Dashboard artwork: PID {pid}, directory edition {directory_edition}, \
                          filename edition {filename_edition}, layout {layout}, wrist {wrist}, \
@@ -354,11 +371,11 @@ mod tests {
     fn footstep_animation_frames_have_distinct_source_keyframe_identities() {
         for frame in 0..330 {
             let alias = format!("synapse/audio-footstep-{frame:03}.svg");
-            assert!(remote::identity(&alias).is_some(), "{alias}");
+            assert!(resource_identity(&alias).is_some(), "{alias}");
         }
         let keyframes = [0, 150, 210, 240]
             .map(|frame| {
-                remote::identity(&format!("synapse/audio-footstep-{frame:03}.svg"))
+                resource_identity(&format!("synapse/audio-footstep-{frame:03}.svg"))
                     .unwrap()
                     .2
             })
@@ -369,8 +386,8 @@ mod tests {
 
     #[test]
     fn keyboard691_customize_has_a_separate_prepared_resource() {
-        let original = remote::identity("synapse/keyboard-product-691.svg").unwrap();
-        let customize = remote::identity("synapse/keyboard-customize-691.svg").unwrap();
+        let original = resource_identity("synapse/keyboard-product-691.svg").unwrap();
+        let customize = resource_identity("synapse/keyboard-customize-691.svg").unwrap();
         assert_ne!(original.0, customize.0);
         assert_ne!(original.2, customize.2);
     }
@@ -379,7 +396,7 @@ mod tests {
     fn receiver_dashboard_artwork_resolves_current_identities_and_exact_keyboard_layout() {
         for (pid, layout) in [(164, 0), (241, 0), (756, 1)] {
             let asset = dashboard_image(pid, 0, layout).unwrap();
-            assert!(remote::identity(asset).is_some());
+            assert!(resource_identity(asset).is_some());
         }
         assert!(dashboard_image(756, 0, 0).is_none());
         assert!(dashboard_image(756, 0, 99).is_none());

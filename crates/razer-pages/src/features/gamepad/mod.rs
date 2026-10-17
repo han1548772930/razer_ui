@@ -19,19 +19,22 @@ use razer_widgets::surface;
 #[path = "gamepad_calibration.rs"]
 mod calibration;
 pub use calibration::state::{CalibrationIntent, CalibrationObservation};
+#[path = "gamepad_chroma_runtime.rs"]
+mod chroma_runtime;
 #[path = "gamepad_lighting.rs"]
 mod lighting;
 #[path = "gamepad_lighting_runtime.rs"]
 mod lighting_runtime;
 #[path = "gamepad_lighting_state.rs"]
 mod lighting_state;
-#[path = "gamepad_quick_lighting_state.rs"]
-mod quick_lighting_state;
 #[path = "gamepad_quick_lighting.rs"]
 mod quick_lighting;
-#[path = "gamepad_chroma_runtime.rs"]
-mod chroma_runtime;
-pub use chroma_runtime::{ControllerChromaRequested, ControllerChromaCommand, ControllerChromaObservation, ControllerChromaProfile, ControllerSwitchOffLighting};
+#[path = "gamepad_quick_lighting_state.rs"]
+mod quick_lighting_state;
+pub use chroma_runtime::{
+    ControllerChromaCommand, ControllerChromaObservation, ControllerChromaProfile,
+    ControllerChromaRequested, ControllerSwitchOffLighting,
+};
 #[path = "gamepad_navigation.rs"]
 mod navigation;
 #[path = "gamepad_profile.rs"]
@@ -298,17 +301,17 @@ impl GamepadProductWorkspace {
                     this.cancel_thumbstick_edits(cx);
                 }
             }));
-        this.refresh_trigger_visualization();
+        this.refresh_trigger_visualization(cx);
         this.subscriptions
             .push(razer_assets::observe_resources(cx, |this, _, cx| {
-                let mut changed = this.calibration_resources.refresh();
-                changed |= this.trigger_calibration_resources.refresh();
+                let mut changed = this.calibration_resources.refresh(cx);
+                changed |= this.trigger_calibration_resources.refresh(cx);
                 if this.page == "THUMBSTICKS" && this.thumbstick_ui.artwork_pending() {
-                    this.refresh_thumbstick_artwork();
+                    this.refresh_thumbstick_artwork(cx);
                     changed = true;
                 }
                 if this.trigger_artwork_pending() {
-                    this.refresh_trigger_visualization();
+                    this.refresh_trigger_visualization(cx);
                     changed = true;
                 }
                 if changed {
@@ -347,14 +350,16 @@ impl GamepadProductWorkspace {
             }
             self.page = key.into();
             if key == "TAB_CALIBRATION" {
-                self.request_calibration_resources();
+                self.request_calibration_resources(cx);
             }
-            self.refresh_thumbstick_artwork();
-            self.refresh_trigger_visualization();
+            self.refresh_thumbstick_artwork(cx);
+            self.refresh_trigger_visualization(cx);
             self.dismiss_deadzone(false, window, cx);
             self.low_deadzone = None;
             self.request_trigger_read(cx);
-            if key == "TAB_LIGHTING" {self.refresh_controller_chroma(cx);}
+            if key == "TAB_LIGHTING" {
+                self.refresh_controller_chroma(cx);
+            }
             cx.notify();
         }
     }
@@ -393,9 +398,9 @@ impl GamepadProductWorkspace {
             eprintln!("[controller-lighting] Saved settings could not be restored: {error:#}");
         }
         self.sync_sliders(window, cx);
-        self.sync_quick_lighting_controls(window,cx);
-        self.refresh_trigger_visualization();
-        self.refresh_thumbstick_artwork();
+        self.sync_quick_lighting_controls(window, cx);
+        self.refresh_trigger_visualization(cx);
+        self.refresh_thumbstick_artwork(cx);
         self.request_trigger_read(cx);
         self.request_controller_lighting(cx);
         cx.notify();
@@ -461,7 +466,9 @@ impl GamepadProductWorkspace {
                 if path.starts_with("/profile/brightness/") {
                     self.controller_brightness_changed(path, cx);
                 }
-                if self.spec.product_id==4115 && path.starts_with("/profile/switchOffLighting/") {self.controller_switch_off_changed(cx);}
+                if self.spec.product_id == 4115 && path.starts_with("/profile/switchOffLighting/") {
+                    self.controller_switch_off_changed(cx);
+                }
                 if let Some((root, _)) = path.rsplit_once('/') {
                     if matches!(root, "/controller/leftTrigger" | "/controller/rightTrigger") {
                         self.trigger_changed(root, cx);
@@ -473,7 +480,7 @@ impl GamepadProductWorkspace {
                     ) {
                         self.thumbstick_changed(path, cx);
                         if path.ends_with("/deadzoneValue") {
-                            self.refresh_thumbstick_artwork();
+                            self.refresh_thumbstick_artwork(cx);
                         }
                     }
                 }
@@ -1117,7 +1124,9 @@ impl GamepadProductWorkspace {
     /// （`SWITCH_OFF_LIGHTING_HEADER` + `SWITCH_OFF_LIGHTING_TOOLTIP`，两个
     /// `.check-item` 与 1–15 滑条），右侧快速效果。
     fn lighting(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
-        if self.spec.product_id==4115 {return self.kitsune_lighting(window,cx);}
+        if self.spec.product_id == 4115 {
+            return self.kitsune_lighting(window, cx);
+        }
         if self.spec.controller_lighting {
             return surface::page_columns()
                 .child(surface::page_column(
@@ -1204,8 +1213,17 @@ impl GamepadProductWorkspace {
         .child({
             let mut column = v_flex().ml(surface::css(30.)).w(surface::css(490.));
             if let Some(slider) = self.sliders.get("/profile/switchOffLighting/idleMinutes") {
-                let value=self.number("/profile/switchOffLighting/idleMinutes") as f32;
-                column = column.child(razer_widgets::source_slider::SourceSlider::new(slider,(value-1.)/14.).enabled(brightness_on&&idle_on).tip(Some(value.to_string())).range_labels("1","15",razer_widgets::theme::GamepadTriggerColors::text()));
+                let value = self.number("/profile/switchOffLighting/idleMinutes") as f32;
+                column = column.child(
+                    razer_widgets::source_slider::SourceSlider::new(slider, (value - 1.) / 14.)
+                        .enabled(brightness_on && idle_on)
+                        .tip(Some(value.to_string()))
+                        .range_labels(
+                            "1",
+                            "15",
+                            razer_widgets::theme::GamepadTriggerColors::text(),
+                        ),
+                );
             }
             column
         });

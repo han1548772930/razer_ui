@@ -318,7 +318,9 @@ impl GamepadProductWorkspace {
         if connected {
             self.request_trigger_read(cx);
             self.request_controller_lighting(cx);
-            if self.page=="TAB_LIGHTING" {self.refresh_controller_chroma(cx);}
+            if self.page == "TAB_LIGHTING" {
+                self.refresh_controller_chroma(cx);
+            }
         }
     }
     pub fn observe_controller_input(
@@ -341,12 +343,12 @@ impl GamepadProductWorkspace {
         }
         if self.controller_input_sample.as_ref() != sample {
             self.controller_input_sample = sample.cloned();
-            self.refresh_trigger_visualization();
+            self.refresh_trigger_visualization(cx);
             cx.notify();
         }
     }
     pub(super) fn trigger_changed(&mut self, root: &str, cx: &mut Context<Self>) {
-        self.refresh_trigger_visualization();
+        self.refresh_trigger_visualization(cx);
         match prepare_change(&mut self.draft, root, self.spec.analog_mode) {
             Ok(operation) => self
                 .trigger_runtime
@@ -437,7 +439,7 @@ impl GamepadProductWorkspace {
                         self.spec.standard_mode,
                         self.spec.circular_mode,
                     );
-                    self.refresh_thumbstick_artwork();
+                    self.refresh_thumbstick_artwork(cx);
                     if let Some(window) = window {
                         self.sync_thumbstick_controls(window, cx);
                     }
@@ -482,7 +484,7 @@ impl GamepadProductWorkspace {
                     if let Some(window) = window {
                         self.sync_sliders(window, cx);
                     }
-                    self.refresh_trigger_visualization();
+                    self.refresh_trigger_visualization(cx);
                     cx.emit(GamepadProductChanged);
                 }
             }

@@ -4,7 +4,6 @@
 use super::GamepadProductWorkspace;
 use gpui_kit::component::{h_flex, v_flex};
 use gpui_kit::{prelude::FluentBuilder as _, *};
-use razer_assets::SynapseAssets;
 use razer_i18n::t;
 use razer_widgets::{surface, theme::GamepadTriggerColors as Colors};
 use serde_json::Value;
@@ -69,12 +68,12 @@ pub(super) struct TriggerVisualization {
     error: Option<String>,
 }
 
-fn source_artwork(pid: u32, edition: u32) -> anyhow::Result<Artwork> {
+fn source_artwork(pid: u32, edition: u32, cx: &App) -> anyhow::Result<Artwork> {
     let is_svg = matches!(pid, 2676 | 2684 | 4144);
     let extension = if is_svg { "svg" } else { "png" };
     let path = |edition| format!("synapse/gamepad-trigger-device/{pid}/{edition}.{extension}");
     let bytes = crate::runtime_resources::load_edition_resource(edition, |edition| {
-        SynapseAssets.load(&path(edition))
+        cx.asset_source().load(&path(edition))
     })?
     .ok_or_else(|| anyhow::anyhow!("Missing current controller actuation artwork for {pid}"))?;
     decode_artwork(pid, edition, bytes.as_ref())
@@ -178,7 +177,7 @@ impl GamepadProductWorkspace {
         self.page == "TRIGGERS" && self.trigger_visualization.artwork.is_none()
     }
 
-    pub(super) fn refresh_trigger_visualization(&mut self) {
+    pub(super) fn refresh_trigger_visualization(&mut self, cx: &App) {
         if self.page != "TRIGGERS" || !self.spec.pages.iter().any(|page| page == "TRIGGERS") {
             return;
         }
@@ -188,7 +187,7 @@ impl GamepadProductWorkspace {
             .as_ref()
             .is_none_or(|art| art.edition != self.edition_id);
         if edition_changed {
-            match source_artwork(self.spec.product_id, self.edition_id) {
+            match source_artwork(self.spec.product_id, self.edition_id, cx) {
                 Ok(artwork) => {
                     state.artwork = Some(artwork);
                     state.error = None;
@@ -341,8 +340,6 @@ impl GamepadProductWorkspace {
 mod tests {
     use super::super::resource_fixtures as fixtures;
     use super::{Meter, decode_artwork, dynamic_svg, media_scale};
-    use gpui_kit::AssetSource;
-    use razer_assets::SynapseAssets;
     use serde_json::json;
     #[test]
     fn live_trigger_range_rounding_and_binary_illustrations_follow_source() {
@@ -361,8 +358,7 @@ mod tests {
 
     #[test]
     fn every_product_edition_has_its_manifest_entry_and_base_edition_fallback() {
-        let entries = SynapseAssets
-            .list("synapse/gamepad-trigger-device/")
+        let entries = razer_assets::list_resources("synapse/gamepad-trigger-device/")
             .unwrap()
             .into_iter()
             .map(|key| key.to_string())

@@ -53,13 +53,11 @@ pub use scope::{ResourceLayer, ResourceScope, deferred_resource, resource_scope}
 
 struct ResourceImageCache {
     images: HashMap<Resource, ImageCacheItem>,
-    generation: u64,
 }
 impl ResourceImageCache {
     fn new(cx: &mut App) -> Entity<Self> {
         let cache = cx.new(|_| Self {
             images: HashMap::new(),
-            generation: super::resource_generation(),
         });
         cx.observe_release(&cache, |cache, cx| {
             for (_, item) in cache.images.drain() {
@@ -70,18 +68,6 @@ impl ResourceImageCache {
         })
         .detach();
         cache
-    }
-
-    fn refresh_generation(&mut self) {
-        let generation = super::resource_generation();
-        if self.generation == generation {
-            return;
-        }
-        self.generation = generation;
-        // GPUI's ImageCacheItem keeps a completed Err forever. Remote resource
-        // completion/retry changes the bytes visible to AssetSource, so discard
-        // only failed decodes at that boundary and let the next frame retry.
-        self.retry_failed();
     }
 
     fn retry_failed(&mut self) {
@@ -110,21 +96,20 @@ impl ImageCache for ResourceImageCache {
         window: &mut Window,
         cx: &mut App,
     ) -> Option<Result<Arc<RenderImage>, ImageCacheError>> {
-        self.refresh_generation();
         if let Some(item) = self.images.get_mut(source) {
             return item.use_image(window);
         }
         if let Resource::Embedded(path) = source {
-            match super::available(path) {
+            match available(path, cx) {
                 Ok(false) => {
-                    super::runtime::trace("image", path, "pending bytes");
+                    razer_resources::trace("image", path, "pending bytes");
                     return None;
                 }
                 Err(error) => {
-                    super::runtime::trace("image", path, format!("unavailable {error:#}"));
+                    razer_resources::trace("image", path, format!("unavailable {error:#}"));
                     return Some(Err(ImageCacheError::Asset(error.to_string().into())));
                 }
-                Ok(true) => super::runtime::trace("image", path, "decode started"),
+                Ok(true) => razer_resources::trace("image", path, "decode started"),
             }
         }
         self.images
@@ -185,3 +170,7 @@ pub(super) fn retry_resource_images(cx: &mut App) {
 
 #[cfg(test)]
 mod tests;
+
+fn available(path: &str, cx: &App) -> anyhow::Result<bool> {
+    crate::resource_runtime::available(path, cx)
+}

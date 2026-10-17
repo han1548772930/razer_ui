@@ -13,19 +13,19 @@ pub struct WorkspaceFile {
     #[serde(default)]
     pub tracking_intro_seen: bool,
     #[serde(default)]
-    pub shortcuts: Vec<razer_pages::features::shortcuts::Shortcut>,
+    pub shortcuts: Vec<razer_model::shortcuts::Shortcut>,
     #[serde(default)]
-    pub macros: razer_pages::features::macro_library::MacroLibraryFile,
+    pub macros: razer_model::macro_library::MacroLibraryFile,
     #[serde(default)]
-    pub preferences: razer_state::AppPreferences,
+    pub preferences: razer_model::preferences::AppPreferences,
     #[serde(default)]
-    pub custom_colors: razer_state::CustomColorSlots,
+    pub custom_colors: razer_model::preferences::CustomColorSlots,
     #[serde(default)]
     pub host_tab_order: Vec<String>,
     #[serde(default)]
-    pub dashboard: razer_state::DashboardPreferences,
+    pub dashboard: razer_model::preferences::DashboardPreferences,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub module_services: Option<razer_pages::features::module_service::ModuleServiceSnapshot>,
+    pub module_services: Option<razer_model::module_service::ModuleServiceSnapshot>,
 }
 impl WorkspaceFile {
     pub fn new(devices: Vec<Device>, tracking_intro_seen: bool) -> Self {
@@ -35,32 +35,32 @@ impl WorkspaceFile {
             tracking_intro_seen,
             shortcuts: vec![],
             macros: Default::default(),
-            preferences: razer_state::AppPreferences::default(),
+            preferences: razer_model::preferences::AppPreferences::default(),
             custom_colors: [None; 16],
             host_tab_order: vec![],
             dashboard: Default::default(),
             module_services: None,
         }
     }
-    pub fn with_shortcuts(
-        mut self,
-        shortcuts: Vec<razer_pages::features::shortcuts::Shortcut>,
-    ) -> Self {
+    pub fn with_shortcuts(mut self, shortcuts: Vec<razer_model::shortcuts::Shortcut>) -> Self {
         self.shortcuts = shortcuts;
         self
     }
-    pub fn with_preferences(mut self, preferences: razer_state::AppPreferences) -> Self {
+    pub fn with_preferences(
+        mut self,
+        preferences: razer_model::preferences::AppPreferences,
+    ) -> Self {
         self.preferences = preferences;
         self
     }
-    pub fn with_macros(
-        mut self,
-        macros: razer_pages::features::macro_library::MacroLibraryFile,
-    ) -> Self {
+    pub fn with_macros(mut self, macros: razer_model::macro_library::MacroLibraryFile) -> Self {
         self.macros = macros;
         self
     }
-    pub fn with_custom_colors(mut self, colors: razer_state::CustomColorSlots) -> Self {
+    pub fn with_custom_colors(
+        mut self,
+        colors: razer_model::preferences::CustomColorSlots,
+    ) -> Self {
         self.custom_colors = colors;
         self
     }
@@ -68,20 +68,23 @@ impl WorkspaceFile {
         self.host_tab_order = order;
         self
     }
-    pub fn with_dashboard(mut self, dashboard: razer_state::DashboardPreferences) -> Self {
+    pub fn with_dashboard(
+        mut self,
+        dashboard: razer_model::preferences::DashboardPreferences,
+    ) -> Self {
         self.dashboard = dashboard;
         self
     }
     pub fn with_module_services(
         mut self,
-        snapshot: Option<razer_pages::features::module_service::ModuleServiceSnapshot>,
+        snapshot: Option<razer_model::module_service::ModuleServiceSnapshot>,
     ) -> Self {
         self.module_services = snapshot;
         self
     }
 }
 pub fn read_workspace(path: &Path) -> anyhow::Result<Option<WorkspaceFile>> {
-    razer_storage::read_document(path, decode_workspace)
+    crate::read_document(path, decode_workspace)
 }
 
 fn decode_known<T: serde::de::DeserializeOwned>(text: &str) -> anyhow::Result<T> {
@@ -111,7 +114,7 @@ fn decode_workspace(text: &str) -> anyhow::Result<WorkspaceFile> {
         );
         file
     };
-    razer_pages::features::shortcuts::validate_stored_shortcuts(&file.shortcuts)
+    razer_model::shortcuts::validate_stored_shortcuts(&file.shortcuts)
         .map_err(anyhow::Error::msg)?;
     file.preferences.validate().map_err(anyhow::Error::msg)?;
     file.macros.validate().map_err(anyhow::Error::msg)?;
@@ -125,16 +128,9 @@ fn decode_workspace(text: &str) -> anyhow::Result<WorkspaceFile> {
 pub fn write_workspace(path: &Path, file: &WorkspaceFile) -> anyhow::Result<()> {
     file.preferences.validate().map_err(anyhow::Error::msg)?;
     file.macros.validate().map_err(anyhow::Error::msg)?;
-    razer_pages::features::shortcuts::validate_stored_shortcuts(&file.shortcuts)
+    razer_model::shortcuts::validate_stored_shortcuts(&file.shortcuts)
         .map_err(anyhow::Error::msg)?;
-    razer_storage::write_document(path, file, |text| decode_workspace(text).map(|_| ()))
-}
-
-pub fn load_from(path: &Path) -> Option<Vec<Device>> {
-    read_workspace(path).ok().flatten().map(|s| s.devices)
-}
-pub fn save_to(path: &Path, devices: &[Device]) -> anyhow::Result<()> {
-    write_workspace(path, &WorkspaceFile::new(devices.to_vec(), false))
+    crate::write_document(path, file, |text| decode_workspace(text).map(|_| ()))
 }
 
 #[cfg(test)]
@@ -175,7 +171,7 @@ mod tests {
         let loaded = decode_workspace(&old.to_string()).unwrap();
         assert_eq!(loaded.dashboard, Default::default());
         let devices = serde_json::to_value(&loaded.devices).unwrap();
-        let mut dashboard = razer_state::DashboardPreferences::default();
+        let mut dashboard = razer_model::preferences::DashboardPreferences::default();
         dashboard
             .items_order
             .insert("devices".into(), vec!["second".into(), "first".into()]);

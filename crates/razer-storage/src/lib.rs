@@ -164,3 +164,5 @@ pub fn store_path() -> std::path::PathBuf {
         .join("razer_ui")
         .join("profiles.json")
 }
+
+pub mod workspace;
