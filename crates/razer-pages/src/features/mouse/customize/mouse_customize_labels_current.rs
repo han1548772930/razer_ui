@@ -1,8 +1,8 @@
 //! Mounted mouse label `rederTip` / `renderRequireSynapeTip` and source CSS.
 //! PID229 main.551458e6.js oT / main.377583f3.css `.config-btns-wrapper`.
 use super::*;
+use gpui_kit::base::motion::{Transition, transition};
 use razer_widgets::theme::TooltipColors;
-use gpui_kit::base::motion::{transition,Transition};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum HoverPart {
@@ -113,8 +113,17 @@ impl MouseProductWorkspace {
             .as_ref()
             .filter(|hover| hover.input == input)
             .map(|hover| hover.part);
-        let hovered = enabled && part == Some(HoverPart::Button);
-        let requires_hovered = enabled && part == Some(HoverPart::RequiresSynapse);
+        // The source component keeps its button hover state while a reducer
+        // update flips a disabled label back to enabled under the pointer.
+        // Our disabled wrapper owns that event path, so retain the equivalent
+        // hover until the next pointer transition instead of dropping the tip
+        // on the first enabled render.
+        let hovered = enabled
+            && matches!(
+                part,
+                Some(HoverPart::Button) | Some(HoverPart::DisabledWrapper)
+            );
+        let requires_hovered = part == Some(HoverPart::RequiresSynapse);
         let tip_hovered = hovered || source_disabled && part == Some(HoverPart::DisabledWrapper);
         let inter = button["assignment"] == "INTERDEVICE";
         let connected = self.mouse_customize_observation["validDevices"]
@@ -233,6 +242,7 @@ impl MouseProductWorkspace {
             anchors.borrow_mut().insert(anchor_input.clone(), bounds);
         })
         .h(surface::css(30.))
+        .when(requires, |button| button.flex_shrink_0())
         .mb(surface::css(20.))
         .when(left, |button| button.mr(surface::css(10.)))
         .when(!left, |button| button.ml(surface::css(10.)))
@@ -268,6 +278,7 @@ impl MouseProductWorkspace {
         }));
         if requires {
             let requires_input = input.clone();
+            let disabled_wrapper_hover = source_disabled && !unavailable;
             control = control.child(
                 div()
                     .id(SharedString::from(format!(
@@ -307,9 +318,6 @@ impl MouseProductWorkspace {
                         .with_priority(100)
                     }))
                     .on_hover(cx.listener(move |this, on: &bool, _, cx| {
-                        if !enabled {
-                            return;
-                        }
                         this.set_customize_label_hover(
                             &requires_input,
                             HoverPart::RequiresSynapse,
@@ -317,6 +325,16 @@ impl MouseProductWorkspace {
                         );
                         if *on {
                             this.hover_current_customize(index, false);
+                        } else if disabled_wrapper_hover {
+                            // The source icon is nested in a pointer-disabled
+                            // button. Leaving it keeps the outer wrapper
+                            // hovered, so restore that layer until the wrapper
+                            // itself receives its leave event.
+                            this.set_customize_label_hover(
+                                &requires_input,
+                                HoverPart::DisabledWrapper,
+                                true,
+                            );
                         }
                         cx.notify();
                     })),
@@ -329,6 +347,15 @@ impl MouseProductWorkspace {
             .test_support()
             .relative()
             .mt(surface::css(margin_top))
+            // GPUI hit tests use the parent content bounds for an absolute
+            // child. Preserve the source's overflowed icon geometry while
+            // reserving only the side needed to receive its hover event.
+            .when(requires && left, |wrapper| {
+                wrapper.pr(surface::css(10.)).mr(-surface::css(10.))
+            })
+            .when(requires && !left, |wrapper| {
+                wrapper.pl(surface::css(10.)).ml(-surface::css(10.))
+            })
             .child(control)
             .children(
                 (tip_hovered && !requires_hovered)
@@ -434,47 +461,51 @@ impl MouseProductWorkspace {
                 };
                 let requires = mapping_target_info(self.spec.product_id)
                     .is_some_and(|info| info["isOBMDevice"] == true);
-                let mut tip =
-                    tip_surface()
-                        .top(relative(if top <= 225. { 0.65 } else { -2.56 }))
-                        .left(surface::css(-45.))
-                        .border_color(accent)
-                        .whitespace_nowrap()
-                        .when(!connected || requires, |tip| tip.p_0())
-                        .child(
-                            v_flex()
-                                .pt(surface::css(3.))
-                                .pb(surface::css(6.))
-                                .text_center()
-                                .text_size(surface::css(12.))
-                                .child(
-                                    div()
-                                        .mt(surface::css(5.))
-                                        .text_color(Colors::tooltip_secondary_text())
-                                        .text_size(surface::css(14.))
-                                        .child(
-                                            t(button["defaultValue"].as_str().unwrap_or_default())
-                                                .to_uppercase(),
-                                        ),
-                                )
-                                .child(div().mt(surface::css(5.)).text_color(Colors::tooltip_secondary_text()).child(
-                                    group["name"].as_str().unwrap_or_default().to_uppercase(),
-                                ))
-                                .children(button.get("assignmentGroup").map(|_| {
-                                    v_flex()
-                                        .child(
-                                            div()
-                                                .mt(surface::css(5.))
-                                                .child(t(function).to_uppercase()),
-                                        )
-                                        .child(
-                                            div()
-                                                .mt(surface::css(5.))
-                                                .text_size(surface::css(18.))
-                                                .child(name),
-                                        )
-                                })),
-                        );
+                let mut tip = tip_surface()
+                    .top(relative(if top <= 225. { 0.65 } else { -2.56 }))
+                    .left(surface::css(-45.))
+                    .border_color(accent)
+                    .whitespace_nowrap()
+                    .when(!connected || requires, |tip| tip.p_0())
+                    .child(
+                        v_flex()
+                            .pt(surface::css(3.))
+                            .pb(surface::css(6.))
+                            .text_center()
+                            .text_size(surface::css(12.))
+                            .child(
+                                div()
+                                    .mt(surface::css(5.))
+                                    .text_color(Colors::tooltip_secondary_text())
+                                    .text_size(surface::css(14.))
+                                    .child(
+                                        t(button["defaultValue"].as_str().unwrap_or_default())
+                                            .to_uppercase(),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .mt(surface::css(5.))
+                                    .text_color(Colors::tooltip_secondary_text())
+                                    .child(
+                                        group["name"].as_str().unwrap_or_default().to_uppercase(),
+                                    ),
+                            )
+                            .children(button.get("assignmentGroup").map(|_| {
+                                v_flex()
+                                    .child(
+                                        div()
+                                            .mt(surface::css(5.))
+                                            .child(t(function).to_uppercase()),
+                                    )
+                                    .child(
+                                        div()
+                                            .mt(surface::css(5.))
+                                            .text_size(surface::css(18.))
+                                            .child(name),
+                                    )
+                            })),
+                    );
                 if !connected || requires {
                     tip = tip.child(
                         div()

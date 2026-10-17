@@ -19,7 +19,7 @@ fn rapid_help_control(id: &'static str, text: SharedString) -> AnyElement {
         .tooltip(move |window, cx| {
             let text = text.clone();
             Tooltip::element(move |_, cx| {
-                v_flex()
+                razer_assets::resource_scope(v_flex()
                     .max_w(surface::css(300.))
                     .px(surface::css(10.))
                     .py(surface::css(8.))
@@ -70,7 +70,7 @@ fn rapid_help_control(id: &'static str, text: SharedString) -> AnyElement {
                                     )
                                     .child(t("RESET_LOWERCASE")),
                             ),
-                    )
+                    ))
             })
             .build(window, cx)
         })

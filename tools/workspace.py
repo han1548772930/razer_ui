@@ -1432,7 +1432,7 @@ def repair_current_resource_aliases():
     return {"aliases": len(repaired), "files": len({row["output"] for row in repaired})}
 
 
-def rust_named_item_strings(path, name):
+def rust_named_item_strings(path, name, *, decode_strings=True):
     """Capture one complete Rust item and its literal values for branch audits."""
     import resource_scope
     source = safe(ROOT / path)
@@ -1464,11 +1464,236 @@ def rust_named_item_strings(path, name):
             return
         for child in node.named_children:
             literals(child)
-    literals(node)
+    if decode_strings:
+        literals(node)
     body = raw[node.start_byte:node.end_byte]
     return strings, {"path": path, "name": name, "byte_start": node.start_byte,
         "byte_end": node.end_byte, "body": body.decode("utf-8"),
         "body_sha256": hashlib.sha256(body).hexdigest()}
+
+
+def rust_call_argument_strings(path, function, index):
+    """Capture literal branches from one caller argument and retain full owners."""
+    import resource_scope
+    source = safe(ROOT / path)
+    raw = source.read_bytes()
+    tree = resource_scope.parser(ROOT).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Rust resource caller has an AST error: " + path)
+    result, owners = [], []
+    def text(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8")
+    def literals(node):
+        if node.type == "string_literal":
+            literal = text(node)[1:-1]
+            if "\\" in literal:
+                raise ValueError("Escaped resource caller argument requires Rust decoding")
+            result.append(literal)
+            return
+        for child in node.named_children:
+            literals(child)
+    def visit(node, context=None):
+        if node.type == "function_item":
+            context = node
+        if node.type == "call_expression":
+            callable = node.child_by_field_name("function")
+            name = text(callable.child_by_field_name("field")) if callable.type == "field_expression" else text(callable)
+            if name == function:
+                arguments = node.child_by_field_name("arguments").named_children
+                if len(arguments) <= index:
+                    raise ValueError("Resource caller argument position changed: " + path + "/" + function)
+                argument = arguments[index]
+                literals(argument)
+                body = raw[context.start_byte:context.end_byte] if context else raw
+                early_returns = []
+                if context is not None:
+                    for statement in context.child_by_field_name("body").named_children:
+                        if statement.end_byte > node.start_byte:
+                            break
+                        candidate = statement.named_children[0] if statement.type == "expression_statement" else statement
+                        if candidate.type != "if_expression" or candidate.child_by_field_name("alternative"):
+                            continue
+                        consequence = candidate.child_by_field_name("consequence").named_children
+                        if len(consequence) != 1:
+                            continue
+                        returned = consequence[0]
+                        if returned.type == "expression_statement":
+                            returned = returned.named_children[0]
+                        if returned.type == "return_expression" and len(returned.named_children) == 1:
+                            early_returns.append({"condition": text(candidate.child_by_field_name("condition")),
+                                "value": text(returned.named_children[0]), "body": text(candidate),
+                                "byte_start": candidate.start_byte, "byte_end": candidate.end_byte})
+                guards, ancestor = [], node.parent
+                while ancestor is not None and ancestor != context:
+                    if ancestor.type == "if_expression":
+                        condition = ancestor.child_by_field_name("condition")
+                        for field, truth in (("consequence", True), ("alternative", False)):
+                            branch = ancestor.child_by_field_name(field)
+                            if branch and branch.start_byte <= node.start_byte and node.end_byte <= branch.end_byte:
+                                guards.append({"kind": "if", "condition": text(condition), "selected": truth,
+                                    "byte_start": ancestor.start_byte, "byte_end": ancestor.end_byte})
+                    elif ancestor.type == "call_expression":
+                        function_node = ancestor.child_by_field_name("function")
+                        if function_node.type == "field_expression" and text(function_node.child_by_field_name("field")) == "when":
+                            args = ancestor.child_by_field_name("arguments").named_children
+                            if len(args) == 2 and args[1].start_byte <= node.start_byte and node.end_byte <= args[1].end_byte:
+                                guards.append({"kind": "when", "condition": text(args[0]), "selected": True,
+                                    "byte_start": ancestor.start_byte, "byte_end": ancestor.end_byte})
+                    ancestor = ancestor.parent
+                owners.append({"path": path, "function": function, "argument": index,
+                    "owner_name": text(context.child_by_field_name("name")) if context else None,
+                    "branch_guards": guards,
+                    "early_returns": early_returns,
+                    "argument_body": text(argument), "call_byte_start": node.start_byte, "call_byte_end": node.end_byte,
+                    "owner_byte_start": context.start_byte if context else 0,
+                    "owner_byte_end": context.end_byte if context else len(raw),
+                    "owner_body": body.decode("utf-8"), "owner_body_sha256": hashlib.sha256(body).hexdigest()})
+        for child in node.named_children:
+            visit(child, context)
+    visit(tree.root_node)
+    return result, owners
+
+
+def rust_finite_string_values(expression, bindings=None):
+    """Project a finite Rust string expression without executing target code."""
+    import itertools
+    import resource_scope
+    bindings = {re.sub(r"\s+", "", key): value for key, value in (bindings or {}).items()}
+    parser = resource_scope.parser(ROOT)
+    def parse(source):
+        raw = ("fn __resource_domain() { " + source + " }").encode()
+        tree = parser.parse(raw)
+        if tree.root_node.has_error:
+            raise ValueError("Resource expression has a Rust AST error")
+        body = tree.root_node.named_children[0].child_by_field_name("body")
+        if len(body.named_children) != 1:
+            raise ValueError("Expected one resource expression")
+        node = body.named_children[0]
+        if node.type == "expression_statement":
+            node = node.named_children[0]
+        return raw, node
+    def condition(node, raw):
+        key = re.sub(r"\s+", "", raw[node.start_byte:node.end_byte].decode())
+        if key in bindings:
+            return {bool(bindings[key])}
+        if node.type == "boolean_literal":
+            return {key == "true"}
+        if node.type == "unary_expression" and key.startswith("!"):
+            return {not value for value in condition(node.named_children[-1], raw)}
+        if node.type == "binary_expression":
+            operator = node.child_by_field_name("operator")
+            op = raw[operator.start_byte:operator.end_byte].decode() if operator else ""
+            if op in ("||", "&&"):
+                left = condition(node.child_by_field_name("left"), raw)
+                right = condition(node.child_by_field_name("right"), raw)
+                return {(a or b) if op == "||" else (a and b) for a in left for b in right}
+        # An unknown condition can select either finite arm. Unknown string
+        # values are rejected below; a wildcard alias list never supplies them.
+        return {False, True}
+    def strings(node, raw):
+        if node.type == "string_literal":
+            return {json.loads(raw[node.start_byte:node.end_byte].decode())}
+        if node.type in ("block", "else_clause", "parenthesized_expression", "reference_expression"):
+            children = node.named_children
+            if len(children) != 1:
+                raise ValueError("Resource branch contains unresolved statements")
+            return strings(children[0], raw)
+        if node.type == "if_expression":
+            result = set()
+            for truth in condition(node.child_by_field_name("condition"), raw):
+                branch = node.child_by_field_name("consequence" if truth else "alternative")
+                if branch is None:
+                    raise ValueError("Resource branch has no string result")
+                result.update(strings(branch, raw))
+            return result
+        if node.type == "macro_invocation":
+            name = node.child_by_field_name("macro")
+            if name is None or raw[name.start_byte:name.end_byte] != b"format":
+                raise ValueError("Unresolved resource string macro")
+            tokens = next(child for child in node.named_children if child.type == "token_tree")
+            arguments_raw, call = parse("__format" + raw[tokens.start_byte:tokens.end_byte].decode())
+            arguments = call.child_by_field_name("arguments").named_children
+            formats = strings(arguments[0], arguments_raw)
+            values = [strings(argument, arguments_raw) for argument in arguments[1:]]
+            return {fmt.format(*combination) for fmt in formats for combination in itertools.product(*values)}
+        raise ValueError("Unresolved resource string expression: " + node.type)
+    raw, node = parse(expression)
+    return sorted(strings(node, raw))
+
+
+def dock_resource_domain():
+    """Capture the three dock product branches and every dynamic SVG caller."""
+    base = "crates/razer-pages/src/features/accessories/dock_pairing"
+    data_path = ".analysis/inputs/typed-tables/razer-pages/dock_pairing_data.json"
+    products = json.loads((ROOT / data_path).read_bytes())
+    config = {product["product_id"]: product["config"] for product in products}
+    if set(config) != {164, 241, 756} or any(row.get("productId") != pid for pid, row in config.items()):
+        raise ValueError("Dock product identity branches changed")
+    dual = {pid for pid, row in config.items() if row.get("canPairTwoDevices") is True}
+    legacy = {pid for pid, row in config.items() if row.get("legacyDualLink") is True}
+    if dual != {241} or legacy != {756}:
+        raise ValueError("Dock dual/legacy capability branches changed")
+    owners, calls, domains = [], [], {pid: set() for pid in config}
+    # These are complete owner identities, not matches against the alias index.
+    inventory = {base + ".rs": ["page", "warning_icon", "spinner"],
+        base + "/widget.rs": ["render"],
+        base + "/dialog.rs": ["channel", "body", "body", "body"],
+        base + "/dialog/legacy.rs": ["legacy_body", "legacy_body", "legacy_body"]}
+    for path, names in inventory.items():
+        _, captured = rust_call_argument_strings(path, "asset", 0)
+        if [row["owner_name"] for row in captured] != names:
+            raise ValueError("Dock dynamic resource caller inventory changed: " + path)
+        for caller in captured:
+            owner = caller["owner_name"]
+            pids = set(config)
+            if path.endswith("/widget.rs") or owner == "legacy_body":
+                pids = legacy
+            elif owner in ("page", "body"):
+                pids -= legacy
+            elif owner == "warning_icon":
+                pids = dual
+            argument = caller["argument_body"]
+            if owner == "body":
+                if not any(re.sub(r"\s+", "", ret["condition"]) == "self.spec.legacy()"
+                    and re.sub(r"\s+", "", ret["value"]) == "self.legacy_body(cx)"
+                    for ret in caller["early_returns"]):
+                    raise ValueError("Dock legacy body return changed")
+                for guard in caller["branch_guards"]:
+                    if re.sub(r"\s+", "", guard["condition"]) == "dual":
+                        pids = pids & dual if guard["selected"] else pids - dual
+            selected = {}
+            for pid in sorted(pids):
+                bindings = {"dual": pid in dual, "self.multi_pairing": False}
+                possibilities = [bindings]
+                if owner == "page" and config[pid].get("isMultiPairingSupported") is True:
+                    possibilities.append({**bindings, "self.multi_pairing": True})
+                values = {value for branch in possibilities for value in rust_finite_string_values(argument, branch)}
+                if owner == "channel" and pid == 164:
+                    values = set(rust_finite_string_values(argument, {"lane == Lane::Mouse": True}))
+                domains[pid].update(values)
+                selected[str(pid)] = sorted(values)
+            calls.append({**caller, "selected_names_by_product": selected})
+    for path, names in {
+        base + ".rs": ("spec", "dual", "legacy", "new", "page", "warning", "dialog_warning"),
+        base + "/dialog.rs": ("body",),
+        base + "/preview.rs": ("select",),
+    }.items():
+        for name in names:
+            _, owner = rust_named_item_strings(path, name, decode_strings=False)
+            owners.append(owner)
+    # Preview writes the optional original-dongle warning only for the dual
+    # product; production initializes it false and observes that case via dual.
+    preview = next(row["body"] for row in owners if row["name"] == "select")
+    if "view.original_dongle=dual&&id==\"original_dongle\"" not in re.sub(r"\s+", "", preview):
+        raise ValueError("Dock preview warning capability guard changed")
+    return {"verified": True, "expected_aliases": sorted(f"synapse/dock-{pid}-{name}.svg"
+        for pid, values in domains.items() for name in values), "owners": owners, "callers": calls,
+        "product_branches": [{"product_id": pid, "dual": pid in dual, "legacy": pid in legacy,
+            "names": sorted(domains[pid])} for pid in sorted(config)],
+        "inputs": [{"path": data_path, "bytes": (ROOT / data_path).stat().st_size,
+            "sha256": digest(ROOT / data_path)}],
+        "basis": "Finite expression projection of every captured dynamic caller, separated by current single/dual/legacy product branches; no alias-index inference or target execution",
+        "runtime_acceptance": "unverified"}
 
 
 def finite_resource_domain(row):
@@ -1478,7 +1703,9 @@ def finite_resource_domain(row):
     expected, constraints, owners = None, [], []
     def choices(prefix, names, suffix=".svg"):
         return [prefix + str(name) + suffix for name in names]
-    if value == "synapse/audio-footstep-{frame:03}.svg":
+    if value == "synapse/dock-{}-{name}.svg":
+        return dock_resource_domain()
+    elif value == "synapse/audio-footstep-{frame:03}.svg":
         constraints = ["min(329)", "phase * 330."]
         expected = [f"synapse/audio-footstep-{i:03}.svg" for i in range(330)]
     elif value in ("synapse/keyboard-chroma-sync-{:02}.png", "synapse/keyboard-chroma-sync-{frame:02}.png"):
@@ -1503,6 +1730,21 @@ def finite_resource_domain(row):
         data = json.loads((ROOT / ".analysis/inputs/typed-tables/razer-app-pages/module_service_source.json").read_bytes())
         constraints = ["source.categories.contains(first)", "source.categories.contains(&category)", "key.to_ascii_lowercase()"]
         expected = choices("synapse/service-category-", [name.lower() for name in data["categories"]])
+    elif value == "synapse/aether-{name}.svg":
+        names = ["tooltip_questionmark", "close-hovered-btn", "offline-badge"]
+        for path, function, argument in (
+            (row["owner"], "icon_button", 1),
+            ("crates/razer-pages/src/features/accessories/aether_strip/device.rs", "SourceTipItem::new", 1)):
+            strings, captured = rust_call_argument_strings(path, function, argument)
+            names.extend(strings)
+            owners.extend(captured)
+        for name in ("distribute", "restored"):
+            _, captured = rust_named_item_strings("crates/razer-pages/src/features/accessories/aether_strip/state.rs", name)
+            owners.append(captured)
+        if all(token in owners[-2]["body"] for token in ("1..=4", "(0..sides)")) and "array.len() > 4" in owners[-1]["body"]:
+            constraints = ["(1..=4u32)", 'format!("side-{}", id + 1)']
+            expected = [*choices("synapse/aether-", names),
+                        *choices("synapse/aether-side-", range(1, 5)), *choices("synapse/aether-shape-", range(1, 5))]
     elif value == "synapse/{file}":
         constraints = ["(0..=100).contains(&bucket)", '"paused-"', '"battery-error.svg"']
         expected = ["synapse/battery-charging.svg", "synapse/battery-error.svg", "synapse/battery-charging-100.svg",
@@ -1529,6 +1771,12 @@ def finite_resource_domain(row):
     elif value == "synapse/automation-icon_direction_{name}{}.svg":
         constraints = ['[(3, "up"), (4, "down")]', '"_999"']
         expected = [f"synapse/automation-icon_direction_{name}{suffix}.svg" for name in ("up", "down") for suffix in ("", "_999")]
+    elif value == "synapse/automation-{kind}.svg":
+        names, owner = rust_named_item_strings(row["owner"], "action_name")
+        owners.append(owner)
+        if len(names) == 6:
+            return {"verified": False, "expected_aliases": choices("synapse/automation-", range(6)), "owners": owners,
+                "unresolved_constraints": ["Generated action IDs are 0..6, but restored rule IDs are not bounded before icon() and action_name()"]}
     elif value in ("synapse/automation-quick-macro-{kind}.svg", "synapse/automation-quick-macro-{}.svg"):
         names = ("keyboard", "launch", "runCommand", "text")
         constraints = ['value: "' + name + '"' for name in names]
@@ -1587,6 +1835,17 @@ def finite_resource_domain(row):
             names.extend(name for name in strings if name.endswith((".svg", ".png")))
         constraints = ["prerequisite_notice(", "for (show, icon, label, tooltip) in"]
         expected = ["synapse/keyboard-mapping-notices/" + name for name in names]
+    elif value == "synapse/mouse-calibration-70/{name}":
+        names, captured = rust_call_argument_strings(row["owner"], "calibration_image", 0)
+        owners.extend(captured)
+        strings, owner = rust_named_item_strings(row["owner"], "calibration_steps")
+        owners.append(owner)
+        names.extend(name for name in strings if name.endswith(".svg"))
+        constraints = [".images.get(name)", "calibration_artwork(self.spec.product_id)"]
+        expected = ["synapse/mouse-calibration-70/" + name for name in names]
+    elif value == "synapse/keyboard-keymap-slot-{slot}.png":
+        return {"verified": False, "expected_aliases": choices("synapse/keyboard-keymap-slot-", range(1, 9), ".png"),
+            "unresolved_constraints": ["New keymaps allocate slots 1..=8; restored row slot remains an unvalidated external string"]}
     elif value in ("synapse/direction-{asset}{}.svg", "synapse/direction-{name}{}.svg"):
         names = [name for name in ("out", "in", "cw", "ccw", "left", "right") if '"' + name + '"' in text]
         constraints = ['"-active"']
@@ -1703,6 +1962,142 @@ def finite_resource_domain(row):
         "basis": "Enumerated caller branches and bounded animation/state ranges from the captured Rust owner; independent of registered alias candidates"}
 
 
+def audit_current_cycle_artwork(manifest):
+    """Verify the current cycle JSX callers and exact prepared SVG identities."""
+    import catalog_data
+    import families
+    import sqlite3
+    import urllib.parse
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    parser = Parser(Language(tree_sitter_javascript.language()))
+    recipes = json.loads((ROOT / "tools/typed-data.json").read_bytes())
+    recipe = next(row for row in recipes["tables"] if row["macro"] == "mouse_customize_current_data")
+    source = ROOT / recipe["source"]
+    selectors = json.loads(source.read_bytes())
+    document = catalog_data.Codec(ROOT / "crates" / recipe["crate"]).document(recipe, selectors)
+    from resource_database import OUTPUT
+    database = ROOT / OUTPUT
+    inputs = [families.identity(source), families.identity(database),
+        families.identity(ROOT / "tools/catalog_data.py"), families.identity(ROOT / "tools/resource_database.py"),
+        families.identity(ROOT / recipe["module"])]
+    with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+        stored = connection.execute("SELECT codec,sha256,payload FROM typed_catalog WHERE id=?", (document["id"],)).fetchone()
+        if stored != (document["codec"], hashlib.sha256(document["raw"]).hexdigest(), document["raw"]):
+            raise ValueError("Current cycle selector fields differ from the installed SQLite typed catalog")
+        aliases = connection.execute("SELECT a.position,a.key,f.path,f.bytes,f.sha256 FROM resource_alias a "
+            "JOIN resource_file f ON f.id=a.file_id ORDER BY a.position").fetchall()
+    _, selector_owner = rust_named_item_strings(recipe["module"], "cycle_artwork")
+    _, render_owner = rust_named_item_strings(recipe["module"], "customize_current_surface")
+    products = []
+    for pid in (229, 239):
+        selected = next(row for row in selectors if row["product_id"] == pid)
+        if selected["cycle"]["fixed_edition"] != 0 or len(selected["cycle_images"]) != 1:
+            raise ValueError("Current inline cycle selector must use its product's edition-independent producer")
+        image = selected["cycle_images"][0]
+        if image["edition"] != 0:
+            raise ValueError("Current inline cycle selector edition differs")
+        alias = image["asset"]
+        entries = [row for row in manifest["entries"] if row["key"] == alias]
+        if not entries or len({row["path"] for row in entries}) != 1:
+            raise ValueError("Current inline cycle alias is missing or ambiguous")
+        fixed = next(row for row in manifest["files"] if row["path"] == entries[0]["path"])
+        installed_aliases = [row for row in aliases if row[1] == alias]
+        if not installed_aliases or any(row[2:] != (fixed["path"], fixed["bytes"], fixed["sha256"]) for row in installed_aliases):
+            raise ValueError("Current inline cycle installed alias differs from the pinned resource")
+        receipt = ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
+        acquired = json.loads(receipt.read_bytes())
+        files = {row["url"]: row for row in acquired["files"]}
+        html = files[acquired["entry_url"]]
+        config = files[urllib.parse.urljoin(html["url"], "manifest.json")]
+        for original in (html, config):
+            stable = next((row for row in acquired.get("stability", []) if row["url"] == original["url"]), {})
+            if (not acquired.get("source_current_during_acquisition") or not families.valid(original)
+                    or not stable.get("unchanged") or stable.get("before_sha256") != original["sha256"]
+                    or stable.get("after_sha256") != original["sha256"]):
+                raise ValueError(f"Current mouse {pid} cycle entry/manifest provenance does not verify")
+        mounted = re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']*\bmain\.[\w]+\.js)["\']', (ROOT / html["path"]).read_text(encoding="utf-8"))
+        if len(mounted) != 1:
+            raise ValueError("Current mouse cycle mounted main is ambiguous")
+        main = files[urllib.parse.urljoin(html["url"], mounted[0])]
+        if not families.valid(main):
+            raise ValueError("Current mouse cycle main byte identity differs")
+        inputs.extend([families.identity(receipt), *({key: row[key] for key in ("path", "bytes", "sha256")} for row in (html, config, main))])
+        raw = (ROOT / main["path"]).read_bytes()
+        tree = parser.parse(raw)
+        if tree.root_node.has_error:
+            raise ValueError("Current cycle original has a JavaScript AST error")
+        def text(node):
+            return raw[node.start_byte:node.end_byte].decode("utf-8")
+        def walk(node):
+            yield node
+            for child in node.named_children:
+                yield from walk(child)
+        assignments, declarations = [], []
+        for node in walk(tree.root_node):
+            if node.type == "assignment_expression" and text(node.child_by_field_name("left")) == "this.getCycleImage":
+                assignments.append(node)
+            if node.type == "variable_declarator":
+                declarations.append(node)
+        if len(assignments) != 1:
+            raise ValueError("Current cycle caller must have one complete assignment owner")
+        caller = assignments[0]
+        components = []
+        for node in walk(caller):
+            if node.type == "call_expression":
+                arguments = node.child_by_field_name("arguments").named_children
+                if len(arguments) == 2 and arguments[0].type == "identifier" and arguments[1].type == "object" and not arguments[1].named_children:
+                    components.append(text(arguments[0]))
+        if len(components) != 1:
+            raise ValueError("Current cycle JSX component reference is ambiguous")
+        wrappers = [node for node in declarations if text(node.child_by_field_name("name")) == components[0]
+                    and node.child_by_field_name("value") is not None
+                    and node.child_by_field_name("value").type == "call_expression"
+                    and ".forwardRef" in text(node.child_by_field_name("value").child_by_field_name("function"))]
+        if len(wrappers) != 1:
+            raise ValueError("Current cycle forwardRef producer reference is unresolved")
+        arguments = wrappers[0].child_by_field_name("value").child_by_field_name("arguments").named_children
+        if len(arguments) != 1 or arguments[0].type != "identifier":
+            raise ValueError("Current cycle forwardRef producer is indirect")
+        name = text(arguments[0])
+        producers = [node for node in declarations if text(node.child_by_field_name("name")) == name
+                     and node.child_by_field_name("value") is not None
+                     and node.child_by_field_name("value").type == "arrow_function"]
+        if len(producers) != 1:
+            raise ValueError("Current cycle complete SVG producer is ambiguous")
+        producer = producers[0]
+        anchor = raw[producer.start_byte:producer.child_by_field_name("value").child_by_field_name("body").start_byte + 1].decode("utf-8")
+        svg, conversion = static_react_svg(raw.decode("utf-8"), anchor)
+        if len(svg) != fixed["bytes"] or hashlib.sha256(svg).hexdigest() != fixed["sha256"]:
+            raise ValueError("Current cycle SVG differs from the fixed resource payload")
+        component = caller.parent
+        while component is not None and component.type not in ("class_declaration", "class"):
+            component = component.parent
+        if component is None or "this.state.displayCycleButton?this.getCycleImage():null" not in text(component):
+            raise ValueError("Current cycle conditional render chain is unresolved")
+        def capture(node):
+            body = raw[node.start_byte:node.end_byte]
+            return {"byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body": body.decode("utf-8"), "body_sha256": hashlib.sha256(body).hexdigest()}
+        products.append({"product_id": pid, "original": main, "alias": alias,
+            "complete_component": capture(component), "get_cycle_image": capture(caller),
+            "forward_ref": capture(wrappers[0]), "svg_producer": capture(producer),
+            "transformation": conversion, "prepared_resource": fixed,
+            "selector": {"cycle": selected["cycle"], "image": image,
+                "catalog_id": document["id"], "codec": document["codec"],
+                "payload_sha256": hashlib.sha256(document["raw"]).hexdigest(),
+                "complete_catalog_fields_and_bytes_verified": True,
+                "installed_alias_positions": [row[0] for row in installed_aliases],
+                "rust_selector": selector_owner, "rust_render": render_owner},
+            "current_source_selection_and_prepared_bytes_verified": True,
+            "application_runtime_acceptance": "not performed"})
+    return {"products": products, "inputs": inputs,
+        "inputs_unchanged": all(families.valid(row) for row in inputs),
+        "scope": "Current conditional render -> JSX reference -> forwardRef -> complete literal SVG producer -> pinned resource byte identity",
+        "target_execution": False}
+
+
 def audit_runtime_resources():
     """Audit the installed alias closure without requiring hydrated media."""
     import analysis
@@ -1733,7 +2128,7 @@ def audit_runtime_resources():
                 matches = sorted(key for key in candidates if re.fullmatch(expression, key))
                 domain = finite_resource_domain(row)
                 verified = domain is not None and domain["verified"]
-                expected = domain["expected_aliases"] if verified else []
+                expected = domain["expected_aliases"] if domain is not None else []
                 absent = [key for key in expected if key not in candidates]
                 if absent:
                     missing.append({**row, "missing_aliases": absent})
@@ -1773,7 +2168,7 @@ def audit_runtime_resources():
     inputs = [*snapshots, *documents,
         *({"path": name, "bytes": (ROOT / name).stat().st_size, "sha256": digest(ROOT / name)}
           for name in (resource_sources.LOCK, resource_sources.MAPPINGS, "tools/typed-data.json",
-                       "tools/resource_scope.py"))]
+                       "tools/resource_scope.py", "tools/workspace.py"))]
     report = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
         "tool": {"path": relative(Path(__file__)), "sha256": digest(Path(__file__)),
             "python": sys.version.split()[0], "tree_sitter": version("tree-sitter"),
@@ -1790,6 +2185,8 @@ def audit_runtime_resources():
         "literal_references_passed": not missing, "dynamic_domain_acceptance": "unverified",
         "target_execution": False, "real_device_operations": False,
         "application_runtime_acceptance": "not performed"}
+    report["current_cycle_artwork"] = audit_current_cycle_artwork(manifest)
+    inputs.extend(report["current_cycle_artwork"]["inputs"])
     report["resource_scope"] = resource_scope.audit_sources(ROOT, files)
     report["inputs_unchanged"] = all((ROOT / row["path"]).stat().st_size == row["bytes"]
         and digest(ROOT / row["path"]) == row["sha256"] for row in inputs)
@@ -3765,10 +4162,141 @@ def prepare_native_cursors(sources, group_id=None):
             "unique_files": len(files), "files": list(files.values()), "target_execution": False}
 
 
-def prepare_resources(acquisition, resources=None):
+def prepare_resources(acquisition, resources=None, *, publication_manifest=None):
     import analysis
     with analysis.index_lock(ROOT / ".work/resource-writer.lock"):
+        if publication_manifest is not None:
+            return prepare_resource_publication(acquisition, resources, publication_manifest)
         return prepare_resources_locked(acquisition, resources)
+
+
+def avif_display_png(source):
+    """Decode an acquired AVIF without executing its originating application."""
+    import io
+    sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
+    import PIL
+    from PIL import Image, features
+    with Image.open(source) as image:
+        rgba = image.convert("RGBA")
+        buffer = io.BytesIO()
+        rgba.save(buffer, format="PNG")
+        content = buffer.getvalue()
+        with Image.open(io.BytesIO(content)) as decoded:
+            if decoded.mode != "RGBA" or decoded.size != rgba.size or decoded.tobytes() != rgba.tobytes():
+                raise ValueError("Prepared PNG does not retain every decoded AVIF pixel")
+        return content, {"tool": "Pillow", "version": PIL.__version__,
+                         "codec": "libavif", "codec_version": features.version("avif"),
+                         "mode": "RGBA", "width": rgba.width, "height": rgba.height,
+                         "decoded_rgba_sha256": hashlib.sha256(rgba.tobytes()).hexdigest(),
+                         "png_pixel_roundtrip": True, "target_execution": False}
+
+
+def prepare_resource_publication(acquisition, resources, publication_manifest):
+    """Stage verified original media for the existing pinned-file publisher."""
+    import analysis
+    import asset_release
+    input_root = (ROOT / ".analysis/inputs").resolve()
+    manifest_path = safe(ROOT / publication_manifest)
+    receipt_path = safe(ROOT / acquisition)
+    if not manifest_path.is_relative_to(input_root) or not receipt_path.is_relative_to(input_root):
+        raise ValueError("Resource publication inputs and manifest must remain under analysis inputs")
+    receipt_raw = receipt_path.read_bytes()
+    receipt = json.loads(receipt_raw)
+    stability = receipt.get("stability", [])
+    if (not receipt.get("source_current_during_acquisition") or not stability
+            or any(not row.get("unchanged") for row in stability)):
+        raise ValueError("Resource publication requires a stable current acquisition")
+    originals = {row.get("path"): row for row in receipt.get("files", [])}
+    if not isinstance(resources, dict) or not resources:
+        raise ValueError("Resource publication requires explicit original-to-alias mappings")
+    mappings = resource_sources.load_resource_mappings(root=ROOT)
+    table_names = {table["name"] for table in mappings["tables"]}
+    lock = asset_release.load_lock()
+    group_names = {group["name"] for group in lock["groups"]}
+    destination = input_root / "prepared-resources"
+    prepared_receipt_path = destination / "acquisition.json"
+    snapshots = [(receipt_path, receipt_raw), (Path(__file__), Path(__file__).read_bytes())]
+    analyzer_receipt = ROOT / "tools/analyzers/pillow/acquisition.json"
+    prepared, derivations = [], []
+    for source_name, request in resources.items():
+        if not isinstance(request, dict) or set(request) != {"display", "table"}:
+            raise ValueError("Publication mapping requires exactly display and table")
+        source = safe(ROOT / source_name)
+        if not source.is_relative_to(input_root) or source.is_symlink():
+            raise ValueError("Resource publication must use retained original inputs")
+        raw = source.read_bytes()
+        original = originals.get(relative(source))
+        if (not original or original.get("http_status") != 200
+                or original.get("bytes") != len(raw) or original.get("sha256") != hashlib.sha256(raw).hexdigest()):
+            raise ValueError("Resource publication original bytes differ from acquisition")
+        alias, table = request["display"], request["table"]
+        asset_pack_key(alias)
+        if not alias.startswith("synapse/") or table not in table_names:
+            raise ValueError("Resource publication alias or table is not maintained")
+        conversion = None
+        content = raw
+        if source.suffix.lower() == ".avif":
+            if Path(alias).suffix.lower() != ".png":
+                raise ValueError("Acquired AVIF publication requires an explicit PNG alias")
+            if not analyzer_receipt.is_file():
+                raise ValueError("Prepare the verified image analyzer before AVIF publication")
+            snapshots.append((analyzer_receipt, analyzer_receipt.read_bytes()))
+            content, conversion = avif_display_png(source)
+        elif source.suffix.lower() != Path(alias).suffix.lower():
+            raise ValueError("Exact resource publication cannot change its file type")
+        output_hash = hashlib.sha256(content).hexdigest()
+        suffix = Path(alias).suffix.lower()
+        if suffix not in {".png", ".svg", ".webp", ".jpg", ".jpeg", ".gif", ".mp4", ".woff", ".woff2", ".ttf"}:
+            raise ValueError("Resource publication file type is not supported")
+        target = f"assets/synapse/shared/products/{output_hash}{suffix}"
+        if asset_release.group_name(target) not in group_names:
+            raise ValueError("Resource publication target has no existing shared group")
+        path = destination / f"{output_hash}{suffix}"
+        source_identity = {"path": relative(path), "bytes": len(content), "sha256": output_hash}
+        snapshots.append((source, raw))
+        prepared.append({"path": target, "source": source_identity, "alias": alias, "table": table,
+                         "_content": content})
+        derivations.append({"original": original, "acquisition": {
+            "path": relative(receipt_path), "bytes": len(receipt_raw),
+            "sha256": hashlib.sha256(receipt_raw).hexdigest()},
+            "output": source_identity, "alias": alias, "table": table,
+            "conversion": conversion, "target_execution": False})
+    if any(path.read_bytes() != raw for path, raw in snapshots):
+        raise ValueError("Resource publication original or tool changed during preparation")
+    previous = json.loads(prepared_receipt_path.read_bytes()) if prepared_receipt_path.is_file() else {}
+    retained = {row["path"]: row for row in previous.get("files", [])}
+    for item in prepared:
+        path = ROOT / item["source"]["path"]
+        content = item.pop("_content")
+        if path.exists() and path.read_bytes() != content:
+            raise ValueError("Prepared resource has conflicting bytes")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(path.suffix + ".partial")
+        temporary.write_bytes(content)
+        os.replace(temporary, path)
+        retained[item["source"]["path"]] = item["source"]
+    changed_aliases = {item["alias"] for item in prepared}
+    proof = {"schema_version": 1, "recorded_at_utc": analysis.stamp(),
+             "tool": {"path": "tools/workspace.py", "sha256": digest(Path(__file__))},
+             "python_version": sys.version.split()[0], "files": list(retained.values()),
+             "derivations": [row for row in previous.get("derivations", []) if row.get("alias") not in changed_aliases] + derivations,
+             "inputs_unchanged": True, "target_execution": False}
+    if any(item["conversion"] for item in derivations):
+        proof["image_analyzer_acquisition"] = {"path": relative(analyzer_receipt),
+            "bytes": analyzer_receipt.stat().st_size, "sha256": digest(analyzer_receipt)}
+    write_json(prepared_receipt_path, proof)
+    receipt_identity = {"path": relative(prepared_receipt_path), "bytes": prepared_receipt_path.stat().st_size,
+                        "sha256": digest(prepared_receipt_path)}
+    for item in prepared:
+        item["acquisition"] = receipt_identity
+    write_json(manifest_path, {"schema_version": 1, "files": prepared})
+    analysis.index_files([{**row, "kind": "prepared_resource", "acquisition_receipt": relative(prepared_receipt_path)}
+                          for row in retained.values()] + [{**receipt_identity, "kind": "acquisition_receipt"},
+                          {"path": relative(manifest_path), "bytes": manifest_path.stat().st_size,
+                           "sha256": digest(manifest_path), "kind": "resource_publication_manifest"}])
+    asset_release.release_additions(relative(manifest_path))
+    return {"publication_manifest": relative(manifest_path), "acquisition": receipt_identity,
+            "files": prepared, "inputs_unchanged": True, "target_execution": False}
 
 
 def prepare_resources_locked(acquisition, resources=None):
@@ -4039,18 +4567,7 @@ def prepare_resources_locked(acquisition, resources=None):
                 "producer": {"input": producer_row, "complete_module": body},
             }
         if source.suffix.lower() == ".avif":
-            import io
-            sys.path.insert(0, str(ROOT / "tools/analyzers/pillow"))
-            import PIL
-            from PIL import Image, features
-            with Image.open(source) as image:
-                rgba = image.convert("RGBA")
-                buffer = io.BytesIO()
-                rgba.save(buffer, format="PNG")
-                content = buffer.getvalue()
-                conversion = {"tool": "Pillow", "version": PIL.__version__,
-                              "codec": "libavif", "codec_version": features.version("avif"),
-                              "mode": "RGBA", "width": rgba.width, "height": rgba.height}
+            content, conversion = avif_display_png(source)
         if request.get("muted_video_animation") and source_hash in muted_animation_cache:
             content, conversion = muted_animation_cache[source_hash]
         elif request.get("muted_video_animation"):
@@ -5733,6 +6250,7 @@ def main():
     resource = commands.add_parser("prepare-resources")
     resource.add_argument("--acquisition", required=True)
     resource.add_argument("--resources", required=True, help="JSON map of original paths to product display aliases; '-' reads stdin")
+    resource.add_argument("--publication-manifest", help="Stage media only under analysis inputs and produce a publish-asset-release --add-files manifest")
     locale_keys = commands.add_parser("prepare-locale-keys")
     locale_keys.add_argument("--acquisition", required=True)
     locale_keys.add_argument("--namespace", required=True)
@@ -5826,7 +6344,7 @@ def main():
         print(json.dumps(verify_asset_pack(args.pack, args.manifest), ensure_ascii=False))
     elif args.command in {"prepare-asset-release", "verify-asset-release", "fetch-asset-release", "publish-asset-release", "pin-asset-release"}:
         print(json.dumps(asset_release.run(args), ensure_ascii=False), flush=True)
-    elif args.command in {"prepare-device-write-table", "prepare-storage-tables", "prepare-local-protocol-tables"}:
+    elif args.command in {"prepare-device-write-table", "prepare-storage-tables", "prepare-local-protocol-tables", "prepare-mapping-capabilities", "prepare-mapping-producers"}:
         print(json.dumps(typed_tables.run(args), ensure_ascii=False), flush=True)
     elif args.command in {"prepare-typed-data", "prepare-emoji-search"}:
         print(json.dumps(rust_data.run(args), ensure_ascii=False), flush=True)
@@ -5849,7 +6367,8 @@ def main():
         print(json.dumps(prepare_native_cursors(sources, args.group), ensure_ascii=False), flush=True)
     elif args.command == "prepare-resources":
         mappings = json.loads(sys.stdin.read() if args.resources == "-" else args.resources)
-        print(json.dumps(prepare_resources(args.acquisition, mappings), ensure_ascii=False))
+        print(json.dumps(prepare_resources(args.acquisition, mappings,
+                                         publication_manifest=args.publication_manifest), ensure_ascii=False))
     elif args.command == "prepare-locale-keys":
         bindings = json.loads(sys.stdin.read() if args.bindings == "-" else args.bindings)
         print(json.dumps(prepare_locale_keys(args.acquisition, args.namespace, bindings, args.key), ensure_ascii=False))

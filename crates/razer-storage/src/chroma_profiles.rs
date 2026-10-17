@@ -16,6 +16,7 @@ const VERSION: u32 = 1;
 const SOURCE_CURRENT_USER: &str = "currentUserId";
 const SOURCE_USERS: &str = "synapseChromaStudioUsers";
 const SOURCE_DYNAMIC_LIGHTING: &str = "isDynamicLighting";
+const STUDIO_LIBRARY:&str="studio";
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Profile {
@@ -171,9 +172,142 @@ fn lock(path: &Path, guard: &AtomicBool) -> anyhow::Result<File> {
 pub enum Change {
     Toggle(bool),
     SelectProfile(String),
-    /// Studio publishes its actual complete shared profile projection, rather
-    /// than converting the separate editor draft into an installed profile.
-    PublishProfiles { profiles: Vec<Profile>, selected: Option<String> },
+}
+
+/// Actual local Studio profile contents. T is the editor's typed document,
+/// validated by its owner; shared ID/name projection never substitutes for it.
+#[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
+pub struct StudioProfile<T> {
+    id:String,
+    name:String,
+    editor:T,
+    #[serde(default,skip_serializing_if="std::ops::Not::not")]
+    is_default:bool,
+    #[serde(flatten)]
+    extensions:Map<String,Value>,
+}
+impl<T> StudioProfile<T> {
+    pub fn id(&self)->&str {&self.id}
+    pub fn name(&self)->&str {&self.name}
+    pub fn editor(&self)->&T {&self.editor}
+}
+#[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
+pub struct StudioLibrary<T> {
+    profiles:Vec<StudioProfile<T>>,
+    selected:Option<String>,
+    #[serde(flatten)]
+    extensions:Map<String,Value>,
+}
+impl<T> Default for StudioLibrary<T> {
+    fn default()->Self {Self {profiles:Vec::new(),selected:None,extensions:Map::new()}}
+}
+impl<T> StudioLibrary<T> {
+    pub fn profiles(&self)->&[StudioProfile<T>] {&self.profiles}
+    pub fn selected_id(&self)->Option<&str> {self.selected.as_deref()}
+    pub fn selected(&self)->Option<&StudioProfile<T>> {self.selected.as_ref().and_then(|id|self.profiles.iter().find(|profile|profile.id==*id))}
+    fn validate(&self,validate:&impl Fn(&T)->anyhow::Result<()>)->anyhow::Result<()> {
+        let mut ids=BTreeSet::new();
+        let mut names=BTreeSet::new();
+        for profile in &self.profiles {
+            ensure!(!profile.id.is_empty()&&ids.insert(profile.id.as_str()),"Studio profile identity is invalid or repeated");
+            ensure!(!profile.name.trim().is_empty()&&profile.name.encode_utf16().count()<=32&&names.insert(profile.name.as_str()),"Studio profile name is invalid or repeated");
+            validate(&profile.editor)?;
+        }
+        ensure!(self.selected.as_ref().is_none_or(|id|ids.contains(id.as_str())),"Studio selected profile is missing");
+        Ok(())
+    }
+}
+impl<T:Clone> StudioLibrary<T> {
+    /// Computes the source's optimistic edit without publishing it to disk.
+    /// The persistent writer uses this same transition after reading its lock.
+    pub fn changed(&self,change:StudioChange<T>,validate:impl Fn(&T)->anyhow::Result<()>)->anyhow::Result<Self> {
+        let mut library=self.clone();
+        match change {
+            StudioChange::Add {id,name,editor}=>{
+                ensure!(!library.profiles.iter().any(|profile|profile.id==id),"New Studio identity already exists");
+                let first=library.profiles.is_empty();
+                library.profiles.push(StudioProfile {id:id.clone(),name,editor,is_default:first,extensions:Map::new()});
+                library.selected=Some(id);
+            }
+            StudioChange::Rename {id,name}=>{
+                let profile=library.profiles.iter_mut().find(|profile|profile.id==id).context("Renamed Studio profile is missing")?;
+                if profile.name!=name {profile.name=name;profile.is_default=false;}
+            }
+            StudioChange::Duplicate {id,new_id,name}=>{
+                ensure!(!library.profiles.iter().any(|profile|profile.id==new_id),"Duplicated Studio identity already exists");
+                let mut profile=library.profiles.iter().find(|profile|profile.id==id).context("Duplicated Studio profile is missing")?.clone();
+                profile.id=new_id.clone();profile.name=name;profile.is_default=false;
+                library.profiles.push(profile);library.selected=Some(new_id);
+            }
+            StudioChange::Delete {id}=>{
+                ensure!(library.profiles.len()>1,"Studio retains its last profile");
+                let position=library.profiles.iter().position(|profile|profile.id==id).context("Deleted Studio profile is missing")?;
+                library.profiles.remove(position);
+                if library.selected.as_deref()==Some(&id) {library.selected=library.profiles.get(position).or_else(||library.profiles.get(position.saturating_sub(1))).map(|profile|profile.id.clone());}
+            }
+            StudioChange::Select {id}=>{
+                ensure!(library.profiles.iter().any(|profile|profile.id==id),"Selected Studio profile has no editor document");
+                library.selected=Some(id);
+            }
+            StudioChange::Save {id,editor}=>{
+                let profile=library.profiles.iter_mut().find(|profile|profile.id==id).context("Saved Studio profile is missing")?;
+                profile.editor=editor;profile.is_default=false;
+            }
+        }
+        library.validate(&validate)?;
+        Ok(library)
+    }
+}
+#[derive(Clone)]
+pub enum StudioChange<T> {
+    Add {id:String,name:String,editor:T},
+    Rename {id:String,name:String},
+    Duplicate {id:String,new_id:String,name:String},
+    Delete {id:String},
+    Select {id:String},
+    Save {id:String,editor:T},
+}
+pub fn load_studio<T:serde::de::DeserializeOwned>(path:&Path,validate:impl Fn(&T)->anyhow::Result<()>)->anyhow::Result<StudioLibrary<T>> {
+    let Some(document)=crate::read_document(path,decode)? else{return Ok(StudioLibrary::default());};
+    let Some(value)=document.extensions.get(STUDIO_LIBRARY) else{return Ok(StudioLibrary::default());};
+    let mut library:StudioLibrary<T>=serde_json::from_value(value.clone())?;
+    // Device pages and Studio share selection. A projection without a complete
+    // editor document remains explicit and cannot hydrate an empty profile.
+    library.selected=document.configuration.current_profile;
+    library.validate(&validate)?;
+    Ok(library)
+}
+pub fn update_studio<T:Clone+Serialize+serde::de::DeserializeOwned>(path:&Path,source_path:&Path,change:StudioChange<T>,guard:&AtomicBool,validate:impl Fn(&T)->anyhow::Result<()>)->anyhow::Result<StudioLibrary<T>> {
+    let _lock=lock(path,guard)?;
+    let previous=crate::read_document(path,decode)?;
+    let mut configuration=load(path,source_path)?.configuration.unwrap_or_else(Configuration::empty_local);
+    let mut library:StudioLibrary<T>=previous.as_ref().and_then(|document|document.extensions.get(STUDIO_LIBRARY)).map(|value|serde_json::from_value(value.clone())).transpose()?.unwrap_or_default();
+    // A selection made by a product page is authoritative even when Studio's
+    // stored library predates it. A rename must not restore an older selection.
+    library.selected=configuration.current_profile.clone();
+    match &change {
+        StudioChange::Add {id,..}|StudioChange::Duplicate {new_id:id,..}=>ensure!(!configuration.profiles.iter().any(|profile|profile.id==*id),"New Studio identity already exists"),
+        StudioChange::Delete {id}=>configuration.profiles.retain(|profile|profile.id!=*id),
+        _=>{},
+    }
+    if !matches!(&change,StudioChange::Rename {..}) {configuration.enabled=true;}
+    library=library.changed(change,&validate)?;
+    for profile in &library.profiles {
+        let mut fields=configuration.profiles.iter().find(|row|row.id==profile.id).map(|row|row.source_fields.clone()).unwrap_or_default();
+        if profile.is_default {fields.insert("default".into(),true.into());}else{fields.remove("default");}
+        let projection=Profile {id:profile.id.clone(),name:profile.name.clone(),source_fields:fields};
+        if let Some(existing)=configuration.profiles.iter_mut().find(|row|row.id==profile.id) {*existing=projection;}else{configuration.profiles.push(projection);}
+    }
+    configuration.current_profile=library.selected.clone();configuration.validate()?;
+    let mut extensions=previous.as_ref().map(|document|document.extensions.clone()).unwrap_or_default();
+    extensions.insert(STUDIO_LIBRARY.into(),serde_json::to_value(&library)?);
+    let document=Document {version:VERSION,revision:previous.as_ref().map_or(0,|document|document.revision).checked_add(1).context("Chroma revision exhausted")?,configuration,extensions};
+    ensure!(guard.load(Ordering::Acquire),"Studio request was canceled");
+    crate::write_document(path,&document,|text|{
+        ensure!(guard.load(Ordering::Acquire),"Studio request was canceled");
+        ensure!(previous.as_ref()==Some(&decode(text)?),"Studio configuration changed after it was read");Ok(())
+    })?;
+    Ok(library)
 }
 
 pub fn update(
@@ -192,10 +326,6 @@ pub fn update(
             configuration.current_profile = Some(id);
             configuration.enabled = true;
         }
-        Change::PublishProfiles { profiles, selected } => {
-            configuration.profiles = profiles;
-            configuration.current_profile = selected;
-        }
     }
     configuration.validate()?;
     let revision = previous.as_ref().map_or(0, |document| document.revision)
@@ -213,6 +343,11 @@ pub fn update(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[derive(Clone,Debug,PartialEq,Serialize,Deserialize)]
+    struct Editor {layers:Vec<u32>,#[serde(flatten)] extensions:Map<String,Value>}
+    fn editor(layer:u32)->Editor {Editor {layers:vec![layer],extensions:Map::new()}}
+    fn validate_editor(editor:&Editor)->anyhow::Result<()> {ensure!(editor.layers.iter().all(|layer|*layer>0),"Invalid test editor layer");Ok(())}
+    fn studio(temp:&Temp,change:StudioChange<Editor>)->StudioLibrary<Editor> {update_studio(&temp.local(),&temp.source(),change,&AtomicBool::new(true),validate_editor).unwrap()}
     struct Temp(PathBuf);
     impl Temp {
         fn new() -> Self {
@@ -257,5 +392,85 @@ mod tests {
         assert!(update(&temp.local(), &temp.source(), Change::Toggle(true), &AtomicBool::new(false)).is_err());
         assert!(update(&temp.local(), &temp.source(), Change::SelectProfile("missing".into()), &AtomicBool::new(true)).is_err());
         assert_eq!(std::fs::read(temp.local()).unwrap(), before);
+    }
+    #[test]
+    fn studio_crud_publishes_complete_editors_and_the_shared_projection_together() {
+        let temp=Temp::new();
+        let first=studio(&temp,StudioChange::Add {id:"a".into(),name:"Effect 1".into(),editor:editor(1)});
+        assert!(first.selected().unwrap().is_default);
+        studio(&temp,StudioChange::Duplicate {id:"a".into(),new_id:"b".into(),name:"Effect 1 (1)".into()});
+        studio(&temp,StudioChange::Add {id:"c".into(),name:"Effect 2".into(),editor:editor(2)});
+        studio(&temp,StudioChange::Select {id:"b".into()});
+        let renamed=studio(&temp,StudioChange::Rename {id:"b".into(),name:"Second".into()});
+        assert_eq!(renamed.selected().unwrap().name(),"Second");
+        let saved=studio(&temp,StudioChange::Save {id:"b".into(),editor:editor(3)});
+        assert_eq!(saved.selected().unwrap().editor().layers,[3]);
+        assert!(!saved.selected().unwrap().is_default);
+        let deleted=studio(&temp,StudioChange::Delete {id:"b".into()});
+        assert_eq!(deleted.selected_id(),Some("c"));
+        let config=load(&temp.local(),&temp.source()).unwrap().configuration.unwrap();
+        assert_eq!(config.selected_profile(),Some("c"));
+        assert_eq!(config.profiles.iter().map(Profile::id).collect::<Vec<_>>(),["a","c"]);
+        assert!(config.enabled());
+        assert_eq!(load_studio::<Editor>(&temp.local(),validate_editor).unwrap(),deleted);
+        assert!(!temp.source().exists());
+        let deleted=studio(&temp,StudioChange::Delete {id:"c".into()});
+        assert_eq!(deleted.selected_id(),Some("a"));
+        let before=std::fs::read(temp.local()).unwrap();
+        assert!(update_studio(&temp.local(),&temp.source(),StudioChange::<Editor>::Delete {id:"a".into()},&AtomicBool::new(true),validate_editor).is_err());
+        assert_eq!(std::fs::read(temp.local()).unwrap(),before);
+    }
+    #[test]
+    fn studio_rename_keeps_selection_made_by_another_local_consumer() {
+        let temp=Temp::new();
+        studio(&temp,StudioChange::Add {id:"a".into(),name:"First".into(),editor:editor(1)});
+        studio(&temp,StudioChange::Duplicate {id:"a".into(),new_id:"b".into(),name:"Second".into()});
+        update(&temp.local(),&temp.source(),Change::SelectProfile("a".into()),&AtomicBool::new(true)).unwrap();
+        update(&temp.local(),&temp.source(),Change::Toggle(false),&AtomicBool::new(true)).unwrap();
+        let changed=studio(&temp,StudioChange::Rename {id:"b".into(),name:"Other".into()});
+        assert_eq!(changed.selected_id(),Some("a"));
+        let config=load(&temp.local(),&temp.source()).unwrap().configuration.unwrap();
+        assert_eq!(config.selected_profile(),Some("a"));
+        assert!(!config.enabled());
+    }
+    #[test]
+    fn studio_roundtrip_retains_unknown_fields_at_each_persistence_boundary() {
+        let temp=Temp::new();
+        studio(&temp,StudioChange::Add {id:"a".into(),name:"First".into(),editor:editor(1)});
+        let mut document=decode(&std::fs::read_to_string(temp.local()).unwrap()).unwrap();
+        document.extensions.insert("futureDocument".into(),42.into());
+        document.configuration.extensions.insert("futureConfiguration".into(),true.into());
+        document.configuration.profiles[0].source_fields.insert("linkedGames".into(),serde_json::json!(["local.exe"]));
+        let mut library:StudioLibrary<Editor>=serde_json::from_value(document.extensions[STUDIO_LIBRARY].clone()).unwrap();
+        library.extensions.insert("futureLibrary".into(),43.into());
+        library.profiles[0].extensions.insert("futureProfile".into(),44.into());
+        library.profiles[0].editor.extensions.insert("futureEditor".into(),45.into());
+        document.extensions.insert(STUDIO_LIBRARY.into(),serde_json::to_value(library).unwrap());
+        std::fs::write(temp.local(),serde_json::to_vec(&document).unwrap()).unwrap();
+        let library=studio(&temp,StudioChange::Rename {id:"a".into(),name:"Renamed".into()});
+        assert_eq!(library.extensions["futureLibrary"],43);
+        assert_eq!(library.profiles[0].extensions["futureProfile"],44);
+        assert_eq!(library.profiles[0].editor.extensions["futureEditor"],45);
+        let after=decode(&std::fs::read_to_string(temp.local()).unwrap()).unwrap();
+        assert_eq!(after.extensions["futureDocument"],42);
+        assert_eq!(after.configuration.extensions["futureConfiguration"],true);
+        assert_eq!(after.configuration.profiles[0].source_fields["linkedGames"],serde_json::json!(["local.exe"]));
+    }
+    #[test]
+    fn studio_invalid_or_canceled_edits_leave_the_last_valid_document_intact() {
+        let temp=Temp::new();
+        let library=studio(&temp,StudioChange::Add {id:"a".into(),name:"First".into(),editor:editor(1)});
+        let before=std::fs::read(temp.local()).unwrap();
+        for change in [StudioChange::Save {id:"a".into(),editor:editor(0)},StudioChange::Select {id:"missing".into()},StudioChange::Rename {id:"a".into(),name:"😀".repeat(17)},StudioChange::Duplicate {id:"a".into(),new_id:"b".into(),name:"First".into()}] {
+            assert!(library.changed(change.clone(),validate_editor).is_err());
+            assert!(update_studio(&temp.local(),&temp.source(),change,&AtomicBool::new(true),validate_editor).is_err());
+            assert_eq!(std::fs::read(temp.local()).unwrap(),before);
+        }
+        assert!(update_studio(&temp.local(),&temp.source(),StudioChange::Save {id:"a".into(),editor:editor(2)},&AtomicBool::new(false),validate_editor).is_err());
+        assert_eq!(std::fs::read(temp.local()).unwrap(),before);
+        let preview=library.changed(StudioChange::Rename {id:"a".into(),name:"Preview".into()},validate_editor).unwrap();
+        assert_eq!(preview.selected().unwrap().name(),"Preview");
+        assert_eq!(library.selected().unwrap().name(),"First");
+        assert_eq!(std::fs::read(temp.local()).unwrap(),before);
     }
 }

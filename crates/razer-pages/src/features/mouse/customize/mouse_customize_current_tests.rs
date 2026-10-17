@@ -6,21 +6,32 @@ use gpui_kit::{AppContext, TestAppContext, px, size};
 use serde_json::json;
 
 struct LabelFixture {
-    owner:gpui_kit::Entity<MouseProductWorkspace>,
-    button:serde_json::Value,
-    _subscription:gpui_kit::Subscription,
+    owner: gpui_kit::Entity<MouseProductWorkspace>,
+    button: serde_json::Value,
+    _subscription: gpui_kit::Subscription,
 }
 impl gpui_kit::Render for LabelFixture {
-    fn render(&mut self,window:&mut gpui_kit::Window,cx:&mut gpui_kit::Context<Self>)->impl gpui_kit::IntoElement {
-        use gpui_kit::{Styled,ParentElement};
-        gpui_kit::div().p(gpui_kit::rems(12.)).child(self.owner.update(cx,|owner,cx|owner.current_customize_label(&self.button,7,true,0.,false,window,cx)))
+    fn render(
+        &mut self,
+        window: &mut gpui_kit::Window,
+        cx: &mut gpui_kit::Context<Self>,
+    ) -> impl gpui_kit::IntoElement {
+        use gpui_kit::{ParentElement, Styled};
+        gpui_kit::div()
+            .p(gpui_kit::rems(12.))
+            .child(self.owner.update(cx, |owner, cx| {
+                owner.current_customize_label(&self.button, 7, true, 0., false, window, cx)
+            }))
     }
 }
 
 #[gpui_kit::test]
-fn source_label_hover_uses_disabled_wrapper_and_independent_synapse_icon(cx:&mut TestAppContext) {
-    cx.update(|cx| {gpui_kit::init(cx);cx.set_reduce_motion(true);});
-    let mut fixture=None;
+fn source_label_hover_uses_disabled_wrapper_and_independent_synapse_icon(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let mut fixture = None;
     let handle=cx.open_window(size(px(1000.),px(700.)),|window,cx| {
         let label=cx.new(|cx| {
             let owner=cx.new(|cx|MouseProductWorkspace::new(229,window,cx));
@@ -29,7 +40,7 @@ fn source_label_hover_uses_disabled_wrapper_and_independent_synapse_icon(cx:&mut
         });
         fixture=Some(label.clone());Root::new(label,window,cx)
     });
-    let fixture=fixture.unwrap();
+    let fixture = fixture.unwrap();
     cx.update_window(handle.into(),|_,window,cx| {
         window.render_frame(cx);
         window.click("mouse-229-input-DKM_SB_03",cx);
@@ -56,6 +67,58 @@ fn source_label_hover_uses_disabled_wrapper_and_independent_synapse_icon(cx:&mut
         assert!(window.try_find("mouse-source-label-tip").is_some());
         assert!(window.try_find("mouse-source-label-requires-tip").is_none());
     }).unwrap();
+}
+
+#[gpui_kit::test]
+fn source_disabled_requires_synapse_icon_keeps_its_own_hover_layer(cx: &mut TestAppContext) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let mut fixture = None;
+    let handle = cx.open_window(size(px(1000.), px(700.)), |window, cx| {
+        let label = cx.new(|cx| {
+            let owner = cx.new(|cx| MouseProductWorkspace::new(229, window, cx));
+            let subscription = cx.observe(&owner, |_, _, cx| cx.notify());
+            LabelFixture {
+                owner,
+                button: json!({
+                    "inputID":"DKM_SB_03",
+                    "assignment":"MOUSE_FUNCTION",
+                    "assignmentValue":"SCROLL_MODE_SWITCH",
+                    "isEnabled":false,
+                    "disabled":true,
+                    "isMapped":true,
+                    "isRequireSynapse":true
+                }),
+                _subscription: subscription,
+            }
+        });
+        fixture = Some(label.clone());
+        Root::new(label, window, cx)
+    });
+    let fixture = fixture.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        window.hover("mouse-source-label-wrapper-DKM_SB_03", cx);
+        assert!(window.try_find("mouse-source-label-tip").is_some());
+        assert!(window.try_find("mouse-source-label-requires-tip").is_none());
+
+        // The source icon handles hover independently of the disabled button
+        // and clears the customize hover state before showing its own tip.
+        window.hover("mouse-source-label-requires-DKM_SB_03", cx);
+        assert!(window.try_find("mouse-source-label-tip").is_none());
+        assert!(window.try_find("mouse-source-label-requires-tip").is_some());
+        assert!(fixture.read(cx).owner.read(cx).customize_hover.is_none());
+
+        // Leaving the icon into the disabled wrapper keeps the outer source
+        // tooltip layer active until the pointer exits the wrapper itself.
+        window.hover("mouse-source-label-wrapper-DKM_SB_03", cx);
+        assert!(window.try_find("mouse-source-label-tip").is_some());
+        assert!(window.try_find("mouse-source-label-requires-tip").is_none());
+        assert!(fixture.read(cx).owner.read(cx).customize_hover.is_none());
+    })
+    .unwrap();
 }
 
 #[::core::prelude::v1::test]
@@ -126,6 +189,38 @@ fn every_cycle_branch_keeps_its_current_product_and_edition_selector() {
             viper.cycle_artwork(edition).unwrap().asset,
             "synapse/mouse-customize/8bd13c4f3a94a3834d2a05c6.svg"
         );
+    }
+}
+
+#[::core::prelude::v1::test]
+fn pid229_cycle_artwork_uses_a_registered_runtime_alias() {
+    use gpui_kit::AssetSource as _;
+
+    let image = source_surface(229, 0)
+        .and_then(|surface| surface.cycle_artwork(0))
+        .expect("PID229 cycle artwork");
+    assert_eq!(
+        image.request,
+        "./229_0/svg_prods/current-inline-profile.svg"
+    );
+    assert_eq!(
+        image.asset,
+        "synapse/mouse-customize/8bd13c4f3a94a3834d2a05c6.svg"
+    );
+    let listed = razer_assets::SynapseAssets
+        .list("synapse/mouse-customize/")
+        .expect("resource catalog");
+    assert!(listed.iter().any(|key| key.as_ref() == image.asset));
+
+    // A cold installation queues this known alias and reports ResourcePending;
+    // an unknown alias would instead return Ok(None) and never be retried.
+    match razer_assets::SynapseAssets.load(&image.asset) {
+        Ok(Some(bytes)) => assert!(!bytes.is_empty()),
+        Err(error) => assert!(
+            razer_assets::is_resource_pending(&error),
+            "known PID229 alias failed as a non-pending resource: {error:#}"
+        ),
+        Ok(None) => panic!("PID229 cycle alias was not found by AssetSource"),
     }
 }
 
@@ -203,11 +298,94 @@ fn viper_v4_hover_mounts_source_cutout_and_selected_button_retains_it(cx: &mut T
         assert_eq!(window.find("mouse-current-front-image").bounds(), front);
         owner.update(cx, |owner, cx| {
             owner.set_current_customize_input(Some("DKM_SB_03".into()), true);
+            let position = owner.customize_cycle.expect("selected hover position");
+            assert!(position.display);
+            assert_eq!((position.x, position.y), (186., 173.));
             owner.hover_current_customize(7, false);
             cx.notify();
         });
         window.render_frame(cx);
         assert!(window.try_find("mouse-current-cycle-image").is_some());
+        owner.update(cx, |owner, cx| {
+            owner.set_current_customize_input(None, false);
+            cx.notify();
+        });
+        window.render_frame(cx);
+        assert!(window.try_find("mouse-current-cycle-image").is_none());
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
+fn viper_v4_selection_without_hover_uses_source_active_position_through_panel_roundtrip(
+    cx: &mut TestAppContext,
+) {
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        cx.set_reduce_motion(true);
+    });
+    let mut page = None;
+    let handle = cx.open_window(size(px(1450.), px(1000.)), |window, cx| {
+        let owner = cx.new(|cx| MouseProductWorkspace::new(229, window, cx));
+        page = Some(owner.clone());
+        Root::new(owner, window, cx)
+    });
+    let owner = page.unwrap();
+    cx.update_window(handle.into(), |_, window, cx| {
+        window.render_frame(cx);
+        assert!(window.try_find("mouse-current-cycle-image").is_none());
+
+        // A real label click enters the mapping editor without relying on a
+        // prior hover event. It must take the same source active transition.
+        window.click("mouse-229-input-DKM_SB_03", cx);
+        window.render_frame(cx);
+        let position = owner
+            .read(cx)
+            .customize_cycle
+            .expect("clicked selection position");
+        assert!(position.display);
+        // The test click also enters the label hover path, so the source keeps
+        // its hover y-coordinate while the cutout remains visible.
+        assert_eq!((position.x, position.y), (186., 173.));
+        assert!(window.try_find("mouse-current-cycle-image").is_some());
+        owner.update(cx, |owner, cx| {
+            owner.set_current_customize_input(None, false);
+            cx.notify();
+        });
+        window.render_frame(cx);
+        assert!(window.try_find("mouse-current-cycle-image").is_none());
+
+        // The source componentDidUpdate path selects the cycle cutout even
+        // when selection arrives without a preceding pointer hover.
+        owner.update(cx, |owner, cx| {
+            owner.set_current_customize_input(Some("DKM_SB_03".into()), true);
+            let position = owner.customize_cycle.expect("cycle selection position");
+            assert!(position.display);
+            assert_eq!((position.x, position.y), (186., 170.));
+            cx.notify();
+        });
+        window.render_frame(cx);
+        assert!(window.try_find("mouse-current-cycle-image").is_some());
+
+        // Opening and closing the mapping panel retains the selected source
+        // button and its cutout. Leaving the label then uses leave_selected.
+        window.click("mouse-current-sidebar-toggle", cx);
+        window.render_frame(cx);
+        assert!(owner.read(cx).current_mouse_mapping_panel_open());
+        assert!(window.try_find("mouse-current-cycle-image").is_some());
+        window.click("mouse-current-sidebar-toggle", cx);
+        window.render_frame(cx);
+        assert!(!owner.read(cx).current_mouse_mapping_panel_open());
+        owner.update(cx, |owner, cx| {
+            owner.hover_current_customize(7, false);
+            let position = owner.customize_cycle.expect("cycle leave position");
+            assert!(position.display);
+            assert_eq!((position.x, position.y), (186., 173.));
+            cx.notify();
+        });
+        window.render_frame(cx);
+        assert!(window.try_find("mouse-current-cycle-image").is_some());
+
         owner.update(cx, |owner, cx| {
             owner.set_current_customize_input(None, false);
             cx.notify();

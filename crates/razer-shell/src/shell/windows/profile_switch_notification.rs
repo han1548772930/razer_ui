@@ -749,9 +749,7 @@ impl Render for ProfileWindow {
                 });
             })
             .children(panels);
-        image_cache(razer_assets::resource_image_cache())
-            .size_full()
-            .child(content)
+        content
     }
 }
 

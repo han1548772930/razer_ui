@@ -16,6 +16,7 @@ razer-model.workspace = true
 razer-service.workspace = true
 razer-shell.workspace = true
 razer-pages.workspace = true
+razer-widgets.workspace = true
 
 [dev-dependencies]
 gpui-kit = { workspace = true, features = ["test-support"] }

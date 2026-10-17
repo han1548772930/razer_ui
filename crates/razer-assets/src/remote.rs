@@ -19,7 +19,8 @@ mod image_cache;
 mod runtime;
 mod transport;
 pub use image_cache::{
-    ResourceLayer, ResourceScope, deferred_resource, resource_image_cache, resource_scope,
+    ResourceLayer, ResourceScope, deferred_resource, load_resource_image, resource_image_cache,
+    resource_scope,
 };
 pub use runtime::{
     ResourceChanged, observe_resources, resource_errors, retry_resources, start_resources,

@@ -17,6 +17,7 @@ PAIRING_INPUT = ".analysis/inputs/typed-tables/razer-storage/receiver-pairing-ca
 RESET_INPUT = ".analysis/inputs/typed-tables/razer-storage/receiver-reset-defaults.json"
 PAIRING_OUTPUT = "crates/razer-storage/src/receiver/receiver_pairing_catalog.rs"
 RESET_OUTPUT = "crates/razer-storage/src/receiver/receiver_reset_defaults.rs"
+MAPPING_OUTPUT = "crates/razer-model/src/mapping_requirements/mouse_capabilities.rs"
 KINDS = {"dpi": "Dpi", "polling": "Polling", "idle": "Idle"}
 METHODS = {
     "setDpiLevel": ("DpiLevel", "dpi", 7),
@@ -914,6 +915,355 @@ def prepare_local_protocol_tables(reads=READ_INPUT, identity=IDENTITY_INPUT, que
             "scope": "fixed local protocol data; no runtime JSON, network or device operations"}
 
 
+def mapping_source_projection(body):
+    """Project consumed fields from a complete factory using static JS ASTs."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    import json5
+    prefix = b"const CAPABILITY_MODULE={"
+    raw = prefix + body.encode("utf-8") + b"};"
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Current mapping capability factory has a JavaScript AST error")
+    module_object = tree.root_node.named_children[0].named_children[0].child_by_field_name("value")
+    factory = module_object.named_children[0].child_by_field_name("value")
+    statements = factory.child_by_field_name("body")
+    bindings = {}
+    for statement in statements.named_children:
+        if statement.type not in ("lexical_declaration", "variable_declaration"):
+            continue
+        for declarator in statement.named_children:
+            if declarator.type == "variable_declarator":
+                name = declarator.child_by_field_name("name")
+                if name.type == "identifier":
+                    bindings[raw[name.start_byte:name.end_byte].decode()] = declarator
+    retained, holes, duplicates, exported = {}, [], [], {}
+    def source(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8")
+    def find_exports(node):
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            arguments = node.child_by_field_name("arguments").named_children
+            if (function.type == "member_expression" and source(function.child_by_field_name("property")) == "d"
+                    and len(arguments) == 2 and arguments[1].type == "object"):
+                for pair in arguments[1].named_children:
+                    if pair.type != "pair":
+                        continue
+                    getter = pair.child_by_field_name("value")
+                    if getter.type != "arrow_function":
+                        continue
+                    result = getter.child_by_field_name("body")
+                    if result.type == "identifier":
+                        name = source(pair.child_by_field_name("key"))
+                        if name in exported:
+                            raise ValueError("Ambiguous current mapping export: " + name)
+                        exported[name] = source(result)
+        if node.type not in ("arrow_function", "function_expression", "function_declaration", "method_definition"):
+            for child in node.named_children:
+                find_exports(child)
+    for statement in statements.named_children:
+        if statement.type == "expression_statement":
+            find_exports(statement)
+    def capture(node, name):
+        literal = raw[node.start_byte:node.end_byte]
+        retained[name] = {"name": name, "byte_start": node.start_byte - len(prefix),
+            "byte_end": node.end_byte - len(prefix), "body": literal.decode("utf-8"),
+            "body_sha256": hashlib.sha256(literal).hexdigest()}
+    def value(node, chain=()):
+        if node.type == "identifier":
+            name = source(node)
+            if name in chain or name not in bindings:
+                raise ValueError("Unresolved current mapping capability binding: " + name)
+            declaration = bindings[name]
+            capture(declaration, name)
+            return value(declaration.child_by_field_name("value"), (*chain, name))
+        if node.type in ("string", "number", "true", "false", "null"):
+            return json5.loads(source(node))
+        if node.type == "unary_expression" and source(node) in ("!0", "!1"):
+            return source(node) == "!0"
+        if node.type == "array":
+            output, item_pending = [], True
+            for child in node.children[1:-1]:
+                if child.type == "comment":
+                    continue
+                if child.type == ",":
+                    if item_pending:
+                        holes.append({"byte_start": child.start_byte - len(prefix),
+                            "array_body": source(node), "array_index": len(output)})
+                        output.append({"source_array_hole": True})
+                    item_pending = True
+                else:
+                    output.append(value(child, chain))
+                    item_pending = False
+            return output
+        raise ValueError("Unsupported consumed JavaScript capability node: " + node.type + " " + source(node))
+    def properties(node):
+        if node.type != "object":
+            raise ValueError("Expected a current capability object, found " + source(node))
+        output = {}
+        for item in node.named_children:
+            if item.type == "comment":
+                continue
+            if item.type != "pair":
+                raise ValueError("Nonliteral capability object property: " + source(item))
+            key = item.child_by_field_name("key")
+            name = json5.loads(source(key)) if key.type == "string" else source(key)
+            if name in output:
+                duplicates.append({"name": name, "earlier": source(output[name]),
+                    "effective": source(item.child_by_field_name("value")),
+                    "semantics": "JavaScript object literal uses the last property with the same key"})
+            output[name] = item.child_by_field_name("value")
+        return output
+    def export(name):
+        if name not in exported:
+            return None
+        if exported[name] not in bindings:
+            raise ValueError("Current capability export binding is absent: " + name)
+        declaration = bindings[exported[name]]
+        capture(declaration, name)
+        return declaration.child_by_field_name("value")
+    info = export("DeviceInfo")
+    if info is None:
+        raise ValueError("Current mapping factory does not export DeviceInfo")
+    fields = properties(info)
+    projected = {}
+    for key in ("productId", "category", "isOBMDevice", "isXenaT2Series", "controllerAssignmentsWithoutSynapse"):
+        if key in fields:
+            if key == "controllerAssignmentsWithoutSynapse":
+                projected[key] = source(fields[key]) != "null" and source(fields[key]) != "void 0"
+                capture(fields[key], key)
+            else:
+                projected[key] = value(fields[key])
+    if "OBMSpecs" in fields:
+        obm = properties(fields["OBMSpecs"])
+        if "noFirmwareInputId" in obm:
+            projected["noFirmwareInputId"] = value(obm["noFirmwareInputId"])
+        if "supportedMappings" in obm:
+            supported = properties(obm["supportedMappings"])
+            projected["supportedMappings"] = {key: value(supported[key]) for key in
+                ("controllerGroup", "macroGroup", "mouseGroup", "scrollingGroup", "sensitivityGroup", "profileNavigationGroup") if key in supported}
+    if "ble" in fields:
+        ble = properties(fields["ble"])
+        if "obmMacrosAvailable" in ble:
+            projected["bleMacrosAvailable"] = value(ble["obmMacrosAvailable"])
+    for key in ("MOUSE_FUNC_REQUIRED_SYNAPSE_VALUES", "MOUSE_TURBO_FUNC_REQUIRED_SYNAPSE_VALUES"):
+        node = export(key)
+        if node is not None:
+            projected[key] = value(node)
+    return projected, {"bindings": list(retained.values()), "array_holes": holes, "duplicate_properties": duplicates,
+        "scope": "Exact consumed fields; assignment arrays project includes(valid string) membership, preserving source order and recording omitted holes"}
+
+
+def render_mapping_capabilities(products):
+    categories = {"MOUSE": "Mouse", "MOUSEPLUSMAT": "MousePlusMat", "KEYBOARD": "Keyboard", "SYSTEM": "System"}
+    def vector(values, *, holes=False):
+        if not isinstance(values, list):
+            raise ValueError("Expected a current mapping string array")
+        entries = []
+        for value in values:
+            if holes and value == {"source_array_hole": True}:
+                continue
+            if not isinstance(value, str):
+                raise ValueError("Nonstring current mapping assignment: " + repr(value))
+            entries.append(json.dumps(value, ensure_ascii=False) + ".into()")
+        return "vec![" + ", ".join(entries) + "]"
+    def optional(source, name, renderer):
+        return "None" if name not in source else "Some(" + renderer(source[name]) + ")"
+    def boolean(value):
+        if type(value) is not bool:
+            raise ValueError("Expected a current mapping boolean")
+        return str(value).lower()
+    def support(value):
+        return "MappingSupport::Enabled(" + boolean(value) + ")" if type(value) is bool else "MappingSupport::Assignments(" + vector(value, holes=True) + ")"
+    lines = ["//! Generated by tools/workspace.py prepare-mapping-capabilities from current complete product factories.",
+        "use super::{FirmwareMappingSupport, MappingCapabilities, MappingCategory, MappingSupport};", "",
+        "pub(super) fn current_mouse_capabilities() -> Vec<(u32, MappingCapabilities)> {", "    vec!["]
+    for row in products:
+        info = row["projection"]
+        category = "MappingCategory::" + categories[info["category"]] if info["category"] in categories else "MappingCategory::Other(" + json.dumps(info["category"]) + ".into())"
+        lines += [f"        ({row['product_id']}, MappingCapabilities {{", "            category: " + category + ",",
+            "            is_obm_device: " + optional(info, "isOBMDevice", boolean) + ",",
+            "            is_xena_t2_series: " + optional(info, "isXenaT2Series", boolean) + ",",
+            "            no_firmware_input_ids: " + optional(info, "noFirmwareInputId", vector) + ",",
+            "            supported: FirmwareMappingSupport {"]
+        mappings = info.get("supportedMappings", {})
+        for field, key in (("controller", "controllerGroup"), ("macros", "macroGroup"), ("mouse", "mouseGroup"),
+                           ("scrolling", "scrollingGroup"), ("sensitivity", "sensitivityGroup"), ("profile_navigation", "profileNavigationGroup")):
+            lines.append("                " + field + ": " + optional(mappings, key, support) + ",")
+        lines += ["            },", "            ble_macros_available: " + optional(info, "bleMacrosAvailable", boolean) + ",",
+            "            has_controller_assignments_without_synapse: " + boolean(info.get("controllerAssignmentsWithoutSynapse", False)) + ",",
+            "            required_mouse: " + optional(info, "MOUSE_FUNC_REQUIRED_SYNAPSE_VALUES", vector) + ",",
+            "            required_turbo_mouse: " + optional(info, "MOUSE_TURBO_FUNC_REQUIRED_SYNAPSE_VALUES", vector) + ",",
+            "        }),"]
+    return ("\n".join([*lines, "    ]", "}", ""])).encode("utf-8")
+
+
+def verify_mapping_constructor(content, products):
+    """Read every generated field back through the Rust AST and compare semantics."""
+    import sys
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_rust
+    import catalog_data
+    parser = Parser(Language(tree_sitter_rust.language()))
+    tree = parser.parse(content)
+    if tree.root_node.has_error:
+        raise ValueError("Generated mapping capability Rust has an AST error")
+    def text(node):
+        return node.text.decode("utf-8")
+    def decode(node):
+        if node.type == "block":
+            if len(node.named_children) != 1:
+                raise ValueError("Generated mapping owner must contain one constructor expression")
+            return decode(node.named_children[0])
+        if node.type in ("integer_literal", "boolean_literal", "string_literal"):
+            return json.loads(text(node))
+        if node.type == "identifier" and text(node) == "None":
+            return None
+        if node.type == "scoped_identifier" and text(node).startswith("MappingCategory::"):
+            return text(node).removeprefix("MappingCategory::")
+        if node.type == "macro_invocation" and text(node.child_by_field_name("macro")) == "vec":
+            token = node.named_children[-1]
+            return decode(catalog_data.parse_expression(parser, "[" + text(token)[1:-1] + "]"))
+        if node.type in ("array_expression", "tuple_expression"):
+            return [decode(child) for child in node.named_children]
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            arguments = node.child_by_field_name("arguments").named_children
+            if function.type == "field_expression" and text(function.child_by_field_name("field")) == "into" and not arguments:
+                return decode(function.child_by_field_name("value"))
+            if text(function) == "Some" and len(arguments) == 1:
+                return decode(arguments[0])
+            if text(function) in ("MappingSupport::Enabled", "MappingSupport::Assignments") and len(arguments) == 1:
+                return {"kind": text(function).split("::")[-1], "value": decode(arguments[0])}
+        if node.type == "struct_expression":
+            fields = {}
+            for field in node.child_by_field_name("body").named_children:
+                if field.type != "field_initializer":
+                    raise ValueError("Generated mapping record has an indirect field")
+                name = text(field.child_by_field_name("field"))
+                if name in fields:
+                    raise ValueError("Generated mapping record has a duplicate field")
+                fields[name] = decode(field.child_by_field_name("value"))
+            return fields
+        raise ValueError("Generated mapping constructor is indirect: " + text(node)[:100])
+    roots = [node for node in tree.root_node.named_children if node.type == "function_item"
+             and text(node.child_by_field_name("name")) == "current_mouse_capabilities"]
+    if len(roots) != 1:
+        raise ValueError("Generated mapping constructor owner is ambiguous")
+    actual = decode(roots[0].child_by_field_name("body"))
+    expected = []
+    for row in products:
+        info = row["projection"]
+        support = {}
+        for field, source in (("controller", "controllerGroup"), ("macros", "macroGroup"), ("mouse", "mouseGroup"),
+                              ("scrolling", "scrollingGroup"), ("sensitivity", "sensitivityGroup"), ("profile_navigation", "profileNavigationGroup")):
+            value = info.get("supportedMappings", {}).get(source)
+            if value is None:
+                support[field] = None
+            elif type(value) is bool:
+                support[field] = {"kind": "Enabled", "value": value}
+            else:
+                support[field] = {"kind": "Assignments", "value": [item for item in value if isinstance(item, str)]}
+        expected.append([row["product_id"], {
+            "category": {"MOUSE": "Mouse", "MOUSEPLUSMAT": "MousePlusMat", "KEYBOARD": "Keyboard", "SYSTEM": "System"}[info["category"]],
+            "is_obm_device": info.get("isOBMDevice"), "is_xena_t2_series": info.get("isXenaT2Series"),
+            "no_firmware_input_ids": info.get("noFirmwareInputId"), "supported": support,
+            "ble_macros_available": info.get("bleMacrosAvailable"),
+            "has_controller_assignments_without_synapse": info.get("controllerAssignmentsWithoutSynapse", False),
+            "required_mouse": info.get("MOUSE_FUNC_REQUIRED_SYNAPSE_VALUES"),
+            "required_turbo_mouse": info.get("MOUSE_TURBO_FUNC_REQUIRED_SYNAPSE_VALUES"),
+        }])
+    if actual != expected:
+        raise ValueError("Complete generated mapping capability fields, product branches or order differ from current source projection")
+    return {"products": len(actual), "all_fields_and_order_verified": True,
+        "constructor_sha256": hashlib.sha256(content).hexdigest()}
+
+
+def prepare_mapping_capabilities(*, check=False):
+    import subprocess
+    import sys
+    import urllib.parse
+    from importlib.metadata import version
+    import families
+    import analysis
+    registry = ROOT / ".analysis/inputs/typed-tables/razer-catalog/product_registry.json"
+    registered = json.loads(registry.read_bytes())["products"]
+    tool = families.identity(Path(__file__))
+    products, inputs = [], [families.identity(registry), tool,
+        families.identity(ROOT / "tools/families.py"), families.identity(ROOT / "tools/workspace.py")]
+    for product in registered:
+        if not any(category in ("MOUSE", "MOUSEPLUSMAT") for category in product["categories"]):
+            continue
+        pid = product["id"]
+        receipt = ROOT / f".analysis/inputs/frontend/mouse-{pid}-current/acquisition.json"
+        acquired = json.loads(receipt.read_bytes())
+        inputs.append(families.identity(receipt))
+        files = {row["url"]: row for row in acquired["files"]}
+        entry = files[acquired["entry_url"]]
+        manifest = files[urllib.parse.urljoin(entry["url"], "manifest.json")]
+        for original in (entry, manifest):
+            stable = next((row for row in acquired.get("stability", []) if row["url"] == original["url"]), {})
+            if (not families.valid(original) or not acquired.get("source_current_during_acquisition")
+                    or not stable.get("unchanged") or stable.get("before_sha256") != original["sha256"]
+                    or stable.get("after_sha256") != original["sha256"]):
+                raise ValueError(f"Current mounted mouse {pid} entry/manifest does not verify")
+            inputs.append({key: original[key] for key in ("path", "bytes", "sha256")})
+        scripts = re.findall(r'<script\b[^>]*\bsrc=["\']([^"\']*\bmain\.[\w]+\.js)["\']', (ROOT / entry["path"]).read_text(encoding="utf-8"))
+        if len(scripts) != 1:
+            raise ValueError(f"Current mouse {pid} must mount one main bundle")
+        main = files[urllib.parse.urljoin(entry["url"], scripts[0])]
+        if not families.valid(main):
+            raise ValueError(f"Current mouse {pid} main bytes do not verify")
+        if main.get("kind") == "installed_cached_official_resource":
+            attempts = main.get("current_http_revalidation", {}).get("attempts", [])
+            if len(attempts) != 2 or not all(row.get("status") == 200 and row.get("matches_retained")
+                    and row.get("bytes") == main["bytes"] and row.get("sha256") == main["sha256"] for row in attempts):
+                raise ValueError(f"Current cached mouse {pid} main needs exact official HTTP revalidation")
+        inputs.append({key: main[key] for key in ("path", "bytes", "sha256")})
+        raw = (ROOT / main["path"]).read_bytes()
+        owners = [owner for owner in families.keyboard_source_modules(raw.decode("utf-8"))
+                  if isinstance(owner["module_id"], int) and "DeviceInfo:()=>" in owner["body"]]
+        if len(owners) != 1:
+            raise ValueError(f"Current mouse {pid} complete DeviceInfo factory is unresolved")
+        owner = owners[0]
+        if raw[owner["byte_start"]:owner["byte_end"]] != owner["body"].encode():
+            raise ValueError("Current complete mouse factory boundaries differ")
+        projection, evidence = mapping_source_projection(owner["body"])
+        declared = projection["productId"]
+        if type(declared) is not int or (declared != pid and (pid, declared) != (105, 104)):
+            raise ValueError(f"Current mouse mounted identity differs: {pid}/{declared}")
+        products.append({"product_id": pid, "declared_product_id": declared,
+            "identity_branch": "current endpoint 105 shares declared physical DeviceInfo104" if declared != pid else "exact",
+            "main": main, "complete_owner": owner, "projection": projection, "projection_evidence": evidence})
+    content = render_mapping_capabilities(products)
+    formatted = subprocess.run(["rustfmt", "--edition", "2024", "--emit", "stdout"], input=content, capture_output=True, check=True).stdout
+    equivalence = verify_mapping_constructor(formatted, products)
+    unchanged = all(families.valid(row) for row in inputs)
+    if not unchanged:
+        raise ValueError("Current mapping capability input bytes changed during extraction")
+    output = ROOT / MAPPING_OUTPUT
+    if check:
+        if not output.is_file() or output.read_bytes() != formatted:
+            raise ValueError("Typed current mouse mapping capabilities differ; regenerate through workspace.py")
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(formatted)
+    report = {"tool": tool, "parser": {"tree_sitter": version("tree-sitter"),
+        "tree_sitter_javascript": version("tree-sitter-javascript")}, "inputs": inputs,
+        "products": products, "output": families.identity(output), "inputs_unchanged": unchanged,
+        "product_count": len(products), "constructor_equivalence": equivalence, "fixed_rust_constructor_verified": True, "check_only": check,
+        "application_execution": False, "vendor_execution": False, "runtime_acceptance": "unverified"}
+    destination = ROOT / ".analysis/results/typed-data.json"
+    with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous["current_mouse_mapping_capabilities"] = report
+        analysis.save(destination, previous)
+    return {"output": MAPPING_OUTPUT, "products": len(products), "bytes": len(formatted), "passed": True, "check_only": check}
+
+
 def fixed_tables():
     return {
         ("razer-device", "DEVICE_WRITE_CAPABILITIES"): (WRITE_INPUT, WRITE_OUTPUT, render_write_catalog, False),
@@ -943,6 +1293,10 @@ def regenerate_input(path, *, root=None):
 
 
 def add_commands(commands):
+    p = commands.add_parser("prepare-mapping-producers", help="Generate current mouse assignment producer metadata from complete mounted factories")
+    p.add_argument("--check", action="store_true")
+    p = commands.add_parser("prepare-mapping-capabilities", help="Generate typed mouse mapping capabilities from current mounted original factories")
+    p.add_argument("--check", action="store_true")
     p = commands.add_parser("prepare-local-protocol-tables", help="Generate typed local read, identity and receiver tables")
     p.add_argument("--reads-json", default=READ_INPUT)
     p.add_argument("--identity-json", default=IDENTITY_INPUT)
@@ -960,6 +1314,11 @@ def add_commands(commands):
 
 
 def run(args):
+    if args.command == "prepare-mapping-producers":
+        import mapping_producers
+        return mapping_producers.prepare(check=args.check)
+    if args.command == "prepare-mapping-capabilities":
+        return prepare_mapping_capabilities(check=args.check)
     if args.command == "prepare-local-protocol-tables":
         return prepare_local_protocol_tables(args.reads_json, args.identity_json, args.queries_json,
                                               args.pairing_json, args.catalog_json, args.check)

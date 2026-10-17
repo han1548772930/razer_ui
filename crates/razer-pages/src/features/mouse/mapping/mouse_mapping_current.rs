@@ -179,6 +179,41 @@ impl MouseProductWorkspace {
         cx.notify();
     }
 
+    pub(super) fn derive_current_mapping_buttons(
+        &self,
+        originals: &[Value],
+        all: &[Value],
+        view_index: i32,
+    ) -> Result<Vec<Value>, button_state_current::DeriveError> {
+        use razer_model::mapping_requirements::MappingObservations;
+        let macros = match &self.mapping_macro_requirements {
+            Some(Ok(macros)) => macros.as_slice(),
+            Some(Err(error)) => {
+                return Err(
+                    button_state_current::DeriveError::InvalidRequirementObservation(error.clone()),
+                );
+            }
+            None => &[],
+        };
+        let bluetooth = self
+            .polling_state
+            .connection()
+            .map(|connection| connection == crate::features::mouse_polling::PollingConnection::Ble);
+        let observations = MappingObservations::new(bluetooth, macros);
+        button_state_current::derive(
+            self.spec.product_id,
+            originals,
+            all,
+            self.draft["mappings"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or(&[]),
+            self.hypershift,
+            view_index,
+            &observations,
+        )
+    }
+
     pub(super) fn current_mapping_source_button(&self, input: &str) -> Option<Value> {
         let originals = self.spec.groups.get(self.group_ix)?["buttonList"].as_array()?;
         let all = self
@@ -193,18 +228,9 @@ impl MouseProductWorkspace {
                     .cloned()
             })
             .collect::<Vec<_>>();
-        let buttons = button_state_current::derive(
-            self.spec.product_id,
-            originals,
-            &all,
-            self.draft["mappings"]
-                .as_array()
-                .map(Vec::as_slice)
-                .unwrap_or(&[]),
-            self.hypershift,
-            self.group_ix as i32,
-        )
-        .ok()?;
+        let buttons = self
+            .derive_current_mapping_buttons(originals, &all, self.group_ix as i32)
+            .ok()?;
         buttons
             .into_iter()
             .find(|button| button["inputID"] == input)

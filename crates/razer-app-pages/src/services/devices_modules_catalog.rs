@@ -333,7 +333,7 @@ impl Render for ModuleCatalog {
             new_devices = groups
                 .new_devices
                 .iter()
-                .map(|row| self.new_device_service_row(row, cx))
+                .map(|row| self.new_device_service_row(row, window, cx))
                 .collect();
             // ae preserves this exact order; only normal devices sort connected-first.
             for removing in [true, false] {

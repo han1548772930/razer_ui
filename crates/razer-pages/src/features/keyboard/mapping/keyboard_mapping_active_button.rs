@@ -95,9 +95,15 @@ impl KeyboardProductWorkspace {
         if output == "defaultGroup" {
             return;
         }
-        button["isRequireSynapse"] = json!(
-            assignment == "secondaryAssignment" || self.mapping_observed_requires_synapse(mapping)
-        );
+        match self.mapping_observed_requires_synapse(mapping, assignment == "secondaryAssignment") {
+            Ok(requires) => button["isRequireSynapse"] = json!(requires),
+            Err(_) => {
+                if let Some(button) = button.as_object_mut() {
+                    button.remove("isRequireSynapse");
+                }
+                return;
+            }
+        }
         let group = &mapping[output];
         let metadata = source(self.spec.product_id);
         let inter_device = (output == "interDeviceGroup")
@@ -338,95 +344,78 @@ impl KeyboardProductWorkspace {
             }
         }
     }
-    fn mapping_observed_requires_synapse(&self, mapping: &Value) -> bool {
-        let info = &self.spec.config["DeviceInfo"];
-        let output = mapping["outputType"].as_str().unwrap_or_default();
-        if info["isXenaT2Series"] == true && mapping["inputID"] == "DKM_SB_247" {
-            return true;
+    pub fn mapping_requirement_diagnostic(&self) -> Option<String> {
+        if let Err(error) = &self.mapping_capabilities {
+            return Some(error.clone());
         }
-        if info["isOBMDevice"] != true {
-            return matches!(info["category"].as_str(), Some("KEYBOARD" | "SYSTEM"));
+        if let Err(error) = self.mapping_macro_requirements() {
+            return Some(format!("{error:#}"));
         }
-        if matches!(output, "hyperShiftGroup" | "disableGroup") {
-            return false;
-        }
-        let specs = &info["OBMSpecs"];
-        if specs["noFirmwareInputId"]
-            .as_array()
-            .is_some_and(|ids| ids.contains(&mapping["inputID"]))
+        for mapping in self
+            .draft
+            .get("mappings")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
         {
-            return true;
-        }
-        let supported = &specs["supportedMappings"];
-        if supported["controllerGroup"] == true {
-            return false;
-        }
-        let group = &mapping[output];
-        if output == "macroGroup"
-            && (supported["macroGroup"] != true
-                || self.observed_bluetooth() == Some(true)
-                    && info["ble"]["obmMacrosAvailable"] != true
-                || group["macroPlaybackOption"] == "Queue")
-        {
-            return true;
-        }
-        if output == "controllerGroup" && !info["controllerAssignmentsWithoutSynapse"].is_null() {
-            return false;
-        }
-        if group.is_null() {
-            return true;
-        }
-        match output {
-            "keyboardGroup" => false,
-            "scrollingGroup" | "sensitivityGroup" | "profileNavigationGroup" => {
-                let field = match output {
-                    "scrollingGroup" => "scrollingAssignment",
-                    "sensitivityGroup" => "sensitivityAssignment",
-                    _ => "profileNavigationAssignment",
-                };
-                !supported[output]
-                    .as_array()
-                    .is_some_and(|ids| ids.contains(&group[field]))
-            }
-            "multimediaGroup" => matches!(
-                group["multimediaAssignment"].as_str(),
-                Some("MicVolumeUp" | "MicVolumeDown" | "MuteAll" | "MuteMic")
-            ),
-            "mouseGroup" => {
-                let turbo = group["turboMode"]["isTurbo"] == true;
-                let configured = &self.spec.config[if turbo {
-                    "MOUSE_TURBO_FUNC_REQUIRED_SYNAPSE_VALUES"
-                } else {
-                    "MOUSE_FUNC_REQUIRED_SYNAPSE_VALUES"
-                }];
-                if group["mouseAssignment"] == "DoubleClick" && turbo {
-                    return true;
+            let Some(input) = mapping.get("inputID").and_then(Value::as_str) else {
+                return Some("Mapping inputID must be a string".into());
+            };
+            let parts = mapping.get("mapping").and_then(Value::as_array);
+            for part in parts
+                .map(Vec::as_slice)
+                .unwrap_or(std::slice::from_ref(mapping))
+            {
+                if part.get("outputType").and_then(Value::as_str) == Some("defaultGroup") {
+                    continue;
                 }
-                if let Some(ids) = configured.as_array().filter(|ids| !ids.is_empty()) {
-                    return ids.contains(&group["mouseAssignment"]);
+                if let Err(error) =
+                    razer_model::mapping_requirements::MappingRequirement::from_source_mapping(
+                        part, input,
+                    )
+                {
+                    return Some(format!("{error:#}"));
                 }
-                [
-                    "ScrollLeft",
-                    "ScrollRight",
-                    "RepeatScrollUp",
-                    "RepeatScrollDown",
-                    "RepeatScrollLeft",
-                    "RepeatScrollRight",
-                    "BossKey",
-                    "ScrollUp",
-                    "ScrollDown",
-                ]
-                .iter()
-                .any(|id| {
-                    group["mouseAssignment"] == *id
-                        && !supported["mouseGroup"]
-                            .as_array()
-                            .is_some_and(|ids| ids.contains(&json!(id)))
-                })
             }
-            // The actual macro Xq predicate needs the full macro observation.
-            "macroGroup" => self.mapping_macro_requires_synapse(&group["guid"]),
-            _ => true,
+        }
+        None
+    }
+
+    fn mapping_observed_requires_synapse(
+        &self,
+        mapping: &Value,
+        secondary: bool,
+    ) -> anyhow::Result<bool> {
+        use razer_model::mapping_requirements::{MappingObservations, MappingRequirement};
+        let capabilities = self
+            .mapping_capabilities
+            .as_ref()
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        let input_id = mapping
+            .get("inputID")
+            .and_then(Value::as_str)
+            .ok_or_else(|| anyhow::anyhow!("Mapping inputID must be a string"))?;
+        let requirement = MappingRequirement::from_source_mapping(mapping, input_id)?;
+        let observations = MappingObservations::new(
+            self.observed_bluetooth(),
+            self.mapping_macro_requirements()?,
+        );
+        Ok(capabilities.requires_synapse(&requirement, &observations, secondary))
+    }
+}
+
+#[cfg(test)]
+mod requirement_tests {
+    #[::core::prelude::v1::test]
+    fn current_keyboard_capability_boundaries_accept_every_packaged_product() {
+        let products = super::read_keyboard_products_catalog();
+        assert!(!products.is_empty());
+        for (product_id, factory) in products {
+            let product = factory();
+            razer_model::mapping_requirements::MappingCapabilities::from_source_config(
+                &product.config,
+            )
+            .unwrap_or_else(|error| panic!("PID{product_id}: {error:#}"));
         }
     }
 }

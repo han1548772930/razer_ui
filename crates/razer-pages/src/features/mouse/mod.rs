@@ -331,6 +331,8 @@ pub struct MouseProductWorkspace {
     customize_label_hover: Option<customize_current::LabelHover>,
     customize_cycle: Option<customize_current::CyclePosition>,
     mouse_customize_observation: Value,
+    mapping_macro_requirements:
+        Option<Result<Vec<razer_model::mapping_requirements::MacroRequirement>, String>>,
     customize_attachment: customize_current::AttachmentState,
     sidebar_current_state: sidebar_current::State,
     scroll_editor: Option<Entity<scroll_wheel::ScrollWheelEditor>>,
@@ -424,6 +426,7 @@ impl MouseProductWorkspace {
             customize_label_hover: None,
             customize_cycle: None,
             mouse_customize_observation: json!({}),
+            mapping_macro_requirements: None,
             customize_attachment: customize_current::AttachmentState::default(),
             sidebar_current_state: sidebar_current::State::default(),
             scroll_editor: None,
@@ -2320,15 +2323,9 @@ impl MouseProductWorkspace {
                 .flat_map(|buttons| buttons.iter().cloned())
                 .collect()
         };
-        let current = button_state_current::derive(
-            self.spec.product_id,
+        let current = self.derive_current_mapping_buttons(
             &original_buttons,
             &all_buttons,
-            self.draft["mappings"]
-                .as_array()
-                .map(Vec::as_slice)
-                .unwrap_or(&[]),
-            self.hypershift,
             self.group_ix as i32,
         );
         // An unresolved source producer cannot grant editing permission from a

@@ -243,6 +243,7 @@ pub fn run() {
     application.run(move |cx| {
         // 使用任何组件前必须先初始化。
         gpui_kit::init(cx);
+        razer_widgets::init(cx);
         if let Err(error) = resources::start_resources(cx) {
             eprintln!("资源加载器无法初始化：{error:#}");
         }

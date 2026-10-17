@@ -26,6 +26,30 @@ const OLED_MEDIA_VISUALIZERS: [&str; 3] = [
     "synapse/oled-home-visualizer-3.webp",
 ];
 
+// The mounted 691 editor has a fixed source list. Keep these aliases typed so
+// a malformed local draft cannot turn an index into an unverified resource
+// path while the preset dialog is painting its deferred image cards.
+const OLED_HOME_ANIMATIONS: [&str; 6] = [
+    "synapse/oled-home-animation-1.webp",
+    "synapse/oled-home-animation-2.webp",
+    "synapse/oled-home-animation-3.webp",
+    "synapse/oled-home-animation-4.webp",
+    "synapse/oled-home-animation-5.webp",
+    "synapse/oled-home-animation-6.webp",
+];
+const OLED_HOME_IMAGES: [&str; 10] = [
+    "synapse/oled-home-image-1.png",
+    "synapse/oled-home-image-2.png",
+    "synapse/oled-home-image-3.png",
+    "synapse/oled-home-image-4.png",
+    "synapse/oled-home-image-5.png",
+    "synapse/oled-home-image-6.png",
+    "synapse/oled-home-image-7.png",
+    "synapse/oled-home-image-8.png",
+    "synapse/oled-home-image-9.png",
+    "synapse/oled-home-image-10.png",
+];
+
 /// The source `Os` editor keeps media information and visualizer settings in
 /// an isolated draft until Apply.  These values only describe the local OLED
 /// preview; audio metadata and hardware transfer remain outside this UI.
@@ -335,11 +359,16 @@ impl PresetKind {
         }
     }
     fn asset(self, ix: usize) -> SharedString {
-        let ext = match self {
-            Self::Animation => "webp",
-            Self::Image => "png",
+        let assets = match self {
+            Self::Animation => &OLED_HOME_ANIMATIONS[..],
+            Self::Image => &OLED_HOME_IMAGES[..],
         };
-        format!("synapse/oled-home-{}-{}.{ext}", self.key(), ix + 1).into()
+        SharedString::from(
+            assets
+                .get(ix)
+                .copied()
+                .expect("validated OLED preset index has a packaged preview asset"),
+        )
     }
 
     fn accepts_data_url(self, source: &str) -> bool {
@@ -1183,8 +1212,8 @@ impl PresetEditor {
                 .title(razer_assets::resource_scope(t("ANIMATION_CROPPER_TITLE")))
                 .width(width)
                 .child(razer_assets::resource_scope(crop.clone()))
-                .footer(
-                    razer_assets::resource_scope(h_flex()
+                .footer(razer_assets::resource_scope(
+                    h_flex()
                         .justify_end()
                         .gap_2()
                         .child(
@@ -1221,8 +1250,8 @@ impl PresetEditor {
                                     });
                                     window.close_dialog(cx);
                                 }),
-                        )),
-                )
+                        ),
+                ))
         });
     }
 }
@@ -1302,11 +1331,13 @@ impl SourceControls {
             let editor_for_apply = editor_for_apply.clone();
             let parent = parent.clone();
             dialog
-                .title(razer_assets::resource_scope(t("CUSTOMIZE_MODAL_AUDIO_METER_TITLE")))
+                .title(razer_assets::resource_scope(t(
+                    "CUSTOMIZE_MODAL_AUDIO_METER_TITLE",
+                )))
                 .width(width)
                 .child(razer_assets::resource_scope(editor.clone()))
-                .footer(
-                    razer_assets::resource_scope(h_flex()
+                .footer(razer_assets::resource_scope(
+                    h_flex()
                         .justify_end()
                         .gap_2()
                         .child(
@@ -1334,8 +1365,8 @@ impl SourceControls {
                                     });
                                     window.close_dialog(cx);
                                 }),
-                        )),
-                )
+                        ),
+                ))
         });
     }
 
@@ -1361,8 +1392,8 @@ impl SourceControls {
                 .title(razer_assets::resource_scope(t(kind.editor_title())))
                 .width(width)
                 .child(razer_assets::resource_scope(editor.clone()))
-                .footer(
-                    razer_assets::resource_scope(h_flex()
+                .footer(razer_assets::resource_scope(
+                    h_flex()
                         .justify_end()
                         .gap_2()
                         .child(
@@ -1392,8 +1423,8 @@ impl SourceControls {
                                     });
                                     window.close_dialog(cx);
                                 }),
-                        )),
-                )
+                        ),
+                ))
         });
     }
 }

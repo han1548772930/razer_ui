@@ -107,7 +107,7 @@ mod tests {
     }
 
     #[test]
-    fn current_keyboard_and_mouse_vectors_decode_at_source_size_with_visible_pixels() {
+    fn current_keyboard_and_mouse_vectors_decode_at_locked_codec_density_with_visible_pixels() {
         let renderer = SvgRenderer::new(Arc::new(razer_assets::SynapseAssets));
         for (alias, bytes) in [
             (
@@ -137,12 +137,13 @@ mod tests {
                 pixels += 1;
             }
             assert!(pixels > 0, "blank source category icon: {alias}");
-            assert_eq!((size.width.0, size.height.0), (40, 40), "{alias}");
+            // gpui-fast 0.1.8 rasterizes the 40 CSS-pixel source at its 2x smooth SVG density.
+            assert_eq!((size.width.0, size.height.0), (80, 80), "{alias}");
             if alias == "synapse/app-picker-category/keyboard.svg" {
-                assert_eq!(bounds, [0, 12, 40, 30]);
+                assert_eq!(bounds, [0, 24, 80, 60]);
             }
             if alias == "synapse/app-picker-category/mouse.svg" {
-                assert!(bounds[3] - bounds[1] >= 36);
+                assert!(bounds[3] - bounds[1] >= 72);
             }
         }
     }

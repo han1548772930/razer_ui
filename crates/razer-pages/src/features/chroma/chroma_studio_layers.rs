@@ -30,7 +30,7 @@ pub(super) fn unique_title(title: Option<&str>, group: bool, layers: &[Layer]) -
     unreachable!("finite layer inventory")
 }
 
-fn suffix_base(title: &str) -> &str {
+pub(super) fn suffix_base(title: &str) -> &str {
     if let Some(open) = title.rfind('(') {
         if open > 0 && title.as_bytes()[open - 1] == b' ' && title.ends_with(')') {
             let number = title[open + 1..title.len() - 1].trim();

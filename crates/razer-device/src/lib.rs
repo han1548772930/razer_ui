@@ -11,6 +11,8 @@ pub mod audio_notification;
 pub mod audio_router;
 #[path = "audio/audio_util.rs"]
 pub mod audio_util;
+#[path = "audio/surround.rs"]
+pub mod audio_surround;
 #[path = "transport/backend.rs"]
 pub mod backend;
 #[path = "power/battery_threshold.rs"]

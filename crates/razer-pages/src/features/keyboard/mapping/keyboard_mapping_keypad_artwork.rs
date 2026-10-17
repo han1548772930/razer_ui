@@ -11,6 +11,8 @@ pub(super) struct ProductImageRuntime {
     /// Source sessionStorage is distinct from device/profile persistence.
     sessions: BTreeMap<(u32, u32, u32), u64>,
     sequence: u64,
+    // Keep the selected aliases after publication so an image-cache retry can
+    // re-probe the same source without changing the mounted effect.
     pending: [Option<String>; 2],
     completed: [bool; 2],
     decoded: [Option<Arc<RenderImage>>; 2],
@@ -20,6 +22,22 @@ pub(super) struct ProductImageRuntime {
     loading: bool,
     clear_loading_on_frame: bool,
     remount: Option<Task<()>>,
+}
+
+impl ProductImageRuntime {
+    fn record_probe(&mut self, index: usize, result: Result<Arc<RenderImage>, String>) {
+        self.completed[index] = true;
+        match result {
+            Ok(image) => {
+                self.decoded[index] = Some(image);
+                self.errors[index] = None;
+            }
+            Err(error) => {
+                self.decoded[index] = None;
+                self.errors[index] = Some(error);
+            }
+        }
+    }
 }
 
 #[derive(IntoElement)]
@@ -609,23 +627,25 @@ impl KeyboardProductWorkspace {
         // Current for-loop probes 1x then 3x; onerror is caught independently,
         // so decode failure never requests a different edition or reports a save.
         for index in 0..2 {
-            if state.completed[index] {
-                continue;
-            }
             let Some(asset) = state.pending[index].as_ref() else {
-                state.completed[index] = true;
-                state.errors[index] = Some("ProductImage current context request is absent".into());
+                state.record_probe(
+                    index,
+                    Err("ProductImage current context request is absent".into()),
+                );
                 continue;
             };
             let resource = Resource::Embedded(SharedString::from(asset.clone()));
-            let Some(result) = window.use_asset::<ImageAssetLoader>(&resource, cx) else {
+            let Some(result) = razer_assets::load_resource_image(resource, window, cx) else {
+                // The shared image owner can evict a completed decode on an
+                // explicit retry. Keep the probe pending so the next frame
+                // republishes the newly decoded image instead of retaining
+                // the previous error publication.
+                state.completed[index] = false;
+                state.decoded[index] = None;
+                state.effect_published = false;
                 return;
             };
-            state.completed[index] = true;
-            match result {
-                Ok(image) => state.decoded[index] = Some(image),
-                Err(error) => state.errors[index] = Some(error.to_string()),
-            }
+            state.record_probe(index, result.map_err(|error| error.to_string()));
         }
         if !state.completed.iter().all(|completed| *completed) {
             return;
@@ -639,7 +659,6 @@ impl KeyboardProductWorkspace {
         // a prop change alone leaves its previous timeout alive until this point.
         state.remount = None;
         state.published = state.decoded.clone();
-        state.pending = Default::default();
         if pid != 747 && state.loading {
             state.clear_loading_on_frame = true;
             window.request_animation_frame();
@@ -1551,6 +1570,45 @@ fn paint_circle(
     path.close();
     if let Ok(path) = path.build() {
         window.paint_path(path, color);
+    }
+}
+
+#[cfg(test)]
+mod product_image_runtime_tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn probe_result_replaces_stale_decode_and_error_state() {
+        let mut state = ProductImageRuntime::default();
+        state.errors[0] = Some("previous decode error".into());
+        let image = Arc::new(RenderImage::new(Vec::<image::Frame>::new()));
+
+        state.record_probe(0, Ok(image.clone()));
+        assert!(state.completed[0]);
+        assert!(state.errors[0].is_none());
+        assert!(
+            state.decoded[0]
+                .as_ref()
+                .is_some_and(|value| Arc::ptr_eq(value, &image))
+        );
+
+        state.record_probe(0, Err("current decode error".into()));
+        assert!(state.completed[0]);
+        assert!(state.decoded[0].is_none());
+        assert_eq!(state.errors[0].as_deref(), Some("current decode error"));
+    }
+
+    #[::core::prelude::v1::test]
+    fn packaged_keypad_image_aliases_round_trip_through_typed_lookup() {
+        let images = product_images();
+        assert!(!images.is_empty());
+        for image in images {
+            assert!(image.asset.starts_with("synapse/"));
+            assert_eq!(
+                source_keypad_product_image(image.product_id, image.edition_id, image.density),
+                Some(image.asset.as_str())
+            );
+        }
     }
 }
 

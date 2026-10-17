@@ -1,5 +1,6 @@
 //! Pure projection of the current non-attachment mouse button-state producer.
 //! This observes local mappings; it performs no transport, persistence or device operation.
+use razer_model::mapping_requirements::{MappingObservations, MappingRequirement};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{collections::BTreeMap, sync::OnceLock};
@@ -11,6 +12,7 @@ pub enum DeriveError {
     AttachmentObservationRequired,
     InvalidButton,
     InvalidMappingPayload(String),
+    InvalidRequirementObservation(String),
     UnresolvedAssignmentProducer(String),
 }
 
@@ -41,8 +43,6 @@ fn policy(product_id: u32) -> Result<&'static Policy, DeriveError> {
 /// helpers intentionally count only mappings whose `isHyperShift` is exactly false.
 /// `all_buttons` is the source loader's concatenation of all original view rows.
 /// Attachment/New additionally needs other side-panel mappings, so is an explicit gap.
-/// `isRequireSynapse` remains outside this projection: it needs the real macro/BLE
-/// observations and its source producer; callers must not treat it as newly derived.
 pub fn derive(
     product_id: u32,
     buttons: &[Value],
@@ -50,6 +50,7 @@ pub fn derive(
     mappings: &[Value],
     hyper: bool,
     view_index: i32,
+    observations: &MappingObservations<'_>,
 ) -> Result<Vec<Value>, DeriveError> {
     let policy = policy(product_id)?;
     if !matches!(policy.category.as_str(), "MOUSE" | "MOUSEPLUSMAT") {
@@ -64,6 +65,7 @@ pub fn derive(
         let object = row.as_object_mut().ok_or(DeriveError::InvalidButton)?;
         object.insert("isMapped".into(), json!(false));
         object.insert("isEnabled".into(), json!(true));
+        object.insert("isRequireSynapse".into(), json!(false));
         if let Some(value) = object.get("defaultValue").cloned() {
             object.insert("assignmentValue".into(), value);
         } else {
@@ -122,10 +124,24 @@ pub fn derive(
         }
         if let Some(parts) = mapping["mapping"].as_array() {
             for (part_index, part) in parts.iter().enumerate() {
-                assign(&mut rows[index], part, part_index != 0, hyper, policy)?;
+                assign(
+                    &mut rows[index],
+                    part,
+                    part_index != 0,
+                    hyper,
+                    policy,
+                    observations,
+                )?;
             }
         } else {
-            assign(&mut rows[index], mapping, false, hyper, policy)?;
+            assign(
+                &mut rows[index],
+                mapping,
+                false,
+                hyper,
+                policy,
+                observations,
+            )?;
         }
         if !hyper
             && rows[index]["assignmentValue"] == "LEFT_CLICK"
@@ -183,6 +199,7 @@ fn assign(
     secondary: bool,
     hyper: bool,
     policy: &Policy,
+    observations: &MappingObservations<'_>,
 ) -> Result<(), DeriveError> {
     let Some(group) = mapping["outputType"].as_str() else {
         return Ok(());
@@ -190,6 +207,20 @@ fn assign(
     if group == "hyperShiftGroup" && hyper {
         row["isEnabled"] = json!(false);
     }
+    if group == "defaultGroup" {
+        return Ok(());
+    }
+    let input_id = row
+        .get("inputID")
+        .and_then(Value::as_str)
+        .ok_or(DeriveError::InvalidButton)?;
+    let requirement = MappingRequirement::from_source_mapping(mapping, input_id)
+        .map_err(|error| DeriveError::InvalidRequirementObservation(format!("{error:#}")))?;
+    let capabilities =
+        razer_model::mapping_requirements::current_mouse_mapping_capabilities(policy.product_id)
+            .ok_or(DeriveError::UnverifiedProduct(policy.product_id))?;
+    row["isRequireSynapse"] =
+        json!(capabilities.requires_synapse(&requirement, observations, secondary));
     if matches!(
         group,
         "mouseGroup"
@@ -290,6 +321,14 @@ fn assign(
             "AI_LAUNCHER",
             payload(mapping, group)?.get("assignment").cloned(),
         ),
+        "multimediaGroup" | "win8ShortcutsGroup" => {
+            let payload = payload(mapping, group)?;
+            if group == "multimediaGroup" && payload["isAdvancedMultiDialAudiol"] == true {
+                return Err(DeriveError::UnresolvedAssignmentProducer(group.into()));
+            }
+            super::mapping_basic_current::observed_assignment(policy.product_id, group, payload)
+                .ok_or_else(|| DeriveError::UnresolvedAssignmentProducer(group.into()))?
+        }
         // These are real source groups whose assignment producers need additional
         // observations or have not yet been reimplemented. Unknown outputType itself
         // follows the source switch default and leaves the cleared row unchanged.
@@ -302,8 +341,6 @@ fn assign(
         | "interDeviceGroup"
         | "profileNavigationGroup"
         | "lightPacGroup"
-        | "multimediaGroup"
-        | "win8ShortcutsGroup"
         | "backlightGroup"
         | "brightnessGlobalGroup"
         | "audioGroup"
@@ -364,6 +401,24 @@ fn empty(value: Option<&Value>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn derive(
+        product_id: u32,
+        buttons: &[Value],
+        all_buttons: &[Value],
+        mappings: &[Value],
+        hyper: bool,
+        view_index: i32,
+    ) -> Result<Vec<Value>, DeriveError> {
+        super::derive(
+            product_id,
+            buttons,
+            all_buttons,
+            mappings,
+            hyper,
+            view_index,
+            &MappingObservations::new(None, &[]),
+        )
+    }
     fn buttons() -> Vec<Value> {
         vec![
             json!({"inputID":"LeftClick","buttonKey":"LeftClick","defaultValue":"LEFT_CLICK","isEnabled":false}),
@@ -418,6 +473,79 @@ mod tests {
         let mut missing = mouse("LeftClick", "Click", false);
         missing.as_object_mut().unwrap().remove("isHyperShift");
         assert_eq!(state(&[missing], false)[0]["isEnabled"], false);
+    }
+    #[::core::prelude::v1::test]
+    fn source_requirements_are_derived_from_current_capabilities_and_assignment_order() {
+        let dpi = json!({"inputID":"RightClick","isHyperShift":false,"outputType":"sensitivityGroup",
+            "sensitivityGroup":{"sensitivityAssignment":"DPI_CycleUp"}});
+        let rows = derive(229, &buttons(), &buttons(), &[dpi], false, 0).unwrap();
+        assert_eq!(rows[1]["isRequireSynapse"], false);
+        assert_eq!(rows[1]["assignmentValue"], "CYCLE_UP_SENSITIVITY");
+        let turbo = json!({"inputID":"RightClick","isHyperShift":false,"outputType":"mouseGroup",
+            "mouseGroup":{"mouseAssignment":"DoubleClick","turboMode":{"isTurbo":true}}});
+        let rows = derive(229, &buttons(), &buttons(), &[turbo], false, 0).unwrap();
+        assert_eq!(rows[1]["isRequireSynapse"], true);
+        let secondary = json!({"inputID":"RightClick","isHyperShift":false,"mapping":[
+            {"outputType":"mouseGroup","mouseGroup":{"mouseAssignment":"Click"}},
+            {"outputType":"disableGroup"}]});
+        let rows = derive(
+            229,
+            &buttons(),
+            &buttons(),
+            &[secondary, mouse("RightClick", "Menu", false)],
+            false,
+            0,
+        )
+        .unwrap();
+        assert_eq!(rows[1]["secondaryAssignment"], "DISABLE");
+        assert_eq!(rows[1]["isRequireSynapse"], false);
+        let mut originals = buttons();
+        originals[1]["isRequireSynapse"] = json!(true);
+        assert_eq!(
+            derive(229, &originals, &originals, &[], false, 0).unwrap()[1]["isRequireSynapse"],
+            false
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn firmware_macro_projection_uses_observed_events_and_ble_without_changing_mapping() {
+        use razer_model::mapping_requirements::MacroRequirement;
+        let macros = MacroRequirement::from_source_catalog(&[
+            json!({"guid":"local","appEngine":{"mouseMoveType":"relative"},"macroEvents":[{"Type":1}]}),
+        ]).unwrap();
+        let mapping = json!({"inputID":"RightClick","isHyperShift":false,"outputType":"macroGroup",
+            "macroGroup":{"guid":"local","name":"Local macro","macroPlaybackOption":"Once"}});
+        for (bluetooth, expected) in [(None, false), (Some(false), false), (Some(true), true)] {
+            let observations = MappingObservations::new(bluetooth, &macros);
+            let rows = super::derive(
+                235,
+                &buttons(),
+                &buttons(),
+                &[mapping.clone()],
+                false,
+                0,
+                &observations,
+            )
+            .unwrap();
+            assert_eq!(rows[1]["isRequireSynapse"], expected);
+            assert_eq!(rows[1]["assignmentValue"], "Local macro");
+            assert_eq!(rows[1]["assignmentGroup"], mapping["macroGroup"]);
+        }
+    }
+    #[::core::prelude::v1::test]
+    fn source_media_labels_and_synapse_requirement_share_the_mounted_action_owner() {
+        for (assignment, label, requires) in [
+            ("VolumeUp", "VOLUME_UP", false),
+            ("MuteMic", "MUTE_MIC", true),
+        ] {
+            let mapping = json!({"inputID":"RightClick","isHyperShift":false,"outputType":"multimediaGroup",
+                "multimediaGroup":{"multimediaAssignment":assignment}});
+            let rows = derive(229, &buttons(), &buttons(), &[mapping.clone()], false, 0).unwrap();
+            assert_eq!(rows[1]["assignment"], "MULTIMEDIA");
+            assert_eq!(rows[1]["assignmentValue"], label);
+            assert_eq!(rows[1]["isRequireSynapse"], requires);
+            assert_eq!(rows[1]["assignmentGroup"], mapping["multimediaGroup"]);
+        }
     }
     #[::core::prelude::v1::test]
     fn secondary_does_not_replace_primary_and_empty_first_skips_outer_mapping() {

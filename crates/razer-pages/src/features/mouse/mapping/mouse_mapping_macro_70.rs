@@ -99,6 +99,10 @@ impl MouseProductWorkspace {
         if self.mouse_customize_observation["macroReducer"]["macroList"] == json!(catalog) {
             return;
         }
+        self.mapping_macro_requirements = Some(
+            razer_model::mapping_requirements::MacroRequirement::from_source_catalog(&catalog)
+                .map_err(|error| format!("{error:#}")),
+        );
         self.mouse_customize_observation["macroReducer"] =
             json!({"macroAvailable":!catalog.is_empty(),"macroList":catalog});
         if self.spec.product_id == 70 && self.mapping_current_state.function == "MACRO" {

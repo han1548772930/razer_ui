@@ -751,7 +751,7 @@ impl IotPopup {
                         .child(img("synapse/iot-new-help.svg").size_full())
                         .tooltip(|window, cx| {
                             Tooltip::element(|_, cx| {
-                                v_flex()
+                                razer_assets::resource_scope(v_flex()
                                     .w(surface::css(305.))
                                     .px(surface::css(10.))
                                     .py(surface::css(8.))
@@ -767,7 +767,7 @@ impl IotPopup {
                                             .w(surface::css(285.))
                                             .h(surface::css(145.))
                                             .rounded(surface::css(3.)),
-                                    )
+                                    ))
                             })
                             .build(window, cx)
                         }),

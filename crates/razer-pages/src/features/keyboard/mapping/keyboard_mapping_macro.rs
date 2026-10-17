@@ -18,6 +18,7 @@ pub struct KeyboardMappingMacroObservation {
 #[derive(Default)]
 pub(super) struct State {
     observation: Option<KeyboardMappingMacroObservation>,
+    requirements: Option<Result<Vec<razer_model::mapping_requirements::MacroRequirement>, String>>,
     selectors: [Option<Entity<SelectState<Vec<Choice>>>>; 2],
     selector_subscriptions: [Option<Subscription>; 2],
     playback: [Option<Entity<SelectState<Vec<Choice>>>>; 2],
@@ -110,6 +111,18 @@ impl KeyboardProductWorkspace {
             .as_ref()
             .filter(|observation| observation.profile_guid == self.draft["guid"])
     }
+    pub(super) fn mapping_macro_requirements(
+        &self,
+    ) -> anyhow::Result<&[razer_model::mapping_requirements::MacroRequirement]> {
+        if self.mapping_macro_observation().is_none() {
+            return Ok(&[]);
+        }
+        match &self.analog_gamepad.mapping.macros.requirements {
+            Some(Ok(requirements)) => Ok(requirements),
+            Some(Err(error)) => anyhow::bail!("{error}"),
+            None => anyhow::bail!("Macro requirements have not been observed"),
+        }
+    }
     pub fn observe_mapping_macros(
         &mut self,
         observation: KeyboardMappingMacroObservation,
@@ -121,6 +134,12 @@ impl KeyboardProductWorkspace {
         {
             return;
         }
+        self.analog_gamepad.mapping.macros.requirements = Some(
+            razer_model::mapping_requirements::MacroRequirement::from_source_catalog(
+                &observation.macro_list,
+            )
+            .map_err(|error| format!("{error:#}")),
+        );
         self.analog_gamepad.mapping.macros.observation = Some(observation);
         self.init_mapping_macro(0, window, cx);
         self.init_mapping_macro(1, window, cx);

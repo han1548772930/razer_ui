@@ -30,6 +30,31 @@ fn policy(product_id: u32) -> Option<&'static Policy> {
         .iter()
         .find(|policy| policy.product_id == product_id)
 }
+
+pub(super) fn observed_assignment(
+    product_id: u32,
+    output: &str,
+    payload: &Value,
+) -> Option<(&'static str, Option<Value>)> {
+    let policy = policy(product_id)?;
+    let (label, field, choices) = match output {
+        "multimediaGroup" => ("MULTIMEDIA", "multimediaAssignment", &policy.media),
+        "win8ShortcutsGroup" => (
+            "WINDOWS_SHORTCUT",
+            "windowsShortcutAssignment",
+            &policy.windows,
+        ),
+        _ => return None,
+    };
+    let value = payload.get(field).map(|value| {
+        choices
+            .iter()
+            .find(|choice| value.as_str() == Some(choice.payload.as_str()))
+            .map(|choice| json!(choice.content))
+            .unwrap_or_else(|| value.clone())
+    });
+    Some((label, value))
+}
 impl MouseProductWorkspace {
     pub(super) fn apply_current_mouse_basic_search_option(
         &mut self,

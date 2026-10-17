@@ -6671,6 +6671,7 @@ def audit_audio_surround(args):
         if pid not in {1392, 1442, 3942}:
             raise ValueError("Product does not mount the audited Clio Surround branch")
         row = {"product_id": pid, "scopes": [], "complete_owners": [], "styles": [],
+               "mounted_component_bindings": [],
                "binding_resolutions": [], "failures": [], "unresolved_chains": [],
                "target_execution": False, "runtime_acceptance": "unverified"}
         seen = set()
@@ -6769,6 +6770,42 @@ def audit_audio_surround(args):
                             if match:
                                 resolved = evidence.javascript_binding(raw, tree, match[1].decode(), offset+match.start(1))
                                 row["binding_resolutions"].append({"original": original, "anchor": anchor.decode(), **resolved})
+                    if not is_mw:
+                        pending = [owner for owner in row["complete_owners"]
+                                   if owner["original"]["sha256"] == original["sha256"]
+                                   and any(anchor["anchor"] == 'className:"surround-container"'
+                                           for anchor in owner["anchors"])]
+                        visited_bindings = set()
+                        while pending:
+                            owner = pending.pop()
+                            start = owner.get("byte_start", owner.get("start_byte"))
+                            body = owner["body"].encode("utf-8")
+                            references = [(match[1], start + match.start(1), "jsx_component")
+                                          for match in re.finditer(rb'\(0,[\w$]+\.jsxs?\)\(([A-Za-z_$][\w$]*)[,)]', body)]
+                            node = tree.root_node.descendant_for_byte_range(start, start + len(body))
+                            while node is not None and node.start_byte != start:
+                                node = node.parent
+                            value = node.child_by_field_name("value") if node is not None else None
+                            while value is not None and value.type in {"parenthesized_expression", "sequence_expression"}:
+                                value = value.named_children[-1] if value.named_children else None
+                            if value is not None and value.type == "identifier":
+                                references.append((value.text, value.start_byte, "component_alias"))
+                            elif value is not None and value.type == "call_expression":
+                                arguments = value.child_by_field_name("arguments")
+                                if arguments is not None:
+                                    references.extend((argument.text, argument.start_byte, "component_wrapper_argument")
+                                                      for argument in arguments.named_children
+                                                      if argument.type == "identifier")
+                            for name, offset, role in references:
+                                resolved = evidence.javascript_binding(raw, tree, name.decode(), offset)
+                                key = (original["sha256"], resolved.get("start_byte"), resolved.get("end_byte"))
+                                if key in visited_bindings:
+                                    continue
+                                visited_bindings.add(key)
+                                entry = {"original": original, "role": role, **resolved}
+                                row["mounted_component_bindings"].append(entry)
+                                if resolved.get("resolution") == "declaration" and isinstance(resolved.get("body"), str):
+                                    pending.append(resolved)
                 elif original["path"].endswith(".css") and not is_mw:
                     anchors = [b'.surround-container', b'.front-speaker-selector-popup', b'.time-alignment',
                                b'.alignment-', b'.EqualizerAdjustments_', b'.replicate-front-stereo',

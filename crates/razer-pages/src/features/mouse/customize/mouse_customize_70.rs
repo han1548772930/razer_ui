@@ -34,17 +34,7 @@ impl MouseProductWorkspace {
         // pT.updateMappingsToButtons feeds the same derived rows to lT/rT and
         // the sidebar. Using the descriptors here hid non-mouse assignments
         // and bypassed the source's sole-primary-click protection.
-        let projection = button_state_current::derive(
-            70,
-            original_buttons,
-            original_buttons,
-            self.draft["mappings"]
-                .as_array()
-                .map(Vec::as_slice)
-                .unwrap_or(&[]),
-            self.hypershift,
-            0,
-        );
+        let projection = self.derive_current_mapping_buttons(original_buttons, original_buttons, 0);
         let unavailable = projection.is_err();
         *self.button_state_error.borrow_mut() = projection.as_ref().err().cloned();
         let buttons = projection.unwrap_or_else(|_| original_buttons.clone());

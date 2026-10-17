@@ -3487,10 +3487,7 @@ impl Render for AppShell {
                 .child(self.pairing.clone())
                 .into_any_element(),
         };
-        gpui_kit::image_cache(razer_assets::resource_image_cache())
-            .size_full()
-            .child(
-                v_flex()
+        v_flex()
                     .key_context("AppShell")
                     .track_focus(&self.host_tabs.focus)
                     // The source captures key releases at window scope, even after an
@@ -3586,7 +3583,6 @@ impl Render for AppShell {
                                             }),
                                     )
                             }),
-                    ),
-            )
+                    )
     }
 }

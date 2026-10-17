@@ -1,6 +1,7 @@
 //! Resource identity and CPU codec checks without network or product payloads.
 use super::*;
 use gpui_kit::{Image, ImageFormat, SvgRenderer};
+use sha2::{Digest as _, Sha256};
 use std::{collections::BTreeSet, sync::Arc};
 
 #[test]
@@ -100,6 +101,41 @@ fn inline_svg_codec_preserves_clips_and_rejects_invalid_input() {
     assert!(pixels.chunks_exact(4).any(|pixel| pixel[3] > 0));
     assert!(pixels.chunks_exact(4).any(|pixel| pixel[3] == 0));
     assert!(renderer.parse_svg(b"not an SVG").is_err());
+}
+
+#[test]
+fn pid229_cycle_up_svg_matches_manifest_and_rasterizes_on_cpu() {
+    const KEY: &str = "synapse/mouse-customize/8bd13c4f3a94a3834d2a05c6.svg";
+    const SVG: &[u8] = include_bytes!("../testdata/mouse_customize/cycle-229.svg");
+    let (path, bytes, hash) = remote::identity(KEY).expect(KEY);
+    assert_eq!(
+        path,
+        "assets/synapse/shared/products/8bd13c4f3a94a383-8bd13c4f3a94a3834d2a05c6.svg"
+    );
+    assert_eq!(bytes, SVG.len() as u64);
+    assert_eq!(hash, format!("{:x}", Sha256::digest(SVG)));
+
+    // Keep this a pure codec check: no application/window or resource task is
+    // involved. The fixture is the exact 102px PID229 cycle-up artwork.
+    let renderer = SvgRenderer::new(Arc::new(SynapseAssets));
+    let rendered = renderer
+        .render_single_frame(SVG, 1.)
+        .expect("PID229 cycle-up SVG should rasterize");
+    assert_eq!(rendered.frame_count(), 1);
+    let size = rendered.size(0);
+    assert_eq!((size.width.0, size.height.0), (204, 204));
+    let pixels = rendered.as_bytes(0).expect("rasterized frame bytes");
+    assert!(pixels.chunks_exact(4).any(|pixel| pixel[3] > 0));
+    assert!(
+        pixels
+            .chunks_exact(4)
+            .any(|pixel| pixel == [17, 17, 17, 255])
+    );
+    assert!(
+        pixels
+            .chunks_exact(4)
+            .any(|pixel| pixel == [102, 102, 102, 255])
+    );
 }
 
 #[test]

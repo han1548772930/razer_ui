@@ -2,8 +2,9 @@
 //! cache with the child through layout, prepaint and paint without adding a box.
 use super::resource_image_cache;
 use gpui_kit::{
-    AnyElement, AnyImageCache, App, Bounds, ContentMask, Deferred, Element, ElementId, GlobalElementId,
-    ImageCacheProvider as _, InspectorElementId, IntoElement, LayoutId, Pixels, Point, Window,
+    AnyElement, AnyImageCache, App, Bounds, ContentMask, Deferred, Element, ElementId,
+    GlobalElementId, ImageCacheProvider as _, InspectorElementId, IntoElement, LayoutId, Pixels,
+    Point, Window,
 };
 
 pub struct ResourceScope {

@@ -5713,6 +5713,7 @@ dependencies = [
  "razer-service",
  "razer-shell",
  "razer-storage",
+ "razer-widgets",
  "serde_json",
 ]
 

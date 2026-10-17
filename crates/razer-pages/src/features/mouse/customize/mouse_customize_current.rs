@@ -480,8 +480,13 @@ impl MouseProductWorkspace {
                     position = update;
                 }
             }
-            if selected && !previous {
-                if let Some(update) = cycle.select_update {
+            if selected && !previous && !position.display {
+                // Current TopViewComponent mounts the cycle cutout when the
+                // active button changes into the cycle, even when no hover
+                // event preceded that selection. Most source branches encode
+                // that transition as `same_selected_update`; the one branch
+                // with a distinct transition keeps the explicit selector.
+                if let Some(update) = cycle.select_update.or(cycle.same_selected_update) {
                     position = update;
                 }
             }
@@ -627,6 +632,7 @@ impl MouseProductWorkspace {
     pub fn reset_mouse_customize_runtime(&mut self, cx: &mut Context<Self>) {
         self.customize_label_hover = None;
         self.mouse_customize_observation = json!({});
+        self.mapping_macro_requirements = None;
         self.customize_attachment.reset();
         self.reset_mouse_runtime_lighting();
         self.sync_receiver_widget_mount(cx);

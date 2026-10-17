@@ -3,11 +3,95 @@
 struct ModuleServiceSource {
     categories: Vec<String>,
     subcategory_parents: Vec<String>,
+    description_images: BTreeMap<String, String>,
+    description_fallback: String,
 }
 fn module_service_source() -> &'static ModuleServiceSource {
     static SOURCE: OnceLock<ModuleServiceSource> = OnceLock::new();
     SOURCE.get_or_init(|| read_module_service_source_catalog())
 }
+#[derive(Default)]
+struct ServiceDescriptionImageState {
+    primary_failed: bool,
+}
+impl ServiceDescriptionImageState {
+    fn load<T, E>(
+        &mut self,
+        primary: Option<&str>,
+        fallback: &str,
+        mut load: impl FnMut(&str) -> Option<Result<T, E>>,
+    ) -> Option<Result<T, E>> {
+        if !self.primary_failed {
+            if let Some(primary) = primary {
+                match load(primary) {
+                    Some(Err(_)) => self.primary_failed = true,
+                    result => return result,
+                }
+            } else {
+                self.primary_failed = true;
+            }
+        }
+        load(fallback)
+    }
+}
+
+/// Parse only the current PluginImages identity. Edition-zero retries belong
+/// to Dashboard cards, not 44442/w's detail.srcImage error handler.
+fn service_description_plugin_image(source: &str) -> Option<&'static str> {
+    let path = source
+        .strip_prefix("https://apps.razer.com")
+        .unwrap_or(source);
+    let mut parts = path.strip_prefix("/synapse/products/")?.split('/');
+    let product_id = parts.next()?.parse::<u32>().ok()?;
+    if parts.next()? != "ui" {
+        return None;
+    }
+    let (folder_product, folder_edition) = parts.next()?.split_once('_')?;
+    if folder_product.parse::<u32>().ok()? != product_id || parts.next()? != "PluginImages" {
+        return None;
+    }
+    let file = parts.next()?.strip_suffix(".avif")?;
+    if parts.next().is_some() {
+        return None;
+    }
+    let (file, density) = if let Some(file) = file.strip_suffix("_dashboard1x") {
+        (file, 1)
+    } else {
+        (file.strip_suffix("_dashboard3x")?, 3)
+    };
+    let (file, wrist) = file
+        .strip_suffix("_wrist")
+        .map_or((file, false), |file| (file, true));
+    let mut identity = file.split('_');
+    if identity.next()?.parse::<u32>().ok()? != product_id {
+        return None;
+    }
+    let filename_edition = identity.next()?.parse::<u32>().ok()?;
+    let layout = identity.next()?.parse::<u32>().ok()?;
+    if identity.next().is_some() {
+        return None;
+    }
+    razer_assets::dashboard_plugin_image(
+        product_id,
+        folder_edition.parse().ok()?,
+        filename_edition,
+        layout,
+        wrist,
+        density,
+    )
+}
+
+fn service_description_image(source: &str) -> Option<&'static str> {
+    let path = source
+        .strip_prefix("https://apps.razer.com")
+        .unwrap_or(source);
+    module_service_source()
+        .description_images
+        .get(path)
+        .map(String::as_str)
+        .or_else(|| service_description_plugin_image(path))
+}
+
 fn service_row_key(row: &Record, module: Option<&Module>) -> String {
     module
         .map(|m| format!("module-{}", m.source_id()))
@@ -515,9 +599,24 @@ impl ModuleCatalog {
             )
             .into_any_element()
     }
-    fn new_device_service_row(&self, row: &Record, cx: &mut Context<Self>) -> AnyElement {
+    fn new_device_service_row(
+        &self,
+        row: &Record,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         let key = service_row_key(row, None);
         let details = row.get("detail").and_then(serde_json::Value::as_object);
+        // Current w keeps M when A collapses the description. Retain this
+        // state at the mounted row, including frames without an image child.
+        let image_state = window.use_keyed_state(
+            (
+                ElementId::from(SharedString::from(format!("new-{key}"))),
+                "description-image",
+            ),
+            cx,
+            |_, _| ServiceDescriptionImageState::default(),
+        );
         v_flex()
             .id(SharedString::from(format!("new-{key}")))
             .w_full()
@@ -537,27 +636,49 @@ impl ModuleCatalog {
             )
             .when(self.expanded.contains(&key), |view| {
                 view.when_some(details, |view, details| {
-                    view.child(self.device_service_description(row, details, cx))
+                    view.child(self.device_service_description(row, details, image_state, cx))
                 })
             })
             .into_any_element()
     }
-    fn device_service_description(&self, row: &Record, details: &Record, cx: &App) -> AnyElement {
+    fn device_service_description(
+        &self,
+        row: &Record,
+        details: &Record,
+        image_state: Entity<ServiceDescriptionImageState>,
+        cx: &App,
+    ) -> AnyElement {
         let locale = i18n::locale().to_ascii_lowercase();
-        // w reads detail.srcImage, not the ae.v dashboard thumbnail. There is
-        // no verified detail-srcImage-to-embedded-asset mapping yet; preserve
-        // its exact image slot instead of showing unrelated product artwork.
+        let primary = service_description_image(&service::string(details, "srcImage"));
+        let fallback = module_service_source().description_fallback.as_str();
+        let image = ImageSource::Custom(std::sync::Arc::new(move |window, cx| {
+            image_state.update(cx, |state, cx| {
+                state.load(primary, fallback, |alias| {
+                    razer_assets::load_resource_image(
+                        Resource::Embedded(SharedString::from(alias.to_owned())),
+                        window,
+                        cx,
+                    )
+                })
+            })
+        }));
         h_flex()
             .items_start()
             .min_h(surface::css(202.))
             .p(surface::css(20.))
             .bg(MainPageColors.detail_surface())
             .child(
-                div()
+                img(image)
+                    .id(SharedString::from(format!(
+                        "description-image-{}",
+                        service::identity(row)
+                    )))
+                    .accessibility_label(service::localized(details.get("title"), &locale))
                     .w(surface::css(288.))
                     .h(surface::css(162.))
                     .mr(surface::css(20.))
-                    .flex_shrink_0(),
+                    .flex_shrink_0()
+                    .object_fit(ObjectFit::Contain),
             )
             .child(
                 v_flex()

@@ -219,6 +219,7 @@ pub struct KeyboardProductWorkspace {
     source_artwork: source_artwork::ArtworkState,
     keymap_bar: keymap_bar::State,
     mapping_login_warning: mapping_login_warning::State,
+    mapping_capabilities: Result<razer_model::mapping_requirements::MappingCapabilities, String>,
     legacy_mapping: legacy_mapping::State,
 }
 
@@ -303,6 +304,11 @@ impl KeyboardProductWorkspace {
             source_artwork: source_artwork::ArtworkState::default(),
             keymap_bar: keymap_bar::State::default(),
             mapping_login_warning: mapping_login_warning::State::default(),
+            mapping_capabilities:
+                razer_model::mapping_requirements::MappingCapabilities::from_source_config(
+                    &spec.config,
+                )
+                .map_err(|error| format!("{error:#}")),
             legacy_mapping: legacy_mapping::State::new(window),
             // Keep this gated by the independently traced mounted caller,
             // rather than the presence of an unused shared source component.

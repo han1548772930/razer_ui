@@ -1071,7 +1071,7 @@ fn source_tooltip(
         .tooltip(move |window, cx| {
             let text = text.clone();
             Tooltip::element(move |_, _| {
-                div()
+                razer_assets::resource_scope(div()
                     .max_w(surface::css(320.))
                     .px(surface::css(10.))
                     .py(surface::css(8.))
@@ -1079,7 +1079,7 @@ fn source_tooltip(
                     .border_color(border)
                     .bg(background)
                     .text_size(surface::css(14.))
-                    .child(text.clone())
+                    .child(text.clone()))
             })
             .build(window, cx)
         })

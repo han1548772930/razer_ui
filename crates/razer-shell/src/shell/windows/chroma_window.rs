@@ -467,8 +467,6 @@ impl Render for ChromaWindow {
             .size_full()
             .child(bar)
             .child(div().flex_1().min_h_0().child(root));
-        image_cache(razer_assets::resource_image_cache())
-            .size_full()
-            .child(content)
+        content
     }
 }

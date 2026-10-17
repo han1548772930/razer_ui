@@ -83,8 +83,6 @@ impl Render for PairingWindow {
                     .scrollable_both()
                     .child(self.page.clone()),
             );
-        image_cache(razer_assets::resource_image_cache())
-            .size_full()
-            .child(content)
+        content
     }
 }

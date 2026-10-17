@@ -6,8 +6,6 @@ struct Source {
     require_categories: Vec<String>,
     always_inputs: Vec<String>,
     software_outputs: Vec<String>,
-    macro_event_types: Vec<Value>,
-    macro_mouse_buttons: Vec<Value>,
     synapse_margin_bottom: f32,
 }
 fn source(pid: u32) -> &'static Source {
@@ -18,48 +16,23 @@ fn source(pid: u32) -> &'static Source {
         .expect("audited current keyboard prerequisite caller")
 }
 impl KeyboardProductWorkspace {
-    pub(super) fn mapping_macro_requires_synapse(&self, guid: &Value) -> bool {
-        if self.spec.config["DeviceInfo"]["OBMSpecs"]["supportedMappings"]["macroGroup"] != true {
-            return true;
-        }
-        let Some(row) = self.mapping_macro_observation().and_then(|observation| {
-            observation
-                .macro_list
-                .iter()
-                .find(|row| row["guid"] == *guid)
-        }) else {
-            return false;
-        };
-        let engine = &row["appEngine"];
-        if engine.is_null() {
-            return false;
-        }
-        if matches!(
-            engine["mouseMoveType"].as_str(),
-            Some("absolute" | "foreground")
-        ) {
-            return true;
-        }
-        let metadata = source(self.spec.product_id);
-        row["macroEvents"].as_array().is_some_and(|events| {
-            events.iter().any(|event| {
-                metadata.macro_event_types.contains(&event["Type"])
-                    || metadata
-                        .macro_mouse_buttons
-                        .contains(&event["MouseEvent"]["MouseButton"])
-            })
-        })
+    fn mapping_macro_requires_synapse(&self, guid: &Value) -> anyhow::Result<bool> {
+        let capabilities = self
+            .mapping_capabilities
+            .as_ref()
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        Ok(capabilities.macro_requires_synapse(guid.as_str(), self.mapping_macro_requirements()?))
     }
-    fn mapping_requires_synapse(&self, slot: usize) -> bool {
+    fn mapping_requires_synapse(&self, slot: usize) -> anyhow::Result<bool> {
         let Some(edit) = &self.analog_gamepad.mapping.edit else {
-            return false;
+            return Ok(false);
         };
         let current = &edit.slots[0].category;
         if current == "AUDIO_FUNCTION"
             || current == "CONTROLLER"
                 && !self.spec.config["DeviceInfo"]["controllerAssignmentsWithoutSynapse"].is_null()
         {
-            return false;
+            return Ok(false);
         }
         let metadata = source(self.spec.product_id);
         let staged = &edit.slots[slot];
@@ -84,29 +57,12 @@ impl KeyboardProductWorkspace {
                     .iter()
                     .find(|row| row["guid"] == staged.staged["macroGroup"]["guid"])
             }) {
-                let events = row["macroEvents"].as_array();
-                let engine = &row["appEngine"];
-                let native_supported =
-                    self.spec.config["DeviceInfo"]["OBMSpecs"]["supportedMappings"]["macroGroup"]
-                        .as_bool()
-                        == Some(true);
-                let software_events = !engine.is_null()
-                    && (matches!(
-                        engine["mouseMoveType"].as_str(),
-                        Some("absolute" | "foreground")
-                    ) || events.is_some_and(|events| {
-                        events.iter().any(|event| {
-                            metadata.macro_event_types.contains(&event["Type"])
-                                || metadata
-                                    .macro_mouse_buttons
-                                    .contains(&event["MouseEvent"]["MouseButton"])
-                        })
-                    }));
+                let macro_requires =
+                    self.mapping_macro_requires_synapse(&staged.staged["macroGroup"]["guid"])?;
                 let playback = self.mapping_macro_choices(row).iter().find(|choice| {
                     choice["id"] == staged.staged["macroGroup"]["macroPlaybackOption"]
                 });
-                !native_supported
-                    || software_events
+                macro_requires
                     || edit.button["isRequireSynapse"] == true
                     || playback.is_some_and(|choice| {
                         metadata
@@ -120,14 +76,14 @@ impl KeyboardProductWorkspace {
         } else {
             metadata.require_categories.contains(&staged.category)
         };
-        current == "APP_SPECIFIC"
+        Ok(current == "APP_SPECIFIC"
             || (current != "DEFAULT" || edit.button["buttonKey"] == "RazerAI")
                 && (self.spec.config["DeviceInfo"]["isOBMDevice"] != true
                     || requires
                     || metadata
                         .always_inputs
                         .iter()
-                        .any(|input| edit.button["buttonKey"] == input.as_str()))
+                        .any(|input| edit.button["buttonKey"] == input.as_str())))
     }
     pub(super) fn mapping_chroma_install_element(
         &self,
@@ -189,6 +145,7 @@ impl KeyboardProductWorkspace {
                 .lighting_observation
                 .as_ref()
                 .is_some_and(|observation| observation.chroma_installed_module);
+        let requires_synapse = self.mapping_requires_synapse(slot);
         let mut notices = v_flex().mx(surface::css(20.));
         for (show, icon, label, tooltip) in [
             (
@@ -198,7 +155,7 @@ impl KeyboardProductWorkspace {
                 "REQUIRE_CHROMA_APP_TOOLTIP",
             ),
             (
-                self.mapping_requires_synapse(slot),
+                matches!(requires_synapse, Ok(true)),
                 "synapse.svg",
                 "REQUIRES_RAZER_SYNAPSE",
                 "REQUIRES_RAZER_SYNAPSE_TOOLTIP",
@@ -305,9 +262,7 @@ fn read_keyboard_mapping_notices_catalog() -> Vec<Source> {
                 require_categories: r.child(decode_3)?,
                 always_inputs: r.child(decode_3)?,
                 software_outputs: r.child(decode_3)?,
-                macro_event_types: r.child(decode_5)?,
-                macro_mouse_buttons: r.child(decode_5)?,
-                synapse_margin_bottom: r.child(decode_7)?,
+                synapse_margin_bottom: r.child(decode_5)?,
             },
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
@@ -340,25 +295,7 @@ fn read_keyboard_mapping_notices_catalog() -> Vec<Source> {
         r.finish()?;
         Ok(value)
     }
-    fn decode_5(
-        r: &mut razer_resource_db::NodeReader<'_>,
-    ) -> anyhow::Result<std::vec::Vec<serde_json::Value>> {
-        let value = match r.tag()? {
-            0 => r.sequence(decode_6)?,
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_6(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<serde_json::Value> {
-        let value = match r.tag()? {
-            0 => r.external_value()?,
-            _ => anyhow::bail!("Invalid typed catalog alternative"),
-        };
-        r.finish()?;
-        Ok(value)
-    }
-    fn decode_7(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
+    fn decode_5(r: &mut razer_resource_db::NodeReader<'_>) -> anyhow::Result<f32> {
         let value = match r.tag()? {
             0 => r.f32()?,
             _ => anyhow::bail!("Invalid typed catalog alternative"),
@@ -369,7 +306,7 @@ fn read_keyboard_mapping_notices_catalog() -> Vec<Source> {
     razer_resource_db::read_document(
         razer_resource_db::catalogs::RAZER_PAGES_KEYBOARD_MAPPING_NOTICES_DATA,
         0,
-        "0b88cac3133eb55492759da6443c58619692c87ff9a7b6d06b9d539d4bc497eb",
+        "1eb98ad8b72c821c3c96c623404af1111435f46934b652434a4ed4a4e4505c43",
         decode_0,
     )
     .expect("Packaged typed catalog must match its domain schema")

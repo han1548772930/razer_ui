@@ -55,7 +55,7 @@ impl KeyboardProductWorkspace {
             .child(img("synapse/automation-tooltip_questionmark.svg").size_full())
             .tooltip(move |window, cx| {
                 gpui_kit::component::tooltip::Tooltip::element(move |_, _| {
-                    h_flex()
+                    razer_assets::resource_scope(h_flex()
                         .p(surface::css(10.))
                         .border_1()
                         .border_color(rgb(0x5d5d5d))
@@ -88,7 +88,7 @@ impl KeyboardProductWorkspace {
                                     }))
                             }),
                         )
-                        .into_any_element()
+                        .into_any_element())
                 })
                 .build(window, cx)
             });

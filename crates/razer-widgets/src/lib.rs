@@ -1,4 +1,12 @@
 //! Shared semantic presentation primitives.
+mod window_resources;
+
+/// Register presentation facilities after GPUI Kit initialization and before
+/// opening windows. Every Base Root then owns the same resource-loading policy.
+pub fn init(cx: &mut gpui_kit::App) {
+    window_resources::init(cx);
+}
+
 #[path = "app_introduction_banner.rs"]
 pub mod app_introduction_banner;
 #[path = "attribute_tip.rs"]

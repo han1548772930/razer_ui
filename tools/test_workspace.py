@@ -15,6 +15,7 @@ import tempfile
 import workspace
 import resource_database
 import families
+import typed_tables
 
 
 def wheel_bytes(members, *, records=None, extra=()):
@@ -183,6 +184,35 @@ class FrontendClosureTests(unittest.TestCase):
             self.assertEqual(raw[capture["byte_start"]:capture["byte_end"]], body.encode())
             self.assertEqual(raw[capture["statements_byte_start"]:capture["statements_byte_end"]], capture["statements"].encode())
             self.assertIn("exports", capture["statements"])
+
+
+class MappingCapabilityProjectionTests(unittest.TestCase):
+    def test_complete_factory_resolves_array_bindings_and_records_sparse_membership(self):
+        factory = '51:(e,t,n)=>{n.d(t,{DeviceInfo:()=>info});const allowed=["ScrollUp",,"ScrollDown"],info={productId:51,category:"MOUSE",isOBMDevice:!0,unconsumed:n(12),OBMSpecs:{noFirmwareInputId:[],supportedMappings:{mouseGroup:allowed,macroGroup:!1}},ble:{obmMacrosAvailable:!1}};}'
+        projected, evidence = typed_tables.mapping_source_projection(factory)
+        self.assertEqual(projected["supportedMappings"]["mouseGroup"], ["ScrollUp", {"source_array_hole": True}, "ScrollDown"])
+        self.assertEqual(projected["supportedMappings"]["macroGroup"], False)
+        self.assertEqual(projected["bleMacrosAvailable"], False)
+        self.assertNotIn("isXenaT2Series", projected)
+        self.assertNotIn("MOUSE_FUNC_REQUIRED_SYNAPSE_VALUES", projected)
+        self.assertEqual([hole["array_index"] for hole in evidence["array_holes"]], [1])
+        for binding in evidence["bindings"]:
+            body = factory.encode()[binding["byte_start"]:binding["byte_end"]]
+            self.assertEqual(body.decode(), binding["body"])
+            self.assertEqual(hashlib.sha256(body).hexdigest(), binding["body_sha256"])
+
+    def test_consumed_indirect_expression_is_rejected(self):
+        factory = '51:(e,t,n)=>{n.d(t,{DeviceInfo:()=>info});const info={productId:51,category:"MOUSE",OBMSpecs:{supportedMappings:{mouseGroup:n(12)}}};}'
+        with self.assertRaisesRegex(ValueError, "Unsupported consumed JavaScript capability node"):
+            typed_tables.mapping_source_projection(factory)
+
+    def test_rust_constructor_roundtrip_rejects_changed_capability_semantics(self):
+        products = [{"product_id": 51, "projection": {"productId": 51, "category": "MOUSE", "isOBMDevice": True,
+            "noFirmwareInputId": [], "supportedMappings": {"mouseGroup": ["ScrollUp", {"source_array_hole": True}, "ScrollDown"]}}}]
+        rendered = typed_tables.render_mapping_capabilities(products)
+        self.assertTrue(typed_tables.verify_mapping_constructor(rendered, products)["all_fields_and_order_verified"])
+        with self.assertRaisesRegex(ValueError, "differ from current source projection"):
+            typed_tables.verify_mapping_constructor(rendered.replace(b"is_obm_device: Some(true)", b"is_obm_device: Some(false)"), products)
 
 
 class RuntimeResourceReferenceTests(unittest.TestCase):

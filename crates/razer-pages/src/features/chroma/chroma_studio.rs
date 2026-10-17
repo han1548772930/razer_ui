@@ -15,6 +15,7 @@ use razer_widgets::scroll::SourceScrollable as _;
 use razer_widgets::surface;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use razer_model::chroma_studio::{Document,Layer};
 use std::{collections::BTreeMap, sync::OnceLock};
 #[path = "chroma_studio_canvas.rs"]
 mod studio_canvas;
@@ -101,36 +102,22 @@ fn button(id: impl Into<ElementId>, key: &str) -> BaseButton {
         .styles(|style| style.disabled(|style| style.opacity(0.3)))
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-struct Layer {
-    id: u64,
-    name: String,
-    title: String,
-    value: u32,
-    params: Value,
-    #[serde(default = "studio_empty_params")]
-    params2: Value,
-    paint_params: Value,
-    visible: bool,
-    group: bool,
-}
-fn studio_empty_params() -> Value {
-    serde_json::json!({})
-}
-#[derive(Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
-struct Document {
-    layers: Vec<Layer>,
-}
-
 /// Local draft serialization; deliberately distinct from vendor profile files.
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone,Debug, Default, Serialize, Deserialize,PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ChromaStudioSnapshot {
     document: Document,
 }
 impl ChromaStudioSnapshot {
+    pub fn default_profile_name()->String {format!("{} 1",label("TEXT_CHROMA_EFFECT"))}
+    pub fn default_profile()->anyhow::Result<Self> {
+        let effect=source().effects.iter().find(|effect|effect.name=="spectrum").ok_or_else(||anyhow::anyhow!("Current Studio spectrum default is missing"))?;
+        Self::from_document(Document {layers:vec![Layer {id:1,name:effect.name.clone(),title:effect.label.clone(),value:effect.value,params:effect.params.clone(),params2:serde_json::json!({}),paint_params:effect.paint_params.clone(),visible:true,group:false,extensions:Default::default()}],extensions:Default::default()})
+    }
+    pub fn from_document(document:Document)->anyhow::Result<Self> {
+        let snapshot=Self {document};snapshot.validate()?;Ok(snapshot)
+    }
+    pub fn document(&self)->&Document {&self.document}
     pub fn validate(&self) -> anyhow::Result<()> {
         let mut ids = std::collections::BTreeSet::new();
         anyhow::ensure!(
@@ -177,9 +164,23 @@ impl ChromaStudioSnapshot {
         Ok(())
     }
 }
+#[derive(Clone)]
 pub enum ChromaStudioEvent {
     Save(ChromaStudioSnapshot),
+    Profile(StudioProfileCommand),
 }
+#[derive(Clone,Debug)]
+pub enum StudioProfileCommand {
+    Add {name:String},
+    Select {id:String},
+    Rename {id:String,name:String},
+    Duplicate {id:String,name:String},
+    Delete {id:String},
+}
+#[derive(Clone,Debug)]
+pub struct StudioProfileItem {pub id:String,pub name:String}
+#[path="chroma_studio_profiles.rs"]
+mod studio_profiles;
 
 pub struct ChromaStudio {
     document: Document,
@@ -200,6 +201,14 @@ pub struct ChromaStudio {
     properties: Entity<studio_properties::StudioProperties>,
     // Owns property change delivery for the lifetime of this studio entity.
     _property_subscription: Subscription,
+    profiles:Vec<StudioProfileItem>,
+    selected_profile:Option<String>,
+    profiles_pending:bool,
+    profile_dropdown:Entity<studio_dropdown::DropdownState>,
+    profile_actions:Entity<studio_dropdown::DropdownState>,
+    profile_rename:Option<(String,Entity<InputState>)>,
+    profile_rename_subscription:Option<Subscription>,
+    profile_delete_confirm:bool,
 }
 impl EventEmitter<ChromaStudioEvent> for ChromaStudio {}
 impl ChromaStudio {
@@ -214,6 +223,8 @@ impl ChromaStudio {
         // state before a newly attached host focuses this retained document.
         self.renaming = None;
         self.rename_subscription = None;
+        self.profile_rename=None;
+        self.profile_rename_subscription=None;
         self.properties
             .update(cx, |properties, cx| properties.attach(window, cx));
         self.focus.focus(window, cx);
@@ -271,6 +282,11 @@ impl ChromaStudio {
             focus: cx.focus_handle(),
             properties,
             _property_subscription: property_subscription,
+            profiles:Vec::new(),selected_profile:None,profiles_pending:true,
+            profile_dropdown:cx.new(|_|studio_dropdown::DropdownState::new()),
+            profile_actions:cx.new(|_|studio_dropdown::DropdownState::new()),
+            profile_rename:None,profile_rename_subscription:None,
+            profile_delete_confirm:false,
         }
     }
     pub fn restore(&mut self, snapshot: ChromaStudioSnapshot, cx: &mut Context<Self>) {
@@ -299,6 +315,13 @@ impl ChromaStudio {
         self.past.clear();
         self.future.clear();
         cx.notify();
+    }
+    /// Migrating the former draft does not publish a Studio profile. Its
+    /// contents remain editable until the user explicitly saves the library.
+    pub fn restore_draft(&mut self,snapshot:ChromaStudioSnapshot,cx:&mut Context<Self>) {
+        let saved=self.saved.clone();
+        self.restore(snapshot,cx);
+        self.saved=saved;
     }
     fn checkpoint(&mut self) {
         self.past.push(self.document.clone());
@@ -331,6 +354,7 @@ impl ChromaStudio {
                 paint_params: effect.paint_params.clone(),
                 visible: true,
                 group: false,
+                extensions:Default::default(),
             },
         );
         self.current = Some(id);
@@ -353,6 +377,7 @@ impl ChromaStudio {
                 paint_params: Value::Null,
                 visible: true,
                 group: true,
+                extensions:Default::default(),
             },
         );
         cx.notify();
@@ -523,6 +548,10 @@ impl ChromaStudio {
     }
     fn key_down(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         let key = event.keystroke.key.as_str();
+        if self.profile_rename.is_some() {
+            if key=="escape" {self.profile_rename=None;self.profile_rename_subscription=None;self.focus.focus(window,cx);cx.notify();cx.stop_propagation();}
+            return;
+        }
         if self.renaming.is_some() {
             if key == "escape" {
                 self.renaming = None;
@@ -1084,7 +1113,7 @@ impl ChromaStudio {
     }
 }
 impl Render for ChromaStudio {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .id("chroma-studio-root")
             .test_support()
@@ -1104,12 +1133,14 @@ impl Render for ChromaStudio {
                     .flex_shrink_0()
                     .flex()
                     .items_center()
-                    .justify_center()
+                    .px(surface::css(10.))
+                    .gap(surface::css(10.))
                     .child(
                         div()
                             .text_color(Colors::selected())
                             .child(label("TEXT_STUDIO")),
-                    ),
+                    )
+                    .child(self.profile_header(window,cx)),
             )
             .child(
                 div()

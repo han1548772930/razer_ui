@@ -13,7 +13,7 @@ pub use keyboard_source::{
 mod packed;
 mod remote;
 pub use remote::{
-    ResourceChanged, ResourcePending, is_resource_pending, observe_resources, resource_errors,
+    ResourceChanged, ResourcePending, is_resource_pending, load_resource_image, observe_resources, resource_errors,
     resource_generation, resource_image_cache, retry_resources, start_resources,
     ResourceLayer, ResourceScope, deferred_resource, resource_scope,
 };
