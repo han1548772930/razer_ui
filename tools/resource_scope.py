@@ -9,6 +9,14 @@ import sys
 OWNER = "crates/razer-assets/src/remote/image_cache/scope.rs"
 _COMMENTS = {"line_comment", "block_comment"}
 
+# GPUI's default `img(Resource::Embedded(..))` path is intentionally owned by
+# the per-window ResourceImageCache.  These APIs bypass that owner and are
+# therefore only valid for the cache implementation itself or for the one
+# local user-import path which has its own keyed lease and release cleanup.
+_ASSET_OWNER_PREFIX = "crates/razer-assets/src/"
+_LOCAL_IMPORTED_ASSET = "crates/razer-pages/src/features/workspace/source_controls/oled_crop.rs"
+_SHARED_CUSTOM_IMAGE = "crates/razer-app-pages/src/services/module_service_rows.rs"
+
 
 def parser(root):
     sys.path.insert(0, str(root / "tools/analyzers/python-static"))
@@ -31,7 +39,7 @@ def inspect_source(raw, *, owner, rust_parser):
 
     aliases = {name: name for name in ("deferred", "deferred_resource", "Popup", "Popover", "Dialog", "BasePopup", "BaseDialog",
                                       "resource_scope", "ResourceLayer")}
-    edges, violations, tests = [], [], 0
+    edges, violations, asset_edges, tests = [], [], [], 0
 
     def text(node):
         return raw[node.start_byte:node.end_byte].decode("utf-8") if node is not None else ""
@@ -113,9 +121,20 @@ def inspect_source(raw, *, owner, rust_parser):
         if not valid:
             violations.append(row)
 
+    def asset_edge(node, kind, valid, detail=None):
+        row = {"owner": owner, "line": raw[:node.start_byte].count(b"\n") + 1,
+               "byte_start": node.start_byte - offset, "byte_end": node.end_byte - offset,
+               "kind": kind, "resource_owner": OWNER, "valid": valid,
+               "function": context(node)}
+        if detail:
+            row["detail"] = detail
+        asset_edges.append(row)
+        if not valid:
+            violations.append(row)
+
     def is_test(node):
         path = Path(owner)
-        if path.stem.endswith(("_test", "_tests")) or any(part in ("tests", "testdata") for part in path.parts):
+        if path.stem in ("test", "tests") or path.stem.endswith(("_test", "_tests")) or any(part in ("tests", "testdata") for part in path.parts):
             return True
         while node is not None:
             sibling = node.prev_named_sibling
@@ -139,6 +158,52 @@ def inspect_source(raw, *, owner, rust_parser):
             if name in ("deferred", "defer_draw", "popup", "content", "open_dialog", "open_sheet"):
                 tests += 1
             continue
+
+        # `Window::use_asset` is the GPUI asset-cache escape hatch.  The
+        # resource owner may use it to implement the shared cache, while the
+        # OLED cropper uses a separate keyed local-data lease.  Every other
+        # production call would reintroduce the sticky GPUI AssetLogger cache
+        # that this guard is intended to prevent.
+        if function is not None and function.type == "generic_function":
+            base = function.child_by_field_name("function")
+            base_text = text(base)
+            if base_text.split(".")[-1] == "use_asset":
+                type_arguments = function.child_by_field_name("type_arguments")
+                type_text = text(type_arguments) if type_arguments is not None else ""
+                asset_type = type_text.removeprefix("<").removesuffix(">").strip()
+                if owner.startswith(_ASSET_OWNER_PREFIX):
+                    valid, detail = True, "resource-owner implementation"
+                elif owner == _LOCAL_IMPORTED_ASSET and asset_type == "ImportedImageAsset":
+                    valid, detail = True, "keyed local-data import with release cleanup"
+                else:
+                    valid, detail = False, (
+                        f"direct use_asset::<{asset_type or '?'}> must use load_resource_image"
+                    )
+                asset_edge(node, "direct_use_asset", valid, detail)
+
+        # `Svg::external_path` invokes gpui-fast's SvgAsset loader, whose
+        # completed error is cached by GPUI.  The application has no valid
+        # external-path owner; keeping this check explicit prevents a future
+        # remote alias from silently bypassing ResourceImageCache.  Ordinary
+        # `svg().path(...)` intentionally remains allowed: gpui-fast resolves
+        # it through the configured AssetSource and runtime refresh events.
+        if member is not None and member[0] == "external_path":
+            asset_edge(node, "external_svg_asset", owner.startswith(_ASSET_OWNER_PREFIX),
+                       "external_path uses gpui-fast SvgAsset; use svg().path or the shared loader")
+
+        # Custom image sources are valid only when their closure is visibly
+        # connected to the shared loader, or when they are the documented OLED
+        # local import.  A file-level helper check is deliberately conservative
+        # and keeps this guard independent of macro/type expansion.
+        if function is not None and text(function).endswith("ImageSource::Custom"):
+            if owner == _LOCAL_IMPORTED_ASSET and b"ImportedImageAsset" in raw:
+                valid, detail = True, "keyed local-data import"
+            elif owner == _SHARED_CUSTOM_IMAGE and b"load_resource_image" in raw:
+                valid, detail = True, "shared per-window resource loader"
+            else:
+                valid, detail = False, "custom image source must call load_resource_image"
+            asset_edge(node, "custom_image_source", valid, detail)
+
         if member is None and aliases.get(name) == "deferred":
             edge(node, "raw_deferred", owner == OWNER)
         if member is None and aliases.get(name) == "deferred_resource":
@@ -195,7 +260,8 @@ def inspect_source(raw, *, owner, rust_parser):
         tokens = [n for n in walk(node) if n.type == "identifier" and text(n) in candidates]
         if tokens:
             edge(node, "overlay_macro_requires_audit", False, sorted(set(text(n) for n in tokens)))
-    return {"edges": edges, "violations": violations, "test_edges": tests}
+    return {"edges": edges, "asset_edges": asset_edges, "violations": violations,
+            "test_edges": tests}
 
 
 def audit_sources(root, sources=None):
@@ -203,8 +269,9 @@ def audit_sources(root, sources=None):
     rust_parser = parser(root)
     if sources is None:
         sources = sorted({*root.glob("app/**/*.rs"), *root.glob("crates/**/*.rs")})
-    report = {"owner": OWNER, "inputs": [], "edges": [], "violations": [], "test_edges": 0,
-              "scope": "Rust call AST, import aliases, inline overlay callbacks and explicit macro diagnostics",
+    report = {"owner": OWNER, "inputs": [], "edges": [], "asset_edges": [], "violations": [],
+              "test_edges": 0,
+              "scope": "Rust call AST, overlay ownership, and image-loader bypass diagnostics",
               "limitations": ["No Rust type checking or macro expansion; compilation remains separate",
                               "Indirect callback or builder indirection requires an explicit audit"],
               "target_execution": False}
@@ -217,11 +284,29 @@ def audit_sources(root, sources=None):
         report["inputs"].append({"path": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
         checked = inspect_source(raw, owner=name, rust_parser=rust_parser)
         report["edges"].extend(checked["edges"])
+        report["asset_edges"].extend(checked["asset_edges"])
         report["violations"].extend(checked["violations"])
         report["test_edges"] += checked["test_edges"]
     report["inputs_unchanged"] = all(hashlib.sha256((root / row["path"]).read_bytes()).hexdigest() == row["sha256"]
                                      for row in report["inputs"])
     report["passed"] = report["inputs_unchanged"] and not report["violations"]
     report["summary"] = {"source_files": len(report["inputs"]), "edges": len(report["edges"]),
+                         "asset_edges": len(report["asset_edges"]),
                          "violations": len(report["violations"]), "test_edges": report["test_edges"]}
     return report
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    command = argparse.ArgumentParser(description="Audit GPUI resource ownership and image-loader bypasses")
+    command.add_argument("root", nargs="?", default=Path(__file__).resolve().parent.parent,
+                         type=Path, help="workspace root (defaults to the repository containing tools/)")
+    command.add_argument("--json", action="store_true", help="emit the complete machine-readable report")
+    args = command.parse_args()
+    result = audit_sources(args.root)
+    payload = result if args.json else {"passed": result["passed"], "summary": result["summary"],
+                                        "violations": result["violations"]}
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    raise SystemExit(0 if result["passed"] else 1)

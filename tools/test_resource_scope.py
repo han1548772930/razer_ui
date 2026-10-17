@@ -57,6 +57,48 @@ class ResourceScopeTests(unittest.TestCase):
         result = self.inspect("fn view() { custom!(deferred(div())); }")
         self.assertEqual([v["kind"] for v in result["violations"]], ["overlay_macro_requires_audit"])
 
+    def test_direct_use_asset_is_limited_to_the_owner_and_local_import(self):
+        owner = "crates/razer-assets/src/remote/image_cache.rs"
+        local = "crates/razer-pages/src/features/workspace/source_controls/oled_crop.rs"
+        self.assertEqual(
+            self.inspect("fn load(window: &mut Window, cx: &mut App) { window.use_asset::<Foo>(&x, cx); }", owner)["violations"],
+            [],
+        )
+        self.assertEqual(
+            self.inspect(
+                "fn load(window: &mut Window, cx: &mut App) { window.use_asset::<ImportedImageAsset>(&x, cx); }",
+                local,
+            )["violations"],
+            [],
+        )
+        result = self.inspect(
+            "fn load(window: &mut Window, cx: &mut App) { window.use_asset::<ImageAssetLoader>(&x, cx); }",
+            "crates/razer-pages/src/example.rs",
+        )
+        self.assertEqual([v["kind"] for v in result["violations"]], ["direct_use_asset"])
+        self.assertIn("load_resource_image", result["violations"][0]["detail"])
+
+    def test_custom_image_source_requires_an_audited_loader(self):
+        valid = self.inspect(
+            "fn view() { let source = ImageSource::Custom(Arc::new(move |window, cx| "
+            "load_resource_image(Resource::Embedded(path), window, cx))); }",
+            "crates/razer-app-pages/src/services/module_service_rows.rs",
+        )
+        self.assertEqual(valid["violations"], [])
+        invalid = self.inspect(
+            "fn view() { let source = ImageSource::Custom(Arc::new(move |window, cx| "
+            "window.use_asset::<ImageAssetLoader>(&path, cx))); }",
+            "crates/razer-pages/src/example.rs",
+        )
+        self.assertCountEqual([v["kind"] for v in invalid["violations"]],
+                              ["direct_use_asset", "custom_image_source"])
+
+    def test_external_svg_path_is_rejected_while_svg_path_is_not(self):
+        ordinary = self.inspect("fn view() { svg().path(\"synapse/icon.svg\"); }")
+        self.assertEqual(ordinary["violations"], [])
+        result = self.inspect("fn view() { svg().external_path(\"synapse/icon.svg\"); }")
+        self.assertEqual([v["kind"] for v in result["violations"]], ["external_svg_asset"])
+
     def test_actual_workspace_paths_and_source_identity_are_preserved(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
