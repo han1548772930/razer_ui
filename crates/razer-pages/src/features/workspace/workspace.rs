@@ -105,6 +105,7 @@ pub enum WorkspaceEvent {
         generation: u64,
         percent: u8,
     },
+    HanboCoolerRequested(super::accessory_system_products::HanboCoolerRequested),
     KeyboardActuationRequested(super::keyboard_products::KeyboardActuationRequested),
     KeyboardLightingRequested(super::keyboard_products::KeyboardLightingRequested),
     MouseLightingRequested(super::mouse_products::MouseLightingRequested),

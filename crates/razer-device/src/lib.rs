@@ -65,6 +65,8 @@ pub mod dpi_matcher;
 pub mod dpi_matcher_storage;
 #[path = "transport/feature_exchange.rs"]
 mod feature_exchange;
+#[path = "accessory/hanbo_cooler.rs"]
+pub mod hanbo_cooler;
 #[path = "keyboard/keyboard_analog.rs"]
 pub mod keyboard_analog;
 #[cfg(test)]

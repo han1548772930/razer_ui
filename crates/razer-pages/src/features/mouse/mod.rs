@@ -1069,6 +1069,7 @@ impl MouseProductWorkspace {
                     && !this.spec.performance_power
                     && changed_path == this.spec.power_path())
                     || (this.spec.low_power_slider && changed_path == "/lowPowerMode")
+                    || (this.low_battery_range().is_some() && changed_path == "/lowBatteryEffects")
                     || (matches!(this.spec.product_id, 117 | 2594)
                         && changed_path == "/dimLighting/value");
                 let value = match event {
@@ -1271,8 +1272,15 @@ impl MouseProductWorkspace {
         if self.spec.low_power_slider {
             self.add_range("/lowPowerMode".into(), 5., 100., 5., window, cx);
         }
-        if self.spec.low_battery_slider {
-            self.add_range("/lowBatteryEffects".into(), 5., 100., 5., window, cx);
+        if let Some(range) = self.low_battery_range() {
+            self.add_range(
+                "/lowBatteryEffects".into(),
+                f32::from(range.min),
+                f32::from(range.max),
+                f32::from(range.step),
+                window,
+                cx,
+            );
         }
         if matches!(self.spec.product_id, 117 | 2594) {
             self.add_range("/dimLighting/value".into(), 1., 15., 1., window, cx);
@@ -1708,19 +1716,18 @@ impl MouseProductWorkspace {
                     .when(direct, performance_layout::direct_widget),
             );
         }
-        if self.spec.low_battery_slider {
-            let card = surface::panel(t("LOW_BATTERY_EFFECTS_HEADER"), cx)
-                .when(collapse_margins, |panel| panel.mb_0())
-                .child(surface::note(t("LOW_BATTERY_EFFECTS_DESC"), cx))
-                .child(self.range("/lowBatteryEffects", "", "%", true, cx));
-            right = right.child(card);
-            panels = panels.child(
-                surface::panel(t("LOW_BATTERY_EFFECTS_HEADER"), cx)
-                    .when(collapse_margins, |panel| panel.mb_0())
-                    .when(direct, performance_layout::direct_widget)
-                    .child(surface::note(t("LOW_BATTERY_EFFECTS_DESC"), cx))
-                    .child(self.range("/lowBatteryEffects", "", "%", true, cx)),
-            );
+        if let Some(card) = self.low_battery_card(cx) {
+            right = right.child(card.when(collapse_margins, |panel| panel.mb_0()));
+        }
+        if let Some(card) = self.low_battery_card(cx) {
+            let card = card.when(collapse_margins, |panel| panel.mb_0());
+            // PID 98 IA mounts TA inside HT direction:"right" (.widget-col),
+            // unlike the direct PowerSaving .widget sibling.
+            panels = panels.child(if direct {
+                performance_layout::widget_column(card)
+            } else {
+                card
+            });
         }
         if direct {
             return panels.into_any_element();

@@ -239,7 +239,7 @@ impl AudioMedia {
         }
         if self.error.is_some() || self.status.error().is_some() {
             self.stop(window, cx);
-            if let Err(error) = razer_assets::retry_resources() {
+            if let Err(error) = razer_assets::retry_resources(cx) {
                 self.error = Some(format!("{error:#}"));
             }
         }

@@ -80,6 +80,19 @@ pub enum ServiceRequest {
     SeirenNativeClose {
         target: razer_device::device_reads::DeviceReadTarget,
     },
+    /// Current AudioEffectsTHXCarol owner for 1392/1442/3942. Settings are the
+    /// stored comboMode preferences used only to seed the runtime cache.
+    SurroundOpen {
+        identity: razer_device::audio_surround::Identity,
+        settings: razer_device::audio_surround::Settings,
+    },
+    SurroundChange {
+        identity: razer_device::audio_surround::Identity,
+        change: razer_device::audio_surround::Change,
+    },
+    SurroundClose {
+        identity: razer_device::audio_surround::Identity,
+    },
     HidNodeMouseCurrentPower {
         node: razer_device::backend::HidNode,
         product_id: u32,
@@ -352,6 +365,14 @@ pub enum ServiceRequest {
         node: razer_device::backend::HidNode,
         product_id: u32,
         setting: razer_device::device_writes::DeviceWriteSetting,
+    },
+    /// Source `rzDeviceElsa` Output/Interrupt exchange for Hanbo AIO 3893.
+    /// The service validates the retained HID collection and a matching
+    /// status-1 reply before reporting acknowledgement.
+    HidNodeHanboCooler {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        command: razer_device::hanbo_cooler::CoolerCommand,
     },
     HidNodeReceiverStatus {
         node: razer_device::backend::HidNode,
@@ -918,6 +939,9 @@ impl ServiceClient {
                 | ServiceRequest::SeirenNativeCall { .. }
                 | ServiceRequest::SeirenNativeEvents { .. }
                 | ServiceRequest::SeirenNativeClose { .. }
+                | ServiceRequest::SurroundOpen { .. }
+                | ServiceRequest::SurroundChange { .. }
+                | ServiceRequest::SurroundClose { .. }
                 | ServiceRequest::ReceiverBrightnessWrite { .. }
                 | ServiceRequest::AudioRouteDevice { .. }
                 | ServiceRequest::AudioRoutingEnable { .. }
@@ -957,6 +981,7 @@ impl ServiceClient {
                 | ServiceRequest::StopMappingKeyCapture
                 | ServiceRequest::StartShortcutCapture
                 | ServiceRequest::HidNodeWrite { .. }
+                | ServiceRequest::HidNodeHanboCooler { .. }
                 | ServiceRequest::HidNodeMixerWrite { .. }
                 | ServiceRequest::HidNodeMixerLocalWrite { .. }
                 | ServiceRequest::AudioMixerMeterStart { .. }

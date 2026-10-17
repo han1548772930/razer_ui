@@ -2427,6 +2427,7 @@ impl MouseProductWorkspace {
                                     .child(
                                         div()
                                             .size(surface::css(40.))
+                                            .flex_shrink_0()
                                             .flex()
                                             .items_center()
                                             .justify_center()

@@ -2868,7 +2868,12 @@ impl SourceProductWorkspace {
             FamilyBody::Audio(body)
         } else if super::system_products::source_product(device.product_id).is_some() {
             let body = cx.new(|cx| {
-                super::system_products::SystemProductWorkspace::new(device.product_id, window, cx)
+                super::system_products::SystemProductWorkspace::new(
+                    device.product_id,
+                    device.edition_id,
+                    window,
+                    cx,
+                )
             });
             subscriptions.push(cx.subscribe(
                 &body,
@@ -2879,11 +2884,14 @@ impl SourceProductWorkspace {
             FamilyBody::System(body)
         } else if super::accessory_system_products::source_product(device.product_id).is_some() {
             let body = cx.new(|cx| {
-                super::accessory_system_products::AccessorySystemProductWorkspace::new(
-                    device.product_id,
-                    window,
-                    cx,
-                )
+                let mut body =
+                    super::accessory_system_products::AccessorySystemProductWorkspace::new(
+                        device.product_id,
+                        window,
+                        cx,
+                    );
+                body.set_device_artwork(device.edition_id, device.layout_id, cx);
+                body
             });
             subscriptions.push(cx.subscribe(
                 &body,
@@ -2892,6 +2900,15 @@ impl SourceProductWorkspace {
                  _: &super::accessory_system_products::AccessorySystemProductChanged,
                  cx| {
                     this.capture(body.read(cx).snapshot(), cx);
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self,
+                 _,
+                 request: &super::accessory_system_products::HanboCoolerRequested,
+                 cx| {
+                    cx.emit(WorkspaceEvent::HanboCoolerRequested(request.clone()));
                 },
             ));
             FamilyBody::AccessorySystem(body)
@@ -3220,6 +3237,21 @@ impl SourceProductWorkspace {
     }
     pub fn device(&self) -> &Device {
         &self.device
+    }
+
+    pub fn finish_hanbo_command(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let FamilyBody::AccessorySystem(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_hanbo_command(generation, result, cx));
+        }
+    }
+
+    pub fn hanbo_command_matches(&self, generation: u64, cx: &App) -> bool {
+        matches!(&self.body, FamilyBody::AccessorySystem(body) if body.read(cx).hanbo_command_matches(generation))
     }
     pub fn receiver_brightness_matches(
         &self,

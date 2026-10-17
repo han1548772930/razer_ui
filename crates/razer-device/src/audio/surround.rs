@@ -351,6 +351,11 @@ pub struct Runtime {
     test_signal: Option<bool>,
 }
 impl Runtime {
+    /// Initial runtime from the stored comboMode preferences. Volumes and the
+    /// audition signal stay unobserved until a native receipt exists.
+    pub fn with_settings(settings: Settings) -> Self {
+        Self { settings, ..Self::default() }
+    }
     pub fn settings(&self) -> &Settings {
         &self.settings
     }

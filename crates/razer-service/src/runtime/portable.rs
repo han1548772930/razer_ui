@@ -316,6 +316,48 @@ impl PortableRuntime {
         Ok(response)
     }
 
+    fn hanbo_cooler(
+        &self,
+        node: &HidNode,
+        product_id: u32,
+        command: &razer_device::hanbo_cooler::CoolerCommand,
+    ) -> anyhow::Result<Value> {
+        use razer_device::hanbo_cooler::{self, PRODUCT_ID, REPORT_LENGTH};
+
+        ensure!(
+            product_id == PRODUCT_ID,
+            "Hanbo cooler command requires source product 3893"
+        );
+        let started = Instant::now();
+        let validate = || {
+            ensure!(
+                started.elapsed() < Duration::from_secs(20),
+                "Hanbo cooler command deadline expired"
+            );
+            Self::revalidate(node)
+        };
+        validate()?;
+        let device = with_backend(|backend| backend.open(node))?;
+        let lengths = device.report_lengths()?;
+        ensure!(
+            lengths.output.values().any(|length| *length == REPORT_LENGTH),
+            "Hanbo Output Report differs from the source descriptor"
+        );
+        hanbo_cooler::exchange(device.as_ref(), command, validate)?;
+        validate()?;
+        Ok(json!({
+            "node": node,
+            "product_id": product_id,
+            "command": command,
+            "acknowledged": true,
+            "transport_metadata": device.metadata(),
+            "report_lengths": lengths,
+            "identity_scope": "hid_collection",
+            "elapsed_ms": started.elapsed().as_millis() as u64,
+            "evidence": ".analysis/inputs/frontend/accessories-mw-3893-current/raw/apps.razer.com/synapse/products/3893/mw/6259.e34ab9ddf1b145a67b62.js"
+        }))
+    }
+
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
             ServiceRequest::KeyboardIndicator { target, change } => {
@@ -744,6 +786,11 @@ impl PortableRuntime {
                     "identity_scope":"hid_collection","elapsed_ms":started.elapsed().as_millis() as u64,
                     "evidence":"docs/re/device-write-capabilities-current-evidence.json"}))
             }
+            ServiceRequest::HidNodeHanboCooler {
+                node,
+                product_id,
+                command,
+            } => self.hanbo_cooler(&node, product_id, &command),
             ServiceRequest::HidNodeReceiverStatus { node } => {
                 self.receiver_status(&node, None)
             }

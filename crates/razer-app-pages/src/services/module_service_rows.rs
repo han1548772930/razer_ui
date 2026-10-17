@@ -673,7 +673,8 @@ impl ModuleCatalog {
                         "description-image-{}",
                         service::identity(row)
                     )))
-                    .accessibility_label(service::localized(details.get("title"), &locale))
+                    .role(Role::Image)
+                    .aria_label(service::localized(details.get("title"), &locale))
                     .w(surface::css(288.))
                     .h(surface::css(162.))
                     .mr(surface::css(20.))
@@ -899,6 +900,8 @@ fn read_module_service_source_catalog() -> ModuleServiceSource {
             0 => ModuleServiceSource {
                 categories: r.child(decode_1)?,
                 subcategory_parents: r.child(decode_1)?,
+                description_images: r.child(decode_3)?,
+                description_fallback: r.child(decode_2)?,
             },
             _ => anyhow::bail!("Invalid typed catalog alternative"),
         };
@@ -923,10 +926,20 @@ fn read_module_service_source_catalog() -> ModuleServiceSource {
         r.finish()?;
         Ok(value)
     }
+    fn decode_3(
+        r: &mut razer_resource_db::NodeReader<'_>,
+    ) -> anyhow::Result<std::collections::BTreeMap<String, String>> {
+        let value = match r.tag()? {
+            0 => r.map(decode_2, decode_2)?,
+            _ => anyhow::bail!("Invalid typed catalog alternative"),
+        };
+        r.finish()?;
+        Ok(value)
+    }
     razer_resource_db::read_document(
         razer_resource_db::catalogs::RAZER_APP_PAGES_MODULE_SERVICE_SOURCE,
         0,
-        "a959a513c78cc21189c0ccfbfc9dd94337f458b5bbe631019e8610d4d180bde0",
+        "798d9d38e6d8f90f864ad7122d14ca7c71007bb306b35d5651c5d4f2dbc0304c",
         decode_0,
     )
     .expect("Packaged typed catalog must match its domain schema")

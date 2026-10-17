@@ -206,6 +206,7 @@ mod system_products;
 
 #[path = "accessories/accessory_system_products.rs"]
 mod accessory_system_products;
+pub use accessory_system_products::HanboCoolerRequested;
 #[path = "accessories/aether_strip.rs"]
 pub mod aether_strip;
 #[path = "automation.rs"]

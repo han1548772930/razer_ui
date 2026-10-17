@@ -2,17 +2,20 @@
 //! Profiles, system settings and hardware observations have separate ownership.
 //! These controls edit local drafts; they do not fabricate hardware responses.
 use gpui_kit::component::{
-    Disableable, Selectable,
+    ActiveTheme as _, Disableable, Selectable,
     button::Button,
     checkbox::Checkbox,
     h_flex,
+    select::{SelectEvent, SelectState},
     slider::{Slider, SliderEvent, SliderState},
     v_flex,
 };
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use razer_i18n::t;
-use razer_widgets::surface;
+use razer_widgets::{surface, synapse_select};
+
+use super::controls::Choice;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
@@ -65,8 +68,9 @@ pub fn source_product(pid: u32) -> Option<&'static SystemProductSpec> {
     PRODUCTS.get(pid)
 }
 
-// PID563 main.7084ce8a and PID564 main.1f11c347: each reducer
-// retains its own activeMode. A tab is an editing target, not AC observation.
+// Every current system build mounts the same brightnessSystemReducer and
+// switchOffLightingSystemReducer, each retaining its own activeMode. A tab is
+// an editing target, not an AC observation.
 #[derive(Clone, Copy, Debug)]
 enum PowerSection {
     Performance,
@@ -74,19 +78,12 @@ enum PowerSection {
     SwitchOff,
 }
 
-fn reviewed_lighting(pid: u32) -> bool {
-    matches!(pid, 563 | 564)
-}
+// `checkLowBatteryPercent` slider in every current system build: min 10, max 50, step 1.
+const LOW_BATTERY_PERCENT_RANGE: (f32, f32, f32) = (10., 50., 1.);
+// Brightness component: the battery warning and slider-tip `*` appear from 80%.
+const BRIGHTNESS_BATTERY_WARNING_FROM: f64 = 80.;
 
-fn lighting_battery_range(pid: u32) -> (f32, f32, f32) {
-    if reviewed_lighting(pid) {
-        (10., 50., 1.)
-    } else {
-        (5., 50., 5.)
-    }
-}
-
-// Complete H()/U() switch-off-lighting gate from the current mounted roots.
+// Complete R() switch-off-lighting gate from the current mounted roots.
 fn switch_off_disabled(profile: &Value, mode: &str) -> bool {
     let brightness = &profile["brightness"];
     if brightness["isTwoMode"] == true {
@@ -97,6 +94,13 @@ fn switch_off_disabled(profile: &Value, mode: &str) -> bool {
             && brightness["battery"]["isEnabled"] != true;
     }
     brightness[mode]["isEnabled"] != true
+}
+
+fn logo_choices(spec: &SystemProductSpec) -> Vec<Choice> {
+    spec.logo_effects
+        .iter()
+        .map(|effect| Choice::localized(effect.id.to_string(), effect.name.clone()))
+        .collect()
 }
 
 pub struct SystemProductChanged;
@@ -112,6 +116,9 @@ pub struct SystemProductWorkspace {
     selected_mapping: Option<String>,
     sliders: BTreeMap<String, Entity<SliderState>>,
     ranges: BTreeMap<String, (f32, f32, f32)>,
+    // Logo dropdown (`dataSet: LOGO_EFFECTS`, 150px); mounted only when the
+    // product has logo effects and `deviceReducer.editionId === 0`.
+    logo: Option<Entity<SelectState<Vec<Choice>>>>,
     subscriptions: Vec<Subscription>,
     syncing: bool,
 }
@@ -119,8 +126,9 @@ pub struct SystemProductWorkspace {
 impl EventEmitter<SystemProductChanged> for SystemProductWorkspace {}
 
 impl SystemProductWorkspace {
-    pub fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(pid: u32, edition_id: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let spec = source_product(pid).expect("audited system product");
+        debug_assert_eq!(spec.product_id, pid, "catalog entry keyed by product id");
         let mut this = Self {
             spec,
             page: "TAB_CUSTOMIZE".into(),
@@ -132,10 +140,17 @@ impl SystemProductWorkspace {
             selected_mapping: None,
             sliders: BTreeMap::new(),
             ranges: BTreeMap::new(),
+            logo: None,
             subscriptions: vec![],
             syncing: false,
         };
-        let (battery_min, battery_max, battery_step) = lighting_battery_range(pid);
+        if !spec.logo_effects.is_empty()
+            && edition_id == 0
+            && this.draft["profile"]["logoLighting"].is_object()
+        {
+            this.add_logo_select(window, cx);
+        }
+        let (battery_min, battery_max, battery_step) = LOW_BATTERY_PERCENT_RANGE;
         for power in ["plugged", "battery", "twoMode"] {
             this.add_slider(
                 &format!("/profile/brightness/{power}/value"),
@@ -240,6 +255,7 @@ impl SystemProductWorkspace {
                 }
             }
         }
+        this.sync_sliders(window, cx);
         this
     }
 
@@ -369,6 +385,16 @@ impl SystemProductWorkspace {
                     let next =
                         (min + ((value.start() - min) / step).round() * step).clamp(min, max);
                     this.set_value(&key, json!(next as f64));
+                    // Brightness changeValue: `if (e > 0 && !l) setBrightnessEnable(true)`.
+                    if let Some(mode) = key
+                        .strip_prefix("/profile/brightness/")
+                        .and_then(|rest| rest.strip_suffix("/value"))
+                    {
+                        let enabled = format!("/profile/brightness/{mode}/isEnabled");
+                        if next > 0. && !this.checked(&enabled) {
+                            this.set_value(&enabled, json!(true));
+                        }
+                    }
                     this.sync_sliders(window, cx);
                     this.changed(cx);
                 }
@@ -378,12 +404,57 @@ impl SystemProductWorkspace {
         self.sliders.insert(path.into(), state);
     }
 
+    fn add_logo_select(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let choices = logo_choices(self.spec);
+        let state = cx.new(|cx| SelectState::new(choices, None, window, cx));
+        self.subscriptions.push(
+            cx.subscribe_in(&state, window, |this, _, event, window, cx| {
+                if this.syncing {
+                    return;
+                }
+                let SelectEvent::Confirm(Some(id)) = event else {
+                    return;
+                };
+                let Ok(id) = id.parse::<i64>() else {
+                    return;
+                };
+                // setLogoSystemEffect writes logoLighting[isTwoMode ? "twoMode" : activeMode].
+                let path = format!("/profile/logoLighting/{}/effectId", this.brightness_mode());
+                this.set_value(&path, json!(id));
+                this.sync_sliders(window, cx);
+                this.changed(cx);
+            }),
+        );
+        self.logo = Some(state);
+    }
+
+    fn brightness_mode(&self) -> &str {
+        if self.checked("/profile/brightness/isTwoMode") {
+            "twoMode"
+        } else {
+            &self.brightness_power
+        }
+    }
+
     fn sync_sliders(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.syncing = true;
         for (path, slider) in &self.sliders {
             if let Some(value) = self.draft.pointer(path).and_then(Value::as_f64) {
                 slider.update(cx, |slider, cx| slider.set_value(value as f32, window, cx));
             }
+        }
+        if let Some(logo) = &self.logo {
+            let path = format!("/profile/logoLighting/{}/effectId", self.brightness_mode());
+            let selected = self
+                .draft
+                .pointer(&path)
+                .and_then(Value::as_i64)
+                .filter(|id| self.spec.logo_effects.iter().any(|effect| effect.id == *id))
+                .map(|id| id.to_string());
+            logo.update(cx, |state, cx| match selected {
+                Some(id) => state.set_selected_value(&id, window, cx),
+                None => state.set_selected_index(None, window, cx),
+            });
         }
         self.syncing = false;
     }
@@ -419,9 +490,11 @@ impl SystemProductWorkspace {
             .label(label)
             .checked(self.checked(&path))
             .disabled(!enabled)
-            .on_click(cx.listener(move |this, next, _, cx| {
+            .on_click(cx.listener(move |this, next, window, cx| {
                 if enabled {
                     this.set_value(&path, json!(*next));
+                    // Linking brightness changes the logo effect's target mode.
+                    this.sync_sliders(window, cx);
                     this.changed(cx);
                 }
             }))
@@ -482,9 +555,6 @@ impl SystemProductWorkspace {
     }
 
     fn selected_power(&self, section: PowerSection) -> &str {
-        if !reviewed_lighting(self.spec.product_id) {
-            return &self.power;
-        }
         match section {
             PowerSection::Performance => &self.power,
             PowerSection::Brightness => &self.brightness_power,
@@ -493,11 +563,13 @@ impl SystemProductWorkspace {
     }
 
     fn power_tabs(&self, section: PowerSection, cx: &Context<Self>) -> AnyElement {
+        // Two-way tab: in two-mode both tabs carry `active`; the left-column
+        // `.blade-lighting .is-two-mode .modes-tab` rule disables their pointer events.
         let linked = match section {
             PowerSection::Performance => false,
             PowerSection::Brightness => self.checked("/profile/brightness/isTwoMode"),
             PowerSection::SwitchOff => self.checked("/profile/switchOffLighting/isTwoMode"),
-        } && reviewed_lighting(self.spec.product_id);
+        };
         h_flex()
             .gap_2()
             .children(
@@ -511,23 +583,30 @@ impl SystemProductWorkspace {
                     )))
                     .outline()
                     .label(t(label))
-                    .selected(self.selected_power(section) == power)
+                    .selected(linked || self.selected_power(section) == power)
                     .disabled(linked)
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if reviewed_lighting(this.spec.product_id) {
-                            match section {
-                                PowerSection::Performance => this.power = power.into(),
-                                PowerSection::Brightness => this.brightness_power = power.into(),
-                                PowerSection::SwitchOff => this.switch_off_power = power.into(),
-                            }
-                        } else {
-                            this.power = power.into();
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        match section {
+                            PowerSection::Performance => this.power = power.into(),
+                            PowerSection::Brightness => this.brightness_power = power.into(),
+                            PowerSection::SwitchOff => this.switch_off_power = power.into(),
                         }
+                        this.sync_sliders(window, cx);
                         cx.notify();
                     }))
                 }),
             )
             .into_any_element()
+    }
+
+    fn link_toggle(&self, path: &str, cx: &Context<Self>) -> AnyElement {
+        // Link icon tip: LIGHTING_LINK_TOOLTIP when unlinked, LIGHTING_UNLINK_TOOLTIP when linked.
+        let label = if self.checked(path) {
+            "LIGHTING_UNLINK_TOOLTIP"
+        } else {
+            "LIGHTING_LINK_TOOLTIP"
+        };
+        self.toggle(path, t(label), true, cx)
     }
 
     fn performance(&self, cx: &Context<Self>) -> AnyElement {
@@ -811,49 +890,52 @@ impl SystemProductWorkspace {
 
     fn lighting(&self, cx: &Context<Self>) -> AnyElement {
         let linked = self.checked("/profile/brightness/isTwoMode");
-        let power = if linked {
-            "twoMode"
-        } else {
-            self.selected_power(PowerSection::Brightness)
-        };
+        let power = self.brightness_mode();
         let brightness = format!("/profile/brightness/{power}");
-        let mut left = v_flex().child(
-            surface::panel(t("BRIGHTNESS_HEADER"), cx)
-                .child(self.power_tabs(PowerSection::Brightness, cx))
-                .child(self.toggle(
-                    "/profile/brightness/isTwoMode",
-                    t("LIGHTING_LINK_TOOLTIP"),
-                    true,
-                    cx,
-                ))
-                .child(self.toggle(
-                    &format!("{brightness}/isEnabled"),
-                    t("BRIGHTNESS"),
-                    true,
-                    cx,
-                ))
-                .child(self.range(
-                    &format!("{brightness}/value"),
-                    t("BRIGHTNESS"),
-                    "%",
-                    self.checked(&format!("{brightness}/isEnabled")),
-                )),
-        );
-        if self.draft["profile"]["logoLighting"].is_object() {
-            left = left.child(
-                surface::panel(t("LOGO"), cx).child(h_flex().gap_2().children(
-                    self.spec.logo_effects.iter().map(|effect| {
-                        self.choice(
-                            &format!("/profile/logoLighting/{power}/effectId"),
-                            json!(effect.id),
-                            t(&effect.name),
-                            true,
-                            cx,
-                        )
-                    }),
-                )),
-            );
-        }
+        let brightness_enabled = self.checked(&format!("{brightness}/isEnabled"));
+        let brightness_value = self
+            .draft
+            .pointer(&format!("{brightness}/value"))
+            .and_then(Value::as_f64);
+        // A(): enabled && (activeMode !== "plugged" || isTwoMode) && value >= 80.
+        let battery_warning = brightness_enabled
+            && (linked || power != "plugged")
+            && brightness_value.is_some_and(|value| value >= BRIGHTNESS_BATTERY_WARNING_FROM);
+        let brightness_panel = surface::panel(t("SYSTEM_LIGHTING"), cx)
+            .child(self.power_tabs(PowerSection::Brightness, cx))
+            .child(self.link_toggle("/profile/brightness/isTwoMode", cx))
+            .child(self.toggle(
+                &format!("{brightness}/isEnabled"),
+                t("BRIGHTNESS_HEADER"),
+                true,
+                cx,
+            ))
+            .child(self.brightness_slider(&brightness, brightness_enabled, battery_warning))
+            .when(battery_warning, |panel| {
+                panel.child(
+                    div()
+                        .w_full()
+                        .text_right()
+                        .text_size(surface::css(15.))
+                        .text_color(cx.theme().warning)
+                        .child(t("BRIGHTNESS_BATTERY_WARNING")),
+                )
+            })
+            .when_some(self.logo.as_ref(), |panel, logo| {
+                panel
+                    .child(
+                        div()
+                            .mt(surface::css(20.))
+                            .mb(surface::css(10.))
+                            .child(t("LOGO")),
+                    )
+                    .child(
+                        synapse_select::select(logo)
+                            .items(logo_choices(self.spec))
+                            .accessibility_label(t("LOGO"))
+                            .w(surface::css(150.)),
+                    )
+            });
         let effects =
             surface::panel(t("QUICK_EFFECTS"), cx).child(h_flex().flex_wrap().gap_2().children(
                 self.spec.effects.iter().map(|effect| {
@@ -872,23 +954,15 @@ impl SystemProductWorkspace {
             self.selected_power(PowerSection::SwitchOff)
         };
         let root = format!("/profile/switchOffLighting/{off_power}");
-        let reviewed = reviewed_lighting(self.spec.product_id);
-        let off_enabled = !reviewed || !switch_off_disabled(&self.draft["profile"], off_power);
-        let battery_label = if reviewed && off_power == "twoMode" {
+        let off_enabled = !switch_off_disabled(&self.draft["profile"], off_power);
+        let battery_label = if off_power == "twoMode" {
             "CHECK_LOW_BATTERY_PERCENT_LINKED"
         } else {
             "CHECK_LOW_BATTERY_PERCENT"
         };
         let off = surface::panel(t("SWITCH_OFF_LIGHTING_HEADER"), cx)
-            .when(reviewed, |panel| {
-                panel.child(self.power_tabs(PowerSection::SwitchOff, cx))
-            })
-            .child(self.toggle(
-                "/profile/switchOffLighting/isTwoMode",
-                t("LIGHTING_LINK_TOOLTIP"),
-                true,
-                cx,
-            ))
+            .child(self.power_tabs(PowerSection::SwitchOff, cx))
+            .child(self.link_toggle("/profile/switchOffLighting/isTwoMode", cx))
             .child(self.toggle(
                 &format!("{root}/isDisplayOn"),
                 t("DISPLAY_TURNED_OFF"),
@@ -907,26 +981,55 @@ impl SystemProductWorkspace {
                 " min",
                 off_enabled && self.checked(&format!("{root}/isIdleEnabled")),
             ))
-            .when(!reviewed || off_power != "plugged", |panel| {
+            // M(): activeMode === "battery" || isTwoMode.
+            .when(off_power != "plugged", |panel| {
                 panel
                     .child(self.toggle(
                         &format!("{root}/isLowBatteryPercent"),
                         t(battery_label),
-                        off_enabled && off_power != "plugged",
+                        off_enabled,
                         cx,
                     ))
                     .child(self.range(
                         &format!("{root}/lowBatteryPercent"),
                         t(battery_label),
                         "%",
-                        off_enabled
-                            && off_power != "plugged"
-                            && self.checked(&format!("{root}/isLowBatteryPercent")),
+                        off_enabled && self.checked(&format!("{root}/isLowBatteryPercent")),
                     ))
             });
+        // `.blade-lighting`: brightness and switch-off share the left column,
+        // the effect selector owns the right column.
         surface::page_columns()
-            .child(surface::page_column(left))
-            .child(surface::page_column(v_flex().child(effects).child(off)))
+            .child(surface::page_column(
+                v_flex().child(brightness_panel).child(off),
+            ))
+            .child(surface::page_column(effects))
+            .into_any_element()
+    }
+
+    fn brightness_slider(&self, root: &str, enabled: bool, reference: bool) -> AnyElement {
+        let path = format!("{root}/value");
+        let Some(slider) = self.sliders.get(&path) else {
+            return div().into_any_element();
+        };
+        let value = self
+            .draft
+            .pointer(&path)
+            .and_then(Value::as_f64)
+            .unwrap_or_default();
+        // `.slider-container.brightness` keeps pointer events while off at
+        // opacity .3; the tip gains `*` with the battery warning.
+        v_flex()
+            .gap_3()
+            .when(!enabled, |slider| slider.opacity(0.3))
+            .child(
+                h_flex()
+                    .justify_between()
+                    .child(t("OFF"))
+                    .child(format!("{value:.0}{}", if reference { "*" } else { "" }))
+                    .child(t("BRIGHT")),
+            )
+            .child(Slider::new(slider))
             .into_any_element()
     }
 
@@ -1226,7 +1329,7 @@ fn merge_known(target: &mut Value, saved: &Value) {
 
 #[cfg(test)]
 mod lighting_tests {
-    use super::{lighting_battery_range, switch_off_disabled};
+    use super::{LOW_BATTERY_PERCENT_RANGE, source_product, switch_off_disabled};
     use serde_json::json;
 
     #[::core::prelude::v1::test]
@@ -1255,10 +1358,12 @@ mod lighting_tests {
         }
     }
 
+    // Every current system build's `checkLowBatteryPercent` slider: min 10, max 50, step 1.
     #[::core::prelude::v1::test]
-    fn blade_low_battery_slider_accepts_each_source_percentage_from_ten_to_fifty() {
-        for pid in [563, 564] {
-            assert_eq!(lighting_battery_range(pid), (10., 50., 1.));
+    fn low_battery_slider_matches_the_shared_switch_off_component() {
+        assert_eq!(LOW_BATTERY_PERCENT_RANGE, (10., 50., 1.));
+        for pid in [563, 569, 650, 709, 737] {
+            assert!(source_product(pid).is_some(), "system product {pid}");
         }
     }
 }

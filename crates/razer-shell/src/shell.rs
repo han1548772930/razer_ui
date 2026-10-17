@@ -35,6 +35,8 @@ mod audio_mixer;
 mod audio_notifications;
 #[path = "shell/audio/audio_volume.rs"]
 mod audio_volume;
+#[path = "shell/accessories/hanbo_cooler.rs"]
+mod hanbo_cooler;
 #[path = "shell/windows/chroma_studio_window.rs"]
 mod chroma_studio_window;
 #[path = "shell/windows/chroma_window.rs"]
@@ -281,6 +283,7 @@ pub struct AppShell {
     local_pairing_records: Option<serde_json::Value>,
     discovery_revision: u64,
     device_observations: Vec<razer_discovery::discovery::ObservedDevice>,
+    hanbo_cooler_guards: BTreeMap<String, std::sync::Arc<std::sync::atomic::AtomicBool>>,
     keyboard_actuation_operations: BTreeMap<EntityId, keyboard_actuation_write::Session>,
     keyboard_actuation_workers: Vec<std::thread::JoinHandle<()>>,
     keyboard_wristrest: BTreeMap<String, keyboard_wristrest::Session>,
@@ -520,6 +523,7 @@ impl AppShell {
             receiver_reconnect_diagnostics: BTreeMap::new(),
             discovery_revision: 0,
             device_observations: Vec::new(),
+            hanbo_cooler_guards: BTreeMap::new(),
             keyboard_actuation_operations: BTreeMap::new(),
             keyboard_actuation_workers: Vec::new(),
             keyboard_wristrest: BTreeMap::new(),
@@ -1211,6 +1215,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::KeyboardLightingRequested(request) => {
                     this.request_keyboard_lighting(entity.clone(), request, window, cx);
+                }
+                WorkspaceEvent::HanboCoolerRequested(request) => {
+                    this.request_hanbo_cooler(entity.clone(), request, window, cx);
                 }
                 WorkspaceEvent::MouseLightingRequested(request) => {
                     this.request_mouse_lighting(entity.clone(), request, window, cx);
@@ -2990,6 +2997,7 @@ impl AppShell {
             }));
         }
         runtime.update(cx, |runtime, cx| runtime.prepare_exit(cx));
+        self.cancel_hanbo_cooler();
         self.cancel_seiren_audio_captures(cx);
         self.cancel_seiren_audio_playbacks();
         self.retire_controller_lighting_owners(cx);
@@ -3434,7 +3442,7 @@ impl AppShell {
 }
 impl Render for AppShell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let resource_errors = razer_assets::resource_errors();
+        let resource_errors = razer_assets::resource_errors(cx);
         let keyboard_app_frame = match &self.location {
             Location::Device(key) => self
                 .devices
@@ -3575,7 +3583,7 @@ impl Render for AppShell {
                                                     .unwrap_or_default(),
                                             )
                                             .on_click(|_, _, cx| {
-                                                if let Err(error) = razer_assets::retry_resources()
+                                                if let Err(error) = razer_assets::retry_resources(cx)
                                                 {
                                                     eprintln!("资源重试失败：{error}");
                                                 }

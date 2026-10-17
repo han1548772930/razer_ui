@@ -767,12 +767,17 @@ impl MouseProductWorkspace {
                     4.
                 }))
                 .rounded(surface::css(3.))
-                .hover(|style| style.bg(Palette::ordinal()))
-                .active(|style| style.bg(Palette::pressed()))
-                .when(self.dpi_dragged_row == Some(index), |row| {
-                    row.bg(Palette::dragged())
-                        .hover(|style| style.bg(Palette::dragged()))
-                        .active(|style| style.bg(Palette::dragged()))
+                // GPUI accepts one hover refinement per element; a dragged row
+                // keeps its drag background for hover and press.
+                .map(|row| {
+                    if self.dpi_dragged_row == Some(index) {
+                        row.bg(Palette::dragged())
+                            .hover(|style| style.bg(Palette::dragged()))
+                            .active(|style| style.bg(Palette::dragged()))
+                    } else {
+                        row.hover(|style| style.bg(Palette::ordinal()))
+                            .active(|style| style.bg(Palette::pressed()))
+                    }
                 })
                 .child(
                     div()

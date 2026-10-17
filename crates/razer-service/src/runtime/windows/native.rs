@@ -128,6 +128,8 @@ mod mixer_lighting;
 mod mixer_meter;
 #[path = "audio/seiren_audio_capture.rs"]
 mod seiren_audio_capture_adapter;
+#[path = "audio/surround.rs"]
+mod surround_adapter;
 #[path = "shortcut_capture.rs"]
 mod shortcut_capture;
 pub(super) fn mixer_lighting_sample(node: &HidNode, sources: [u8; 4]) -> anyhow::Result<Value> {
@@ -259,6 +261,7 @@ pub(super) struct NativeRuntime {
     mixer_meter: Option<mixer_meter::Meter>,
     mixer_hardware: Option<mixer_hardware::Hardware>,
     seiren_audio: device_reads::SeirenAudio,
+    surround: surround_adapter::State,
     poisoned: bool,
 }
 
@@ -285,6 +288,7 @@ impl NativeRuntime {
             mixer_meter: None,
             mixer_hardware: None,
             seiren_audio: device_reads::SeirenAudio::default(),
+            surround: surround_adapter::State::default(),
             poisoned: false,
         }
     }
@@ -514,6 +518,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeMouseReceiverPolling { .. }
             | ServiceRequest::HidNodeMouseReceiverIdle { .. }
             | ServiceRequest::HidNodeWrite { .. }
+            | ServiceRequest::HidNodeHanboCooler { .. }
             | ServiceRequest::HidNodeMixerRead { .. }
             | ServiceRequest::HidNodeMixerLocalWrite { .. }
             | ServiceRequest::HidNodeMixerWrite { .. }
@@ -621,6 +626,15 @@ impl NativeRuntime {
             } => self.seiren_audio.call(&target, &native_operation),
             ServiceRequest::SeirenNativeEvents { target } => self.seiren_audio.events(&target),
             ServiceRequest::SeirenNativeClose { target } => self.seiren_audio.close(&target),
+            ServiceRequest::SurroundOpen { identity, settings } => {
+                let validate = surround_identity(&identity);
+                self.surround.open(&identity, &settings, validate)
+            }
+            ServiceRequest::SurroundChange { identity, change } => {
+                let validate = surround_identity(&identity);
+                self.surround.change(&identity, &change, validate)
+            }
+            ServiceRequest::SurroundClose { identity } => self.surround.close(&identity),
             ServiceRequest::BleMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power_ble(&target, &change)
             }
@@ -930,6 +944,15 @@ pub(super) fn mixer_restart_streams(
     mixer_driver::restart(node, product_id)
 }
 
+/// Current Carol owners address the native route by the device ContainerId;
+/// each native task revalidates that the same physical product is present.
+fn surround_identity(
+    identity: &razer_device::audio_surround::Identity,
+) -> impl Fn() -> anyhow::Result<()> + use<> {
+    let container = identity.container_id().to_owned();
+    let product = u32::from(identity.product());
+    move || native_target(&container, Some(product)).map(|_| ())
+}
 /// Native container getters require a real, uniquely observed physical device.
 /// This uses the same current USB enumeration and product identity projection
 /// as discovery; arbitrary CLI strings and local profiles are not observations.

@@ -375,6 +375,11 @@ impl MouseProductWorkspace {
             // restored device basic settings are overlaid afterwards.
             self.draft["lowPowerMode"] = json!(30);
         }
+        if self.low_battery_range().is_some() {
+            // Current lowBatteryEffectReducer initial state lE is
+            // {blinkLedPercentage:5}; restored device settings overlay it.
+            self.draft["lowBatteryEffects"] = json!(5);
+        }
         if matches!(self.spec.product_id, 117 | 2594) && self.draft.get("dimLighting").is_none() {
             // dimLightingReducer's JE: a UI initial value, never a device read.
             self.draft["dimLighting"] = json!({"isEnabled": false, "value": 2});
@@ -491,6 +496,39 @@ impl MouseProductWorkspace {
         .child(surface::h1_body(t("LOW_POWER_MODE_DESC"), cx))
         .child(self.power_slider("/lowPowerMode", minimum, maximum, enabled, cx))
         .children((!enabled).then(|| div().mt(surface::css(15.)).child(t("LOW_POWER_MODE_WARN"))))
+    }
+
+    /// Mounted LowBatteryEffects slider bounds; the device capability owns
+    /// the DeviceInfo minLBE/maxLBE/StepLBE values used for validation.
+    pub(super) fn low_battery_range(
+        &self,
+    ) -> Option<razer_device::mouse_current_power::LowBatteryRange> {
+        self.spec
+            .low_battery_slider
+            .then(|| razer_device::mouse_current_power::capability(self.spec.product_id))
+            .flatten()
+            .and_then(|cap| cap.low_battery())
+    }
+
+    /// Current sA: fs{title G7P, tips kG1, hasSwitch:false}, .h1-body kM8 and
+    /// the shared slider with numeric min/max tags (no percent sign).
+    pub(super) fn low_battery_card(&self, cx: &Context<Self>) -> Option<Div> {
+        let range = self.low_battery_range()?;
+        Some(
+            surface::panel_with_help(
+                t("LOW_BATTERY_EFFECTS_HEADER"),
+                surface::help_control("mouse-low-battery-help", t("LOW_BATTERY_EFFECTS_TOOLTIP")),
+                cx,
+            )
+            .child(surface::h1_body(t("LOW_BATTERY_EFFECTS_DESC"), cx))
+            .child(self.power_slider(
+                "/lowBatteryEffects",
+                &range.min.to_string(),
+                &range.max.to_string(),
+                true,
+                cx,
+            )),
+        )
     }
 
     pub(super) fn power_dim_lighting(&self, cx: &Context<Self>) -> Div {

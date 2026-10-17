@@ -348,6 +348,11 @@ fn viper_v4_selection_without_hover_uses_source_active_position_through_panel_ro
         // its hover y-coordinate while the cutout remains visible.
         assert_eq!((position.x, position.y), (186., 173.));
         assert!(window.try_find("mouse-current-cycle-image").is_some());
+        // The mapping popup is a production deferred surface.  Its initial
+        // collapsed menu still mounts the first function icon column while
+        // the main cycle cutout remains selected behind it.
+        let menu_icon = window.find("mouse-current-menu-DEFAULT-0");
+        assert_eq!(menu_icon.bounds().size.width, px(40.));
         owner.update(cx, |owner, cx| {
             owner.set_current_customize_input(None, false);
             cx.notify();

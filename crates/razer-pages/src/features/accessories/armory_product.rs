@@ -30,8 +30,8 @@ pub fn supports(device: &Device) -> bool {
 
 /// 3893's BC.runtimeData initial values. These are source initialization,
 /// never a measurement or acknowledgement from a connected device.
-#[derive(Default)]
-struct HanboRuntime {
+#[derive(Clone, Copy, Default)]
+pub(crate) struct HanboRuntime {
     cpu_temp: f32,
     cpu_speed: f32,
     fan_speed: f32,
@@ -75,31 +75,163 @@ impl ArmoryProduct {
             self.device.layout_id,
             resources::DeviceImage::Product,
         );
-        div()
-            .relative()
-            .flex()
-            .items_center()
-            .justify_center()
-            .w_full()
-            .min_w_0()
-            .max_w(css(1220.))
-            .h(css(height))
-            .my(css(10.))
-            .mx_auto()
-            .flex_shrink_0()
-            .child(surface::dot_background(cx))
-            .when_some(artwork, |view, path| {
-                view.child(
-                    img(path)
-                        .relative()
-                        .w_full()
-                        .h(css(image_height))
-                        .flex_shrink_0()
-                        .object_fit(ObjectFit::Contain),
-                )
-            })
-            .into_any_element()
+        product_image(artwork, height, image_height, cx)
     }
+}
+
+fn product_image(
+    artwork: Option<&'static str>,
+    height: f32,
+    image_height: f32,
+    cx: &App,
+) -> AnyElement {
+    div()
+        .relative()
+        .flex()
+        .items_center()
+        .justify_center()
+        .w_full()
+        .min_w_0()
+        .max_w(css(1220.))
+        .h(css(height))
+        .my(css(10.))
+        .mx_auto()
+        .flex_shrink_0()
+        .child(surface::dot_background(cx))
+        .when_some(artwork, |view, path| {
+            view.child(
+                img(path)
+                    .relative()
+                    .w_full()
+                    .h(css(image_height))
+                    .flex_shrink_0()
+                    .object_fit(ObjectFit::Contain),
+            )
+        })
+        .into_any_element()
+}
+
+/// Shared `fg` CoolerInfo: `Cg` ProductImage (200px), the three metric groups
+/// and `°C/°F` buttons. `on_unit` is the owner's `setCelsiusMode`.
+pub(crate) type UnitHandler = std::rc::Rc<dyn Fn(bool, &mut Window, &mut App)>;
+
+pub(crate) fn hanbo_cooler_info(
+    artwork: Option<&'static str>,
+    celsius: bool,
+    runtime: &HanboRuntime,
+    on_unit: UnitHandler,
+    window: &Window,
+    cx: &App,
+) -> AnyElement {
+    v_flex()
+        .w_full()
+        .min_w_0()
+        .relative()
+        .child(product_image(artwork, 200., 200., cx))
+        .child(hanbo_metrics(celsius, runtime, on_unit, window))
+        .into_any_element()
+}
+
+fn hanbo_metrics(
+    celsius: bool,
+    runtime: &HanboRuntime,
+    on_unit: UnitHandler,
+    window: &Window,
+) -> AnyElement {
+    let cpu = group([
+        detail(
+            "CPU_TEMP",
+            temperature(runtime.cpu_temp, celsius),
+            118.,
+            false,
+        ),
+        detail(
+            "CPU_SPEED",
+            format!("{} GHZ", runtime.cpu_speed),
+            103.,
+            true,
+        ),
+    ])
+    .into_any_element();
+    let cooling = group([
+        detail(
+            "FAN_SPEED",
+            format!("{} RPM", runtime.fan_speed),
+            141.,
+            false,
+        ),
+        detail(
+            "PUMP_SPEED",
+            format!("{} RPM", runtime.pump_speed),
+            141.,
+            false,
+        ),
+        detail(
+            "LIQUID_TEMP",
+            temperature(runtime.liquid_temp, celsius),
+            118.,
+            true,
+        ),
+    ])
+    .into_any_element();
+    let gpu = group([
+        detail(
+            "GPU_TEMP",
+            temperature(runtime.gpu_temp, celsius),
+            118.,
+            false,
+        ),
+        detail(
+            "GPU_SPEED",
+            format!("{} GHZ", runtime.gpu_speed),
+            103.,
+            false,
+        ),
+    ])
+    .child(
+        v_flex()
+            .items_stretch()
+            .font_family("RazerF5")
+            .text_size(css(14.))
+            .children([(true, "°C"), (false, "°F")].map(|(value, label)| {
+                let on_unit = on_unit.clone();
+                BaseButton::new(label)
+                    .p_0()
+                    .px(css(4.))
+                    .h(relative(0.5))
+                    .selected(value == celsius)
+                    .when(value == celsius, |b| {
+                        b.bg(rgb(0x707070)).text_color(rgb(0x111111))
+                    })
+                    .child(label)
+                    .on_click(move |_, window, cx| on_unit(value, window, cx))
+            })),
+    )
+    .into_any_element();
+    let compact = surface::stacked_device_columns(
+        f32::from(window.viewport_size().width),
+        f32::from(window.rem_size()),
+    );
+    h_flex()
+        .w_full()
+        .my(css(20.))
+        .mx_auto()
+        .px(css(10.))
+        .items_start()
+        .justify_between()
+        .when(compact, |v| {
+            v.flex_wrap()
+                .gap_x(css(20.))
+                .gap_y(css(10.))
+                .justify_center()
+                .max_w(css(1000.))
+        })
+        .children(if compact {
+            vec![cpu, gpu, cooling]
+        } else {
+            vec![cpu, cooling, gpu]
+        })
+        .into_any_element()
 }
 
 fn detail(label: &'static str, value: String, width: f32, last: bool) -> AnyElement {
@@ -166,106 +298,20 @@ impl RenderOnce for ArmoryProduct {
                 runtime: HanboRuntime::default(),
             },
         );
-        let data = state.read(cx);
-        let celsius = data.celsius;
-        let runtime = &data.runtime;
-        let cpu = group([
-            detail(
-                "CPU_TEMP",
-                temperature(runtime.cpu_temp, celsius),
-                118.,
-                false,
-            ),
-            detail(
-                "CPU_SPEED",
-                format!("{} GHZ", runtime.cpu_speed),
-                103.,
-                true,
-            ),
-        ])
-        .into_any_element();
-        let cooling = group([
-            detail(
-                "FAN_SPEED",
-                format!("{} RPM", runtime.fan_speed),
-                141.,
-                false,
-            ),
-            detail(
-                "PUMP_SPEED",
-                format!("{} RPM", runtime.pump_speed),
-                141.,
-                false,
-            ),
-            detail(
-                "LIQUID_TEMP",
-                temperature(runtime.liquid_temp, celsius),
-                118.,
-                true,
-            ),
-        ])
-        .into_any_element();
-        let gpu = group([
-            detail(
-                "GPU_TEMP",
-                temperature(runtime.gpu_temp, celsius),
-                118.,
-                false,
-            ),
-            detail(
-                "GPU_SPEED",
-                format!("{} GHZ", runtime.gpu_speed),
-                103.,
-                false,
-            ),
-        ])
-        .child(
-            v_flex()
-                .items_stretch()
-                .font_family("RazerF5")
-                .text_size(css(14.))
-                .children([(true, "°C"), (false, "°F")].map(|(value, label)| {
-                    BaseButton::new(label)
-                        .p_0()
-                        .px(css(4.))
-                        .h(relative(0.5))
-                        .selected(value == celsius)
-                        .when(value == celsius, |b| {
-                            b.bg(rgb(0x707070)).text_color(rgb(0x111111))
-                        })
-                        .child(label)
-                        .on_click(window.listener_for(&state, move |state, _, _, cx| {
-                            state.celsius = value;
-                            cx.notify();
-                        }))
-                })),
-        )
-        .into_any_element();
-        let compact = surface::stacked_device_columns(
-            f32::from(window.viewport_size().width),
-            f32::from(window.rem_size()),
-        );
-        root.child(
-            h_flex()
-                .w_full()
-                .my(css(20.))
-                .mx_auto()
-                .px(css(10.))
-                .items_start()
-                .justify_between()
-                .when(compact, |v| {
-                    v.flex_wrap()
-                        .gap_x(css(20.))
-                        .gap_y(css(10.))
-                        .justify_center()
-                        .max_w(css(1000.))
+        let celsius = state.read(cx).celsius;
+        let runtime = state.read(cx).runtime;
+        let unit_state = state.clone();
+        root.child(hanbo_metrics(
+            celsius,
+            &runtime,
+            std::rc::Rc::new(move |value, _, cx| {
+                unit_state.update(cx, |state, cx| {
+                    state.celsius = value;
+                    cx.notify();
                 })
-                .children(if compact {
-                    vec![cpu, gpu, cooling]
-                } else {
-                    vec![cpu, cooling, gpu]
-                }),
-        )
+            }),
+            window,
+        ))
         .into_any_element()
     }
 }

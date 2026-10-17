@@ -1262,7 +1262,9 @@ impl Render for GamepadProductWorkspace {
             "TAB_LIGHTING" => self.lighting(window, cx),
             "TAB_POWER" => self.power(cx),
             "TAB_CALIBRATION" => self.calibration(window, cx),
-            _ => surface::note("此页面的原生控件仍在接入。", cx).into_any_element(),
+            // The workspace routes only catalog page keys here; HELP is mounted by
+            // the shared workspace, so no other key has a gamepad body.
+            _ => div().into_any_element(),
         };
         super::product_surface::body()
             .child(content)

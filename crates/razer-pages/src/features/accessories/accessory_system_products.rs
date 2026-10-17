@@ -25,6 +25,8 @@ use std::{collections::BTreeMap, sync::OnceLock};
 
 #[path = "accessory_system_products/corex_fan.rs"]
 mod corex_fan;
+#[path = "accessory_system_products/hanbo_cooler.rs"]
+mod hanbo_cooler;
 
 #[derive(Deserialize)]
 pub struct AccessorySystemSpec {
@@ -56,6 +58,15 @@ pub fn hdr_tooltip_key(windows_11: bool) -> &'static str {
 }
 
 pub struct AccessorySystemProductChanged;
+
+/// A verified Hanbo 3893 device command emitted after the optimistic profile
+/// draft has been captured. The shell owns transport, cancellation and the
+/// acknowledgement receipt; this page only owns the request generation.
+#[derive(Clone, Debug)]
+pub struct HanboCoolerRequested {
+    pub generation: u64,
+    pub command: razer_device::hanbo_cooler::CoolerCommand,
+}
 
 /// `.btn_group .btn_custom`: the source's flat button — transparent, `1px solid
 /// #5d5d5d`, Roboto 12px uppercase, `padding:7px 16px 6px`, `margin:0`,
@@ -114,6 +125,10 @@ pub struct AccessorySystemProductWorkspace {
     /// Service restrictions must survive local profile restore/discard.
     monitor_restraint: Value,
     system_command_error: Option<String>,
+    /// Rust transport receipt for Hanbo 3893, independent from the source
+    /// profile draft and its local persistence snapshot.
+    hanbo_command_status: Option<(u64, Result<(), String>)>,
+    hanbo_generation: u64,
     /// Local service intentions stay separate from observations and snapshots.
     pending_color_profile: Option<String>,
     /// `jSA` replaces its initial options on mount with the reducer's actual
@@ -126,6 +141,10 @@ pub struct AccessorySystemProductWorkspace {
     pending_input_source: Option<i64>,
     ask_again: bool,
     corex_graph: corex_fan::GraphInteraction,
+    /// 3893 thermal profile and curve drag, owned outside the JSON draft.
+    hanbo: hanbo_cooler::HanboCooler,
+    /// Product artwork for 3893 CoolerInfo, from the attached device identity.
+    hanbo_artwork: Option<&'static str>,
 }
 
 /// `QAA`: the PIP placement presets. Every size is offered in every corner, and
@@ -316,6 +335,7 @@ pub fn input_source_step(current: i64, requested: i64, ask_again: bool) -> Input
 }
 
 impl EventEmitter<AccessorySystemProductChanged> for AccessorySystemProductWorkspace {}
+impl EventEmitter<HanboCoolerRequested> for AccessorySystemProductWorkspace {}
 
 impl AccessorySystemProductWorkspace {
     pub fn new(pid: u32, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -347,6 +367,8 @@ impl AccessorySystemProductWorkspace {
             selected_color_profile: String::new(),
             monitor_restraint: json!({}),
             system_command_error: None,
+            hanbo_command_status: None,
+            hanbo_generation: 0,
             pending_color_profile: None,
             supported_refresh_rates: Vec::new(),
             selected_refresh_rate: None,
@@ -354,6 +376,8 @@ impl AccessorySystemProductWorkspace {
             pending_input_source: None,
             ask_again: true,
             corex_graph: corex_fan::GraphInteraction::new(cx),
+            hanbo: Default::default(),
+            hanbo_artwork: None,
         };
         this.subscriptions.push(cx.subscribe_in(
             &pip_source,
@@ -467,6 +491,12 @@ impl AccessorySystemProductWorkspace {
         }
         if pid == 3921 {
             this.init_corex(window, cx);
+        }
+        if pid == razer_device::hanbo_cooler::PRODUCT_ID
+            && let Some(object) = this.draft.as_object_mut()
+        {
+            object.remove("requestedFanMode");
+            object.remove("requestedPumpMode");
         }
         this.sync_sliders(window, cx);
         this
@@ -582,6 +612,9 @@ impl AccessorySystemProductWorkspace {
     pub fn set_page(&mut self, key: &str, _: &mut Window, cx: &mut Context<Self>) {
         if self.page != key {
             self.corex_graph.dragging = false;
+            self.hanbo.drag = None;
+            self.hanbo_generation = self.hanbo_generation.wrapping_add(1);
+            self.hanbo_command_status = None;
             // The source's prompt lives in the page component, so leaving the page
             // drops a request that was still waiting for confirmation.
             self.pending_input_source = None;
@@ -597,8 +630,25 @@ impl AccessorySystemProductWorkspace {
         // Never persist a disabled reason as if the user selected it locally.
         if let Some(object) = snapshot.as_object_mut() {
             object.remove("uiRestraint");
+            if self.spec.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
+                object.insert("ports".into(), self.hanbo.snapshot_ports());
+            }
         }
         snapshot
+    }
+
+    /// 3893 CoolerInfo reuses the source ProductImage edition-zero retry.
+    pub fn set_device_artwork(&mut self, edition_id: u32, layout_id: u32, cx: &mut Context<Self>) {
+        let artwork = razer_assets::device_image(
+            self.spec.product_id,
+            edition_id,
+            layout_id,
+            razer_assets::DeviceImage::Product,
+        );
+        if self.hanbo_artwork != artwork {
+            self.hanbo_artwork = artwork;
+            cx.notify();
+        }
     }
 
     pub fn restore(&mut self, saved: Option<&Value>, window: &mut Window, cx: &mut Context<Self>) {
@@ -697,16 +747,16 @@ impl AccessorySystemProductWorkspace {
                 self.propagate_fans();
             }
             3893 => {
-                for path in ["/requestedFanMode", "/requestedPumpMode"] {
-                    self.reset_value(path);
-                    // Null defaults intentionally accept only these user intents.
-                    if let Some(value) = saved.and_then(|s| s.pointer(path)).and_then(Value::as_str)
-                    {
-                        if ["QUIET", "NORMAL", "PERFORMANCE", "ADVANCED"].contains(&value) {
-                            self.set_raw(path, json!(value));
-                        }
-                    }
+                // The catalog's former requested-mode keys have no current
+                // source owner; thermal state lives in the typed port profile.
+                if let Some(object) = self.draft.as_object_mut() {
+                    object.remove("requestedFanMode");
+                    object.remove("requestedPumpMode");
+                    object.remove("ports");
                 }
+                self.hanbo.restore_ports(saved);
+                self.hanbo_generation = self.hanbo_generation.wrapping_add(1);
+                self.hanbo_command_status = None;
             }
             3907 => {
                 for (path, values) in [
@@ -2646,33 +2696,7 @@ impl AccessorySystemProductWorkspace {
             panel =
                 panel.child(self.curve(&format!("{root}/advancedSetting"), 0., 100., enabled, cx));
         }
-        panel
-            .child(surface::note("转速：— · 等待风扇与外接电源状态。", cx))
-            .into_any_element()
-    }
-
-    fn hanbo(&self, cx: &Context<Self>) -> AnyElement {
-        v_flex()
-            .gap_5()
-            .children(
-                [
-                    ("/requestedFanMode", "FAN_SPEED"),
-                    ("/requestedPumpMode", "PUMP_SPEED"),
-                ]
-                .map(|(path, label)| {
-                    surface::panel(t(label), cx)
-                        .child(h_flex().flex_wrap().gap_2().children(
-                            ["QUIET", "NORMAL", "PERFORMANCE", "ADVANCED"].map(|mode| {
-                                self.choice(path, json!(mode), t_or(mode, mode), true, cx)
-                            }),
-                        ))
-                        .child(surface::note(
-                            "转速：— · 等待设备提供当前模式和温度曲线。",
-                            cx,
-                        ))
-                }),
-            )
-            .into_any_element()
+        panel.into_any_element()
     }
 
     fn cooling(&self, cx: &Context<Self>) -> AnyElement {
@@ -2780,7 +2804,6 @@ impl AccessorySystemProductWorkspace {
                         }
                     })),
             )
-            .child(surface::note("CPU：— · GPU：— · 风扇：—", cx))
             .into_any_element()
     }
 }
@@ -2796,7 +2819,7 @@ impl Render for AccessorySystemProductWorkspace {
             (3858 | 3880, "TAB_COLOR") => self.monitor_color(window, cx),
             (3858 | 3880, "TAB_DISPLAY") => self.monitor_display(window, cx),
             (3900, "TAB_PERFORMANCE") => self.pwm(cx),
-            (3893, "TAB_PERFORMANCE") => self.hanbo(cx),
+            (3893, "TAB_PERFORMANCE") => self.hanbo(window, cx),
             (3907, "TAB_PERFORMANCE") => self.cooling(cx),
             (3921, "TAB_CUSTOMIZE") => self.corex_fan(cx),
             _ if !supports_page(self.spec.product_id, &self.page) => {

@@ -248,15 +248,26 @@ impl MouseProductWorkspace {
                             this.mapping_menu_current_state.collapsed = true;
                         }
                     }));
-            if let Some(icon) = icon {
-                row = row.child(
-                    img(SharedString::from(icon.clone()))
-                        .absolute()
-                        .left(surface::css(10.))
-                        .top(surface::css(10.))
-                        .size(surface::css(20.)),
+            // Keep the icon in the same fixed 40px slot used by the other
+            // mapping menus.  An absolutely positioned image attached
+            // directly to a button can be laid out against the deferred
+            // popup's transient bounds, leaving the decoded image outside
+            // the visible row while the row background still paints.
+            let mut row_content = h_flex()
+                .w(surface::css(250.))
+                .h(surface::css(40.))
+                .flex_shrink_0()
+                .child(
+                    div()
+                        .size(surface::css(40.))
+                        .flex_shrink_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .children(icon.map(|asset| {
+                            img(SharedString::from(asset.clone())).size(surface::css(20.))
+                        })),
                 );
-            }
             if !state.collapsed {
                 let label = t(&function);
                 let upper = label.to_uppercase();
@@ -266,12 +277,12 @@ impl MouseProductWorkspace {
                 let measured_overflow = overflow.clone();
                 let anchor = Rc::new(Cell::new(Bounds::default()));
                 let measured_anchor = anchor.clone();
-                row = row.child(
+                row_content = row_content.child(
                     div()
                         .id(SharedString::from(format!(
                             "mouse-current-menu-label-{row_id}"
                         )))
-                        .ml(surface::css(50.))
+                        .ml(surface::css(10.))
                         .w(surface::css(200.))
                         .text_size(surface::css(12.))
                         .line_height(surface::css(40.))
@@ -296,6 +307,7 @@ impl MouseProductWorkspace {
                         .child(upper),
                 );
             }
+            row = row.child(row_content);
             list = list.child(row);
         }
         if hiding && all.len() > count + 1 && !state.collapsed {
@@ -601,6 +613,44 @@ mod mouse_mapping_menu_current_data_catalog_tests {
     #[test]
     fn packaged_catalog_mouse_mapping_menu_current_data_decodes() {
         let _ = super::read_mouse_mapping_menu_current_catalog();
+    }
+
+    #[test]
+    fn representative_product_branches_keep_registered_menu_icon_aliases() {
+        let catalog = super::read_mouse_mapping_menu_current_catalog();
+        for product_id in [70, 162, 190, 229, 231, 2594, 45066] {
+            let policy = catalog
+                .iter()
+                .find(|policy| policy.product_id == product_id)
+                .unwrap_or_else(|| panic!("missing mapping menu policy for PID{product_id}"));
+            assert!(
+                policy
+                    .close_asset
+                    .starts_with("synapse/mouse-mapping-menu-current/"),
+                "PID{product_id} close asset must use the packaged menu namespace"
+            );
+            assert_eq!(
+                policy.icons.len(),
+                if product_id == 162 { 22 } else { 29 },
+                "PID{product_id} icon coverage changed"
+            );
+            for (function, icon) in &policy.icons {
+                let normal = icon
+                    .normal
+                    .as_deref()
+                    .unwrap_or_else(|| panic!("PID{product_id} {function} has no normal icon"));
+                assert!(
+                    normal.starts_with("synapse/mouse-mapping-menu-current/"),
+                    "PID{product_id} {function} normal icon escaped the packaged menu namespace"
+                );
+                if let Some(selected) = icon.selected.as_deref() {
+                    assert!(
+                        selected.starts_with("synapse/mouse-mapping-menu-current/"),
+                        "PID{product_id} {function} selected icon escaped the packaged menu namespace"
+                    );
+                }
+            }
+        }
     }
 }
 // End generated catalog reader: razer-pages/mouse_mapping_menu_current_data.

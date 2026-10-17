@@ -244,12 +244,33 @@ impl KeyboardProductWorkspace {
 }
 
 pub(super) fn factory_warning(window: &Window) -> AnyElement {
+    factory_warning_overlay(window, true)
+}
+
+/// Current 614/642 Actuation roots render the same `.factory-default
+/// .warning-alert` through the plain translator without the `dots` parameter,
+/// so the `{{dots}}` placeholder stays in the visible text.
+pub(super) fn factory_warning_plain(window: &Window) -> AnyElement {
+    factory_warning_overlay(window, false)
+}
+
+fn factory_warning_overlay(window: &Window, dots: bool) -> AnyElement {
     let unit = window.rem_size() / 16.;
     let icon = f32::from(unit * 14.);
-    let html = t("FACTORY_DEFAULT_PROFILE_WARNING_DESC").replace(
-        "{{dots}}",
-        &format!("<img src=\"factory-profile-dots\" width=\"{icon}\" height=\"{icon}\" />"),
-    );
+    let text = t("FACTORY_DEFAULT_PROFILE_WARNING_DESC");
+    let description = if dots {
+        let html = text.replace(
+            "{{dots}}",
+            &format!("<img src=\"factory-profile-dots\" width=\"{icon}\" height=\"{icon}\" />"),
+        );
+        gpui_kit::base::TextView::html("keyboard-calibration-factory-description", html)
+            .image_source(|_| "synapse/profile-more.svg".into())
+            .selectable(false)
+            .scrollable(false)
+            .into_any_element()
+    } else {
+        div().child(text).into_any_element()
+    };
     // Aa's .factory-default overrides the common warning-alert position,
     // dimensions and title color; the common translateY(-100%) remains active.
     razer_assets::deferred_resource(
@@ -287,15 +308,7 @@ pub(super) fn factory_warning(window: &Window) -> AnyElement {
                             .line_height(surface::css(16.8))
                             .child(t("FACTORY_DEFAULT_PROFILE_TITTLE").to_uppercase()),
                     )
-                    .child(
-                        gpui_kit::base::TextView::html(
-                            "keyboard-calibration-factory-description",
-                            html,
-                        )
-                        .image_source(|_| "synapse/profile-more.svg".into())
-                        .selectable(false)
-                        .scrollable(false),
-                    ),
+                    .child(description),
             ),
     )
     .with_priority(1)

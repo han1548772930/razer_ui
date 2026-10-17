@@ -8,6 +8,16 @@ use std::{
     time::Duration,
 };
 
+/// Opt-in resource diagnostics (`RAZER_RESOURCE_TRACE=1`): one stderr line per
+/// request, cache hit, download result and decode result. Paths only; never
+/// URLs, headers or credentials.
+pub(super) fn trace(stage: &str, path: &str, detail: impl std::fmt::Display) {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    if *ENABLED.get_or_init(|| std::env::var_os("RAZER_RESOURCE_TRACE").is_some()) {
+        eprintln!("[resource] {stage} {path} {detail}");
+    }
+}
+
 const MAX_CONCURRENT_DOWNLOADS: usize = 4;
 const MAX_REQUEST_BATCH: usize = 64;
 const REQUEST_BATCH_WINDOW: Duration = Duration::from_millis(8);
@@ -61,11 +71,24 @@ impl Service {
     ) -> anyhow::Result<Arc<[u8]>> {
         anyhow::ensure!(!self.receiver.is_closed(), "资源加载已取消");
         if let Some(bytes) = self.cache.read(file)? {
+            trace("cache-hit", &file.path, bytes.len());
             return Ok(bytes.into());
         }
-        let bytes = download().await?;
+        let bytes = download().await;
+        trace(
+            "download",
+            &file.path,
+            match &bytes {
+                Ok(bytes) => format!("ok {}", bytes.len()),
+                Err(error) => format!("error {error:#}"),
+            },
+        );
+        let bytes = bytes?;
         anyhow::ensure!(!self.receiver.is_closed(), "资源加载已取消");
-        self.cache.publish(file, &bytes)?;
+        if let Err(error) = self.cache.publish(file, &bytes) {
+            trace("publish", &file.path, format!("error {error:#}"));
+            return Err(error);
+        }
         Ok(bytes.into())
     }
 
@@ -96,6 +119,7 @@ impl Service {
             anyhow::bail!("{error}");
         }
         if !matches!(states.get(&file.path), Some(FileState::Pending)) {
+            trace("request", &file.path, "queued");
             states.insert(file.path.clone(), FileState::Pending);
             if let Err(error) = self.sender.try_send(file.clone()) {
                 states.insert(
@@ -303,13 +327,20 @@ pub fn start_resources(cx: &mut App) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn resource_errors() -> Vec<String> {
-    service()
-        .map(|service| service.errors())
-        .unwrap_or_else(|error| vec![error.to_string()])
+pub fn resource_errors(cx: &App) -> Vec<String> {
+    let mut errors = super::image_cache::resource_image_errors(cx);
+    errors.extend(
+        service()
+            .map(|service| service.errors())
+            .unwrap_or_else(|error| vec![error.to_string()]),
+    );
+    errors.into_iter().collect()
 }
-pub fn retry_resources() -> anyhow::Result<()> {
-    service()?.retry()
+pub fn retry_resources(cx: &mut App) -> anyhow::Result<()> {
+    let result = service().and_then(|service| service.retry());
+    super::image_cache::retry_resource_images(cx);
+    cx.refresh_windows();
+    result
 }
 
 #[cfg(test)]

@@ -22,6 +22,16 @@ pub(super) fn direct_widget(panel: Div) -> Div {
         .mx_auto()
 }
 
+/// Source `.widget-col{flex-direction:column;width:600px;margin:0 30px}`
+/// mounted as a sibling of direct `.widget` children.
+pub(super) fn widget_column(child: Div) -> Div {
+    v_flex()
+        .w(surface::css(600.))
+        .flex_shrink_0()
+        .mx(surface::css(30.))
+        .child(child)
+}
+
 pub(super) fn columns(
     product_id: u32,
     page: &str,

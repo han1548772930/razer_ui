@@ -78,7 +78,7 @@ impl ScreenColorCapture {
             .fetch_add(1, Ordering::AcqRel)
             .wrapping_add(1);
         if self.failed {
-            if let Err(error) = razer_assets::retry_resources() {
+            if let Err(error) = razer_assets::retry_resources(cx) {
                 self.fail(format!("{error:#}"));
                 return;
             }

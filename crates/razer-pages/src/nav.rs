@@ -26,12 +26,6 @@ impl Tab {
     /// routes an unaudited product through one of these existing renderers.
     pub fn for_product(pid: u32) -> &'static [Self] {
         match pid {
-            182 => &[
-                Self::Customize,
-                Self::Performance,
-                Self::Power,
-                Self::Calibration,
-            ],
             653 => &[Self::Customize, Self::Lighting],
             777 => &[Self::Sound, Self::Mic, Self::Lighting, Self::Power],
             _ if razer_catalog::audited_mouse_mat(pid).is_some() => &[Self::Lighting],
@@ -107,15 +101,7 @@ mod tests {
     use super::Tab;
     #[::core::prelude::v1::test]
     fn product_routes_exclude_shared_but_unmounted_features() {
-        assert_eq!(
-            Tab::for_product(182),
-            &[
-                Tab::Customize,
-                Tab::Performance,
-                Tab::Power,
-                Tab::Calibration
-            ]
-        );
+        assert_eq!(Tab::for_product(182), &[]);
         assert_eq!(Tab::for_product(653), &[Tab::Customize, Tab::Lighting]);
         assert_eq!(
             Tab::for_product(777),

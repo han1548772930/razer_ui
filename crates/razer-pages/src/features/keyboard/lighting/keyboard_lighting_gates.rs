@@ -33,12 +33,20 @@ impl KeyboardProductWorkspace {
     }
 
     fn lighting_wdl_mounts(&self) -> usize {
-        // 2596 actually mounts two copies; the guarded and unconditional
-        // callers are both present. Preserve the original stacking behavior.
+        // Current Lighting roots (nav `lgc` entry and the chromaApp iframe root)
+        // mount the WDL popup either unconditionally or behind
+        // `DeviceInfo.isWDLSupported`. 2596 mounts both a guarded and an
+        // unconditional copy; preserve the original stacking behavior.
+        // 721/739/740/741/742/746/756 only have the guarded caller and declare
+        // `isWDLSupported:!1`, so they mount none.
         match self.spec.product_id {
             2596 => 2,
+            // Unconditional caller.
+            574 | 579 | 599 | 605 | 614 | 617 | 619 | 620 | 647 | 655 | 659 | 664 | 673 | 675
+            | 677 | 717 | 752 | 2595 => 1,
+            // Guarded caller with `isWDLSupported:!0`.
             590 | 600 | 602 | 642 | 658 | 661 | 678 | 679 | 688 | 689 | 691 | 697 | 708 | 716
-            | 717 | 719 | 720 | 724 | 727 | 728 | 2595 => 1,
+            | 719 | 720 | 724 | 727 | 728 => 1,
             _ => 0,
         }
     }

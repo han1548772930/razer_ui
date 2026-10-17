@@ -17,3 +17,7 @@ tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_Security_Credentials"] }
+
+[dev-dependencies]
+gpui-kit = { workspace = true, features = ["test-support"] }
+image = { version = "=0.25.10", default-features = false }

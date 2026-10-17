@@ -43,11 +43,10 @@ impl TourKind {
         }
     }
 
+    /// Fn passes `INTRODUCTION_TOUR` as the header title for both the Synapse
+    /// and chroma-app deployments; only `currentApp` differs between them.
     pub fn title(self) -> String {
-        match self {
-            Self::Synapse => i18n::t("INTRODUCTION_TOUR"),
-            Self::Chroma => format!("Chroma · {}", i18n::t("INTRODUCTION_TOUR")),
-        }
+        i18n::t("INTRODUCTION_TOUR")
     }
 }
 

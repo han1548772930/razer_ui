@@ -48,6 +48,53 @@ def valid(row):
     return path.is_file() and path.stat().st_size == row.get("bytes") and a.sha(path) == row.get("sha256")
 
 
+def pinned_resources(acquisition, requests, mappings=None):
+    """Verify display aliases against the pinned resource lock without media.
+
+    Same-format originals must equal the pinned bytes, allowing only the lock's
+    explicit LF to CRLF proof. Converted media (AVIF to PNG, CSS data URIs)
+    records its pinned output; regenerating it requires ``--prepare``.
+    """
+    mappings = resource_sources.load_resource_mappings(root=a.ROOT) if mappings is None else mappings
+    receipt = json.loads((a.ROOT / acquisition).read_bytes())
+    originals = {row.get("path"): row for row in receipt.get("files", [])}
+    lock = resource_sources.validate_lock(json.loads((a.ROOT / resource_sources.LOCK).read_bytes()))
+    pinned = {row["path"]: row for row in lock["git_files"]}
+    pinned.update({row["path"]: row for group in lock["groups"] for row in group["files"]})
+    verified = []
+    for source_name, values in requests.items():
+        source_row = originals.get(source_name)
+        if not source_row or source_row.get("http_status") != 200 or not valid(source_row):
+            raise ValueError("Resource acquisition bytes do not verify: " + source_name)
+        content = (a.ROOT / source_name).read_bytes()
+        for request in (values if isinstance(values, list) else [values]):
+            request = request if isinstance(request, dict) else {"display": request}
+            display = request["display"]
+            paths = {row["path"] for table in mappings["tables"] for row in table["entries"] if row["key"] == display}
+            if len(paths) != 1 or next(iter(paths)) not in pinned:
+                raise ValueError("Display alias has no unique pinned resource: " + display)
+            locked = pinned[next(iter(paths))]
+            same_format = (Path(source_name).suffix.lower() == Path(display).suffix.lower()
+                           and "inline_css_png" not in request)
+            entry = {"display": display, "source": source_name, "source_sha256": source_row["sha256"],
+                     "output": locked["path"], "output_sha256": locked["sha256"], "output_bytes": locked["bytes"],
+                     "resource_revision": lock["storage"]["revision"]}
+            if same_format:
+                try:
+                    proof = resource_sources.verified_alias_reuse(content, display, root=a.ROOT, mappings=mappings)
+                except ValueError:
+                    proof = resource_sources.verified_alias_reuse(content, display, normalize_source_lf=True,
+                                                                  root=a.ROOT, mappings=mappings)
+                entry["locked_alias_reuse"] = proof
+            else:
+                entry["conversion"] = ("inline CSS PNG " + request["inline_css_png"]["sha256"]
+                                       if "inline_css_png" in request else
+                                       Path(source_name).suffix.lower() + " to " + Path(display).suffix.lower())
+                entry["conversion_rechecked"] = False
+            verified.append(entry)
+    return verified
+
+
 def candidates(path):
     rows = json.loads(path.read_bytes())
     ids = sorted({row["product_id"] for row in rows})
@@ -7661,11 +7708,16 @@ def audit_audio_seiren_eq(args):
                 runtime_key = "synapse/seiren-mic-" + key + (".png" if Path(relative).suffix == ".avif" else Path(relative).suffix)
                 microphone_assets[key] = {"runtime_key": runtime_key, "original": original_media}
             import workspace
-            prepared_mic = workspace.prepare_resources(a.rel(ui_acquisition_path), {
-                asset["original"]["path"]: asset["runtime_key"] for asset in microphone_assets.values()})
+            mic_requests = {}
+            for asset in microphone_assets.values():
+                mic_requests.setdefault(asset["original"]["path"], []).append({"display": asset["runtime_key"]})
+            prepared_mic = (workspace.prepare_resources(a.rel(ui_acquisition_path), mic_requests)
+                            if getattr(args, "prepare", False)
+                            else pinned_resources(a.rel(ui_acquisition_path), mic_requests))
             for asset in microphone_assets.values():
                 prepared = next(item for item in prepared_mic if item["display"] == asset["runtime_key"])
-                asset.update({"physical": identity(a.ROOT / prepared["output"]), "preparation": prepared})
+                asset.update({"physical": {"path": prepared["output"], "sha256": prepared["output_sha256"]},
+                              "preparation": prepared})
             mic_data = {"labels": mic_labels, "assets": {key: value["runtime_key"] for key, value in microphone_assets.items()}}
             mic_destination = a.builtin_data_path("razer-pages", "AUDIO_SEIREN_MICROPHONE_DATA")
             presentation = {} if pid == 1422 or not mic_destination.is_file() else json.loads(mic_destination.read_bytes())
@@ -7716,10 +7768,13 @@ def audit_audio_seiren_eq(args):
                 if "css_selector" in asset:
                     request["inline_css_png"] = {"selector": asset["css_selector"], "sha256": asset["decoded_sha256"]}
                 mixer_requests.setdefault(asset["original"]["path"], []).append(request)
-            prepared_mixer = workspace.prepare_resources(a.rel(ui_acquisition_path), mixer_requests)
+            prepared_mixer = (workspace.prepare_resources(a.rel(ui_acquisition_path), mixer_requests)
+                              if getattr(args, "prepare", False)
+                              else pinned_resources(a.rel(ui_acquisition_path), mixer_requests))
             for asset in mixer_assets.values():
                 prepared = next(item for item in prepared_mixer if item["display"] == asset["runtime_key"])
-                asset.update({"physical": identity(a.ROOT / prepared["output"]), "preparation": prepared})
+                asset.update({"physical": {"path": prepared["output"], "sha256": prepared["output_sha256"]},
+                              "preparation": prepared})
             mixer_destination = a.builtin_data_path("razer-pages", "AUDIO_SEIREN_STREAM_MIXER_DATA")
             mixer_presentation = {} if pid == 1422 or not mixer_destination.is_file() else json.loads(mixer_destination.read_bytes())
             mixer_presentation[str(pid)] = {"labels": mixer_labels, "assets": {key: value["runtime_key"] for key, value in mixer_assets.items()}}
@@ -7728,7 +7783,8 @@ def audit_audio_seiren_eq(args):
                 "excluded_internet_feature": "routeGuideLink opens a remote guide and is excluded from the local product"}
             if pid == 1422:
                 import host
-                row["stream_mixer_profile_notification"] = host.audit_stream_mixer_profile_notification(prepare=True)
+                row["stream_mixer_profile_notification"] = host.audit_stream_mixer_profile_notification(
+                    prepare=getattr(args, "prepare", False))
             row["rust_implementation"] = [identity(a.ROOT / path) for path in (
                 "crates/razer-device/src/audio/seiren_eq.rs", "crates/razer-device/src/audio/seiren_eq_native.rs", "crates/razer-device/src/audio/seiren_eq_tests.rs",
                 "crates/razer-service/src/runtime/windows/audio/seiren_eq.rs", "crates/razer-service/src/runtime/windows/audio/seiren_eq_native.rs",

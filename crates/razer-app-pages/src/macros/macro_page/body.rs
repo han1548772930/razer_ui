@@ -631,10 +631,15 @@ impl MacroPage {
                                     .h_full()
                                     .p_0()
                                     .rounded_r(css(3.))
-                                    .hover(|s| s.bg(rgba(0xffffff4d)))
                                     .active(|s| s.bg(rgba(0x0000004d)))
-                                    .when(self.record_ui.open, |v| {
-                                        v.bg(rgba(0x0000004d)).hover(|s| s.bg(rgba(0x0000004d)))
+                                    // GPUI accepts one hover refinement per element; the
+                                    // open menu keeps its pressed background while hovered.
+                                    .map(|v| {
+                                        if self.record_ui.open {
+                                            v.bg(rgba(0x0000004d)).hover(|s| s.bg(rgba(0x0000004d)))
+                                        } else {
+                                            v.hover(|s| s.bg(rgba(0xffffff4d)))
+                                        }
                                     })
                                     .child(
                                         div()

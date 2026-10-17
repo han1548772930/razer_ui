@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import sqlite3
 import tempfile
+from unittest import mock
 
 import workspace
 import resource_database
@@ -213,6 +214,93 @@ class MappingCapabilityProjectionTests(unittest.TestCase):
         self.assertTrue(typed_tables.verify_mapping_constructor(rendered, products)["all_fields_and_order_verified"])
         with self.assertRaisesRegex(ValueError, "differ from current source projection"):
             typed_tables.verify_mapping_constructor(rendered.replace(b"is_obm_device: Some(true)", b"is_obm_device: Some(false)"), products)
+
+
+class ModuleServiceArtworkTests(unittest.TestCase):
+    def source(self):
+        return ('const label="原件";const modules={44442:(e,t,n)=>{'
+            'const h=n.p+"static/media/installation_cover_placeholder.c5d354c7.avif";'
+            'const w=(0,r.connect)(e=>e)(e=>{const [A,j]=(0,i.useState)(!1),'
+            '[M,I]=(0,i.useState)(!1),O=()=>I(!0);return A?(0,b.jsx)("img",'
+            '{className:"item-description-image",src:M?h:n.detail.srcImage,onError:O}):null});'
+            'const H=e=>e.items.map(item=>(0,b.jsx)(w,{item}));'
+            'const ae=(0,r.connect)(e=>e)(e=>{const v=e=>({...e,srcImage:"thumbnail"});return v(e)});'
+            '}};').encode()
+
+    def test_complete_row_proof_preserves_original_utf8_boundaries_and_sticky_error_state(self):
+        raw = self.source()
+        proof = workspace.module_service_artwork_projection(raw)
+        self.assertEqual(proof["fallback_source_path"], "/synapse/dashboard/static/media/installation_cover_placeholder.c5d354c7.avif")
+        self.assertEqual(proof["detail_source"], "n.detail.srcImage")
+        for key, capture in proof.items():
+            if isinstance(capture, dict) and "body" in capture:
+                body = raw[capture["byte_start"]:capture["byte_end"]]
+                self.assertEqual(body.decode(), capture["body"], key)
+                self.assertEqual(hashlib.sha256(body).hexdigest(), capture["body_sha256"], key)
+
+    def test_unverified_reset_primary_identity_and_state_initialization_fail(self):
+        for old, new in ((b"O=()=>I(!0)", b"O=()=>I(!0),reset=()=>I(!1)"),
+                         (b"n.detail.srcImage", b"n.srcImage"),
+                         (b"[M,I]=(0,i.useState)(!1)", b"[M,I]=(0,i.useState)(!0)")):
+            with self.subTest(change=new), self.assertRaises(ValueError):
+                workspace.module_service_artwork_projection(self.source().replace(old, new))
+
+
+class ResourcePublicationTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name).resolve()
+        self.source = self.root / ".analysis/inputs/original/image.png"
+        self.source.parent.mkdir(parents=True)
+        self.source.write_bytes(b"inert image payload")
+        self.receipt = self.source.parent / "acquisition.json"
+        self.source_row = {"path": self.source.relative_to(self.root).as_posix(),
+            "bytes": self.source.stat().st_size, "sha256": hashlib.sha256(self.source.read_bytes()).hexdigest(), "http_status": 200}
+        self.receipt.write_text(json.dumps({"source_current_during_acquisition": True,
+            "stability": [{"unchanged": True}], "files": [self.source_row]}), encoding="utf-8")
+        self.manifest = ".analysis/inputs/prepared-resources/publication.json"
+        self.mapping = {self.source_row["path"]: {"display": "synapse/retained.png", "table": "MODULE_SERVICE_ASSETS"}}
+        import analysis
+        import asset_release
+        for patch in (mock.patch.object(workspace, "ROOT", self.root),
+                      mock.patch.object(workspace.resource_sources, "load_resource_mappings", return_value={"tables": [{"name": "MODULE_SERVICE_ASSETS"}]}),
+                      mock.patch.object(asset_release, "load_lock", return_value={"groups": [{"name": "shared"}]}),
+                      mock.patch.object(asset_release, "release_additions", return_value=[]),
+                      mock.patch.object(analysis, "index_files")):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def prepare(self, manifest=None):
+        return workspace.prepare_resource_publication(self.receipt.relative_to(self.root).as_posix(),
+            self.mapping, manifest or self.manifest)
+
+    def test_payload_and_provenance_are_staged_only_under_analysis_inputs(self):
+        report = self.prepare()
+        item = report["files"][0]
+        self.assertEqual((self.root / item["source"]["path"]).read_bytes(), self.source.read_bytes())
+        self.assertTrue(item["source"]["path"].startswith(".analysis/inputs/prepared-resources/"))
+        self.assertFalse((self.root / "assets").exists())
+        prepared = json.loads((self.root / item["acquisition"]["path"]).read_bytes())
+        self.assertEqual(prepared["derivations"][0]["original"], self.source_row)
+        self.assertEqual(hashlib.sha256((self.root / item["acquisition"]["path"]).read_bytes()).hexdigest(), item["acquisition"]["sha256"])
+
+    def test_mutated_original_and_retained_payload_cannot_be_published(self):
+        item = self.prepare()["files"][0]
+        retained = self.root / item["source"]["path"]
+        retained.write_bytes(b"mutated cache")
+        with self.assertRaisesRegex(ValueError, "Retained prepared resource bytes"):
+            self.prepare()
+        self.source.write_bytes(b"mutated original")
+        with self.assertRaisesRegex(ValueError, "original bytes differ"):
+            self.prepare()
+
+    def test_output_cannot_replace_original_receipt_or_escape_analysis_inputs(self):
+        for manifest in ("assets/payload.json", self.source_row["path"],
+                         self.receipt.relative_to(self.root).as_posix(),
+                         ".analysis/inputs/prepared-resources/acquisition.json"):
+            with self.subTest(manifest=manifest), self.assertRaises(ValueError):
+                self.prepare(manifest)
 
 
 class RuntimeResourceReferenceTests(unittest.TestCase):

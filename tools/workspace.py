@@ -1962,6 +1962,241 @@ def finite_resource_domain(row):
         "basis": "Enumerated caller branches and bounded animation/state ranges from the captured Rust owner; independent of registered alias candidates"}
 
 
+def module_service_artwork_projection(raw):
+    """Read the complete current More Information image owner without running JS."""
+    sys.path.insert(0, str(ROOT / "tools/analyzers/python-static"))
+    from tree_sitter import Language, Parser
+    import tree_sitter_javascript
+    tree = Parser(Language(tree_sitter_javascript.language())).parse(raw)
+    if tree.root_node.has_error:
+        raise ValueError("Module service original has a JavaScript AST error")
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    def text(node):
+        return raw[node.start_byte:node.end_byte].decode("utf-8")
+    def one(nodes, role):
+        nodes = list(nodes)
+        if len(nodes) != 1:
+            raise ValueError("Module service image owner is unresolved: " + role)
+        return nodes[0]
+    def capture(node):
+        body = raw[node.start_byte:node.end_byte]
+        return {"byte_start": node.start_byte, "byte_end": node.end_byte,
+                "body": body.decode("utf-8"), "body_sha256": hashlib.sha256(body).hexdigest()}
+    factory_pair = one((node for node in walk(tree.root_node) if node.type == "pair"
+        and text(node.child_by_field_name("key")) == "44442"), "44442 factory")
+    factory = factory_pair.child_by_field_name("value")
+    if factory.type != "arrow_function":
+        raise ValueError("Module service factory is not the retained arrow producer")
+    declarations = [node for statement in factory.child_by_field_name("body").named_children
+                    if statement.type in {"lexical_declaration", "variable_declaration"}
+                    for node in statement.named_children if node.type == "variable_declarator"]
+    def declaration(name, within=declarations):
+        return one((node for node in within if text(node.child_by_field_name("name")) == name), name)
+    row = declaration("w")
+    image = one((node for node in walk(row) if node.type == "object" and any(
+        pair.type == "pair" and text(pair.child_by_field_name("key")) == "className"
+        and text(pair.child_by_field_name("value")) == '"item-description-image"'
+        for pair in node.named_children)), "description image")
+    props = {text(node.child_by_field_name("key")): node.child_by_field_name("value")
+             for node in image.named_children if node.type == "pair"}
+    source = props.get("src")
+    if (source is None or source.type != "ternary_expression"
+            or text(source.child_by_field_name("alternative")) != "n.detail.srcImage"):
+        raise ValueError("Module service description must consume detail.srcImage")
+    failure_name = text(source.child_by_field_name("condition"))
+    fallback_name = text(source.child_by_field_name("consequence"))
+    if source.child_by_field_name("condition").type != "identifier" or source.child_by_field_name("consequence").type != "identifier":
+        raise ValueError("Module service description image selector is indirect")
+    fallback = declaration(fallback_name)
+    value = fallback.child_by_field_name("value")
+    if (value.type != "binary_expression" or text(value.child_by_field_name("left")) != "n.p"
+            or value.child_by_field_name("right").type != "string"):
+        raise ValueError("Module service fallback is not the current public-path asset")
+    media = json.loads(text(value.child_by_field_name("right")))
+    if not media.startswith("static/media/") or Path(media).name != "installation_cover_placeholder.c5d354c7.avif":
+        raise ValueError("Module service current fallback identity changed")
+    row_declarations = [node for node in walk(row) if node.type == "variable_declarator"]
+    state = one((node for node in row_declarations
+        if node.child_by_field_name("name").type == "array_pattern"
+        and node.child_by_field_name("name").named_children
+        and text(node.child_by_field_name("name").named_children[0]) == failure_name), "image failure state")
+    names = state.child_by_field_name("name").named_children
+    initializer = state.child_by_field_name("value")
+    if (len(names) != 2 or initializer.type != "call_expression"
+            or text(initializer.child_by_field_name("function")) != "(0,i.useState)"
+            or text(initializer.child_by_field_name("arguments")) != "(!1)"):
+        raise ValueError("Module service image failure state initialization changed")
+    setter = text(names[1])
+    error_name = text(props.get("onError")) if props.get("onError") is not None else ""
+    error = declaration(error_name, row_declarations)
+    error_value = error.child_by_field_name("value")
+    if error_value.type != "arrow_function" or text(error_value.child_by_field_name("body")) != setter + "(!0)":
+        raise ValueError("Module service error callback no longer retains its failure")
+    setter_calls = [node for node in walk(row) if node.type == "call_expression"
+                    and text(node.child_by_field_name("function")) == setter]
+    if len(setter_calls) != 1:
+        raise ValueError("Module service image state has an unverified reset branch")
+    mounted = image.parent
+    while mounted is not None and mounted != row and mounted.type != "ternary_expression":
+        mounted = mounted.parent
+    if (mounted is None or mounted == row or text(mounted.child_by_field_name("alternative")) != "null"):
+        raise ValueError("Module service description mount is unresolved")
+    expanded_name = text(mounted.child_by_field_name("condition"))
+    expanded = one((node for node in row_declarations
+        if node.child_by_field_name("name").type == "array_pattern"
+        and node.child_by_field_name("name").named_children
+        and text(node.child_by_field_name("name").named_children[0]) == expanded_name), "expanded state")
+    if text(expanded.child_by_field_name("value")) != "(0,i.useState)(!1)":
+        raise ValueError("Module service description mount initialization changed")
+    group = declaration("H")
+    observer = declaration("ae")
+    projection = one((node for node in walk(observer) if node.type == "variable_declarator"
+        and text(node.child_by_field_name("name")) == "v"
+        and node.child_by_field_name("value") is not None
+        and node.child_by_field_name("value").type == "arrow_function"), "observed device projection")
+    return {"fallback_source_path": "/synapse/dashboard/" + media,
+        "detail_source": text(source.child_by_field_name("alternative")),
+        "failure_lifetime": "Mounted w row; initialized false, set true only by onError, not reset by collapse or prop changes",
+        "complete_factory": capture(factory_pair), "complete_row": capture(row),
+        "fallback_declaration": capture(fallback), "failure_state": capture(state),
+        "error_callback": capture(error), "expanded_state": capture(expanded),
+        "mounted_description": capture(mounted), "complete_group": capture(group),
+        "complete_observer": capture(observer), "complete_device_projection": capture(projection),
+        "target_execution": False}
+
+
+def prepare_module_service_artwork(*, check=False, manifest=None):
+    """Maintain source-derived fixed artwork metadata for local observed rows."""
+    import analysis
+    import families
+    import urllib.parse
+    from importlib.metadata import version
+    acquired_path = ROOT / ".analysis/inputs/frontend/synapse-dashboard-current/acquisition.json"
+    acquired = json.loads(acquired_path.read_bytes())
+    originals = {row["url"]: row for row in acquired["files"]}
+    base = "https://apps.razer.com/synapse/dashboard/"
+    inputs = [families.identity(acquired_path), families.identity(Path(__file__))]
+    if not acquired.get("source_current_during_acquisition"):
+        raise ValueError("Module service requires a stable current source acquisition")
+    for stable in acquired.get("stability", []):
+        original = originals.get(stable["url"])
+        if (not original or not families.valid(original) or not stable.get("unchanged")
+                or stable["before_sha256"] != original["sha256"] or stable["after_sha256"] != original["sha256"]):
+            raise ValueError("Module service deployment stability does not verify")
+        inputs.append({key: original[key] for key in ("path", "bytes", "sha256")})
+    if len(acquired.get("stability", [])) < 2:
+        raise ValueError("Module service deployment stability is incomplete")
+    def original(url):
+        row = originals.get(url)
+        if not row or row.get("http_status") != 200 or not families.valid(row):
+            raise ValueError("Module service original bytes do not verify: " + url)
+        inputs.append({key: row[key] for key in ("path", "bytes", "sha256")})
+        return row, (ROOT / row["path"]).read_bytes()
+    html, html_raw = original(acquired["entry_url"])
+    asset_manifest, asset_manifest_raw = original(base + "asset-manifest.json")
+    declared = json.loads(asset_manifest_raw)
+    references = analysis.References()
+    references.feed(html_raw.decode("utf-8"))
+    html_base = urllib.parse.urljoin(acquired["entry_url"], references.base or "")
+    mounted = {analysis.artifact_url(html_base, literal) for literal, kind in references.refs
+               if kind == "html:script:src"}
+    declared_main = declared["files"]["main.js"]
+    main_url = analysis.artifact_url(asset_manifest["url"], declared_main)
+    if (main_url not in mounted or declared_main.removeprefix("./") not in declared["entrypoints"]):
+        raise ValueError("Module service main is not mounted by the stable current HTML")
+    main, _ = original(main_url)
+    for chunk in ("static/js/6505.8b539cb0.chunk.js", "static/css/6505.9782778c.chunk.css"):
+        if analysis.artifact_url(asset_manifest["url"], declared["files"].get(chunk, "")) != base + chunk:
+            raise ValueError("Module service original is not declared by the current deployment")
+    script, raw = original(base + "static/js/6505.8b539cb0.chunk.js")
+    projection = module_service_artwork_projection(raw)
+    fallback, _ = original("https://apps.razer.com" + projection["fallback_source_path"])
+    css, css_raw = original(base + "static/css/6505.9782778c.chunk.css")
+    selector = b".items .item-moreInfo.item-description .item-description-image"
+    start = css_raw.find(selector + b"{")
+    if start < 0 or css_raw.find(selector + b"{", start + 1) >= 0:
+        raise ValueError("Module service image CSS selector is missing or ambiguous")
+    end = css_raw.index(b"}", start) + 1
+    rule = css_raw[start:end]
+    fields = dict(part.split(b":", 1) for part in rule[len(selector) + 1:-1].split(b";") if part)
+    if any(fields.get(key) != value for key, value in {
+            b"width": b"288px", b"height": b"162px", b"margin-right": b"20px", b"object-fit": b"contain"}.items()):
+        raise ValueError("Module service description geometry changed")
+    expected = {"description_images": {projection["fallback_source_path"]: "synapse/installation-cover-placeholder.png"},
+                "description_fallback": "synapse/installation-cover-placeholder.png"}
+    registry_path = ROOT / "tools/typed-data.json"
+    with analysis.index_lock(ROOT / ".work/typed-data-registry.lock"):
+        registry = json.loads(registry_path.read_bytes())
+        recipe = next(row for row in registry["tables"] if row["symbol"] == "MODULE_SERVICE_SOURCE")
+        data_path = ROOT / recipe["source"]
+        data = json.loads(data_path.read_bytes())
+        if check:
+            if any(data.get(key) != value for key, value in expected.items()) or digest(data_path) != recipe["source_sha256"]:
+                raise ValueError("Module service artwork metadata differs from the complete current source")
+        else:
+            data.update(expected)
+            # The database is published separately with its pinned resources.
+            # analysis.save triggers the general catalog regenerator, whose
+            # registry lock cannot be entered again inside this transaction.
+            content = (json.dumps(data, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+            with tempfile.NamedTemporaryFile(dir=data_path.parent, suffix=".partial", delete=False) as staged:
+                temporary = Path(staged.name)
+                staged.write(content)
+            try:
+                os.replace(temporary, data_path)
+            finally:
+                temporary.unlink(missing_ok=True)
+            recipe["source_sha256"] = digest(data_path)
+            write_json(registry_path, registry)
+    inputs.append(families.identity(data_path))
+    if not all(families.valid(row) for row in inputs):
+        raise ValueError("Module service source changed during artwork verification")
+    report = {"original": script,
+        "deployment": {"html": html, "asset_manifest": asset_manifest, "mounted_main": main,
+                       "declared_description_chunks_verified": True},
+        "css": {"original": css, "byte_start": start, "byte_end": end,
+        "body": rule.decode("utf-8"), "body_sha256": hashlib.sha256(rule).hexdigest()},
+        "projection": projection, "fallback_original": fallback, "metadata": expected,
+        "tool": {"python": sys.version.split()[0], "tree_sitter": version("tree-sitter"),
+                 "tree_sitter_javascript": version("tree-sitter-javascript")},
+        "inputs": inputs, "inputs_unchanged": True, "target_execution": False,
+        "unresolved": ["Observed/cached local detail.srcImage remains a string boundary; no complete upstream producer domain is claimed"],
+        "application_runtime_acceptance": "not performed"}
+    if manifest is not None:
+        import catalog_data
+        import sqlite3
+        from resource_database import OUTPUT
+        document = catalog_data.Codec(ROOT / "crates" / recipe["crate"]).document(recipe, data)
+        database = ROOT / OUTPUT
+        with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+            stored = connection.execute("SELECT codec,sha256,payload FROM typed_catalog WHERE id=?", (document["id"],)).fetchone()
+            if stored != (document["codec"], hashlib.sha256(document["raw"]).hexdigest(), document["raw"]):
+                raise ValueError("Module service artwork fields differ from the installed catalog")
+            positions = connection.execute("SELECT a.position,f.path,f.bytes,f.sha256 FROM resource_alias a JOIN resource_file f ON f.id=a.file_id WHERE a.key=? ORDER BY a.position", (expected["description_fallback"],)).fetchall()
+        entries = [row for row in manifest["entries"] if row["key"] == expected["description_fallback"]]
+        if not entries or len({row["path"] for row in entries}) != 1:
+            raise ValueError("Module service fallback alias is missing or ambiguous")
+        fixed = next(row for row in manifest["files"] if row["path"] == entries[0]["path"])
+        if not positions or any(row[1:] != (fixed["path"], fixed["bytes"], fixed["sha256"]) for row in positions):
+            raise ValueError("Module service fallback differs from its installed alias")
+        report["installed_catalog"] = {"id": document["id"], "codec": document["codec"],
+            "payload_sha256": hashlib.sha256(document["raw"]).hexdigest(), "complete_fields_verified": True,
+            "fallback": fixed, "alias_positions": [row[0] for row in positions]}
+        inputs.append(families.identity(database))
+    if not all(families.valid(row) for row in inputs):
+        raise ValueError("Module service source or catalog changed during artwork verification")
+    if not check:
+        result = ROOT / ".analysis/results/typed-data.json"
+        previous = json.loads(result.read_bytes())
+        previous["current_module_service_artwork"] = report
+        write_json(result, previous)
+        analysis.index_files([{**families.identity(data_path), "kind": "typed_table_input"}])
+    return report
+
+
 def audit_current_cycle_artwork(manifest):
     """Verify the current cycle JSX callers and exact prepared SVG identities."""
     import catalog_data
@@ -2187,6 +2422,8 @@ def audit_runtime_resources():
         "application_runtime_acceptance": "not performed"}
     report["current_cycle_artwork"] = audit_current_cycle_artwork(manifest)
     inputs.extend(report["current_cycle_artwork"]["inputs"])
+    report["current_module_service_artwork"] = prepare_module_service_artwork(check=True, manifest=manifest)
+    inputs.extend(report["current_module_service_artwork"]["inputs"])
     report["resource_scope"] = resource_scope.audit_sources(ROOT, files)
     report["inputs_unchanged"] = all((ROOT / row["path"]).stat().st_size == row["bytes"]
         and digest(ROOT / row["path"]) == row["sha256"] for row in inputs)
@@ -4200,6 +4437,8 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
     receipt_path = safe(ROOT / acquisition)
     if not manifest_path.is_relative_to(input_root) or not receipt_path.is_relative_to(input_root):
         raise ValueError("Resource publication inputs and manifest must remain under analysis inputs")
+    if manifest_path == receipt_path:
+        raise ValueError("Resource publication cannot overwrite its acquisition receipt")
     receipt_raw = receipt_path.read_bytes()
     receipt = json.loads(receipt_raw)
     stability = receipt.get("stability", [])
@@ -4215,6 +4454,8 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
     group_names = {group["name"] for group in lock["groups"]}
     destination = input_root / "prepared-resources"
     prepared_receipt_path = destination / "acquisition.json"
+    if manifest_path == prepared_receipt_path:
+        raise ValueError("Resource publication manifest cannot replace its prepared receipt")
     snapshots = [(receipt_path, receipt_raw), (Path(__file__), Path(__file__).read_bytes())]
     analyzer_receipt = ROOT / "tools/analyzers/pillow/acquisition.json"
     prepared, derivations = [], []
@@ -4222,8 +4463,10 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
         if not isinstance(request, dict) or set(request) != {"display", "table"}:
             raise ValueError("Publication mapping requires exactly display and table")
         source = safe(ROOT / source_name)
-        if not source.is_relative_to(input_root) or source.is_symlink():
+        if not source.is_relative_to(input_root) or (ROOT / source_name).is_symlink():
             raise ValueError("Resource publication must use retained original inputs")
+        if source == manifest_path:
+            raise ValueError("Resource publication cannot overwrite its original media")
         raw = source.read_bytes()
         original = originals.get(relative(source))
         if (not original or original.get("http_status") != 200
@@ -4261,15 +4504,28 @@ def prepare_resource_publication(acquisition, resources, publication_manifest):
             "sha256": hashlib.sha256(receipt_raw).hexdigest()},
             "output": source_identity, "alias": alias, "table": table,
             "conversion": conversion, "target_execution": False})
+    previous_raw = prepared_receipt_path.read_bytes() if prepared_receipt_path.is_file() else None
+    previous = json.loads(previous_raw) if previous_raw is not None else {}
+    if previous_raw is not None:
+        snapshots.append((prepared_receipt_path, previous_raw))
+    retained = {row["path"]: row for row in previous.get("files", [])}
+    for name, row in retained.items():
+        path = safe(ROOT / name)
+        if not path.is_relative_to(destination) or not path.is_file():
+            raise ValueError("Retained prepared resource is absent or outside its owner")
+        raw = path.read_bytes()
+        if len(raw) != row["bytes"] or hashlib.sha256(raw).hexdigest() != row["sha256"]:
+            raise ValueError("Retained prepared resource bytes do not verify")
+        snapshots.append((path, raw))
+    for item in prepared:
+        path = ROOT / item["source"]["path"]
+        if path.exists() and path.read_bytes() != item["_content"]:
+            raise ValueError("Prepared resource has conflicting bytes")
     if any(path.read_bytes() != raw for path, raw in snapshots):
         raise ValueError("Resource publication original or tool changed during preparation")
-    previous = json.loads(prepared_receipt_path.read_bytes()) if prepared_receipt_path.is_file() else {}
-    retained = {row["path"]: row for row in previous.get("files", [])}
     for item in prepared:
         path = ROOT / item["source"]["path"]
         content = item.pop("_content")
-        if path.exists() and path.read_bytes() != content:
-            raise ValueError("Prepared resource has conflicting bytes")
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".partial")
         temporary.write_bytes(content)
@@ -5480,10 +5736,11 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
     input_index = json.loads(input_index_path.read_bytes())
     retained_routes = []
     retained_pattern = re.compile(r"https://apps\.razer\.com/synapse/products/(\d+)/ui/(\d+)_(\d+)/PluginImages/(\d+)_(\d+)_(\d+)(_wrist)?_dashboard[13]x\.avif$")
-    resource_manifest_path = ROOT / "assets/synapse/manifests/manifest.json"
-    resource_manifest = json.loads(resource_manifest_path.read_bytes())
-    retained_sources = input_index["inputs"] + [{"url": item.get("source_url", "")}
-                                               for item in resource_manifest["entries"]]
+    # The retired development manifest is not a current source boundary.  Use
+    # only indexed retained inputs for exact URL parameters; absent historical
+    # entries remain explicit acquisition gaps rather than being resurrected.
+    resource_manifest_path = None
+    retained_sources = input_index["inputs"]
     for original in retained_sources:
         route = retained_pattern.fullmatch(original.get("url", ""))
         if route is None:
@@ -5496,8 +5753,8 @@ def prepare_dashboard_images(workers=8, *, refresh_ledger=True, products=None, s
                                 "edition_id": edition, "filename_edition_id": image_edition,
                                 "layout_id": layout})
     parameter_locators.append({"input": families.identity(input_index_path),
-                               "resource_manifest": families.identity(resource_manifest_path), "routes": retained_routes,
-                               "usage": "Retained official URL parameters only; every selected image is reverified against its official endpoint"})
+                               "routes": retained_routes,
+                               "usage": "Retained official URL parameters only; every selected image is reverified against its official endpoint; no retired development manifest"})
     preview = prepare_source_preview_domains(parameter_locators, prepare=True)
     if source_preview_only:
         if refresh_ledger:
@@ -6259,6 +6516,8 @@ def main():
     commands.add_parser("prepare-host-favicons", help="Verify all current product HTML first favicons and attach existing bytes to resource provenance")
     app_picker = commands.add_parser("prepare-app-picker", help="Verify current menu category vectors against pinned media and maintain native presentation fallbacks")
     app_picker.add_argument("--check", action="store_true", help="Require the existing typed directory to match; never materialize media")
+    module_artwork = commands.add_parser("prepare-module-service-artwork", help="Verify the current More Information image owner and maintain its fixed artwork metadata")
+    module_artwork.add_argument("--check", action="store_true")
     deduplicate = commands.add_parser("deduplicate-resources")
     deduplicate.add_argument("--apply", action="store_true", help="Apply only an unchanged, previously reviewed dry-run")
     deduplicate.add_argument("--plan", default=".analysis/results/resource-deduplication.json")
@@ -6376,6 +6635,10 @@ def main():
         print(json.dumps(prepare_host_favicons(), ensure_ascii=False))
     elif args.command == "prepare-app-picker":
         print(json.dumps(prepare_app_picker(check=args.check), ensure_ascii=False))
+    elif args.command == "prepare-module-service-artwork":
+        report = prepare_module_service_artwork(check=args.check)
+        print(json.dumps({"inputs_unchanged": report["inputs_unchanged"], "metadata": report["metadata"],
+                          "unresolved": report["unresolved"], "check_only": args.check}, ensure_ascii=False))
     elif args.command == "deduplicate-resources":
         report = deduplicate_resources(apply=args.apply, plan=args.plan)
         print(json.dumps({"report": args.plan, "mode": report["mode"], **report["summary"]}, ensure_ascii=False))

@@ -233,6 +233,16 @@ fn unmounted_low_battery_field_cannot_submit_a_current_product_write() {
     assert!(device.sent().is_empty());
 }
 #[test]
+fn pid98_low_battery_effects_uses_device_info_bounds() {
+    // Current PID 98 DeviceInfo: minLBE 3, maxLBE 10, StepLBE 1.
+    for value in 3..=10 {
+        assert!(validate_change(98, &Change::LowBattery(value)).is_ok());
+    }
+    for value in [0, 2, 11, 15, 25] {
+        assert!(validate_change(98, &Change::LowBattery(value)).is_err());
+    }
+}
+#[test]
 fn unchanged_dim_value_only_reads_and_changed_dim_uses_profile_zero_and_brightness_twenty() {
     let change = Change::DimLighting {
         enabled: true,

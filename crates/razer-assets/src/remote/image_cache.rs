@@ -3,7 +3,10 @@ use gpui_kit::{
     AnyImageCache, App, AppContext as _, Entity, Global, ImageCache, ImageCacheError,
     ImageCacheItem, ImageCacheProvider, RenderImage, Resource, Subscription, Window, WindowId,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeSet, HashMap},
+    sync::Arc,
+};
 
 /// Owns one image cache for each open window. Element-scoped caches are not
 /// sufficient here: deferred overlays and the root surface are separate GPUI
@@ -78,8 +81,26 @@ impl ResourceImageCache {
         // GPUI's ImageCacheItem keeps a completed Err forever. Remote resource
         // completion/retry changes the bytes visible to AssetSource, so discard
         // only failed decodes at that boundary and let the next frame retry.
+        self.retry_failed();
+    }
+
+    fn retry_failed(&mut self) {
         self.images
             .retain(|_, item| !matches!(item.get(), Some(Err(_))));
+    }
+
+    fn errors(&self) -> impl Iterator<Item = String> + '_ {
+        self.images.iter().filter_map(|(source, item)| {
+            let Some(Err(error)) = item.get() else {
+                return None;
+            };
+            let path = match source {
+                Resource::Embedded(path) => path.to_string(),
+                Resource::Path(path) => path.display().to_string(),
+                Resource::Uri(uri) => uri.to_string(),
+            };
+            Some(format!("{path}: {error}"))
+        })
     }
 }
 impl ImageCache for ResourceImageCache {
@@ -95,9 +116,15 @@ impl ImageCache for ResourceImageCache {
         }
         if let Resource::Embedded(path) = source {
             match super::available(path) {
-                Ok(false) => return None,
-                Err(error) => return Some(Err(ImageCacheError::Asset(error.to_string().into()))),
-                Ok(true) => {}
+                Ok(false) => {
+                    super::runtime::trace("image", path, "pending bytes");
+                    return None;
+                }
+                Err(error) => {
+                    super::runtime::trace("image", path, format!("unavailable {error:#}"));
+                    return Some(Err(ImageCacheError::Asset(error.to_string().into())));
+                }
+                Ok(true) => super::runtime::trace("image", path, "decode started"),
             }
         }
         self.images
@@ -129,3 +156,32 @@ pub fn load_resource_image(
     let cache: AnyImageCache = WindowResourceCaches::for_window(window, cx).into();
     cache.load(&source, window, cx)
 }
+
+pub(super) fn resource_image_errors(cx: &App) -> BTreeSet<String> {
+    if !cx.has_global::<WindowResourceCaches>() {
+        return BTreeSet::new();
+    }
+    cx.global::<WindowResourceCaches>()
+        .by_window
+        .values()
+        .flat_map(|cache| cache.read(cx).errors())
+        .collect()
+}
+
+pub(super) fn retry_resource_images(cx: &mut App) {
+    if !cx.has_global::<WindowResourceCaches>() {
+        return;
+    }
+    let caches = cx
+        .global::<WindowResourceCaches>()
+        .by_window
+        .values()
+        .cloned()
+        .collect::<Vec<_>>();
+    for cache in caches {
+        cache.update(cx, |cache, _| cache.retry_failed());
+    }
+}
+
+#[cfg(test)]
+mod tests;

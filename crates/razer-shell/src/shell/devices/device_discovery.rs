@@ -604,6 +604,7 @@ impl AppShell {
         self.cancel_mouse_runtime_artwork(cx);
         self.cancel_mouse_receiver_indicator();
         self.cancel_controller_inputs(cx);
+        self.cancel_hanbo_cooler();
         self.cancel_thx_sound_jobs();
         self.thx_progress.clear();
         self.receiver_queries.clear();

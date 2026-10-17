@@ -1545,7 +1545,7 @@ impl Render for KeyboardProductWorkspace {
             // hashes and UTF-16 ranges: keyboard-lighting-roots-2026-10-11.json.
             "TAB_LIGHTING" => self.lighting(window, cx, false),
             "TAB_CUSTOMIZE" => self.customize(window, cx),
-            "ACTUATION" => self.actuation_page(cx),
+            "ACTUATION" => self.actuation_page(window, cx),
             "TAB_CALIBRATION" if self.spec.product_id == 756 => {
                 self.calibration_v2_page(window, cx)
             }

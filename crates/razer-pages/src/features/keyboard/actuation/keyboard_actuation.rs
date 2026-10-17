@@ -941,7 +941,7 @@ impl KeyboardProductWorkspace {
         }
     }
 
-    pub(super) fn actuation_page(&self, cx: &Context<Self>) -> AnyElement {
+    pub(super) fn actuation_page(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
         let Some(state) = &self.actuation else {
             return surface::panel(t("ACTUATION"), cx).into_any_element();
         };
@@ -1417,13 +1417,28 @@ impl KeyboardProductWorkspace {
                         .child(div().child(t("RAPID_TRIGGER_TOOLTIP"))),
                     )
                 });
-        v_flex()
+        // Current Actuation roots render `.factory-default .warning-alert`
+        // outside a `body-widgets` wrapper whose `.disabled` class applies
+        // `opacity:.3;pointer-events:none`. The 756 root gates the alert on
+        // normal mode without BLE and the wrapper on normal mode with
+        // factory profile or BLE.
+        let (overlay, wrapper_disabled) = if self.spec.product_id == 756 {
+            let normal = self.calibration_v2.normal_mode;
+            let ble = self.observed_bluetooth() == Some(true);
+            (
+                normal && !ble && self.factory_default_profile,
+                normal && (self.factory_default_profile || ble),
+            )
+        } else {
+            (locked, locked)
+        };
+        let plain_warning = matches!(self.spec.product_id, 614 | 642);
+        let contents = v_flex()
             .gap_5()
-            .when(locked, |page| {
-                page.child(
-                    surface::panel(t("FACTORY_DEFAULT_PROFILE_TITTLE"), cx)
-                        .child(t("FACTORY_DEFAULT_PROFILE_WARNING_DESC")),
-                )
+            .when(wrapper_disabled, |page| {
+                page.opacity(0.3)
+                    .capture_any_mouse_down(|_, _, cx| cx.stop_propagation())
+                    .capture_any_mouse_up(|_, _, cx| cx.stop_propagation())
             })
             .child(self.keyboard_image(true, cx))
             .child(keys)
@@ -1443,7 +1458,17 @@ impl KeyboardProductWorkspace {
                             column.pb(surface::css(10.))
                         }),
                     )),
-            )
+            );
+        div()
+            .relative()
+            .child(contents)
+            .when(overlay, |page| {
+                page.child(if plain_warning {
+                    calibration::factory_warning_plain(window)
+                } else {
+                    calibration::factory_warning(window)
+                })
+            })
             .into_any_element()
     }
 }

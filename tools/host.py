@@ -2796,12 +2796,14 @@ def audit_stream_mixer_profile_notification(prepare=False):
         raise ValueError("Current notification brand resource is unavailable")
     audit.read(icons[0])
     icon = {"original": icons[0], "runtime_key": "synapse/notification-profile-switch-brand.svg"}
-    if prepare:
-        prepared = workspace.prepare_resources(source_sets["notification-manager-current"]["acquisition"]["path"],
-            {icons[0]["path"]: icon["runtime_key"]})
-        if len(prepared) != 1:
-            raise ValueError("Current notification resource preparation is ambiguous")
-        icon.update({"preparation": prepared[0], "physical": audit.families.identity(a.ROOT / prepared[0]["output"])})
+    acquisition_path = source_sets["notification-manager-current"]["acquisition"]["path"]
+    requests = {icons[0]["path"]: icon["runtime_key"]}
+    prepared = (workspace.prepare_resources(acquisition_path, requests) if prepare
+                else audit.families.pinned_resources(acquisition_path, requests))
+    if len(prepared) != 1:
+        raise ValueError("Current notification resource preparation is ambiguous")
+    icon.update({"preparation": prepared[0],
+                 "physical": {"path": prepared[0]["output"], "sha256": prepared[0]["output_sha256"]}})
     result = {"source_sets": list(source_sets.values()), "selected_owners": selected, "current_exports": exports,
         "source_container_parameter": container, "complete_styles": styles, "complete_host_sources": list(host.values()),
         "selected_host_owners": host_selected, "native_fullscreen": {**native_provenance, "slice": fullscreen},

@@ -877,10 +877,13 @@ def _refresh_gaps():
     if resource_audit.is_file():
         import workspace
         audit = json.loads(resource_audit.read_bytes())
+        # verify-resources and audit-runtime-resources maintain independent
+        # sections of this receipt; either may be absent.
         rows = [{"kind": "runtime_image_verification_failure", "evidence": rel(resource_audit), **entry}
-                for entry in audit["entries"] if not entry["passed"]]
+                for entry in audit.get("entries", []) if not entry["passed"]]
         try:
-            current = audit.get("inputs_unchanged") and audit["inputs"] == workspace.image_resource_inputs()
+            current = ("entries" in audit and audit.get("inputs_unchanged")
+                       and audit["inputs"] == workspace.image_resource_inputs())
         except (OSError, ValueError) as error:
             current = False
             rows.append({"kind": "runtime_image_include_closure_failure", "evidence": rel(resource_audit),
@@ -888,6 +891,13 @@ def _refresh_gaps():
         if not current:
             rows.append({"kind": "resource_audit_stale", "evidence": rel(resource_audit),
                          "next_step": "python tools/workspace.py verify-resources"})
+        closure = audit.get("runtime_reference_closure")
+        if closure is not None:
+            rows.extend({"kind": "runtime_resource_reference_missing", "evidence": rel(resource_audit), **row}
+                        for row in closure.get("missing_references", []))
+            if not closure.get("passed"):
+                rows.append({"kind": "runtime_resource_closure_failed", "evidence": rel(resource_audit),
+                             "next_step": "python tools/workspace.py audit-runtime-resources"})
         derived[rel(resource_audit)] = rows
     host = ROOT / ".analysis/inputs/host-current/acquisition.json"
     if host.is_file():

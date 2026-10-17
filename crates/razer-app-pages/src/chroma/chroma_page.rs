@@ -414,12 +414,8 @@ impl ChromaPage {
                         .hover(|s| s.border_color(rgba(0x44d62c4d)))
                         .active(|s| s.border_color(rgb(0x44d62c)))
                         .accessibility_label(name.clone())
-                        .when(!available, |b| {
-                            b.tooltip(|window, cx| {
-                                Tooltip::new("此设备的 Chroma 灯光页尚未接入。").build(window, cx)
-                            })
-                        })
-                        // `.box-item-device .disabled{opacity:.3;pointer-events:none}`
+                        // `.box-item-device .disabled{opacity:.3;pointer-events:none}`:
+                        // the disabled card has no tooltip in the current source.
                         .child(
                             v_flex()
                                 .w_full()

@@ -168,6 +168,7 @@ pub fn run_worker() -> i32 {
             | ServiceRequest::HidNodeMouseReceiverPolling { .. }
             | ServiceRequest::HidNodeMouseReceiverIdle { .. }
             | ServiceRequest::HidNodeWrite { .. }
+            | ServiceRequest::HidNodeHanboCooler { .. }
             | ServiceRequest::HidNodeKeyboardBrightnessRead { .. }
             | ServiceRequest::HidNodeKeyboardReceiverBrightness { .. }
             | ServiceRequest::HidNodeKeyboardMetadataRead { .. }

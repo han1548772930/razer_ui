@@ -2,6 +2,16 @@
 
 从原始输入生成全量分析，完整实现所有本地功能，包括设备变更、写回和持久化。[本地优先范围](local-first-scope.md) 排除的联网功能须从 UI 和 dispatch 清除。
 
+## 2026-10-17 待完成项
+
+- 全部产品页面仍需逐项按当前原件实现：各族页面内残留 “仍在接入／尚未接入” 占位和未核实分支（`source_controls.rs`、`accessory_system_products.rs`、`workspace.rs`、`customize_page.rs`、`shortcut_engine.rs`、`app_picker.rs`、`profile_migration.rs`、`profiles_page/devices.rs`、`receiver_reset.rs`），以及轮询率接收器连接分支、原生 getter 生命周期。
+- 手柄 mounted 子树，以及宏、Chroma、Dashboard、设置、Gamer Room 页面的源码对照未完成。
+- Seiren 1422／1446：原生 Hex-Rays 在 0x18003318e 等调用点 call analysis 失败（-12）；12 个转换 PNG 资源未重新解码比对；graph、增删频段、mic／monitor、频谱、Tutorial 与录音 footer 仍需实现。
+- 键盘 `local_controls_source_review` 约 600 条 `semantic_query_failure` 未分辨过期／真实项。
+- razer-app-pages 11 项 GPUI 测试失败：5 项依赖当前 GPUI Kit Button 不暴露的 accessibility disabled 标记；应用选择器点击未打开、导览视口偏移、IoT 弹窗焦点恢复、配对确认框缺失、按钮 33.5／33.75px 高度、Gamer Room tutorial 状态待查。razer-pages 测试尚未全量运行。
+- 本批子任务在提交报告前停止：鼠标电源、键盘 actuation／calibration／lighting gates、系统灯光、附件 Armory／Hanbo cooler、音频 SURROUND 与相关 device／service／ipc 改动已编译通过，但尚未逐项对照原件复核或测试；缺失远程资源未汇总，未上传。
+- 应用、安装包、厂商代码与真实设备均未运行验收。
+
 ## 2026-10-16 全产品并行实现
 
 全产品、本地全页面的原始任务尚未完成，当前主任务保持进行中。三个子任务分别负责当前来源与资源、全部产品 UI 对照、本地平台／设备调用链；主任务负责集成、音频及统一验证。以下记录区分已落地具体链与仍需继续实现的部分，不能作为整页完成结论；缺项仍集中维护在 [gaps.json](../../.analysis/results/gaps.json)。

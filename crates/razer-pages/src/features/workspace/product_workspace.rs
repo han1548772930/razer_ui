@@ -1572,6 +1572,9 @@ impl ProductWorkspace {
                         generation: *generation,
                         percent: *percent,
                     },
+                    WorkspaceEvent::HanboCoolerRequested(request) => {
+                        WorkspaceEvent::HanboCoolerRequested(request.clone())
+                    }
                     WorkspaceEvent::KeyboardActuationRequested(request) => {
                         WorkspaceEvent::KeyboardActuationRequested(request.clone())
                     }
@@ -1852,6 +1855,9 @@ impl ProductWorkspace {
                         generation: *generation,
                         percent: *percent,
                     },
+                    WorkspaceEvent::HanboCoolerRequested(request) => {
+                        WorkspaceEvent::HanboCoolerRequested(request.clone())
+                    }
                     WorkspaceEvent::KeyboardActuationRequested(request) => {
                         WorkspaceEvent::KeyboardActuationRequested(request.clone())
                     }
@@ -2158,6 +2164,20 @@ impl ProductWorkspace {
             Body::Existing(e) => e.read(cx).device(),
             Body::Source(e) => e.read(cx).device(),
         }
+    }
+    pub fn finish_hanbo_command(
+        &mut self,
+        generation: u64,
+        result: Result<(), String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| body.finish_hanbo_command(generation, result, cx));
+        }
+    }
+
+    pub fn hanbo_command_matches(&self, generation: u64, cx: &App) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).hanbo_command_matches(generation, cx))
     }
     pub fn identity(&self, cx: &App) -> String {
         self.device(cx).workspace_identity()
