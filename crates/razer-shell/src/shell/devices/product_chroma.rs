@@ -24,13 +24,21 @@ pub(super) struct Readback {
 /// The caller owns background execution and scope/cancellation admission.
 pub(super) fn readback() -> Readback {
     readback_with(
-        || chroma_profiles::load(&chroma_profiles::path(), &razer_storage::source_local::path()),
+        || {
+            chroma_profiles::load(
+                &chroma_profiles::path(),
+                &razer_storage::source_local::path(),
+            )
+        },
         razer_platform::chroma_installation::inspect,
     )
 }
 
 pub(super) fn from_snapshot(snapshot: Snapshot) -> Readback {
-    readback_with(|| Ok(snapshot), razer_platform::chroma_installation::inspect)
+    readback_with(
+        || Ok(snapshot),
+        razer_platform::chroma_installation::inspect,
+    )
 }
 
 fn readback_with(

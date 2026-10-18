@@ -509,19 +509,20 @@ impl ProductWorkspace {
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.observe_mouse_dynamic_speed(request, speed, window, cx));
+            body.update(cx, |body, cx| {
+                body.observe_mouse_dynamic_speed(request, speed, window, cx)
+            });
         }
     }
     pub fn complete_mouse_dynamic(
         &mut self,
         request: &super::mouse_products::MouseDynamicRequested,
         completion: super::mouse_products::MouseDynamicCompletion,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.complete_mouse_dynamic(request, completion, window, cx);
+                body.complete_mouse_dynamic(request, completion, cx);
             });
         }
     }

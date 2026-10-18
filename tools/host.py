@@ -15,6 +15,7 @@ import types
 import urllib.parse
 import urllib.request
 import io
+import lzma
 import zipfile
 import zlib
 
@@ -1361,6 +1362,159 @@ def restore_static_archive(row, tool, destination, expected, prior, output, kind
         record["outputs"] = [identity(p) for p in sorted(output.glob("*.txt"))]
         a.save(output / "capture.json", record)
     return record
+
+
+def setup_factory_static_extraction(raw):
+    """Decode the observed single-segment LZMA container without running it.
+
+    The launcher owns the marker, 64-bit sizes and first-2000-byte XOR. The
+    setup engine owns the 280-byte auxiliary headers and sequential payloads.
+    Both complete function sets are retained by the local installation audit.
+    This accepts only those observed branches; another compression/segment
+    format remains an explicit acquisition failure.
+    """
+    marker = bytes(value for value in range(0xe0, 0xe8) for _ in range(2))
+    hits = [match.start() for match in re.finditer(re.escape(marker), raw)]
+    if not hits:
+        return None
+    if len(hits) != 1:
+        raise ValueError("Setup Factory data marker is ambiguous")
+    inspect_pe(raw)
+    start = hits[0]
+    if start + 34 > len(raw):
+        raise ValueError("Setup Factory header exceeds input")
+    multi, compression, end, engine_size = struct.unpack_from("<BBQQ", raw, start + 16)
+    if multi != 0 or compression != 1:
+        raise ValueError("Unresolved Setup Factory segment/compression branch")
+    if not start + 34 < end <= len(raw):
+        raise ValueError("Setup Factory total size exceeds input")
+    pe = struct.unpack_from("<I", raw, 0x3c)[0]
+    optional = pe + 24
+    magic = struct.unpack_from("<H", raw, optional)[0]
+    directory = optional + (112 if magic == 0x20b else 96)
+    cert_offset, cert_bytes = struct.unpack_from("<II", raw, directory + 4 * 8)
+    if cert_offset or cert_bytes:
+        if (cert_offset != (end + 7) & ~7 or not cert_bytes
+                or cert_offset + cert_bytes != len(raw) or any(raw[end:cert_offset])):
+            raise ValueError("Setup Factory payload/certificate boundary differs")
+        cursor = cert_offset
+        while cursor < len(raw):
+            if cursor + 8 > len(raw):
+                raise ValueError("Truncated Setup Factory certificate")
+            length, revision, kind = struct.unpack_from("<IHH", raw, cursor)
+            if length < 8 or cursor + length > len(raw) or revision != 0x200 or kind != 2:
+                raise ValueError("Invalid Setup Factory certificate boundary")
+            aligned = (cursor + length + 7) & ~7
+            if aligned > len(raw) or any(raw[cursor + length:aligned]):
+                raise ValueError("Invalid Setup Factory certificate padding")
+            cursor = aligned
+    elif end != len(raw):
+        raise ValueError("Unexpected bytes after Setup Factory payload")
+    files, names = [], set()
+    cursor = start + 34
+
+    def retain(name, offset, compressed, data, transform):
+        parts = name.replace("\\", "/").split("/")
+        if (not name or name.startswith(("/", "\\"))
+                or any(not part or part in {".", ".."} or ":" in part for part in parts)
+                or name.casefold() in names):
+            raise ValueError("Unsafe or duplicate Setup Factory output name")
+        names.add(name.casefold())
+        files.append({"name": name, "container_offset": offset, "container_bytes": len(compressed),
+                      "container_sha256": hashlib.sha256(compressed).hexdigest(),
+                      "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(),
+                      "transform": transform, "data": bytes(data)})
+
+    def bounded(size):
+        nonlocal cursor
+        if not 0 < size <= end - cursor:
+            raise ValueError("Setup Factory component size exceeds input")
+        offset = cursor
+        cursor += size
+        return offset, raw[offset:cursor]
+
+    offset, encoded = bounded(engine_size)
+    engine = bytearray(encoded)
+    for index in range(min(2000, len(engine))):
+        engine[index] ^= 7
+    if inspect_pe(engine).get("kind") != "native":
+        raise ValueError("Setup Factory engine is not the declared PE")
+    retain("engine/irsetup.exe", offset, encoded, engine, "xor_7_first_2000_bytes")
+    if cursor + 8 > end:
+        raise ValueError("Missing Setup Factory Lua length")
+    lua_size = struct.unpack_from("<Q", raw, cursor)[0]
+    cursor += 8
+    offset, lua = bounded(lua_size)
+    if inspect_pe(lua).get("kind") != "native":
+        raise ValueError("Setup Factory Lua library is not a PE")
+    retain("engine/lua5.3.dll", offset, lua, lua, "exact_range")
+    if cursor + 4 > end:
+        raise ValueError("Missing Setup Factory auxiliary count")
+    count = struct.unpack_from("<I", raw, cursor)[0]
+    cursor += 4
+    if not 0 < count <= (end - cursor) // 280:
+        raise ValueError("Invalid Setup Factory auxiliary count")
+
+    def decode(encoded):
+        if len(encoded) < 13:
+            raise ValueError("Truncated Setup Factory LZMA header")
+        size = struct.unpack_from("<Q", encoded, 5)[0]
+        if not 0 < size <= 256 * 1024 * 1024:
+            raise ValueError("Unresolved Setup Factory LZMA output length")
+        decoder = lzma.LZMADecompressor(format=lzma.FORMAT_ALONE, memlimit=512 * 1024 * 1024)
+        try:
+            data = decoder.decompress(encoded, max_length=size + 1)
+        except lzma.LZMAError as error:
+            raise ValueError("Invalid Setup Factory LZMA component") from error
+        if not decoder.eof or len(data) != size:
+            raise ValueError("Incomplete Setup Factory LZMA output")
+        consumed = len(encoded) - len(decoder.unused_data)
+        return data, consumed
+
+    for _ in range(count):
+        offset, header = bounded(280)
+        name_bytes, attributes, length, timestamp = struct.unpack("<260sIQQ", header)
+        name_raw, terminator, padding = name_bytes.partition(b"\0")
+        if not terminator or any(padding):
+            raise ValueError("Invalid Setup Factory auxiliary name padding")
+        try:
+            name = name_raw.decode("ascii")
+        except UnicodeDecodeError as error:
+            raise ValueError("Unresolved Setup Factory auxiliary name encoding") from error
+        if "/" in name or "\\" in name:
+            raise ValueError("Unsafe Setup Factory auxiliary basename")
+        offset, encoded = bounded(length)
+        data, consumed = decode(encoded)
+        if consumed != length:
+            raise ValueError("Trailing bytes in Setup Factory auxiliary component")
+        retain("auxiliary/" + name, offset, encoded, data, "lzma_alone")
+        files[-1].update(attributes=attributes, timestamp=timestamp)
+    payloads = 0
+    while cursor < end:
+        offset = cursor
+        data, consumed = decode(raw[cursor:end])
+        cursor += consumed
+        suffix = ".bin"
+        if data[:2] == b"MZ":
+            inspect_pe(data)
+            image = struct.unpack_from("<I", data, 0x3c)[0]
+            characteristics = struct.unpack_from("<H", data, image + 22)[0]
+            suffix = ".dll" if characteristics & 0x2000 else ".exe"
+        elif data[:4] == b"PK\x03\x04":
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                if archive.testzip() is not None:
+                    raise ValueError("Setup Factory ZIP payload integrity failed")
+            suffix = ".zip"
+        elif data[:4] == b"\0\0\x01\0":
+            suffix = ".ico"
+        retain(f"payload/{payloads:04}{suffix}", offset, raw[offset:cursor], data, "lzma_alone")
+        payloads += 1
+    if not payloads:
+        raise ValueError("Setup Factory contains no local file payload")
+    return {"format": "Setup Factory", "marker_offset": start,
+            "single_segment": True, "compression": "LZMA alone", "payload_end": end,
+            "auxiliary_count": count, "payload_count": payloads, "files": files,
+            "target_execution": False, "complete": cursor == end}
 
 
 def inspect_host(args):

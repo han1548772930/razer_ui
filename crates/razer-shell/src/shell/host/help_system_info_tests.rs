@@ -20,7 +20,7 @@ fn response(query: Query) -> Response {
     }).unwrap() }
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn help_system_info_display_uses_native_response_without_opening_a_save_dialog() {
     let (work, _) = make_work(Query::Display);
     let outcome = run_work_with(
@@ -41,7 +41,7 @@ fn help_system_info_display_uses_native_response_without_opening_a_save_dialog()
     assert_eq!(details.device_name.as_deref(), Some("Observed host"));
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn help_system_info_full_export_matches_save_dialog_contract_and_replaces_atomically() {
     let directory =
         std::env::temp_dir().join(format!("razer-help-report-{}", uuid::Uuid::new_v4()));
@@ -78,7 +78,7 @@ fn help_system_info_full_export_matches_save_dialog_contract_and_replaces_atomic
     std::fs::remove_dir(directory).unwrap();
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn help_system_info_cancellation_prevents_dialog_and_file_publication() {
     let (work, _) = make_work(Query::Full);
     let cancelled = work.cancelled.clone();
@@ -121,7 +121,7 @@ fn help_system_info_cancellation_prevents_dialog_and_file_publication() {
     );
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn help_system_info_wrong_reply_and_query_failure_never_open_the_dialog() {
     let (work, _) = make_work(Query::Full);
     for wrong_identity in [true, false] {
@@ -141,7 +141,7 @@ fn help_system_info_wrong_reply_and_query_failure_never_open_the_dialog() {
     }
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn help_system_info_cancelled_exit_queues_new_work_until_the_old_worker_is_joined() {
     let (release, waiting) = mpsc::channel();
     let (commands, _incoming) = mpsc::channel();
@@ -152,11 +152,9 @@ fn help_system_info_cancelled_exit_queues_new_work_until_the_old_worker_is_joine
         Some(returned_directory)
     });
     let previous_id = previous.thread().id();
-    let mut runtime = Runtime {
-        worker: Some(previous),
-        commands: Some(commands),
-        ..Default::default()
-    };
+    let mut runtime = Runtime::default();
+    runtime.worker = Some(previous);
+    runtime.commands = Some(commands);
     runtime.cancel_all();
     assert!(runtime.stopping);
     assert!(runtime.commands.is_none());

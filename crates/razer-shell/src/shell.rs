@@ -117,6 +117,8 @@ mod mouse_current_power_runtime;
 mod mouse_dpi_70;
 #[path = "shell/mouse/mouse_dpi_stages.rs"]
 mod mouse_dpi_stages;
+#[path = "shell/mouse/mouse_dynamic.rs"]
+mod mouse_dynamic;
 #[path = "shell/mouse/mouse_matcher.rs"]
 mod mouse_matcher;
 #[path = "shell/mouse/mouse_philips.rs"]
@@ -129,8 +131,6 @@ mod mouse_runtime_artwork;
 mod mouse_scroll;
 #[path = "shell/mouse/mouse_tracking.rs"]
 mod mouse_tracking;
-#[path = "shell/mouse/mouse_dynamic.rs"]
-mod mouse_dynamic;
 use controller_chroma::ControllerChromaSave;
 use controller_lighting::ControllerLightingSave;
 use controller_triggers::ControllerTriggerSave;
@@ -143,10 +143,10 @@ mod hyperpolling_runtime;
 mod mouse_polling_runtime;
 #[path = "shell/mouse/mouse_polling_write.rs"]
 mod mouse_polling_write;
-#[path = "shell/devices/product_lighting.rs"]
-mod product_lighting;
 #[path = "shell/devices/product_chroma.rs"]
 mod product_chroma;
+#[path = "shell/devices/product_lighting.rs"]
+mod product_lighting;
 #[path = "shell/devices/product_mapping.rs"]
 mod product_mapping;
 #[path = "shell/devices/product_settings_navigation.rs"]

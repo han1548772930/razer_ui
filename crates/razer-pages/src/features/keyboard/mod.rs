@@ -51,8 +51,8 @@ mod rgb_controls;
 #[path = "lighting/keyboard_rgb_effects.rs"]
 mod rgb_effects;
 pub use lighting_runtime::{
-    KeyboardChromaPeer, KeyboardLightingCommand, KeyboardLightingHostObservation, KeyboardLightingObservation,
-    KeyboardLightingOwner, KeyboardLightingRequested,
+    KeyboardChromaPeer, KeyboardLightingCommand, KeyboardLightingHostObservation,
+    KeyboardLightingObservation, KeyboardLightingOwner, KeyboardLightingRequested,
 };
 #[path = "calibration/keyboard_calibration.rs"]
 mod calibration;

@@ -14,7 +14,10 @@ fn product_chroma_failed_profile_read_still_observes_installation_and_preserves_
     );
     assert_eq!(calls, ["installation"]);
     assert_eq!(readback.snapshot.unwrap_err(), "profile read failed");
-    assert_eq!(readback.installation.unwrap_err(), "installation read failed");
+    assert_eq!(
+        readback.installation.unwrap_err(),
+        "installation read failed"
+    );
 }
 
 fn register(storage: &mut HostStorage, id: u64, url: &str) {
@@ -86,7 +89,10 @@ fn product_chroma_memory_follows_updates_without_reopening_the_consumer() {
         1,
         json!({"payload":{"devices":[{"productId":4115}]}}),
     );
-    assert_eq!(connected_products(&mut storage, 2).unwrap(), Some(vec![4115]));
+    assert_eq!(
+        connected_products(&mut storage, 2).unwrap(),
+        Some(vec![4115])
+    );
     publish(
         &mut storage,
         1,

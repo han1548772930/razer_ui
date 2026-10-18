@@ -133,8 +133,8 @@ pub use matcher_owner::{MouseMatcherRequest, MouseMatcherScope};
 #[path = "mouse_rotation.rs"]
 mod rotation;
 pub use dynamic::{
-    MouseDynamicAction, MouseDynamicCompletion, MouseDynamicObservation, MouseDynamicRequested, MouseDynamicScope,
-    MouseDynamicTutorialChanged,
+    MouseDynamicAction, MouseDynamicCompletion, MouseDynamicObservation, MouseDynamicRequested,
+    MouseDynamicScope, MouseDynamicTutorialChanged,
 };
 #[path = "scrolling/mouse_scroll_options.rs"]
 mod scroll_options;

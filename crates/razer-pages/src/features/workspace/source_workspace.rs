@@ -631,7 +631,12 @@ impl SourceProductWorkspace {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
                 if request.guard().load(std::sync::atomic::Ordering::Acquire) {
-                    body.observe_mouse_dynamic(request.scope(), super::mouse_products::MouseDynamicObservation::MouseSpeed(speed), window, cx);
+                    body.observe_mouse_dynamic(
+                        request.scope(),
+                        super::mouse_products::MouseDynamicObservation::MouseSpeed(speed),
+                        window,
+                        cx,
+                    );
                 }
             });
         }
@@ -640,12 +645,11 @@ impl SourceProductWorkspace {
         &mut self,
         request: &super::mouse_products::MouseDynamicRequested,
         completion: super::mouse_products::MouseDynamicCompletion,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.complete_mouse_dynamic(request, completion, window, cx);
+                body.complete_mouse_dynamic(request, completion, cx);
             });
         }
     }

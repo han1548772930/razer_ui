@@ -15,6 +15,11 @@ pub(super) enum Work {
         submission: Submission,
     },
 }
+impl Work {
+    pub(super) fn was_persisted(&self) -> bool {
+        matches!(self, Self::Brightness { .. })
+    }
+}
 pub(super) enum Reply {
     Observation(super::product_chroma::Readback),
     Submitted,

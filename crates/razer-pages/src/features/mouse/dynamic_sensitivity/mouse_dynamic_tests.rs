@@ -15,7 +15,7 @@ fn request(command: &'static str, payload: Value) -> MouseDynamicRequested {
         edit_revision: 1,
     }
 }
-#[test]
+#[::core::prelude::v1::test]
 fn mouse_dynamic_source_request_requires_typed_complete_custom_float32_payload() {
     let points = vec![1.25f32; 250];
     let mut request = request(
@@ -35,7 +35,7 @@ fn mouse_dynamic_source_request_requires_typed_complete_custom_float32_payload()
     request.payload["dynamicSensitivity"]["customSensorAccelerations"] = json!([1.]);
     assert!(request.action().is_err());
 }
-#[test]
+#[::core::prelude::v1::test]
 fn mouse_dynamic_source_request_rejects_missing_unknown_or_wrongly_typed_fields() {
     for value in [
         json!({"state":1,"mode":2}),
@@ -53,7 +53,7 @@ fn mouse_dynamic_source_request_rejects_missing_unknown_or_wrongly_typed_fields(
         );
     }
 }
-#[test]
+#[::core::prelude::v1::test]
 fn mouse_dynamic_monitor_request_has_independent_owner_guard_from_device_mutations() {
     let device = request(
         "ON_SET_DYNAMIC_SENSITIVITY",
@@ -73,4 +73,95 @@ fn mouse_dynamic_monitor_request_has_independent_owner_guard_from_device_mutatio
             .action()
             .is_err()
     );
+}
+
+fn begin(requests: &mut Requests, command: &'static str) -> MouseDynamicRequested {
+    let mut request = request(command, json!({}));
+    request.request_id = requests.begin(command);
+    request.edit_revision = requests.edit_revision;
+    request
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_monitor_retirement_preserves_writes_across_repeated_mounts() {
+    let mut requests = Requests::default();
+    let write = begin(&mut requests, "ON_SET_DYNAMIC_SENSITIVITY");
+    for _ in 0..64 {
+        requests.retire_monitors();
+        let start = begin(&mut requests, "DYNAMIC_SENSITIVITY_UI_COMMAND");
+        assert!(requests.complete(&start, MouseDynamicCompletion::Monitoring(true)));
+        assert_eq!(requests.pending.len(), 2);
+        start.guard.store(false, Ordering::Release);
+        requests.retire_monitors();
+        assert_eq!(requests.pending.len(), 1);
+        assert!(!requests.complete(&start, MouseDynamicCompletion::Monitoring(false)));
+        assert!(requests.current(&write));
+        let stop = begin(&mut requests, "DYNAMIC_SENSITIVITY_UI_COMMAND");
+        assert!(requests.complete(&stop, MouseDynamicCompletion::Monitoring(false)));
+        assert_eq!(requests.pending.len(), 1);
+    }
+    assert!(requests.complete(&write, MouseDynamicCompletion::Cancelled));
+    assert!(requests.pending.is_empty());
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_old_failure_retires_request_without_overwriting_new_edit_diagnostics() {
+    let mut requests = Requests::default();
+    let old = begin(&mut requests, "ON_SET_DYNAMIC_SENSITIVITY");
+    let current = begin(&mut requests, "ON_SET_DYNAMIC_SENSITIVITY");
+    assert!(requests.complete(
+        &current,
+        MouseDynamicCompletion::Failed("current write failure".into())
+    ));
+    assert!(requests.complete(
+        &old,
+        MouseDynamicCompletion::Failed("old write failure".into())
+    ));
+    assert_eq!(
+        requests.last_failure.as_deref(),
+        Some("current write failure")
+    );
+    assert!(requests.pending.is_empty());
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_old_read_failure_does_not_clear_new_custom_curve_loading() {
+    let mut requests = Requests::default();
+    let old_read = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    let write = begin(&mut requests, "ON_SET_DYNAMIC_SENSITIVITY");
+    requests.loading = true;
+    assert!(requests.complete(
+        &old_read,
+        MouseDynamicCompletion::Failed("old diagnostic read failure".into())
+    ));
+    assert!(requests.loading);
+    assert!(requests.last_failure.is_none());
+    assert!(requests.complete(
+        &write,
+        MouseDynamicCompletion::Unsupported("current route failure".into())
+    ));
+    assert!(!requests.loading);
+    assert_eq!(
+        requests.last_failure.as_deref(),
+        Some("current route failure")
+    );
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_completions_require_exact_pending_command_and_live_request_owner() {
+    let mut requests = Requests::default();
+    let write = begin(&mut requests, "ON_SET_DYNAMIC_SENSITIVITY");
+    let mut wrong = write.clone();
+    wrong.command = "READ_DYNAMIC_SENSITIVITY";
+    assert!(!requests.complete(
+        &wrong,
+        MouseDynamicCompletion::Failed("wrong command".into())
+    ));
+    assert!(requests.current(&write));
+    write.guard.store(false, Ordering::Release);
+    assert!(!requests.complete(
+        &write,
+        MouseDynamicCompletion::Failed("canceled owner".into())
+    ));
+    assert!(requests.last_failure.is_none());
 }

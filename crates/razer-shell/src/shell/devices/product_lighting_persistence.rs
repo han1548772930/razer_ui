@@ -222,7 +222,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         let current = save.current(self, cx);
-        if !succeeded || !current || self.close_requested {
+        if !succeeded || !current {
             let error = if !succeeded {
                 "Lighting local profile persistence did not complete"
             } else {
@@ -247,33 +247,17 @@ impl AppShell {
             }
             return;
         }
-        let owner = cx.entity().downgrade();
-        cx.defer(move |cx| {
-            let workspace = save.workspace.clone();
-            let request = save.request.clone();
-            let launched = window.update(cx, |_, window, cx| {
-                owner.update(cx, |shell, cx| {
-                    shell.submit_mouse_lighting_brightness(save, window, cx)
-                })
-            });
-            if !matches!(launched, Ok(Ok(()))) {
-                workspace.update(cx, |workspace, cx| {
-                    workspace.abandon_mouse_lighting(
-                        &request,
-                        Some("Lighting task owner or window closed after local persistence".into()),
-                        cx,
-                    )
-                });
-            }
-        });
+        // Register the retained device task before the save queue can finish
+        // its exit decision. A requested close drains this accepted write.
+        self.submit_mouse_lighting_brightness(save, window, cx);
     }
     fn submit_mouse_lighting_brightness(
         &mut self,
         save: ProductLightingSave,
-        window: &mut Window,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if !save.current(self, cx) || self.close_requested {
+        if !save.current(self, cx) {
             save.workspace.update(cx, |workspace, cx| {
                 workspace.abandon_mouse_lighting(
                     &save.request,
@@ -297,14 +281,24 @@ impl AppShell {
                 cx,
             ),
             Err(error) => {
-                save.workspace.update(cx, |workspace, cx| {
-                    workspace.complete_mouse_lighting(
-                        &save.request,
-                        Err(format!("{error:#}")),
-                        window,
-                        cx,
-                    )
-                });
+                let error = format!("{error:#}");
+                if window
+                    .update(cx, |_, window, cx| {
+                        save.workspace.update(cx, |workspace, cx| {
+                            workspace.complete_mouse_lighting(
+                                &save.request,
+                                Err(error.clone()),
+                                window,
+                                cx,
+                            )
+                        })
+                    })
+                    .is_err()
+                {
+                    save.workspace.update(cx, |workspace, cx| {
+                        workspace.abandon_mouse_lighting(&save.request, Some(error), cx)
+                    });
+                }
             }
         }
     }

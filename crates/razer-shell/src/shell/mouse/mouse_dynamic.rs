@@ -12,6 +12,21 @@ use std::sync::{Arc, Mutex, atomic::Ordering};
 mod save;
 pub(super) use save::LocalSave;
 
+#[derive(Clone, Copy)]
+enum Admission {
+    New,
+    AcceptedWrite,
+}
+impl Admission {
+    fn queued(request: &MouseDynamicRequested) -> Self {
+        if matches!(request.action(), Ok(MouseDynamicAction::Write(_))) {
+            Self::AcceptedWrite
+        } else {
+            Self::New
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Key {
     identity: String,
@@ -40,6 +55,9 @@ pub(super) struct State {
     queued: BTreeMap<Key, Queued>,
 }
 impl State {
+    fn admits(&self, closing: bool, admission: Admission) -> bool {
+        !self.stopped && (!closing || matches!(admission, Admission::AcceptedWrite))
+    }
     pub(super) fn pending(&self) -> bool {
         self.operations
             .keys()
@@ -79,13 +97,10 @@ fn finish(
     workspace: &Entity<ProductWorkspace>,
     request: &MouseDynamicRequested,
     completion: MouseDynamicCompletion,
-    window: AnyWindowHandle,
     cx: &mut App,
 ) {
-    let _ = window.update(cx, |_, window, cx| {
-        workspace.update(cx, |workspace, cx| {
-            workspace.complete_mouse_dynamic(request, completion, window, cx);
-        })
+    workspace.update(cx, |workspace, cx| {
+        workspace.complete_mouse_dynamic(request, completion, cx);
     });
 }
 
@@ -183,27 +198,35 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested
-            || self.mouse_dynamic.stopped
-            || !self.devices.contains(&workspace)
+        if !self.devices.contains(&workspace)
             || !workspace
                 .read(cx)
                 .mouse_dynamic_request_is_current(request, cx)
         {
             return;
         }
+        if !self
+            .mouse_dynamic
+            .admits(self.close_requested, Admission::New)
+        {
+            finish(&workspace, request, MouseDynamicCompletion::Cancelled, cx);
+            return;
+        }
         match request.action() {
             Ok(MouseDynamicAction::Write(_)) => {
                 self.persist_mouse_dynamic(workspace, request.clone(), window, cx)
             }
-            Ok(_) => {
-                self.submit_mouse_dynamic(workspace, request.clone(), window.window_handle(), cx)
-            }
+            Ok(_) => self.submit_mouse_dynamic(
+                workspace,
+                request.clone(),
+                Admission::New,
+                window.window_handle(),
+                cx,
+            ),
             Err(error) => finish(
                 &workspace,
                 request,
                 MouseDynamicCompletion::Failed(format!("{error:#}")),
-                window.window_handle(),
                 cx,
             ),
         }
@@ -212,23 +235,17 @@ impl AppShell {
         &mut self,
         workspace: Entity<ProductWorkspace>,
         request: MouseDynamicRequested,
+        admission: Admission,
         window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested
-            || self.mouse_dynamic.stopped
+        if !self.mouse_dynamic.admits(self.close_requested, admission)
             || !self.devices.contains(&workspace)
             || !workspace
                 .read(cx)
                 .mouse_dynamic_request_is_current(&request, cx)
         {
-            finish(
-                &workspace,
-                &request,
-                MouseDynamicCompletion::Cancelled,
-                window,
-                cx,
-            );
+            finish(&workspace, &request, MouseDynamicCompletion::Cancelled, cx);
             return;
         }
         let action = match request.action() {
@@ -238,7 +255,6 @@ impl AppShell {
                     &workspace,
                     &request,
                     MouseDynamicCompletion::Failed(format!("{error:#}")),
-                    window,
                     cx,
                 );
                 return;
@@ -264,7 +280,6 @@ impl AppShell {
                 MouseDynamicCompletion::Failed(
                     "Dynamic sensitivity requires one current mouse or receiver route".into(),
                 ),
-                window,
                 cx,
             );
             return;
@@ -285,7 +300,6 @@ impl AppShell {
                     &skipped.workspace,
                     &skipped.request,
                     MouseDynamicCompletion::Cancelled,
-                    skipped.window,
                     cx,
                 );
             }
@@ -296,7 +310,6 @@ impl AppShell {
                 &queued.workspace,
                 &queued.request,
                 MouseDynamicCompletion::Monitoring(false),
-                window,
                 cx,
             );
         } else {
@@ -318,7 +331,6 @@ impl AppShell {
                 &queued.workspace,
                 &queued.request,
                 MouseDynamicCompletion::Cancelled,
-                queued.window,
                 cx,
             );
             return;
@@ -330,7 +342,6 @@ impl AppShell {
                     &queued.workspace,
                     &queued.request,
                     MouseDynamicCompletion::Failed(format!("{error:#}")),
-                    queued.window,
                     cx,
                 );
                 return;
@@ -410,7 +421,6 @@ impl AppShell {
                             &workspace,
                             &delivery_request,
                             MouseDynamicCompletion::Monitoring(true),
-                            window,
                             cx,
                         );
                     }
@@ -458,7 +468,7 @@ impl AppShell {
                             }
                             Err(error) => MouseDynamicCompletion::Failed(error),
                         };
-                        finish(&workspace, &operation.request, result, window, cx);
+                        finish(&workspace, &operation.request, result, cx);
                     }
                 }
                 if let Some(next) = shell.mouse_dynamic.queued.remove(&delivery_key) {
@@ -474,11 +484,18 @@ impl AppShell {
                             } else {
                                 MouseDynamicCompletion::Failed(completion.cleanup_failure.unwrap())
                             },
-                            next.window,
                             cx,
                         );
-                    } else if shell.close_requested || shell.mouse_dynamic.stopped {
-                        next.request.guard().store(false, Ordering::Release);
+                    } else if !shell
+                        .mouse_dynamic
+                        .admits(shell.close_requested, Admission::queued(&next.request))
+                    {
+                        finish(
+                            &next.workspace,
+                            &next.request,
+                            MouseDynamicCompletion::Cancelled,
+                            cx,
+                        );
                     } else {
                         shell.start_mouse_dynamic(delivery_key, next, cx);
                     }
@@ -502,3 +519,7 @@ impl AppShell {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "mouse_dynamic_lifecycle_tests.rs"]
+mod lifecycle_tests;

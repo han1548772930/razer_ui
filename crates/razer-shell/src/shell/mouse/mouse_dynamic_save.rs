@@ -68,7 +68,6 @@ impl AppShell {
                 &workspace,
                 &request,
                 MouseDynamicCompletion::Failed(message),
-                window.window_handle(),
                 cx,
             );
             return;
@@ -83,7 +82,6 @@ impl AppShell {
                 &workspace,
                 &request,
                 MouseDynamicCompletion::Failed("Dynamic active local profile is absent".into()),
-                window.window_handle(),
                 cx,
             );
             return;
@@ -150,10 +148,16 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !succeeded {
-            finish(&save.workspace,&save.request,MouseDynamicCompletion::Failed("Dynamic local profile persistence did not succeed; device task was not submitted".into()),window,cx);
+            finish(&save.workspace,&save.request,MouseDynamicCompletion::Failed("Dynamic local profile persistence did not succeed; device task was not submitted".into()),cx);
             return;
         }
-        self.submit_mouse_dynamic(save.workspace, save.request, window, cx);
+        self.submit_mouse_dynamic(
+            save.workspace,
+            save.request,
+            Admission::AcceptedWrite,
+            window,
+            cx,
+        );
     }
 }
 

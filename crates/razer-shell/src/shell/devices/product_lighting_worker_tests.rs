@@ -46,7 +46,7 @@ fn fake<'a>(calls: Rc<RefCell<Vec<&'static str>>>, canceled: &'a AtomicBool) -> 
     }
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn brightness_worker_keeps_device_and_every_cleanup_failure() {
     let active = AtomicBool::new(true);
     let canceled = AtomicBool::new(false);
@@ -68,7 +68,7 @@ fn brightness_worker_keeps_device_and_every_cleanup_failure() {
     assert_eq!(&*calls.borrow(), &["execute", "shutdown", "reap", "drop"]);
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn brightness_worker_cancellation_after_write_still_cleans_up_and_never_completes() {
     let active = AtomicBool::new(true);
     let canceled = AtomicBool::new(false);
@@ -82,7 +82,7 @@ fn brightness_worker_cancellation_after_write_still_cleans_up_and_never_complete
     assert_eq!(&*calls.borrow(), &["execute", "shutdown", "reap", "drop"]);
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn brightness_worker_stopped_page_or_connection_does_not_create_a_transport() {
     for (active, canceled) in [(false, false), (true, true)] {
         let active = AtomicBool::new(active);
@@ -94,7 +94,7 @@ fn brightness_worker_stopped_page_or_connection_does_not_create_a_transport() {
     }
 }
 
-#[test]
+#[::core::prelude::v1::test]
 fn brightness_worker_success_waits_for_shutdown_reaping_and_release() {
     let active = AtomicBool::new(true);
     let canceled = AtomicBool::new(false);

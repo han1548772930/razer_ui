@@ -60,6 +60,22 @@ impl Request {
             }
         });
     }
+    fn reject_at(
+        &self,
+        workspace: &Entity<ProductWorkspace>,
+        error: String,
+        handle: AnyWindowHandle,
+        cx: &mut App,
+    ) {
+        if handle
+            .update(cx, |_, window, cx| {
+                self.reject(workspace, error.clone(), window, cx)
+            })
+            .is_err()
+        {
+            self.abandon(workspace, Some(error), cx);
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -109,8 +125,8 @@ impl State {
     pub(in crate::shell) fn pending(&self) -> bool {
         !self.operations.is_empty() || self.accepted.load(Ordering::Acquire) > 0
     }
-    fn accept(&mut self) -> Option<(u64, Accepted)> {
-        if self.stopped {
+    fn accept(&mut self, closing: bool, persisted: bool) -> Option<(u64, Accepted)> {
+        if self.stopped || closing && !persisted {
             return None;
         }
         self.next_id = self
@@ -326,7 +342,7 @@ impl AppShell {
             workspace,
             request,
             worker::Work::Observe,
-            window,
+            window.window_handle(),
             cx,
         );
     }
@@ -336,7 +352,7 @@ impl AppShell {
         request: MouseLightingRequested,
         route: ObservedDevice,
         submission: Submission,
-        window: &mut Window,
+        window: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
         self.start_product_lighting_operation(
@@ -352,19 +368,21 @@ impl AppShell {
         workspace: Entity<ProductWorkspace>,
         request: Request,
         work: worker::Work,
-        window: &mut Window,
+        handle: AnyWindowHandle,
         cx: &mut Context<Self>,
     ) {
-        if self.close_requested || self.product_lighting.stopped {
-            request.reject(
+        let persisted = work.was_persisted();
+        let Some((id, accepted)) = self
+            .product_lighting
+            .accept(self.close_requested, persisted)
+        else {
+            request.reject_at(
                 &workspace,
                 "Product lighting request canceled during shutdown".into(),
-                window,
+                handle,
                 cx,
             );
             return;
-        }
-        let Some((id, accepted)) = self.product_lighting.accept() else {
             return;
         };
         let route = match &work {
@@ -381,7 +399,6 @@ impl AppShell {
         let signal = canceled.clone();
         let delivery_scope = scope.clone();
         let delivery_request = request.clone();
-        let handle = window.window_handle();
         let delivery = cx.spawn(async move |shell, cx| {
             let background_canceled = signal.clone();
             let active = delivery_request.guard();
@@ -401,7 +418,7 @@ impl AppShell {
                     shell.product_lighting.operations.remove(&id);
                 }
                 let current = !signal.load(Ordering::Acquire)
-                    && !shell.close_requested
+                    && (!shell.close_requested || persisted)
                     && delivery_scope.matches(shell, &shell.device_observations, cx);
                 if let Some(workspace) = delivery_scope.workspace.upgrade() {
                     if current && delivery_request.accepts(&workspace, cx) {
@@ -466,6 +483,10 @@ impl AppShell {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "product_lighting_observation_tests.rs"]
+mod tests;
 
 fn complete(
     request: &Request,
