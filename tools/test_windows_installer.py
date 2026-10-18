@@ -47,6 +47,11 @@ class WindowsInstallerTests(unittest.TestCase):
         self.root_patch.start()
         self.write("Cargo.toml", b'[package]\nversion = "0.1.0"\n')
         self.write(installer.SCRIPT, b"; inert fixture recipe\n")
+        self.write(installer.INSTALLATION, json.dumps({"schema_version": 1, "hardware_driver": {
+            "service_name": "cpuz165", "filename": "cpuz165.sys", "directory": "drivers", "system_directory": "RazerUI",
+            "source": "assets/native/cpuz165.sys", "architecture": "x64",
+        }}).encode())
+        self.write("assets/native/cpuz165.sys", pe_bytes(subsystem=1, imports=("ntoskrnl.exe",)))
         self.write(installer.resource_database.INSTALLATION, json.dumps({
             "schema_version": 1, "catalog_source": "assets/synapse/resource-catalog.sqlite3",
             "catalog_filename": "resource-catalog.sqlite3", "cache_relative": "assets/cache",
@@ -83,10 +88,11 @@ class WindowsInstallerTests(unittest.TestCase):
         self.write("runtime/vcruntime140.dll", pe_bytes(dll=True, imports=("kernel32.dll",)))
         result = self.stage(imports=("kernel32.dll", "vcruntime140.dll"), runtime_dlls=("runtime/vcruntime140.dll",))
         self.assertTrue(result["passed"])
-        self.assertEqual(result["payload_files"], 5)
+        self.assertEqual(result["payload_files"], 6)
         stage = self.root / result["stage"]
         self.assertEqual({p.name for p in (stage / "payload").iterdir()},
-                         {installer.APP_NAME, installer.ICO_NAME, installer.MARKER_NAME, "vcruntime140.dll", "resource-catalog.sqlite3"})
+                         {installer.APP_NAME, installer.ICO_NAME, installer.MARKER_NAME, "vcruntime140.dll", "resource-catalog.sqlite3", "drivers"})
+        self.assertEqual((stage / "payload/drivers/cpuz165.sys").read_bytes(), (self.root / "assets/native/cpuz165.sys").read_bytes())
         self.assertEqual(installer.prepare(runtime_dlls=("runtime/vcruntime140.dll",)), result)
 
     def test_resource_or_pack_injection_is_rejected_before_compilation(self):
@@ -94,6 +100,48 @@ class WindowsInstallerTests(unittest.TestCase):
         self.write(result["stage"] + "/payload/synapse.pack", b"must not ship")
         with self.assertRaisesRegex(ValueError, "Unowned files"):
             installer.verify(result["stage"])
+
+    def test_driver_architecture_subsystem_imports_and_policy_are_verified(self):
+        for raw in [pe_bytes(machine=0xAA64, subsystem=1), pe_bytes(subsystem=2), pe_bytes(subsystem=1, imports=("unknown.dll",))]:
+            self.write("assets/native/cpuz165.sys", raw)
+            with self.assertRaisesRegex(ValueError, "Hardware driver"):
+                self.stage()
+        self.write("assets/native/cpuz165.sys", pe_bytes(subsystem=1))
+        result = self.stage()
+        self.write("assets/native/cpuz165.sys", pe_bytes(subsystem=1, imports=("ntoskrnl.exe",)))
+        with self.assertRaisesRegex(ValueError, "driver differs"):
+            installer.verify(result["stage"])
+
+    def test_arm64_does_not_package_the_x64_kernel_driver(self):
+        self.write("target/release/razer_ui.exe", pe_bytes(machine=0xAA64))
+        result = installer.prepare(architecture="arm64")
+        stage = self.root / result["stage"]
+        self.assertFalse((stage / "payload/drivers").exists())
+
+    def test_embedded_driver_resource_uses_exact_id_language_and_bytes(self):
+        raw = bytearray(pe_bytes())
+        struct.pack_into("<II", raw, 0x98 + 112 + 16, 0x1000, 0x100)
+        for at, ident, target in [(0, 10, 0x80000020), (0x20, 108, 0x80000040), (0x40, 1036, 0x60)]:
+            struct.pack_into("<HH", raw, 0x200 + at + 12, 0, 1)
+            struct.pack_into("<II", raw, 0x200 + at + 16, ident, target)
+        struct.pack_into("<IIII", raw, 0x260, 0x1080, 13, 0, 0)
+        raw[0x280:0x28d] = b"driver-source"
+        self.assertEqual(installer.pe_resource(raw, 10, 108), (1036, b"driver-source"))
+        with self.assertRaisesRegex(ValueError, "Missing or ambiguous"):
+            installer.pe_resource(raw, 10, 107)
+        struct.pack_into("<I", raw, 0x260 + 4, 0xfffffff0)
+        with self.assertRaisesRegex(ValueError, "Unmapped PE resource"):
+            installer.pe_resource(raw, 10, 108)
+
+    def test_embedded_driver_resource_cycles_and_truncation_fail(self):
+        raw = bytearray(pe_bytes())
+        struct.pack_into("<II", raw, 0x98 + 112 + 16, 0x1000, 0x100)
+        struct.pack_into("<HHII", raw, 0x200 + 12, 0, 1, 10, 0x80000020)
+        struct.pack_into("<HHII", raw, 0x220 + 12, 0, 1, 108, 0x80000020)
+        with self.assertRaisesRegex(ValueError, "Invalid PE resource directory"):
+            installer.pe_resource(raw, 10, 108)
+        with self.assertRaisesRegex(ValueError, "Unmapped PE resource"):
+            installer.pe_resource(raw[:0x240], 10, 108)
 
     def test_changed_payload_and_changed_recipe_cannot_reuse_receipt(self):
         result = self.stage()

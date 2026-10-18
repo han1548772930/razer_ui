@@ -101,6 +101,10 @@ schema 4 的 `ui_product`、`ui_product_category`、`ui_product_edition`、`ui_n
 
 `audit-family-function --family keyboard --function mw --query keyboard-local-controls` 从 PID691／740／746 当前 UI 与 middleware 的 HTML、manifest 和部署稳定收据选择原件，保留指示灯／OLED 与磁轴校准的完整模块和 callable。每个 callable 仅登记自身命中的语义角色，结束时重新核验全部获取字节和收据；缺失 source map、资源闭包及获取失败继续独立保留。结果更新 `keyboard-main-audit.json` 的同一 query，不把该范围的静态调用链闭合记为整个键盘页面或运行验收完成。
 
+`audit-family-function --family mouse --function mw --query mouse-local-profile-schema` 默认核对全部已获取的当前鼠标 middleware，保留 schema 常量、完整迁移、序列号选择、存储及各 edition 默认配置导出，检查源声明的逻辑产品与 dongle／BLE 别名。指定 `--product` 时重新验证选中项，未选收据必须再次通过原件／产物身份检查才保留，各项保留自己的工具与采集时间。结果写入 `mouse-mw-audit.json` 的 `local_profile_schemas`；schema12、无 schema、源产品身份不符分别记录，不据此扩大运行时反序列化范围。
+
+`mouse-dpi-profile` 同时将变换输出的 validate finding 按 provenance 回溯完整原始闭包。当前 PID190 的 Sentry CommonJS 与 ReactRedux UMD 参数变换问题均保留原始 factory／完整脚本及绑定；失败的 ESM 输出不作为实现依据。原 Wakaru 非零状态保持不变，未知 finding、缺少原件或无法找到完整作用域继续阻断对应静态结论，不能用原件恢复证明替代应用运行验收。
+
 `audit-family-function --family mouse --function main --query mouse-tracking` 从当前部署入口与实际 manifest 选择 PID170／204／226／45066 的 main、协议和 tracking engine 原件，保存完整 factory、直接命令、传输分支与界面范围的 AST 所有者。命令头解析真实 lexical binding，逗号表达式取最后值；事务编号与重试规则分别核验。`--prepare` 将所需独立协议期望和原件身份写入设备 crate 的小型夹具；完整函数体保存在统一 `mouse-mw-audit.json`。固定来源字节、未解引用、缺失 source map、实现模拟验证和真实设备验收保持分开。
 
 `audit-family-function --family mouse --function main --query mouse-calibration` 核对 PID70 的真实 Philips 引擎构造分支、预设／手动／Mini apply 顺序、12 个数值的字节序、完整 16 项垫面表和自定义高度／阈值公式。手动／Mini 各六个完整状态包含样本方差、Z／Q 分组统计、超时、结束查询、保存转换、重校准日期和命名碰撞链；硬件记录与 parser、宿主注册／清理和原生 worker join 分别保留。默认 UI 身份沿 lexical binding 验证为 `undefined`，初始 sensorType 和 Mini Halt 面板沿 producer 常量验证；host add ACK 与 driver-ready 事件须同时成功。`--prepare` 准备所属设备协议夹具，完整所有者与独立获取边界写入现有 `mouse-mw-audit.json`。原件 lockMouse 是空操作，不代表原生锁鼠标；静态证据及模拟 transport 测试不证明完整页面或真实窗口／设备／服务验收。
@@ -190,6 +194,8 @@ dataset、聚合 C／ASM 和文件摘要使用有界内存写入，不先保留�
 硬件测试直接运行时同样检查每个读取和恢复确认，恢复失败不能返回测试成功。只读测试超时会回收并等待测试进程树；写入测试超过维护时限后继续等待原值恢复与释放，不强杀可能正在恢复的所有者。原值记录和开始事件在操作时立即刷新到日志，缺失最终结果时保留已尝试操作及未知恢复状态。`connected-verification-boundary` 套件只执行这些结果判定的纯测试，不选择默认忽略的硬件测试。
 
 `compare-connected-hid --library PATH` 复用上述只读实测报文，要求读取收据的完整 Rust 输入快照仍与当前字节一致，并在比较期间保留同一份收据。在独立限时进程中调用字节、架构、导出和 ABI 均已核实的当前 `HID.node` C 接口，不执行 JS／N-API。工具拒绝配置 SET、未知产品／接口、错误长度、校验和、profile 和参数。当前已核实工厂按十次、5 ms IN 节奏等待 busy 后的终态，保存每次原始返回，比较读取收据中同一 OUT 后的终态而非第一份 busy 报文；短返回、busy 耗尽和事务／命令不匹配明确失败。相同路径与事务的完整返回字节进入 `connected-native-comparison.json`；相同离线或错误应答只证明传输结果一致，不能证明缺席设备的设置有效。加载、句柄关闭、`hid_exit`、DLL 释放和进程等待分别保留。
+
+`compare-local-service-version` 核对当前 Simple Service 的完整函数字节、COM 标识、vtable 方法和释放顺序，再核实本机注册的 Elevation 服务架构及 Razer 签名。服务原件的私有副本和获取收据进入输入索引；限时独立测试比较官方 Initialize／GetVersionInfo／Shutdown 回调与 Rust 直接 COM 返回。结果保留于 `.analysis/validation.json` 的 `local_runtime_checks.simple_version`，普通 `validate-rust` 不覆盖该独立收据。该操作只读版本，不证明其它服务操作、设备、窗口或安装已验收。
 
 `keyboard-metadata` 复用当前 middleware 获取收据，逐产品校验原件字节并保留完整注册、DeviceInfo、继承类、getEdition／getSerialNumber、命令／解码器、传输默认值、物理路由工厂及身份缓存／runtimeData 默认值所有者。结果追加至 `keyboard-mw-audit.json`；通过检查的有线、自有无线接收器及 BLE 产品生成 `razer-device` 元数据传输描述，双链路共享接收器另保留 cached-master 工厂及命令命名空间证据。原始依赖闭包缺项独立保留，不把厂商 UI 的布局／版本默认值视为硬件读取成功。该查询不执行厂商代码或设备操作。
 

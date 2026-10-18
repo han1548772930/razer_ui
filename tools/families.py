@@ -1565,6 +1565,8 @@ def audit_family_function(args):
         return audit_mouse_dynamic_sensitivity(args)
     if getattr(args, "query", None) == "mouse-dpi-profile":
         return audit_mouse_dpi_profile(args)
+    if getattr(args, "query", None) == "mouse-local-profile-schema":
+        return audit_mouse_local_profile_schema(args)
     if getattr(args, "query", None) == "shared-page-layout":
         return audit_shared_page_layout(args)
     if getattr(args, "query", None) == "gamepad-artwork":
@@ -8988,7 +8990,10 @@ def audit_audio_seiren_eq(args):
                     prepare=getattr(args, "prepare", False))
             row["rust_implementation"] = [identity(a.ROOT / path) for path in (
                 "crates/razer-device/src/audio/seiren_eq.rs", "crates/razer-device/src/audio/seiren_eq_native.rs", "crates/razer-device/src/audio/seiren_eq_tests.rs",
-                "crates/razer-service/src/runtime/windows/audio/seiren_eq.rs", "crates/razer-service/src/runtime/windows/audio/seiren_eq_native.rs",
+                "crates/razer-service/src/runtime/windows/audio/seiren_eq.rs", "crates/razer-service/src/runtime/windows/audio/seiren_session.rs",
+                "crates/razer-service/src/runtime/windows/audio/seiren_session_owner.rs", "crates/razer-service/src/runtime/windows/audio/seiren_driver.rs",
+                "crates/razer-service/src/runtime/windows/audio/seiren_endpoint.rs", "crates/razer-device/src/audio/seiren_driver.rs",
+                "crates/razer-device/src/audio/seiren_mixer.rs",
                 "crates/razer-device/src/audio/seiren_audio_capture.rs", "crates/razer-service/src/runtime/seiren_audio_capture_controller.rs",
                 "crates/razer-device/src/audio/seiren_microphone.rs", "crates/razer-device/src/audio/seiren_microphone_dsp.rs",
                 "crates/razer-service/src/runtime/windows/audio/seiren_audio_capture.rs",
@@ -9010,8 +9015,10 @@ def audit_audio_seiren_eq(args):
                     ("protocol", "crates/razer-device/src/audio/seiren_eq.rs",
                      ["from_source", "persists_local_settings", "execute", "confirmed", "source_result"]),
                     ("native_task", "crates/razer-device/src/audio/seiren_eq_native.rs", ["execute_native", "call"]),
-                    ("native_adapter", "crates/razer-service/src/runtime/windows/audio/seiren_eq_native.rs",
+                    ("native_adapter", "crates/razer-service/src/runtime/windows/audio/seiren_session.rs",
                      ["open", "call", "drop"]),
+                    ("mixer_owner", "crates/razer-service/src/runtime/windows/audio/seiren_session_owner.rs", ["call", "poll", "close"]),
+                    ("mixer_protocol", "crates/razer-device/src/audio/seiren_mixer.rs", ["set_route_level", "set_stream_monitor", "meter_levels"]),
                     ("capture_owner", "crates/razer-pages/src/features/audio/seiren/audio_seiren_audio_runtime.rs",
                      ["sync_seiren_audio_runtime", "observe_seiren_audio_capture", "cancel_seiren_audio_capture"]),
                     ("capture_service", "crates/razer-service/src/runtime/windows/audio/seiren_audio_capture.rs", [])):
@@ -9038,8 +9045,10 @@ def audit_audio_seiren_eq(args):
                     {"from": "shell", "to": "discovery", "operation": "Successful local save, where required, precedes a unique observed direct wired target"},
                     {"from": "discovery", "to": "service", "operation": "ServiceClient guarded request retains actual container/path/product identity"},
                     {"from": "service", "to": "protocol", "operation": "Container lock, report size, deadline and current device identity guard every HID exchange"},
-                    {"from": "service", "to": "native_task", "operation": "Native changes use the current per-product AudioMarie ABI adapter"},
-                    {"from": "native_task", "to": "native_adapter", "operation": "Actual native replies/errors are retained; DeviceTerminate runs after every attempted initialization"},
+                    {"from": "service", "to": "native_task", "operation": "Audio changes use the independent per-product USB driver and Windows endpoint session"},
+                    {"from": "native_task", "to": "native_adapter", "operation": "Actual driver replies/errors are retained; DeviceTerminate runs after every attempted initialization"},
+                    {"from": "native_adapter", "to": "mixer_owner", "operation": "One serial worker owns driver I/O, COM endpoints, observations and teardown"},
+                    {"from": "mixer_owner", "to": "mixer_protocol", "operation": "Typed routing state produces ordered USB/DSP writes; actual endpoint and meter reads feed events"},
                     {"from": "native_task", "to": "shell", "operation": "Source result, actual setters, reads, skipped tasks and diagnostics remain separate"},
                     {"from": "shell", "to": "page", "operation": "Only actual native volume/mute observations update controls after owner/epoch/connection checks"},
                     {"from": "shell", "to": "submission", "operation": "finish_seiren_eq retires the current request and advances the serialized queue without optimistic rollback"},
@@ -12676,6 +12685,253 @@ def audit_gamepad_triggers(args):
                       "failures": [{"product_id": row["product_id"], "failures": row["failures"]} for row in rows if row["failures"]]}), flush=True)
 
 
+def audit_mouse_local_profile_schema(args):
+    """Audit every selected current mouse schema without executing its JavaScript."""
+    import host
+    import gc
+    if args.family != "mouse" or args.function != "mw":
+        raise ValueError("mouse-local-profile-schema requires current mouse middleware")
+    available = {int(path.parent.name.split("-")[2]): path.parent.name
+                 for path in (a.ROOT / ".analysis/inputs/frontend").glob("mouse-mw-*-current/acquisition.json")}
+    products = sorted(set(args.product or available))
+    rows = []
+    def walk(node):
+        yield node
+        for child in node.named_children:
+            yield from walk(child)
+    def factory(node):
+        root = node
+        while node is not None:
+            root = node
+            if node.type in {"pair", "method_definition"}:
+                key = node.child_by_field_name("key" if node.type == "pair" else "name")
+                if key is not None and key.type == "number":
+                    return node
+            node = node.parent
+        return root
+    for product in products:
+        audit = host.HostLocalAudit()
+        row = {"product_id": product, "failures": []}
+        try:
+            source_set, files = audit.source_set(available[product])
+            row["source_set"] = source_set
+            if source_set["deployment"]["failures"]:
+                raise ValueError("Local profile source deployment identity differs")
+            candidates = [source for source in files if source["path"].endswith(".js")
+                          and b"currentSchemaVersion:" in audit.read(source)
+                          and b"deviceMetadatas" in audit.read(source)]
+            if not candidates:
+                candidates = [source for source in files if source["path"].endswith(".js")
+                              and b"getDeviceDefaultLocalData:" in audit.read(source)
+                              and b"deviceMetadatas" in audit.read(source)]
+            if len(candidates) != 1:
+                raise ValueError("Current local-profile schema source absent or ambiguous")
+            source = candidates[0]
+            root = audit.tree(source).root_node
+            pairs = [node for node in walk(root) if node.type == "pair"
+                     and node.child_by_field_name("key").text == b"currentSchemaVersion"]
+            if not pairs and b"schemaVersion" not in audit.read(source):
+                row["schema_version"] = None
+                row["schema_kind"] = "unversioned_original_document"
+                row["schema_factory"] = audit.retain_range("local_profile_unversioned_complete_script", source,
+                    0, len(audit.read(source)), "program")
+            elif len(pairs) != 1:
+                raise ValueError("Current schema-version export absent or ambiguous")
+            else:
+                getter = pairs[0].child_by_field_name("value")
+                body = getter.child_by_field_name("body")
+                if body is not None and body.type == "statement_block":
+                    statements = body.named_children
+                    body = statements[0].named_children[0] if len(statements) == 1 and statements[0].type == "return_statement" else None
+                if body is None or body.type != "identifier":
+                    raise ValueError("Current schema getter requires nonliteral analysis")
+                binding = audit.binding("local_profile_schema_version", source, body.text.decode(), body.start_byte)
+                if binding["resolution"] != "declaration":
+                    raise ValueError("Current schema version has no lexical declaration")
+                declaration = root.descendant_for_byte_range(binding["start_byte"], binding["end_byte"]-1)
+                literal = declaration.child_by_field_name("value")
+                if literal is None or literal.type != "number":
+                    raise ValueError("Current schema version is not a numeric literal")
+                row["schema_version"] = javascript_integer_literal(literal.text.decode())
+                row["schema_kind"] = "explicit_current_schema_version"
+                schema_factory = factory(pairs[0])
+                row["schema_factory"] = audit.retain_range("local_profile_schema_and_migrations", source,
+                    schema_factory.start_byte, schema_factory.end_byte, schema_factory.type)
+            cache_owners = audit.retain("local_profile_serial_cache", source,
+                "no serial number, do not get from localstorage", {"function_declaration"}, unique=False)
+            caches = [audit.owners[owner] for owner in cache_owners]
+            row["cache_factories"] = []
+            for cache in caches:
+                cache_node = root.descendant_for_byte_range(cache["byte_start"], cache["byte_end"]-1)
+                cache_factory = factory(cache_node)
+                owner = audit.retain_range("local_profile_complete_storage_and_serial_selection", source,
+                    cache_factory.start_byte, cache_factory.end_byte, cache_factory.type)
+                if owner not in row["cache_factories"]:
+                    row["cache_factories"].append(owner)
+            row["serial_cache"] = cache_owners
+            row["serial_required"] = all("serialNumber" in cache["body"] for cache in caches)
+            row["storage_override_branch"] = any("storageOverrides" in cache["body"] for cache in caches)
+            row["serial_metadata_branch"] = all("deviceMetadatas" in cache["body"] for cache in caches)
+            exports = {}
+            for script in files:
+                if not script["path"].endswith(".js") or b"getDeviceDefaultLocalData:" not in audit.read(script):
+                    continue
+                for node in walk(audit.tree(script).root_node):
+                    if node.type != "pair" or node.child_by_field_name("key").text != b"getDeviceDefaultLocalData":
+                        continue
+                    owner = factory(node)
+                    key = owner.child_by_field_name("name" if owner.type == "method_definition" else "key")
+                    module_id = javascript_integer_literal(key.text.decode()) if key is not None else None
+                    definitions = {pair.child_by_field_name("key").text.decode(): pair for pair in node.parent.named_children
+                                   if pair.type == "pair"}
+                    selected = [name for name in definitions if "PROFILE" in name or name in {
+                        "getDeviceDefaultLocalData", "getDefaultDeviceData", "getDefaultProfile", "DeviceInfo"}]
+                    for exported in selected:
+                        if exported in exports:
+                            raise ValueError("Product local defaults export is duplicated")
+                        if module_id is not None:
+                            exports[exported] = audit.webpack_export("local_profile_" + exported,
+                                [script], module_id, exported)
+                        else:
+                            getter = definitions[exported].child_by_field_name("value")
+                            body = getter.child_by_field_name("body")
+                            if body.type == "statement_block" and body.named_child_count == 1 and body.named_children[0].type == "return_statement":
+                                body = body.named_children[0].named_children[0]
+                            if body.type != "identifier":
+                                raise ValueError("Unversioned local profile export requires expression analysis")
+                            binding = audit.binding("local_profile_" + exported, script, body.text.decode(), body.start_byte)
+                            if binding["resolution"] != "declaration":
+                                raise ValueError("Unversioned local profile export has no lexical owner")
+                            exports[exported] = {"binding": binding, "original": script,
+                                "complete_factory_owner": audit.retain_range("local_profile_unversioned_complete_runtime", script,
+                                    owner.start_byte, owner.end_byte, owner.type)}
+            if not {"getDeviceDefaultLocalData", "getDefaultProfile", "DeviceInfo"} <= exports.keys():
+                raise ValueError("Product local default/device/profile exports are incomplete")
+            row["product_exports"] = exports
+            device = exports["DeviceInfo"]
+            declaration = audit.tree(device["original"]).root_node.descendant_for_byte_range(
+                device["binding"]["start_byte"], device["binding"]["end_byte"]-1)
+            value = declaration.child_by_field_name("value")
+            fields = {pair.child_by_field_name("key").text.decode(): pair.child_by_field_name("value")
+                      for pair in value.named_children if pair.type == "pair"} if value is not None and value.type == "object" else {}
+            pid = fields.get("productId")
+            if pid is None or pid.type != "number":
+                raise ValueError("Product local profile identity is not a verified numeric literal")
+            row["declared_product_id"] = javascript_integer_literal(pid.text.decode())
+            row["product_identity_relation"] = "logical_product"
+            if row["declared_product_id"] != product:
+                aliases = [name for name in ("dongleId", "bleId") if fields.get(name) is not None
+                           and fields[name].type == "number" and javascript_integer_literal(fields[name].text.decode()) == product]
+                if len(aliases) == 1:
+                    row["product_identity_relation"] = aliases[0]
+                else:
+                    row["product_identity_relation"] = "unresolved_mismatch"
+                    row["failures"].append("official_deployment_product_identity_mismatch")
+            row["first_profile_fallback_in_original"] = any("defaulting to first profile" in audit.owners[owner]["body"]
+                                                            for owner in row["cache_factories"])
+            row["implementation_scope"] = "schema and storage selection audit; transport identity and complete feature consumers are separately verified before runtime admission"
+            row["inputs_unchanged"] = not audit.final_snapshot()
+            if not row["inputs_unchanged"]:
+                raise ValueError("Local profile audit input changed during query")
+        except Exception as error:
+            row["failures"].append(str(error))
+        row["complete_owners"] = list(audit.owners.values())
+        row["originals"] = list(audit.sources.values())
+        row["artifacts"] = list(audit.artifacts.values())
+        rows.append(row)
+        print(json.dumps({"product_id": product, "schema_version": row.get("schema_version"),
+                          "failures": row["failures"]}), flush=True)
+        del audit
+        gc.collect()
+    result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
+        "products": rows, "last_selected_products": products,
+        "target_execution": False, "runtime_acceptance": "unverified"}
+    for row in rows:
+        row["tool"] = result["tool"]
+        row["recorded_at_utc"] = result["recorded_at_utc"]
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    with a.index_lock():
+        report = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
+        if args.product:
+            previous = report.get("queries", {}).get("local_profile_schemas", {})
+            retained = []
+            for row in previous.get("products", []):
+                if row["product_id"] in products:
+                    continue
+                if not all(valid(original) for original in row["originals"] + row["artifacts"]):
+                    raise ValueError("Unselected local-profile evidence changed; run a full schema query")
+                row.setdefault("tool", previous["tool"])
+                row.setdefault("recorded_at_utc", previous["recorded_at_utc"])
+                retained.append(row)
+            result["products"] = sorted(retained + rows, key=lambda row: row["product_id"])
+        report.setdefault("queries", {})["local_profile_schemas"] = result
+        a.save(path, report)
+    print(json.dumps({"receipt": a.rel(path), "products": len(rows),
+                      "failures": sum(bool(row["failures"]) for row in rows)}), flush=True)
+
+
+def recover_frontend_validation_owners(audit, name, files, capture):
+    """Resolve transformed-module findings against complete original closures."""
+    directory = a.ROOT / ".analysis/results/frontend" / name
+    by_path = {row["path"]: row for row in files}
+    failures, recovered = [], []
+    for command in capture["capture_failures"]:
+        if command["stage"] != "validate":
+            failures.append({"stage": command["stage"], "reason": "unpack_or_extraction_failed"})
+            continue
+        findings = json.loads(audit.artifact(a.ROOT / command["stdout"]))["findings"]
+        provenance = json.loads(audit.artifact(directory / "modules/provenance.json"))["modules"]
+        grouped = {}
+        for finding in findings:
+            grouped.setdefault(finding["filename"], []).append(finding)
+        for filename, issues in grouped.items():
+            original = provenance.get(filename)
+            if original is None:
+                failures.append({"module": filename, "reason": "missing_provenance"})
+                continue
+            source_path = (Path(".analysis/inputs/frontend") / name / "raw" / original["input"].replace("\\", "/")).as_posix()
+            source = by_path.get(source_path)
+            if source is None:
+                raise ValueError("Validation finding points outside verified deployment originals: " + source_path)
+            raw, tree = audit.read(source), audit.tree(source)
+            retained, parameters = [], []
+            for start, end in original["ranges"]:
+                if not 0 <= start < end <= len(raw):
+                    raise ValueError("Validation finding has invalid original byte range")
+                node = tree.root_node.descendant_for_byte_range(start, end - 1)
+                if start == 0 and not raw[end:].strip(b" \t\r\n;"):
+                    node = tree.root_node
+                else:
+                    while node is not None and node.type not in {"function_expression", "arrow_function", "method_definition", "function_declaration"}:
+                        node = node.parent
+                    if node is None:
+                        raise ValueError("Validation module lost its original lexical factory")
+                    args = node.child_by_field_name("parameters")
+                    if args is None or len(args.named_children) < 2:
+                        raise ValueError("Validation module has no complete module/export parameter binding")
+                    parameters.append([child.text.decode() for child in args.named_children])
+                retained.append(audit.retain_range("capture_original_lexical_owner", source,
+                    node.start_byte, node.end_byte, node.type))
+            kinds = {item["kind"] for item in issues}
+            if kinds == {"esm_commonjs_residual"} and "/@sentry/" in source_path:
+                resolution = "Original webpack factories retain module/export/require parameters and their complete runtime; the ESM rewrite dropped or renamed their bindings"
+            elif kinds == {"unresolved_reference"} and "/react-redux/8.0.5/" in source_path:
+                if not all(token in raw for token in (b"function(e,t,r)", b".ReactRedux", b".ReactDOM")):
+                    raise ValueError("ReactRedux UMD closure or browser dependency binding changed")
+                resolution = "Original complete UMD wrapper binds exports, React and ReactDOM; the transformed module dropped those closure parameters"
+            else:
+                failures.append({"module": filename, "reason": "unclassified_transform_finding", "findings": issues})
+                continue
+            script = audit.retain_range("capture_complete_original_runtime", source, 0, len(raw), "complete_original_script")
+            recovered.append({"module": filename, "findings": issues, "original": source,
+                "provenance_ranges": original["ranges"], "lexical_owners": retained,
+                "factory_parameters": parameters, "complete_runtime": script, "resolution": resolution,
+                "authority": "complete_original_bytes_and_AST", "transformed_output_authoritative": False})
+    return {"recovered": recovered, "unresolved": failures,
+            "raw_analyzer_failure_preserved": bool(capture["capture_failures"]),
+            "original_source_blocked": bool(failures), "target_execution": False}
+
+
 def audit_mouse_dpi_profile(args):
     """Keep profile initialization and the distinct stage/transient DPI owners."""
     import host
@@ -12688,6 +12944,8 @@ def audit_mouse_dpi_profile(args):
         if sets[role]["deployment"]["failures"]:
             raise ValueError("Current DPI deployment differs: " + name)
         captures[role] = audit.frontend_capture(name, files[role])
+    recovered_captures = {role: recover_frontend_validation_owners(audit, sets[role]["name"], files[role], capture)
+                          for role, capture in captures.items()}
 
     def unique_source(role, needle):
         matches = [source for source in files[role] if source["path"].endswith(".js")
@@ -12707,6 +12965,8 @@ def audit_mouse_dpi_profile(args):
         ("profile_restore_selection", mw, "loadProfileDataFromDevice:e", {"variable_declarator"}),
         ("profile_restore_dispatch", mw, "Mn=(e,t=y.default.runtimeData", {"variable_declarator"}),
         ("serial_profile_cache", mw, "function w(e=a.default.runtimeData)", {"function_declaration"}),
+        ("chromium_local_storage_hook", mw, "this.hooks=e||{useLockableStorage:!0}", {"class", "class_declaration"}),
+        ("protocol_serial_decoder", mw, "for(const n of e.data)n>=32&&n<127", {"variable_declarator"}),
         ("stage_task_maker", mw, "function ft(e,t,n,r,a,s,l,c=0)", {"function_declaration"}),
         ("stage_runner", mw, "getDPIStages(1)", {"function_declaration"}),
         ("transient_runner", mw, "function et(e,t,n,o,i,r,a,s,c)", {"function_declaration"}),
@@ -12726,6 +12986,8 @@ def audit_mouse_dpi_profile(args):
         ("middleware", 88443, ("N$",)),
         ("middleware", 27116, ("default",)),
         ("middleware", 71416, ("Z",)),
+        ("middleware", 84816, ("I_",)),
+        ("middleware", 30580, ("kD", "Qq")),
     ):
         for name in names:
             exports[role + ":" + str(module_id) + ":" + name] = audit.webpack_export(
@@ -12746,6 +13008,7 @@ def audit_mouse_dpi_profile(args):
         "recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
         "parser_versions": audit.parser_versions, "product_id": 190,
         "source_sets": sets, "complete_captures": captures,
+        "capture_original_recovery": recovered_captures,
         "mounted_main": mounted_main, "mounted_feature_configuration": mounted_owner,
         "owners": owners, "exports": exports,
         "complete_owners": list(audit.owners.values()), "artifacts": list(audit.artifacts.values()),
@@ -12757,7 +13020,9 @@ def audit_mouse_dpi_profile(args):
             "editing": "pA numeric edits, staging toggle, visibility, reorder and XY reset emit IE/ON_STAGES_CHANGE. Only pA.setStage additionally invokes IA/setActiveDPI. Stage changes persist dpiStages and advance the device document version in25947.ft",
             "onboard": "25947.Ye selects all actual OBM entries whose GUID matches the active profile.96571.Mt pre-reads each selected slot, conditionally sets it and collects errors; setter ACK is not post-set readback",
             "onboard_identity": "31468.gn mounts current7116/27116. Its loadProfilesFromDevice queries maximum/count/ordered profile IDs and omits metadata only at index0.71416.getProfileNameStructure reads250 bytes in64/64/64/58-byte blocks with the source GUID retry and decoding rules; rzDevice25.getProfileName uses command[80,5,136] with the actual packet-size override",
-            "storage_boundary": "This application's own versioned profile store is distinct from the official application's private local cache. The source does not authorize silently importing that cache or overwriting page flags from a DPI getter",
+            "storage_boundary": "Current mounted middleware uses the apps.razer.com origin and synapse_<productId> key. The complete storage hook reads window.localStorage;60763.w selects deviceMetadatas[actualSerial].activeProfileGuid and that exact profile GUID. The user-authorized Rust reader observes only that key in a coherent read-only Chromium LevelDB snapshot, validates schema13 and preserves source GUID/revision provenance separately from device GET observations and later explicit user edits. It never opens the database for writes or imports account data",
+            "rust_initialization": "A missing application cache, absent host profile or failed getter does not establish a new device. Opening/reconnecting observes the actual serial/profile and device numeric values without initializing from defaults. Explicit user profile creation/selection/reset retains current source defaults and source initialization writes through the existing serialized persistence and device task owners",
+            "rust_observations": "Failed mutation reports retain actual independent GET/readback values and per-task errors. Their IPC consumer rejects a forged verified=true result. Page projection admits actual write readbacks, removes targeted stale observations on read failure, and rejects results after edit or connection replacement. Device stage count never supplies local enable/visible/independent flags",
         },
         "capture_failures": {role: capture["capture_failures"] for role, capture in captures.items()},
         "inputs_unchanged": True, "target_execution": False, "runtime_acceptance": "unverified",
@@ -12859,7 +13124,7 @@ def dynamic_sensitivity_source(audit, files, product_id):
             enclosing_module(root.descendant_for_byte_range(monitor["byte_start"], monitor["byte_end"]-1))),
         "monitor_command": monitor_owners, "monitor_callback": handler["owner_id"],
         "getter_direct_callers": getter_callers,
-        "mounted_state_consumer": "local profile dynamicSensitivity; optimistic editor state; independent Rust GET diagnostics never replace source UI draft"}
+        "mounted_state_consumer": "source local profile dynamicSensitivity and optimistic editor; the Rust page keeps author metadata separate and consumes actual GET state/mode/curve without importing local defaults"}
 
 
 def audit_mouse_dynamic_sensitivity(args):
@@ -12870,12 +13135,31 @@ def audit_mouse_dynamic_sensitivity(args):
     if set(ids) - {190, 192, 196, 222, 226, 229, 239}:
         raise ValueError("Resolve the mounted dynamic editor before extending this query")
     audit, products, source_sets = host.HostLocalAudit(), [], []
+    ui_products = []
     for product_id in ids:
         source_set, files = audit.source_set(f"mouse-mw-{product_id}-current")
         if source_set["deployment"]["failures"]:
             raise ValueError("Dynamic current deployment selection failed")
         source_sets.append(source_set)
         products.append(dynamic_sensitivity_source(audit, files, product_id))
+        ui_set, ui_files = audit.source_set(f"mouse-{product_id}-current")
+        if ui_set["deployment"]["failures"]:
+            raise ValueError("Dynamic UI deployment selection failed")
+        source_sets.append(ui_set)
+        ui_owners = {}
+        for role, anchor in (
+                ("profile_reducer_and_dispatch", "setDynamicSensitivity: "),
+                ("mounted_editor", "dynamicSensitivityReducer.dynamicSensitivity,dpiStages"),
+                ("panel", "dynamicSensitivityReducer.isShowLoading")):
+            selected = [item for item in ui_files if item["path"].endswith(".js")
+                        and anchor.encode() in audit.read(item)]
+            if len(selected) != 1:
+                raise ValueError(f"Dynamic UI {product_id} {role} owner is absent or ambiguous")
+            ui_owners[role] = audit.retain("dynamic_ui_" + role, selected[0], anchor,
+                {"variable_declarator"}, unique=False)
+        ui_products.append({"product_id": product_id, "source_set": ui_set["name"],
+            "owners": ui_owners,
+            "scope": "Complete source reducer/dispatch, mounted editor and panel function bodies; transitive imported helpers remain covered by the current source set and separate UI-tree audit"})
     indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
     physical = a.feature_report_callers(audit.parser, {item["path"]: item for item in indexed["inputs"]},
         selected_capabilities=[{"product_id": pid} for pid in ids], write_runtime=False)
@@ -12895,13 +13179,15 @@ def audit_mouse_dynamic_sensitivity(args):
         raise ValueError("Dynamic current original bytes changed during query")
     result = {"recorded_at_utc": a.stamp(), "tool": identity(Path(__file__)),
         "parsers": audit.parser_versions, "source_sets": source_sets, "products": products,
+        "ui_products": ui_products,
         "physical_factories": physical, "shared_native_monitor": {key: matcher[key] for key in
             ("host_originals", "mapping_abi", "mapping_native")},
         "complete_owners": audit.owners, "verified_artifacts": list(audit.artifacts.values()),
         "semantics": {"custom_points":250,"chunk_points":8,"full_chunk_delay_ms":15,
             "write_completion":"source setter ACK; current state GET remains an independent observation",
             "persistence":"local profile dynamicSensitivity and 53-bit version precede NORMAL_SKIPPABLE setting dispatch",
-            "ui_confirmation":"actual source setter acknowledgement clears source loading; independent Rust readback stays diagnostic without getter-to-draft updates"},
+            "ui_confirmation":"actual source setter acknowledgement clears source loading; the Rust page independently refreshes device state, mode and curve after completion, preserving explicit unconfirmed edits and keeping author control points/template metadata separate",
+            "rust_read_policy":"opening/activating the advanced page and a new connected scope request read-only observation; missing, loading, failed, disconnected and unknown values never restore a local profile or initialize the device"},
         "target_execution":False,"runtime_acceptance":"unverified","whole_page_complete":False,
         "limitations":["Missing source maps and unresolved acquisition references remain explicit in each source set",
             "Native static evidence and simulated transport checks do not establish real device/window acceptance"]}
@@ -15121,6 +15407,8 @@ def audit_mouse_receiver_polling(args):
             "profile_owner": "3298.C/G/F", "storage_owner": "77846.w/k/A/T/M", "startup_owner": "90012.fn/Dn/Mn",
             "selection": "Per-serial deviceMetadatas.activeProfileGuid; absent metadata creates a new default for that serial; an existing dangling GUID is not replaced by the first profile",
             "initialization": "UUID v4 and computerName-Default, schema13/isDefault=true; initial Pf(false) retains marker, subsequent mutation clears it; source cache is not a device GET result",
+            "rust_selection": "Read the verified Chromium origin/key/schema using the current transport-observed serial and its exact active GUID; missing application cache never authorizes default initialization",
+            "rust_initialization": "Connection startup observes serial, local profile metadata and device getters; source-backed initialization writes run only for explicit profile application, with the existing macro guard and transport confirmation",
             "rust_owner": default_owner, "presentation_catalog": identity(spec_path),
             "runtime_source": "razer_device::profile_transfer::default_device_182"}
         dpi_state_machine = retain("6259.js", "DPI_idle_macro_recorder_guard_and_exclusive_modes", module_id=83789)
@@ -18826,6 +19114,173 @@ def review_camera_task_scheduling(report, selected):
             "products": products, "complete_owners": owners, "target_execution": False, "runtime_acceptance": "unverified"}
 
 
+def native_rip_u32_initializers(assembly, start, count):
+    """Read x64 RIP-relative immediate stores from already byte-verified bodies."""
+    values = {}
+    for instruction in assembly:
+        encoded = bytes.fromhex(instruction["bytes"])
+        if len(encoded) != 10 or encoded[:2] != b"\xc7\x05":
+            continue
+        address = int(instruction["address"], 0)
+        target = address + 10 + int.from_bytes(encoded[2:6], "little", signed=True)
+        if start <= target < start + count * 4:
+            if (target - start) % 4 or target in values:
+                raise ValueError("Native initializer contains an unaligned or duplicate target")
+            values[target] = int.from_bytes(encoded[6:10], "little")
+    if len(values) != count:
+        raise ValueError("Native initializer does not cover its complete source table")
+    return [values[start + index * 4] for index in range(count)]
+
+
+def hanbo_sensor_source(audit):
+    """Verify the actual external SDK selection and sensor virtual dispatch."""
+    index = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    matches = [row for row in index["inputs"]
+               if row["path"].startswith(".analysis/inputs/host-current/extracted/")
+               and row["path"].endswith("/cpuidsdk64.dll")]
+    if len(matches) != 1:
+        raise ValueError("The current external sensor SDK original is absent or ambiguous")
+    original = matches[0]
+    audit.read(original)
+    acquisition_path = a.ROOT / ".analysis/inputs/host-current/acquisition.json"
+    acquisition = json.loads(audit.artifact(acquisition_path))
+    packages = [row for row in acquisition["files"] if row["path"] == original["container"]
+                and row["sha256"] == original["container_sha256"]]
+    if len(packages) != 1:
+        raise ValueError("Current external SDK acquisition container is unresolved")
+    package = packages[0]
+    declaration = package["declaration"]
+    if (declaration["sha256"].lower() != package["sha256"]
+            or declaration["size"] != package["bytes"] or declaration["url"] != package["url"]):
+        raise ValueError("External SDK package differs from its official declaration")
+    audit.artifact(a.ROOT / package["path"], package)
+    def declares(value):
+        if isinstance(value, dict):
+            return value == declaration or any(declares(child) for child in value.values())
+        return isinstance(value, list) and any(declares(child) for child in value)
+    manifests = []
+    for name in package["release_manifests"]:
+        entry = next(row for row in index["inputs"] if row["path"] == name)
+        release = json.loads(audit.read(entry))
+        resources = [row for row in acquisition["files"] if row.get("release_manifest") == name
+                     and row.get("release") == release.get("latest")]
+        if len(resources) != 1:
+            raise ValueError("Current SDK release resource manifest is absent or ambiguous")
+        resource = resources[0]
+        if (not resource["url"].endswith("/" + release["baseURL"] + "/" + release["latest"]["url"])
+                or not declares(json.loads(audit.artifact(a.ROOT / resource["path"], resource)))):
+            raise ValueError("Current release manifest does not declare the external SDK package")
+        manifests.append({"release": entry, "resources": resource})
+    if not manifests:
+        raise ValueError("External SDK package has no current release manifest")
+    extraction_path = a.ROOT / ".analysis/results/host-current/inspection.json"
+    extraction = json.loads(audit.artifact(extraction_path))
+    containers = [row for row in extraction["containers"]
+                  if row["input"] == package["path"] and row["sha256"] == package["sha256"]]
+    if (len(containers) != 1 or not containers[0].get("extracted")
+            or containers[0].get("extraction_exit_code") != 0 or original not in containers[0]["files"]):
+        raise ValueError("External SDK complete static extraction receipt is unresolved")
+    provenance = {"original": original, "official_package": package,
+                  "release_manifests": manifests, "acquisition": identity(acquisition_path),
+                  "extraction": identity(extraction_path)}
+    roles = {
+        0x2499e0: "selector_xor_key_initializer", 0x2499f0: "selector_table_initializer",
+        0x1aebb0: "dll_main_xor_once_384_entries_with_64_word_key",
+        0x110580: "query_interface_selector_dispatch", 0x110520: "create_sdk_owner",
+        0x110500: "destroy_sdk_owner_virtual_destructor",
+        0x3200: "sdk_destructor_list_and_owned_buffer",
+        0x1b4600: "initialize_driver_cpu_gpu_and_monitor_owners",
+        0x1b4500: "close_sdk_owners", 0x1b4340: "refresh_actual_device_sensor_owners",
+        0x1ab710: "visible_device_list_and_count", 0x1b1a90: "visible_device_class",
+        0x1b1760: "count_valid_kind_sensors", 0x1b1660: "read_sensor_fields_and_byte_bstr",
+        0x13b090: "select_valid_sensor_in_native_order", 0x13b140: "count_valid_sensors",
+        0x1b1510: "reset_selected_sensor_min_max", 0x1b1440: "get_sensor_by_identifier",
+        0x1b1080: "cpu_gpu_device_identifier", 0xa9d90: "device_backend_refresh_dispatch",
+        0xbc950: "cpu_clock_sensor_updates", 0xadac0: "gpu_usage_sensor_updates",
+        0xac440: "gpu_driver_sensor_updates", 0x1ba400: "hardware_monitor_owner_initialization",
+        0xb8290: "hardware_monitor_constructor", 0xb8b70: "hardware_monitor_source_branches_and_initial_refresh",
+        0xb8320: "hardware_monitor_periodic_refresh", 0xb75a0: "hardware_monitor_stop_each_backend",
+        0xb87e0: "hardware_monitor_platform_branch_constructors", 0xb1a10: "display_api_monitor_priority_order",
+        0x1f5170: "display_api_monitor_constructor", 0x1f50a0: "display_api_monitor_destructor",
+        0x1f53d0: "display_api_sensor_queries_and_observed_sensor_creation",
+        0x1fc530: "display_api_monitor_initial_read_and_result",
+        0x11f680: "nvapi_platform_owner_constructor", 0x120540: "nvapi_system_library_initialize_enumerate_and_match",
+        0x11f2c0: "nvapi_temperature_query_and_sleeping_adapter_status",
+        0x11d3e0: "nvapi_temperature_capabilities_and_q8_8_read",
+        0x11d2d0: "nvapi_thermal_settings_target_selection", 0xfbd0: "nvapi_thermal_settings_driver_dispatch",
+        0x11f8e0: "nvapi_clock_versions_and_present_flags",
+        0x11d7f0: "nvapi_unload", 0x11d7b0: "nvapi_reinitialize",
+        0xba7f0: "display_interface_refresh", 0x139f10: "display_clock_provider_order_and_current_selection",
+    }
+    # Each tuple is the selector observed in current RzSystemService 0x46b0,
+    # its current SDK wrapper and the CPUIDSDK_DLL virtual byte offset.
+    selected = (
+        (417477060, 0x1104c0, 16, 0x1b4500),
+        (3969505587, 0x110450, 24, 0x1b4340),
+        (2368412246, 0x110470, 32, 0x1aeac0),
+        (1902699217, 0x1104e0, 8, 0x1b4600),
+        (4189188963, 0x110380, 1104, 0x1ab710),
+        (3141236342, 0x110360, 1112, 0x1b1a90),
+        (3349516107, 0x110340, 1120, 0x1b19e0),
+        (1265800933, 0x110320, 1128, 0x1b18d0),
+        (4128238623, 0x110280, 1168, 0x1b1760),
+        (2544578390, 0x110200, 1176, 0x1b1660),
+        (3052760042, 0x1101a0, 1192, 0x1b1510),
+        (2000612989, 0x110180, 1200, 0x1b1440),
+        (3115676522, 0x1101c0, 1184, 0x1b1590),
+        (1522185589, 0x110130, 1232, 0x1b1080),
+        (2108619613, 0x110430, 48, 0x1aeaa0),
+        (2741978846, 0x110410, 56, 0x1b4230),
+        (3487801287, 0x1103f0, 64, 0x1b4110),
+        (3459226719, 0x1103a0, 72, 0x1b3fc0),
+    )
+    slots = [{"role": "sdk_destructor", "vtable_rva": 0x3037c8,
+              "slot_byte_offset": 0, "target_rva": 0x3200}]
+    for table, offset, target in (
+        (0x30c7b0, 0, 0xb8b70), (0x30c7b0, 8, 0xb75a0),
+        (0x309ed8, 32, 0x1f53d0), (0x309ed8, 80, 0x1fc530),
+        (0x307c08, 8, 0x120540), (0x307c08, 16, 0x11d7f0),
+        (0x307c08, 24, 0x11d7b0), (0x307c08, 64, 0x11f2c0), (0x307c08, 152, 0x11f8e0),
+    ):
+        slots.append({"role": roles[target], "vtable_rva": table,
+                      "slot_byte_offset": offset, "target_rva": target})
+    for selector, wrapper, offset, target in selected:
+        roles[wrapper] = "selector_" + str(selector) + "_wrapper"
+        roles.setdefault(target, "selector_" + str(selector) + "_implementation")
+        slots.append({"role": roles[target], "vtable_rva": 0x3037c8,
+                      "slot_byte_offset": offset, "target_rva": target})
+    retained = verify_native_functions(original, roles, slots, exports={"QueryInterface": 0x110580})
+    bodies = {int(row["capture"]["rva"], 0): row["capture"]
+              for row in retained["complete_selected_functions"]}
+    keys = native_rip_u32_initializers(bodies[0x2499e0]["assembly"], 0x18038e1c0, 64)
+    encoded = native_rip_u32_initializers(bodies[0x2499f0]["assembly"], 0x18038e2c0, 384)
+    decoded = [value ^ keys[index % 64] for index, value in enumerate(encoded)]
+    dispatch, compare_address = {}, None
+    for instruction in bodies[0x110580]["assembly"]:
+        code = bytes.fromhex(instruction["bytes"])
+        address = int(instruction["address"], 0)
+        if len(code) == 6 and code[:2] == b"\x3b\x0d":
+            compare_address = address + 6 + int.from_bytes(code[2:], "little", signed=True)
+        elif len(code) == 7 and code[:3] in (b"\x48\x8d\x05", b"\x48\x8d\x15"):
+            index = (compare_address - 0x18038e2c0) // 4 if compare_address is not None else -1
+            if not 0 <= index < len(decoded) or compare_address % 4:
+                raise ValueError("SDK QueryInterface selector target is outside its initialized table")
+            dispatch[decoded[index]] = address + 7 + int.from_bytes(code[3:], "little", signed=True) - 0x180000000
+    for selector, wrapper, _, _ in selected:
+        if dispatch.get(selector) != wrapper:
+            raise ValueError("Current SDK selector no longer resolves the service sensor wrapper")
+    if dispatch.get(620775936) != 0x110520 or dispatch.get(910584972) != 0x110500:
+        raise ValueError("Current SDK construction/destruction selector is unresolved")
+    return {**provenance, "native": retained,
+        "decoded_selector_dispatch": [{"selector": key, "wrapper_rva": hex(value)}
+                                      for key, value in sorted(dispatch.items())],
+        "source_sensor_contract": "Device count freezes the current visible-device order; device class strips bit31. Sensor count and selection require the source sensor IsValid virtual predicate and kind mask0x3ff000. Sensor getter returns native id, SysAllocStringByteLen name, raw/current/min/max from fields328/336/348/352/356. Current values are produced by upstream refresh; resolving the getter does not establish a real sensor read.",
+        "acquisition_scope": "This is the external cpuidsdk64.dll 1.3.7.6 selected from RazerAppEngine cpuz by RzSystemService0x46b0, not the separately bundled cpuidsdk64_v1.3.2.6.dll resource.",
+        "gpu_driver_branch": "Display API monitors query temperature target1 first and append the GPU sensor only after a successful actual result. NVAPI branch0x11f2c0 first classifies driver return -220, then attempts capability-selected Q8.8 temperatures through selectors197662269/1711159981, then source thermal-settings selector3814984278. Clock branch0x11f8e0 uses source version retries and per-domain presence flags; source negative sentinels are not measurements. Device discovery/provider priority, complete clock refresh consumers, CPU/other GPU branches and Rust integration still require completion.",
+        "remaining": ["Complete each CPU/GPU sensor creation and update branch through actual system or driver calls, including failures, cancellation and cleanup, then independently implement the backend; SDK getter/selector verification alone is not completion"],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
 def hanbo_native_inventory(audit, inputs, wrapper, *, prepare=False):
     """Project observed installed-resource identities into the existing catalog."""
     import host
@@ -19184,7 +19639,14 @@ def audit_hanbo_local_runtime(args):
     system = verify_native_functions(native_by_name["RzSystemService_v1.0.29.0.dll"], {
         "0x43310": "system_initialize_monitor", "0x43810": "system_terminate_monitor_and_native_objects",
         "0x43a00": "system_free_malloc", "0x46840": "system_all_hardware_json_pointer_to_malloc_string",
-        "0x15df0": "system_collect_hardware_snapshot", "0x448b0": "system_copy_response_request_fields"})
+        "0x15df0": "system_collect_hardware_snapshot", "0x448b0": "system_copy_response_request_fields",
+        "0x46b0": "system_load_actual_cpuz_path_and_resolve_twenty_selectors",
+        "0x4c70": "system_close_and_destroy_sensor_sdk",
+        "0x5410": "system_sensor_getter_out_fields_and_bstr_free",
+        "0x38680": "system_external_cpuz_version_gate",
+        "0x17300": "system_sensor_iteration_first_per_device_rounding_and_json",
+        "0x44700": "system_cpu_gpu_temperature_clock_query_order"})
+    sensor = hanbo_sensor_source(audit)
     ffi_path = ".analysis/inputs/host-current/asar/b2ce8c54dc5c/electron/modules/ffi_subprocess/FFIPreloadSubProcess.js"
     ffi_source = inputs[ffi_path]
     ffi_root = audit.tree(ffi_source).root_node
@@ -19212,6 +19674,7 @@ def audit_hanbo_local_runtime(args):
         "roles": roles, "complete_modules": modules, "css": {"original": audit.sources[css["path"]], "rules": css_rules},
         "native_hid": native, "native_system_common": common,
         "native_system_service": system, "native_dll_server": server,
+        "native_external_sensor": sensor,
         "native_installation": native_inventory,
         "native_hidden_window_identity": window_identity,
         "hardware_outdated_producer_search": hardware_producer_search,
@@ -19235,7 +19698,7 @@ def audit_hanbo_local_runtime(args):
             "write_length": "Elsa constructor sets reportLength65, then _sendCommand allocates65 and prefixes claimInterface, producing66 bytes while accepting native write count65. The current host forwards all dataSend bytes; native hid_write pads shorter-than-caps buffers but never truncates larger ones. No static conclusion asserts that OS/device accepts this combination.",
             "system_monitor_native": "RzSystemCommon Initialize owns the hidden message thread, pipe receiver and buffer. TimerFunc sends GetAllHardwareInfo JSON to the fixed local named pipe; the server passes a nlohmann JSON object pointer to RzSystemService and frees its malloc C-string response. Common's receiver assembles complete messages, parses CPUInfo/GPUInfo and updates typed-mask caches. Callback timer flattens cur/min/max values and adds container event, dllName RzSystemCommon and dllFunc HardwareMonitorCallback. Host FFI decodes a void(string) callback as JSON. Missing numeric observations are null, not zero.",
             "system_monitor_cleanup": "Product 29346 unregisters its container then calls JS terminate, whose DeviceTerminate native body only logs. Unregister removes callback ownership and kills both timers only when no containers remain. Native Common Terminate separately posts WM_DESTROY and closes its hidden-window thread handle without joining that thread; it joins only its separate pipe receiver, then closes pipe and frees its buffer. WndProc675a0 WM_DESTROY kills both timers and posts WM_QUIT. Rust retains the callback and library until an independently retained OS window-thread handle confirms exit, then unregisters the verified process-owned class before library release. Initialize unregisters a different source class name, which does not prove repeat-initialization cleanup. RzDLLService unload dispatch calls each loaded DLL Terminate before FreeLibrary. CloseAPPServer is an explicit server-wide operation and is not inferred from product stop."},
-        "unresolved_chains": ["Current installed external sensor implementation and selected native vtable sensor branches still require full ABI closure before Rust CPU/GPU monitoring can be declared complete",
+        "unresolved_chains": ["Current external CPUID1.3.7.6 acquisition, selector initialization and SDK virtual sensor getters are verified; complete actual CPU/GPU creation/update driver branches and independent Rust monitoring implementation remain required",
                               "No acquired current 3893 MW JavaScript contains isHardwareOutdated; its true producer remains unresolved rather than invented",
                               "Source write66/accepted-count65 behavior requires explicit transport semantics and remains without real-device acceptance"],
         "target_execution": False, "inputs_unchanged": True, "whole_page_complete": False,
@@ -19748,7 +20211,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

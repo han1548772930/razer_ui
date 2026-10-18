@@ -106,8 +106,6 @@ pub enum Origin {
 pub struct Snapshot {
     configuration: Option<Configuration>,
     origin: Option<Origin>,
-    dynamic_lighting: Option<bool>,
-    module_installed: Option<bool>,
 }
 impl Snapshot {
     pub fn configuration(&self) -> Option<&Configuration> {
@@ -116,12 +114,15 @@ impl Snapshot {
     pub fn origin(&self) -> Option<Origin> {
         self.origin
     }
-    pub fn dynamic_lighting(&self) -> Option<bool> {
-        self.dynamic_lighting
-    }
-    pub fn module_installed(&self) -> Option<bool> {
-        self.module_installed
-    }
+}
+
+/// Independently decoded observations from one source document read. An invalid
+/// profile must not discard the warning or module state already read by the UI.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Observation {
+    pub snapshot: Result<Snapshot, String>,
+    pub dynamic_lighting: Result<Option<bool>, String>,
+    pub module_installed: Result<Option<bool>, String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -172,13 +173,44 @@ pub fn load_dynamic_lighting(source_path: &Path) -> anyhow::Result<Option<bool>>
 }
 
 pub fn load(path: &Path, source_path: &Path) -> anyhow::Result<Snapshot> {
+    let entries = load_source_entries(source_path)?;
+    load_configuration(path, &entries)
+}
+
+type SourceEntries = std::collections::BTreeMap<String, String>;
+
+fn load_source_entries(source_path: &Path) -> anyhow::Result<SourceEntries> {
     // Imported localStorage strings stay at the explicit external file boundary.
-    let entries: std::collections::BTreeMap<String, String> =
+    Ok(
         crate::read_document(source_path, |text| Ok(serde_json::from_str(text)?))?
-            .unwrap_or_default();
-    let dynamic_lighting =
-        decode_dynamic_lighting(entries.get(SOURCE_DYNAMIC_LIGHTING).map(String::as_str))?;
-    let module_installed = if let Some(raw) = entries.get("installedModules") {
+            .unwrap_or_default(),
+    )
+}
+
+pub fn observe(path: &Path, source_path: &Path) -> Observation {
+    match load_source_entries(source_path) {
+        Ok(entries) => Observation {
+            dynamic_lighting: decode_dynamic_lighting(
+                entries.get(SOURCE_DYNAMIC_LIGHTING).map(String::as_str),
+            )
+            .map_err(|error| format!("{error:#}")),
+            module_installed: decode_module_installed(&entries)
+                .map_err(|error| format!("{error:#}")),
+            snapshot: load_configuration(path, &entries).map_err(|error| format!("{error:#}")),
+        },
+        Err(error) => {
+            let error = format!("{error:#}");
+            Observation {
+                snapshot: Err(error.clone()),
+                dynamic_lighting: Err(error.clone()),
+                module_installed: Err(error),
+            }
+        }
+    }
+}
+
+fn decode_module_installed(entries: &SourceEntries) -> anyhow::Result<Option<bool>> {
+    Ok(if let Some(raw) = entries.get("installedModules") {
         let installed: std::collections::BTreeMap<String, Value> = serde_json::from_str(raw)?;
         let removing: Vec<String> = entries
             .get("uninstallingModules")
@@ -191,13 +223,14 @@ pub fn load(path: &Path, source_path: &Path) -> anyhow::Result<Snapshot> {
         )
     } else {
         None
-    };
+    })
+}
+
+fn load_configuration(path: &Path, entries: &SourceEntries) -> anyhow::Result<Snapshot> {
     if let Some(document) = crate::read_document(path, decode)? {
         return Ok(Snapshot {
             configuration: Some(document.configuration),
             origin: Some(Origin::LocalConfiguration),
-            dynamic_lighting,
-            module_installed,
         });
     }
     let configuration = match (entries.get(SOURCE_CURRENT_USER), entries.get(SOURCE_USERS)) {
@@ -222,8 +255,6 @@ pub fn load(path: &Path, source_path: &Path) -> anyhow::Result<Snapshot> {
     Ok(Snapshot {
         configuration,
         origin,
-        dynamic_lighting,
-        module_installed,
     })
 }
 
@@ -745,6 +776,7 @@ mod tests {
         assert_eq!(load_dynamic_lighting(&temp.source()).unwrap(), None);
         assert!(!temp.source().exists());
         crate::source_local::set_raw(&temp.source(), "installedModules", "invalid").unwrap();
+        crate::source_local::set_raw(&temp.source(), SOURCE_CURRENT_USER, "local-user").unwrap();
         crate::source_local::set_raw(&temp.source(), SOURCE_USERS, "invalid").unwrap();
         crate::source_local::set_raw(&temp.source(), SOURCE_DYNAMIC_LIGHTING, "true").unwrap();
         let before = std::fs::read(temp.source()).unwrap();
@@ -752,6 +784,10 @@ mod tests {
         assert_eq!(std::fs::read(temp.source()).unwrap(), before);
         assert!(!temp.local().exists());
         assert!(load(&temp.local(), &temp.source()).is_err());
+        let observed = observe(&temp.local(), &temp.source());
+        assert_eq!(observed.dynamic_lighting, Ok(Some(true)));
+        assert!(observed.module_installed.is_err());
+        assert!(observed.snapshot.is_err());
 
         crate::source_local::set_raw(&temp.source(), SOURCE_DYNAMIC_LIGHTING, "false").unwrap();
         assert_eq!(load_dynamic_lighting(&temp.source()).unwrap(), Some(false));
@@ -759,6 +795,66 @@ mod tests {
             crate::source_local::set_raw(&temp.source(), SOURCE_DYNAMIC_LIGHTING, invalid).unwrap();
             assert!(load_dynamic_lighting(&temp.source()).is_err(), "{invalid}");
         }
+    }
+    #[test]
+    fn independent_chroma_failures_do_not_block_a_valid_local_profile_or_its_update() {
+        let temp = Temp::new();
+        update(
+            &temp.local(),
+            &temp.source(),
+            Change::Toggle(true),
+            &AtomicBool::new(true),
+        )
+        .unwrap();
+        crate::source_local::set_raw(&temp.source(), SOURCE_DYNAMIC_LIGHTING, "invalid").unwrap();
+        crate::source_local::set_raw(&temp.source(), "installedModules", "{\"chroma-app\":{}}")
+            .unwrap();
+        let observed = observe(&temp.local(), &temp.source());
+        assert!(observed.dynamic_lighting.is_err());
+        assert_eq!(observed.module_installed, Ok(Some(true)));
+        assert!(
+            observed
+                .snapshot
+                .unwrap()
+                .configuration()
+                .unwrap()
+                .enabled()
+        );
+        let changed = update(
+            &temp.local(),
+            &temp.source(),
+            Change::Toggle(false),
+            &AtomicBool::new(true),
+        )
+        .unwrap();
+        assert!(!changed.configuration().unwrap().enabled());
+        let observed = observe(&temp.local(), &temp.source());
+        assert!(observed.dynamic_lighting.is_err());
+        assert_eq!(observed.module_installed, Ok(Some(true)));
+        assert!(
+            !observed
+                .snapshot
+                .unwrap()
+                .configuration()
+                .unwrap()
+                .enabled()
+        );
+    }
+
+    #[test]
+    fn missing_chroma_fields_remain_unobserved_and_corrupt_envelope_is_not_empty() {
+        let temp = Temp::new();
+        let missing = observe(&temp.local(), &temp.source());
+        assert_eq!(missing.dynamic_lighting, Ok(None));
+        assert_eq!(missing.module_installed, Ok(None));
+        assert!(missing.snapshot.unwrap().configuration().is_none());
+        std::fs::create_dir_all(&temp.0).unwrap();
+        std::fs::write(temp.source(), "[]").unwrap();
+        let invalid = observe(&temp.local(), &temp.source());
+        assert!(invalid.snapshot.is_err());
+        assert!(invalid.dynamic_lighting.is_err());
+        assert!(invalid.module_installed.is_err());
+        assert!(!temp.local().exists());
     }
     #[test]
     fn imported_projection_preserves_profile_fields_but_does_not_retain_account_identity() {

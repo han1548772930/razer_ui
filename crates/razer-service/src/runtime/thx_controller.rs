@@ -36,6 +36,28 @@ pub(super) struct Controller {
 #[path = "thx_owner.rs"]
 mod owner;
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        for job in self.jobs.values() {
+            job.canceled.cancel();
+        }
+        self.shutdown_owners(cleanup);
+        for (id, mut job) in self.jobs.drain() {
+            let owner = format!("thx:{id}");
+            if let Some(worker) = job.worker.take() {
+                if worker.join().is_err() {
+                    cleanup.fail(&owner, "THX cleanup worker panicked");
+                }
+            }
+            let result = job.receiver.try_recv().map_err(Into::into);
+            if let Ok(progress) = &result {
+                if let Some(error) = &progress.cleanup_error {
+                    cleanup.fail(&owner, error);
+                }
+            }
+            cleanup.record(&owner, result);
+        }
+    }
+
     pub(super) fn start(
         &mut self,
         id: String,

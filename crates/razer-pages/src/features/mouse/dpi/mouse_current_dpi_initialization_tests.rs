@@ -293,6 +293,44 @@ fn current182_initialization_identity_read_is_deduplicated_without_queuing_a_pre
 }
 
 #[test]
+fn current_profile_observation_starts_with_identity_and_never_initializes_imported_settings() {
+    for product_id in [182, 190] {
+        let mut state = State::default();
+        state.local_profile_known = true;
+        state.local_profile_error = Some("previous source read".into());
+        let identity = state.request_identity(scope(3)).unwrap();
+        assert!(!state.local_profile_known);
+        assert!(state.local_profile_error.is_none());
+        razer_device::mouse_current_dpi::validate_change_for(
+            product_id,
+            identity.change().unwrap(),
+        )
+        .unwrap();
+        assert!(!state.take_ready_refresh());
+        assert!(state.initialization_key.is_none());
+        assert!(state.release(&identity));
+        // The separately verified source-profile reader supplies local flags;
+        // establishing their mapping does not enqueue a settings mutation.
+        let mut profile = source_profile();
+        profile.enabled = false;
+        assert!(Selection::capture(product_id, &profile).is_some());
+        assert!(state.install_connection(
+            Some("actual-serial/selected-source-guid".into()),
+            Some(scope(3))
+        ));
+        state.request_refresh();
+        assert!(state.pending.is_none() && state.initialization_queued.is_none());
+        assert!(state.initialization_key.is_none());
+        assert!(state.take_ready_refresh());
+        state.cancel();
+        assert!(state.connection_key.is_none());
+        let reconnected = state.request_identity(scope(4)).unwrap();
+        assert!(reconnected.change().unwrap().is_identity_read());
+        assert!(!state.take_ready_refresh());
+    }
+}
+
+#[test]
 fn current182_initialization_reconnected_identity_waits_for_cleanup_then_profile_init_precedes_get()
 {
     let mut state = State::default();

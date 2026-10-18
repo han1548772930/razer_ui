@@ -154,21 +154,19 @@ impl<T: Transport> Publisher<T> {
     }
 
     pub(super) fn macro_mode(&mut self, generation: &Generation) -> anyhow::Result<String> {
+        self.macro_mode_with(generation, razer_service::mapping::recorder::mode)
+    }
+
+    fn macro_mode_with(
+        &mut self,
+        generation: &Generation,
+        read: impl FnOnce() -> anyhow::Result<razer_platform::macro_recorder::Mode>,
+    ) -> anyhow::Result<String> {
         generation.check()?;
         self.apply_control()?;
-        let receipt = self.request(ServiceRequest::MappingDeviceMacroRecordingMode {
-            owner_guid: self.owner.clone(),
-        })?;
-        ensure!(
-            receipt["owner_guid"] == self.owner,
-            "756 macro-mode owner differs"
-        );
-        let mode = receipt["mode"]
-            .as_str()
-            .context("756 native macro mode is missing")?
-            .to_owned();
+        let mode = read()?;
         generation.check()?;
-        Ok(mode)
+        Ok(mode.as_str().to_owned())
     }
 
     pub(super) fn hypershift(&mut self, generation: &Generation) -> anyhow::Result<bool> {

@@ -64,7 +64,7 @@ impl AppShell {
                 .storage_error
                 .clone()
                 .unwrap_or_else(|| "Application is closing".into());
-            finish(
+            self.finish_mouse_dynamic(
                 &workspace,
                 &request,
                 MouseDynamicCompletion::Failed(message),
@@ -78,7 +78,7 @@ impl AppShell {
             .iter()
             .any(|profile| profile.id == device.active_profile)
         {
-            finish(
+            self.finish_mouse_dynamic(
                 &workspace,
                 &request,
                 MouseDynamicCompletion::Failed("Dynamic active local profile is absent".into()),
@@ -148,7 +148,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !succeeded {
-            finish(&save.workspace,&save.request,MouseDynamicCompletion::Failed("Dynamic local profile persistence did not succeed; device task was not submitted".into()),cx);
+            self.finish_mouse_dynamic(&save.workspace,&save.request,MouseDynamicCompletion::Failed("Dynamic local profile persistence did not succeed; device task was not submitted".into()),cx);
             return;
         }
         self.submit_mouse_dynamic(

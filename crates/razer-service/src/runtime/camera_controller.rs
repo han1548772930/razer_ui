@@ -42,6 +42,21 @@ impl Drop for Controller {
     }
 }
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        for job in self.jobs.values() {
+            job.canceled.store(true, Ordering::Release);
+        }
+        for (id, mut job) in self.jobs.drain() {
+            let owner = format!("camera:{id}");
+            if let Some(worker) = job.thread.take() {
+                if worker.join().is_err() {
+                    cleanup.fail(&owner, "camera cleanup worker panicked");
+                }
+            }
+            cleanup.record(&owner, job.receiver.try_recv().map_err(Into::into));
+        }
+    }
+
     pub(super) fn start(
         &mut self,
         id: String,

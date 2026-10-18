@@ -1,20 +1,17 @@
 //! 雷云原生引擎 DLL 的定位与加载。
 //!
-//! 保留现有目录发现与加载实现；找到文件不代表当前 DLL 的 ABI 已验证。
-//! 当前官方封装、查询链与未核实边界见 `docs/re/dll-readonly-inventory.md`。
-//! 开发验证只静态读取文件，不加载或执行 DLL。
+//! 找到文件不代表 DLL 的 ABI 或功能已验证。剩余适配器及替代边界
+//! 记录在 `docs/re/architecture.md`，实际比较由独立维护入口管理。
 #![allow(dead_code)]
 
 use std::path::{Path, PathBuf};
-
-use razer_platform::native_paths::EnginePaths;
 
 /// 一个已加载的引擎 DLL。
 ///
 /// # 安全边界
 ///
 /// [`EngineLibrary::load`] 会执行第三方 `DllMain`，可能阻塞。
-/// 加载不属于当前静态开发验证；运行时调用必须遵守独立 worker 边界。
+/// 生产调用必须遵守独立 worker 边界；分析比较遵守维护入口的作用域和清理契约。
 pub struct EngineLibrary {
     lib: libloading::Library,
     path: PathBuf,
@@ -32,14 +29,6 @@ impl EngineLibrary {
         })
     }
 
-    /// 按引擎名加载（先 [`EnginePaths::resolve`]，再 [`Self::load`]）。
-    pub fn discover(paths: &EnginePaths, stem: &str) -> anyhow::Result<Self> {
-        let path = paths
-            .resolve(stem)
-            .ok_or_else(|| anyhow::anyhow!("未找到 {stem}.dll"))?;
-        Self::load(&path)
-    }
-
     /// 已加载的文件路径。
     pub fn path(&self) -> &Path {
         &self.path
@@ -53,8 +42,8 @@ impl EngineLibrary {
     /// # Safety
     ///
     /// 调用方必须保证 `T` 与该 DLL 的真实导出签名一致：签名不符会损坏栈。
-    /// Signatures require the current wrapper and callback contract; a PE export
-    /// name alone does not prove ABI. See docs/re/dll-readonly-inventory.md.
+    /// 调用方还必须保证库覆盖函数指针、借用缓冲区和回调的完整生命周期。
+    /// 当前替代范围与验证边界见 `docs/re/architecture.md`。
     pub unsafe fn func<T>(&self, name: &str) -> Option<T> {
         // SAFETY: 由调用方保证 `T` 的签名正确（见上）。
         let symbol = unsafe { self.lib.get::<T>(name.as_bytes()) }.ok()?;

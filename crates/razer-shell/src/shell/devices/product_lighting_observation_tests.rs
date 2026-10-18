@@ -1,6 +1,24 @@
 use super::*;
 
 #[::core::prelude::v1::test]
+fn mouse_host_retains_independent_values_when_profile_and_installation_fail() {
+    let readback = product_chroma::Readback {
+        snapshot: Err("invalid profile".into()),
+        dynamic_lighting: Ok(Some(true)),
+        module_installed: Ok(Some(false)),
+        installation: Err("installation failed".into()),
+    };
+    assert_eq!(
+        mouse_host(&readback),
+        json!({
+            "isDynamicLighting": true,
+            "chromaInstalledModule": false,
+        })
+    );
+    assert!(readback.result().is_err());
+}
+
+#[::core::prelude::v1::test]
 fn accepted_brightness_keeps_exit_pending_until_its_worker_releases_the_receipt() {
     let mut state = State::default();
     let (observation_id, observation) = state.accept(false, false).unwrap();

@@ -1,0 +1,461 @@
+//! Independent MacroData and execution ownership. All OS handles are created,
+//! used and released on their worker; service callers retain cancellation and
+//! join handles rather than transferring native pointers across threads.
+#[path = "mapping_runtime/acceleration.rs"]
+mod acceleration;
+#[path = "mapping_runtime/audio.rs"]
+mod audio;
+#[path = "mapping_runtime/clipboard.rs"]
+mod clipboard;
+#[path = "mapping_runtime/input.rs"]
+mod input;
+#[path = "mapping_runtime/launch.rs"]
+mod launch;
+
+use anyhow::{Context, Result, ensure};
+use razer_device::macro_runtime::{
+    Action, Completion, Execution, KeyboardExecutor, KeyboardTiming, Library, Poll, Publication,
+    scheduler::{Dispatch, Mode, Request, Scheduler, Transition},
+};
+use serde_json::Value;
+use std::{
+    collections::BTreeMap,
+    sync::{
+        Arc, Condvar, Mutex, RwLock,
+        atomic::{AtomicBool, Ordering},
+    },
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
+};
+use uuid::Uuid;
+use windows_sys::Win32::{
+    Security::Cryptography::{BCRYPT_USE_SYSTEM_PREFERRED_RNG, BCryptGenRandom},
+    UI::WindowsAndMessaging::SystemParametersInfoW,
+};
+
+pub use audio::Observation as AudioObservation;
+pub use input::Receipt as InputReceipt;
+
+#[derive(Clone, Debug)]
+pub struct Parameters {
+    pub repeat: u32,
+    /// An observed filter-driver route, never a HID collection or saved path.
+    pub driver_path: Option<String>,
+}
+
+pub struct Start {
+    pub caller: Uuid,
+    pub guid: String,
+    pub parameters: Parameters,
+}
+
+#[derive(Debug)]
+pub enum Submission {
+    Started(Uuid),
+    CancellationRequested(Uuid),
+    Queued,
+    Unchanged,
+}
+
+#[derive(Debug)]
+pub struct Finished {
+    pub id: Uuid,
+    pub completion: Completion,
+    pub last_input: Option<InputReceipt>,
+    pub completed_inputs: u64,
+    pub audio_observations: Vec<AudioObservation>,
+}
+
+#[derive(Debug)]
+pub struct Shutdown {
+    pub executions: Vec<(Uuid, Result<Finished>)>,
+    pub cleanup_errors: Vec<String>,
+}
+
+#[derive(Default)]
+struct Cancellation {
+    stopped: AtomicBool,
+    gate: Mutex<()>,
+    wake: Condvar,
+}
+impl Cancellation {
+    fn cancel(&self) {
+        let _guard = self.gate.lock().unwrap_or_else(|error| error.into_inner());
+        self.stopped.store(true, Ordering::Release);
+        self.wake.notify_all();
+    }
+    fn is_cancelled(&self) -> bool {
+        self.stopped.load(Ordering::Acquire)
+    }
+    fn wait(&self, duration: Duration) {
+        let guard = self.gate.lock().unwrap_or_else(|error| error.into_inner());
+        let _unused = self
+            .wake
+            .wait_timeout_while(guard, duration, |_| !self.is_cancelled());
+    }
+}
+
+struct Running {
+    cancellation: Arc<Cancellation>,
+    thread: JoinHandle<Result<Finished>>,
+}
+
+pub struct State {
+    library: Arc<RwLock<Library>>,
+    running: BTreeMap<Uuid, Running>,
+    scheduler: Scheduler<Parameters>,
+    pending_completions: Vec<(Uuid, Result<Finished>)>,
+    clipboard: Option<clipboard::Service>,
+    acceleration: acceleration::Owner,
+    stopping: bool,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl State {
+    pub fn new() -> Self {
+        Self {
+            library: Arc::new(RwLock::new(Library::default())),
+            running: BTreeMap::new(),
+            scheduler: Scheduler::default(),
+            pending_completions: Vec::new(),
+            clipboard: None,
+            acceleration: acceleration::Owner::default(),
+            stopping: false,
+        }
+    }
+
+    pub fn publish(&mut self, document: &Value) -> Result<Publication> {
+        ensure!(!self.stopping, "Mapping execution owner is stopping");
+        self.library
+            .write()
+            .map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?
+            .publish(document)
+    }
+
+    pub fn submit(&mut self, request: Start, mode: Mode) -> Result<Submission> {
+        ensure!(!self.stopping, "Mapping execution owner is stopping");
+        match self.scheduler.submit(
+            Request {
+                caller: request.caller,
+                guid: request.guid,
+                payload: request.parameters,
+            },
+            mode,
+        )? {
+            Transition::Start(dispatch) => {
+                let id = dispatch.id;
+                if let Err(error) = self.spawn(dispatch) {
+                    let next = self.scheduler.complete(id)?;
+                    self.launch_queued(next);
+                    return Err(error);
+                }
+                Ok(Submission::Started(id))
+            }
+            Transition::Cancel(id) => {
+                self.cancel(id)?;
+                Ok(Submission::CancellationRequested(id))
+            }
+            Transition::Queued => Ok(Submission::Queued),
+            Transition::Unchanged => Ok(Submission::Unchanged),
+        }
+    }
+
+    fn spawn(&mut self, dispatch: Dispatch<Parameters>) -> Result<()> {
+        let id = dispatch.id;
+        let request = dispatch.request;
+        let execution = {
+            let library = self
+                .library
+                .read()
+                .map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?;
+            Execution::start(&library, &request.guid, request.payload.repeat)?
+        };
+        if self.clipboard.is_none() {
+            self.clipboard = Some(clipboard::Service::start()?);
+        }
+        let clipboard = self.clipboard.as_ref().unwrap().client();
+        let cancellation = Arc::new(Cancellation::default());
+        let worker_cancel = cancellation.clone();
+        let library = self.library.clone();
+        let acceleration = self.acceleration.clone();
+        let thread = thread::Builder::new()
+            .name("razer-macro-execution".into())
+            .spawn(move || {
+                run(
+                    id,
+                    execution,
+                    library,
+                    request.payload.driver_path,
+                    worker_cancel,
+                    clipboard,
+                    acceleration,
+                )
+            })
+            .context("Start macro execution worker")?;
+        self.running.insert(
+            id,
+            Running {
+                cancellation,
+                thread,
+            },
+        );
+        Ok(())
+    }
+
+    fn launch_queued(&mut self, mut next: Option<Dispatch<Parameters>>) {
+        while let Some(dispatch) = next {
+            let id = dispatch.id;
+            match self.spawn(dispatch) {
+                Ok(()) => return,
+                Err(error) => self.pending_completions.push((id, Err(error))),
+            }
+            match self.scheduler.complete(id) {
+                Ok(dispatch) => next = dispatch,
+                Err(error) => {
+                    self.pending_completions.push((id, Err(error)));
+                    return;
+                }
+            }
+        }
+    }
+
+    pub fn cancel_caller(&mut self, caller: Uuid) -> Result<()> {
+        for id in self.scheduler.stop_matching(caller, |_| true) {
+            self.cancel(id)?;
+        }
+        Ok(())
+    }
+
+    pub fn cancel(&self, id: Uuid) -> Result<()> {
+        self.running
+            .get(&id)
+            .context("Macro execution owner changed")?
+            .cancellation
+            .cancel();
+        Ok(())
+    }
+
+    pub fn take_completed(&mut self) -> Vec<(Uuid, Result<Finished>)> {
+        let finished = self
+            .running
+            .iter()
+            .filter_map(|(id, run)| run.thread.is_finished().then_some(*id))
+            .collect::<Vec<_>>();
+        let mut completions = std::mem::take(&mut self.pending_completions);
+        for id in finished {
+            let run = self.running.remove(&id).unwrap();
+            let result = join(run.thread);
+            match self.scheduler.complete(id) {
+                Ok(next) => self.launch_queued(next),
+                Err(error) => self.pending_completions.push((id, Err(error))),
+            }
+            completions.push((id, result));
+        }
+        completions.append(&mut self.pending_completions);
+        completions
+    }
+
+    pub fn shutdown(&mut self) -> Shutdown {
+        self.stopping = true;
+        self.scheduler.begin_drain();
+        for run in self.running.values() {
+            run.cancellation.cancel();
+        }
+        let mut cleanup_errors = Vec::new();
+        let mut executions = std::mem::take(&mut self.pending_completions);
+        for (id, run) in std::mem::take(&mut self.running) {
+            executions.push((id, join(run.thread)));
+            if let Err(error) = self.scheduler.complete(id) {
+                cleanup_errors.push(format!("Macro scheduling cleanup: {error:#}"));
+            }
+        }
+        if !self.scheduler.is_idle() {
+            cleanup_errors.push("Macro scheduling cleanup still has active owners".into());
+        }
+        if let Some(mut service) = self.clipboard.take() {
+            if let Err(error) = service.shutdown() {
+                cleanup_errors.push(format!("Macro clipboard cleanup failed: {error:#}"));
+            }
+        }
+        match self.library.write() {
+            Ok(mut library) => library.clear(),
+            Err(error) => {
+                error.into_inner().clear();
+                cleanup_errors.push("Macro library lock was poisoned during cleanup".into());
+            }
+        }
+        Shutdown {
+            executions,
+            cleanup_errors,
+        }
+    }
+}
+impl Drop for State {
+    fn drop(&mut self) {
+        let result = self.shutdown();
+        for error in result.cleanup_errors {
+            eprintln!("{error}");
+        }
+        for (id, result) in result.executions {
+            if let Err(error) = result {
+                eprintln!("Macro {id} cleanup failed: {error:#}");
+            }
+        }
+    }
+}
+
+fn join(thread: JoinHandle<Result<Finished>>) -> Result<Finished> {
+    thread
+        .join()
+        .map_err(|_| anyhow::anyhow!("Macro execution worker panicked"))?
+}
+
+fn timing() -> KeyboardTiming {
+    fn query(action: u32) -> Option<u32> {
+        let mut value = 0u32;
+        (unsafe { SystemParametersInfoW(action, 0, (&mut value as *mut u32).cast(), 0) } != 0)
+            .then_some(value)
+    }
+    KeyboardTiming::from_system_parameters(query(0x16), query(0x0a))
+}
+
+fn random(min: u32, max: u32) -> Result<u32> {
+    let width = u64::from(max) - u64::from(min) + 1;
+    let limit = (1u64 << 32) / width * width;
+    loop {
+        let mut bytes = [0; 4];
+        let status = unsafe {
+            BCryptGenRandom(
+                std::ptr::null_mut(),
+                bytes.as_mut_ptr(),
+                4,
+                BCRYPT_USE_SYSTEM_PREFERRED_RNG,
+            )
+        };
+        ensure!(status >= 0, "Macro random source failed: {status:#x}");
+        let value = u64::from(u32::from_le_bytes(bytes));
+        if value < limit {
+            return Ok((u64::from(min) + value % width) as u32);
+        }
+    }
+}
+
+fn run(
+    id: Uuid,
+    mut execution: Execution,
+    library: Arc<RwLock<Library>>,
+    driver_path: Option<String>,
+    cancel: Arc<Cancellation>,
+    clipboard: clipboard::Client,
+    acceleration: acceleration::Owner,
+) -> Result<Finished> {
+    let started = Instant::now();
+    let mut input = input::Input::open(driver_path.as_deref(), cancel.clone(), acceleration)?;
+    let mut keyboard = KeyboardExecutor::new(timing());
+    let mut audio_observations = Vec::new();
+    let mut timer_errors = Vec::new();
+    let mut omitted_timer_errors = 0u64;
+    let tick = || u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX);
+    let result =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| -> Result<Completion> {
+            loop {
+                if cancel.is_cancelled() {
+                    execution.cancel();
+                }
+                let now = tick();
+                for error in keyboard.poll(now, &mut |key| input.keyboard(key)) {
+                    if timer_errors.len() < 64 {
+                        timer_errors.push(error);
+                    } else {
+                        omitted_timer_errors = omitted_timer_errors.saturating_add(1);
+                    }
+                }
+                let state = {
+                    let library = match library.read() {
+                        Ok(library) => library,
+                        Err(error) => {
+                            execution.fail("Macro library lock poisoned".into())?;
+                            error.into_inner()
+                        }
+                    };
+                    execution.poll(now, &library, &mut random)
+                };
+                match state {
+                    Poll::Action(pending) => {
+                        input.cancellable = !pending.cleanup;
+                        let result = match pending.action {
+                            Action::Keyboard(key) => keyboard
+                                .execute(key, false, tick(), &mut |key| input.keyboard(key))
+                                .map_err(anyhow::Error::msg),
+                            Action::Mouse(mouse) => {
+                                input.send(razer_device::mapping_native_input::NativeInput::Mouse(
+                                    mouse.input(),
+                                ))
+                            }
+                            Action::MouseMove {
+                                mode,
+                                x,
+                                y,
+                                origin_epoch,
+                            } => input.movement(mode, x, y, origin_epoch),
+                            Action::Launch(launch) => launch::execute(&launch),
+                            Action::Clipboard(text) => clipboard.paste(text, driver_path.clone()),
+                            Action::Audio(action) => audio::execute(action).and_then(|report| {
+                                audio_observations = report.observations;
+                                ensure!(report.errors.is_empty(), "{}", report.errors.join("; "));
+                                Ok(())
+                            }),
+                        };
+                        execution.acknowledge(
+                            pending.ticket,
+                            result.map_err(|error| format!("{error:#}")),
+                        )?;
+                    }
+                    Poll::WaitingUntil(deadline) => {
+                        let deadline = keyboard
+                            .next_deadline_us()
+                            .map_or(deadline, |key| key.min(deadline));
+                        cancel.wait(Duration::from_micros(deadline.saturating_sub(tick())));
+                    }
+                    Poll::Progress => thread::yield_now(),
+                    Poll::WaitingForCompletion => {
+                        anyhow::bail!("Macro output completion owner was lost")
+                    }
+                    Poll::Complete(completion) => return Ok(completion),
+                }
+            }
+        }))
+        .unwrap_or_else(|_| Err(anyhow::anyhow!("Macro execution owner panicked")));
+    let cleanup = input.close();
+    keyboard.stop();
+    let mut completion = match result {
+        Ok(completion) => completion,
+        Err(error) => {
+            return match cleanup {
+                Ok(()) => Err(error),
+                Err(cleanup) => Err(anyhow::anyhow!("{error:#}; input cleanup: {cleanup:#}")),
+            };
+        }
+    };
+    if let Err(error) = cleanup {
+        completion.cleanup_errors.push(format!("{error:#}"));
+    }
+
+    for error in input.operation_errors.drain(..).chain(timer_errors) {
+        completion.record_operation_error(error);
+    }
+    completion.omitted_operation_errors = completion
+        .omitted_operation_errors
+        .saturating_add(omitted_timer_errors);
+    Ok(Finished {
+        id,
+        completion,
+        last_input: input.last_receipt.take(),
+        completed_inputs: input.completed,
+        audio_observations,
+    })
+}

@@ -121,7 +121,6 @@ enum FamilyBody {
 pub struct SourceProductWorkspace {
     device: Device,
     saved: Device,
-    mouse_profile_cache_changed: bool,
     mouse_profile_observed_serial: Option<String>,
     mouse_profile_connection_key: Option<String>,
     mouse_scroll_connection_key: Option<String>,
@@ -646,11 +645,13 @@ impl SourceProductWorkspace {
         request: &super::mouse_products::MouseDynamicRequested,
         completion: super::mouse_products::MouseDynamicCompletion,
         cx: &mut Context<Self>,
-    ) {
+    ) -> Option<String> {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.complete_mouse_dynamic(request, completion, cx);
-            });
+                body.complete_mouse_dynamic(request, completion, cx)
+            })
+        } else {
+            None
         }
     }
     pub fn complete_leviathan(
@@ -935,7 +936,7 @@ impl SourceProductWorkspace {
                     body.invalidate_mouse_polling_connection();
                     body.invalidate_current_power_connection();
                     body.cancel_calibration_requests();
-                    body.invalidate_dynamic_connection(cx);
+                    body.observe_dynamic_connection(observation.is_some(), cx);
                 });
             }
             if let FamilyBody::Controls(body) = &self.body {
@@ -1851,7 +1852,7 @@ impl SourceProductWorkspace {
             // Identity telemetry survives profile Cancel/restore. It is not a
             // profile edit and must not be reverted to the pre-query serial.
             self.saved.serial_number = serial.clone();
-            if self.device.product_id == 182
+            if razer_storage::host_local_profile::supported(self.device.product_id)
                 && !serial.is_empty()
                 && self.mouse_profile_observed_serial.as_ref() != Some(serial)
             {
@@ -1873,20 +1874,60 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| body.sync_current_dpi_controls(window, cx));
         }
     }
+    pub fn accept_current_dpi_local_profile(
+        &mut self,
+        request: &super::mouse_products::MouseCurrentDpiRequested,
+        serial: Option<&str>,
+        result: Result<Option<razer_storage::host_local_profile::LocalProfile>, String>,
+        cx: &mut Context<Self>,
+    ) {
+        let FamilyBody::Mouse(body) = &self.body else {
+            return;
+        };
+        if !body.read(cx).current_dpi_profile_read_matches(request, cx) {
+            return;
+        }
+        if let Some(serial) = serial {
+            self.device.serial_number = serial.to_owned();
+            self.saved.serial_number = serial.to_owned();
+        }
+        let mut changed = false;
+        let result = result.and_then(|source| {
+            if let Some(source) = source {
+                changed = razer_storage::host_local_profile::import(&mut self.device, &source)
+                    .map_err(|e| format!("{e:#}"))?;
+            } else {
+                return razer_storage::host_local_profile::stages_without_host(&self.device)
+                    .map_err(|e| format!("{e:#}"));
+            }
+            razer_storage::host_local_profile::known_stages(&self.device)
+                .map_err(|e| format!("{e:#}"))
+        });
+        body.update(cx, |body, cx| {
+            body.restore_current_dpi_local_profile(result, cx)
+        });
+        if changed {
+            self.persist_source_profile(false, cx);
+            if self.mouse_profile_observed_serial.as_deref()
+                == Some(self.device.serial_number.as_str())
+            {
+                cx.emit(WorkspaceEvent::MouseProfileSerialObserved);
+            }
+        }
+    }
     pub fn restore_mouse_profile_after_serial(
         &mut self,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.device.product_id != 182
+        if !razer_storage::host_local_profile::supported(self.device.product_id)
             || self.mouse_profile_observed_serial.as_deref()
                 != Some(self.device.serial_number.as_str())
         {
             return;
         }
-        self.mouse_profile_cache_changed |= mouse_profile_source::initialize(&mut self.device);
         self.refresh_profile_choices(window, cx);
-        self.restore_active(window, cx);
+        self.restore_active_with_dpi_observation(true, window, cx);
         cx.notify();
     }
     fn sync_mouse_profile_selection(&mut self) {
@@ -1901,7 +1942,12 @@ impl SourceProductWorkspace {
         macro_recording: bool,
         cx: &mut Context<Self>,
     ) {
-        if self.device.product_id != 182 {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, _| {
+                body.observe_current_dpi_macro_recording(macro_recording)
+            });
+        }
+        if !razer_storage::host_local_profile::supported(self.device.product_id) {
             if let (FamilyBody::Mouse(body), Some(profile)) =
                 (&self.body, self.device.active_profile_obj())
             {
@@ -1925,33 +1971,18 @@ impl SourceProductWorkspace {
             }
             return;
         }
-        if key.is_some()
-            && (self.mouse_profile_cache_changed
-                || self
-                    .saved
-                    .profiles
-                    .iter()
-                    .find(|profile| profile.id == self.device.active_profile)
-                    .is_none_or(|profile| profile.source_settings.is_none()))
-        {
-            // Current90012.fn creates and persists3298.F before Dn/Mn. This
-            // establishes the local default without treating a GET as a save.
-            let root = self
-                .device
-                .source_device_settings
-                .get_or_insert_with(|| serde_json::json!({}));
-            if let Some(root) = root.as_object_mut() {
-                root.entry("version").or_insert(serde_json::json!(1));
-            }
-            self.persist_source_profile(true, cx);
-            return;
-        }
         if let FamilyBody::Mouse(body) = &self.body {
             let Some(profile) = self.device.active_profile_obj() else {
                 return;
             };
             body.update(cx, |body, cx| {
-                body.initialize_mouse182_profile(key, &profile.guid, macro_recording, cx);
+                // An absent application cache does not prove first-use device
+                // initialization. Observe before any explicit profile action.
+                body.initialize_current_mouse_polling(key.as_deref(), &profile.guid, cx);
+                body.observe_current_dpi_connection(
+                    key.map(|key| format!("{key}:{}", profile.guid)),
+                    cx,
+                );
             });
         }
     }
@@ -2340,7 +2371,33 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| body.request_seiren_profile_restore(cx));
         }
     }
-    fn persist_source_profile(&self, apply: bool, cx: &mut Context<Self>) {
+    fn persist_source_profile(&mut self, apply: bool, cx: &mut Context<Self>) {
+        if apply && razer_storage::host_local_profile::supported(self.device.product_id) {
+            let result = (|| -> Result<_, String> {
+                let profile = self
+                    .device
+                    .active_profile_obj()
+                    .ok_or("active DPI profile is missing")?;
+                let id = profile.id.clone();
+                let source = profile
+                    .source_settings
+                    .clone()
+                    .ok_or("selected DPI profile has no settings")?;
+                razer_storage::host_local_profile::mark_edited(&mut self.device, &id, &source)
+                    .map_err(|error| format!("{error:#}"))?;
+                razer_storage::host_local_profile::known_stages(&self.device)
+                    .map_err(|error| format!("{error:#}"))
+            })();
+            let failed = result.is_err();
+            if let FamilyBody::Mouse(body) = &self.body {
+                body.update(cx, |body, cx| {
+                    body.restore_current_dpi_local_profile(result, cx)
+                });
+            }
+            if failed {
+                return;
+            }
+        }
         if matches!(self.device.product_id, 164 | 241) {
             if apply {
                 self.request_receiver_profile_selection(cx);
@@ -2353,7 +2410,7 @@ impl SourceProductWorkspace {
             )));
             return;
         }
-        if self.device.product_id == 182 {
+        if self.device.product_id == 182 || self.device.product_id == 190 && !apply {
             if let Some(scope) = self.mouse_polling_scope(cx) {
                 cx.emit(WorkspaceEvent::MouseLegacyProfileRequested { scope, apply });
             }
@@ -2384,7 +2441,18 @@ impl SourceProductWorkspace {
     ) {
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.apply_legacy_performance_profile(scope, cx)
+                if self.device.product_id == 182 {
+                    if let Some(profile) = self.device.active_profile_obj() {
+                        body.initialize_mouse182_profile(
+                            self.mouse_profile_connection_key.clone(),
+                            &profile.guid,
+                            false,
+                            cx,
+                        );
+                    }
+                } else {
+                    body.apply_legacy_performance_profile(scope, cx)
+                }
             });
         }
     }
@@ -2524,7 +2592,6 @@ impl SourceProductWorkspace {
         }
     }
     pub fn new(mut device: Device, window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let mouse_profile_cache_changed = false;
         if device.profiles.is_empty() {
             let initial = mouse_profile_source::default_profile(
                 &device,
@@ -3592,7 +3659,6 @@ impl SourceProductWorkspace {
         }
         let mut this = Self {
             saved: device.clone(),
-            mouse_profile_cache_changed,
             mouse_profile_observed_serial: None,
             mouse_profile_connection_key: None,
             mouse_scroll_connection_key: None,
@@ -3988,19 +4054,15 @@ impl SourceProductWorkspace {
                 && snapshot.source_device_settings == request.candidate().source_device_settings
         });
         if !pending_import {
+            if let Err(error) = razer_storage::host_local_profile::accept_saved(
+                &mut self.device,
+                &self.saved,
+                &snapshot,
+            ) {
+                eprintln!("[DPI local profile] {error:#}");
+            }
             mouse_profile_source::accept_saved_version(&mut self.device, &self.saved, &snapshot);
             hyperpolling_runtime::accept_saved_version(&mut self.device, &self.saved, &snapshot);
-        }
-        if self.device.product_id == 182
-            && snapshot.source_device_settings == self.device.source_device_settings
-            && snapshot.profiles.iter().all(|saved| {
-                self.device
-                    .profiles
-                    .iter()
-                    .any(|p| p.id == saved.id && p.guid == saved.guid)
-            })
-        {
-            self.mouse_profile_cache_changed = false;
         }
         if let Some(product) =
             razer_device::mapping_document::MappingProduct::for_product_id(self.device.product_id)
@@ -4104,6 +4166,15 @@ impl SourceProductWorkspace {
         cx.notify();
     }
     fn restore_active(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.restore_active_with_dpi_observation(false, window, cx);
+    }
+
+    fn restore_active_with_dpi_observation(
+        &mut self,
+        preserve_current_dpi_observation: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.device.product_id == razer_device::hanbo_cooler::PRODUCT_ID {
             self.hanbo_profile_revision = self.hanbo_profile_revision.wrapping_add(1);
         }
@@ -4164,6 +4235,7 @@ impl SourceProductWorkspace {
                         .iter()
                         .filter(|(key, _)| {
                             !razer_device::mapping_document::MappingProduct::owns_storage_field(key)
+                                && !razer_storage::host_local_profile::owns_field(key)
                         })
                         .map(|(key, value)| (key.clone(), value.clone())),
                 );
@@ -4184,7 +4256,16 @@ impl SourceProductWorkspace {
         );
         let snapshot = match &self.body {
             FamilyBody::Mouse(e) => {
-                e.update(cx, |v, cx| v.restore(value.as_ref(), window, cx));
+                let dpi = (!preserve_current_dpi_observation).then(|| {
+                    razer_storage::host_local_profile::known_stages(&self.device)
+                        .map_err(|error| format!("{error:#}"))
+                });
+                e.update(cx, |v, cx| {
+                    v.restore(value.as_ref(), window, cx);
+                    if let Some(dpi) = dpi {
+                        v.restore_current_dpi_local_profile(dpi, cx);
+                    }
+                });
                 Some(e.read(cx).snapshot())
             }
             FamilyBody::Keyboard(e) => {

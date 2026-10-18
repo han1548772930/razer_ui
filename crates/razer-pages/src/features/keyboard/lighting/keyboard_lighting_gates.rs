@@ -57,7 +57,7 @@ impl KeyboardProductWorkspace {
             && self
                 .lighting_observation
                 .as_ref()
-                .is_some_and(|observation| observation.is_dynamic_lighting_enabled)
+                .is_some_and(|observation| observation.is_dynamic_lighting_enabled == Some(true))
     }
 
     pub(super) fn lighting_controls_disabled(&self) -> bool {

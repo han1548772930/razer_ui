@@ -8,6 +8,7 @@ use std::{
 
 #[derive(Default)]
 struct Behavior {
+    identity: bool,
     fail_execute: bool,
     panic_execute: bool,
     fail_shutdown: bool,
@@ -34,7 +35,14 @@ impl Transport for Scripted {
         self.calls.borrow_mut().push("execute");
         assert!(!self.behavior.panic_execute, "scripted DPI failure");
         ensure!(!self.behavior.fail_execute, "device read failed");
-        Ok(report())
+        if self.behavior.identity {
+            Ok(serde_json::from_value(serde_json::json!({
+                "requested":{"initialize":true,"stages":null,"active":null,"profile_guid":null},
+                "stages":null,"active":null,"serial_number":"actual-mouse-serial","acknowledgements":[],"verified":true
+            }))?)
+        } else {
+            Ok(report())
+        }
     }
     fn shutdown(&mut self) -> anyhow::Result<()> {
         self.calls.borrow_mut().push("shutdown");
@@ -80,6 +88,48 @@ fn actual_readback_is_delivered_only_after_shutdown_join_and_destruction() {
         Some(DpiPair { x: 2000, y: 2000 })
     );
     assert!(completion.cleanup_error().is_none());
+}
+#[test]
+fn observed_identity_selects_local_profile_only_after_transport_cleanup() {
+    let valid = AtomicBool::new(true);
+    let (mut completion, calls) = run(Behavior {
+        identity: true,
+        ..Default::default()
+    });
+    observe_local_profile(
+        &mut completion,
+        &valid,
+        true,
+        "receiver-usb-serial",
+        |serial| {
+            assert_eq!(calls, ["execute", "shutdown", "terminate", "drop"]);
+            assert_eq!(serial, "actual-mouse-serial");
+            Ok(None)
+        },
+    );
+    assert!(matches!(completion.local_profile, Some(Ok(None))));
+    assert!(completion.report().unwrap().active.is_none());
+}
+#[test]
+fn failed_identity_and_canceled_profile_read_never_use_a_previous_serial() {
+    let valid = AtomicBool::new(true);
+    let (mut failed, _) = run(Behavior {
+        fail_execute: true,
+        ..Default::default()
+    });
+    observe_local_profile(&mut failed, &valid, true, "old-peer", |_| {
+        panic!("failed identity must not select storage")
+    });
+    assert!(matches!(failed.local_profile, Some(Err(_))));
+    let (mut completed, _) = run(Behavior {
+        identity: true,
+        ..Default::default()
+    });
+    observe_local_profile(&mut completed, &valid, true, "old-peer", |_| {
+        valid.store(false, Ordering::Release);
+        Ok(None)
+    });
+    assert!(matches!(completed.local_profile, Some(Err(_))));
 }
 
 #[test]

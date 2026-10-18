@@ -429,6 +429,12 @@ impl AppShell {
                 {
                     if profile.workspace.read(cx).device(cx).product_id == 182 {
                         self.initialize_current_mouse_profiles(cx);
+                        profile.workspace.update(cx, |workspace, cx| {
+                            workspace.apply_legacy_performance_profile(
+                                profile.scope.expect("checked mouse scope"),
+                                cx,
+                            );
+                        });
                     } else {
                         self.initialize_mouse_scroll_profiles(cx);
                         profile.workspace.update(cx, |workspace, cx| {

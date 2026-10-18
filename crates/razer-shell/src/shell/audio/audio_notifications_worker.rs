@@ -145,7 +145,7 @@ fn initialize(client: &mut ServiceClient, route: &DirectRoute) -> anyhow::Result
     let _ = (client, route);
     anyhow::bail!("Marie native audio requires its Windows container adapter")
 }
-fn native_events(client: &mut ServiceClient, route: &DirectRoute) -> anyhow::Result<Vec<Value>> {
+fn native_events(client: &mut ServiceClient, route: &DirectRoute, status: &Sender<Update>) -> anyhow::Result<Vec<Value>> {
     #[cfg(windows)]
     if let DirectRoute::Container(target) = route {
         let reply = client.request(ServiceRequest::SeirenNativeEvents {
@@ -155,9 +155,12 @@ fn native_events(client: &mut ServiceClient, route: &DirectRoute) -> anyhow::Res
             reply["target"] == serde_json::to_value(target)?,
             "Marie native event route differs"
         );
+        let diagnostics: Vec<String> = serde_json::from_value(reply["diagnostics"].clone())
+            .context("Marie event diagnostics are invalid")?;
+        for diagnostic in diagnostics { report(status, diagnostic); }
         return serde_json::from_value(reply["events"].clone()).map_err(Into::into);
     }
-    let _ = (client, route);
+    let _ = (client, route, status);
     anyhow::bail!("Marie native audio requires its Windows container adapter")
 }
 fn close(client: &mut ServiceClient, route: &DirectRoute) -> anyhow::Result<()> {
@@ -464,7 +467,7 @@ pub(super) fn run(
                 eprintln!("[AudioEnumerator] {}", serde_json::to_string(&event)?);
             }
             if native.is_some() {
-                for event in native_events(&mut client, &route)? {
+                for event in native_events(&mut client, &route, &status)? {
                     if event["containerId"] == observed.container() {
                         if event["eventType"] == "deviceMute" {
                             let enabled = event["mute"].as_i64() == Some(0);

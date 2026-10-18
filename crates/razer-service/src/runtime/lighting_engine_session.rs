@@ -1,5 +1,5 @@
-//! Native handles and effect replacement have a single owner. Cleanup continues
-//! after individual native failures so no failed call skips remaining releases.
+//! Renderer handles and effect replacement have a single owner. Cleanup
+//! continues after individual failures so no failed call skips releases.
 use razer_device::lighting_engine::{EngineEffect, EngineFrame, LedConfiguration, SoftwareEffect};
 use std::{cell::RefCell, rc::Rc};
 
@@ -33,7 +33,7 @@ impl<E: EngineAdapter> Drop for SharedRuntime<E> {
     }
 }
 
-/// Normal, charging and attached-device engines share one native runtime.
+/// Normal, charging and attached-device engines share one Rust renderer owner.
 /// Their sessions release individual handles; the runtime owner terminates last.
 pub(in crate::runtime) struct SharedEngine<E: EngineAdapter>(Rc<RefCell<SharedRuntime<E>>>);
 impl<E: EngineAdapter> Clone for SharedEngine<E> {
@@ -111,7 +111,7 @@ impl<E: EngineAdapter> EngineAdapter for SharedEngine<E> {
 }
 
 /// One physical device has independent normal and charging engines sharing
-/// the native device handle. The parent owns global runtime termination.
+/// the device handle. The parent owns runtime termination.
 pub(in crate::runtime) struct DeviceEngines<E: EngineAdapter> {
     runtime: SharedEngine<E>,
     config: LedConfiguration,
@@ -146,7 +146,7 @@ impl<E: EngineAdapter> DeviceEngines<E> {
         }
         self.cleanup_receipt = None;
         let device = self.runtime.create_device(&self.config)?;
-        anyhow::ensure!(device != 0, "Native device handle is null");
+        anyhow::ensure!(device != 0, "Lighting device handle is null");
         self.device_handle = Some(device);
         Ok(device)
     }
@@ -254,7 +254,7 @@ impl<E: EngineAdapter> Session<E> {
         }
     }
     pub fn with_shared_device(engine: E, device: u32) -> anyhow::Result<Self> {
-        anyhow::ensure!(device != 0, "Shared native lighting device handle is null");
+        anyhow::ensure!(device != 0, "Shared lighting device handle is null");
         Ok(Self {
             engine,
             device_handle: Some(device),
@@ -277,7 +277,7 @@ impl<E: EngineAdapter> Session<E> {
             .device_handle
             .ok_or_else(|| anyhow::anyhow!("Shared lighting device handle is absent"))?;
         let engine = self.engine.create_engine()?;
-        anyhow::ensure!(engine != 0, "Native lighting engine returned a null handle");
+        anyhow::ensure!(engine != 0, "Lighting engine returned a null handle");
         self.engine_handle = Some(engine);
         self.engine.add_device(engine, device)?;
         self.update_effect(effect)
@@ -295,10 +295,10 @@ impl<E: EngineAdapter> Session<E> {
         effect: &EngineEffect,
     ) -> anyhow::Result<()> {
         let engine = self.engine.create_engine()?;
-        anyhow::ensure!(engine != 0, "Native lighting engine returned a null handle");
+        anyhow::ensure!(engine != 0, "Lighting engine returned a null handle");
         self.engine_handle = Some(engine);
         let device = self.engine.create_device(config)?;
-        anyhow::ensure!(device != 0, "Native lighting device returned a null handle");
+        anyhow::ensure!(device != 0, "Lighting device returned a null handle");
         self.device_handle = Some(device);
         self.engine
             .add_device(self.engine_handle.unwrap(), device)?;
@@ -320,7 +320,7 @@ impl<E: EngineAdapter> Session<E> {
             self.engine.discard_frames_for(device)?;
         }
         let effect = self.engine.add_effect(engine, effect)?;
-        anyhow::ensure!(effect != 0, "Native lighting effect returned a null handle");
+        anyhow::ensure!(effect != 0, "Lighting effect returned a null handle");
         self.effect_handle = Some(effect);
         self.engine.enable(engine, true)?;
         self.suspended = false;
@@ -383,7 +383,7 @@ impl<E: EngineAdapter> Drop for Session<E> {
 }
 
 #[cfg(windows)]
-impl EngineAdapter for super::lighting_engine_native::Engine {
+impl EngineAdapter for super::lighting_engine::Engine {
     fn create_device(&mut self, c: &LedConfiguration) -> anyhow::Result<u32> {
         Self::create_device(self, c)
     }

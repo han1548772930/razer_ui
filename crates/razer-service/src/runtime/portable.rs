@@ -78,17 +78,40 @@ pub(super) struct PortableRuntime {
     thx: super::thx_controller::Controller,
 }
 
+impl Drop for PortableRuntime {
+    fn drop(&mut self) {
+        // EOF, malformed IPC and fatal native errors still cancel and join
+        // owned tasks; the client retains these diagnostics on worker failure.
+        self.shutdown().log_failures();
+    }
+}
+
 impl PortableRuntime {
-    pub(in crate::runtime) fn shutdown_tracking(
-        &mut self,
-    ) -> anyhow::Result<Option<razer_device::mouse_tracking::Progress>> {
-        self.mouse_tracking.shutdown()
+    pub(in crate::runtime) fn shutdown(&mut self) -> super::shutdown::Cleanup {
+        let mut cleanup = super::shutdown::Cleanup::default();
+        cleanup.record("mouse_tracking_cleanup", self.mouse_tracking.shutdown());
+        cleanup.record("mouse_philips_cleanup", self.mouse_philips.shutdown());
+        self.camera.shutdown(&mut cleanup);
+        self.thx.shutdown(&mut cleanup);
+        self.controller_calibration.shutdown(&mut cleanup);
+        self.controller_lighting.shutdown(&mut cleanup);
+        self.keyboard_submission.shutdown(&mut cleanup);
+        self.keyboard_wristrest.shutdown(&mut cleanup);
+        self.mouse_runtime_artwork.shutdown(&mut cleanup);
+        self.mouse_indicator_led.shutdown(&mut cleanup);
+        self.leviathan_events.shutdown(&mut cleanup);
+        self.seiren_audio_capture.shutdown(&mut cleanup);
+        cleanup.record(
+            "latest_keyboard_events",
+            self.latest_keyboard_events.shutdown(),
+        );
+        cleanup.record("audio_notifications", self.audio_notifications.shutdown());
+        cleanup.record("audio_router", self.audio_router.shutdown());
+        cleanup.record("foreground_monitor", self.foreground_monitor.shutdown());
+        cleanup.record("global_shortcuts", self.global_shortcuts.shutdown());
+        cleanup
     }
-    pub(in crate::runtime) fn shutdown_philips(
-        &mut self,
-    ) -> anyhow::Result<Option<razer_device::mouse_philips::Progress>> {
-        self.mouse_philips.shutdown()
-    }
+
     fn transaction(
         &mut self,
         node: &HidNode,

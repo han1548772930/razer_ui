@@ -144,7 +144,7 @@ impl KeyboardProductWorkspace {
             && self
                 .lighting_observation
                 .as_ref()
-                .is_some_and(|observation| observation.chroma_installed_module);
+                .is_some_and(|observation| observation.chroma_installed_module == Some(true));
         let requires_synapse = self.mapping_requires_synapse(slot);
         let mut notices = v_flex().mx(surface::css(20.));
         for (show, icon, label, tooltip) in [

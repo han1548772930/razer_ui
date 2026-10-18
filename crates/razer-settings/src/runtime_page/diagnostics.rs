@@ -2,7 +2,7 @@
 //! without replacing them with registry history or guessed hardware readings.
 use super::Readings;
 use razer_storage::discovery_diagnostics::{
-    self as reports, DeviceObservation, Discovery, NativeObservation, Report, ServiceQueries, query,
+    self as reports, DeviceObservation, Discovery, Report, ServiceQueries, query,
 };
 use razer_storage::file_transfer::Operation;
 use std::path::PathBuf;
@@ -121,17 +121,6 @@ impl Readings {
             ),
             discovery,
             platform,
-            self.native
-                .iter()
-                .map(|observation| {
-                    NativeObservation::new(
-                        observation.product_id,
-                        &observation.container,
-                        &observation.library,
-                        &observation.result,
-                    )
-                })
-                .collect(),
             self.discovery
                 .as_ref()
                 .and_then(|result| result.as_ref().ok())

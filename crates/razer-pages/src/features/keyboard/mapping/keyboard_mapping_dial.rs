@@ -487,7 +487,7 @@ impl KeyboardProductWorkspace {
                 let installed = self
                     .lighting_observation
                     .as_ref()
-                    .is_some_and(|o| o.chroma_installed_module);
+                    .is_some_and(|o| o.chroma_installed_module == Some(true));
                 body = body.child(v_flex().my(surface::css(20.)).child(if installed {
                     v_flex()
                         .child(

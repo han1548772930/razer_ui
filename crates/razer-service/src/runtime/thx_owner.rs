@@ -70,6 +70,24 @@ impl Drop for Owner {
 }
 
 impl Controller {
+    pub(super) fn shutdown_owners(&mut self, cleanup: &mut crate::runtime::shutdown::Cleanup) {
+        for owner in self.owners.values() {
+            owner.lifetime.cancel();
+        }
+        for (id, mut owner) in self.owners.drain() {
+            let name = format!("thx_owner:{id}");
+            cleanup.record(&name, owner.stop());
+            match owner.cleanup_error.lock() {
+                Ok(error) => {
+                    if let Some(error) = error.as_ref() {
+                        cleanup.fail(&name, error);
+                    }
+                }
+                Err(_) => cleanup.fail(&name, "THX cleanup receipt lock failed"),
+            }
+        }
+    }
+
     fn owner_slot(
         &self,
         owner_id: &str,

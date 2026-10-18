@@ -1,8 +1,8 @@
-//! A dock keeps its native engine and exact HID collection until explicit stop.
+//! A dock keeps its Rust renderer and exact HID collection until explicit stop.
 //! Source profile changes update this owner and cannot orphan frame delivery.
 use super::{hid, hid_transport, receiver};
 use crate::runtime::{
-    lighting_engine_native::Engine,
+    lighting_engine::Engine,
     lighting_engine_session::{DeviceEngines, EngineAdapter, SharedEngine},
 };
 use anyhow::{Context as _, ensure};
@@ -453,9 +453,9 @@ fn run(
                         lighting.send_frame(&device, &frame, frame.device_handle, &validate)?;
                         Ok(1)
                     } else {
-                        monitor.send_frame(&frame, &validate)?.context(
-                            "Native lighting event belongs to no current dock or peer handle",
-                        )
+                        monitor
+                            .send_frame(&frame, &validate)?
+                            .context("Lighting frame belongs to no current dock or peer handle")
                     }
                 })();
                 let reports = match delivery {
@@ -465,7 +465,7 @@ fn run(
                         if monitor.status.diagnostics.len() >= 64 {
                             monitor.status.diagnostics.remove(0);
                         }
-                        monitor.status.diagnostics.push(format!("Native frame was not submitted; later source frames remain active: {error:#}"));
+                        monitor.status.diagnostics.push(format!("Rendered frame was not submitted; later source frames remain active: {error:#}"));
                         if let Ok(mut state) = status.lock() {
                             state.monitoring = monitor.status.clone();
                         }
@@ -489,7 +489,7 @@ fn run(
             }
             ensure!(
                 !awaiting_current_frame || Instant::now() < pending_deadline,
-                "Dock native engine produced no submitted frame"
+                "Dock renderer produced no submitted frame"
             );
         }
         Ok(())

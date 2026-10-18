@@ -17,6 +17,8 @@ pub(super) struct State {
     sync_started: Cell<Option<std::time::Instant>>,
     sync_animation: Cell<u64>,
     custom_colors_draft: Option<Vec<Value>>,
+    pub(super) advanced_draft: Option<bool>,
+    pub(super) chroma_profile_draft: Option<String>,
     guard: Arc<AtomicBool>,
 }
 impl Default for State {
@@ -30,6 +32,8 @@ impl Default for State {
             sync_started: Cell::new(None),
             sync_animation: Cell::new(0),
             custom_colors_draft: None,
+            advanced_draft: None,
+            chroma_profile_draft: None,
             guard: Arc::new(AtomicBool::new(true)),
         }
     }
@@ -62,7 +66,8 @@ impl KeyboardLightingRequested {
     }
 }
 
-/// Partial host observations do not clear unrelated device/reducer state.
+/// One complete host read. Missing fields are unobserved, independently of
+/// device/reducer notifications and user drafts.
 #[derive(Clone, Default)]
 pub struct KeyboardLightingHostObservation {
     fully_installed: Option<bool>,
@@ -118,16 +123,16 @@ pub struct KeyboardChromaPeer {
 #[derive(Clone, Default)]
 pub struct KeyboardLightingObservation {
     pub check_is_fully_installed: Option<bool>,
-    pub chroma_installed_module: bool,
+    pub chroma_installed_module: Option<bool>,
     pub chroma_profiles: Vec<Value>,
     pub selected_chroma_profile_guid: Option<String>,
-    pub is_chroma_enabled: bool,
+    pub is_chroma_enabled: Option<bool>,
     pub is_chroma_visualizer_enabled: bool,
     /// Original chromaConnectApp appName/appIcon observation.
     pub chroma_connect_app: Option<Value>,
     pub use_power_saving_quick_effect: bool,
     pub system_power_status: Option<String>,
-    pub is_dynamic_lighting_enabled: bool,
+    pub is_dynamic_lighting_enabled: Option<bool>,
     /// PID 728 deviceReducer initializes this to true; later transport
     /// observations may select the Mac branch of the factory warning.
     pub is_windows_mode: Option<bool>,
@@ -144,6 +149,104 @@ pub struct KeyboardLightingObservation {
     /// Source installer status callback. Completion is represented by a new
     /// check_is_fully_installed observation; it is never inferred from a click.
     pub installer_busy: bool,
+}
+
+impl KeyboardLightingObservation {
+    fn replace_host(&mut self, host: KeyboardLightingHostObservation) {
+        self.check_is_fully_installed = host.fully_installed;
+        self.chroma_installed_module = host.module_installed;
+        self.is_dynamic_lighting_enabled = host.dynamic_lighting;
+        self.chroma_profiles.clear();
+        self.selected_chroma_profile_guid = None;
+        self.is_chroma_enabled = None;
+        if let Some(configuration) = host.configuration {
+            self.chroma_profiles = configuration.profiles;
+            self.selected_chroma_profile_guid = configuration.selected_profile;
+            self.is_chroma_enabled = Some(configuration.enabled);
+        }
+        self.replace_connected_products(host.connected_products);
+    }
+
+    fn replace_connected_products(&mut self, products: Option<Vec<u32>>) {
+        self.connected_chroma_devices = products.map(|products| {
+            products
+                .into_iter()
+                .map(|product_id| KeyboardChromaPeer {
+                    product_id,
+                    support_effects: Vec::new(),
+                })
+                .collect()
+        });
+    }
+}
+
+#[cfg(test)]
+mod host_observation_tests {
+    use super::{KeyboardLightingHostObservation, KeyboardLightingObservation};
+    use serde_json::json;
+
+    #[test]
+    fn keyboard_host_read_clears_only_host_fields_without_replaying_device_values() {
+        let mut observation = KeyboardLightingObservation {
+            selected_effect_id: Some(19),
+            switch_off_lighting: Some(json!({"idleMinutes":7})),
+            custom_colors: vec![json!({"color":"#123456","picked":true})],
+            nano_leaf_enabled: Some(false),
+            ..Default::default()
+        };
+        observation.replace_host(
+            KeyboardLightingHostObservation::default()
+                .with_fully_installed(true)
+                .with_module_installed(true)
+                .with_configuration(
+                    vec![json!({"id":"actual","name":"Actual"})],
+                    Some("actual".into()),
+                    true,
+                )
+                .with_dynamic_lighting(false)
+                .with_connected_products(vec![756, 226]),
+        );
+        observation
+            .replace_host(KeyboardLightingHostObservation::default().with_dynamic_lighting(true));
+        assert_eq!(observation.check_is_fully_installed, None);
+        assert_eq!(observation.chroma_installed_module, None);
+        assert!(observation.chroma_profiles.is_empty());
+        assert_eq!(observation.selected_chroma_profile_guid, None);
+        assert_eq!(observation.is_chroma_enabled, None);
+        assert_eq!(observation.is_dynamic_lighting_enabled, Some(true));
+        assert!(observation.connected_chroma_devices.is_none());
+        assert_eq!(observation.selected_effect_id, Some(19));
+        assert_eq!(
+            observation.switch_off_lighting,
+            Some(json!({"idleMinutes":7}))
+        );
+        assert_eq!(
+            observation.custom_colors,
+            vec![json!({"color":"#123456","picked":true})]
+        );
+        assert_eq!(observation.nano_leaf_enabled, Some(false));
+    }
+
+    #[test]
+    fn keyboard_memory_response_does_not_invent_or_clear_other_host_values() {
+        let mut observation = KeyboardLightingObservation::default();
+        observation.replace_host(
+            KeyboardLightingHostObservation::default()
+                .with_fully_installed(false)
+                .with_configuration(Vec::new(), None, false),
+        );
+        observation.replace_connected_products(Some(vec![756, 226]));
+        assert_eq!(observation.check_is_fully_installed, Some(false));
+        assert_eq!(observation.is_chroma_enabled, Some(false));
+        assert_eq!(observation.chroma_installed_module, None);
+        assert_eq!(
+            observation.connected_chroma_devices.as_ref().unwrap()[1].product_id,
+            226
+        );
+        observation.replace_connected_products(None);
+        assert!(observation.connected_chroma_devices.is_none());
+        assert_eq!(observation.is_chroma_enabled, Some(false));
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -236,9 +339,11 @@ impl KeyboardProductWorkspace {
         self.lighting_runtime.last_error = None;
         self.lighting_runtime.sync_started.set(None);
         self.lighting_runtime.custom_colors_draft = None;
+        self.lighting_runtime.advanced_draft = None;
+        self.lighting_runtime.chroma_profile_draft = None;
         if let Some(observation) = &mut self.lighting_observation {
             observation.installer_busy = false;
-            observation.check_is_fully_installed = None;
+            observation.replace_host(KeyboardLightingHostObservation::default());
         }
     }
 
@@ -272,6 +377,7 @@ impl KeyboardProductWorkspace {
         &mut self,
         request: &KeyboardLightingRequested,
         host: KeyboardLightingHostObservation,
+        result: Result<(), String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
@@ -280,34 +386,14 @@ impl KeyboardProductWorkspace {
         }
         if request.request_id >= self.lighting_runtime.last_mutation.get() {
             let mut observation = self.lighting_observation.clone().unwrap_or_default();
-            if let Some(installed) = host.fully_installed {
-                observation.check_is_fully_installed = Some(installed);
-            }
-            if let Some(installed) = host.module_installed {
-                observation.chroma_installed_module = installed;
-            }
-            if let Some(configuration) = host.configuration {
-                observation.chroma_profiles = configuration.profiles;
-                observation.selected_chroma_profile_guid = configuration.selected_profile;
-                observation.is_chroma_enabled = configuration.enabled;
-            }
-            if let Some(enabled) = host.dynamic_lighting {
-                observation.is_dynamic_lighting_enabled = enabled;
-            }
-            if let Some(products) = host.connected_products {
-                observation.connected_chroma_devices = Some(
-                    products
-                        .into_iter()
-                        .map(|product_id| KeyboardChromaPeer {
-                            product_id,
-                            support_effects: Vec::new(),
-                        })
-                        .collect(),
-                );
-            }
-            self.observe_lighting(&request.owner, observation, window, cx);
+            observation.replace_host(host);
+            self.lighting_observation = Some(observation);
+            self.reconcile_mapping_chroma_targets();
+            self.init_mapping_targets(0, window, cx);
+            self.init_mapping_targets(1, window, cx);
+            self.sync_rgb_controls(window, cx);
         }
-        self.complete_lighting_request(request, Ok(None), window, cx)
+        self.complete_lighting_request(request, result.map(|()| None), window, cx)
     }
 
     /// Called for both delivered responses and dispatch rejection. A local
@@ -349,10 +435,7 @@ impl KeyboardProductWorkspace {
                     if message["type"] == "TOGGLE_CHROMA"
                         && request.request_id >= self.lighting_runtime.last_mutation.get()
                     {
-                        self.analog_gamepad.advanced = self
-                            .lighting_observation
-                            .as_ref()
-                            .is_some_and(|observation| observation.is_chroma_enabled);
+                        self.lighting_runtime.advanced_draft = None;
                     }
                 }
                 self.lighting_runtime.last_error = Some(error);
@@ -376,7 +459,17 @@ impl KeyboardProductWorkspace {
         if owner != &self.lighting_owner() {
             return false;
         }
-        self.analog_gamepad.advanced = observation.is_chroma_enabled;
+        if observation.is_chroma_enabled.is_some()
+            && observation.is_chroma_enabled == self.lighting_runtime.advanced_draft
+        {
+            self.lighting_runtime.advanced_draft = None;
+        }
+        if observation.selected_chroma_profile_guid.is_some()
+            && observation.selected_chroma_profile_guid
+                == self.lighting_runtime.chroma_profile_draft
+        {
+            self.lighting_runtime.chroma_profile_draft = None;
+        }
         if let Some(id) = observation.selected_effect_id {
             self.draft["quickEffects"]["selectedEffectId"] = json!(id);
         }
@@ -458,6 +551,25 @@ impl KeyboardProductWorkspace {
             .collect()
     }
 
+    pub(super) fn chroma_mode(&self) -> Option<bool> {
+        self.lighting_runtime.advanced_draft.or_else(|| {
+            self.lighting_observation
+                .as_ref()
+                .and_then(|observation| observation.is_chroma_enabled)
+        })
+    }
+
+    pub(super) fn selected_chroma_profile(&self) -> Option<&String> {
+        self.lighting_runtime
+            .chroma_profile_draft
+            .as_ref()
+            .or_else(|| {
+                self.lighting_observation
+                    .as_ref()
+                    .and_then(|observation| observation.selected_chroma_profile_guid.as_ref())
+            })
+    }
+
     pub(super) fn rgb_can_sync(&self) -> bool {
         let Some(observation) = &self.lighting_observation else {
             return false;
@@ -510,7 +622,9 @@ impl KeyboardProductWorkspace {
     }
 
     pub(super) fn rgb_quick_disabled(&self) -> bool {
-        self.rgb_disabled() || self.rgb_power_saving_disabled()
+        self.rgb_disabled()
+            || self.rgb_power_saving_disabled()
+            || (!self.rgb_hardware_effect() && self.chroma_mode() != Some(false))
     }
 
     pub(super) fn rgb_bluetooth_keyboard(&self) -> bool {

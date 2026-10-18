@@ -12,6 +12,8 @@ IDA 路径：`E:/IDA`（9.1）、`D:/ida/IDA Pro 8.3`（8.3）。GPUI 技能读�
 
 ## 当前工具
 
+`compare-local-service-version` 使用当前 IDA／Hex-Rays 完整函数捕获核对 Simple Service 版本查询及 COM 生命周期。维护入口验证实际原件字节、已注册服务架构和签名，保存项目内副本，再显式运行默认忽略的只读对照测试。原件身份在 `.analysis/inputs/installed-current/service-acquisition.json`，实际结果在统一验证记录的 `local_runtime_checks.simple_version`；该项与普通纯／模拟验证独立，不推导其它服务能力通过。应用本身不再提供通用 DLL 版本、getter 或 lighting 探测 CLI。
+
 | 工具 | 当前用途与身份 | 能力限制 |
 | --- | --- | --- |
 | IDA／Hex-Rays | 对已验证私有副本导出全函数、汇编、伪代码、types、strings、imports、exports、xref | 捕获完整不等于全部反编译成功、ABI 已解析或功能已实现；失败保留完整汇编 |

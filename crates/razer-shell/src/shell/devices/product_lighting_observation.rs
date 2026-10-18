@@ -1,6 +1,6 @@
 //! Retain local observation work through cancellation and background completion.
 use super::*;
-use anyhow::{Context as _, ensure};
+use anyhow::ensure;
 use razer_device::mouse_brightness::Submission;
 use razer_discovery::{direct, discovery::ObservedDevice};
 use razer_pages::features::keyboard_products::KeyboardLightingHostObservation;
@@ -52,8 +52,20 @@ impl Request {
         cx: &mut App,
     ) {
         workspace.update(cx, |workspace, cx| match self {
-            Self::Keyboard(request) => {
-                workspace.complete_keyboard_lighting(request, Err(error), window, cx)
+            Self::Keyboard(request) => workspace.complete_keyboard_host_lighting(
+                request,
+                KeyboardLightingHostObservation::default(),
+                Err(error),
+                window,
+                cx,
+            ),
+            Self::Mouse(request)
+                if matches!(
+                    request.command(),
+                    "checkIsFullyInstall" | "READ_HOST_LIGHTING"
+                ) =>
+            {
+                workspace.complete_mouse_host_lighting(request, &json!({}), Err(error), window, cx)
             }
             Self::Mouse(request) => {
                 workspace.complete_mouse_lighting(request, Err(error), window, cx)
@@ -169,14 +181,14 @@ fn keyboard_host(readback: &product_chroma::Readback) -> KeyboardLightingHostObs
                 configuration.enabled(),
             );
         }
-        if let Some(installed) = snapshot.module_installed() {
-            host = host.with_module_installed(installed);
-        }
-        if let Some(enabled) = snapshot.dynamic_lighting() {
-            host = host.with_dynamic_lighting(enabled);
-        }
     }
-    if let Ok(installation) = &readback.installation {
+    if let Ok(Some(installed)) = readback.module_installed {
+        host = host.with_module_installed(installed);
+    }
+    if let Ok(Some(enabled)) = readback.dynamic_lighting {
+        host = host.with_dynamic_lighting(enabled);
+    }
+    if let Ok(Some(installation)) = &readback.installation {
         host = host.with_fully_installed(installation.fully_installed());
     }
     host
@@ -201,14 +213,14 @@ fn mouse_host(readback: &product_chroma::Readback) -> Value {
             );
             host.insert("isChromaEnabled".into(), json!(configuration.enabled()));
         }
-        if let Some(installed) = snapshot.module_installed() {
-            host.insert("chromaInstalledModule".into(), json!(installed));
-        }
-        if let Some(enabled) = snapshot.dynamic_lighting() {
-            host.insert("isDynamicLighting".into(), json!(enabled));
-        }
     }
-    if let Ok(installation) = &readback.installation {
+    if let Ok(Some(installed)) = readback.module_installed {
+        host.insert("chromaInstalledModule".into(), json!(installed));
+    }
+    if let Ok(Some(enabled)) = readback.dynamic_lighting {
+        host.insert("isDynamicLighting".into(), json!(enabled));
+    }
+    if let Ok(Some(installation)) = &readback.installation {
         host.insert(
             "allChromaResourcesInstalled".into(),
             json!(installation.fully_installed()),
@@ -304,6 +316,16 @@ impl AppShell {
                         "Unexpected product lighting installation identity"
                     );
                 }
+                "READ_HOST_LIGHTING" => {
+                    ensure!(
+                        request.product_id() == 162,
+                        "Local-only lighting projection belongs to Babel"
+                    );
+                    ensure!(
+                        request.payload().as_object().is_some_and(Map::is_empty),
+                        "Local lighting read has no parameters"
+                    );
+                }
                 _ => anyhow::bail!("Request is not a product lighting observation"),
             }
             Ok(())
@@ -338,10 +360,15 @@ impl AppShell {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        let local_only = matches!(&request, Request::Mouse(request) if request.command() == "READ_HOST_LIGHTING");
         self.start_product_lighting_operation(
             workspace,
             request,
-            worker::Work::Observe,
+            if local_only {
+                worker::Work::ObserveLocal
+            } else {
+                worker::Work::Observe
+            },
             window.window_handle(),
             cx,
         );
@@ -383,10 +410,9 @@ impl AppShell {
                 cx,
             );
             return;
-            return;
         };
         let route = match &work {
-            worker::Work::Observe => None,
+            worker::Work::Observe | worker::Work::ObserveLocal => None,
             worker::Work::Brightness { route, .. } => Some(route.clone()),
         };
         let scope = Scope {
@@ -435,6 +461,16 @@ impl AppShell {
                                     .as_ref()
                                     .err()
                                     .map(|error| format!("Chroma 本地配置未读取：{error}")),
+                                readback
+                                    .dynamic_lighting
+                                    .as_ref()
+                                    .err()
+                                    .map(|error| format!("动态灯光状态未读取：{error}")),
+                                readback
+                                    .module_installed
+                                    .as_ref()
+                                    .err()
+                                    .map(|error| format!("Chroma 模块状态未读取：{error}")),
                                 readback
                                     .installation
                                     .as_ref()
@@ -506,27 +542,29 @@ fn complete(
     match (request, reply) {
         (Request::Keyboard(request), worker::Reply::Observation(readback)) => {
             let mut host = keyboard_host(&readback);
+            let mut errors = readback.result().err().into_iter().collect::<Vec<_>>();
+            if let Some(Err(error)) = &products {
+                errors.push(format!("Chroma published devices: {error:#}"));
+            }
+            let completion = if errors.is_empty() {
+                Ok(())
+            } else {
+                Err(errors.join("; "))
+            };
             if let Some(products) = products.and_then(Result::ok).flatten() {
                 host = host.with_connected_products(products);
             }
             workspace.update(cx, |workspace, cx| {
-                workspace.complete_keyboard_host_lighting(request, host, window, cx)
+                workspace.complete_keyboard_host_lighting(request, host, completion, window, cx)
             });
         }
         (Request::Mouse(request), worker::Reply::Observation(readback)) => {
-            // The installation check and the independent memory getter have
-            // separate source requests and completion semantics.
-            let completion = readback
-                .installation
-                .as_ref()
-                .map_err(|error| anyhow::anyhow!(error.clone()))
-                .context("Chroma installation observation failed")
-                .map(|_| mouse_host(&readback))
-                .map_err(|error| format!("{error:#}"));
+            let host = mouse_host(&readback);
             workspace.update(cx, |workspace, cx| {
-                workspace.complete_mouse_lighting(
+                workspace.complete_mouse_host_lighting(
                     request,
-                    completion.as_ref().map(Some).map_err(Clone::clone),
+                    &host,
+                    readback.result(),
                     window,
                     cx,
                 )

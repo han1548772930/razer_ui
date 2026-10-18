@@ -40,15 +40,9 @@ impl EnginePaths {
             .max_by_key(|(name, _)| name.clone())
             .map(|(_, dir)| dir);
 
-        let apps_common = std::env::var_os("LOCALAPPDATA")
-            .map(PathBuf::from)
-            .map(|root| {
-                root.join("Razer")
-                    .join("RazerAppEngine")
-                    .join("User Data")
-                    .join("Apps")
-                    .join("Common")
-            })
+        let apps_common = user_apps_directory()
+            .ok()
+            .map(|root| root.join("Common"))
             .filter(|dir| dir.is_dir());
 
         Self {
@@ -235,73 +229,24 @@ pub fn native_library_candidates(
     )
 }
 
-/// The current monitor's client, server and server-side dependency are one
-/// installed resource group. These paths never fall back to analysis inputs.
-#[derive(Debug, Clone)]
-pub struct SystemMonitorPaths {
-    pub client_dll: PathBuf,
-    pub server_dll: PathBuf,
-    pub server_executable: PathBuf,
-    pub helper_folder: String,
-    pub helper_name: String,
-}
-
-pub fn system_monitor_paths(product_id: u32) -> anyhow::Result<SystemMonitorPaths> {
-    fn installed_resource(id: &str, product_id: u32) -> anyhow::Result<PathBuf> {
-        let library = native_library::find(id).ok_or_else(|| {
-            anyhow::anyhow!("System monitor resource is absent from the catalog: {id}")
-        })?;
-        resource_candidates(library, Some(product_id))
-            .into_iter()
-            .chain(resource_candidates(library, None))
-            .map(|(_, path)| path)
-            .find(|path| path.is_file())
-            .ok_or_else(|| anyhow::anyhow!("System monitor installed resource is missing: {id}"))
-    }
-
-    let client_dll = installed_resource("RzSystemCommon", product_id)?;
-    let server_dll = installed_resource("RzSystemService", product_id)?;
-    let server_executable = installed_resource("RzDLLService", product_id)?;
-    let server_dependency = installed_resource("cpuidsdk64Common", product_id)?;
-    let directory = server_executable
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("System monitor helper has no parent directory"))?;
-    anyhow::ensure!(
-        [&client_dll, &server_dll, &server_dependency]
-            .into_iter()
-            .all(|path| path.parent() == Some(directory)),
-        "System monitor installed resources do not share their manifest directory"
-    );
-    let applications = host_user_data_root()?.join("Apps");
-    let helper_folder = directory
-        .strip_prefix(applications)
-        .map_err(|_| anyhow::anyhow!("System monitor helper is outside installed Apps resources"))?
-        .to_str()
-        .ok_or_else(|| anyhow::anyhow!("System monitor helper folder is not valid Unicode"))?
-        .replace('/', "\\");
-    let helper_name = server_executable
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or_else(|| anyhow::anyhow!("System monitor helper filename is not valid Unicode"))?
-        .to_owned();
-    Ok(SystemMonitorPaths {
-        client_dll,
-        server_dll,
-        server_executable,
-        helper_folder,
-        helper_name,
-    })
-}
-
 /// Current host constants.js userDataDir. Installation observations and native
 /// resource discovery share this source-confirmed platform path.
 pub fn host_user_data_root() -> anyhow::Result<PathBuf> {
     #[cfg(windows)]
     {
-        return std::env::var_os("LOCALAPPDATA")
-            .map(PathBuf::from)
-            .map(|root| root.join("Razer/RazerAppEngine/User Data"))
-            .ok_or_else(|| anyhow::anyhow!("LOCALAPPDATA is unavailable"));
+        use std::{ffi::OsString, os::windows::ffi::OsStringExt};
+        use windows::Win32::UI::Shell::{SHGFP_TYPE_CURRENT, SHGetFolderPathW};
+        let mut directory = [0_u16; 260];
+        // Source Apps path provider uses CSIDL_LOCAL_APPDATA with current
+        // flags and no token, then appends these four fixed components.
+        unsafe { SHGetFolderPathW(None, 28, None, SHGFP_TYPE_CURRENT.0 as u32, &mut directory) }?;
+        let end = directory
+            .iter()
+            .position(|unit| *unit == 0)
+            .ok_or_else(|| anyhow::anyhow!("Local AppData path was not terminated"))?;
+        anyhow::ensure!(end != 0, "Local AppData path is empty");
+        return Ok(PathBuf::from(OsString::from_wide(&directory[..end]))
+            .join("Razer/RazerAppEngine/User Data"));
     }
     #[cfg(target_os = "macos")]
     {
@@ -312,6 +257,17 @@ pub fn host_user_data_root() -> anyhow::Result<PathBuf> {
     }
     #[cfg(not(any(windows, target_os = "macos")))]
     anyhow::bail!("The current Razer host has no installation path for this platform")
+}
+
+/// The Apps Service root. Existence is checked by the operation so a missing
+/// installation remains distinct from an empty inventory.
+pub fn user_apps_directory() -> anyhow::Result<PathBuf> {
+    Ok(host_user_data_root()?.join("Apps"))
+}
+
+/// The current Electron host uses the default persistent Chromium session.
+pub fn host_local_storage_directory() -> anyhow::Result<PathBuf> {
+    Ok(host_user_data_root()?.join("Default/Local Storage/leveldb"))
 }
 
 pub fn resolve_path(stem: &str) -> Option<PathBuf> {

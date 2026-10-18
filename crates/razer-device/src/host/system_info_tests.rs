@@ -54,10 +54,30 @@ fn full_report_exports_actual_sections_and_external_fields() {
 fn response_rejects_wrong_product_and_query() {
     let response = Response {
         product_id: 737,
+        diagnostics: Vec::new(),
         data: Data::decode(Query::Display, br#"{"Display":[]}"#).unwrap(),
     };
     assert!(response.validate(737, Query::Display).is_ok());
     assert!(response.validate(694, Query::Display).is_err());
     assert!(response.validate(737, Query::Full).is_err());
     assert!(response.validate(190, Query::Display).is_err());
+}
+
+#[test]
+fn system_info_diagnostics_preserve_partial_observations_without_entering_export() {
+    let mut details = SystemDetails::observed_display(NativeValue::Value(vec![Monitor::new(
+        "Actual panel".into(),
+        "ABC".into(),
+    )]));
+    details.cpu = Some("Actual processor".into());
+    let response = Response {
+        product_id: 737,
+        data: Data::Display(details),
+        diagnostics: vec!["GPU: query failed".into()],
+    };
+    let value = serde_json::to_value(&response).unwrap();
+    assert_eq!(value["data"]["details"]["CPU"], "Actual processor");
+    assert!(value["data"]["details"].get("GPU").is_none());
+    assert_eq!(value["diagnostics"][0], "GPU: query failed");
+    assert!(value["data"]["details"].get("diagnostics").is_none());
 }

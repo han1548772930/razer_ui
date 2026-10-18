@@ -14,7 +14,7 @@ fn make_work(query: Query) -> (Work, Transfer) {
     (work, transfer)
 }
 fn response(query: Query) -> Response {
-    Response { product_id: 737, data: Data::decode(query, match query {
+    Response { product_id: 737, diagnostics: Vec::new(), data: Data::decode(query, match query {
         Query::Display => br#"{"DeviceName":"Observed host","CPU":"Observed CPU","Display":null}"#,
         Query::Full => br#"{"Display":{"DeviceName":"Observed host","Display":null},"Firmware":{"BiosFW":"1.2"},"Driver":{"Native driver":"9.1"}}"#,
     }).unwrap() }

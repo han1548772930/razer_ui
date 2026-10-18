@@ -4,12 +4,18 @@ use razer_ipc::{ServiceClient, ServiceRequest};
 
 pub(in crate::shell) struct Completion {
     result: Result<DpiReport, String>,
+    local_profile: Option<Result<Option<razer_storage::host_local_profile::LocalProfile>, String>>,
     shutdown_error: Option<String>,
     termination_error: Option<String>,
     destruction_error: Option<String>,
 }
 
 impl Completion {
+    pub(super) fn local_profile(
+        &self,
+    ) -> Option<Result<Option<razer_storage::host_local_profile::LocalProfile>, String>> {
+        self.local_profile.clone()
+    }
     #[cfg(test)]
     pub(super) fn report(&self) -> Option<&DpiReport> {
         self.result.as_ref().ok()
@@ -60,6 +66,14 @@ impl Completion {
                 }
                 None => "已读取设备 DPI 档位。".into(),
             },
+            Ok(report) if !report.verified => {
+                let errors = [report.write_errors.stages(), report.write_errors.active()]
+                    .into_iter()
+                    .flatten()
+                    .collect::<Vec<_>>()
+                    .join("；");
+                format!("DPI 设备写入尚未确认：{errors}")
+            }
             Ok(_) => "DPI 设备写入已应答。".into(),
         };
         if let Ok(report) = &self.result {
@@ -120,9 +134,19 @@ fn check(valid: &std::sync::atomic::AtomicBool) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(super) fn run(route: ObservedDevice, request: MouseCurrentDpiRequested) -> Completion {
+pub(super) fn run(
+    route: ObservedDevice,
+    request: MouseCurrentDpiRequested,
+    serial: String,
+) -> Completion {
     let valid = request.guard();
-    run_with(&valid, || {
+    let product_id = route.product_id();
+    let read_profile =
+        request.is_read() && razer_storage::host_local_profile::supported(product_id);
+    let identity_read = request
+        .change()
+        .is_some_and(|change| change.is_identity_read());
+    let mut completion = run_with(&valid, || {
         let mut client = ServiceClient::spawn()?;
         client.set_request_guard(valid.clone());
         Ok(NativeTransport {
@@ -130,7 +154,37 @@ pub(super) fn run(route: ObservedDevice, request: MouseCurrentDpiRequested) -> C
             route,
             request,
         })
-    })
+    });
+    if read_profile {
+        observe_local_profile(&mut completion, &valid, identity_read, &serial, |serial| {
+            let root = razer_platform::native_paths::host_local_storage_directory()?;
+            razer_storage::host_local_profile::read(&root, product_id, serial)
+        });
+    }
+    completion
+}
+fn observe_local_profile(
+    completion: &mut Completion,
+    valid: &std::sync::atomic::AtomicBool,
+    identity_read: bool,
+    previous_serial: &str,
+    read: impl FnOnce(&str) -> anyhow::Result<Option<razer_storage::host_local_profile::LocalProfile>>,
+) {
+    completion.local_profile = Some(guarded(|| {
+        check(valid)?;
+        let observed_serial = completion
+            .result
+            .as_ref()
+            .ok()
+            .and_then(|r| r.serial_number.as_deref());
+        ensure!(
+            !identity_read || observed_serial.is_some(),
+            "local profile identity was not observed on this connection"
+        );
+        let profile = read(observed_serial.unwrap_or(previous_serial))?;
+        check(valid)?;
+        Ok(profile)
+    }));
 }
 
 fn run_with<T: Transport>(
@@ -145,6 +199,7 @@ fn run_with<T: Transport>(
         Err(error) => {
             return Completion {
                 result: Err(error),
+                local_profile: None,
                 shutdown_error: None,
                 termination_error: None,
                 destruction_error: None,
@@ -172,6 +227,7 @@ fn run_with<T: Transport>(
     });
     Completion {
         result,
+        local_profile: None,
         shutdown_error,
         termination_error,
         destruction_error,

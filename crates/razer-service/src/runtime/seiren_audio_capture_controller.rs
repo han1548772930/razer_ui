@@ -111,6 +111,33 @@ pub(super) struct Controller {
     playback: Option<PlaybackOperation>,
 }
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        if let Some(active) = &self.active {
+            active.canceled.store(true, Ordering::Release);
+        }
+        if let Some(active) = &self.playback {
+            active.canceled.store(true, Ordering::Release);
+        }
+        if let Some(active) = self.active.take() {
+            let result = finish(active);
+            if let Ok(reply) = &result {
+                if let Some(error) = &reply.error {
+                    cleanup.fail("seiren_audio_capture", error);
+                }
+            }
+            cleanup.record("seiren_audio_capture", result);
+        }
+        if let Some(active) = self.playback.take() {
+            let result = finish_playback(active);
+            if let Ok(reply) = &result {
+                if let Some(error) = &reply.error {
+                    cleanup.fail("seiren_audio_playback", error);
+                }
+            }
+            cleanup.record("seiren_audio_playback", result);
+        }
+    }
+
     pub(super) fn playback_start(
         &mut self,
         session_id: u64,

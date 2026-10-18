@@ -2,6 +2,9 @@
 //! the current lighting-engine 6394, 8905 and 2578 owners.
 use serde::{Deserialize, Serialize};
 
+#[path = "renderer/mod.rs"]
+pub mod renderer;
+
 const NO_COLOR: u32 = 0x6400_0000;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]

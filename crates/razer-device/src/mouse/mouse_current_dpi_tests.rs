@@ -83,7 +83,24 @@ fn profile_identity_read_finishes_before_mode_or_any_profile_task() {
         initialize: true,
     };
     assert!(validate_change_for(182, &request).is_ok());
-    assert!(validate_change_for(190, &request).is_err());
+    assert!(validate_change_for(190, &request).is_ok());
+    assert!(validate_change_for(80, &request).is_err());
+    let current190 = Mock::new(vec![reply(b"DEVICE-190\0".to_vec())]);
+    let current190_report = execute_with_capability(
+        &obm_capability(),
+        &current190,
+        Some(&request),
+        next(),
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(current190_report.verified);
+    assert_eq!(
+        current190_report.serial_number.as_deref(),
+        Some("DEVICE-190")
+    );
+    assert_eq!(current190.sent().len(), 1);
+    assert_eq!(&current190.sent()[0][6..9], &[22, 0, 130]);
     let device = Mock::new(vec![reply(b"  DEVICE-182 \0\xff".to_vec())]);
     let report = execute_for(182, &device, Some(&request), next(), || Ok(())).unwrap();
     assert!(report.verified);
@@ -360,10 +377,13 @@ fn ordinary_obm_current190_collects_multiple_slot_errors_and_finishes_other_slot
     let device = Mock::new(replies);
     let mut change = obm_change();
     change.active = Some(DpiPair { x: 1600, y: 1600 });
-    let error =
+    let report =
         execute_with_capability(&obm_capability(), &device, Some(&change), next(), || Ok(()))
-            .unwrap_err();
-    let error = format!("{error:#}");
+            .unwrap();
+    assert!(!report.verified);
+    assert_eq!(report.active, change.active);
+    assert_eq!(report.profile_slot_writes.len(), 3);
+    let error = report.write_errors.stages().unwrap();
     assert!(error.contains("PID190 OBM stage synchronization failed"));
     assert!(error.contains("truncated or belongs to another profile"));
     assert!(error.contains("device status 5"));
@@ -616,19 +636,29 @@ fn setter_ack_without_matching_readback_never_confirms_the_local_profile() {
     let mut different = wanted.clone();
     different.stages[2].x += 1;
     let device = Mock::new(vec![reply(vec![]), reply(getter(&different))]);
+    let report = execute(
+        &device,
+        Some(&DpiChange {
+            profile_guid: None,
+            initialize: false,
+            stages: Some(wanted),
+            active: None,
+        }),
+        next(),
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(!report.verified);
     assert!(
-        execute(
-            &device,
-            Some(&DpiChange {
-                profile_guid: None,
-                initialize: false,
-                stages: Some(wanted),
-                active: None
-            }),
-            next(),
-            || Ok(())
-        )
-        .is_err()
+        report
+            .write_errors
+            .stages()
+            .unwrap()
+            .contains("readback differs")
+    );
+    assert_eq!(
+        report.stages.as_ref().unwrap().records[2].x,
+        different.stages[2].x
     );
     assert_eq!(device.sent().len(), 2);
 }
@@ -648,7 +678,11 @@ fn rejected_stage_task_does_not_discard_the_separately_requested_active_task() {
         },
         reply(active(1600, 1600)),
     ]);
-    assert!(execute(&device, Some(&change), next(), || Ok(())).is_err());
+    let report = execute(&device, Some(&change), next(), || Ok(())).unwrap();
+    assert!(!report.verified);
+    assert!(report.write_errors.stages().is_some());
+    assert!(report.write_errors.active().is_none());
+    assert_eq!(report.active, change.active);
     assert_eq!(
         device
             .sent()
@@ -657,6 +691,38 @@ fn rejected_stage_task_does_not_discard_the_separately_requested_active_task() {
             .collect::<Vec<_>>(),
         vec![6, 133]
     );
+}
+
+#[test]
+fn active_write_mismatch_retains_the_actual_readback_and_rejection() {
+    let device = Mock::new(vec![
+        reply(active(1600, 1600)),
+        reply(vec![]),
+        reply(active(2300, 2400)),
+    ]);
+    let report = execute(
+        &device,
+        Some(&DpiChange {
+            profile_guid: None,
+            initialize: false,
+            stages: None,
+            active: Some(DpiPair { x: 2200, y: 2200 }),
+        }),
+        next(),
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(!report.verified);
+    assert_eq!(report.active, Some(DpiPair { x: 2300, y: 2400 }));
+    assert!(
+        report
+            .write_errors
+            .active()
+            .unwrap()
+            .contains("readback differs")
+    );
+    assert_eq!(report.acknowledgements.len(), 1);
+    assert_eq!(device.sent().len(), 3);
 }
 
 #[test]
@@ -685,20 +751,20 @@ fn offline_dongle_and_out_of_range_transaction_do_not_report_success() {
     assert!(verify_wireless_online(&device, 0, || Ok(())).is_err());
     assert_eq!(&device.sent()[0][6..10], &[1, 0, 184, 0]);
     let device = Mock::new(vec![]);
-    assert!(
-        execute(
-            &device,
-            Some(&DpiChange {
-                profile_guid: None,
-                initialize: false,
-                stages: Some(draft()),
-                active: None
-            }),
-            || Ok(31),
-            || Ok(())
-        )
-        .is_err()
-    );
+    let report = execute(
+        &device,
+        Some(&DpiChange {
+            profile_guid: None,
+            initialize: false,
+            stages: Some(draft()),
+            active: None,
+        }),
+        || Ok(31),
+        || Ok(()),
+    )
+    .unwrap();
+    assert!(!report.verified);
+    assert!(report.write_errors.stages().is_some());
     assert!(device.sent().is_empty());
 }
 

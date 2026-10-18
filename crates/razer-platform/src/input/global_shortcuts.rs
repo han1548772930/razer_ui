@@ -53,6 +53,14 @@ pub struct GlobalShortcuts {
     listener: Option<crate::platform::windows::global_shortcuts::Listener>,
 }
 impl GlobalShortcuts {
+    pub fn shutdown(&mut self) -> anyhow::Result<()> {
+        #[cfg(windows)]
+        if let Some(mut listener) = self.listener.take() {
+            listener.stop()?;
+        }
+        Ok(())
+    }
+
     pub fn register(&mut self, shortcut: Shortcut) -> anyhow::Result<()> {
         anyhow::ensure!(
             (1..=255).contains(&shortcut.virtual_key),

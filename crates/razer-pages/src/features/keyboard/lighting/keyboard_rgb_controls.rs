@@ -171,9 +171,7 @@ impl KeyboardProductWorkspace {
                             .any(|profile| profile["id"] == *id)
                     });
                     if valid {
-                        if let Some(observation) = &mut this.lighting_observation {
-                            observation.selected_chroma_profile_guid = Some(id.clone());
-                        }
+                        this.lighting_runtime.chroma_profile_draft = Some(id.clone());
                         this.request_lighting_message(
                             "ON_SET_CHROMA_PROFILE",
                             json!({"selectedChromaProfileGuid":id}),
@@ -262,11 +260,7 @@ impl KeyboardProductWorkspace {
         });
         state.chroma_profile.update(cx, |profile, cx| {
             profile.set_items(chroma_choices, window, cx);
-            if let Some(id) = self
-                .lighting_observation
-                .as_ref()
-                .and_then(|observed| observed.selected_chroma_profile_guid.as_ref())
-            {
+            if let Some(id) = self.selected_chroma_profile() {
                 profile.set_selected_value(id, window, cx);
             } else {
                 profile.set_selected_index(None, window, cx);

@@ -165,3 +165,112 @@ fn mouse_dynamic_completions_require_exact_pending_command_and_live_request_owne
     ));
     assert!(requests.last_failure.is_none());
 }
+
+fn reading_report(state: u8, mode: u8) -> Report {
+    serde_json::from_value(json!({
+        "requested":null, "writes":null, "write_failure":null, "read_failure":null,
+        "reading":{"raw_state":state, "raw_mode":mode,"custom_sensor_accelerations":null}
+    }))
+    .unwrap()
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_device_read_populates_control_values_without_local_profile_fallback() {
+    let mut requests = Requests::default();
+    assert_eq!((requests.enabled(), requests.mode()), (None, None));
+    let read = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    assert!(matches!(requests.observation, Observation::Loading));
+    assert!(requests.complete(&read, MouseDynamicCompletion::Device(reading_report(1, 2))));
+    assert_eq!((requests.enabled(), requests.mode()), (Some(true), Some(2)));
+    let read = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    assert!(requests.complete(
+        &read,
+        MouseDynamicCompletion::Failed("actual GET failed".into())
+    ));
+    assert_eq!((requests.enabled(), requests.mode()), (None, None));
+    assert!(
+        matches!(&requests.observation, Observation::Failed(error) if error == "actual GET failed")
+    );
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_unknown_and_reconnect_do_not_invent_disabled_or_classic_state() {
+    let mut requests = Requests::default();
+    let read = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    requests.complete(&read, MouseDynamicCompletion::Device(reading_report(7, 99)));
+    assert_eq!((requests.enabled(), requests.mode()), (None, None));
+    assert_eq!(
+        requests.last_failure.as_deref(),
+        Some("Unknown dynamic sensitivity values: state 7, mode 99")
+    );
+    assert_eq!(
+        (
+            requests.reading().unwrap().raw_state,
+            requests.reading().unwrap().raw_mode
+        ),
+        (7, 99)
+    );
+    requests.reset_observation(false);
+    assert!(matches!(requests.observation, Observation::Disconnected));
+    assert!(!requests.complete(&read, MouseDynamicCompletion::Device(reading_report(1, 2))));
+    requests.reset_observation(true);
+    assert_eq!((requests.enabled(), requests.mode()), (None, None));
+    let reconnected = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    requests.complete(
+        &reconnected,
+        MouseDynamicCompletion::Device(reading_report(0, 1)),
+    );
+    assert_eq!(
+        (requests.enabled(), requests.mode()),
+        (Some(false), Some(1))
+    );
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_readback_preserves_explicit_edit_until_real_device_confirmation() {
+    let mut requests = Requests::default();
+    let initial = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    requests.complete(
+        &initial,
+        MouseDynamicCompletion::Device(reading_report(1, 0)),
+    );
+    requests.edit = Some(
+        Setting::new(
+            true,
+            razer_device::mouse_sensor::AccelerationMode::Jump,
+            vec![],
+        )
+        .unwrap(),
+    );
+    let write = begin(&mut requests, "ON_SET_DYNAMIC_SENSITIVITY");
+    requests.complete(
+        &write,
+        MouseDynamicCompletion::Failed("write acknowledgement lost".into()),
+    );
+    let read = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    requests.complete(&read, MouseDynamicCompletion::Device(reading_report(1, 1)));
+    assert_eq!(requests.reading().unwrap().raw_mode, 1);
+    assert_eq!(requests.mode(), Some(2));
+    assert!(requests.edit.is_some());
+    assert!(requests.last_failure.is_some());
+    let read = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    requests.complete(&read, MouseDynamicCompletion::Device(reading_report(1, 2)));
+    assert!(requests.edit.is_none());
+    assert_eq!(requests.mode(), Some(2));
+    assert_eq!(
+        requests.last_failure.as_deref(),
+        Some("write acknowledgement lost")
+    );
+}
+
+#[::core::prelude::v1::test]
+fn mouse_dynamic_read_before_an_edit_cannot_replace_its_confirmation() {
+    let mut requests = Requests::default();
+    let stale = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    let write = begin(&mut requests, "ON_SET_DYNAMIC_SENSITIVITY");
+    requests.complete(&write, MouseDynamicCompletion::Cancelled);
+    let fresh = begin(&mut requests, "READ_DYNAMIC_SENSITIVITY");
+    requests.complete(&fresh, MouseDynamicCompletion::Device(reading_report(1, 2)));
+    requests.complete(&stale, MouseDynamicCompletion::Device(reading_report(0, 0)));
+    assert_eq!((requests.enabled(), requests.mode()), (Some(true), Some(2)));
+}

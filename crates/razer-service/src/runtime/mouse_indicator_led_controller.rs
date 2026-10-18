@@ -21,6 +21,20 @@ pub(super) struct Controller {
     active: Option<Operation>,
 }
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        if let Some(active) = self.active.take() {
+            active.canceled.store(true, Ordering::Release);
+            cleanup.record(
+                "mouse_indicator_led",
+                active
+                    .worker
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Receiver quality cleanup worker panicked"))
+                    .and_then(stopped),
+            );
+        }
+    }
+
     pub(super) fn start(&mut self, id: String, target: Target) -> anyhow::Result<()> {
         ensure!(
             !id.is_empty() && id.len() <= 128 && !id.contains('\0'),
@@ -114,11 +128,14 @@ impl Controller {
             .worker
             .join()
             .map_err(|_| anyhow::anyhow!("Receiver quality reader terminated during cleanup"))?;
-        let cleanup_error = result
-            .err()
-            .filter(|error| error.to_string() != "Receiver quality owner canceled")
-            .map(|error| format!("{error:#}"));
+        let cleanup_error = stopped(result).err().map(|error| format!("{error:#}"));
         Ok(json!({"operation_id":id,"stopped":true,"cleanup_error":cleanup_error}))
+    }
+}
+fn stopped(outcome: anyhow::Result<()>) -> anyhow::Result<()> {
+    match outcome {
+        Err(error) if error.to_string() == "Receiver quality owner canceled" => Ok(()),
+        outcome => outcome,
     }
 }
 fn quality_updates(notifications: &[Notification]) -> Vec<indicator::Quality> {

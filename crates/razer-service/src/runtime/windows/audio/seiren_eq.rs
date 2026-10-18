@@ -1,14 +1,18 @@
 use super::*;
 use razer_device::seiren_eq::{self as eq, Change};
-#[path = "seiren_eq_native.rs"]
-mod native_audio;
+#[path = "seiren_session.rs"]
+mod audio_session;
+#[path = "seiren_driver.rs"]
+mod driver;
+#[path = "seiren_endpoint.rs"]
+mod endpoint;
 use eq::{NativeOperation, NativeReply, NativeTransport};
 use std::collections::BTreeMap;
 
 struct OwnedSession {
     target: Value,
     instance: Value,
-    session: native_audio::Session,
+    session: audio_session::Session,
     initialization: NativeReply,
 }
 #[derive(Default)]
@@ -53,8 +57,7 @@ impl State {
         }
         let before = Self::verified(target)?;
         let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
-        let session = native_audio::Session::open(target.product_id, &target.device_container_id)?;
-        // ConfigureFFI, rather than this unchecked native bool, owns isInit.
+        let session = audio_session::Session::open(target.product_id, &target.device_container_id)?;
         let initialization = session.call(&NativeOperation::DeviceInitialize)?;
         let version = session.version().map(str::to_owned);
         self.sessions.insert(
@@ -90,6 +93,7 @@ impl State {
                 );
                 self.current(target).map(|_| ())
             })?;
+        self.current(target)?;
         Ok(
             json!({"target":target,"source_class":eq::capability(target.product_id).unwrap().source_class,"report":report,"setting_scope":"seiren_eq_profile","elapsed_ms":started.elapsed().as_millis() as u64}),
         )
@@ -100,7 +104,7 @@ impl State {
         operation: &NativeOperation,
     ) -> anyhow::Result<Value> {
         // Lifecycle is owned by Open/Close. Typed source operations keep the
-        // platform adapter from becoming an arbitrary DLL export dispatcher.
+        // driver worker from becoming an arbitrary command dispatcher.
         ensure!(
             !matches!(
                 operation,
@@ -126,11 +130,13 @@ impl State {
         let owned = self.current(target)?;
         let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
         let reply = owned.session.call(operation)?;
+        self.current(target)?;
         Ok(json!({"target":target,"operation":operation,"reply":reply}))
     }
     pub(crate) fn events(&self, target: &DeviceReadTarget) -> anyhow::Result<Value> {
-        let events = self.current(target)?.session.drain()?;
-        Ok(json!({"target":target,"events":events}))
+        let batch = self.current(target)?.session.drain()?;
+        self.current(target)?;
+        Ok(json!({"target":target,"events":batch.events,"diagnostics":batch.diagnostics}))
     }
     pub(crate) fn close(&mut self, target: &DeviceReadTarget) -> anyhow::Result<Value> {
         let key = Self::key(target);
@@ -142,7 +148,7 @@ impl State {
         }
         let owned = self.sessions.remove(&key);
         // Removal does not query the now-disconnected device. Drop also
-        // terminates a partially initialized original native container.
+        // terminates a partially initialized driver session.
         let reply = owned
             .as_ref()
             .map(|owned| owned.session.call(&NativeOperation::DeviceTerminate))
@@ -183,7 +189,7 @@ pub(super) fn request(target: &DeviceReadTarget, change: &Change) -> anyhow::Res
         );
         if change.requires_native() {
             let device =
-                native_audio::Session::open(target.product_id, &target.device_container_id)?;
+                audio_session::Session::open(target.product_id, &target.device_container_id)?;
             eq::execute_native(target.product_id, &device, change, &validate)?
         } else {
             let device = hid_transport::open(&target.path, bytes)?;

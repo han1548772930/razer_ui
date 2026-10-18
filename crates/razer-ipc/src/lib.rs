@@ -13,6 +13,7 @@ use std::{
 #[cfg(windows)]
 #[path = "runtime_job.rs"]
 mod job;
+mod worker_diagnostics;
 
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
@@ -711,32 +712,10 @@ pub enum ServiceRequest {
     },
     /// Physical USB devices, including products without a HID collection.
     UsbDevices,
-    /// Read-only version query on any library the generated native inventory
-    /// declares. Only a no-argument string-returning `GetDLLVersion`/`GetDllVersion`
-    /// prefix is accepted, so no mutation can be requested through it.
-    NativeLibraryVersion {
-        library: String,
-        #[serde(default)]
-        product_id: Option<u32>,
-    },
     /// Current mounted Help's local Blade display or complete report query.
     HelpSystemInfo {
         product_id: u32,
         query: razer_device::system_info::Query,
-    },
-    /// Read-only getter on a declared device library
-    /// (`Get*`/`Is*`/`Has*` with one `string` argument). Mutating exports are
-    /// refused in the worker; see `backend::native_read`.
-    NativeLibraryGetter {
-        library: String,
-        export: String,
-        device_id: String,
-        product_id: Option<u32>,
-    },
-    NativeLibrarySnapshot {
-        library: String,
-        device_container_id: String,
-        product_id: u32,
     },
     /// A source-described query, scoped to a currently observed physical path.
     DeviceRead {
@@ -803,9 +782,6 @@ pub enum ServiceRequest {
     MappingDeviceEvents {
         owner_guid: String,
     },
-    MappingDeviceMacroRecordingMode {
-        owner_guid: String,
-    },
     MappingDeviceHypershiftActive {
         owner_guid: String,
     },
@@ -824,6 +800,7 @@ pub enum ServiceRequest {
     PrepareOtfmRecorder,
     StartOtfmRecording,
     QueryMacroRecordingStarted,
+    MacroRecordingMode,
     MacroRecorderGlobalState,
     SetOtfmMappingsSuspended {
         suspended: bool,
@@ -987,6 +964,8 @@ pub struct ServiceClient {
     responses: Receiver<anyhow::Result<ResponseEnvelope>>,
     input_worker: Option<JoinHandle<anyhow::Result<()>>>,
     output_worker: Option<JoinHandle<anyhow::Result<()>>>,
+    diagnostic_worker: Option<JoinHandle<anyhow::Result<()>>>,
+    diagnostics: worker_diagnostics::WorkerDiagnostics,
     timeout: Duration,
     next_id: u64,
     stopped: bool,
@@ -1040,7 +1019,7 @@ impl ServiceClient {
             .arg("--service-worker")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+            .stderr(Stdio::piped());
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
@@ -1058,6 +1037,8 @@ impl ServiceClient {
             responses,
             input_worker: None,
             output_worker: None,
+            diagnostic_worker: None,
+            diagnostics: worker_diagnostics::WorkerDiagnostics::default(),
             // First registration can perform initialization, event registration,
             // and registration itself (three bounded native callbacks).
             timeout: Duration::from_secs(15),
@@ -1076,9 +1057,25 @@ impl ServiceClient {
             return Err(client.stop_after_error(error));
         }
         let child = client.child.as_mut().expect("owned worker process");
-        let (Some(stdin), Some(stdout)) = (child.stdin.take(), child.stdout.take()) else {
+        let (Some(stdin), Some(stdout), Some(stderr)) =
+            (child.stdin.take(), child.stdout.take(), child.stderr.take())
+        else {
             return Err(client.stop_after_error(anyhow::anyhow!("设备服务通信管道不可用")));
         };
+        let diagnostics = client.diagnostics.clone();
+        client.diagnostic_worker = Some(
+            match thread::Builder::new()
+                .name("razer-service-diagnostics".into())
+                .spawn(move || diagnostics.capture_stderr(stderr))
+            {
+                Ok(worker) => worker,
+                Err(error) => {
+                    return Err(client.stop_after_error(
+                        anyhow::Error::new(error).context("无法创建设备服务诊断线程"),
+                    ));
+                }
+            },
+        );
         // Writing a pipe can block if startup hangs before the worker reads it.
         // Keep it off the request thread so recv_timeout covers the full request.
         client.input_worker = Some(
@@ -1094,12 +1091,13 @@ impl ServiceClient {
                 }
             },
         );
+        let diagnostics = client.diagnostics.clone();
         client.output_worker = Some(
             match thread::Builder::new()
                 .name("razer-service-output".into())
                 .spawn(move || {
                     let mut reader = BufReader::new(stdout);
-                    forward_responses(&mut reader, sender)
+                    forward_responses(&mut reader, sender, &diagnostics)
                 }) {
                 Ok(worker) => worker,
                 Err(error) => {
@@ -1118,7 +1116,7 @@ impl ServiceClient {
         self.stopped
     }
 
-    /// Confirm that the owned process has exited and both pipe workers joined.
+    /// Confirm that the owned process has exited and all pipe workers joined.
     /// This closes admission without acknowledging native service shutdown or
     /// any in-flight device write. Unreaped handles remain owned on failure so
     /// the caller's I/O worker can retry termination.
@@ -1404,7 +1402,6 @@ impl ServiceClient {
                 | ServiceRequest::DeviceKeyboardSerialRead { .. }
                 | ServiceRequest::BleKeyboardMetadataRead { .. }
                 | ServiceRequest::BleKeyboardSerialRead { .. }
-                | ServiceRequest::NativeLibrarySnapshot { .. }
                 | ServiceRequest::AudioEndpoints { .. }
                 | ServiceRequest::AudioNotificationsEnable { .. }
                 | ServiceRequest::AudioNotificationsDrain
@@ -1434,6 +1431,12 @@ impl ServiceClient {
                 | ServiceRequest::HidNodeMixerRead { .. }
                 | ServiceRequest::HidNodeMixerRouteRead { .. }
         );
+        let marie_timeout = match &request {
+            ServiceRequest::SeirenNativeOpen { .. } => Some(razer_device::seiren_eq::NativeOperation::DeviceInitialize.service_budget()),
+            ServiceRequest::SeirenNativeCall { native_operation, .. } => Some(native_operation.service_budget()),
+            ServiceRequest::SeirenNativeClose { .. } | ServiceRequest::SeirenNativeEvents { .. } => Some(Duration::from_secs(20)),
+            _ => None,
+        };
         let id = self.next_id;
         self.next_id = self.next_id.wrapping_add(1);
         let mut frame = serde_json::to_vec(&RequestEnvelope { id, request })?;
@@ -1463,6 +1466,11 @@ impl ServiceClient {
             // Recorder/mapping restoration, monitor thread completion and its
             // independent launcher callbacks precede the engine shutdowns.
             Duration::from_secs(45)
+        } else if let Some(budget) = marie_timeout {
+            // Endpoint reconstruction waits 60/30 seconds in the verified
+            // mode/sample-rate chain. Do not kill the session before its own
+            // bounded operation and cleanup can report their actual result.
+            budget + Duration::from_secs(5)
         } else if controller_triggers {
             // Eight current getters or four ordered setters retain their source
             // retry budgets. Retained receiver lighting can wait for its first
@@ -1550,18 +1558,20 @@ impl ServiceClient {
                 "设备操作范围已取消；旧响应未提交，已发送的设置仍可能生效"
             )));
         }
+        if response.data.is_some() == response.error.is_some() {
+            return Err(self.stop_after_error(anyhow::anyhow!("设备服务响应状态无效，连接已关闭")));
+        }
         let stop = if response.fatal || shutting_down {
             self.stop()
         } else {
             Ok(())
         };
         if let Some(error) = response.error {
-            if let Err(cleanup) = stop {
-                bail!("{error}；关闭设备服务失败：{cleanup:#}");
-            }
-            bail!("{error}");
+            return Err(self
+                .diagnostics
+                .attach(with_cleanup_error(anyhow::Error::msg(error), stop)));
         }
-        stop?;
+        stop.map_err(|error| self.diagnostics.attach(error))?;
         let data = response.data.context("设备服务返回了空响应")?;
         if shutting_down {
             #[derive(Deserialize)]
@@ -1578,7 +1588,8 @@ impl ServiceClient {
     }
 
     fn stop_after_error(&mut self, error: anyhow::Error) -> anyhow::Error {
-        with_cleanup_error(error, self.stop())
+        let cleanup = self.stop();
+        self.diagnostics.attach(with_cleanup_error(error, cleanup))
     }
 
     fn stop(&mut self) -> anyhow::Result<()> {
@@ -1596,7 +1607,8 @@ impl ServiceClient {
         // owned through its join, including partial startup and request failure.
         let input = join_pipe(self.input_worker.take(), "输入");
         let output = join_pipe(self.output_worker.take(), "输出");
-        combine_cleanup([input, output])
+        let diagnostics = join_pipe(self.diagnostic_worker.take(), "诊断");
+        combine_cleanup([input, output, diagnostics])
     }
 }
 
@@ -1638,6 +1650,7 @@ fn combine_cleanup<const N: usize>(results: [anyhow::Result<()>; N]) -> anyhow::
 fn forward_responses(
     reader: &mut impl BufRead,
     sender: Sender<anyhow::Result<ResponseEnvelope>>,
+    diagnostics: &worker_diagnostics::WorkerDiagnostics,
 ) -> anyhow::Result<()> {
     enum Frame {
         Diagnostic,
@@ -1651,6 +1664,7 @@ fn forward_responses(
                 return Ok(Frame::Closed);
             };
             let Some(json) = line.strip_prefix(FRAME_PREFIX.as_bytes()) else {
+                diagnostics.record_stdout(&line)?;
                 return Ok(Frame::Diagnostic);
             };
             let response = serde_json::from_slice::<ResponseEnvelope>(json)
@@ -1778,7 +1792,7 @@ pub fn read_frame(reader: &mut impl BufRead) -> anyhow::Result<Option<Vec<u8>>> 
         reader.consume(length);
         if end.is_some() {
             // Vendor diagnostics can use a legacy Windows code page. Only a
-            // prefixed JSON response needs UTF-8; unrelated bytes are ignored.
+            // prefixed JSON response needs UTF-8; diagnostics retain raw bytes.
             return Ok(Some(bytes));
         }
     }

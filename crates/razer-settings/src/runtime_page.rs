@@ -59,17 +59,9 @@ struct Readings {
     hid_nodes: Option<Result<Value, String>>,
     version: Option<Result<Value, String>>,
     audio: Option<Result<Value, String>>,
-    native: Vec<NativeReading>,
     discovery: Option<Result<DiscoverySnapshot, String>>,
     services_requested: bool,
     diagnostic_report: Option<Result<std::path::PathBuf, String>>,
-}
-
-struct NativeReading {
-    product_id: u32,
-    container: String,
-    library: String,
-    result: Result<Value, String>,
 }
 
 #[derive(Clone)]
@@ -103,10 +95,6 @@ impl Readings {
         #[cfg(not(windows))]
         let enumeration = [(&self.hid_nodes, "nodes")];
         required.iter().any(|result| !matches!(result, Some(Ok(_))))
-            || self.native.iter().any(|reading| match &reading.result {
-                Ok(value) => value["status"] != "received",
-                Err(_) => true,
-            })
             || self.discovery.as_ref().is_some_and(|result| match result {
                 Ok(snapshot) => !snapshot.errors().is_empty(),
                 Err(_) => true,
@@ -182,7 +170,6 @@ impl RuntimeBridge {
                                         hid_nodes: Some(Err(error.clone())),
                                         version: services.then(|| Err(error.clone())),
                                         audio: services.then(|| Err(error.clone())),
-                                        native: Vec::new(),
                                         discovery: Some(Err(error)),
                                         services_requested: services,
                                         diagnostic_report: None,
@@ -395,48 +382,9 @@ fn read_services(
     });
     #[cfg(not(windows))]
     let audio = services.then(|| Err("当前平台尚不支持原生系统音频设备查询".into()));
-    #[cfg(windows)]
-    let mut native = Vec::new();
-    #[cfg(not(windows))]
-    let native = Vec::new();
-    #[cfg(windows)]
-    if services {
-        if let Some(Ok(snapshot)) = &readings.discovery {
-            for device in snapshot.devices() {
-                // A collection key is not accepted by native ContainerId APIs,
-                // even if a future Windows discovery path supplies HidNodes.
-                if device.hid_node().is_some() {
-                    continue;
-                }
-                for library in
-                    razer_catalog::native_library::libraries_for_product(device.product_id())
-                {
-                    if razer_catalog::native_library::readable_exports(library, device.product_id())
-                        .is_empty()
-                    {
-                        continue;
-                    }
-                    let result = client
-                        .request(ServiceRequest::NativeLibrarySnapshot {
-                            library: library.id.clone(),
-                            device_container_id: device.container().to_owned(),
-                            product_id: device.product_id(),
-                        })
-                        .map_err(|error| format!("{error:#}"));
-                    native.push(NativeReading {
-                        product_id: device.product_id(),
-                        container: device.container().to_owned(),
-                        library: library.id.clone(),
-                        result,
-                    });
-                }
-            }
-        }
-    }
     readings.connected = !client.is_stopped();
     readings.version = version;
     readings.audio = audio;
-    readings.native = native;
     readings.services_requested = services;
     readings
 }
@@ -888,53 +836,6 @@ impl Render for RuntimePanel {
             .when_some(self.readings.audio.as_ref(), |this, result| {
                 this.child(reading("音频设备", result, cx))
             })
-            .children(self.readings.native.iter().map(|observation| {
-                let label = match &observation.result {
-                    Ok(value) => format!(
-                        "产品 {} · {}：读取 {} 项，{} 项失败。",
-                        observation.product_id,
-                        observation.library,
-                        value["fields"].as_object().map_or(0, |fields| fields.len()),
-                        value["errors"].as_object().map_or(0, |fields| fields.len())
-                    ),
-                    Err(error) => format!(
-                        "产品 {} · {} 读取失败：{error}",
-                        observation.product_id, observation.library
-                    ),
-                };
-                let fields = observation
-                    .result
-                    .as_ref()
-                    .ok()
-                    .and_then(|value| value["fields"].as_object());
-                let errors = observation
-                    .result
-                    .as_ref()
-                    .ok()
-                    .and_then(|value| value["errors"].as_object());
-                div()
-                    .child(surface::note(label, cx))
-                    .when(self.details, |view| {
-                        view.children(fields.into_iter().flat_map(|fields| fields.iter()).map(
-                            |(export, value)| {
-                                div()
-                                    .whitespace_normal()
-                                    .child(format!("{export}：{}", display_value(&value["value"])))
-                            },
-                        ))
-                        .children(
-                            errors.into_iter().flat_map(|errors| errors.iter()).map(
-                                |(export, error)| {
-                                    div()
-                                        .whitespace_normal()
-                                        .text_color(cx.theme().danger)
-                                        .child(format!("{export}：{}", display_value(error)))
-                                },
-                            ),
-                        )
-                    })
-                    .into_any_element()
-            }))
             .when(
                 self.readings.hid.is_some() || self.readings.hid_nodes.is_some(),
                 |this| {

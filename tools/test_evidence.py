@@ -3346,6 +3346,76 @@ class HostLocalAuditTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "identity differs"):
             host.HostLocalAudit().frontend_capture("test", [original])
 
+    def test_transform_failure_recovery_retains_original_factory_and_analyzer_failure(self):
+        raw = b'const factories={284:(module,exports,require)=>{exports.value=module;}};'
+        source = self.original('.analysis/inputs/frontend/test/raw/apps.razer.com/synapse/assets/js/@sentry/tracing/test.js', raw)
+        start = raw.index(b'exports.value')
+        end = raw.index(b'}', start)
+        issue = {'filename': 'module-284.js', 'kind': 'esm_commonjs_residual', 'line': 1, 'column': 1}
+        stdout = '.analysis/results/frontend/test/validate.stdout.txt'
+        self.source(stdout, json.dumps({'findings': [issue]}).encode())
+        self.source('.analysis/results/frontend/test/modules/provenance.json', json.dumps({'modules': {
+            'module-284.js': {'input': 'apps.razer.com/synapse/assets/js/@sentry/tracing/test.js',
+                              'ranges': [[start, end]]}}}).encode())
+        capture = {'capture_failures': [{'stage': 'validate', 'exit_code': 1, 'stdout': stdout}]}
+        result = families.recover_frontend_validation_owners(self.audit, 'test', [source], capture)
+        self.assertTrue(result['raw_analyzer_failure_preserved'])
+        self.assertFalse(result['original_source_blocked'])
+        recovered = result['recovered'][0]
+        self.assertEqual(recovered['factory_parameters'], [['module', 'exports', 'require']])
+        self.assertFalse(recovered['transformed_output_authoritative'])
+        owner = self.audit.owners[recovered['lexical_owners'][0]]
+        self.assertEqual(owner['body'], '(module,exports,require)=>{exports.value=module;}')
+        self.assertEqual(self.audit.owners[recovered['complete_runtime']]['body'], raw.decode())
+        self.assertEqual(capture['capture_failures'][0]['exit_code'], 1)
+
+    def test_transform_failure_recovery_keeps_unknown_findings_and_missing_inputs_blocked(self):
+        raw = b'const factories={1:(module,exports,require)=>{exports.value=module;}};'
+        source = self.original('.analysis/inputs/frontend/test/raw/unknown.js', raw)
+        start = raw.index(b'exports.value'); end = raw.index(b'}', start)
+        stdout = '.analysis/results/frontend/test/validate.stdout.txt'
+        self.source(stdout, json.dumps({'findings': [{'filename': 'module.js', 'kind': 'unknown_failure'}]}).encode())
+        provenance = {'modules': {'module.js': {'input': 'unknown.js', 'ranges': [[start, end]]}}}
+        self.source('.analysis/results/frontend/test/modules/provenance.json', json.dumps(provenance).encode())
+        capture = {'capture_failures': [{'stage': 'validate', 'exit_code': 1, 'stdout': stdout}]}
+        result = families.recover_frontend_validation_owners(self.audit, 'test', [source], capture)
+        self.assertTrue(result['original_source_blocked'])
+        self.assertEqual(result['unresolved'][0]['reason'], 'unclassified_transform_finding')
+        with self.assertRaisesRegex(ValueError, 'outside verified deployment'):
+            families.recover_frontend_validation_owners(host.HostLocalAudit(), 'test', [], capture)
+
+    def test_mouse_profile_schema_audit_preserves_edition_methods_and_unversioned_identity_mismatch(self):
+        for product, declared, schema in [(229, 229, 12), (162, 163, None), (105, 104, 13)]:
+            with self.subTest(product=product):
+                body = ('n.d(t,{' + ('currentSchemaVersion:()=>schema,' if schema is not None else '') +
+                    'getDeviceDefaultLocalData:()=>make,getDefaultProfile:()=>profile,'
+                    'DeviceInfo:()=>info,EDITION_DEFAULT_PROFILE:()=>profiles});'
+                    f'const schema={schema or 0},info={{productId:{declared}' + (',dongleId:105' if product == 105 else '') +
+                    '},profiles={0:{dpiStages:{enable:false}}};'
+                    'function make(){return {profiles:[profile()]}}function profile(){return profiles[0]}'
+                    'function cache(e){if(e.serialNumber)return e.deviceMetadatas;'
+                    'console.log("no serial number, do not get from localstorage")}')
+                raw = (('const factories={1(e,t,n){' + body + '}};') if schema is not None
+                       else ('(function(){const t={},n={};' + body + '})();')).encode()
+                name = f'mouse-mw-{product}-current'
+                self.source(f'.analysis/inputs/frontend/{name}/acquisition.json', b'{}')
+                source = self.original(f'.analysis/inputs/frontend/{name}/raw/main.js', raw)
+                args = argparse.Namespace(family='mouse', function='mw', product=[product])
+                with patch.object(host.HostLocalAudit, 'source_set', return_value=({'deployment': {'failures': []}}, [source])), \
+                        patch.object(families, 'identity', return_value={'path': 'tools/families.py', 'sha256': 'fixture'}), \
+                        redirect_stdout(io.StringIO()):
+                    families.audit_mouse_local_profile_schema(args)
+                receipt = json.loads((self.root / '.analysis/results/frontend/mouse-mw-audit.json').read_bytes())
+                row = next(row for row in receipt['queries']['local_profile_schemas']['products'] if row['product_id'] == product)
+                self.assertEqual(row['schema_version'], schema)
+                self.assertEqual(row['declared_product_id'], declared)
+                self.assertIn('EDITION_DEFAULT_PROFILE', row['product_exports'])
+                self.assertEqual(row['failures'], ['official_deployment_product_identity_mismatch'] if product == 162 else [])
+                if product == 105:
+                    self.assertEqual(row['product_identity_relation'], 'dongleId')
+                    self.assertEqual(len(receipt['queries']['local_profile_schemas']['products']), 3)
+                self.assertTrue(row['inputs_unchanged'])
+
     def test_complete_frontend_capture_rejects_missing_deployment_and_conflicting_originals(self):
         original = self.original(".analysis/inputs/frontend/test/raw/a.js", b"const value=1;")
         missing = self.original(".analysis/inputs/frontend/test/raw/new.js", b"const value=2;")

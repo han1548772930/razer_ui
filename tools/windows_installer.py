@@ -21,6 +21,7 @@ import resource_database
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = "target/installer/windows"
 SCRIPT = "packaging/windows/RazerUI.iss"
+INSTALLATION = "packaging/windows/installation.json"
 APP_NAME = "razer_ui.exe"
 MARKER_NAME = "razer-ui-installation.json"
 ICO_NAME = "Razer UI.ico"
@@ -143,7 +144,7 @@ def pe_info(path):
                 raise ValueError("Unterminated PE import name")
             file_offset(rva, end - start + 1)
             name = raw[start:end].decode("ascii").lower()
-            if not re.fullmatch(r"[a-z0-9_.-]+\.(dll|drv)", name):
+            if not re.fullmatch(r"[a-z0-9_.-]+\.(dll|drv|exe|sys)", name):
                 raise ValueError("Invalid PE import name: " + repr(name))
             return name
 
@@ -235,10 +236,140 @@ def icon_bytes():
     return bytes(directory) + b"".join(frame for _, frame in frames), sources
 
 
-def runtime_include(names):
+def runtime_include(names, driver=None):
     # Names are validated basenames; no source path or wildcard comes from users.
-    return "".join('Source: "{#PayloadDir}\\' + name + '"; DestDir: "{app}"; Flags: ignoreversion\n'
-                   for name in sorted(names, key=str.casefold)).encode("utf-8")
+    output = "".join('Source: "{#PayloadDir}\\' + name + '"; DestDir: "{app}"; Flags: ignoreversion\n'
+                     for name in sorted(names, key=str.casefold))
+    if driver:
+        output += ('Source: "{#PayloadDir}\\' + driver["directory"] + '\\' + driver["filename"]
+                   + '"; DestDir: "{app}\\' + driver["directory"] + '"; Flags: ignoreversion\n')
+    return output.encode("utf-8")
+
+
+def hardware_driver_policy():
+    policy = json.loads((ROOT / INSTALLATION).read_bytes())
+    if set(policy) != {"schema_version", "hardware_driver"} or policy["schema_version"] != 1:
+        raise ValueError("Invalid Windows installation policy")
+    driver = policy["hardware_driver"]
+    if (set(driver) != {"service_name", "filename", "directory", "system_directory", "source", "architecture"}
+            or driver["architecture"] != "x64"):
+        raise ValueError("Invalid hardware driver installation policy")
+    for key in ("service_name", "filename", "directory", "system_directory"):
+        if not isinstance(driver[key], str) or not re.fullmatch(r"[A-Za-z0-9_-][A-Za-z0-9_.-]*", driver[key]):
+            raise ValueError("Invalid driver installation name: " + key)
+    if not driver["filename"].endswith(".sys"):
+        raise ValueError("Driver installation filename must end with .sys")
+    source = driver["source"]
+    if (not isinstance(source, str) or not re.fullmatch(r"[A-Za-z0-9_./-]+", source)
+            or not source.startswith("assets/native/") or any(part in {"", ".", ".."} for part in source.split("/"))):
+        raise ValueError("Driver payload must be a maintained native installation input")
+    return driver
+
+
+def pe_resource(raw, resource_type, resource_id):
+    """Read one complete numeric PE resource without loading the image."""
+    def unpack(fmt, offset):
+        if offset < 0 or offset + struct.calcsize(fmt) > len(raw):
+            raise ValueError("Truncated PE resource structure")
+        return struct.unpack_from(fmt, raw, offset)
+    if raw[:2] != b"MZ":
+        raise ValueError("Invalid PE resource image")
+    pe = unpack("<I", 60)[0]
+    if raw[pe:pe + 4] != b"PE\0\0":
+        raise ValueError("Invalid PE resource signature")
+    count, optional_size = unpack("<H", pe + 6)[0], unpack("<H", pe + 20)[0]
+    optional = pe + 24
+    if unpack("<H", optional)[0] != 0x20b or not 0 < count <= 96 or optional_size < 136:
+        raise ValueError("Unsupported PE resource layout")
+    sections = [unpack("<IIII", optional + optional_size + 40 * i + 8) for i in range(count)]
+    def offset(rva, length):
+        for _, address, size, start in sections:
+            delta = rva - address
+            if 0 <= delta and delta + length <= size and start + delta + length <= len(raw):
+                return start + delta
+        raise ValueError("Unmapped PE resource bytes")
+    rva, size = unpack("<II", optional + 112 + 16)
+    base = offset(rva, size)
+    found = []
+    def walk(at, identity):
+        if len(identity) >= 3 or at + 16 > size:
+            raise ValueError("Invalid PE resource directory")
+        named, ids = unpack("<HH", base + at + 12)
+        if at + 16 + 8 * (named + ids) > size:
+            raise ValueError("Truncated PE resource directory")
+        for i in range(named + ids):
+            ident, target = unpack("<II", base + at + 16 + i * 8)
+            if not identity and ident != resource_type:
+                continue
+            if len(identity) == 1 and ident != resource_id:
+                continue
+            if target & 0x80000000:
+                walk(target & 0x7fffffff, identity + [ident])
+            else:
+                if len(identity) != 2 or target + 16 > size or ident & 0x80000000:
+                    raise ValueError("Invalid PE resource leaf")
+                data_rva, length = unpack("<II", base + target)
+                if not length:
+                    raise ValueError("Empty PE resource")
+                start = offset(data_rva, length)
+                found.append((ident, bytes(raw[start:start + length])))
+    walk(0, [])
+    if len(found) != 1:
+        raise ValueError("Missing or ambiguous PE resource")
+    return found[0]
+
+
+def prepare_hardware_driver(sdk):
+    """Prepare the audited RT_RCDATA 108 driver; never execute SDK or driver."""
+    driver = hardware_driver_policy()
+    source = plain_path(ROOT / sdk)
+    relative = source.relative_to(ROOT).as_posix()
+    if not relative.startswith(".analysis/inputs/host-current/"):
+        raise ValueError("Driver source must be a retained current host input")
+    indexed = json.loads((ROOT / ".analysis/inputs.json").read_bytes())
+    rows = [row for row in indexed["inputs"] if row["path"] == relative]
+    if len(rows) != 1:
+        raise ValueError("Driver SDK is not uniquely indexed")
+    original = rows[0]
+    if source.stat().st_size != original["bytes"] or digest(source) != original["sha256"]:
+        raise ValueError("Driver SDK differs from retained input bytes")
+    container = ROOT / original["container"]
+    if digest(container) != original["container_sha256"]:
+        raise ValueError("Driver SDK container differs from acquisition")
+    raw = source.read_bytes()
+    language, payload = pe_resource(raw, 10, 108)
+    # The source constructor selects 108 for x64 and extraction validates this
+    # signed-byte checksum. It is an acquisition check, not a runtime gate.
+    if sum(value if value < 128 else value - 256 for value in payload) != 261297:
+        raise ValueError("Embedded driver differs from the audited extraction branch")
+    destination = plain_path(ROOT / driver["source"])
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(dir=destination.parent, prefix=".driver-", suffix=".sys", delete=False) as stream:
+        temporary = Path(stream.name)
+        stream.write(payload)
+        stream.flush()
+        os.fsync(stream.fileno())
+    try:
+        info = hardware_driver_image(temporary)
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
+    receipt = {"schema_version": 1, "original": original, "resource": {"type": 10, "id": 108, "language": language},
+               "payload": {"path": driver["source"], "bytes": len(payload), "sha256": digest(destination)},
+               "pe": info, "target_execution": False}
+    report = ROOT / ".analysis/results/native" / original["sha256"] / "hardware-driver-input.json"
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_bytes(encoded(receipt))
+    return receipt
+
+
+def hardware_driver_image(path):
+    info = pe_info(path)
+    if info["machine"] != MACHINES["x64"] or info["subsystem"] != 1 or info["dll"]:
+        raise ValueError("Hardware driver must be an x64 native subsystem image")
+    if set(info["imports"]) - {"ntoskrnl.exe", "hal.dll", "wmilib.sys", "wdfldr.sys"}:
+        raise ValueError("Hardware driver has unresolved non-kernel imports")
+    return info
 
 
 def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, output=None):
@@ -259,12 +390,17 @@ def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, 
     check_closure(images, architecture)
     icon, icon_sources = icon_bytes()
     policy = resource_database.installation_policy(ROOT)
+    driver = hardware_driver_policy()
+    driver = driver if architecture == driver["architecture"] else None
+    driver_source = plain_path(ROOT / driver["source"]) if driver else None
+    driver_image = hardware_driver_image(driver_source) if driver else None
     catalog = plain_path(ROOT / policy["catalog_source"])
     if not catalog.is_file():
         raise ValueError("Missing packaged resource catalog")
     marker = {"source": "windows-inno", "version": version, "architecture": architecture,
               "executable": APP_NAME, "cache_relative": policy["cache_relative"],
-              "catalog_filename": policy["catalog_filename"]}
+              "catalog_filename": policy["catalog_filename"],
+              "hardware_driver": driver["service_name"] if driver else None}
     destination = output_path(ROOT / (output or f"{OUTPUT}/{version}-{architecture}"))
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=".prepare-", dir=destination.parent))
@@ -280,14 +416,22 @@ def prepare(executable=None, runtime_dlls=(), architecture="x64", version=None, 
         shutil.copyfile(catalog, payload / policy["catalog_filename"])
         if digest(catalog) != digest(payload / policy["catalog_filename"]):
             raise ValueError("Resource catalog changed while preparing installer")
+        if driver:
+            folder = payload / driver["directory"]
+            folder.mkdir()
+            shutil.copyfile(driver_source, folder / driver["filename"])
+            if digest(driver_source) != digest(folder / driver["filename"]):
+                raise ValueError("Hardware driver changed while preparing installer")
         include = temporary / "runtime-files.iss"
-        include.write_bytes(runtime_include(set(sources) - {APP_NAME}))
+        include.write_bytes(runtime_include(set(sources) - {APP_NAME}, driver))
         rows = [{"path": p.relative_to(temporary).as_posix(), "bytes": p.stat().st_size, "sha256": digest(p)}
-                for p in sorted(payload.iterdir())] + [{"path": include.name, "bytes": include.stat().st_size,
+                for p in sorted(payload.rglob("*")) if p.is_file()] + [{"path": include.name, "bytes": include.stat().st_size,
                                                         "sha256": digest(include)}]
         receipt = {"schema": 1, "version": version, "architecture": architecture,
                    "script": {"path": SCRIPT, "sha256": digest(ROOT / SCRIPT)}, "inputs": rows,
                    "native_icons": icon_sources, "pe_images": images,
+                   "hardware_driver_image": driver_image,
+                   "windows_installation_policy_sha256": digest(ROOT / INSTALLATION),
                    "resource_payloads_included": False, "cache_relative": policy["cache_relative"],
                    "catalog_filename": policy["catalog_filename"],
                    "installation_policy_sha256": digest(ROOT / resource_database.INSTALLATION)}
@@ -319,12 +463,17 @@ def verify(stage):
         raise ValueError("Installer recipe changed or receipt is invalid; prepare a new stage")
     images = receipt.get("pe_images", {})
     policy = resource_database.installation_policy(ROOT)
+    driver = hardware_driver_policy()
+    driver = driver if architecture == driver["architecture"] else None
     if (APP_NAME not in images or receipt.get("cache_relative") != policy["cache_relative"]
             or receipt.get("resource_payloads_included") is not False
             or receipt.get("catalog_filename") != policy["catalog_filename"]
-            or receipt.get("installation_policy_sha256") != digest(ROOT / resource_database.INSTALLATION)):
+            or receipt.get("installation_policy_sha256") != digest(ROOT / resource_database.INSTALLATION)
+            or receipt.get("windows_installation_policy_sha256") != digest(ROOT / INSTALLATION)):
         raise ValueError("Invalid installer image/cache policy")
     allowed_payload = {APP_NAME, ICO_NAME, MARKER_NAME, policy["catalog_filename"]}
+    if driver:
+        allowed_payload.add(driver["directory"] + "/" + driver["filename"])
     for name in images:
         if name != APP_NAME:
             if not re.fullmatch(r"[A-Za-z0-9_.-]+\.dll", name, flags=re.I):
@@ -342,7 +491,7 @@ def verify(stage):
             path = plain_path(Path(current) / name)
             if path.is_file():
                 actual.add(path.relative_to(stage).as_posix())
-            elif path != stage / "payload":
+            elif path != stage / "payload" and (not driver or path != stage / "payload" / driver["directory"]):
                 raise ValueError("Unexpected directory in installer stage")
     if actual != expected | {"installer-input.json"}:
         raise ValueError("Unowned files in installer stage; no assets/ or pack is allowed")
@@ -353,9 +502,10 @@ def verify(stage):
     marker = json.loads((stage / "payload" / MARKER_NAME).read_bytes())
     if marker != {"source": "windows-inno", "version": version, "architecture": architecture,
                   "executable": APP_NAME, "cache_relative": policy["cache_relative"],
-                  "catalog_filename": policy["catalog_filename"]}:
+                  "catalog_filename": policy["catalog_filename"],
+                  "hardware_driver": driver["service_name"] if driver else None}:
         raise ValueError("Installer ownership marker differs from the payload")
-    if (stage / "runtime-files.iss").read_bytes() != runtime_include(set(images) - {APP_NAME}):
+    if (stage / "runtime-files.iss").read_bytes() != runtime_include(set(images) - {APP_NAME}, driver):
         raise ValueError("Installer DLL include differs from its allowlist")
     if digest(stage / "payload" / policy["catalog_filename"]) != digest(ROOT / policy["catalog_source"]):
         raise ValueError("Installer resource catalog differs from maintained database")
@@ -366,6 +516,14 @@ def verify(stage):
     if current_images != images:
         raise ValueError("Installer PE imports changed")
     check_closure(current_images, architecture)
+    driver_image = None
+    if driver:
+        actual_driver = stage / "payload" / driver["directory"] / driver["filename"]
+        driver_image = hardware_driver_image(actual_driver)
+        if digest(actual_driver) != digest(ROOT / driver["source"]):
+            raise ValueError("Installer driver differs from maintained input")
+    if receipt.get("hardware_driver_image") != driver_image:
+        raise ValueError("Installer hardware driver architecture/imports changed")
     return {"stage": stage.relative_to(ROOT).as_posix(), "version": version, "architecture": architecture,
             "payload_files": len(allowed_payload), "resource_payloads_included": False,
             "cache_relative": policy["cache_relative"], "catalog_filename": policy["catalog_filename"], "passed": True,
@@ -399,6 +557,8 @@ def compile_installer(stage, compiler=None):
 
 
 def add_commands(commands):
+    p = commands.add_parser("prepare-hardware-driver", help="Extract the audited current SDK kernel driver without loading it")
+    p.add_argument("--sdk", required=True, help="Indexed current host cpuidsdk64.dll original")
     p = commands.add_parser("prepare-windows-installer", help="Stage exact prebuilt EXE/runtime DLLs; never build or run")
     p.add_argument("--exe", help="Prebuilt Windows GUI EXE; defaults to target/release/razer_ui.exe")
     p.add_argument("--runtime-dll", action="append", default=[], help="Explicit app-local DLL; repeat for dependency closure")
@@ -413,6 +573,8 @@ def add_commands(commands):
 
 
 def run(args):
+    if args.command == "prepare-hardware-driver":
+        return prepare_hardware_driver(args.sdk)
     if args.command == "prepare-windows-installer":
         return prepare(args.exe, args.runtime_dll, args.architecture, args.version, args.output)
     if args.command == "verify-windows-installer":

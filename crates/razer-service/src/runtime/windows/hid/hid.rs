@@ -21,6 +21,9 @@ use windows_sys::{
     core::GUID,
 };
 
+mod driver_interface;
+pub(crate) use driver_interface::{DriverInterface, select as select_driver_interface};
+
 pub(super) struct DeviceSet(pub(super) HDEVINFO);
 impl Drop for DeviceSet {
     fn drop(&mut self) {

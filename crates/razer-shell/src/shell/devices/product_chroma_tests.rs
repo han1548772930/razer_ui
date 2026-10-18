@@ -6,17 +6,53 @@ use serde_json::Value;
 fn product_chroma_failed_profile_read_still_observes_installation_and_preserves_both_errors() {
     let mut calls = Vec::new();
     let readback = readback_with(
-        || Err(anyhow::anyhow!("profile read failed")),
+        || chroma_profiles::Observation {
+            snapshot: Err("profile read failed".into()),
+            dynamic_lighting: Ok(Some(true)),
+            module_installed: Err("module record invalid".into()),
+        },
+        InstallationRead::Required,
         || {
             calls.push("installation");
             Err(anyhow::anyhow!("installation read failed"))
         },
     );
     assert_eq!(calls, ["installation"]);
+    let error = readback.result().unwrap_err();
+    assert!(error.contains("profile read failed"));
+    assert!(error.contains("module record invalid"));
+    assert!(error.contains("installation read failed"));
     assert_eq!(readback.snapshot.unwrap_err(), "profile read failed");
+    assert_eq!(readback.dynamic_lighting, Ok(Some(true)));
+    assert_eq!(
+        readback.module_installed.unwrap_err(),
+        "module record invalid"
+    );
     assert_eq!(
         readback.installation.unwrap_err(),
         "installation read failed"
+    );
+}
+
+#[::core::prelude::v1::test]
+fn product_chroma_local_projection_does_not_invoke_the_installation_probe() {
+    let readback = readback_with(
+        || chroma_profiles::Observation {
+            snapshot: Err("profile decode failed".into()),
+            dynamic_lighting: Ok(Some(true)),
+            module_installed: Ok(Some(false)),
+        },
+        InstallationRead::NotRequested,
+        || panic!("Babel has no checkIsFullyInstall caller"),
+    );
+    assert!(matches!(readback.installation, Ok(None)));
+    assert_eq!(readback.dynamic_lighting, Ok(Some(true)));
+    assert_eq!(readback.module_installed, Ok(Some(false)));
+    assert!(
+        readback
+            .result()
+            .unwrap_err()
+            .contains("profile decode failed")
     );
 }
 

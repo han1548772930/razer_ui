@@ -3,13 +3,43 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
+import json
 import struct
+import subprocess
+import tempfile
 import unittest
+import uuid
+from pathlib import Path
 from unittest.mock import patch
 
 from host import (HostLocalAudit, add_commands, audit_host_local,
-                  help_system_mount_layout, help_system_native_declaration,
-                  inspect_pe, pe_cursor_groups, pe_resource_entries)
+                  help_system_mount_layout, help_system_native_declaration, help_system_report_constants,
+                  inspect_host, inspect_pe, pe_cursor_groups, pe_resource_entries,
+                  setup_factory_static_extraction, native_ascii_pointer_table)
+
+
+class NativeStringPointerTests(unittest.TestCase):
+    def test_pointer_values_select_actual_strings_and_preserve_enum_order(self):
+        values = native_ascii_pointer_table(struct.pack("<QQ", 0x180001004, 0x180001000),
+            b"one\0two\0", image_base=0x180000000, strings_rva=0x1000, count=2)
+        self.assertEqual([row["name"] for row in values], ["two", "one"])
+        self.assertEqual([row["index"] for row in values], [0, 1])
+        self.assertEqual(values[0]["string_rva"], "0x1004")
+
+    def test_invalid_pointer_length_encoding_termination_or_duplicates_are_rejected(self):
+        for table, strings, count in (
+            (b"\0" * 7, b"one\0", 1),
+            (struct.pack("<Q", 0x180000fff), b"one\0", 1),
+            (struct.pack("<Q", 0x180001004), b"one\0", 1),
+            (struct.pack("<Q", 0x180001000), b"one", 1),
+            (struct.pack("<Q", 0x180001000), b"\0", 1),
+            (struct.pack("<Q", 0x180001000), b"\xff\0", 1),
+            (struct.pack("<Q", 0x180001000), b"x" * 256 + b"\0", 1),
+            (struct.pack("<QQ", 0x180001000, 0x180001004), b"one\0one\0", 2)):
+            with self.subTest(table=table, strings=strings), self.assertRaises(ValueError):
+                native_ascii_pointer_table(table, strings,
+                    image_base=0x180000000, strings_rva=0x1000, count=count)
 
 
 def pe_fixture(bits=64):
@@ -162,6 +192,56 @@ class StaticCursorTests(unittest.TestCase):
             pe_resource_entries(raw)
 
 
+class HelpSystemConstantEvidenceTests(unittest.TestCase):
+    def fixture(self):
+        raw, _ = pe_fixture()
+        property_guid = uuid.UUID("a45c254e-df1c-4efd-8020-67d146a850e0").bytes_le
+        values = [struct.pack("<d", 0.0009765625),
+                  property_guid + struct.pack("<I", 3),
+                  property_guid + struct.pack("<I", 11),
+                  property_guid + struct.pack("<I", 13),
+                  uuid.UUID("5b45201d-f2f2-4f3b-85bb-30ff1f953599").bytes_le,
+                  uuid.UUID("e6f07b5f-ee97-4a90-b076-33f57bf4eaa7").bytes_le]
+        assembly = []
+        for index, value in enumerate(values):
+            offset = 0x300 + index * 32
+            raw[offset:offset + len(value)] = value
+            assembly.append({"address": hex(0x180002000 + index * 7),
+                             "xrefs_from": [{"to": hex(0x180001100 + index * 32), "code": False}]})
+        native = {"complete_functions": [{"artifact": "functions/2000.json",
+                                          "capture": {"assembly": assembly}}]}
+        return raw, native
+
+    def test_constants_bind_actual_bytes_to_retained_instructions(self):
+        raw, native = self.fixture()
+        result = help_system_report_constants(raw, native)
+        self.assertEqual(len(result), 6)
+        scale, = result["memory_scale"]
+        self.assertEqual(scale["rva"], "0x1100")
+        self.assertEqual(scale["raw_hex"], "000000000000503f")
+        self.assertEqual(scale["sha256"], hashlib.sha256(raw[0x300:0x308]).hexdigest())
+        self.assertEqual(scale["function"], "functions/2000.json")
+        self.assertEqual(scale["instruction"], native["complete_functions"][0]["capture"]["assembly"][0])
+
+    def test_present_bytes_without_data_reference_do_not_prove_usage(self):
+        for references in ([], [{"to": "0x180001100", "code": True}]):
+            raw, native = self.fixture()
+            native["complete_functions"][0]["capture"]["assembly"][0]["xrefs_from"] = references
+            with self.subTest(references=references), self.assertRaisesRegex(ValueError, "memory_scale"):
+                help_system_report_constants(raw, native)
+
+    def test_changed_data_or_reference_outside_file_backed_section_is_rejected(self):
+        raw, native = self.fixture()
+        raw[0x300] ^= 1
+        with self.assertRaisesRegex(ValueError, "memory_scale"):
+            help_system_report_constants(raw, native)
+        for address in ("0x180000fff", "0x180001dff", "0x180100000"):
+            raw, native = self.fixture()
+            native["complete_functions"][0]["capture"]["assembly"][0]["xrefs_from"][0]["to"] = address
+            with self.subTest(address=address), self.assertRaisesRegex(ValueError, "memory_scale"):
+                help_system_report_constants(raw, native)
+
+
 class HelpSystemSourceContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -224,6 +304,79 @@ class HelpSystemSourceContractTests(unittest.TestCase):
         with patch("host.audit_host_help_system_info", return_value="static receipt") as audit:
             self.assertEqual(audit_host_local(args), "static receipt")
             audit.assert_called_once_with(args)
+
+    def test_product_chroma_audit_is_reachable_through_the_maintained_cli_dispatch(self):
+        parser = argparse.ArgumentParser()
+        add_commands(parser.add_subparsers(dest="command", required=True))
+        args = parser.parse_args(["audit-host-local", "--query", "product-chroma-observation"])
+        with patch("host.audit_product_chroma_observation", return_value="static receipt") as audit:
+            self.assertEqual(audit_host_local(args), "static receipt")
+            audit.assert_called_once_with(args)
+
+
+class SetupFactoryExtractionTests(unittest.TestCase):
+    @staticmethod
+    def decoded():
+        files = []
+        for name, data in (("engine/irsetup.exe", bytes(pe_fixture()[0])),
+                           ("engine/lua5.3.dll", bytes(pe_fixture()[0])),
+                           ("auxiliary/setup.dat", b"local installation script"),
+                           ("payload/0000.bin", b"device payload")):
+            files.append({"name": name, "data": data, "bytes": len(data),
+                          "sha256": hashlib.sha256(data).hexdigest()})
+        return {"format": "Setup Factory", "files": files, "complete": True,
+                "target_execution": False}
+
+    def test_unrecognized_container_is_not_claimed_as_setup_factory(self):
+        self.assertIsNone(setup_factory_static_extraction(bytes(pe_fixture()[0])))
+        marker = bytes(value for value in range(0xe0, 0xe8) for _ in range(2))
+        with self.assertRaisesRegex(ValueError, "header exceeds input"):
+            setup_factory_static_extraction(bytes(pe_fixture()[0]) + marker)
+
+    def test_inspection_extracts_without_invoking_an_unsupported_unpacker_and_verifies_reuse(self):
+        import analysis
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            source = root / ".analysis/inputs/host-current/setup.exe"
+            source.parent.mkdir(parents=True)
+            raw = bytes(pe_fixture()[0])
+            source.write_bytes(raw)
+            row = {"path": source.relative_to(root).as_posix(), "bytes": len(raw),
+                   "sha256": hashlib.sha256(raw).hexdigest(), "kind": "official_stable_host_package"}
+            (source.parent / "acquisition.json").write_text(json.dumps({"files": [row]}))
+            (root / ".analysis/inputs.json").write_text(json.dumps({"inputs": [row]}))
+            result = root / ".analysis/results/host-current"
+            result.mkdir(parents=True)
+            analyzer = root / "7z.exe"
+            analyzer.write_bytes(b"static analyzer identity")
+            analyzer.with_name("7z.dll").write_bytes(b"static analyzer library identity")
+            args = argparse.Namespace(input=row["path"], seven_zip=str(analyzer), extract=True)
+
+            def run(argv, **_):
+                self.assertIn(argv[1], ("i", "l"), "Setup Factory must use its source-derived decoder")
+                return subprocess.CompletedProcess(argv, 0 if argv[1] == "i" else 2,
+                    b"7-Zip fixture\n" if argv[1] == "i" else b"Type = PE\n", b"")
+
+            with patch.object(analysis, "ROOT", root), patch("host.subprocess.run", side_effect=run), \
+                    patch("host.setup_factory_static_extraction", return_value=self.decoded()), \
+                    patch.object(analysis, "index_files"):
+                inspect_host(args)
+                report = json.loads((result / "inspection.json").read_text())
+                container = report["containers"][0]
+                self.assertTrue(container["extracted"])
+                self.assertTrue(container["input_bytes_unchanged"])
+                self.assertEqual(len(container["files"]), 4)
+                inspect_host(args)
+                retained = json.loads((result / "inspection.json").read_text())
+                self.assertTrue(retained["containers"][0]["retained_outputs_verified"])
+                artifact = next(entry for entry in retained["containers"][0]["files"]
+                                if entry["path"].endswith("0000.bin"))
+                replacement = b"wrong payload"
+                (root / artifact["path"]).write_bytes(replacement)
+                artifact.update(bytes=len(replacement), sha256=hashlib.sha256(replacement).hexdigest())
+                (result / "inspection.json").write_text(json.dumps(retained))
+                with self.assertRaisesRegex(ValueError, "differ from decoded source"):
+                    inspect_host(args)
 
 
 if __name__ == "__main__":

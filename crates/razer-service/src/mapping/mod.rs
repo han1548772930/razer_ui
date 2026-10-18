@@ -5,6 +5,7 @@ pub mod device;
 pub mod key_capture;
 pub mod mode_capture;
 pub mod recorder;
+mod recorder_owner;
 pub mod shortcuts;
 
 use razer_ipc::{ServiceClient, ServiceRequest};

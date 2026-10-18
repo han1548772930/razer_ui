@@ -93,17 +93,6 @@ struct Mailbox {
     completion: Option<Completion>,
 }
 
-fn finish(
-    workspace: &Entity<ProductWorkspace>,
-    request: &MouseDynamicRequested,
-    completion: MouseDynamicCompletion,
-    cx: &mut App,
-) {
-    workspace.update(cx, |workspace, cx| {
-        workspace.complete_mouse_dynamic(request, completion, cx);
-    });
-}
-
 impl Operation {
     fn matches(
         &self,
@@ -156,6 +145,22 @@ fn current(
 }
 
 impl AppShell {
+    fn finish_mouse_dynamic(
+        &mut self,
+        workspace: &Entity<ProductWorkspace>,
+        request: &MouseDynamicRequested,
+        completion: MouseDynamicCompletion,
+        cx: &mut Context<Self>,
+    ) {
+        let diagnostic = workspace.update(cx, |workspace, cx| {
+            workspace.complete_mouse_dynamic(request, completion, cx)
+        });
+        if let Some(diagnostic) = diagnostic {
+            self.status = diagnostic;
+            cx.notify();
+        }
+    }
+
     pub(super) fn install_mouse_dynamic_cleanup(&mut self, _cx: &mut Context<Self>) {
         self.register_exit_cleanup(|shell, _| {
             let deliveries = shell.mouse_dynamic.take_for_shutdown();
@@ -209,7 +214,7 @@ impl AppShell {
             .mouse_dynamic
             .admits(self.close_requested, Admission::New)
         {
-            finish(&workspace, request, MouseDynamicCompletion::Cancelled, cx);
+            self.finish_mouse_dynamic(&workspace, request, MouseDynamicCompletion::Cancelled, cx);
             return;
         }
         match request.action() {
@@ -223,7 +228,7 @@ impl AppShell {
                 window.window_handle(),
                 cx,
             ),
-            Err(error) => finish(
+            Err(error) => self.finish_mouse_dynamic(
                 &workspace,
                 request,
                 MouseDynamicCompletion::Failed(format!("{error:#}")),
@@ -245,13 +250,13 @@ impl AppShell {
                 .read(cx)
                 .mouse_dynamic_request_is_current(&request, cx)
         {
-            finish(&workspace, &request, MouseDynamicCompletion::Cancelled, cx);
+            self.finish_mouse_dynamic(&workspace, &request, MouseDynamicCompletion::Cancelled, cx);
             return;
         }
         let action = match request.action() {
             Ok(action) => action,
             Err(error) => {
-                finish(
+                self.finish_mouse_dynamic(
                     &workspace,
                     &request,
                     MouseDynamicCompletion::Failed(format!("{error:#}")),
@@ -274,7 +279,7 @@ impl AppShell {
             .cloned()
             .collect::<Vec<_>>();
         let [route] = routes.as_slice() else {
-            finish(
+            self.finish_mouse_dynamic(
                 &workspace,
                 &request,
                 MouseDynamicCompletion::Failed(
@@ -296,7 +301,7 @@ impl AppShell {
                 operation.request.guard().store(false, Ordering::Release);
             }
             if let Some(skipped) = self.mouse_dynamic.queued.insert(key, queued) {
-                finish(
+                self.finish_mouse_dynamic(
                     &skipped.workspace,
                     &skipped.request,
                     MouseDynamicCompletion::Cancelled,
@@ -306,7 +311,7 @@ impl AppShell {
         } else if matches!(action, MouseDynamicAction::Monitor(false)) {
             // This owner never admitted a native START; there is no outstanding
             // monitor obligation to acknowledge or release.
-            finish(
+            self.finish_mouse_dynamic(
                 &queued.workspace,
                 &queued.request,
                 MouseDynamicCompletion::Monitoring(false),
@@ -327,7 +332,7 @@ impl AppShell {
             &self.device_observations,
             cx,
         ) {
-            finish(
+            self.finish_mouse_dynamic(
                 &queued.workspace,
                 &queued.request,
                 MouseDynamicCompletion::Cancelled,
@@ -338,7 +343,7 @@ impl AppShell {
         let action = match queued.request.action() {
             Ok(action) => action,
             Err(error) => {
-                finish(
+                self.finish_mouse_dynamic(
                     &queued.workspace,
                     &queued.request,
                     MouseDynamicCompletion::Failed(format!("{error:#}")),
@@ -417,7 +422,7 @@ impl AppShell {
                         return;
                     };
                     if batch.started {
-                        finish(
+                        shell.finish_mouse_dynamic(
                             &workspace,
                             &delivery_request,
                             MouseDynamicCompletion::Monitoring(true),
@@ -468,7 +473,7 @@ impl AppShell {
                             }
                             Err(error) => MouseDynamicCompletion::Failed(error),
                         };
-                        finish(&workspace, &operation.request, result, cx);
+                        shell.finish_mouse_dynamic(&workspace, &operation.request, result, cx);
                     }
                 }
                 if let Some(next) = shell.mouse_dynamic.queued.remove(&delivery_key) {
@@ -476,7 +481,7 @@ impl AppShell {
                         next.request.action(),
                         Ok(MouseDynamicAction::Monitor(false))
                     ) {
-                        finish(
+                        shell.finish_mouse_dynamic(
                             &next.workspace,
                             &next.request,
                             if clean {
@@ -490,7 +495,7 @@ impl AppShell {
                         .mouse_dynamic
                         .admits(shell.close_requested, Admission::queued(&next.request))
                     {
-                        finish(
+                        shell.finish_mouse_dynamic(
                             &next.workspace,
                             &next.request,
                             MouseDynamicCompletion::Cancelled,

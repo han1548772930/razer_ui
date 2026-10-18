@@ -299,12 +299,6 @@ impl SourceProductWorkspace {
             Ok(merged) => {
                 self.saved = request.candidate().clone();
                 self.device = merged;
-                if self.device.product_id == 182
-                    && self.device.source_device_settings == self.saved.source_device_settings
-                    && self.device.profiles == self.saved.profiles
-                {
-                    self.mouse_profile_cache_changed = false;
-                }
                 cx.emit(WorkspaceEvent::Changed);
             }
             Err(error) => {

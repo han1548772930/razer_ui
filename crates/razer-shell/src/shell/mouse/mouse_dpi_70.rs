@@ -160,7 +160,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !self.devices.contains(&workspace)
-            || !matches!(workspace.read(cx).device(cx).product_id, 70 | 182)
+            || !matches!(workspace.read(cx).device(cx).product_id, 70 | 182 | 190)
             || workspace.read(cx).mouse_polling_scope(cx) != Some(scope)
         {
             return;

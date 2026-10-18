@@ -572,6 +572,7 @@ impl MouseProductWorkspace {
                 if self.spec.rotation {
                     self.rotation_resources.request(cx);
                 }
+                self.request_dynamic_read(cx);
                 self.dynamic_ui_command(cx);
             }
             self.set_current_customize_input(None, false);
@@ -612,6 +613,7 @@ impl MouseProductWorkspace {
             if !active {
                 self.dismiss_editors(window, cx);
             } else if self.page == "ADVANCED" {
+                self.request_dynamic_read(cx);
                 self.dynamic_ui_command(cx);
             }
             if active && self.page == "TAB_PERFORMANCE" {
@@ -780,6 +782,7 @@ impl MouseProductWorkspace {
         // The capability supplies the initial UI state; None is a source default,
         // not a successful OTFS query. Runtime observations never enter draft.
         self.active
+            && self.current_dpi_profile_known()
             && self.page == "TAB_PERFORMANCE"
             && (self.spec.product_id != 70 || self.dpi_editing_observed.unwrap_or(true))
             && self.spec.dpi_grid_spec().is_none_or(|spec| {

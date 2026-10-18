@@ -2,9 +2,9 @@
 //! through 6F90/9050/6EE0 topology; never choose an OS default audio device.
 use super::{
     mixer_driver,
-    mixer_meter::{Apartment, endpoint_container},
+    mixer_meter::Apartment,
 };
-use crate::audio_util::windows::Com;
+use crate::audio_util::windows::{Com, endpoint_container};
 use anyhow::{Context as _, ensure};
 use razer_device::{audio_mixer::MixerValue, backend::HidNode};
 use serde_json::{Value, json};

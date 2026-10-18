@@ -1,4 +1,4 @@
-//! Mounted Help report requests, native-worker lifetime and local file export.
+//! Mounted Help report requests, system-query lifetime and local file export.
 use super::*;
 use anyhow::{Context as _, ensure};
 use razer_device::system_info::{Data, MAXIMUM_REPORT_BYTES, Query, Response, SystemDetails};
@@ -210,9 +210,8 @@ fn query_native(product_id: u32, query: Query, cancelled: &AtomicBool) -> anyhow
         "Help system-info request was cancelled"
     );
     let mut client = ServiceClient::spawn()?;
-    // These getters have no native cancellation API. Let an admitted getter
-    // return through its verified cleanup; discard its result after unmount.
-    // The IPC timeout still terminates a hung exclusive worker explicitly.
+    // Let admitted system queries return through their COM/handle cleanup;
+    // reject results after unmount. The IPC timeout owns hung worker cleanup.
     let result = client
         .request(ServiceRequest::HelpSystemInfo { product_id, query })
         .and_then(|value| {
@@ -277,6 +276,9 @@ fn run_work_with(
     work.operation.check().map_err(anyhow::Error::msg)?;
     let response = query(work.product_id, work.query, &work.cancelled)?;
     response.validate(work.product_id, work.query)?;
+    for diagnostic in &response.diagnostics {
+        eprintln!("[help-system-info] partial observation: {diagnostic}");
+    }
     if work.cancelled.load(Ordering::Acquire) {
         return Ok(Outcome::Cancelled);
     }

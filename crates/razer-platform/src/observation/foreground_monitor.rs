@@ -68,6 +68,16 @@ pub struct ForegroundMonitor {
 }
 
 impl ForegroundMonitor {
+    pub fn shutdown(&mut self) -> anyhow::Result<()> {
+        #[cfg(windows)]
+        if let Some(listener) = &mut self.listener {
+            listener.stop()?;
+            self.listener = None;
+        }
+        self.subscribers.clear();
+        Ok(())
+    }
+
     /// Host sysutil keeps unique sender URLs; repeated starts are idempotent.
     pub fn start(&mut self, view_url: &str) -> anyhow::Result<bool> {
         anyhow::ensure!(

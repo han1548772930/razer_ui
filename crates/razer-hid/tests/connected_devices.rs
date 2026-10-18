@@ -35,6 +35,7 @@ fn guarded<T>(action: impl FnOnce() -> anyhow::Result<T>) -> anyhow::Result<T> {
 }
 
 struct MouseSnapshot {
+    serial_number: String,
     dpi: dpi::DpiReport,
     active_payload: Vec<u8>,
     polling: polling::Observation,
@@ -44,7 +45,8 @@ struct MouseSnapshot {
 
 impl MouseSnapshot {
     fn same_configuration(&self, other: &Self) -> bool {
-        self.dpi.stages == other.dpi.stages
+        self.serial_number == other.serial_number
+            && self.dpi.stages == other.dpi.stages
             && self.dpi.active == other.dpi.active
             && self.active_payload == other.active_payload
             && self.polling == other.polling
@@ -55,7 +57,7 @@ impl MouseSnapshot {
     }
 
     fn value(&self) -> Value {
-        json!({"dpi":self.dpi,"active_payload":self.active_payload,
+        json!({"serial_observed":!self.serial_number.is_empty(),"dpi":self.dpi,"active_payload":self.active_payload,
             "polling":self.polling,"polling_payload":self.polling_payload,"idle":self.idle})
     }
 }
@@ -243,6 +245,29 @@ impl<'a> MouseSession<'a> {
         next: &mut impl FnMut() -> anyhow::Result<u8>,
         deadline: &impl Fn() -> anyhow::Result<()>,
     ) -> anyhow::Result<MouseSnapshot> {
+        let identity = dpi::execute_for(
+            dpi::PRODUCT_ID,
+            self.device,
+            Some(&dpi::DpiChange {
+                stages: None,
+                active: None,
+                profile_guid: None,
+                initialize: true,
+            }),
+            &mut *next,
+            deadline,
+        )?;
+        ensure!(
+            identity.verified
+                && identity.active.is_none()
+                && identity.stages.is_none()
+                && identity.acknowledgements.is_empty(),
+            "mouse identity query performed an unrelated operation"
+        );
+        let serial_number = identity
+            .serial_number
+            .filter(|serial| !serial.is_empty())
+            .context("actual mouse serial was not observed")?;
         let first = self.device.events.borrow().len();
         let dpi = dpi::execute_for(dpi::PRODUCT_ID, self.device, None, &mut *next, deadline)?;
         ensure!(
@@ -267,6 +292,7 @@ impl<'a> MouseSession<'a> {
             deadline,
         )?;
         Ok(MouseSnapshot {
+            serial_number,
             dpi,
             active_payload,
             polling,

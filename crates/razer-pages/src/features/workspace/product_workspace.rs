@@ -519,11 +519,13 @@ impl ProductWorkspace {
         request: &super::mouse_products::MouseDynamicRequested,
         completion: super::mouse_products::MouseDynamicCompletion,
         cx: &mut Context<Self>,
-    ) {
+    ) -> Option<String> {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.complete_mouse_dynamic(request, completion, cx);
-            });
+                body.complete_mouse_dynamic(request, completion, cx)
+            })
+        } else {
+            None
         }
     }
     pub fn complete_leviathan(
@@ -1233,6 +1235,19 @@ impl ProductWorkspace {
         if let Body::Source(body) = &self.body {
             body.update(cx, |body, cx| {
                 body.finish_current_dpi_result(request, result, cx)
+            });
+        }
+    }
+    pub fn accept_current_dpi_local_profile(
+        &mut self,
+        request: &super::mouse_products::MouseCurrentDpiRequested,
+        serial: Option<&str>,
+        result: Result<Option<razer_storage::host_local_profile::LocalProfile>, String>,
+        cx: &mut Context<Self>,
+    ) {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.accept_current_dpi_local_profile(request, serial, result, cx)
             });
         }
     }

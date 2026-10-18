@@ -27,6 +27,20 @@ pub(super) struct Controller {
 }
 
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        if let Some(active) = self.active.take() {
+            active.canceled.store(true, Ordering::Release);
+            cleanup.record(
+                "keyboard_submission",
+                active
+                    .worker
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Keyboard submission cleanup worker panicked"))
+                    .and_then(|result| result),
+            );
+        }
+    }
+
     pub(super) fn start(
         &mut self,
         id: String,

@@ -97,7 +97,7 @@ def source_layout_destination(path):
             if selected and len(inner.parts) == 1:
                 return Path("crates") / crate / "src/runtime/windows" / selected / inner
         groups = (("audio", ("audio_", "simple_audio", "thx")),
-                  ("native", ("dll", "native_query", "native_read")),
+                  ("native", ("dll",)),
                   ("mouse", ("dpi_matcher",)))
         group = next((folder for folder, prefixes in groups if name.startswith(prefixes)), None)
     elif crate == "razer-app-pages":
@@ -344,6 +344,10 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     macro_io = "crates/razer-storage/src/macro_transfer.rs"
     macro_recording = "crates/razer-model/src/macro_library/recording.rs"
     macro_recorder = mapping_workers + "recorder.rs"
+    macro_recorder_owner = mapping_workers + "recorder_owner.rs"
+    help_report_owner = "crates/razer-service/src/native/help_system_info.rs"
+    independent_help_report = owner == help_report_owner or owner.startswith(
+        "crates/razer-service/src/native/help_system_info/")
     macro_native = "crates/razer-service/src/runtime/windows/macro_recording.rs"
     macro_receipts = "crates/razer-ipc/src/macro_recording.rs"
     mapping_receipts = "crates/razer-ipc/src/mapping_control.rs"
@@ -360,6 +364,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     device_monitor = "crates/razer-platform/src/observation/device_changes.rs"
     thx_lifecycle = "crates/razer-shell/src/shell/audio/thx_sound.rs"
     ipc_client = "crates/razer-ipc/src/lib.rs"
+    ipc_pipe_workers = {"input_worker", "output_worker", "diagnostic_worker"}
     keyboard_lifecycle = "crates/razer-shell/src/shell/keyboard/keyboard_lifecycle.rs"
     retired_shortcuts = "crates/razer-storage/src/workspace/retired_shortcuts.rs"
     preference_state = "crates/razer-state/src/ui_preferences.rs"
@@ -386,7 +391,8 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                        "crates/razer-pages/src/features/mapping/mapping_key_capture_runtime.rs": mapping_workers + "key_capture.rs",
                        macro_page + "/transfer/xml.rs": macro_xml,
                        macro_page + "/recording_decode.rs": macro_recording,
-                       macro_page + "/recording_actor.rs": macro_recorder}
+                       macro_page + "/recording_actor.rs": macro_recorder,
+                       "crates/razer-service/src/native/native_read.rs": "Explicit tools/workspace.py comparisons"}
     shortcut_scope = owner.startswith(("crates/razer-model/src/shortcuts/", "crates/razer-pages/src/features/shortcuts/"))
     publication_consumers = {"crates/razer-resource-db/src/installation.rs": ("InstallationPaths", "publish_catalog"),
                              "crates/razer-resources/src/cache.rs": ("Cache", "publish"),
@@ -669,8 +675,27 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                         fail(node, "cross_crate_private_include", "Public Rust types and modules")
             elif not (owner == "crates/razer-resource-db/src/lib.rs" and "".join(text(node).split()) == 'include!(concat!(env!("OUT_DIR"),"/installation.rs"))'):
                 fail(node, "include_path_requires_resolution", "Explicit local include path or the installation constants generator")
+        if independent_help_report and node.type in {
+                "use_declaration", "scoped_identifier", "scoped_type_identifier"}:
+            paths = [path for _, path in imported_paths(node)] if node.type == "use_declaration" else [
+                resolved_call(text(node).split("::"))]
+            for path in paths:
+                if path[:1] == ("libloading",) or path[:2] in {
+                        ("crate", "dll"), ("super", "dll"),
+                        ("crate", "native_read"), ("super", "native_read"),
+                        ("razer_platform", "native_paths"), ("razer_catalog", "native_library")}:
+                    fail(node, "independent_help_report_uses_vendor_loader", help_report_owner)
+                    break
         if in_test(node):
             continue
+        if node.type == "enum_variant" and text(node.child_by_field_name("name")) == "NativeLibrarySnapshot" \
+                and owner == ipc_client:
+            fail(node, "product_protocol_exposes_vendor_analysis", "Explicit tools/workspace.py comparisons")
+        if node.type in {"scoped_identifier", "scoped_type_identifier"} and \
+                resolved_call(text(node).split("::")) in {
+                    ("ServiceRequest", "NativeLibrarySnapshot"),
+                    ("razer_ipc", "ServiceRequest", "NativeLibrarySnapshot")}:
+            fail(node, "product_protocol_exposes_vendor_analysis", "Explicit tools/workspace.py comparisons")
         if gui_source and owner != chroma_observation \
                 and node.type == "call_expression":
             function = node.child_by_field_name("function")
@@ -826,6 +851,9 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             numbers = [text(child) for child in walk(node) if child.type == "integer_literal"]
             if len(numbers) == 6 and set(numbers) == {"70", "515", "679", "740", "746", "756"}:
                 fail(node, "duplicate_mapping_product_gate", mapping_product_owner)
+        if node.type == "scoped_identifier" and resolved_call(text(node).split("::")) == ("razer_ipc", "ServiceRequest", "MacroRecordingMode"):
+            if owner not in {macro_recorder_owner, "crates/razer-service/src/runtime/windows/native.rs"}:
+                fail(node, "macro_mode_queries_an_unrelated_worker", macro_recorder_owner)
         if owner != mapping_product_owner and node.type == "string_literal" and text(node) in {
                 '"_mouse70_mapping_document"', '"_keyboard515_mapping_document"'}:
             fail(node, "duplicate_mapping_document_storage_identity", mapping_product_owner)
@@ -911,11 +939,11 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
             if owner == ipc_client and name == "ServiceClient":
                 retained = {}
                 for child in body.named_children:
-                    if child.type == "field_declaration" and text(child.child_by_field_name("name")) in {"input_worker", "output_worker"}:
+                    if child.type == "field_declaration" and text(child.child_by_field_name("name")) in ipc_pipe_workers:
                         retained[text(child.child_by_field_name("name"))] = {resolved_call(text(item).split("::"))[-1]
                             for item in walk(child.child_by_field_name("type")) if item.type == "type_identifier"}
-                if (not {"child", "requests", "input_worker", "output_worker"} <= fields
-                        or set(retained) != {"input_worker", "output_worker"}
+                if (not {"child", "requests"} | ipc_pipe_workers <= fields
+                        or set(retained) != ipc_pipe_workers
                         or any(not {"Option", "JoinHandle", "Result"} <= types for types in retained.values())):
                     fail(node, "ipc_client_discards_owned_process_or_pipe_workers", ipc_client + "::ServiceClient")
             if name == "MappingTargetOwner" and owner == mapping_adapter and fields != {"workspace", "identity", "connection_revision"}:
@@ -1072,6 +1100,14 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                     fail(node, "macro_recorder_skips_transport_cleanup", mapping_workers + "mod.rs")
                 if not locks_capture_lifecycle(node):
                     fail(node, "macro_recorder_bypasses_shared_capture_lifecycle", "razer_ipc::KEY_CAPTURE_LIFECYCLE")
+            if owner == macro_recorder and free_function and name in {"spawn", "mode"}:
+                paths = {resolved_call(text(child).split("::")) for child in walk(node) if child.type == "scoped_identifier"}
+                if ("super", "recorder_owner", name) not in paths:
+                    fail(node, "macro_recorder_bypasses_shared_transport_owner", macro_recorder_owner)
+            if owner == keyboard_publisher and name == "macro_mode":
+                paths = {resolved_call(text(child).split("::")) for child in walk(node) if child.type == "scoped_identifier"}
+                if ("razer_service", "mapping", "recorder", "mode") not in paths:
+                    fail(node, "mapping_publisher_bypasses_recorder_owner", macro_recorder_owner)
             if owner == mapping_workers + "mod.rs" and free_function and name == "lock_lifecycle":
                 if not locks_capture_lifecycle(node) or "load" not in called_methods(node):
                     fail(node, "capture_lifecycle_bypasses_cancelable_shared_lock", "razer_ipc::KEY_CAPTURE_LIFECYCLE")
@@ -1880,9 +1916,15 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 joins = {field: [call for parts, call in calls(node) if resolved_call(parts) == ("join_pipe",)
                     and call.parent.type != "try_expression"
                     and any(method_on_field(child, "take", field) for child in walk(call))]
-                    for field in ("input_worker", "output_worker")}
+                    for field in ipc_pipe_workers}
                 merged = [call for parts, call in calls(node) if resolved_call(parts) == ("combine_cleanup",)]
+                joined_results = [join.parent.child_by_field_name("pattern")
+                    if join.parent.type == "let_declaration" else None
+                    for values in joins.values() for join in values]
                 if (not admission or not stopped or not jobs or not reaped or any(not value for value in joins.values()) or not merged
+                        or any(result is None or result.type != "identifier"
+                            or not any(text(result) in {text(child) for child in walk(merge.child_by_field_name("arguments"))
+                                if child.type == "identifier"} for merge in merged) for result in joined_results)
                         or any(start.end_byte > reap.start_byte for start in admission + stopped + jobs for reap in reaped)
                         or any(not any(reap.end_byte < join.start_byte for reap in reaped)
                             for values in joins.values() for join in values)
@@ -2111,7 +2153,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 ancestor = node.parent
                 while ancestor is not None and ancestor.type != "function_item":
                     if (ancestor.type == "assignment_expression" and ancestor.child_by_field_name("left").type == "field_expression"
-                            and text(ancestor.child_by_field_name("left").child_by_field_name("field")) in {"input_worker", "output_worker"}):
+                            and text(ancestor.child_by_field_name("left").child_by_field_name("field")) in ipc_pipe_workers):
                         break
                     ancestor = ancestor.parent
                 if ancestor is None or ancestor.type == "function_item":
@@ -8455,6 +8497,85 @@ def connected_get_response(transfers, index):
     raise ValueError("Native comparison has no observed terminal IN response")
 
 
+def record_local_runtime(name, receipt):
+    import analysis
+    path = ROOT / ".analysis/validation.json"
+    with analysis.index_lock(path.with_suffix(".lock")):
+        validation = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"schema_version": 1}
+        validation.setdefault("local_runtime_checks", {})[name] = receipt
+        write_json(path, validation)
+
+
+def record_service_version_evidence(receipt):
+    """Index the verified private COM-server original separately from execution."""
+    import analysis
+    server = receipt["server"]
+    name = server["input"]
+    if name != ".analysis/inputs/installed-current/files/elevation-service/razer_elevation_service.exe":
+        raise ValueError("Unexpected registered service evidence destination")
+    original = safe(ROOT / name)
+    if original.is_symlink() or original.stat().st_size != server["bytes"] or digest(original) != server["sha256"]:
+        raise ValueError("Registered service original differs from the comparison receipt")
+    signature = server["signature"]
+    if signature["status"] != "Valid" or not signature["subject"].startswith("CN=Razer USA Ltd.,"):
+        raise ValueError("Registered service signature is not verified Razer")
+    acquisition = ROOT / ".analysis/inputs/installed-current/service-acquisition.json"
+    row = {"path": name, "bytes": server["bytes"], "sha256": server["sha256"],
+           "kind": "installed_static_evidence", "source_root": "registered-elevation-service",
+           "source_relative_path": original.name,
+           "acquired_at_utc": receipt["recorded_at_utc"],
+           "registry_key": "CLSID/{" + receipt["evidence"]["com_identity"]["clsid"]["value"] + "}/LocalServer32"}
+    write_json(acquisition, {"schema_version": 1, "files": [row], "architecture": server["architecture"],
+        "versions": server["versions"], "signature": signature, "target_execution": False,
+        "source": "Registered local COM server; private bytes verified before the scoped comparison",
+        "runtime_receipt": ".analysis/validation.json#/local_runtime_checks/simple_version"})
+    receipt_row = {"path": relative(acquisition), "bytes": acquisition.stat().st_size,
+                   "sha256": digest(acquisition), "kind": "acquisition_receipt"}
+    analysis.index_files([row, receipt_row], publication={"owner": "tools/workspace.py",
+        "reason": "Register the verified COM-server original used by the service-version comparison",
+        "receipt": receipt_row["path"], "verification": {"private_bytes_rechecked": True,
+            "registered_server_signature": signature["status"], "architecture": server["architecture"]}})
+
+
+def compare_local_service_version():
+    import analysis
+    import native_runtime
+    receipt = native_runtime.compare_local_service_version(ROOT)
+    receipt["recorded_at_utc"] = datetime.now(timezone.utc).isoformat()
+    record_service_version_evidence(receipt)
+    audit_path = ROOT / ".analysis/results/host-current/local-audit.json"
+    with analysis.index_lock(audit_path.with_suffix(".lock")):
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        audit["simple_version"] = receipt["evidence"]
+        write_json(audit_path, audit)
+    record_local_runtime("simple_version", receipt)
+    print(json.dumps({"receipt": ".analysis/validation.json#/local_runtime_checks/simple_version",
+                      "passed": receipt["passed"], "result": receipt["result"],
+                      "exit_code": receipt["exit_code"], "timed_out": receipt["timed_out"]}, ensure_ascii=False), flush=True)
+    return 0 if receipt["passed"] else 1
+
+
+def compare_local_app_files():
+    import analysis
+    import native_runtime
+    receipt = native_runtime.compare_local_app_files(ROOT)
+    receipt["recorded_at_utc"] = datetime.now(timezone.utc).isoformat()
+    audit_path = ROOT / ".analysis/results/host-current/local-audit.json"
+    with analysis.index_lock(audit_path.with_suffix(".lock")):
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        audit["simple_app_inventory"] = receipt["evidence"]
+        write_json(audit_path, audit)
+    record_local_runtime("simple_app_inventory", receipt)
+    result = receipt["result"] or {}
+    comparisons = result.get("comparisons", {}).get("Ok", [])
+    print(json.dumps({"receipt": ".analysis/validation.json#/local_runtime_checks/simple_app_inventory",
+                      "passed": receipt["passed"], "comparisons": [
+                          {key: item[key] for key in ("name", "matched", "input_unchanged")}
+                          for item in comparisons], "cleanup": result.get("cleanup"),
+                      "exit_code": receipt["exit_code"], "timed_out": receipt["timed_out"]}, ensure_ascii=False), flush=True)
+    return 0 if receipt["passed"] else 1
+
+
 def compare_connected_hid(library):
     """Compare exact observed GET packets with the verified source C exports."""
     import native_runtime
@@ -8683,6 +8804,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("dynamic-lighting-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "dynamic_lighting_read_is_independent"]),
         ("controller-lighting-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "controller_lighting"]),
         ("audio-demo-media", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "media::tests"]),
+        ("macro-recorder-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "macro_recorder"]),
         ("screen-color-platform", ["cargo", "test", "--locked", "--offline", "-p", "razer-platform", "--lib", "screen_color"]),
         ("screen-color-ui", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "screen_color"]),
         ("audio-demo-floating", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "demo::tests"]),
@@ -8721,7 +8843,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("current-polling-indicator-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "unobserved_polling_has_no_rate_color_and_confirmed_rate_uses_its_source_color"]),
         ("current-polling-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_polling_runtime"]),
         ("current-dpi-observations", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi_observation_"]),
-        ("current-dpi-initialization", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current182_initialization_"]),
+        ("current-dpi-initialization", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "current_dpi::initialization_tests"]),
         ("dpi-row-hover-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "dpi_row_hover_"]),
         ("help-reset-owner", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "help_reset_identity_"]),
         ("mixer-restart-receipts", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mixer_restart_receipt_"]),
@@ -8731,7 +8853,15 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-dynamic-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_dynamic"]),
         ("mouse-dynamic-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_dynamic"]),
         ("mouse-dynamic-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "direct::mouse_dynamic::tests"]),
-        ("mouse-dynamic-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_dynamic::tests"]),
+        ("mouse-dynamic-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "features::mouse_products::dynamic::"]),
+        ("runtime-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-app", "--lib", "diagnostics::runtime::tests"]),
+        ("product-arguments", ["cargo", "test", "--locked", "--offline", "-p", "razer-app", "--lib", "arguments::tests"]),
+        ("service-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::"]),
+        ("chroma-profile-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "chroma_profiles::tests"]),
+        ("host-profile-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "host_local_profile::"]),
+        ("user-app-files-storage", ["cargo", "test", "--locked", "--offline", "-p", "razer-storage", "--lib", "user_app_files::"]),
+        ("lighting-host-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "host_observation_tests"]),
+        ("lighting-observation-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "product_lighting::observation::tests"]),
         ("mouse-dynamic-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "mouse_dynamic"]),
         ("mouse-sensor-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_sensor::tests"]),
         ("help-system-info-domain", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "system_info::tests"]),
@@ -8975,7 +9105,14 @@ def validate_rust(selected_suites=None, cargo_config=None):
                "target_execution": False, "real_device_operations": False,
                "application_runtime_acceptance": "not performed",
                "passed": unchanged and all(row["passed"] for row in results)}
-    write_json(ROOT / ".analysis/validation.json", receipt)
+    previous_path = ROOT / ".analysis/validation.json"
+    import analysis
+    with analysis.index_lock(previous_path.with_suffix(".lock")):
+        if previous_path.exists():
+            previous = json.loads(previous_path.read_text(encoding="utf-8"))
+            if "local_runtime_checks" in previous:
+                receipt["local_runtime_checks"] = previous["local_runtime_checks"]
+        write_json(previous_path, receipt)
     if not receipt["passed"]:
         raise ValueError("Validation failed or its inputs changed; inspect .analysis/validation.json and logs.")
 
@@ -9116,6 +9253,8 @@ def main():
     connected.add_argument("--write-restore", action="store_true", help="Record original settings, verify reversible changes, restore and confirm exact original values")
     native_compare = commands.add_parser("compare-connected-hid", help="Compare observed GET packet bytes through the verified current source HID exports")
     native_compare.add_argument("--library", required=True, help="Installed HID.node; its complete current input bytes and exports are verified before loading")
+    commands.add_parser("compare-local-service-version", help="Compare the verified Simple Service DLL with the direct Rust local COM reader")
+    commands.add_parser("compare-local-app-files", help="Compare the verified Simple Service DLL with the direct Rust local Apps inventory")
     pack_prepare = commands.add_parser("prepare-asset-pack")
     pack_prepare.add_argument("--manifest", default=".analysis/results/asset-pack-manifest.json")
     pack_prepare.add_argument("--output", default=GENERATED_ASSET_PACK)
@@ -9229,6 +9368,10 @@ def main():
         return validate_connected_devices(args.product, write_restore=args.write_restore)
     elif args.command == "compare-connected-hid":
         return compare_connected_hid(args.library)
+    elif args.command == "compare-local-service-version":
+        return compare_local_service_version()
+    elif args.command == "compare-local-app-files":
+        return compare_local_app_files()
     elif args.command == "prepare-asset-pack":
         print(json.dumps(prepare_asset_pack(args.manifest, args.output), ensure_ascii=False))
     elif args.command == "verify-asset-pack":
@@ -9247,7 +9390,7 @@ def main():
         print(json.dumps(asset_release.prepare_runtime_metadata(check_local=args.check_local), ensure_ascii=False), flush=True)
     elif args.command == "verify-runtime-assets":
         print(json.dumps(asset_release.verify_runtime_metadata(check_local=args.check_local), ensure_ascii=False), flush=True)
-    elif args.command in {"prepare-windows-installer", "verify-windows-installer", "compile-windows-installer"}:
+    elif args.command in {"prepare-hardware-driver", "prepare-windows-installer", "verify-windows-installer", "compile-windows-installer"}:
         print(json.dumps(windows_installer.run(args), ensure_ascii=False), flush=True)
     elif args.command == "prepare-image-analyzer":
         prepare_image_analyzer()

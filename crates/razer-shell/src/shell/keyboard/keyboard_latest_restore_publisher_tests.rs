@@ -89,6 +89,29 @@ fn observe_broadcast(owner: &mapping_control::Owner) -> Control {
 }
 
 #[test]
+fn recorder_mode_comes_from_the_shared_input_owner_without_a_device_worker_query() {
+    let (mock, trace, _) = mock(acknowledge);
+    let mut publisher =
+        Publisher::start_with("container", || Ok(mock), Registry::default()).unwrap();
+    let before = trace.lock().unwrap().len();
+    assert_eq!(
+        publisher
+            .macro_mode_with(&generation(), || Ok(
+                razer_platform::macro_recorder::Mode::Otfm
+            ))
+            .unwrap(),
+        "kOTFM"
+    );
+    assert_eq!(trace.lock().unwrap().len(), before);
+    let error = publisher
+        .macro_mode_with(&generation(), || anyhow::bail!("recorder owner closed"))
+        .unwrap_err();
+    assert!(error.to_string().contains("recorder owner closed"));
+    assert_eq!(trace.lock().unwrap().len(), before);
+    publisher.finish().unwrap();
+}
+
+#[test]
 fn partial_or_mismatched_registration_still_shuts_down_and_releases_transport() {
     for receipt in [
         json!({}),

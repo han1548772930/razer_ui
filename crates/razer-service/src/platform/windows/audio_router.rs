@@ -136,7 +136,7 @@ type Request = (Command, Sender<Result<Value>>);
 
 pub(super) struct Owner {
     sender: Option<Sender<Request>>,
-    thread: Option<JoinHandle<()>>,
+    thread: Option<JoinHandle<Result<()>>>,
 }
 impl Owner {
     pub(super) fn open() -> Result<Self> {
@@ -147,10 +147,11 @@ impl Owner {
             .spawn(move || match Router::open() {
                 Ok(mut router) => {
                     let _ = ready_sender.send(Ok(()));
-                    router.run(receiver);
+                    router.run(receiver)
                 }
                 Err(error) => {
                     let _ = ready_sender.send(Err(error));
+                    Ok(())
                 }
             })?;
         let initialized = match ready.recv() {
@@ -184,12 +185,20 @@ impl Owner {
             .recv()
             .context("AudioRouter response channel closed")?
     }
+    pub(super) fn close(&mut self) -> Result<()> {
+        self.sender.take();
+        if let Some(thread) = self.thread.take() {
+            thread
+                .join()
+                .map_err(|_| anyhow::anyhow!("AudioRouter cleanup worker panicked"))??;
+        }
+        Ok(())
+    }
 }
 impl Drop for Owner {
     fn drop(&mut self) {
-        self.sender.take();
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+        if let Err(error) = self.close() {
+            eprintln!("AudioRouter cleanup: {error:#}");
         }
     }
 }
@@ -308,7 +317,7 @@ impl Router {
             _apartment: apartment,
         })
     }
-    fn run(&mut self, receiver: Receiver<Request>) {
+    fn run(&mut self, receiver: Receiver<Request>) -> Result<()> {
         loop {
             self.observe();
             match receiver.recv_timeout(Duration::from_millis(25)) {
@@ -319,8 +328,20 @@ impl Router {
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
             }
         }
+        let mut errors = Vec::new();
+        for route in self.routes.values_mut() {
+            if let Some(mut stream) = route.stream.take() {
+                if let Err(error) = stream.close() {
+                    errors.push(format!("{}: {error:#}", route.primary));
+                }
+            }
+        }
         self.routes.clear();
-        let _ = self.notifications.enable(false);
+        if let Err(error) = self.notifications.shutdown() {
+            errors.push(format!("AudioRouter notifications: {error:#}"));
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
     }
     fn command(&mut self, command: Command) -> Result<Value> {
         match command {
@@ -552,6 +573,14 @@ impl Stream {
                     }
                 };
                 let result = pump.run(signal.0, &pump_diagnostics);
+                let cleanup = pump.close();
+                let result = match (result, cleanup) {
+                    (Err(operation), Err(cleanup)) => {
+                        Err(anyhow::anyhow!("{operation:#}; {cleanup:#}"))
+                    }
+                    (Err(error), _) | (_, Err(error)) => Err(error),
+                    (Ok(()), Ok(())) => Ok(()),
+                };
                 if let Err(error) = &result {
                     if let Ok(mut diagnostics) = pump_diagnostics.lock() {
                         diagnostics.terminal_error = Some(format!("{error:#}"));
@@ -591,12 +620,31 @@ impl Stream {
             "thread_exited":self.thread.as_ref().is_some_and(|thread| thread.is_finished())
         }))
     }
+    fn close(&mut self) -> Result<()> {
+        if self.thread.is_none() {
+            return Ok(());
+        }
+        let signal_error = (unsafe { SetEvent(self.stop.0) } == 0).then(|| {
+            format!("AudioRouter stop event failed: {}", unsafe {
+                GetLastError()
+            })
+        });
+        let mut errors: Vec<_> = signal_error.into_iter().collect();
+        if let Some(thread) = self.thread.take() {
+            match thread.join() {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => errors.push(format!("{error:#}")),
+                Err(_) => errors.push("AudioRouter PCM cleanup worker panicked".into()),
+            }
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
 }
 impl Drop for Stream {
     fn drop(&mut self) {
-        unsafe { SetEvent(self.stop.0) };
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+        if let Err(error) = self.close() {
+            eprintln!("AudioRouter PCM cleanup: {error:#}");
         }
     }
 }
@@ -971,11 +1019,73 @@ impl Pump {
 }
 impl Drop for Pump {
     fn drop(&mut self) {
-        if self.render_started {
-            let _ = client_call(&self.render_audio, 11, "render Stop");
+        if let Err(error) = self.close() {
+            eprintln!("AudioRouter client cleanup: {error:#}");
         }
-        if self.capture_started {
-            let _ = client_call(&self.capture_audio, 11, "capture Stop");
+    }
+}
+impl Pump {
+    fn close(&mut self) -> Result<()> {
+        let mut errors = Vec::new();
+        if std::mem::take(&mut self.render_started) {
+            if let Err(error) = client_call(&self.render_audio, 11, "render Stop") {
+                errors.push(format!("{error:#}"));
+            }
         }
+        if std::mem::take(&mut self.capture_started) {
+            if let Err(error) = client_call(&self.capture_audio, 11, "capture Stop") {
+                errors.push(format!("{error:#}"));
+            }
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod cleanup_tests {
+    use super::*;
+
+    #[test]
+    fn audio_router_shutdown_retains_the_pcm_owner_failure() {
+        let mut owner = Owner {
+            sender: None,
+            thread: Some(thread::spawn(|| anyhow::bail!("render Stop rejected"))),
+        };
+        assert!(
+            owner
+                .close()
+                .unwrap_err()
+                .to_string()
+                .contains("render Stop rejected")
+        );
+        assert!(owner.thread.is_none());
+        owner.close().unwrap();
+    }
+
+    #[test]
+    fn pcm_shutdown_signals_and_joins_before_publishing_failed_cleanup() {
+        let stop = Arc::new(Event::open().unwrap());
+        let signal = Arc::clone(&stop);
+        let mut stream = Stream {
+            stop,
+            thread: Some(thread::spawn(move || {
+                assert_eq!(
+                    unsafe { WaitForMultipleObjects(1, &signal.0, 0, u32::MAX) },
+                    0
+                );
+                anyhow::bail!("capture Stop rejected")
+            })),
+            diagnostics: Arc::new(Mutex::new(PumpDiagnostics::default())),
+        };
+        assert!(
+            stream
+                .close()
+                .unwrap_err()
+                .to_string()
+                .contains("capture Stop rejected")
+        );
+        assert!(stream.thread.is_none());
+        stream.close().unwrap();
     }
 }

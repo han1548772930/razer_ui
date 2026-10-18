@@ -706,6 +706,15 @@ impl AppShell {
         this.gamer_room
             .update(cx, |page, cx| page.set_tutorial_seen(gamer_room_seen, cx));
         this.sync_persistence_state(cx);
+        let mut logged_status = String::new();
+        this.subscriptions.push(cx.observe_self(move |this, _| {
+            if logged_status != this.status {
+                logged_status.clone_from(&this.status);
+                if !logged_status.is_empty() {
+                    log::info!(target: "razer_ui::status", "{logged_status}");
+                }
+            }
+        }));
         this.subscriptions
             .push(cx.observe(&this.dashboard_state, |_, _, cx| cx.notify()));
         this.subscriptions.push(cx.subscribe_in(
@@ -1212,7 +1221,7 @@ impl AppShell {
                 cx.background_spawn(async { razer_service::camera::lifecycle::shutdown_all() });
             async move {
                 if let Err(error) = cleanup.await {
-                    eprintln!("camera service cleanup: {error:#}");
+                    log::warn!("camera service cleanup: {error:#}");
                 }
             }
         });
@@ -1373,7 +1382,7 @@ impl AppShell {
                 }
                 WorkspaceEvent::HelpCamoRequested(request) => {
                     if entity.read(cx).accepts_help_camo(request, cx) {
-                        eprintln!("[help-camo] {:?}: current Camo host/storage/serial submission adapter is not implemented", request.command());
+                        log::warn!("[help-camo] {:?}: current Camo host/storage/serial submission adapter is not implemented", request.command());
                     }
                 }
                 WorkspaceEvent::HelpSystemInfoRequested(request) => {
@@ -1386,14 +1395,14 @@ impl AppShell {
                     if entity.read(cx).accepts_ripsaw_monitoring(request, cx) {
                         // Keep the actual source command at the boundary. No
                         // vendor DLL is called and no response is fabricated.
-                        eprintln!("[ripsaw-monitoring] {}: current native monitoring submission/readback is not implemented", request.source_message()["type"]);
+                        log::warn!("[ripsaw-monitoring] {}: current native monitoring submission/readback is not implemented", request.source_message()["type"]);
                     }
                 }
                 WorkspaceEvent::HyperfluxRequested(request) => {
                     if entity.read(cx).accepts_hyperflux(request, cx) {
                         // Keep original intent and state. No successful read,
                         // write, unbind or window lookup is fabricated.
-                        eprintln!("[hyperflux] {:?}: current service/state/window adapter is not implemented", request.operation());
+                        log::warn!("[hyperflux] {:?}: current service/state/window adapter is not implemented", request.operation());
                     }
                 }
                 WorkspaceEvent::KeyboardMappingLoginWarningReadRequested => {
@@ -1437,7 +1446,7 @@ impl AppShell {
                 }
                 WorkspaceEvent::KeyboardMappingInterDeviceConfigureRequested(request) => {
                     if let Err(error) = this.configure_mapping_target(&entity, request, window, cx) {
-                        eprintln!("[inter-device-mapping] {error}");
+                        log::warn!("[inter-device-mapping] {error}");
                     }
                 }
                 WorkspaceEvent::MouseCalibrationRequested(request) => {
@@ -1447,7 +1456,7 @@ impl AppShell {
                     // The current alert has no mounted error paragraph. Retain
                     // the draft/confirmation and report the genuine rejected
                     // local operation without adding source-absent UI text.
-                    eprintln!("[mapping] local Save rejected for {}: {reason:?}", entity.read(cx).identity(cx));
+                    log::warn!("[mapping] local Save rejected for {}: {reason:?}", entity.read(cx).identity(cx));
                 }
                 WorkspaceEvent::MouseIdleRequested { scope, minutes } => {
                     this.write_mouse_idle(entity.clone(), *scope, *minutes, window, cx);
@@ -1551,7 +1560,7 @@ impl AppShell {
                     // The applied local candidate stays a draft; no device write
                     // is claimed and no success is fabricated.
                     let reason = format!("配置文件变更尚未写入设备：{mutation:?}");
-                    eprintln!("[keyboard756 mutation] {reason}");
+                    log::warn!("[keyboard756 mutation] {reason}");
                     this.status = reason;
                     cx.notify();
                 }
@@ -1816,7 +1825,7 @@ impl AppShell {
         });
         self.pairing.update(cx, |page, cx| {
             if let Err(error) = page.apply_device_info(device.clone(), window, cx) {
-                eprintln!("[pairing initialization] {error}");
+                log::warn!("[pairing initialization] {error}");
             }
         });
         if let Some(all_masters) = all_masters {
@@ -1829,7 +1838,7 @@ impl AppShell {
     /// Dashboard `chromaApp` uses policy=5: a named independent Chroma window.
     pub(super) fn open_chroma_window(&mut self, cx: &mut Context<Self>) {
         if let Err(error) = self.try_open_chroma_window(cx) {
-            eprintln!("[chroma window] {error}");
+            log::warn!("[chroma window] {error}");
         }
     }
     pub(super) fn try_open_chroma_window(&mut self, cx: &mut Context<Self>) -> Result<(), String> {
@@ -2327,7 +2336,7 @@ impl AppShell {
             .cloned();
         if !valid || profile.is_none() {
             if let Some(error) = &self.storage_error {
-                eprintln!("Mouse polling profile cannot be persisted: {error}");
+                log::warn!("Mouse polling profile cannot be persisted: {error}");
             }
             workspace.update(cx, |workspace, cx| {
                 workspace.finish_mouse_polling(scope, field, hz, None, cx);
@@ -2708,10 +2717,10 @@ impl AppShell {
                     Err(error) => {
                         match &product {
                             Some(ProductSave::MousePolling(_)) => {
-                                eprintln!("Mouse polling profile persistence failed: {error}");
+                                log::warn!("Mouse polling profile persistence failed: {error}");
                             }
                             Some(ProductSave::MouseLegacyDpi(_)) => {
-                                eprintln!("Mouse DPI profile persistence failed: {error}");
+                                log::warn!("Mouse DPI profile persistence failed: {error}");
                                 this.status = format!("DPI 本地保存失败：{error}");
                             }
                             Some(ProductSave::MouseDpiStages(_)) => {
@@ -2845,7 +2854,7 @@ impl AppShell {
                     match mouse_dpi_70::prepare_mapping_document(device, &macros) {
                         Ok(()) => macro_devices.push(device.clone()),
                         Err(error) => {
-                            eprintln!("Saved macro mapping preparation failed: {error:#}")
+                            log::warn!("Saved macro mapping preparation failed: {error:#}")
                         }
                     }
                 }
@@ -3089,7 +3098,7 @@ impl AppShell {
                 shell.resource_exit_task = None;
                 if let Err(error) = result {
                     shell.status = format!("资源服务清理失败：{error:#}");
-                    eprintln!("[resource shutdown] {error:#}");
+                    log::warn!("[resource shutdown] {error:#}");
                 }
                 if shell.close_requested {
                     shell.continue_save_queue(true, cx);
@@ -3642,7 +3651,7 @@ impl Render for AppShell {
                                     .tooltip(resource_errors.first().cloned().unwrap_or_default())
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         if let Err(error) = razer_assets::retry_resources(cx) {
-                                            eprintln!("资源重试失败：{error}");
+                                            log::warn!("资源重试失败：{error}");
                                         }
                                         if let Location::Device(key) = &this.location
                                             && let Some(workspace) = this

@@ -59,6 +59,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+#if AppArch == "x64"
+Name: "hardwaremonitor"; Description: "Enable local CPU and GPU hardware monitoring (requires administrator approval)"
+#endif
 
 [Files]
 Source: "{#PayloadDir}\razer_ui.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -126,6 +129,44 @@ begin
     Result := 'The installation or resource-cache directory contains a link or a file. Choose an ordinary writable directory.';
 end;
 
+function RunHardwareDriverAction(const Parameters: String): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := ShellExec('runas', ExpandConstant('{app}\razer_ui.exe'), Parameters,
+    ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  if Result then
+    Result := ResultCode = 0;
+  if not Result then
+    Log('Hardware monitoring installation command failed or was cancelled. Code: ' + IntToStr(ResultCode));
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  DriverInstalled: Cardinal;
+begin
+#if AppArch == "x64"
+  if CurStep <> ssPostInstall then
+    Exit;
+  if WizardIsTaskSelected('hardwaremonitor') then
+  begin
+    if not RegWriteDWordValue(HKCU, 'Software\Razer UI', 'HardwareMonitorInstalled', 2) then
+      RaiseException('Hardware monitoring setup could not register its pending cleanup.');
+    if not RunHardwareDriverAction('--install-hardware-driver') then
+      RaiseException('Hardware monitoring could not be installed. No successful hardware setup has been recorded.');
+    if not RegWriteDWordValue(HKCU, 'Software\Razer UI', 'HardwareMonitorInstalled', 1) then
+      RaiseException('Hardware monitoring was installed, but its uninstall registration could not be saved.');
+  end
+  else if RegQueryDWordValue(HKCU, 'Software\Razer UI', 'HardwareMonitorInstalled', DriverInstalled)
+    and (DriverInstalled <> 0) then
+  begin
+    if not RunHardwareDriverAction('--uninstall-hardware-driver') then
+      RaiseException('Hardware monitoring could not be removed. Its installation registration has been kept.');
+    RegDeleteValue(HKCU, 'Software\Razer UI', 'HardwareMonitorInstalled');
+  end;
+#endif
+end;
+
 function InitializeUninstall(): Boolean;
 var
   RegisteredDirectory, KeepCache: String;
@@ -165,7 +206,21 @@ end;
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   CacheDirectory: String;
+  DriverInstalled: Cardinal;
 begin
+  if (CurUninstallStep = usUninstall) and OwnsInstallation then
+  begin
+    if RegQueryDWordValue(HKCU, 'Software\Razer UI', 'HardwareMonitorInstalled', DriverInstalled)
+      and (DriverInstalled <> 0) then
+    begin
+      if not RunHardwareDriverAction('--uninstall-hardware-driver') then
+      begin
+        MsgBox('Hardware monitoring could not be removed. Close applications using it and retry uninstalling. The application files have been kept.', mbError, MB_OK);
+        Abort;
+      end;
+      RegDeleteValue(HKCU, 'Software\Razer UI', 'HardwareMonitorInstalled');
+    end;
+  end;
   if (CurUninstallStep <> usPostUninstall) or not RemoveCachedAssets then
     Exit;
   CacheDirectory := AddBackslash(OwnedInstallDirectory) + '{#CacheRelative}';

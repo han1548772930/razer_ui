@@ -1,11 +1,13 @@
 //! Local Rust panic records; native failfast and abort may bypass this hook.
+mod runtime;
+pub(super) use runtime::Runtime;
 use std::{
     backtrace::Backtrace, fmt::Display, fs::OpenOptions, io::Write, path::Path, sync::Mutex,
     time::SystemTime,
 };
 
 pub(super) fn install_panic_log() {
-    let path = razer_storage::store_path().with_file_name("panic.log");
+    let path = razer_storage::panic_log_path();
     let opened = (|| {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;

@@ -1576,7 +1576,15 @@ def inspect_host(args):
         formats = re.findall(r"^Type = (.*)$", text, re.M)
         record["formats"] = formats
         inno = None
+        setup = None
         if path.suffix.lower() == ".exe" and not any(f in {"zip", "Nsis", "7z"} for f in formats):
+            setup = setup_factory_static_extraction(path.read_bytes())
+            if setup is not None:
+                formats.append("Setup Factory")
+                record["setup_factory"] = {key: value for key, value in setup.items() if key != "files"}
+                record["setup_factory"]["components"] = [
+                    {key: value for key, value in component.items() if key != "data"}
+                    for component in setup["files"]]
             marker = re.search(rb"Inno Setup Setup Data \(([^)\0]+)\)", path.read_bytes())
             if marker:
                 inno, inno_receipt = prepare_inno_analyzer()
@@ -1595,9 +1603,12 @@ def inspect_host(args):
                                         "argv": [a.rel(inno), *argv[1:-1], row["path"]]}
                 if inno_listing.returncode == 0:
                     formats.append("Inno Setup")
-        supported = listing.returncode == 0 and any(f in {"zip", "Nsis", "7z", "Inno Setup"} for f in formats)
+        supported = (setup is not None or listing.returncode == 0 and
+                     any(f in {"zip", "Nsis", "7z", "Inno Setup"} for f in formats))
         if getattr(args, "extract", False) and supported:
-            if inno:
+            if setup:
+                names = [component["name"] for component in setup["files"]]
+            elif inno:
                 names = inno_archive_entries(inno_listing.stdout)
                 record["inno_setup"]["archive_entries"] = names
             else:
@@ -1644,6 +1655,16 @@ def inspect_host(args):
                         raise ValueError("Retained host archive static integrity verification failed")
                 record["retained_outputs_verified"] = True
                 record["extraction_status"] = "retained; identities recorded below"
+            elif setup:
+                for component in setup["files"]:
+                    target = destination / component["name"]
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(component["data"])
+                    if target.stat().st_size != component["bytes"] or a.sha(target) != component["sha256"]:
+                        raise ValueError("Setup Factory static extraction readback differs")
+                record["extraction_exit_code"] = 0
+                record["extraction_status"] = "complete; source-derived static byte decoder"
+                record["extraction_argv"] = ["tools/workspace.py", "inspect-host", "--input", row["path"], "--extract"]
             else:
                 argv = ([str(inno), "-x", "-b", "-q", "-m", "-a", "-o", "-u", "-d" + str(destination), str(path)] if inno else
                         [str(tool), "x", "-y", "-aou", "-o" + str(destination), str(path)])
@@ -1696,6 +1717,18 @@ def inspect_host(args):
                     "declared_entries": len(expected_entries), "captured_entries": len(captured_entries),
                     "missing": sorted(expected_entries - captured_entries), "unexpected": sorted(captured_entries - expected_entries),
                     "complete": expected_entries == captured_entries}
+            if setup:
+                actual_names = {Path(artifact["path"]).relative_to(destination.relative_to(a.ROOT)).as_posix()
+                                for artifact in record["files"]}
+                if actual_names != set(names):
+                    raise ValueError("Setup Factory extraction file closure differs")
+                expected = {component["name"]: component for component in setup["files"]}
+                for artifact in record["files"]:
+                    name = Path(artifact["path"]).relative_to(destination.relative_to(a.ROOT)).as_posix()
+                    if any(artifact[key] != expected[name][key] for key in ("bytes", "sha256")):
+                        raise ValueError("Setup Factory extracted bytes differ from decoded source: " + name)
+                record["setup_factory"]["archive_entry_closure"] = {
+                    "declared_entries": len(names), "captured_entries": len(actual_names), "complete": True}
             record["input_bytes_unchanged"] = path.stat().st_size == row["bytes"] and a.sha(path) == row["sha256"]
             if not record["input_bytes_unchanged"]:
                 raise ValueError("Host container changed during static extraction")
@@ -1848,7 +1881,7 @@ def extract_asar():
 
 def add_commands(parsers):
     local = parsers.add_parser("audit-host-local", help="Trace current local host UI, storage, service and native source chains without executing targets")
-    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info"])
+    local.add_argument("--query", required=True, choices=["dynamic-lighting", "macro-recorder", "screen-color", "help-system-info", "product-chroma-observation"])
     installed = parsers.add_parser("acquire-installed", help="Read-only snapshot of installed Razer files and public official Service Worker resources")
     installed.add_argument("--app-engine-root", required=True)
     installed.add_argument("--user-data-root", required=True)
@@ -3044,6 +3077,293 @@ def retain_global_shortcut_storage_lifetime(audit):
         "target_execution": False, "runtime_acceptance": "unverified"}
 
 
+def native_ascii_pointer_table(table, strings, *, image_base, strings_rva, count):
+    """Decode bounded x64 string pointers from already byte-verified regions."""
+    if not 1 <= count <= 4096 or len(table) != count * 8:
+        raise ValueError("Native ASCII pointer table length differs")
+    values = []
+    for index, (pointer,) in enumerate(struct.iter_unpack("<Q", table)):
+        rva = pointer - image_base
+        offset = rva - strings_rva
+        if not 0 <= offset < len(strings):
+            raise ValueError("Native ASCII pointer is outside its retained string region")
+        end = strings.find(b"\0", offset, min(offset + 256, len(strings)))
+        if end <= offset:
+            raise ValueError("Native ASCII string is empty, unterminated or overlong")
+        try:
+            name = strings[offset:end].decode("ascii")
+        except UnicodeDecodeError as error:
+            raise ValueError("Native ASCII string has non-ASCII bytes") from error
+        values.append({"index": index, "pointer": hex(pointer), "string_rva": hex(rva), "name": name})
+    if len({row["name"] for row in values}) != count:
+        raise ValueError("Native ASCII table contains duplicate names")
+    return values
+
+
+def retain_mapping_execution_dependencies(audit):
+    """Retain actual type identities and reviewed dispatch/lookup dependencies."""
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    identities = (
+        ("keyboard_identity_vtable", 0x2f0438, (0x101a40, 0x1007c0, 0x10cc20, 0x10cc50,
+            0x10ccc0, 0x10cd90, 0xfb7a0, 0x10cfe0, 0x10d180,
+            0x100530, 0x10d320, 0x10d330, 0x10d340)),
+        ("mouse_identity_vtable", 0x2f05d8, (0x102730, 0x1007c0, 0x10d900, 0x10d930,
+            0x10d990, 0x10da10, 0xfb7a0, 0x10dbf0, 0x10dd90,
+            0x10dfd0, 0x10e030, 0x10e0a0, 0x10e110)),
+        ("macro_data_vtable", 0x2ecbe8, (0xa6f80, 0xf6a70, 0xf6f60, 0xf7000, 0xf8890)),
+    )
+    functions = (0xfbb74, 0xfbc28, 0xee0f1, 0xee5a1, 0xef470,
+        0xe72fa, 0xe75a0, 0xe8518, 0xe871e, 0xe8888, 0xe9a2c,
+        0xf8e3e, 0xf8f74, 0xf9118, 0xf92bc, 0xf9460, 0xf9604,
+        0xf9c96, 0xfa4d2, 0xfa742, 0xfa90e,
+        0x10bc0d, 0x10bfed, 0x10cbc4, 0x10d8a8, 0x10d3d2, 0x10d3f8,
+        0xed10b, 0xed512, 0xed8d2, 0xf2ac9, 0xf2f76, 0xf1dc1, 0xf38eb, 0xf36f2,
+        0xf49f8, 0x1020a8, 0x10215c,
+        0x797a8, 0xad38c, 0xae7e2, 0x858fe, 0x85704, 0x8ab6a,
+        0x893dc, 0x8ca44, 0xae010, 0x85ea8, 0x12ee96, 0xa2f1a, 0xa32e6,
+        0xf68c0, 0xf69c6, 0xf7066, 0x5cf60, 0x562c8,
+        0x57f70, 0x5804c, 0x580b0, 0x58192, 0x582e0, 0x583bc,
+        0xf6bd0, 0xf7106, 0xf86ae, 0xf8bd4, 0xb0ed0, 0xecee3,
+        0x127060, 0x1272ea, 0x127490, 0x127574, 0x12772a, 0x127760,
+        0x127892, 0x127aa0, 0x1283a0, 0x128692,
+        0x12a8ca, 0x12aad4, 0x12ab1e, 0x12ab8e, 0x12af54,
+        0x12b4d8, 0x12b55a, 0x12b5b0, 0x12bde4, 0x12be6e,
+        0x12c8f0, 0x12ca5c, 0x12cb32, 0x12d770, 0x12dcf0,
+        0x12ea6c, 0x12eb04, 0x12eba2, 0x12ed24, 0x12edae, 0x12ee42,
+        0x12f292, 0x12f312, 0x12f3ce, 0x12fb30, 0x12fd66, 0x12fe22, 0x12ff70,
+        0x130b68, 0x130bba, 0x130c08, 0x130c1a, 0x130cf8, 0x130dc6, 0x1314d0,
+        0x126902, 0x126a80, 0x126b3e, 0x126c80, 0x1345aa, 0x134640, 0x134674,
+        0x11a950, 0x11a922, 0x11aa78, 0x11c510, 0x11cbd3)
+    regions = ({"role": "mapping_type_pointers", "rva": 0x2ed830, "bytes": 43 * 8},
+        {"role": "mapping_type_strings", "rva": 0x2e2b54, "bytes": 0xa90},
+        {"role": "macro_movement_pointers", "rva": 0x2ecd20, "bytes": 4 * 8},
+        {"role": "macro_movement_strings", "rva": 0x2e2b03, "bytes": 0x820},
+        {"role": "macro_movement_driver_flags", "rva": 0x2f28e0, "bytes": 12},
+        {"role": "macro_movement_coordinate_scale", "rva": 0x2f2840, "bytes": 4})
+    retained = audit.native_slice(original, (), depth=0,
+        rvas=tuple(sorted(set(functions) | {target for _, _, targets in identities for target in targets})),
+        regions=regions + tuple({"role": name, "rva": rva, "bytes": 8 * len(targets)}
+            for name, rva, targets in identities))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Current mapping execution dependencies are unavailable")
+    data = {row["role"]: bytes.fromhex(row["raw_hex"]) for row in retained["verified_data_regions"]}
+    base = int(retained["image_base"], 16)
+    types = native_ascii_pointer_table(data["mapping_type_pointers"], data["mapping_type_strings"],
+        image_base=base, strings_rva=0x2e2b54, count=43)
+    expected = ("analogJoystick", "analogJoystickV2", "analogKey", "analogStick", "analogXboxGamepad",
+        "analogXboxGamepadV2", "audio", "cascade", "clipboard", "controlPod", "coolingPad", "copyText",
+        "delay", "disabled", "display", "doubleMapping", "dpad", "external", "hypershift", "joystick",
+        "joystickInput", "keyboard", "launch", "loop", "macro", "mode", "modtap", "mouse", "mouseMove",
+        "multi", "otfs", "phasedMacro", "randomDelay", "rapidTrigger", "razerEvent", "razerKey",
+        "streamController", "system", "triggers", "turbo", "unsupported", "xboxGamepad", "xboxInput")
+    if tuple(row["name"] for row in types) != expected:
+        raise ValueError("Current mapping type enum differs from reviewed dispatch")
+    movement_types = native_ascii_pointer_table(data["macro_movement_pointers"],
+        data["macro_movement_strings"], image_base=base, strings_rva=0x2e2b03, count=4)
+    if tuple(row["name"] for row in movement_types) != ("none", "absolute", "foreground", "relative"):
+        raise ValueError("Current macro movement type enum differs from reviewed execution")
+    movement_flags = struct.unpack("<III", data["macro_movement_driver_flags"])
+    movement_scale, = struct.unpack("<f", data["macro_movement_coordinate_scale"])
+    if movement_flags != (1, 1, 3) or movement_scale != 65535.0:
+        raise ValueError("Current macro movement constants differ from reviewed execution")
+    dispatch = []
+    for name, rva, targets in identities:
+        actual = tuple(pointer - base for pointer, in struct.iter_unpack("<Q", data[name]))
+        if actual != targets:
+            raise ValueError("Current mapping identity virtual dispatch differs: " + name)
+        dispatch.append({"role": name, "table_rva": hex(rva),
+            "targets": [{"offset": index * 8, "rva": hex(target)} for index, target in enumerate(actual)]})
+    assembly_proofs = (
+        (0x12a8ca, ((0x12aa3a, "41807e2800"), (0x12aa4d, "01ed"),
+            (0x12aa54, "bd01000000"), (0x12aa95, "896c2428")),
+            "Final callback status is 1 for failed execution, otherwise twice the stop-event state: 0 completed or 2 cancelled. Hex-Rays omits these call arguments"),
+        (0x130dc6, ((0x131333, "440fafcd"), (0x131354, "0fafcb"),
+            (0x131375, "f30f5bd2"), (0x131387, "f3440f2cc4"),
+            (0x13138c, "f30f5bc3"), (0x1313a2, "f3440f2cc9")),
+            "Foreground coordinates use wrapping int32 multiplication, float32 scaling and two truncating float-to-int32 conversions. The complete assembly resolves the local-variable-allocation warning"),
+    )
+    captured = {int(row["capture"]["rva"], 16): row["capture"] for row in retained["complete_functions"]}
+    verified_assembly = []
+    for owner, instructions, semantics in assembly_proofs:
+        actual = {int(row["rva"], 16): row for row in captured[owner]["assembly"]}
+        if any(actual.get(rva, {}).get("bytes") != raw for rva, raw in instructions):
+            raise ValueError("Current macro execution assembly differs at owner " + hex(owner))
+        verified_assembly.append({"owner_rva": hex(owner), "semantics": semantics,
+            "instructions": [actual[rva] for rva, _ in instructions]})
+    return {**provenance, "native": retained, "types": types, "verified_identity_dispatch": dispatch,
+        "movement_types": movement_types, "movement_driver_flags": movement_flags,
+        "movement_coordinate_scale": movement_scale, "verified_execution_assembly": verified_assembly,
+        "reviewed_semantics": [
+            "fbb74 compares exactly 43 case-sensitive type names; unmatched text produces index43. Captured bytes, not a presumed enum order, bind parser and runtime dispatch",
+            "ee5a1 accepts input types2,3,9,10,17,21,27,34,35,36 and validates the constructed object's virtual validity predicate",
+            "ee0f1 adds hypershift/gamemode/otfs, DKP or SnapTap metadata and validates interrupt input objects; break-form and duplicate interrupt identities are rejected",
+            "e8888 parses required input/output objects, rejects duplicate canonical input serialization, checks phasedMacro make/break compatibility and can remove source-equal input/output mappings",
+            "f8e3e chooses the lookup bucket in gamemode, otfs, dkp, snaptap, ordinary priority, always including hypershift. Bucket identity is vtable+56, not raw input JSON",
+            "Keyboard vtable+40 emits type/scancode/flag/extraInformation/modifiers plus present delayInMs/releaseAfterMs/unitId; mouse emits type/id/data/extraInformation/modifiers and present unitId",
+            "Keyboard vtable+56 preserves the complete flag while vtable+64 clears break bit0; mouse vtable+64 combines each button make/break pair into one mask, while wheel identities use vtable+56 unchanged",
+            "Source equality vtable+32 compares keyboard timing presence and values, modifiers and optional unit; mouse compares packed id/data, modifiers and optional unit. It is distinct from full serialized identity",
+            "797a8 selects ae7e2 only for a global mapping with global-data version>=2; otherwise ad38c dispatches. Device cases cascade,dpad,joystick,phasedMacro,xboxGamepad are absent from the global>=2 dispatcher",
+            "The source unsupported output parser f49f8 retains the serialized output object. Only the source dispatch default invokes 858fe/85704; unresolved Rust handlers cannot be reclassified as unsupported",
+            "Multi executes outputs in list order; keyboard goes through ae010, other outputs clone the mapping, replace its output and re-enter797a8. It stops on mapping allocation failure",
+            "893dc macro flags0,2,4 insert by input vtable+64 identity, flag1 erases that key, and flag3 inserts then invokes89968 after clearing byte912; actual macro scheduling continues through the device delegate",
+            "ae010 routes keyboard through KeyboardExecutor12ee96 when present, otherwise through driver-thread10f582 with fallback callback a3910. Mouse output85ea8 uses that driver thread path",
+            "f68c0 owns MappingEngineMacroDataThread and synchronized macro maps; f7066 queries the current compiled map by GUID. Publication, parser state and runtime execution are separate boundaries",
+            "f6a70 only queues publication. f6bd0 swaps staging into the live map under its exclusive lock and queues changed-GUID notification only after all of f7106 succeeds; failure preserves the prior live map",
+            "f7106 requires an array of unique nonempty GUIDs with appEngine and hash, reuses the live object for an equal hash, otherwise verifies the hash and movement enum, and copies the required events array. Individual events are parsed during execution, not publication",
+            "128692 rejects a missing or empty macro and rejects recursion at 100 live macro frames. Repeat=0 marks indefinite repetition; nested completion retains the outer state. 12b5b0 checks cancellation and prior output failure before every step",
+            "ecee3 parses audio,clipboard,delay,keyboard,launch,loop,macro,mouse,mouseMove,randomDelay events; nested macro flags>=2 fail. 12be6e forwards the actual accepted boolean to12c8f0; a consecutive keyboard event waits10000 microseconds before enqueueing",
+            "12cb32 owns one optional loop frame: a start with nonzero repeat replaces its start/count; an end records the continuation and advances to the array end. 12b5b0 repeats that range or resumes its continuation. It does not implement a general nested-loop stack",
+            "12ca5c tracks successful make outputs by release-neutral identity and removes matching breaks. At top-level completion12a8ca clones each remaining held output, calls verified vtable+96 to form a break and sends it through130c1a/130cf8 before clearing held state",
+            "12a8ca ignores release-send return values, clears held state, requests endpoint close, releases the relative-motion lease and requests keyboard stop. Its final delegate status is0 for completed,1 for failed,2 for cancelled; this status does not prove cleanup delivery. Complete assembly supplies arguments omitted by Hex-Rays",
+            "127574 signals the stop event before queueing shutdown. 127760/12d770 wait for endpoint close completion, destroy that endpoint and request keyboard executor shutdown before posting owner completion;127060 joins the execution thread before releasing fields",
+            "12f312 derives repeat delay from SPI_GETKEYBOARDDELAY as250*n+250ms and repeat interval from SPI_GETKEYBOARDSPEED as truncated1000/(n*0.887+2.5), with source defaults250ms/30ms on unavailable settings",
+            "12f3ce retains pressed keys, timing option presence, active output and generation tick. 12fb30 subtracts250ms from auto-release counters and releases only below zero. 12ff70 rejects stale output/tick callbacks; smart-stop ends repeating without inventing a break event",
+            "130c1a queues through the dedicated keyboard executor when present; otherwise130cf8 uses a ready driver endpoint or11c510 SendInput fallback. Queue acceptance is distinct from final driver/OS delivery and cleanup results",
+            "130dc6 uses the active macro movement enum: absolute passes coordinates, foreground captures the actual foreground rectangle and monitor metrics for a movement run, relative first captures an origin/lease and later sends deltas. Each macro repetition resets the relative origin",
+            "1314d0 uses actual driver flag bytes1,1,3 for absolute,foreground,relative and forwards asynchronous completion. The11cbd3 OS fallback requires SendInput==1; its absolute/foreground flags are0x8001 and relative flags1, without an invented VIRTUALDESK flag"],
+        "decompiler_limitations": [
+            "130dc6 reports local variable allocation failure; coordinate arithmetic was checked against the complete assembly and its actual constant bytes",
+            "12a8ca omits final delegate call arguments in pseudocode; retained instruction proofs establish status computation and stack argument placement",
+            "Some other captured helper signatures and callback arguments remain incomplete in Hex-Rays; their full assembly is retained and unresolved call chains remain below"],
+        "remaining_closure": [
+            "Full per-device/global input lookup priority, all product/accessory constructors and matching predicates",
+            "Macro storage transaction/broadcast, nested macro/loop/turbo/phased-macro scheduling, interruption and complete release of held outputs",
+            "Every output executor, keyboard timing/smart-stop state, driver discovery/capability wiring and completion/fallback propagation",
+            "Enable/disable manager virtual calls, live mode producers and mode observers across all service/device owners",
+            "The captured profile/global-shortcut storage bodies e75a0/e9a2c still require full semantic review; capture alone is not implementation"],
+        "source_chain_complete": False, "independent_execution_connected": False,
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def retain_mapping_global_mode(audit):
+    """Retain the live mode service, its query, producers and owned cleanup."""
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    retained = audit.native_slice(original, ("getGlobalMode",), depth=0,
+        rvas=(0x1e454, 0x1000, 0x1060, 0x13340, 0x13530, 0x4b740,
+              0xc352a, 0xc3710, 0xc50c0, 0xc0124, 0xbfe62, 0xbec9a,
+              0xbeb94, 0xbec0a, 0xbf868, 0xbf8bc, 0xbf92e, 0xbf9dc,
+              0xc23f4, 0xc249c, 0xc263a, 0xc27c0, 0xc29f0, 0xc4e80,
+              0xc033e, 0xc05e2, 0xc07ce, 0xc0c22, 0xc0e76, 0xc1602,
+              0xc1c10, 0xc1a0a, 0xc1d90, 0xc234e,
+              0xbf2c6, 0xbf3f4, 0xbf4c8, 0xbf575, 0xbf602, 0xbf642,
+              0xbf676, 0xbf716, 0xbf784, 0xbf82c, 0xbf33a, 0xbf37e,
+              0x5597d, 0x55a1a, 0x55a5e,
+              0xc3e44, 0xc4030, 0xc40ea, 0xc42d0, 0xc4a58, 0xc4cd0,
+              0x5e230, 0x5e310, 0x5e3e0, 0x5e460, 0x8ab6a,
+              0x1bf9f0, 0x1b44f0, 0x1b4db0, 0x1b4f10, 0x1b5020),
+        regions=({"role": "mapping_engine_global_mode_dispatch", "rva": 0x2df010, "bytes": 832},))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Current mapping global-mode native owners are unavailable")
+    table, = retained["verified_data_regions"]
+    pointer, = struct.unpack_from("<Q", bytes.fromhex(table["raw_hex"]), 824)
+    if pointer - int(retained["image_base"], 16) != 0x13340:
+        raise ValueError("Current getGlobalMode virtual dispatch differs")
+    return {**provenance, "native": retained,
+        "verified_dispatch": {"vtable_rva": "0x2df010", "offset": 824,
+            "target_rva": "0x13340", "actual_file_pointer": hex(pointer)},
+        "query_chain": [
+            "getGlobalMode -> 1e454/1000 module-static MappingEngine singleton -> vtable+824 13340 -> engine-thread 13530",
+            "13530 requires its DeviceModeServiceThread at instance+200 -> c352a queues c3710 -> c0124 reads that service instance",
+            "Missing engine thread, mode thread or mode service returns failure; no empty/default success is synthesized",
+            "c0124 emits hypershift:true only for service byte+88 and otfs:true only for byte+89; absent false keys are source output behavior",
+            "bfe62 iterates the owned global action map, emitting globalmode only when nonempty; bec9a writes guid/scope/input/output strings and timeTick as a decimal string",
+            "c50c0 returns through the retained owner thread and export callback adapter 4b740"],
+        "ownership_and_producers": [
+            "c263a -> c27c0 allocates a 96-byte DeviceModeService; bf868 initializes the two maps and sets both mode bytes false",
+            "5e230/5e310 own mapping-engine hypershift activation/deactivation; c3e44/c4030 publish through c07ce on the mode thread",
+            "5e3e0/5e460 own OTFS activation/deactivation; c40ea/c42d0 publish through c0c22 on the mode thread",
+            "Repeated same-value boolean notifications log a warning but still update and notify observers",
+            "8ab6a HandleModeOnDeviceThread accepts source scope<3 and flag<2, obtains a pooled action, copies device GUID, scope and polymorphic input/output strings and uses the actual tick or source clock when zero",
+            "8ab6a sends scope0 through c4a58/c4cd0 to global c1c10; nonzero scope goes through device-mode notification instead",
+            "c1c10 keys global actions by device GUID, input identity and the current hypershift byte; enabling inserts without replacing an existing equal key, disabling removes the matching key",
+            "bf575 compares the two string byte sequences and then the hypershift byte; globalmode iteration preserves this ordered-map traversal",
+            "c29f0 clears its service before shutdown completion; c4e80/bf8bc release global actions, device entries, observers and the action pool; c249c stops the owning thread and clears its singleton"],
+        "replacement_boundary": "GlobalMode belongs to the live mapping execution service. OS properties, persisted macros and an unpopulated Rust map cannot replace the source query without wiring actual event producers and cleanup.",
+        "limitations": [
+            "This bounded slice does not close all polymorphic input/output formatters or every product mapping action producer",
+            "Several Hex-Rays helper signatures infer truncated pointer parameters; complete captured assembly, not those inferred C prototypes, governs any future port",
+            "No independent Rust mapping-execution owner is connected by this evidence update; the production DLL dependency is not removed",
+            "No native export, installed service or real device was executed"],
+        "source_chain_complete": False, "target_execution": False, "runtime_acceptance": "unverified"}
+
+
+def retain_mapping_macro_input(audit):
+    """Current recorder hook bodies, dispatch tables, clocks and joined teardown."""
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    dispatch = (
+        ("recorder_service_vtable", 0x2ea570,
+         (0xd9680, 0xd7040, 0xd7170, 0xd72b0, 0xd7020, 0xd7030, 0xd94e0, 0xd9500, 0xd95c0)),
+        ("window_hook_destructor", 0x2ea5b8, (0xdaba0,)),
+        ("recorder_wall_clock", 0x3872a0, (0x1a8750,)),
+        ("recorder_interpolation_clock_initializer", 0x387250, (0x1a8c00,)),
+    )
+    retained = audit.native_slice(original, (
+        "hasMacroRecordingStarted", "startMacroRecording", "stopMacroRecording",
+        "getMacroRecordingMode", "registerMacroRecorderEvent", "unregisterMacroRecorderEvent",
+        "setMacroRecorderEventCallback"), depth=0,
+        rvas=(0x112e0, 0x114a0, 0x11560, 0x11710, 0x117d0, 0x11990, 0x11a50, 0x11c40,
+              0xd8000, 0xd81c0, 0xd833c, 0xd84e0, 0xd8654, 0xd8810, 0xd897a, 0xd8b60,
+              0xd77cc, 0xd7af8, 0xd7c80, 0xd7ea0, 0xd8d90, 0xd93f4,
+              0xd943e, 0xd947c, 0xd9680, 0xd96a8, 0xd97e8, 0xdaba0,
+              0xd6e5c, 0xd6f8a, 0xd7020, 0xd7030, 0xd703a,
+              0xd7040, 0xd70e0, 0xd7170, 0xd7210, 0xd72b0, 0xd7350, 0xd73ca,
+              0xd94e0, 0xd9500, 0xd95c0, 0xd9baa, 0xd9d60, 0xd99e8, 0xda110,
+              0xda3e0, 0xda640, 0xda9c0, 0xdab00, 0x498b0, 0x49aa0, 0x49ca0,
+              0x119b14, 0x1b8670, 0x1b88e0, 0x1a9710, 0x121890,
+              0x1b7f30, 0x1b7f50, 0x1a8750, 0x1a8c00, 0x1a8c30, 0x1a8d30,
+              0x1a9170, 0x1f1000, 0x1f0d40, 0x1b4e20),
+        regions=tuple({"role": name, "rva": rva, "bytes": 8 * len(targets)}
+                      for name, rva, targets in dispatch))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Current macro input owner capture is unavailable")
+    base = int(retained["image_base"], 16)
+    for region, (name, _, expected) in zip(retained["verified_data_regions"], dispatch, strict=True):
+        actual = tuple(pointer - base for pointer in struct.unpack(
+            "<" + "Q" * len(expected), bytes.fromhex(region["raw_hex"])))
+        if actual != expected:
+            raise ValueError("Current macro input dispatch differs: " + name)
+    return {**provenance, "native": retained,
+        "actual_input": "d9d60 installs WH_KEYBOARD_LL13/WH_MOUSE_LL14 on the owned Windows message thread; debugger-present source branch installs keyboard only",
+        "lifecycle": [
+            "Start rejects duplicate mode, resets the shared previous timestamp, retains supplied mode only after hook installation succeeds, then publishes started kind0",
+            "Partial hook failure captures actual GetLastError, formats source errorCode/errorString and releases acquired hooks before rejected completion",
+            "hasMacroRecordingStarted returns the actual active flag; false is a valid state. getMacroRecordingMode fails while inactive rather than returning a default mode",
+            "da110 unhooks both inputs, flushes the remaining array, publishes stopped kind1 and clears active mode before completion",
+            "d97e8 clears the callback singleton, posts disable and a queue barrier, then 1b8670/1b88e0/1a9710 stop and join the hook thread before releasing weak context and buffers"],
+        "input_semantics": [
+            "da3e0 accepts ordinary/system key down and up; unknown messages remain signed32 numeric action values, and injected/repeated input is not filtered",
+            "da640 names move, left/right/middle down/up, wheel and horizontal wheel only; XBUTTON messages remain numeric. Coordinates, mouseData, key fields and flags are signed32 JSON integers",
+            "Both hooks use the same previous wall microsecond timestamp; first delta is0, subsequent deltas retain source signed32 truncation",
+            "da9c0 flushes when item_count exceeds threshold; mousemove threshold1000 gives1001 items, all other input uses0 and flushes preceding buffered moves",
+            "Normal item events retain FILETIME-epoch wall microseconds from1a8750, interpolated through the same monotonic clock and resampled after60 million microseconds",
+            "Start/stop and the final stop-flush batch retain monotonic1b7f50 ticks instead. Arrival Unix milliseconds are separate Rust delivery metadata",
+            "49ca0 assembly passes kind2 in ecx, JSON array pointer in rdx and actual tick in r8; decompiler-inferred wrapper signatures are not used as ABI evidence"],
+        "independent_implementation": [audit.families.identity(audit.a.ROOT / name) for name in (
+            "crates/razer-platform/src/input/macro_recorder.rs",
+            "crates/razer-platform/src/platform/windows/macro_recorder.rs",
+            "crates/razer-platform/src/platform/windows/input_clock.rs",
+            "crates/razer-service/src/runtime/windows/macro_recording.rs",
+            "crates/razer-service/src/mapping/recorder.rs",
+            "crates/razer-service/src/mapping/recorder_owner.rs",
+            "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_publisher.rs")],
+        "shared_query_owner": [
+            "The recording actor retains its one ServiceClient through stop, restoration and child teardown; a weak registry exposes only that process's real MacroRecordingMode query",
+            "PID756 restore publication queries the retained recording owner instead of constructing or querying a recorder in its separate mapping worker",
+            "Each observation requests the live input thread mode; there is no copied mode cache or invented inactive default",
+            "Shutdown rejects new borrowed observations before cleanup; an in-flight query serializes with teardown, and its synchronization-cell borrow cannot retain the child beyond the owning actor",
+            "Registry locks do not span transport calls or suppression acknowledgement waits; only the matching owner can retire its registry slot"],
+        "production_input_exports_removed": ["hasMacroRecordingStarted", "startMacroRecording",
+            "stopMacroRecording", "getMacroRecordingMode", "registerMacroRecorderEvent",
+            "unregisterMacroRecorderEvent", "setMacroRecorderEventCallback"],
+        "cleanup_semantics": "Rust reports UnhookWindowsHookEx failure and retains failed handles on ordinary Stop; owner shutdown joins the hook thread and reports cleanup failure instead of claiming success",
+        "limitations": [
+            "The independent input recorder does not replace mapping suppression, GlobalMode producers, macro publication/execution, product OTFM input or device write-back",
+            "Those remaining production mapping DLL calls are unfinished implementation; no complete DLL or macro-page replacement is claimed",
+            "Generic native scheduling and JSON allocator helpers are not reimplemented byte-for-byte; retained complete owners define input/state/event/lifecycle semantics",
+            "No actual hook installation, injected input, vendor export, application window or device was executed"],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
 def retain_philips_measurement_lifetime(audit):
     """Preserve current callback ABIs and the owned device removal/join chain."""
     original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
@@ -3446,6 +3766,9 @@ def audit_host_macro_recorder(args):
                 rvas=(0x19760, 0xc130, 0xcde0, 0xd1b0),
                 regions=({"role": "route_device_handler_vtable", "rva": 0x995c0, "bytes": 48},))}
         report["native_global_shortcut_clock"] = retain_global_shortcut_clock(audit)
+        report["native_mapping_global_mode"] = retain_mapping_global_mode(audit)
+        report["native_mapping_execution_dependencies"] = retain_mapping_execution_dependencies(audit)
+        report["native_macro_input"] = retain_mapping_macro_input(audit)
         shortcut_host = verified_host_owners(audit, ("electron/modules/mapping_engine/win/index.js",))
         report["complete_host_sources"].extend(shortcut_host.values())
         shortcut_original = shortcut_host["electron/modules/mapping_engine/win/index.js"]["original"]
@@ -3500,9 +3823,10 @@ def audit_host_macro_recorder(args):
     report["snapshot_stable"] = not report["changed_during_query"]
     report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
     destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
-    previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-    previous[args.query.replace("-", "_")] = report
-    a.save(destination, previous)
+    with a.index_lock(destination.with_suffix(".lock")):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous[args.query.replace("-", "_")] = report
+        a.save(destination, previous)
     print(json.dumps({"receipt": a.rel(destination), "query": args.query,
                       "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
     if report["failures"]:
@@ -3646,9 +3970,10 @@ def audit_host_screen_color(args):
     report["snapshot_stable"] = not report["changed_during_query"]
     report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
     destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
-    previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-    previous["screen_color"] = report
-    a.save(destination, previous)
+    with a.index_lock(destination.with_suffix(".lock")):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous["screen_color"] = report
+        a.save(destination, previous)
     print(json.dumps({"receipt": a.rel(destination), "query": args.query,
                       "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
     if report["failures"]:
@@ -3698,6 +4023,44 @@ def help_system_native_declaration(manifest, original):
             or row.get("url") != original["url"]):
         raise ValueError("Current system manifest BladeDLL differs from acquired bytes")
     return row
+
+
+def help_system_report_constants(raw, native):
+    """Retain referenced data bytes, not just names from a decompiler listing."""
+    import uuid
+    pe = inspect_pe(raw)
+    base = int(pe["image_base"], 16)
+    property_guid = uuid.UUID("a45c254e-df1c-4efd-8020-67d146a850e0").bytes_le
+    expected = {
+        "memory_scale": struct.pack("<d", 1.0 / 1024.0),
+        "hardware_ids": property_guid + struct.pack("<I", 3),
+        "device_driver": property_guid + struct.pack("<I", 11),
+        "device_manufacturer": property_guid + struct.pack("<I", 13),
+        "display_adapter_interface": uuid.UUID("5b45201d-f2f2-4f3b-85bb-30ff1f953599").bytes_le,
+        "monitor_interface": uuid.UUID("e6f07b5f-ee97-4a90-b076-33f57bf4eaa7").bytes_le,
+    }
+    retained = {name: [] for name in expected}
+    for function in native["complete_functions"]:
+        for instruction in function["capture"]["assembly"]:
+            for reference in instruction.get("xrefs_from", []):
+                if reference.get("code"):
+                    continue
+                rva = int(reference["to"], 16) - base
+                for name, value in expected.items():
+                    section = next((part for part in pe["sections"] if part["rva"] <= rva
+                        and rva + len(value) <= part["rva"] + part["bytes"]), None)
+                    if section is None:
+                        continue
+                    offset = section["file_offset"] + rva - section["rva"]
+                    actual = raw[offset:offset + len(value)]
+                    if actual == value:
+                        retained[name].append({"rva": hex(rva), "raw_hex": actual.hex(),
+                            "sha256": hashlib.sha256(actual).hexdigest(),
+                            "function": function["artifact"], "instruction": instruction})
+    missing = [name for name, references in retained.items() if not references]
+    if missing:
+        raise ValueError("Report constants lack current instruction/data evidence: " + ", ".join(missing))
+    return retained
 
 
 def audit_host_help_system_info(args):
@@ -3868,9 +4231,18 @@ def audit_host_help_system_info(args):
                 coverage[product].append(original["sha256"])
             if not manifests:
                 continue
-            native = audit.native_slice(original, ["GetBladeDisplayData", "GetAllBladeInfo", "GetBladeFirmwareInfo",
+            native = audit.native_slice(original, ["GetSerialNumber", "GetBladeDisplayData", "GetAllBladeInfo", "GetBladeFirmwareInfo",
                 "GetBladeDriverInfo", "FreeMalloc", "Terminate", "TerminateWhenExit"],
-                needles=("DLL_PROCESS_ATTACH", "ColorProfileStopNew"), depth=0)
+                needles=("DLL_PROCESS_ATTACH", "ColorProfileStopNew",
+                    "Series10NewFeature::GetBlade", "Series10NewFeature::EnumerateMonitor",
+                    "Series10NewFeature::MonitorEnumProc", "Series10NewFeature::ParseEDIDData",
+                    "Series10NewFeature::GetMonitorDeviceInfo", "Series10NewFeature::GetProcessorInfo",
+                    "Series10NewFeature::GetGraphicsInfo", "Series10NewFeature::GetRAMInfo",
+                    "Series10NewFeature::GetSystemVersionInfo", "Series10NewFeature::GetBiosECFirmwareInfo",
+                    "Series10NewFeature::GetCameraFWInfo", "Series10NewFeature::GetVBIOSInfo",
+                    "Series10NewFeature::GetDriverInfo", "Series10NewFeature::GetSynapse",
+                    "Series10NewFeature::GetNVDIA", "Series10NewFeature::GetIntelGraphicsCommandCenterInfo",
+                    "Series10NewFeature::GetAMDSoftwareInfo", "Series10NewFeature::GetRazer"), depth=2)
             incomplete_bodies = [row["capture"]["address"] for row in native["complete_functions"]
                 if not (row["capture"].get("pseudocode") or {}).get("lines") or not row["capture"].get("assembly")]
             if native["failures"] or native["decompiler_failures"] or incomplete_bodies:
@@ -3878,6 +4250,7 @@ def audit_host_help_system_info(args):
             capture = json.loads(audit.artifact(a.ROOT / native["capture"]["path"]))
             report["native"].append({"products": sorted({row["product_id"] for row in manifests}),
                 "acquisition": families.identity(receipt_path), "manifests": manifests, "slice": native,
+                "report_constants": help_system_report_constants(audit.read(original), native),
                 "whole_capture_failures": capture.get("failures", [])})
         if any(len(identities) != 1 for identities in coverage.values()):
             raise ValueError("System Help current native declaration coverage is absent or ambiguous")
@@ -3888,13 +4261,19 @@ def audit_host_help_system_info(args):
             "display_schema": "Display is always inserted by each selected producer and can be native null when no monitor exists. Monitor Name and the native spelling Manufactuer are preserved. Optional software/system strings are not fabricated when absent; unknown external fields are retained at the JSON boundary.",
             "full_save": "The UI dispatches ON_STORE_SYSTEM_INFO_DATA. The task maker, queue, runner and completion owners are retained. The runner uses observed systemDetails.DeviceName and Date.now(), queries GetAllBladeInfo, pretty-prints parsed JSON and invokes Save as / Save file with the Synapse 4 .synapse4 filter.",
             "host_save": "The host owns the sender's BrowserWindow, chooses the remembered directory or Downloads, preserves cancellation, then updates the directory and calls fs.writeFile. Its callback is not awaited. The Rust worker waits for an actual atomic file publication and never treats dialog cancellation or draft state as a successful write.",
-            "native_result": "The no-argument getters return allocated NUL-terminated UTF-8. Current FFIPreloadMain dispatches asynchronous calls, reads pointers and frees decoded text with FreeMalloc. The Rust RAII owner also frees failed UTF-8 parses. GetAllBladeInfo conditionally inserts Display/Firmware/Driver sections; Firmware and Driver may be native null.",
-            "native_cleanup": "Terminate logs and returns true; this does not establish thread termination. TerminateWhenExit may send WM_QUIT, stop the color-profile path and release gCTRAPI. DllMain initializes the logger and module handle. These bodies do not prove a join, so Rust retains the mapped DLL until the exclusive service process exits after both cleanup calls. Each Rust unwind/error path still attempts both cleanups.",
+            "native_result": "Official reference getters return owned UTF-8 JSON and the host frees it with FreeMalloc. Production Rust builds typed Display/Firmware/Driver observations directly from Windows WMI, DXGI, SetupDi, display enumeration and registry APIs; it does not load blade2Native or use its FFI descriptors.",
+            "native_cleanup": "Official Terminate/TerminateWhenExit and DllMain remain analysis evidence only. Rust owns COM apartment initialization, BSTR/VARIANT/interface release, registry keys, device lists and driver lists with scoped destructors. EnumDisplayMonitors callbacks are synchronous and unwind-contained; the existing request worker rejects canceled/old-mount results and owns process termination.",
+            "actual_read_corrections": "GetBladeDisplayData copies the NVIDIAControlPanel temporaries into IntelGraphicCommandCenter fields in the current original; Rust publishes the independently queried Intel version/platform. Missing registry strings, EC words, camera revisions and driver entries remain unobserved instead of source zero/empty defaults. Earlier actual query values survive later enumeration errors with separate diagnostics. These are explicit actual-read-rule differences, not a claim of byte-equal DLL output. Diagnostics are separate from observed data and reach the existing shell log.",
             "rust_ownership": "Page mount and connection identity/generation guard delivery. A retained shell worker owns IPC, dialog and file I/O; SaveFileDialog has a separate STA and cancellation. Page replacement, connection change and exit cancel outstanding work. Exit waits for worker/service/dialog cleanup and canceled exit admits only new operations after old work drains.",
         }
         report["implementation_owners"] = [
             "crates/razer-device/src/host/system_info.rs", "crates/razer-ipc/src/device_tasks.rs",
             "crates/razer-service/src/native/help_system_info.rs", "crates/razer-service/src/runtime/mod.rs",
+            "crates/razer-service/src/native/help_system_info/windows.rs",
+            "crates/razer-service/src/native/help_system_info/wmi.rs",
+            "crates/razer-service/src/native/help_system_info/registry.rs",
+            "crates/razer-service/src/native/help_system_info/devices.rs",
+            "crates/razer-service/src/native/help_system_info/semantics.rs",
             "crates/razer-platform/src/file_dialog.rs", "crates/razer-platform/src/platform/windows/file_dialog.rs",
             "crates/razer-pages/src/features/help/source_help_system.rs",
             "crates/razer-pages/src/features/workspace/source_workspace/help_system.rs",
@@ -3903,7 +4282,7 @@ def audit_host_help_system_info(args):
             "Unavailable source maps and failed acquisition/capture probes remain listed in each current deployment receipt. The observed minified sources are byte-verified; this query does not establish every Help/product page or dependency branch is complete.",
             "Selected native complete bodies are byte-verified. Their indirect/import and unexpanded direct helper edges are retained explicitly; bounded selection is not a claim of complete whole-module native semantics.",
             "The other local Help actions, support text/popups and product/accessory branches require their own full source-to-device/service and resource acceptance. This query covers system information observation and full local report saving only.",
-            "Rust compile/unit/mock results are recorded separately in the unified validation record. Real windows, installed native calls, reports from hardware, file dialogs and process/device cleanup acceptance remain unverified under the current execution limits."]
+            "Rust compile/unit/mock results are recorded separately in the unified validation record. The independent Windows report path still needs explicit local original-versus-Rust comparisons, including source anomalies, partial query failures and all deployed product branches. Real windows/file dialogs remain unverified under the execution limits."]
     except (OSError, ValueError, KeyError, TypeError, StopIteration) as error:
         report["failures"].append(str(error))
     report["complete_originals"] = list(audit.sources.values())
@@ -3913,16 +4292,137 @@ def audit_host_help_system_info(args):
     report["snapshot_stable"] = not report["changed_during_query"]
     report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
     destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
-    previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-    previous["help_system_info"] = report
-    a.save(destination, previous)
+    with a.index_lock(destination.with_suffix(".lock")):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous["help_system_info"] = report
+        a.save(destination, previous)
     print(json.dumps({"receipt": a.rel(destination), "query": args.query, "products": len(report["products"]),
         "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
     if report["failures"]:
         raise ValueError("Local Help system information source query remains unresolved")
 
 
+def audit_product_chroma_observation(args):
+    """Rebuild product host observation evidence from current original bytes."""
+    audit = HostLocalAudit()
+    a = audit.a
+    report = {"recorded_at_utc": a.stamp(), "parser": audit.parser_versions,
+              "source_sets": [], "selected": {}, "exports": [], "failures": [],
+              "source_chain_complete": False, "target_execution": False,
+              "real_device_operations": False, "runtime_acceptance": "unverified"}
+    selected = report["selected"]
+    try:
+        for name in ("tools/host.py", "tools/workspace.py", "tools/families.py", "tools/evidence.py", "tools/analysis.py"):
+            audit.artifact(a.ROOT / name)
+        sources = {}
+        for name in ("synapse-lighting-engine-current", "mouse-226-current", "keyboard-756-current", "mouse-162-current"):
+            source_set, originals = audit.source_set(name)
+            source_set["verified_complete_capture"] = audit.frontend_capture(name, originals)
+            report["source_sets"].append(source_set)
+            sources[name] = originals
+
+        def source(name, anchor):
+            matches = [row for row in sources[name] if Path(row["path"]).suffix == ".js"
+                       and anchor.encode() in audit.read(row)]
+            if len(matches) != 1:
+                raise ValueError("Product Chroma source is absent or ambiguous: " + anchor)
+            return matches[0]
+
+        def retain(role, original, anchor, kinds, unique=True):
+            selected[role] = audit.retain(role, original, anchor, set(kinds), unique=unique)
+            return selected[role]
+
+        engine = source("synapse-lighting-engine-current", "async updateChromaStudio(e)")
+        for role, anchor, kinds in (
+            ("engine_actual_chroma_devices_publisher", "async updateChromaStudio(e)", ("method_definition",)),
+            ("engine_published_payload_actual_filter_and_order", "generateUpdateChromaStudioPayload(e){", ("method_definition",)),
+            ("engine_update_caller", "this.updateChromaDevice=async e=>", ("assignment_expression",)),
+            ("engine_refresh_caller", "this.handleRefreshDevices=async e=>", ("assignment_expression",)),
+            ("engine_add_caller", "async addChromaDevice(e,t)", ("method_definition",)),
+            ("engine_remove_caller", "async removeDeviceChromaEngine(e)", ("method_definition",)),
+            ("engine_actual_host_memory_bridge", "this.getMemoryStorageItem=", ("assignment_expression",)),
+            ("engine_actual_host_memory_publisher_bridge", "this.setMemoryStorageItem=", ("assignment_expression",))):
+            retain(role, engine, anchor, kinds)
+        report["exports"].append(audit.webpack_export("engine_actual_memory_key", sources["synapse-lighting-engine-current"], 1876, "D6"))
+        publisher = audit.owners[selected["engine_actual_chroma_devices_publisher"][0]]
+        for name in ("o", "l"):
+            selected["engine_publisher_namespace_" + name] = audit.binding(
+                "engine_publisher_namespace_" + name, engine, name, publisher["byte_start"])
+
+        for family, name, reducer, projection in (
+            ("mouse", "mouse-226-current", "pe=", "l={DEVICE_TYPE:"),
+            ("keyboard", "keyboard-756-current", "re=", "D={DEVICE_TYPE:")):
+            lighting = source(name, "checkSyncQuickEffect(e){")
+            for role, anchor in (("quick_memory_consumers_complete_classes", "this.checkSyncQuickEffect("),
+                                 ("installation_consumers_complete_classes", "e.checkIsFullyInstall().then(")):
+                retain(family + "_" + role, lighting, anchor, ("class_declaration", "class"), False)
+            for index, anchor in enumerate(("loadActiveProfileSettings(){", "this.loadActiveProfileSettings=")):
+                root = source(name, anchor)
+                retain(family + "_local_profiles_projection_branch_" + str(index), root, anchor,
+                       ("method_definition", "assignment_expression"))
+            main = source(name, "this.getMemoryStorageItem=")
+            retain(family + "_actual_get_memory_storage_bridge", main, "this.getMemoryStorageItem=", ("assignment_expression",))
+            retain(family + "_local_projection_keys", main, projection, ("variable_declarator",))
+            retain(family + "_lighting_reducer_initial_state", main, reducer + "{selectedEffectId:3,effectSettings:[]", ("variable_declarator",))
+            dispatch = "Te=function(e,t){" if family == "mouse" else "Ae=function(e,t){"
+            retain(family + "_profiles_reducer_dispatch", main, dispatch, ("variable_declarator",))
+            checker = source(name, "async checkIsFullyInstall(){")
+            retain(family + "_fully_installed_complete_owner", checker, "async checkIsFullyInstall(){", ("class", "class_declaration"))
+
+        babel = source("mouse-162-current", "r.loadActiveProfileSettings=function()")
+        retain("babel_local_profiles_projection", babel, "r.loadActiveProfileSettings=function()", ("assignment_expression",))
+        retain("babel_quick_memory_complete_component", babel, "uJ=function(e){", ("variable_declarator",))
+        retain("babel_advanced_complete_component", babel, "_J=function(e){", ("variable_declarator",))
+        retain("babel_advanced_connected_component", babel, "fJ=(0,L.connect)", ("variable_declarator",))
+        retain("babel_effects_complete_component", babel, "OJ=function(e){", ("variable_declarator",))
+        advanced = audit.owners[selected["babel_advanced_complete_component"][0]]["body"]
+        if "checkIsFullyInstall" in advanced or "this.props.isChromaInstalled" not in advanced:
+            raise ValueError("Current Babel installation branch changed")
+        connected = audit.owners[selected["babel_advanced_connected_component"][0]]["body"]
+        if 'commonReducer.installedModules||[]' not in connected or '"chroma-app"===e' not in connected:
+            raise ValueError("Current Babel module-status projection changed")
+        report["host_provenance"] = verified_host_owners(audit, (
+            "electron/modules/memory_storage/index.js", "electron/modules/window_storage/index.js"))
+        for name, item in report["host_provenance"].items():
+            row = item["original"]
+            key = audit.retain_range("host_" + name.split("/")[-2] + "_complete_owner", row, 0,
+                                     len(audit.read(row)), "program")
+            selected["host_" + name.split("/")[-2] + "_complete_owner"] = [key]
+        report["semantics"] = {
+            "independent_observations": "Local Chroma configuration, module state, dynamic-lighting state, installation probes and the lighting-engine memory publisher have independent producers and failure results.",
+            "publisher": "updateChromaStudio publishes generateUpdateChromaStudioPayload through the verified D6 memory key. Preserve actual device filters, ordering and empty-payload distinction.",
+            "memory_getter": "The host stores publisher URL entries in Map order; QuickEffects reads only the first returned value, subscribes to memorystorageevent, and removes its handler on unmount. Absent and published-empty remain separate observations.",
+            "local_profiles": "Current product roots select the matching source-local Chroma record and dispatch enabled, profiles and currentProfile independently of installation and memory results. Missing or failed reads cannot establish default or old device state.",
+            "babel": "PID162 loads local Chroma profiles in loadActiveProfileSettings. Its connected advanced component derives isChromaInstalled from commonReducer.installedModules. Its complete advanced component contains no checkIsFullyInstall call; this branch must not run the newer installation probe.",
+            "installation": "Newer advanced components call the complete checker, which combines the actual app-engine product observation and local Apps folder existence. This proves host installation facts only.",
+        }
+        report["remaining_chains"] = [
+            "Complete ordinary keyboard/mouse quick-effect persistence, lighting-engine device writeback, Chroma handoff and display/idle lifecycle paths for every product/accessory branch.",
+            "These complete owners cover PID162, PID226 and PID756 host observation boundaries; they do not establish the entire mounted UI/backend checklist for all products.",
+            "Frontend capture failures and missing source maps remain recorded in each source set; retained source owners are not complete reconstructed-source or runtime acceptance.",
+        ]
+    except (OSError, ValueError, KeyError, TypeError, StopIteration) as error:
+        report["failures"].append(str(error))
+    report["complete_originals"] = list(audit.sources.values())
+    report["complete_source_owners"] = list(audit.owners.values())
+    report["verified_artifacts"] = list(audit.artifacts.values())
+    report["changed_during_query"] = audit.final_snapshot()
+    report["snapshot_stable"] = not report["changed_during_query"]
+    report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
+    destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
+    with a.index_lock(destination.with_suffix(".lock")):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous["product_chroma_observation"] = report
+        a.save(destination, previous)
+    print(json.dumps({"receipt": a.rel(destination), "query": args.query,
+                      "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
+    if report["failures"]:
+        raise ValueError("Product Chroma source observation query remains unresolved")
+
+
 def audit_host_local(args):
+    if args.query == "product-chroma-observation":
+        return audit_product_chroma_observation(args)
     if args.query == "help-system-info":
         return audit_host_help_system_info(args)
     if args.query == "macro-recorder":
@@ -4123,9 +4623,10 @@ def audit_host_local(args):
     report["snapshot_stable"] = not report["changed_during_query"]
     report["failures"].extend("Audit artifact changed during query: " + name for name in report["changed_during_query"])
     destination = a.ROOT / ".analysis/results/host-current/local-audit.json"
-    previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
-    previous[args.query.replace("-", "_")] = report
-    a.save(destination, previous)
+    with a.index_lock(destination.with_suffix(".lock")):
+        previous = json.loads(destination.read_bytes()) if destination.is_file() else {"schema_version": 1}
+        previous[args.query.replace("-", "_")] = report
+        a.save(destination, previous)
     print(json.dumps({"receipt": a.rel(destination), "query": args.query,
                       "complete_source_owners": len(audit.owners), "failures": report["failures"]}), flush=True)
     if report["failures"]:

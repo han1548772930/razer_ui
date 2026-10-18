@@ -1,6 +1,61 @@
 use super::*;
 use std::{cell::RefCell, rc::Rc};
 
+#[cfg(windows)]
+#[test]
+fn production_rust_adapter_renders_and_releases_a_controller_without_loading_vendor_code() {
+    let renderer = crate::runtime::lighting_engine::Engine::open().unwrap();
+    let mut session = Session::new(renderer);
+    session
+        .initialize(
+            &razer_device::controller_lighting::software::led_configuration(128).unwrap(),
+            &SoftwareEffect::Static { color: [255, 0, 0] },
+        )
+        .unwrap();
+    let frames = session.engine.frames().unwrap();
+    assert_eq!(frames.len(), 1);
+    assert_eq!(frames[0].device_handle, session.device_handle.unwrap());
+    assert_eq!((frames[0].num_row, frames[0].num_col), (1, 32));
+    assert_eq!(frames[0].frame, [3, 0, 0].repeat(32));
+    assert!(session.cleanup().is_empty());
+    assert!(session.engine.frames().unwrap().is_empty());
+    assert!(session.cleanup().is_empty());
+}
+
+#[cfg(windows)]
+#[test]
+fn production_shared_rust_adapter_keeps_dock_and_peer_lifetimes_separate() {
+    let mut runtime = SharedEngine::new(crate::runtime::lighting_engine::Engine::open().unwrap());
+    let mut dock = DeviceEngines::new(
+        runtime.clone(),
+        razer_device::receiver_lighting::led_configuration(164, 0).unwrap(),
+    );
+    let mut peer = DeviceEngines::new(
+        runtime.clone(),
+        razer_device::controller_lighting::software::led_configuration(128).unwrap(),
+    );
+    let effect = SoftwareEffect::Static { color: [255, 0, 0] }.engine_effect();
+    dock.apply_normal(&effect).unwrap();
+    peer.apply_normal(&effect).unwrap();
+    assert_ne!(dock.device_handle, peer.device_handle);
+    // Creating the peer can poll and preserve an already due dock frame.
+    let frames = runtime.frames().unwrap();
+    assert!(
+        frames
+            .iter()
+            .any(|frame| Some(frame.device_handle) == dock.device_handle)
+    );
+    assert!(
+        frames
+            .iter()
+            .any(|frame| Some(frame.device_handle) == peer.device_handle)
+    );
+    assert!(dock.cleanup().is_empty());
+    assert!(peer.cleanup().is_empty());
+    runtime.terminate().unwrap();
+    assert!(runtime.frames().unwrap().is_empty());
+}
+
 #[derive(Default)]
 struct Fake {
     calls: Rc<RefCell<Vec<String>>>,

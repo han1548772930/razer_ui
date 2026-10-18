@@ -7,7 +7,7 @@ pub(super) fn valid(workspace: &KeyboardProductWorkspace, slot: &Slot) -> bool {
         return false;
     };
     let group = &slot.staged["lightPacGroup"];
-    observation.chroma_installed_module
+    observation.chroma_installed_module == Some(true)
         && observation.chroma_profiles.first().is_some_and(|profile| {
             profile["name"]
                 .as_str()
@@ -109,7 +109,8 @@ impl KeyboardProductWorkspace {
             .expect("mapping edit");
         let group = &edit.slots[slot].staged["lightPacGroup"];
         let observation = self.lighting_observation.as_ref();
-        let installed = observation.is_some_and(|observation| observation.chroma_installed_module);
+        let installed = observation
+            .is_some_and(|observation| observation.chroma_installed_module == Some(true));
         let mut panel = v_flex().mx(surface::css(20.)).gap(surface::css(10.));
         if !installed {
             return panel

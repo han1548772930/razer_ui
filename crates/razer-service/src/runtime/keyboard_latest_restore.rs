@@ -6,6 +6,15 @@ pub(super) struct EventsState {
     target: Option<Value>,
     events: Option<Box<dyn HardwareEvents>>,
 }
+impl EventsState {
+    pub(super) fn shutdown(&mut self) -> anyhow::Result<()> {
+        self.target = None;
+        if let Some(mut events) = self.events.take() {
+            events.finish()?;
+        }
+        Ok(())
+    }
+}
 impl Drop for EventsState {
     fn drop(&mut self) {
         if let Some(events) = self.events.as_mut() {

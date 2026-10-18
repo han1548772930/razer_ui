@@ -55,7 +55,7 @@ impl KeyboardProductWorkspace {
                 this.request_lighting_command(
                     KeyboardLightingCommand::ManageChromaApps {
                         install_required: observation.check_is_fully_installed != Some(true)
-                            || !observation.chroma_installed_module,
+                            || observation.chroma_installed_module != Some(true),
                     },
                     cx,
                 );

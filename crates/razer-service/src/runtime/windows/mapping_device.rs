@@ -6,7 +6,7 @@ use super::{NativeRuntime, callback2, callback3, copy_string, native_target};
 use anyhow::{Context as _, ensure};
 use serde_json::{Value, json};
 use std::{
-    collections::VecDeque,
+    collections::{BTreeMap, VecDeque},
     ffi::{CString, c_char},
     sync::{
         Mutex,
@@ -24,9 +24,6 @@ type SetUnsupported = unsafe extern "C" fn(*const c_char, UnsupportedEvent, supe
 type SetInput = unsafe extern "C" fn(*const c_char, DeviceEvent, super::Callback3);
 static EVENTS: Mutex<Option<SyncSender<Value>>> = Mutex::new(None);
 static OVERFLOW: AtomicBool = AtomicBool::new(false);
-type ModeEvent = unsafe extern "C" fn(i32, *const c_char, u64);
-type InstallMode = unsafe extern "C" fn(ModeEvent, super::Callback2);
-type ModeOperation = unsafe extern "C" fn(super::Callback2);
 type HypershiftCallback = unsafe extern "C" fn(bool, *const c_char, bool);
 type QueryHypershift = unsafe extern "C" fn(HypershiftCallback);
 unsafe extern "C" fn hypershift_callback(success: bool, reason: *const c_char, enabled: bool) {
@@ -36,7 +33,61 @@ unsafe extern "C" fn hypershift_callback(success: bool, reason: *const c_char, e
         value: Some(enabled.to_string()),
     });
 }
-unsafe extern "C" fn mode_event(kind: i32, data: *const c_char, tick: u64) {
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn registration(owner: &str, container: &str) -> Registration {
+        Registration {
+            logical_product: 515,
+            info: json!({"productId":515,"containerId":container,"usbInstanceId":container,"guid":owner}),
+            physical: Value::Null,
+            ready: true,
+            unsupported_registered: false,
+            mode_registered: true,
+            input_registered: false,
+            pending: VecDeque::new(),
+        }
+    }
+
+    #[test]
+    fn device_events_keep_separate_owner_queues_and_do_not_consume_another_owner() {
+        let (_, receiver) = mpsc::sync_channel(1);
+        let mut state = State {
+            registrations: BTreeMap::from([
+                ("a".into(), registration("a", "one")),
+                ("b".into(), registration("b", "two")),
+            ]),
+            receiver,
+        };
+        let second = json!({"deviceInfo":state.registration("b").unwrap().info,"jsonEvent":{"type":"error","error":"driver gone"}});
+        state.retain(second.clone()).unwrap();
+        let mode = json!({"source":"devicemodechanged","eventType":1,"event":"{}","timeTick":10});
+        state.retain(mode.clone()).unwrap();
+        let first = state.registration_mut("a").unwrap();
+        assert!(first.ready);
+        assert_eq!(first.pending.drain(..).collect::<Vec<_>>(), [mode.clone()]);
+        let second_owner = state.registration_mut("b").unwrap();
+        assert!(!second_owner.ready);
+        assert_eq!(
+            second_owner.pending.drain(..).collect::<Vec<_>>(),
+            [second, mode]
+        );
+    }
+
+    #[test]
+    fn previous_registration_event_cannot_enter_replacement_owner_queue() {
+        let (_, receiver) = mpsc::sync_channel(1);
+        let mut state = State {
+            registrations: BTreeMap::from([("new".into(), registration("new", "same-device"))]),
+            receiver,
+        };
+        state.retain(json!({"deviceInfo":registration("old", "same-device").info,"jsonEvent":{"type":"info","info":"driver ready"}})).unwrap();
+        assert!(state.registration("new").unwrap().pending.is_empty());
+    }
+}
+pub(super) unsafe extern "C" fn mode_event(kind: i32, data: *const c_char, tick: u64) {
     let event = json!({"source":"devicemodechanged","eventType":kind,"event":unsafe { copy_string(data) },"timeTick":tick});
     if let Ok(slot) = EVENTS.lock() {
         if let Some(sender) = slot.as_ref() {
@@ -104,11 +155,11 @@ struct Registration {
     unsupported_registered: bool,
     mode_registered: bool,
     input_registered: bool,
+    pending: VecDeque<Value>,
 }
 pub(super) struct State {
-    registration: Option<Registration>,
+    registrations: BTreeMap<String, Registration>,
     receiver: Receiver<Value>,
-    pending: VecDeque<Value>,
 }
 impl State {
     pub(super) fn new() -> Self {
@@ -118,59 +169,58 @@ impl State {
         }
         OVERFLOW.store(false, Ordering::Release);
         Self {
-            registration: None,
+            registrations: BTreeMap::new(),
             receiver,
-            pending: VecDeque::new(),
         }
     }
-    pub(super) fn owner_guid(&self) -> Option<String> {
-        self.registration.as_ref()?.info["guid"]
-            .as_str()
-            .map(str::to_owned)
+    pub(super) fn owners(&self) -> Vec<String> {
+        self.registrations.keys().cloned().collect()
+    }
+    pub(super) fn contains_owner(&self, owner: &str) -> bool {
+        self.registrations.contains_key(owner)
     }
     fn registration(&self, owner: &str) -> anyhow::Result<&Registration> {
-        let registration = self
-            .registration
-            .as_ref()
-            .context("Mapping USB device is not registered")?;
-        ensure!(
-            registration.info["guid"].as_str() == Some(owner),
-            "Mapping owner has changed"
-        );
-        Ok(registration)
+        self.registrations
+            .get(owner)
+            .context("Mapping USB owner is not registered")
     }
-    fn matches(&self, event: &Value) -> bool {
-        let Some(registration) = self.registration.as_ref() else {
-            return false;
-        };
-        if event["source"] == "devicemodechanged" {
-            return registration.mode_registered;
-        }
-        let info = &event["deviceInfo"];
-        info["productId"] == registration.info["productId"]
-            && info["containerId"]
-                .as_str()
-                .zip(registration.info["containerId"].as_str())
-                .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b))
-            && info["usbInstanceId"] == registration.info["usbInstanceId"]
-            && info
-                .get("guid")
-                .is_none_or(|guid| guid == &registration.info["guid"])
+    fn registration_mut(&mut self, owner: &str) -> anyhow::Result<&mut Registration> {
+        self.registrations
+            .get_mut(owner)
+            .context("Mapping USB owner is not registered")
     }
     fn retain(&mut self, event: Value) -> anyhow::Result<()> {
-        if self.matches(&event) {
+        for registration in self.registrations.values_mut() {
+            if !registration.matches(&event) {
+                continue;
+            }
             ensure!(
-                self.pending.len() < 512,
+                registration.pending.len() < 512,
                 "Mapping event consumer fell behind; event state is incomplete"
             );
             if event["jsonEvent"]["type"] == "error" {
-                if let Some(registration) = self.registration.as_mut() {
-                    registration.ready = false;
-                }
+                registration.ready = false;
             }
-            self.pending.push_back(event);
+            registration.pending.push_back(event.clone());
         }
         Ok(())
+    }
+}
+impl Registration {
+    fn matches(&self, event: &Value) -> bool {
+        if event["source"] == "devicemodechanged" {
+            return self.mode_registered;
+        }
+        let info = &event["deviceInfo"];
+        info["productId"] == self.info["productId"]
+            && info["containerId"]
+                .as_str()
+                .zip(self.info["containerId"].as_str())
+                .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b))
+            && info["usbInstanceId"] == self.info["usbInstanceId"]
+            && info
+                .get("guid")
+                .is_none_or(|guid| guid == &self.info["guid"])
     }
 }
 
@@ -262,8 +312,8 @@ impl NativeRuntime {
             "Mapping owner identity is empty or invalid"
         );
         ensure!(
-            self.mapping_device.registration.is_none(),
-            "Worker already owns a mapping device"
+            !self.mapping_device.contains_owner(owner),
+            "Mapping device owner is already registered"
         );
         let (physical_product, physical) = mapping_target(product, container)?;
         let info = json!({"vendorId":5426,"productId":physical_product,
@@ -274,15 +324,19 @@ impl NativeRuntime {
         let add: AddDevice = unsafe { self.mapping_symbol("addUsbDevice")? };
         // Retain failed registrations too: source removeUsbDevice must release
         // partially opened devices when callback/driver readiness rejects.
-        self.mapping_device.registration = Some(Registration {
-            logical_product: product,
-            info,
-            physical,
-            ready: false,
-            unsupported_registered: false,
-            mode_registered: false,
-            input_registered: false,
-        });
+        self.mapping_device.registrations.insert(
+            owner.to_owned(),
+            Registration {
+                logical_product: product,
+                info,
+                physical,
+                ready: false,
+                unsupported_registered: false,
+                mode_registered: false,
+                input_registered: false,
+                pending: VecDeque::new(),
+            },
+        );
         let result = self.call(|| unsafe { add(text.as_ptr(), device_event, callback3) });
         if self.poisoned {
             std::mem::forget(text);
@@ -300,7 +354,9 @@ impl NativeRuntime {
                 .receiver
                 .recv_timeout(remaining)
                 .context("Mapping callback completed without a correlated driver-ready event")?;
-            if !self.mapping_device.matches(&event) {
+            let matches = self.mapping_device.registration(owner)?.matches(&event);
+            if !matches {
+                self.mapping_device.retain(event)?;
                 continue;
             }
             let ready = event["jsonEvent"]["type"] == "info"
@@ -312,7 +368,7 @@ impl NativeRuntime {
                 anyhow::bail!("Mapping driver rejected registration: {error}");
             }
             if ready {
-                self.mapping_device.registration.as_mut().unwrap().ready = true;
+                self.mapping_device.registration_mut(owner)?.ready = true;
                 break;
             }
         }
@@ -326,9 +382,7 @@ impl NativeRuntime {
         }
         result?;
         self.mapping_device
-            .registration
-            .as_mut()
-            .unwrap()
+            .registration_mut(owner)?
             .unsupported_registered = true;
         let set: SetUnsupported = unsafe { self.mapping_symbol("setUnsupportedMappingCallback")? };
         let result = self.call(|| unsafe { set(info.as_ptr(), unsupported_event, callback3) });
@@ -336,17 +390,10 @@ impl NativeRuntime {
             std::mem::forget(info);
         }
         result?;
-        let register: ModeOperation =
-            unsafe { self.mapping_symbol("registerDeviceModeChangedEvent")? };
-        self.call(|| unsafe { register(callback2) })?;
-        self.mapping_device
-            .registration
-            .as_mut()
-            .unwrap()
-            .mode_registered = true;
-        let install: InstallMode =
-            unsafe { self.mapping_symbol("setDeviceModeChangedEventCallback")? };
-        self.call(|| unsafe { install(mode_event, callback2) })?;
+        self.mapping_device.registration_mut(owner)?.mode_registered = true;
+        self.retain_mapping_mode_events(super::mapping_mode_events::Owner::Device(
+            owner.to_owned(),
+        ))?;
         Ok(json!({"registered":true,"driver_ready":true,"owner_guid":owner}))
     }
 
@@ -365,9 +412,7 @@ impl NativeRuntime {
         }
         result?;
         self.mapping_device
-            .registration
-            .as_mut()
-            .unwrap()
+            .registration_mut(owner)?
             .input_registered = true;
         let install: SetInput = unsafe { self.mapping_symbol("setInputNotificationCallback")? };
         let result = self.call(|| unsafe { install(info.as_ptr(), input_event, callback3) });
@@ -551,25 +596,15 @@ impl NativeRuntime {
         while let Ok(event) = self.mapping_device.receiver.try_recv() {
             self.mapping_device.retain(event)?;
         }
-        let events = self.mapping_device.pending.drain(..).collect::<Vec<_>>();
+        let events = self
+            .mapping_device
+            .registration_mut(owner)?
+            .pending
+            .drain(..)
+            .collect::<Vec<_>>();
         Ok(json!({"events":events,"owner_guid":owner}))
     }
 
-    // Current827 export getMacroRecordingMode (RVA48ee0), completion48c90:
-    // void(bool,char const*,char const*). The mode is the third callback value.
-    pub(super) fn mapping_device_macro_recording_mode(
-        &mut self,
-        owner: &str,
-    ) -> anyhow::Result<Value> {
-        self.validate_mapping_device(owner)?;
-        let query: super::Query = unsafe { self.mapping_symbol("getMacroRecordingMode")? };
-        let reply = self.call(|| unsafe { query(callback3) })?;
-        let mode = reply
-            .value
-            .context("Macro recording mode callback lacks its value")?;
-        self.validate_mapping_device(owner)?;
-        Ok(json!({"owner_guid":owner,"mode":mode}))
-    }
     // Current827 RVA4ae40 -> completion4ac10:
     // void isHypershiftActive(void (*)(bool,char const*,bool)).
     pub(super) fn mapping_device_hypershift_active(
@@ -608,9 +643,10 @@ impl NativeRuntime {
         }
         if self.mapping_device.registration(owner)?.mode_registered {
             let result = (|| -> anyhow::Result<()> {
-                let unregister: ModeOperation =
-                    unsafe { self.mapping_symbol("unregisterDeviceModeChangedEvent")? };
-                self.call(|| unsafe { unregister(callback2) })?;
+                self.release_mapping_mode_events(super::mapping_mode_events::Owner::Device(
+                    owner.to_owned(),
+                ))?;
+                self.mapping_device.registration_mut(owner)?.mode_registered = false;
                 Ok(())
             })();
             if self.poisoned {
@@ -652,9 +688,10 @@ impl NativeRuntime {
             std::mem::forget(text);
         }
         result?;
-        self.mapping_device.registration = None;
-        self.mapping_device.pending.clear();
-        while self.mapping_device.receiver.try_recv().is_ok() {}
+        self.mapping_device.registrations.remove(owner);
+        while let Ok(event) = self.mapping_device.receiver.try_recv() {
+            self.mapping_device.retain(event)?;
+        }
         if let Some(error) = unregister_error {
             return Err(error);
         }

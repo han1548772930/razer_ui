@@ -86,6 +86,16 @@ pub enum NativeOperation {
     DeviceTerminate,
 }
 impl NativeOperation {
+    /// Mode/sample-rate transitions include the source's 60/30-second endpoint
+    /// recovery plus bounded I/O and cleanup. The IPC caller adds reply grace.
+    pub fn service_budget(&self) -> std::time::Duration {
+        std::time::Duration::from_secs(match self {
+            Self::SetMode { .. } => 85,
+            Self::SetMasterSampleRate { .. } => 55,
+            Self::DeviceInitialize => 35,
+            _ => 20,
+        })
+    }
     pub fn is_setter(&self) -> bool {
         matches!(
             self,
@@ -110,11 +120,6 @@ pub enum NativeReply {
 }
 pub trait NativeTransport {
     fn call(&self, operation: &NativeOperation) -> anyhow::Result<NativeReply>;
-    /// Retained feature state from initialization and explicit mode changes.
-    /// This is not an extra native getter or a UI observation.
-    fn stream_mixer_enabled(&self) -> bool {
-        false
-    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -308,8 +313,13 @@ fn execute_native_inner(
                 ]
             }
             Change::MonitorVolume(level) => {
-                let enabled = transport.stream_mixer_enabled();
-                if enabled {
+                // The source's monitor gate depends on stream-mixer mode.
+                // Observe that mode before making a device write decision;
+                // an unset local flag cannot stand in for the driver state.
+                let observed = call(&mut report, transport, NativeOperation::GetMode, &validate);
+                if !observed.succeeded {
+                    Vec::new()
+                } else if matches!(report.native_stages.last().and_then(|stage| stage.reply()), Some(NativeReply::Long(1))) {
                     report.source_skipped = Some(
                         "Source skips mic-monitor settings while stream mixer is enabled".into(),
                     );
@@ -405,9 +415,6 @@ mod tests {
         }
     }
     impl NativeTransport for Simulated {
-        fn stream_mixer_enabled(&self) -> bool {
-            self.mode == 1
-        }
         fn call(&self, operation: &NativeOperation) -> anyhow::Result<NativeReply> {
             self.calls.lock().unwrap().push(operation.clone());
             ensure!(
@@ -609,9 +616,20 @@ mod tests {
             *device.calls.lock().unwrap(),
             vec![
                 NativeOperation::DeviceInitialize,
+                NativeOperation::GetMode,
                 NativeOperation::DeviceTerminate
             ]
         );
+    }
+    #[test]
+    fn failed_mode_read_never_defaults_to_monitor_write_and_still_terminates() {
+        let mut device = Simulated::new();
+        device.throw = Some(NativeOperation::GetMode);
+        let report = execute_native(1422, &device, &Change::MonitorVolume(Level::new(true, 70.)), || Ok(())).unwrap();
+        assert!(!report.source_result());
+        assert!(!report.confirmed());
+        assert!(!report.setter_sent());
+        assert_eq!(*device.calls.lock().unwrap(), vec![NativeOperation::DeviceInitialize, NativeOperation::GetMode, NativeOperation::DeviceTerminate]);
     }
     #[test]
     fn cancellation_before_next_native_mutation_still_terminates_original_owner() {

@@ -26,6 +26,20 @@ pub(super) struct Controller {
     active: Option<Active>,
 }
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        if let Some(active) = self.active.take() {
+            active.canceled.store(true, Ordering::Release);
+            cleanup.record(
+                "leviathan_events",
+                active
+                    .worker
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Noa event cleanup worker panicked"))
+                    .and_then(|result| result),
+            );
+        }
+    }
+
     pub(super) fn start(&mut self, id: String, target: EventTarget) -> anyhow::Result<Value> {
         ensure!(
             !id.is_empty() && id.len() <= 128 && self.active.is_none(),

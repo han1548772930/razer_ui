@@ -36,15 +36,17 @@ fn current182_and190_dpi_saves_use_the_source_first_and_wrapped_version() {
     for product_id in [182, 190] {
         let mut device = razer_model::product_preview::registered_preview(product_id).unwrap();
         let profile_id = device.profiles[0].id.clone();
+        let source =
+            serde_json::to_value(razer_device::profile_transfer::default_profile_182()).unwrap();
         device.source_device_settings = None;
-        merge_current_dpi_profile(&mut device, &profile_id, &json!({"dpiStages":{}})).unwrap();
+        merge_current_dpi_profile(&mut device, &profile_id, &source).unwrap();
         assert_eq!(
             device.source_device_settings.as_ref().unwrap()["version"],
             1
         );
         device.source_device_settings.as_mut().unwrap()["version"] =
             json!(razer_device::mapping_submission::MAX_SOURCE_VERSION);
-        merge_current_dpi_profile(&mut device, &profile_id, &json!({"dpiStages":{}})).unwrap();
+        merge_current_dpi_profile(&mut device, &profile_id, &source).unwrap();
         assert_eq!(
             device.source_device_settings.as_ref().unwrap()["version"],
             0

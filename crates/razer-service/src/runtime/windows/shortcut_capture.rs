@@ -13,11 +13,13 @@ use std::{
     },
 };
 type Operation = unsafe extern "C" fn(Callback2);
-type ModeEvent = unsafe extern "C" fn(i32, *const c_char, u64);
-type Install = unsafe extern "C" fn(ModeEvent, Callback2);
 static EVENTS: Mutex<Option<SyncSender<Value>>> = Mutex::new(None);
 static OVERFLOW: AtomicBool = AtomicBool::new(false);
-unsafe extern "C" fn mode_event(kind: i32, value: *const c_char, tick: u64) {
+static ACTIVE: AtomicBool = AtomicBool::new(false);
+pub(super) unsafe extern "C" fn mode_event(kind: i32, value: *const c_char, tick: u64) {
+    if !ACTIVE.load(Ordering::Acquire) {
+        return;
+    }
     let event = json!({"eventType":kind,"event":unsafe { copy_string(value) },"timeTick":tick});
     let Err(event) = super::global_shortcut_capture::mode(event) else {
         return;
@@ -86,19 +88,16 @@ impl NativeRuntime {
         );
         OVERFLOW.store(false, Ordering::Release);
         while self.shortcut_capture.events.try_recv().is_ok() {}
-        let register: Operation = unsafe { self.mapping_symbol("registerDeviceModeChangedEvent")? };
-        self.call(|| unsafe { register(callback2) })?;
         self.shortcut_capture.registered = true;
-        let install: Install = unsafe { self.mapping_symbol("setDeviceModeChangedEventCallback")? };
-        self.call(|| unsafe { install(mode_event, callback2) })?;
+        ACTIVE.store(true, Ordering::Release);
+        self.retain_mapping_mode_events(super::mapping_mode_events::Owner::Capture)?;
         Ok(())
     }
     pub(super) fn unregister_shortcut_mode_events(&mut self) -> anyhow::Result<()> {
         if self.shortcut_capture.registered {
-            let unregister: Operation =
-                unsafe { self.mapping_symbol("unregisterDeviceModeChangedEvent")? };
-            self.call(|| unsafe { unregister(callback2) })?;
+            self.release_mapping_mode_events(super::mapping_mode_events::Owner::Capture)?;
             self.shortcut_capture.registered = false;
+            ACTIVE.store(false, Ordering::Release);
         }
         Ok(())
     }

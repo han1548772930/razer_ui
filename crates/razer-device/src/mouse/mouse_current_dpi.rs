@@ -217,7 +217,7 @@ pub fn validate_change_for(product_id: u32, change: &DpiChange) -> anyhow::Resul
     let cap = required(product_id)?;
     if change.is_identity_read() {
         ensure!(
-            product_id == 182,
+            matches!(product_id, 182 | 190),
             "This source has no audited initialization identity task"
         );
         return Ok(());
@@ -477,12 +477,12 @@ fn synchronize_ordinary_profile_slots(
 /// Independent getter failures accompany the values actually observed by the
 /// other source task; they never turn an unobserved field into a default.
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
-pub struct DpiReadErrors {
+pub struct DpiTaskErrors {
     stages: Option<String>,
     active: Option<String>,
 }
 
-impl DpiReadErrors {
+impl DpiTaskErrors {
     pub fn stages(&self) -> Option<&str> {
         self.stages.as_deref()
     }
@@ -517,7 +517,11 @@ pub struct DpiReport {
     #[serde(default)]
     pub profile_slot_writes: Vec<crate::mouse_dpi_stages::DpiSlotWriteResult>,
     #[serde(default)]
-    pub read_errors: DpiReadErrors,
+    pub read_errors: DpiTaskErrors,
+    /// Failed mutations retain their actual observations and acknowledgements.
+    /// Transport completion does not imply that the requested value was accepted.
+    #[serde(default)]
+    pub write_errors: DpiTaskErrors,
     pub verified: bool,
 }
 
@@ -601,10 +605,13 @@ fn execute_with_capability(
         initialization_mode_error: None,
         profile_slots: vec![],
         profile_slot_writes: vec![],
-        read_errors: DpiReadErrors::default(),
+        read_errors: DpiTaskErrors::default(),
+        write_errors: DpiTaskErrors::default(),
         verified: false,
     };
-    if product_id == 182 && change.is_some_and(|change| change.initialize) {
+    if (product_id == 182 && change.is_some_and(|change| change.initialize))
+        || product_id == 190 && change.is_some_and(DpiChange::is_identity_read)
+    {
         let serial = crate::feature_exchange::exchange(
             device,
             cap.transport(),
@@ -622,7 +629,7 @@ fn execute_with_capability(
             .collect();
         ensure!(
             !serial.is_empty(),
-            "PID182 initialization has no queried device serial number"
+            "PID{product_id} initialization has no queried device serial number"
         );
         report.serial_number = Some(serial);
         if change.is_some_and(DpiChange::is_identity_read) {
@@ -659,7 +666,6 @@ fn execute_with_capability(
         }
         validate()?;
     }
-    let mut errors = Vec::new();
     if change.is_none() || change.is_some_and(|change| change.stages.is_some()) {
         let stage_result = (|| -> anyhow::Result<()> {
             let packed = change
@@ -706,13 +712,13 @@ fn execute_with_capability(
                 &exchange(device, cap, [80, 4, 134], &[1], next()?, &validate)?,
                 1,
             )?;
+            report.stages = Some(observed);
             if let Some(packed) = &packed {
                 ensure!(
-                    same_stages(packed, &observed),
+                    same_stages(packed, report.stages.as_ref().expect("actual stage getter")),
                     "DPI stage setter acknowledged but readback differs"
                 );
             }
-            report.stages = Some(observed);
             if matches!(product_id, 182 | 190)
                 && let Some(change) = change
                 && let (Some(guid), Some(draft)) = (&change.profile_guid, &change.stages)
@@ -776,8 +782,9 @@ fn execute_with_capability(
         if let Err(error) = stage_result {
             if change.is_none() {
                 report.read_errors.stages = Some(format!("{error:#}"));
+            } else {
+                report.write_errors.stages = Some(format!("{error:#}"));
             }
-            errors.push(format!("stage table: {error:#}"));
         }
         // Stage and current X/Y are independent source tasks. Device rejection
         // does not discard the other task; scope cancellation stops both.
@@ -810,8 +817,9 @@ fn execute_with_capability(
                         &exchange(device, cap, [7, 4, 133], &[0], next()?, &validate)?,
                     )?;
                 }
+                report.active = Some(observed);
                 ensure!(
-                    observed == wanted,
+                    report.active == Some(wanted),
                     "Active DPI setter acknowledged but readback differs"
                 );
             }
@@ -821,17 +829,13 @@ fn execute_with_capability(
         if let Err(error) = active_result {
             if change.is_none() {
                 report.read_errors.active = Some(format!("{error:#}"));
+            } else {
+                report.write_errors.active = Some(format!("{error:#}"));
             }
-            errors.push(format!("active DPI: {error:#}"));
         }
     }
     validate()?;
-    ensure!(
-        change.is_none() || errors.is_empty(),
-        "Current mouse DPI operation is unconfirmed: {}",
-        errors.join("; ")
-    );
-    report.verified = errors.is_empty();
+    report.verified = report.read_errors.is_empty() && report.write_errors.is_empty();
     Ok(report)
 }
 

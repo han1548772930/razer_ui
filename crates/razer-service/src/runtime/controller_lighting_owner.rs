@@ -1,4 +1,4 @@
-//! Retain the native engine, HID channel and cancellation until frames stop,
+//! Retain the Rust renderer, HID channel and cancellation until frames stop,
 //! verified exit defaults are attempted and native handles have been released.
 use anyhow::{Context as _, ensure};
 use razer_device::{
@@ -22,7 +22,7 @@ use std::{
 };
 
 #[cfg(windows)]
-use crate::runtime::{lighting_engine_native as native, lighting_engine_session::Session};
+use crate::runtime::{lighting_engine, lighting_engine_session::Session};
 
 enum Message {
     Update {
@@ -86,6 +86,18 @@ pub(in crate::runtime) struct Controller {
     next_generation: u64,
 }
 impl Controller {
+    pub(in crate::runtime) fn shutdown(&mut self, cleanup: &mut crate::runtime::shutdown::Cleanup) {
+        if let Some(mut job) = self.job.take() {
+            let result = job.stop();
+            if let Ok(status) = &result {
+                for error in &status.cleanup_errors {
+                    cleanup.fail("controller_lighting", error);
+                }
+            }
+            cleanup.record("controller_lighting", result);
+        }
+    }
+
     pub(in crate::runtime) fn execute(
         &mut self,
         node: &HidNode,
@@ -384,7 +396,7 @@ fn run_checked(
         if let Ok(mut state) = status.lock() {
             state.acknowledged_writes += 1;
         }
-        session = Some(Session::new(native::Engine::open()?));
+        session = Some(Session::new(lighting_engine::Engine::open()?));
         let session = session.as_mut().unwrap();
         session.initialize(&led_configuration(edition)?, effect)?;
         if let Ok(mut state) = status.lock() {

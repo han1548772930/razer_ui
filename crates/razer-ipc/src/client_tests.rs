@@ -17,9 +17,14 @@ fn reply(id: u64, data: Option<Value>, error: Option<&str>, fatal: bool) -> Vec<
 
 fn simulated_client(bytes: Vec<u8>) -> (ServiceClient, Receiver<Vec<u8>>) {
     let (sender, responses) = mpsc::channel();
+    let diagnostics = worker_diagnostics::WorkerDiagnostics::default();
     // A small reader forces frames across fill_buf boundaries, just like a
     // pipe with partial writes, while remaining entirely deterministic.
-    let _ = forward_responses(&mut BufReader::with_capacity(7, Cursor::new(bytes)), sender);
+    let _ = forward_responses(
+        &mut BufReader::with_capacity(7, Cursor::new(bytes)),
+        sender,
+        &diagnostics,
+    );
     let (requests, pending) = mpsc::channel();
     (
         ServiceClient {
@@ -30,6 +35,8 @@ fn simulated_client(bytes: Vec<u8>) -> (ServiceClient, Receiver<Vec<u8>>) {
             responses,
             input_worker: None,
             output_worker: None,
+            diagnostic_worker: None,
+            diagnostics,
             timeout: Duration::ZERO,
             next_id: 1,
             stopped: false,
@@ -141,6 +148,72 @@ fn source_rejection_keeps_connection_available_for_next_request() {
         client.request(ServiceRequest::KeyboardLayoutRead).unwrap(),
         serde_json::json!({"layout": 23})
     );
+}
+
+#[test]
+fn contradictory_or_missing_response_outcomes_close_the_connection() {
+    for (data, error) in [
+        (Some(serde_json::json!({"layout": 23})), Some("failed")),
+        (None, None),
+    ] {
+        let (mut client, pending) = simulated_client(reply(1, data, error, false));
+        let error = client
+            .request(ServiceRequest::KeyboardLayoutRead)
+            .unwrap_err();
+        assert!(format!("{error:#}").contains("响应状态无效"));
+        assert_closed(&mut client, &pending);
+    }
+}
+
+#[test]
+fn fatal_response_can_preserve_a_final_source_observation() {
+    let value = serde_json::json!({"samples": [], "diagnostics": ["owner retired"]});
+    let (mut client, pending) = simulated_client(reply(1, Some(value.clone()), None, true));
+    assert_eq!(
+        client.request(ServiceRequest::KeyboardLayoutRead).unwrap(),
+        value
+    );
+    assert_closed(&mut client, &pending);
+}
+
+#[test]
+fn worker_failure_includes_stderr_written_during_owned_cleanup_and_stdout_diagnostics() {
+    let (mut client, pending) = simulated_client(b"source read failed\n".to_vec());
+    let (release, wait) = mpsc::channel();
+    client.input_worker = Some(thread::spawn(move || {
+        release.send(()).unwrap();
+        Ok(())
+    }));
+    let diagnostics = client.diagnostics.clone();
+    client.diagnostic_worker = Some(thread::spawn(move || {
+        wait.recv().unwrap();
+        diagnostics.capture_stderr(&b"restore failed during shutdown"[..])
+    }));
+    let error = client
+        .request(ServiceRequest::KeyboardLayoutRead)
+        .unwrap_err();
+    let text = format!("{error:#}");
+    assert!(text.contains("输出已关闭"));
+    assert!(text.contains("stderr:\nrestore failed during shutdown"));
+    assert!(text.contains("stdout:\nsource read failed"));
+    assert!(client.diagnostic_worker.is_none());
+    assert_closed(&mut client, &pending);
+}
+
+#[test]
+fn diagnostic_worker_failure_does_not_skip_other_pipe_cleanup() {
+    let (mut client, _) = simulated_client(Vec::new());
+    client.input_worker = Some(thread::spawn(|| anyhow::bail!("input failed")));
+    client.output_worker = Some(thread::spawn(|| anyhow::bail!("output failed")));
+    client.diagnostic_worker = Some(thread::spawn(|| anyhow::bail!("diagnostic failed")));
+    let error = client.stop().unwrap_err();
+    let text = format!("{error:#}");
+    for expected in ["input failed", "output failed", "diagnostic failed"] {
+        assert!(text.contains(expected));
+    }
+    assert!(client.input_worker.is_none());
+    assert!(client.output_worker.is_none());
+    assert!(client.diagnostic_worker.is_none());
 }
 
 #[test]
@@ -554,15 +627,19 @@ fn finish_termination_retries_stopped_cleanup_without_a_native_shutdown_receipt(
 #[test]
 fn output_worker_distinguishes_clean_eof_from_corrupt_frames() {
     let (send, receive) = mpsc::channel();
-    forward_responses(&mut Cursor::new(Vec::new()), send).unwrap();
+    forward_responses(&mut Cursor::new(Vec::new()), send, &Default::default()).unwrap();
     let Err(error) = receive.recv().unwrap() else {
         panic!("clean EOF must still wake a pending request")
     };
     assert!(error.to_string().contains("输出已关闭"));
 
     let (send, receive) = mpsc::channel();
-    let error =
-        forward_responses(&mut Cursor::new(format!("{FRAME_PREFIX}not-json\n")), send).unwrap_err();
+    let error = forward_responses(
+        &mut Cursor::new(format!("{FRAME_PREFIX}not-json\n")),
+        send,
+        &Default::default(),
+    )
+    .unwrap_err();
     assert!(format!("{error:#}").contains("响应格式无效"));
     assert!(receive.recv().unwrap().is_err());
 }

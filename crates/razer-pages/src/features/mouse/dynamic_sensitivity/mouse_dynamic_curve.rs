@@ -37,6 +37,41 @@ pub(super) fn preset(mode: u32) -> Option<&'static [Point; 5]> {
     }
 }
 
+/// GET returns sampled acceleration ratios, never the author's control points.
+pub(super) fn display_points(
+    mode: Option<u32>,
+    table: Option<&[f32]>,
+    authored: Option<&[Point]>,
+) -> (Vec<Point>, bool) {
+    if let Some(points) = mode.and_then(preset) {
+        return (points.to_vec(), false);
+    }
+    let Some(table) = table.filter(|_| mode == Some(3)) else {
+        return (Vec::new(), false);
+    };
+    if let Some(authored) = authored.filter(|points| {
+        acceleration_table(points).is_some_and(|points| {
+            points
+                .iter()
+                .map(|point| (*point as f32).to_bits())
+                .eq(table.iter().map(|point| point.to_bits()))
+        })
+    }) {
+        return (authored.to_vec(), true);
+    }
+    (
+        table
+            .iter()
+            .enumerate()
+            .map(|(index, value)| Point {
+                x: (index + 1) as f64,
+                y: f64::from(*value),
+            })
+            .collect(),
+        false,
+    )
+}
+
 /// Original kS/xS (190), vt/Ct (226): shape-preserving cubic Hermite.
 /// The UI supplies ordered points. Invalid observed coordinates are rejected,
 /// rather than invoking the vendor JS's in-place sort on malformed data.
@@ -203,6 +238,37 @@ pub(super) fn drag(points: &mut [Point], selected: usize, point: Point, max_x: f
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[::core::prelude::v1::test]
+    fn actual_custom_samples_do_not_invent_local_control_points_or_template() {
+        let table = (0..250)
+            .map(|index| 0.75 + index as f32 / 500.)
+            .collect::<Vec<_>>();
+        let (points, authored) = display_points(Some(3), Some(&table), Some(&CLASSIC));
+        assert!(!authored);
+        assert_eq!(points.len(), 250);
+        for (index, point) in points.iter().enumerate() {
+            assert_eq!(point.x, (index + 1) as f64);
+            assert_eq!(point.y, f64::from(table[index]));
+        }
+        assert_eq!(
+            display_points(None, Some(&table), Some(&CLASSIC)),
+            (vec![], false)
+        );
+        assert_eq!(
+            display_points(Some(99), Some(&table), Some(&CLASSIC)),
+            (vec![], false)
+        );
+        let table = acceleration_table(&JUMP)
+            .unwrap()
+            .into_iter()
+            .map(|value| value as f32)
+            .collect::<Vec<_>>();
+        assert_eq!(
+            display_points(Some(3), Some(&table), Some(&JUMP)),
+            (JUMP.to_vec(), true)
+        );
+        assert!(!display_points(Some(3), Some(&table), None).1);
+    }
     #[::core::prelude::v1::test]
     fn source_presets_interpolate_knots_without_overshooting_plateaus() {
         for points in [&CLASSIC, &NATURAL, &JUMP] {

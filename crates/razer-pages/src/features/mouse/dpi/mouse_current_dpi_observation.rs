@@ -72,6 +72,13 @@ pub(super) struct Observation {
     pub(super) stages_error: Option<String>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum RowUpdate {
+    Unchanged,
+    Unobserved,
+    Observed(DpiPair),
+}
+
 impl Observation {
     /// Independent source tasks may succeed separately. In particular, the
     /// profile-0 pair must survive a failed profile-1 table getter.
@@ -79,11 +86,31 @@ impl Observation {
         &mut self,
         selection: Option<&Selection>,
         report: &DpiReport,
-    ) -> [Option<DpiPair>; 5] {
-        let mut values = [None; 5];
+    ) -> [RowUpdate; 5] {
+        let mut values = [RowUpdate::Unchanged; 5];
+        if report
+            .requested
+            .as_ref()
+            .is_none_or(|change| change.stages.is_some())
+        {
+            self.table = None;
+            self.stage_level = None;
+            values.fill(RowUpdate::Unobserved);
+        }
+        if report
+            .requested
+            .as_ref()
+            .is_none_or(|change| change.active.is_some())
+        {
+            self.current = None;
+            if let Some(selection) = selection {
+                values[selection.selected] = RowUpdate::Unobserved;
+            }
+        }
         if let Some(table) = &report.stages {
             if let Some(mapped) = selection.and_then(|selection| selection.table_values(table)) {
-                values = mapped;
+                values =
+                    mapped.map(|value| value.map_or(RowUpdate::Unobserved, RowUpdate::Observed));
             }
             self.table = Some(table.clone());
             self.stages_error = None;
@@ -92,7 +119,7 @@ impl Observation {
             self.stage_level = Some(level);
             self.stages_error = None;
             if let Some(selection) = selection {
-                values[selection.selected] = Some(level);
+                values[selection.selected] = RowUpdate::Observed(level);
             }
         }
         if let Some(pair) = report.active {
@@ -101,14 +128,14 @@ impl Observation {
             // The current control belongs to the source-selected local row.
             // Preserve the table separately: transient DPI can differ from it.
             if let Some(selection) = selection {
-                values[selection.selected] = Some(pair);
+                values[selection.selected] = RowUpdate::Observed(pair);
             }
         }
         if let Some(error) = report.read_errors.active() {
             self.active_error = Some(error.into());
             // A profile-1 table does not observe profile-0 current DPI.
             if let Some(selection) = selection {
-                values[selection.selected] = None;
+                values[selection.selected] = RowUpdate::Unobserved;
             }
         }
         if let Some(error) = report.read_errors.stages() {
@@ -129,6 +156,13 @@ mod tests {
     use super::*;
     use razer_device::mouse_dpi_stages::{DpiStage, PackedDpiStage};
     use serde_json::json;
+
+    fn values(updates: [RowUpdate; 5]) -> [Option<DpiPair>; 5] {
+        updates.map(|update| match update {
+            RowUpdate::Observed(value) => Some(value),
+            RowUpdate::Unchanged | RowUpdate::Unobserved => None,
+        })
+    }
 
     fn profile() -> DpiStagesDraft {
         DpiStagesDraft {
@@ -180,7 +214,7 @@ mod tests {
         let selection = Selection::capture(190, &profile).unwrap();
         let mut observation = Observation::default();
         let actual = DpiPair { x: 2000, y: 2100 };
-        let values = observation.accept(Some(&selection), &report(Some(actual), None));
+        let values = values(observation.accept(Some(&selection), &report(Some(actual), None)));
         assert_eq!(values[2], Some(actual));
         assert_eq!(observation.current, Some(actual));
         assert!(observation.table.is_none());
@@ -194,7 +228,8 @@ mod tests {
         let profile = profile();
         let selection = Selection::capture(190, &profile).unwrap();
         let mut observation = Observation::default();
-        let values = observation.accept(Some(&selection), &report(None, Some(table(&[2000]))));
+        let values =
+            values(observation.accept(Some(&selection), &report(None, Some(table(&[2000])))));
         assert_eq!(values, [None; 5]);
         assert_eq!(
             observation.table.as_ref().unwrap().number_of_active_stages,
@@ -216,10 +251,10 @@ mod tests {
         profile.stages[3].visible = false;
         let selection = Selection::capture(190, &profile).unwrap();
         let mut observation = Observation::default();
-        let values = observation.accept(
+        let values = values(observation.accept(
             Some(&selection),
             &report(None, Some(table(&[500, 2000, 7000]))),
-        );
+        ));
         assert_eq!(
             values.map(|value| value.map(|value| value.x)),
             [None, Some(500), Some(2000), None, Some(7000)]
@@ -234,7 +269,8 @@ mod tests {
         profile.enabled = false;
         let selection = Selection::capture(190, &profile).unwrap();
         let mut observation = Observation::default();
-        let values = observation.accept(Some(&selection), &report(None, Some(table(&[2300]))));
+        let values =
+            values(observation.accept(Some(&selection), &report(None, Some(table(&[2300])))));
         assert_eq!(values[2], Some(DpiPair { x: 2300, y: 2300 }));
         assert_eq!(values.iter().flatten().count(), 1);
         assert!(!profile.enabled);
@@ -244,13 +280,13 @@ mod tests {
     fn current_dpi_observation_transient_pair_remains_distinct_from_stage_table() {
         let selection = Selection::capture(190, &profile()).unwrap();
         let mut observation = Observation::default();
-        let values = observation.accept(
+        let values = values(observation.accept(
             Some(&selection),
             &report(
                 Some(DpiPair { x: 2000, y: 2000 }),
                 Some(table(&[400, 800, 1600, 3200, 6400])),
             ),
-        );
+        ));
         assert_eq!(values[2].unwrap().x, 2000);
         assert_eq!(observation.table.as_ref().unwrap().records[2].x, 1600);
         assert_eq!(observation.current.unwrap().x, 2000);
@@ -263,10 +299,54 @@ mod tests {
         let mut actual = report(None, Some(table(&[400, 800, 1600, 3200, 6400])));
         actual.read_errors =
             serde_json::from_value(json!({"active":"getter failed","stages":null})).unwrap();
-        let values = observation.accept(Some(&selection), &actual);
+        let values = values(observation.accept(Some(&selection), &actual));
         assert_eq!(values[2], None);
         assert_eq!(values[1].unwrap().x, 800);
         assert!(observation.current.is_none());
         assert!(observation.active_error.is_some());
+    }
+
+    #[test]
+    fn current_dpi_observation_failed_refresh_invalidates_previous_values() {
+        let selection = Selection::capture(190, &profile()).unwrap();
+        let mut observation = Observation::default();
+        observation.accept(
+            Some(&selection),
+            &report(
+                Some(DpiPair { x: 2000, y: 2100 }),
+                Some(table(&[500, 1000, 2000, 4000, 8000])),
+            ),
+        );
+        let mut failed = report(None, None);
+        failed.read_errors = serde_json::from_value(json!({
+            "stages":"stage getter failed", "active":"active getter failed"
+        }))
+        .unwrap();
+        assert_eq!(
+            observation.accept(Some(&selection), &failed),
+            [RowUpdate::Unobserved; 5]
+        );
+        assert!(observation.current.is_none());
+        assert!(observation.table.is_none());
+        assert!(observation.stage_level.is_none());
+    }
+
+    #[test]
+    fn current_dpi_observation_failed_write_preserves_actual_mismatching_readback() {
+        let profile = profile();
+        let selection = Selection::capture(190, &profile).unwrap();
+        let mut observation = Observation::default();
+        let actual = DpiPair { x: 2300, y: 2400 };
+        let report: DpiReport = serde_json::from_value(json!({
+            "requested": {"stages": null, "active":{"x":2200,"y":2200}},
+            "stages":null, "active":actual, "acknowledgements":[], "verified":false,
+            "write_errors":{"active":"readback differs","stages":null}
+        }))
+        .unwrap();
+        let updates = observation.accept(Some(&selection), &report);
+        assert_eq!(updates[2], RowUpdate::Observed(actual));
+        assert_eq!(updates[0], RowUpdate::Unchanged);
+        assert_eq!(observation.current, Some(actual));
+        assert_eq!(profile.stages[2].x, 1600);
     }
 }

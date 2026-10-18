@@ -109,35 +109,6 @@ pub enum Discovery<'a, R, H> {
 }
 
 #[derive(Serialize)]
-pub struct NativeObservation<'a> {
-    product_id: u32,
-    device_container_id: &'a str,
-    library: &'a str,
-    query: Query<&'a Value>,
-}
-
-impl<'a> NativeObservation<'a> {
-    pub fn new(
-        product_id: u32,
-        device_container_id: &'a str,
-        library: &'a str,
-        result: &'a Result<Value, String>,
-    ) -> Self {
-        Self {
-            product_id,
-            device_container_id,
-            library,
-            query: match result {
-                Ok(response) => Query::Received { response },
-                Err(error) => Query::Failed {
-                    error: error.clone(),
-                },
-            },
-        }
-    }
-}
-
-#[derive(Serialize)]
 struct DeviceConfiguration {
     scope: &'static str,
     successful_fields: usize,
@@ -159,7 +130,6 @@ pub struct Report<'a, R, H, P> {
     device_configuration: DeviceConfiguration,
     #[serde(flatten)]
     platform_observation: P,
-    native_device_values: Vec<NativeObservation<'a>>,
 }
 
 impl<'a, R, H, P> Report<'a, R, H, P> {
@@ -170,11 +140,10 @@ impl<'a, R, H, P> Report<'a, R, H, P> {
         queries: ServiceQueries<'a>,
         discovery: Discovery<'a, R, H>,
         platform_observation: P,
-        native_device_values: Vec<NativeObservation<'a>>,
         successful_fields: usize,
     ) -> Self {
         Self {
-            format_version: 2,
+            format_version: 3,
             platform: std::env::consts::OS,
             recorded_at_utc,
             worker_connected,
@@ -187,7 +156,6 @@ impl<'a, R, H, P> Report<'a, R, H, P> {
                 complete_profile_read: false,
             },
             platform_observation,
-            native_device_values,
         }
     }
 }

@@ -211,7 +211,7 @@ fn decode_reply(
     let report: DpiReport = serde_json::from_value(reply["report"].clone())?;
     ensure!(
         report.requested == change
-            && (report.verified || change.is_none())
+            && report.verified == (report.read_errors.is_empty() && report.write_errors.is_empty())
             && report
                 .acknowledgements
                 .iter()
@@ -227,7 +227,8 @@ fn decode_reply(
         );
         if change.is_identity_read() {
             ensure!(
-                product_id == 182
+                report.verified
+                    && matches!(product_id, 182 | 190)
                     && report
                         .serial_number
                         .as_deref()
@@ -243,29 +244,36 @@ fn decode_reply(
                 "Initialization identity reply is absent or contains unrelated device operations"
             );
         }
+        ensure!(
+            (change.stages.is_some() || report.write_errors.stages().is_none())
+                && (change.active.is_some() || report.write_errors.active().is_none()),
+            "DPI reply contains a failure for an unrequested write task"
+        );
         if let Some(stages) = &change.stages {
             let packed = dpi::pack_for(product_id, stages)?;
             if source.is_stage_level_only() {
                 ensure!(
-                    report
-                        .acknowledgements
-                        .iter()
-                        .any(|ack| ack.command == [7, 4, 5]),
+                    report.write_errors.stages().is_some()
+                        || report
+                            .acknowledgements
+                            .iter()
+                            .any(|ack| ack.command == [7, 4, 5]),
                     "DPI level-only stage reply has no profile setter acknowledgement"
                 );
             } else {
                 ensure!(
-                    report
-                        .stages
-                        .as_ref()
-                        .is_some_and(|reading| dpi::same_stages(&packed, reading)),
+                    report.write_errors.stages().is_some()
+                        || report
+                            .stages
+                            .as_ref()
+                            .is_some_and(|reading| dpi::same_stages(&packed, reading)),
                     "Current mouse DPI reply stage readback differs"
                 );
             }
         }
         if let Some(active) = change.active {
             ensure!(
-                report.active == Some(active),
+                report.write_errors.active().is_some() || report.active == Some(active),
                 "Current mouse DPI reply active readback differs"
             );
         }
@@ -274,6 +282,7 @@ fn decode_reply(
             report.stages.is_some() || source.is_stage_level_only() && report.stage_level.is_some();
         ensure!(
             stages_present != report.read_errors.stages().is_some()
+                && report.write_errors.is_empty()
                 && report.active.is_some() != report.read_errors.active().is_some()
                 && report.verified == report.read_errors.is_empty()
                 && report.acknowledgements.is_empty()
@@ -297,6 +306,33 @@ fn decode_reply(
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn failed_write_keeps_actual_dpi_without_accepting_a_success_claim() {
+        let change = dpi::DpiChange {
+            stages: None,
+            active: Some(dpi::DpiPair { x: 2200, y: 2200 }),
+            profile_guid: None,
+            initialize: false,
+        };
+        let mut reply = json!({
+            "source_class":dpi::capability(190).unwrap().transport().source_class,
+            "profile_scope":"stage_1_active_0",
+            "report":{
+                "requested":change, "stages":null, "active":{"x":2300,"y":2400},
+                "acknowledgements":[], "verified":false,
+                "write_errors":{"active":"readback differs","stages":null}
+            }
+        });
+        let report = decode_reply(190, &reply, Some(change.clone())).unwrap();
+        assert_eq!(report.active, Some(dpi::DpiPair { x: 2300, y: 2400 }));
+        assert!(!report.verified);
+        reply["report"]["verified"] = json!(true);
+        assert!(decode_reply(190, &reply, Some(change.clone())).is_err());
+        reply["report"]["verified"] = json!(false);
+        reply["report"]["write_errors"]["stages"] = json!("unrequested task");
+        assert!(decode_reply(190, &reply, Some(change)).is_err());
+    }
 
     #[test]
     fn partial_getter_reply_preserves_real_values_and_requires_explicit_errors() {
@@ -344,22 +380,24 @@ mod tests {
             profile_guid: None,
             initialize: true,
         };
-        let source = dpi::capability(182).unwrap();
-        let reply = json!({"source_class":source.transport().source_class,"profile_scope":"stage_1_active_0",
+        for product_id in [182, 190] {
+            let source = dpi::capability(product_id).unwrap();
+            let reply = json!({"source_class":source.transport().source_class,"profile_scope":"stage_1_active_0",
             "report":{"requested":change,"serial_number":"SOURCE-SERIAL","stages":null,"active":null,"acknowledgements":[],"verified":true}});
-        assert!(decode_reply(182, &reply, Some(change.clone())).is_ok());
-        for serial in [
-            Value::Null,
-            json!(""),
-            json!("bad\u{0}serial"),
-            json!("未读取"),
-        ] {
-            let mut missing = reply.clone();
-            missing["report"]["serial_number"] = serial;
-            assert!(decode_reply(182, &missing, Some(change.clone())).is_err());
+            assert!(decode_reply(product_id, &reply, Some(change.clone())).is_ok());
+            for serial in [
+                Value::Null,
+                json!(""),
+                json!("bad\u{0}serial"),
+                json!("未读取"),
+            ] {
+                let mut missing = reply.clone();
+                missing["report"]["serial_number"] = serial;
+                assert!(decode_reply(product_id, &missing, Some(change.clone())).is_err());
+            }
+            let mut unrelated = reply;
+            unrelated["report"]["active"] = json!({"x":800,"y":800});
+            assert!(decode_reply(product_id, &unrelated, Some(change.clone())).is_err());
         }
-        let mut unrelated = reply;
-        unrelated["report"]["active"] = json!({"x":800,"y":800});
-        assert!(decode_reply(182, &unrelated, Some(change)).is_err());
     }
 }

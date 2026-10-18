@@ -3,6 +3,15 @@
 use anyhow::{Result, bail, ensure};
 use serde::{Deserialize, Serialize};
 
+#[path = "surround/protocol.rs"]
+pub mod protocol;
+#[path = "surround/wire.rs"]
+pub mod wire;
+#[path = "surround/observed.rs"]
+pub mod observed;
+#[path = "surround/routing.rs"]
+pub mod routing;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub enum Product {
@@ -348,7 +357,7 @@ pub enum NativeCall {
 }
 
 pub trait Transport {
-    /// A bool is the real native response. Transport errors remain errors.
+    /// True confirms the current protocol acknowledgment. Audition delivery does not confirm playback.
     fn call(&mut self, call: &NativeCall) -> Result<bool>;
 }
 
@@ -406,6 +415,7 @@ pub struct Runtime {
     front_volume: Option<Volume>,
     rear_volume: Option<Volume>,
     test_signal: Option<bool>,
+    test_signal_requested: Option<bool>,
 }
 impl Runtime {
     /// Initial runtime from the stored comboMode preferences. Volumes and the
@@ -428,6 +438,11 @@ impl Runtime {
     pub fn test_signal(&self) -> Option<bool> {
         self.test_signal
     }
+    pub fn replace_observed_volumes(&mut self, front: Option<Volume>, rear: Option<Volume>) {
+        self.front_volume = front;
+        self.rear_volume = rear;
+    }
+    pub fn test_signal_requested(&self) -> Option<bool> { self.test_signal_requested }
     pub fn observe_volume(&mut self, channel: Channel, volume: Volume) {
         match channel {
             Channel::Front => self.front_volume = Some(volume),
@@ -493,7 +508,7 @@ impl Runtime {
                 }
                 Change::TestSignal(enabled) => {
                     outcome.required(transport, NativeCall::SetTestSignal(*enabled))?;
-                    self.test_signal = Some(*enabled);
+                    self.test_signal_requested = Some(*enabled);
                 }
             }
             validate()?;

@@ -3,9 +3,9 @@
 use super::{Transport, WorkerGuard, guarded, shutdown};
 #[cfg(test)]
 use razer_ipc::KEY_CAPTURE_LIFECYCLE as LIFECYCLE;
+use razer_ipc::ServiceRequest;
 use razer_ipc::macro_recording::{RestoreReceipt, SuspensionReceipt};
 use razer_ipc::mapping_control::{Registry, Suppression, Suspension};
-use razer_ipc::{ServiceClient, ServiceRequest};
 use razer_model::macro_library::{
     ActionItem, RecordingGeometry,
     recording::{Decoder, Options},
@@ -64,7 +64,13 @@ impl Drop for Session {
 }
 
 pub fn spawn(options: Options) -> Result<(Session, async_channel::Receiver<Update>), String> {
-    spawn_with_registry(options, ServiceClient::spawn, Registry::global())
+    spawn_with_registry(options, super::recorder_owner::spawn, Registry::global())
+}
+
+/// Queries the retained recorder's real input owner from a background worker.
+/// Mapping workers have their own process and must not query a local recorder.
+pub fn mode() -> anyhow::Result<razer_platform::macro_recorder::Mode> {
+    super::recorder_owner::mode()
 }
 
 #[cfg(test)]

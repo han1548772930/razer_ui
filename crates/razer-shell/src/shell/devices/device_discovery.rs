@@ -460,7 +460,7 @@ impl AppShell {
                 let (projection, mode, payload) = match result {
                     Ok((projection, mode, payload, diagnostics)) => {
                         for diagnostic in diagnostics {
-                            eprintln!("[dock source query] {diagnostic}");
+                            log::warn!("[dock source query] {diagnostic}");
                         }
                         (projection, mode, payload.map_err(|e| format!("{e:#}")))
                     }
@@ -468,7 +468,7 @@ impl AppShell {
                 };
                 if let Some(mode) = mode {
                     if let Err(error) = &mode {
-                        eprintln!("[dock factory mode] {error:#}");
+                        log::warn!("[dock factory mode] {error:#}");
                     }
                     workspace.update(cx, |workspace, cx| {
                         workspace.observe_pairing_mode(Some(mode.unwrap_or(false)), cx)
@@ -895,7 +895,7 @@ impl AppShell {
                 ) {
                     identity_publications.push(publication);
                 } else {
-                    eprintln!(
+                    log::warn!(
                         "[keyboard identity cache] product {} has no publishable queried identity/source names",
                         observed.product_id()
                     );
@@ -932,14 +932,14 @@ impl AppShell {
                                 razer_storage::source_identity::CachePolicy::ReplaceSerial
                             }
                             _ => {
-                                eprintln!("[keyboard identity cache] source policy is unknown");
+                                log::warn!("[keyboard identity cache] source policy is unknown");
                                 continue;
                             }
                         };
                         if let Err(error) =
                             razer_storage::source_identity::publish(&path, &record, policy)
                         {
-                            eprintln!(
+                            log::warn!(
                                 "[keyboard identity cache] local publication failed: {error:#}"
                             );
                         }

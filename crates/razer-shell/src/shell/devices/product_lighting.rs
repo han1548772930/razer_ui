@@ -89,7 +89,7 @@ impl AppShell {
         }
         if matches!(
             request.command(),
-            "checkIsFullyInstall" | "getMemoryStorageItem"
+            "checkIsFullyInstall" | "getMemoryStorageItem" | "READ_HOST_LIGHTING"
         ) {
             self.observe_mouse_product_lighting(entity, request.clone(), window, cx);
             return;

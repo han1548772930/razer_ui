@@ -84,14 +84,14 @@ fn controller_observation(readback: &Readback) -> anyhow::Result<ControllerChrom
                 )?
                 .with_enabled(configuration.enabled());
         }
-        if let Some(enabled) = snapshot.dynamic_lighting() {
-            observation = observation.with_dynamic_lighting(enabled);
-        }
-        if let Some(installed) = snapshot.module_installed() {
-            observation = observation.with_module_installed(installed);
-        }
     }
-    if let Ok(installation) = &readback.installation {
+    if let Ok(Some(enabled)) = readback.dynamic_lighting {
+        observation = observation.with_dynamic_lighting(enabled);
+    }
+    if let Ok(Some(installed)) = readback.module_installed {
+        observation = observation.with_module_installed(installed);
+    }
+    if let Ok(Some(installation)) = &readback.installation {
         observation = observation.with_fully_installed(installation.fully_installed());
     }
     Ok(observation)
@@ -487,6 +487,12 @@ impl AppShell {
         let mut diagnostics = Vec::new();
         if let Err(error) = &readback.snapshot {
             diagnostics.push(format!("本地配置：{error}"));
+        }
+        if let Err(error) = &readback.dynamic_lighting {
+            diagnostics.push(format!("动态灯光状态：{error}"));
+        }
+        if let Err(error) = &readback.module_installed {
+            diagnostics.push(format!("模块状态：{error}"));
         }
         match self.observed_chroma_products() {
             Ok(Some(products)) => observation = observation.with_connected_products(products),

@@ -132,6 +132,10 @@ mod hid_transport;
 mod macro_recorder;
 #[path = "mapping_device.rs"]
 mod mapping_device;
+#[path = "mapping_mode_events.rs"]
+mod mapping_mode_events;
+#[path = "mapping_runtime.rs"]
+mod mapping_runtime;
 #[path = "mapping_execution.rs"]
 mod mapping_execution;
 #[path = "mapping_key_capture.rs"]
@@ -162,6 +166,8 @@ mod philips_measurement;
 mod seiren_audio_capture_adapter;
 #[path = "shortcut_capture.rs"]
 mod shortcut_capture;
+#[path = "simple_version.rs"]
+mod simple_version;
 #[path = "audio/surround.rs"]
 mod surround_adapter;
 pub(super) fn mixer_lighting_sample(node: &HidNode, sources: [u8; 4]) -> anyhow::Result<Value> {
@@ -268,10 +274,12 @@ pub(super) struct NativeRuntime {
     // Never unload a library while its background callbacks may still be active.
     // Shutdown is explicit; process exit reclaims the module after this returns.
     mapping: Option<ManuallyDrop<EngineLibrary>>,
+    #[cfg(test)]
     simple: Option<ManuallyDrop<EngineLibrary>>,
     mapping_initialized: bool,
+    #[cfg(test)]
     simple_initialized: bool,
-    app_file_owners: Vec<String>,
+    app_files: user_app_files::Events,
     macro_recorder: macro_recorder::Recorder,
     global_shortcuts: global_shortcuts::State,
     receiver_pairing: receiver_pairing::Controller,
@@ -279,6 +287,7 @@ pub(super) struct NativeRuntime {
     receiver_reconnect: receiver_reconnect::Controller,
     mapping_device: mapping_device::State,
     mapping_execution: mapping_execution::State,
+    mapping_mode_events: mapping_mode_events::State,
     controller_input: controller_input::State,
     philips_measurement: philips_measurement::State,
     mouse_input_monitoring: mouse_input_monitoring::State,
@@ -297,10 +306,12 @@ impl NativeRuntime {
         Self {
             paths: EnginePaths::discover(),
             mapping: None,
+            #[cfg(test)]
             simple: None,
             mapping_initialized: false,
+            #[cfg(test)]
             simple_initialized: false,
-            app_file_owners: Vec::new(),
+            app_files: user_app_files::Events::default(),
             macro_recorder: macro_recorder::Recorder::new(),
             global_shortcuts: global_shortcuts::State::new(),
             receiver_pairing: receiver_pairing::Controller::default(),
@@ -308,6 +319,7 @@ impl NativeRuntime {
             receiver_reconnect: receiver_reconnect::Controller::default(),
             mapping_device: mapping_device::State::new(),
             mapping_execution: mapping_execution::State::default(),
+            mapping_mode_events: mapping_mode_events::State::default(),
             controller_input: controller_input::State::new(),
             philips_measurement: philips_measurement::State::new(),
             mouse_input_monitoring: mouse_input_monitoring::State::default(),
@@ -380,8 +392,9 @@ impl NativeRuntime {
         Ok(())
     }
 
+    #[cfg(test)]
+    #[cfg(test)]
     fn simple(&mut self) -> anyhow::Result<()> {
-        self.complete_system_monitor_simple_init(std::time::Duration::ZERO)?;
         if self.simple_initialized {
             return Ok(());
         }
@@ -405,6 +418,7 @@ impl NativeRuntime {
             .with_context(|| format!("{} 缺少当前封装所需导出 {name}", library.path().display()))
     }
 
+    #[cfg(test)]
     unsafe fn simple_symbol<T: Copy>(&self, name: &str) -> anyhow::Result<T> {
         let library = self.simple.as_ref().context("音频服务未加载")?;
         unsafe { library.func(name) }
@@ -416,6 +430,10 @@ impl NativeRuntime {
             && !matches!(
                 request,
                 ServiceRequest::Shutdown
+                    | ServiceRequest::StopMacroRecording
+                    | ServiceRequest::MacroRecordingEvents
+                    | ServiceRequest::QueryMacroRecordingStarted
+                    | ServiceRequest::MacroRecordingMode
                     | ServiceRequest::SystemMonitorPoll { .. }
                     | ServiceRequest::SystemMonitorStop { .. }
             )
@@ -494,9 +512,6 @@ impl NativeRuntime {
             } => self.publish_mapping_device(&owner_guid, document),
             ServiceRequest::MappingDeviceEvents { owner_guid } => {
                 self.mapping_device_events(&owner_guid)
-            }
-            ServiceRequest::MappingDeviceMacroRecordingMode { owner_guid } => {
-                self.mapping_device_macro_recording_mode(&owner_guid)
             }
             ServiceRequest::MappingDeviceHypershiftActive { owner_guid } => {
                 self.mapping_device_hypershift_active(&owner_guid)
@@ -623,41 +638,6 @@ impl NativeRuntime {
                 bail!("Help reports must be dispatched through their dedicated worker query")
             }
             ServiceRequest::UsbDevices => usb::enumerate(),
-            ServiceRequest::NativeLibraryVersion {
-                library,
-                product_id,
-            } => crate::native_query::version(&library, product_id),
-            ServiceRequest::NativeLibraryGetter {
-                library,
-                export,
-                device_id,
-                product_id,
-            } => {
-                let (observed_product, before) = native_target(&device_id, product_id)?;
-                crate::native_read::getter(
-                    &library,
-                    &export,
-                    &device_id,
-                    Some(observed_product),
-                    || {
-                        let (_, current) = native_target(&device_id, Some(observed_product))?;
-                        for key in ["path", "device_instance_id", "device_container_id"] {
-                            anyhow::ensure!(
-                                before[key]
-                                    .as_str()
-                                    .zip(current[key].as_str())
-                                    .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b)),
-                                "DLL 查询期间设备身份发生变化"
-                            );
-                        }
-                        anyhow::ensure!(
-                            before["product_id"] == current["product_id"],
-                            "DLL 查询期间物理 PID 发生变化"
-                        );
-                        Ok(())
-                    },
-                )
-            }
             ServiceRequest::DeviceRead { target, kind } => device_reads::query(&target, kind),
             ServiceRequest::DeviceWrite { target, setting } => {
                 device_reads::write(&target, &setting)
@@ -732,34 +712,11 @@ impl NativeRuntime {
             ServiceRequest::BleMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power_ble(&target, &change)
             }
-            ServiceRequest::NativeLibrarySnapshot {
-                library,
-                device_container_id,
-                product_id,
-            } => {
-                let (_, before) = native_target(&device_container_id, Some(product_id))?;
-                crate::native_read::snapshot(&library, &device_container_id, product_id, || {
-                    let (_, current) = native_target(&device_container_id, Some(product_id))?;
-                    for key in ["path", "device_instance_id", "device_container_id"] {
-                        anyhow::ensure!(
-                            before[key]
-                                .as_str()
-                                .zip(current[key].as_str())
-                                .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b)),
-                            "DLL 查询期间设备身份发生变化"
-                        );
-                    }
-                    anyhow::ensure!(
-                        before["product_id"] == current["product_id"],
-                        "DLL 查询期间物理 PID 发生变化"
-                    );
-                    Ok(())
-                })
-            }
             ServiceRequest::StartMacroRecording => self.start_macro_recording(),
             ServiceRequest::PrepareOtfmRecorder => self.prepare_otfm_recorder(),
             ServiceRequest::StartOtfmRecording => self.start_otfm_recording(),
             ServiceRequest::QueryMacroRecordingStarted => self.query_macro_recording_started(),
+            ServiceRequest::MacroRecordingMode => self.query_macro_recording_mode(),
             ServiceRequest::MacroRecorderGlobalState => self.macro_recorder_global_state(),
             ServiceRequest::SetOtfmMappingsSuspended { suspended } => {
                 self.set_otfm_mappings_suspended(suspended)
@@ -771,7 +728,7 @@ impl NativeRuntime {
                 self.macro_recorder_storage_write(&key, &value)
             }
             ServiceRequest::StopMacroRecording => self.stop_macro_recording(),
-            ServiceRequest::MacroRecordingEvents => Ok(self.macro_recorder.events()),
+            ServiceRequest::MacroRecordingEvents => self.macro_recorder.events(),
             ServiceRequest::SuspendMacroMappings => self.suspend_macro_mappings(),
             ServiceRequest::ResumeMacroMappings => self.resume_macro_mappings(),
             ServiceRequest::ReceiverWirelessStatus {
@@ -876,18 +833,7 @@ impl NativeRuntime {
                 Ok(serde_json::to_value(crate::simple_audio::enumerate()?)?)
             }
             ServiceRequest::UserAppFiles { command } => self.user_app_files(command),
-            ServiceRequest::SimpleVersion => {
-                self.simple()?;
-                let symbol = "simpleGetVersionInfo";
-                // Source declares void(callback(bool,string,string)).
-                let query: Query = unsafe { self.simple_symbol(symbol)? };
-                let value = self
-                    .call(|| unsafe { query(callback3) })?
-                    .value
-                    .context("原生服务未返回结果")?;
-                anyhow::ensure!(!value.trim().is_empty(), "{symbol} 返回空结果");
-                Ok(serde_json::from_str(&value).unwrap_or(Value::String(value)))
-            }
+            ServiceRequest::SimpleVersion => Ok(serde_json::to_value(simple_version::query()?)?),
             ServiceRequest::GlobalMode => {
                 self.mapping()?;
                 let query: Query = unsafe { self.mapping_symbol("getGlobalMode")? };
@@ -1040,9 +986,14 @@ impl NativeRuntime {
                 if let Err(error) = self.stop_shortcut_capture() {
                     errors.push(format!("Shortcut capture cleanup failed: {error:#}"));
                 }
-                if let Some(owner) = self.mapping_device.owner_guid() {
+                for owner in self.mapping_device.owners() {
                     if let Err(error) = self.stop_mapping_device(&owner) {
                         errors.push(format!("Mapping device cleanup failed: {error:#}"));
+                    }
+                }
+                for owner in self.mapping_mode_events.owners() {
+                    if let Err(error) = self.release_mapping_mode_events(owner) {
+                        errors.push(format!("Mapping mode event cleanup failed: {error:#}"));
                     }
                 }
                 if self.mapping_initialized && !self.poisoned {
@@ -1056,37 +1007,7 @@ impl NativeRuntime {
                         Err(error) => errors.push(format!("映射引擎关闭失败：{error:#}")),
                     }
                 }
-                // A missing export or rejected mapping shutdown must not skip
-                // the independent audio service. A timed-out callback must not
-                // be allowed to satisfy any later native call.
-                if let Err(error) = self.complete_system_monitor_simple_init(CALLBACK_TIMEOUT) {
-                    errors.push(format!(
-                        "System monitor launcher cleanup remains pending: {error:#}"
-                    ));
-                }
-                let monitor_launch_stopped = match self
-                    .complete_system_monitor_launch(CALLBACK_TIMEOUT)
-                {
-                    Ok(()) => true,
-                    Err(error) => {
-                        errors.push(format!("System monitor launcher cleanup failed: {error:#}"));
-                        !self.system_monitor_launch_pending()
-                    }
-                };
-                if self.simple_initialized && !self.poisoned && monitor_launch_stopped {
-                    let result = (|| {
-                        let shutdown: Initialize =
-                            unsafe { self.simple_symbol("simpleServiceShutdown")? };
-                        self.call(|| unsafe { shutdown(callback0) })
-                    })();
-                    match result {
-                        Ok(_) => {
-                            self.simple_initialized = false;
-                            self.app_file_owners.clear();
-                        }
-                        Err(error) => errors.push(format!("音频服务关闭失败：{error:#}")),
-                    }
-                }
+                self.app_files.clear();
                 if !errors.is_empty() {
                     bail!("{}", errors.join("；"));
                 }

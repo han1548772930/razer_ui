@@ -1,5 +1,6 @@
 //! Current mapping-engine RegisterHotKey/UnregisterHotKey semantics in Rust.
 //! A dedicated thread owns registrations and events. No target DLL is loaded.
+use super::input_clock::EventClock;
 use crate::global_shortcuts::{Shortcut, ShortcutEvent, os_modifiers};
 use anyhow::{Context as _, ensure};
 use std::{
@@ -33,78 +34,6 @@ unsafe extern "system" {
     ) -> i32;
     fn GetKeyState(key: i32) -> i16;
 }
-#[link(name = "kernel32")]
-unsafe extern "system" {
-    fn QueryPerformanceFrequency(frequency: *mut i64) -> i32;
-    fn QueryPerformanceCounter(counter: *mut i64) -> i32;
-}
-#[link(name = "winmm")]
-unsafe extern "system" {
-    fn timeGetTime() -> u32;
-}
-
-// Current 1f0d40 writes CPU offset41 from the invariant-TSC bit, or from
-// Microsoft's hypervisor signature when the hypervisor-present bit is set.
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn stable_performance_counter() -> bool {
-    #[cfg(target_arch = "x86")]
-    use std::arch::x86::__cpuid;
-    #[cfg(target_arch = "x86_64")]
-    use std::arch::x86_64::__cpuid;
-    let extended = __cpuid(0x8000_0000).eax;
-    if extended >= 0x8000_0007 && __cpuid(0x8000_0007).edx & 0x100 != 0 {
-        return true;
-    }
-    if __cpuid(0).eax == 0 || __cpuid(1).ecx & 0x8000_0000 == 0 {
-        return false;
-    }
-    let hypervisor = __cpuid(0x4000_0000);
-    hypervisor.ebx == 1_919_117_645
-        && hypervisor.ecx == 1_718_580_079
-        && hypervisor.edx == 1_984_438_388
-}
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-fn stable_performance_counter() -> bool {
-    false
-}
-
-/// c94c0 -> 1b7f50 -> 1a8c30/1a8d30 captures QPC microseconds before
-/// side-modifier lookup. 1a9170 extends the fallback millisecond clock through
-/// wrap and converts it to microseconds. No vendor export is executed here.
-struct EventClock {
-    frequency: Option<i64>,
-    previous_high: u8,
-    wraps: u16,
-}
-impl EventClock {
-    fn new() -> Self {
-        let mut frequency = 0;
-        let available = unsafe { QueryPerformanceFrequency(&mut frequency) } != 0
-            && frequency > 0
-            && stable_performance_counter();
-        Self {
-            frequency: available.then_some(frequency),
-            previous_high: 0,
-            wraps: 0,
-        }
-    }
-    fn tick(&mut self) -> u64 {
-        if let Some(frequency) = self.frequency {
-            let mut counter = 0;
-            unsafe { QueryPerformanceCounter(&mut counter) };
-            // Integer division, including large counters, matches the native
-            // quotient/remainder conversion without overflowing its product.
-            return ((i128::from(counter) * 1_000_000) / i128::from(frequency)) as u64;
-        }
-        let now = unsafe { timeGetTime() };
-        let high = (now >> 24) as u8;
-        if high < self.previous_high {
-            self.wraps = self.wraps.wrapping_add(1);
-        }
-        self.previous_high = high;
-        ((u64::from(self.wraps) << 32) | u64::from(now)) * 1000
-    }
-}
 type Reply = mpsc::Sender<Result<Vec<Shortcut>, String>>;
 enum Command {
     Register(Shortcut, Reply),
@@ -116,7 +45,7 @@ enum Command {
 pub(crate) struct Listener {
     command: mpsc::Sender<Command>,
     events: Arc<Mutex<VecDeque<ShortcutEvent>>>,
-    thread: Option<JoinHandle<()>>,
+    thread: Option<JoinHandle<anyhow::Result<()>>>,
 }
 impl Listener {
     pub(crate) fn start() -> anyhow::Result<Self> {
@@ -166,12 +95,27 @@ impl Listener {
             .drain(..)
             .collect())
     }
+    pub(crate) fn stop(&mut self) -> anyhow::Result<()> {
+        let Some(thread) = self.thread.take() else {
+            return Ok(());
+        };
+        let mut errors = Vec::new();
+        if !thread.is_finished() && self.command.send(Command::Stop).is_err() {
+            errors.push("Shortcut stop channel closed before cleanup".into());
+        }
+        match thread.join() {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => errors.push(format!("{error:#}")),
+            Err(_) => errors.push("Shortcut cleanup worker panicked".into()),
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
 }
 impl Drop for Listener {
     fn drop(&mut self) {
-        let _ = self.command.send(Command::Stop);
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
+        if let Err(error) = self.stop() {
+            eprintln!("Shortcut cleanup: {error:#}");
         }
     }
 }
@@ -195,7 +139,10 @@ pub(crate) fn side_modifiers() -> u32 {
         bits | if unsafe { GetKeyState(key) } < 0 { mask } else { 0 }
     })
 }
-fn run(receiver: mpsc::Receiver<Command>, events: Arc<Mutex<VecDeque<ShortcutEvent>>>) {
+fn run(
+    receiver: mpsc::Receiver<Command>,
+    events: Arc<Mutex<VecDeque<ShortcutEvent>>>,
+) -> anyhow::Result<()> {
     let mut registrations = BTreeMap::<(u32, u32), Accelerator>::new();
     let mut next_id = 0i32;
     let mut unused = Vec::<i32>::new();
@@ -326,7 +273,16 @@ fn run(receiver: mpsc::Receiver<Command>, events: Arc<Mutex<VecDeque<ShortcutEve
             }
         }
     }
+    let mut errors = Vec::new();
     for accelerator in registrations.values() {
-        unsafe { UnregisterHotKey(std::ptr::null_mut(), accelerator.id) };
+        if unsafe { UnregisterHotKey(std::ptr::null_mut(), accelerator.id) } == 0 {
+            errors.push(format!(
+                "OS shortcut {} cleanup failed: {}",
+                accelerator.id,
+                std::io::Error::last_os_error()
+            ));
+        }
     }
+    ensure!(errors.is_empty(), "{}", errors.join("; "));
+    Ok(())
 }

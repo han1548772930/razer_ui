@@ -16,6 +16,66 @@ import native_runtime as native
 from test_host import pe_fixture
 
 
+class SimpleVersionEvidenceTests(unittest.TestCase):
+    def fixture(self, root):
+        import uuid
+        raw = bytearray(2570440)
+        raw[16:19] = b"abc"
+        raw[0x1f8234:0x1f8244] = uuid.UUID("0edeaf3c-d36e-4e7e-9467-900b977dc4ff").bytes_le
+        raw[0x1f8214:0x1f8224] = uuid.UUID("bfe24d59-6568-4179-8ae5-d9d53869a3e3").bytes_le
+        digest = hashlib.sha256(raw).hexdigest()
+        (root / "source.dll").write_bytes(raw)
+        capture = root / f".analysis/results/native/{digest}"
+        (capture / "functions").mkdir(parents=True)
+        (capture / "capture.json").write_text(json.dumps({"input_sha256":digest,
+            "input_bytes":len(raw), "ida_version":"test", "hexrays_version":"test"}), encoding="utf-8")
+        function = {"rva":"0xf420", "pseudocode":{"lines":[{"text":"full body"}]},
+            "assembly":["full assembly"], "chunks":[{"start":"0x180000010", "end":"0x180000013",
+                "raw_hex":"616263", "sha256":hashlib.sha256(b"abc").hexdigest()}]}
+        function_path = capture / "functions/f420.json"
+        function_path.write_text(json.dumps(function), encoding="utf-8")
+        pe = {"architecture":"x64", "unresolved":[], "image_base":"0x180000000",
+              "sections":[{"rva":0,"file_offset":0,"bytes":len(raw)}],
+              "exports":[{"names":[name],"rva":rva} for name,rva in (
+                  ("simpleServiceInitialize","0xedf0"), ("simpleGetVersionInfo","0xf420"),
+                  ("simpleServiceShutdown","0xf090"), ("simpleGetUserApps","0x10290"))]}
+        return digest, pe, function, function_path
+
+    def test_actual_chunk_bytes_guid_and_full_body_are_required(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            digest, pe, function, path = self.fixture(root)
+            with patch.object(native, "_SIMPLE_SHA256", digest), \
+                 patch.object(native, "_SIMPLE_INPUT", "source.dll"), \
+                 patch.object(native, "_SIMPLE_FUNCTIONS", ("f420",)), \
+                 patch.object(native, "inspect_pe", return_value=pe):
+                receipt = native.verify_simple_version_source(root)
+                self.assertEqual(receipt["abi"]["version_slot"], 8)
+                self.assertTrue(receipt["functions"][0]["bytes_verified"])
+                function["chunks"][0]["raw_hex"] = "616264"
+                path.write_text(json.dumps(function), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "capture bytes differ"):
+                    native.verify_simple_version_source(root)
+                function["pseudocode"]["lines"] = []
+                path.write_text(json.dumps(function), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "Complete native source body"):
+                    native.verify_simple_version_source(root)
+
+    def test_test_timeout_terminates_and_waits_for_exact_cargo_tree(self):
+        from unittest.mock import Mock
+        process = Mock(pid=12345, returncode=1)
+        process.communicate.side_effect = [subprocess.TimeoutExpired("cargo", 180), ("partial", "failure")]
+        termination = subprocess.CompletedProcess([], 0, "terminated", "")
+        with patch.object(native.subprocess, "Popen", return_value=process), \
+             patch.object(native.subprocess, "run", return_value=termination) as kill:
+            result = native._run_service_version_test(["cargo", "test"], Path("."), {})
+        self.assertTrue(result["timed_out"])
+        self.assertTrue(result["worker_waited"])
+        self.assertEqual(result["stdout"], "partial")
+        self.assertEqual(kill.call_args.args[0], ["taskkill", "/PID", "12345", "/T", "/F"])
+        process.wait.assert_called_once()
+
+
 MOUSE_PATH = r"\\?\HID#VID_1532&PID_00BF&MI_00#8&393c0d0b&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}"
 KEYBOARD_PATH = r"\\?\HID#VID_1532&PID_02A7&MI_03#b&25aecbb4&0&0000#{4d1e55b2-f16f-11cf-88cb-001111000030}"
 
@@ -58,7 +118,7 @@ class PacketValidationTests(unittest.TestCase):
         original = copy.deepcopy(rows)
         actual = native.validate_get_trace(rows)
         self.assertEqual(rows, original)
-        self.assertEqual([row["get_report_id"] for row in actual], [0] * 8)
+        self.assertEqual([row["get_report_id"] for row in actual], [0] * 9)
         self.assertEqual(actual[0]["report"], original[0]["report"])
         self.assertEqual(actual[0]["trace_index"], 21)
 
@@ -75,6 +135,7 @@ class PacketValidationTests(unittest.TestCase):
     def test_mouse_general_queries_match_current_source_without_payload_changes(self):
         for path in (MOUSE_PATH, MOUSE_PATH.replace("00BF", "00BE")):
             for command, payload in [
+                ((22, 0, 130), []),
                 ((4, 0, 135), []),
                 ((2, 7, 128), [0]),
                 ((2, 7, 132), [0]),
@@ -103,6 +164,9 @@ class PacketValidationTests(unittest.TestCase):
 
     def test_new_queries_reject_other_product_branches_and_unobserved_selectors(self):
         for path, command, payload in [
+            (KEYBOARD_PATH, (22, 0, 130), []),
+            (MOUSE_PATH, (22, 0, 130), [1]),
+            (MOUSE_PATH, (21, 0, 130), []),
             (KEYBOARD_PATH, (2, 7, 128), [0]),
             (KEYBOARD_PATH, (2, 7, 132), [0]),
             (KEYBOARD_PATH, (2, 7, 131), []),

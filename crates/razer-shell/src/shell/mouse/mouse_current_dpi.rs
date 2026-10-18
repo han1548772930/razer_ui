@@ -18,10 +18,12 @@ impl MouseCurrentDpiSave {
 /// Rebase only the accepted DPI fields onto the latest durable profile. The
 /// current182/190 stage task makers advance the device document's 53-bit version.
 fn merge_current_dpi_profile(
-    saved: &mut Device,
+    target: &mut Device,
     profile_id: &str,
     source: &serde_json::Value,
 ) -> anyhow::Result<()> {
+    let mut candidate = target.clone();
+    let saved = &mut candidate;
     anyhow::ensure!(source.is_object(), "DPI source profile is not an object");
     let profile = saved
         .profiles
@@ -74,6 +76,8 @@ fn merge_current_dpi_profile(
             .source_device_settings
             .get_or_insert_with(|| serde_json::json!({}))["version"] = serde_json::json!(version);
     }
+    razer_storage::host_local_profile::mark_edited(saved, profile_id, source)?;
+    *target = candidate;
     Ok(())
 }
 

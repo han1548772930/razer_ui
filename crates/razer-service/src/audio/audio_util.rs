@@ -138,6 +138,50 @@ pub(crate) mod windows {
         }
     }
 
+    pub(crate) fn endpoint_container(device: &Com) -> anyhow::Result<String> {
+        #[repr(C)]
+        struct Key {
+            fmtid: GUID,
+            pid: u32,
+        }
+        type Open = unsafe extern "system" fn(*mut c_void, u32, *mut *mut c_void) -> i32;
+        type Get = unsafe extern "system" fn(*mut c_void, *const Key, *mut PROPVARIANT) -> i32;
+        let mut raw = null_mut();
+        let open: Open = unsafe { device.method(4) };
+        let store = Com::from_hresult(
+            unsafe { open(device.raw(), 0, &mut raw) },
+            raw,
+            "Audio endpoint properties",
+        )?;
+        let key = Key {
+            fmtid: GUID::from_u128(0x8c7ed206_3f8a_4827_b3ab_ae9e1faefc6c),
+            pid: 2,
+        };
+        let get: Get = unsafe { store.method(5) };
+        let mut value = Property(PROPVARIANT::default());
+        let hr = unsafe { get(store.raw(), &key, &mut value.0) };
+        ensure!(hr >= 0, "Audio endpoint container: HRESULT {:#010x}", hr as u32);
+        let raw = unsafe { value.0.Anonymous.Anonymous };
+        ensure!(raw.vt == 72, "Audio endpoint ContainerId is not VT_CLSID");
+        let pointer = unsafe { raw.Anonymous.puuid };
+        ensure!(!pointer.is_null(), "Audio endpoint ContainerId missing");
+        let g = unsafe { *pointer };
+        Ok(format!(
+            "{{{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}",
+            g.data1,
+            g.data2,
+            g.data3,
+            g.data4[0],
+            g.data4[1],
+            g.data4[2],
+            g.data4[3],
+            g.data4[4],
+            g.data4[5],
+            g.data4[6],
+            g.data4[7]
+        ))
+    }
+
     pub(crate) struct Property(pub(crate) PROPVARIANT);
     impl Drop for Property {
         fn drop(&mut self) {

@@ -1,6 +1,6 @@
 //! Local draft persistence, source-confirmed receiver binding JSON and original
-//! host process-local Map semantics. Storage does not write devices or claim
-//! Chromium database or vendor profile file formats.
+//! host process-local Map semantics and scoped read-only host localStorage.
+//! Storage does not write devices or modify the host Chromium database.
 #[path = "app_features.rs"]
 pub mod app_features;
 pub mod audio_recording;
@@ -13,6 +13,7 @@ pub mod file_transfer;
 pub mod game_catalog;
 #[path = "host.rs"]
 pub mod host;
+pub mod host_local_profile;
 #[path = "receiver/hyperpolling_profile.rs"]
 pub mod hyperpolling_profile;
 #[path = "keyboard_analog_restore.rs"]
@@ -182,4 +183,14 @@ pub fn store_path() -> std::path::PathBuf {
         .join("profiles.json")
 }
 
+/// Local diagnostics share the user configuration directory, not the installation cache.
+pub fn runtime_log_path() -> std::path::PathBuf {
+    store_path().with_file_name("runtime.log")
+}
+
+pub fn panic_log_path() -> std::path::PathBuf {
+    store_path().with_file_name("panic.log")
+}
+
+pub mod user_app_files;
 pub mod workspace;

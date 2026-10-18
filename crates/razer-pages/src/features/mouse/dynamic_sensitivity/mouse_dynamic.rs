@@ -16,7 +16,7 @@ mod curve;
 mod requests;
 use curve::{Curve, Point as CurvePoint};
 use razer_device::mouse_dynamic::{self as dynamic_device, Reading, Report, Setting};
-use requests::Requests;
+use requests::{Observation, Requests};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const LOCAL: &str = "_dynamicSensitivityLocalV1";
@@ -80,32 +80,11 @@ impl MouseDynamicRequested {
     pub fn action(&self) -> anyhow::Result<MouseDynamicAction> {
         match self.command {
             "READ_DYNAMIC_SENSITIVITY" => Ok(MouseDynamicAction::Read),
-            "ON_SET_DYNAMIC_SENSITIVITY" => {
-                #[derive(Deserialize)]
-                struct Source {
-                    state: u8,
-                    mode: u8,
-                    #[serde(rename = "customSensorAccelerations")]
-                    accelerations: Vec<f32>,
-                }
-                let source: Source = serde_json::from_value(
-                    self.payload
-                        .get("dynamicSensitivity")
-                        .ok_or_else(|| anyhow::anyhow!("Dynamic request omits its source setting"))?
-                        .clone(),
-                )?;
-                anyhow::ensure!(
-                    source.state <= 1,
-                    "Dynamic state is outside the source range"
-                );
-                let mode = dynamic_device::mode(source.mode)
-                    .ok_or_else(|| anyhow::anyhow!("Dynamic mode is outside the source range"))?;
-                Ok(MouseDynamicAction::Write(Setting::new(
-                    source.state == 1,
-                    mode,
-                    source.accelerations,
-                )?))
-            }
+            "ON_SET_DYNAMIC_SENSITIVITY" => Ok(MouseDynamicAction::Write(Self::setting(
+                self.payload
+                    .get("dynamicSensitivity")
+                    .ok_or_else(|| anyhow::anyhow!("Dynamic request omits its source setting"))?,
+            )?)),
             "DYNAMIC_SENSITIVITY_UI_COMMAND" => {
                 match self.payload.get("type").and_then(Value::as_str) {
                     Some("START") => Ok(MouseDynamicAction::Monitor(true)),
@@ -115,6 +94,23 @@ impl MouseDynamicRequested {
             }
             _ => anyhow::bail!("Dynamic request command is invalid"),
         }
+    }
+    fn setting(value: &Value) -> anyhow::Result<Setting> {
+        #[derive(Deserialize)]
+        struct Source {
+            state: u8,
+            mode: u8,
+            #[serde(rename = "customSensorAccelerations")]
+            accelerations: Vec<f32>,
+        }
+        let source: Source = serde_json::from_value(value.clone())?;
+        anyhow::ensure!(
+            source.state <= 1,
+            "Dynamic state is outside the source range"
+        );
+        let mode = dynamic_device::mode(source.mode)
+            .ok_or_else(|| anyhow::anyhow!("Dynamic mode is outside the source range"))?;
+        Setting::new(source.state == 1, mode, source.accelerations)
     }
 }
 pub enum MouseDynamicCompletion {
@@ -141,6 +137,7 @@ pub(super) struct State {
     connection_epoch: u64,
     pub(super) firmware: Option<String>,
     points: Vec<CurvePoint>,
+    authoring_curve: bool,
     drag: Option<usize>,
     hover: Option<(usize, Point<Pixels>)>,
     gap_x: f64,
@@ -173,15 +170,13 @@ impl State {
 
     pub(super) fn new(window: &mut Window, cx: &mut Context<MouseProductWorkspace>) -> Self {
         let template = cx.new(|cx| SelectState::new(choices(), None, window, cx));
-        template.update(cx, |state, cx| {
-            state.set_selected_value(&"0".to_owned(), window, cx)
-        });
         Self {
             owner: cx.entity_id(),
             profile_epoch: 0,
             connection_epoch: 0,
             firmware: None,
             points: curve::CLASSIC.to_vec(),
+            authoring_curve: false,
             drag: None,
             hover: None,
             gap_x: 15.,
@@ -231,13 +226,14 @@ impl MouseProductWorkspace {
                 let Ok(template) = value.parse::<u32>() else {
                     return;
                 };
-                if !this.dynamic_editable() || this.dynamic_mode() != 3 || template > 3 {
+                if !this.dynamic_editable() || this.dynamic_mode() != Some(3) || template > 3 {
                     return;
                 }
                 this.finish_dynamic_drag(window, cx);
                 if let Some(points) = curve::preset(template) {
                     this.dynamic_state.points = points.to_vec();
                 }
+                this.dynamic_state.authoring_curve = true;
                 this.commit_dynamic_points(template, window, cx);
             },
         ));
@@ -258,17 +254,29 @@ impl MouseProductWorkspace {
         request: &MouseDynamicRequested,
         completion: MouseDynamicCompletion,
         cx: &mut Context<Self>,
-    ) {
+    ) -> Option<String> {
         if !self.mouse_dynamic_request_is_current(request) {
-            return;
+            return None;
         }
+        let current_edit = request.edit_revision == self.dynamic_state.requests.edit_revision;
         let stopped = matches!(completion, MouseDynamicCompletion::Monitoring(false));
+        let refresh = request.command == "ON_SET_DYNAMIC_SENSITIVITY"
+            && request.edit_revision == self.dynamic_state.requests.edit_revision
+            && matches!(&completion, MouseDynamicCompletion::Device(_));
         self.dynamic_state.requests.complete(request, completion);
+        let diagnostic = current_edit
+            .then(|| self.mouse_dynamic_failure().map(str::to_owned))
+            .flatten();
         if stopped {
             self.dynamic_state.mouse_speed = 0.;
             self.dynamic_state.speed_task = None;
         }
+        if refresh {
+            self.request_dynamic_read(cx);
+        }
+        self.dynamic_ui_command(cx);
         cx.notify();
+        diagnostic
     }
     /// Transport cancellation only. The source editor has no Cancel button.
     pub fn cancel_mouse_dynamic(&mut self, scope: MouseDynamicScope, cx: &mut Context<Self>) {
@@ -284,10 +292,19 @@ impl MouseProductWorkspace {
         self.dynamic_state.monitor_requested = false;
         self.dynamic_state.requests.latest_mutation = None;
         self.dynamic_state.requests.loading = false;
+        if matches!(
+            self.dynamic_state.requests.observation,
+            Observation::Loading
+        ) {
+            self.dynamic_state.requests.observation = Observation::Unobserved;
+        }
         cx.notify();
     }
     pub fn mouse_dynamic_failure(&self) -> Option<&str> {
-        self.dynamic_state.requests.last_failure.as_deref()
+        match &self.dynamic_state.requests.observation {
+            Observation::Failed(error) => Some(error),
+            _ => self.dynamic_state.requests.last_failure.as_deref(),
+        }
     }
     pub fn dynamic_tutorial_visible(&self) -> bool {
         self.has_dynamic_tutorial() && self.dynamic_state.tutorial_visible
@@ -331,23 +348,47 @@ impl MouseProductWorkspace {
         self.dynamic_state.guard = Arc::new(AtomicBool::new(true));
         self.dynamic_state.monitor_requested = false;
         self.dynamic_state.connection_epoch = self.dynamic_state.connection_epoch.wrapping_add(1);
-        self.dynamic_state.requests.observed = None;
+        self.dynamic_state.requests.reset_observation(true);
+        self.dynamic_state.authoring_curve = false;
         self.dynamic_state.firmware = None;
         self.dynamic_state.drag = None;
         self.dynamic_state.hover = None;
         self.dynamic_state.firmware_hover = None;
-        self.dynamic_state.requests.pending.clear();
-        self.dynamic_state.requests.latest_mutation = None;
         self.dynamic_state.mouse_speed = 0.;
         self.dynamic_state.speed_task = None;
-        self.dynamic_state.requests.loading = false;
-        self.dynamic_state.requests.last_failure = None;
-        self.dynamic_state.points = if let Some(points) = curve::preset(self.dynamic_mode()) {
-            points.to_vec()
-        } else {
-            serde_json::from_value(self.dynamic_value()["points"].clone()).unwrap_or_default()
-        };
+        self.dynamic_state.points =
+            if let Some(points) = self.dynamic_mode().and_then(curve::preset) {
+                points.to_vec()
+            } else {
+                serde_json::from_value(self.dynamic_value()["points"].clone()).unwrap_or_default()
+            };
         cx.notify();
+    }
+    pub fn observe_dynamic_connection(&mut self, connected: bool, cx: &mut Context<Self>) {
+        self.invalidate_dynamic_connection(cx);
+        self.dynamic_state.requests.reset_observation(connected);
+        if connected {
+            self.request_dynamic_read(cx);
+        }
+    }
+    pub(super) fn request_dynamic_read(&mut self, cx: &mut Context<Self>) {
+        if !self.spec.dynamic
+            || !self.active
+            || self.page != "ADVANCED"
+            || matches!(
+                self.dynamic_state.requests.observation,
+                Observation::Disconnected
+            )
+            || self
+                .dynamic_state
+                .requests
+                .pending
+                .values()
+                .any(|command| *command == "READ_DYNAMIC_SENSITIVITY")
+        {
+            return;
+        }
+        self.dynamic_request("READ_DYNAMIC_SENSITIVITY", json!({}), None, cx);
     }
     pub fn observe_mouse_dynamic(
         &mut self,
@@ -395,18 +436,28 @@ impl MouseProductWorkspace {
     fn dynamic_value(&self) -> &Value {
         &self.draft["dynamicSensitivity"]
     }
-    fn dynamic_mode(&self) -> u32 {
-        self.dynamic_value()["mode"].as_u64().unwrap_or(0) as u32
+    fn dynamic_mode(&self) -> Option<u32> {
+        self.dynamic_state.requests.mode()
     }
     fn dynamic_on(&self) -> bool {
-        self.dynamic_value()["state"].as_u64() == Some(1)
+        self.dynamic_state.requests.enabled() == Some(true)
+    }
+    fn dynamic_controls_available(&self) -> bool {
+        let requests = &self.dynamic_state.requests;
+        requests.enabled().is_some()
+            && requests.mode().is_some()
+            && !matches!(
+                requests.observation,
+                Observation::Disconnected | Observation::Loading
+            )
+            && !requests.loading
     }
     fn dynamic_editable(&self) -> bool {
         self.active
             && self.page == "ADVANCED"
             && self.dynamic_on()
             && self.advanced_enabled()
-            && !self.dynamic_state.requests.loading
+            && self.dynamic_controls_available()
     }
     fn dynamic_request(
         &mut self,
@@ -461,11 +512,43 @@ impl MouseProductWorkspace {
         let Some(patch) = patch.as_object() else {
             return;
         };
+        let requests = &self.dynamic_state.requests;
+        let (Some(enabled), Some(mode)) = (requests.enabled(), requests.mode()) else {
+            return;
+        };
+        target.insert("state".into(), json!(u8::from(enabled)));
+        target.insert("mode".into(), json!(mode));
+        if let Some(edit) = &requests.edit {
+            target.insert(
+                "customSensorAccelerations".into(),
+                json!(edit.custom_sensor_accelerations),
+            );
+        } else if let Some(reading) = requests.reading() {
+            target.insert(
+                "customSensorAccelerations".into(),
+                json!(
+                    reading
+                        .custom_sensor_accelerations
+                        .as_deref()
+                        .unwrap_or(&[])
+                ),
+            );
+        }
         target.extend(
             patch
                 .iter()
                 .map(|(key, value)| (key.clone(), value.clone())),
         );
+        let setting = MouseDynamicRequested::setting(&value);
+        let setting = match setting {
+            Ok(setting) => setting,
+            Err(error) => {
+                self.dynamic_state.requests.last_failure = Some(format!("{error:#}"));
+                cx.notify();
+                return;
+            }
+        };
+        self.dynamic_state.requests.edit = Some(setting);
         self.draft["dynamicSensitivity"] = value.clone();
         self.draft[LOCAL] = json!(true);
         let tick = SystemTime::now()
@@ -483,6 +566,12 @@ impl MouseProductWorkspace {
         cx.notify();
     }
     fn sync_dynamic_template(&self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.dynamic_state.authoring_curve {
+            self.dynamic_state
+                .template
+                .update(cx, |state, cx| state.set_selected_index(None, window, cx));
+            return;
+        }
         let selected = self.dynamic_value()["templateId"]
             .as_u64()
             .unwrap_or(0)
@@ -494,11 +583,12 @@ impl MouseProductWorkspace {
     fn sync_dynamic_points(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.dynamic_state.drag = None;
         self.dynamic_state.hover = None;
-        self.dynamic_state.points = if let Some(points) = curve::preset(self.dynamic_mode()) {
-            points.to_vec()
-        } else {
-            serde_json::from_value(self.dynamic_value()["points"].clone()).unwrap_or_default()
-        };
+        self.dynamic_state.points =
+            if let Some(points) = self.dynamic_mode().and_then(curve::preset) {
+                points.to_vec()
+            } else {
+                serde_json::from_value(self.dynamic_value()["points"].clone()).unwrap_or_default()
+            };
         self.sync_dynamic_template(window, cx);
     }
     pub(super) fn restore_dynamic(
@@ -514,16 +604,18 @@ impl MouseProductWorkspace {
         self.dynamic_state.guard = Arc::new(AtomicBool::new(true));
         self.dynamic_state.monitor_requested = false;
         self.dynamic_state.profile_epoch = self.dynamic_state.profile_epoch.wrapping_add(1);
-        self.dynamic_state.requests.observed = None;
-        self.dynamic_state.requests.loading = false;
-        self.dynamic_state.requests.pending.clear();
-        self.dynamic_state.requests.latest_mutation = None;
-        self.dynamic_state.requests.last_failure = None;
+        let connected = !matches!(
+            self.dynamic_state.requests.observation,
+            Observation::Disconnected
+        );
+        self.dynamic_state.requests.reset_observation(connected);
+        self.dynamic_state.authoring_curve = false;
         self.dynamic_state.gap_x = 15.;
         self.dynamic_state.gap_y = 0.25;
         self.dynamic_state.mouse_speed = 0.;
         self.dynamic_state.speed_task = None;
         self.sync_dynamic_points(window, cx);
+        self.request_dynamic_read(cx);
     }
     pub(super) fn dismiss_dynamic(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.dynamic_state.requests.retire_monitors();
@@ -546,7 +638,7 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.dynamic_mode() != 3 {
+        if self.dynamic_mode() != Some(3) {
             return;
         }
         let Some(table) = curve::acceleration_table(&self.dynamic_state.points) else {
@@ -562,19 +654,23 @@ impl MouseProductWorkspace {
         self.dynamic_state.requests.loading = true;
     }
     fn select_dynamic_mode(&mut self, mode: u32, window: &mut Window, cx: &mut Context<Self>) {
-        if !self.dynamic_editable() || mode > 3 || mode == self.dynamic_mode() {
+        if !self.dynamic_editable() || mode > 3 || Some(mode) == self.dynamic_mode() {
             return;
         }
         self.finish_dynamic_drag(window, cx);
         if mode == 3 {
-            self.draft["dynamicSensitivity"]["mode"] = json!(mode);
+            self.dynamic_state.authoring_curve = true;
             let template = self.dynamic_value()["templateId"].as_u64().unwrap_or(0) as u32;
             self.dynamic_state.points = if let Some(points) = curve::preset(template) {
                 points.to_vec()
             } else {
                 serde_json::from_value(self.dynamic_value()["points"].clone()).unwrap_or_default()
             };
-            self.commit_dynamic_points(template, window, cx);
+            let Some(table) = curve::acceleration_table(&self.dynamic_state.points) else {
+                return;
+            };
+            self.patch_dynamic(json!({"mode":3,"templateId":template,"points":self.dynamic_state.points,"customSensorAccelerations":table}), window, cx);
+            self.dynamic_state.requests.loading = true;
         } else {
             self.patch_dynamic(json!({"mode":mode}), window, cx);
             self.dynamic_state.points = curve::preset(mode).unwrap().to_vec();
@@ -586,7 +682,7 @@ impl MouseProductWorkspace {
         }
     }
     fn dynamic_grid(&self) -> Grid {
-        if self.dynamic_mode() == 3 {
+        if self.dynamic_mode() == Some(3) {
             Grid {
                 gap_x: self.dynamic_state.gap_x,
                 gap_y: self.dynamic_state.gap_y,
@@ -663,9 +759,9 @@ impl MouseProductWorkspace {
             surface::SynapseSwitch::new("mouse-dynamic-enabled")
                 .accessibility_label(t("DYNAMIC_SENSITIVITY"))
                 .checked(on)
-                .disabled(!self.advanced_enabled() || self.dynamic_state.requests.loading)
+                .disabled(!self.advanced_enabled() || !self.dynamic_controls_available())
                 .on_change(cx.listener(|this, value: &bool, window, cx| {
-                    if !this.advanced_enabled() || this.dynamic_state.requests.loading {
+                    if !this.advanced_enabled() || !this.dynamic_controls_available() {
                         return;
                     }
                     this.finish_dynamic_drag(window, cx);
@@ -695,7 +791,7 @@ impl MouseProductWorkspace {
                 .pb(surface::css(6.))
                 .opacity(content_opacity)
                 .children(LABELS.iter().enumerate().map(|(mode, key)| {
-                    let selected = self.dynamic_mode() == mode as u32;
+                    let selected = self.dynamic_mode() == Some(mode as u32);
                     BaseButton::new(SharedString::from(format!("mouse-dynamic-{mode}")))
                         .disabled(!editable)
                         .h(surface::css(27.))
@@ -717,7 +813,8 @@ impl MouseProductWorkspace {
                 })),
         )
         .child(self.dynamic_chart(cx));
-        if self.dynamic_state.requests.loading {
+        let requests = &self.dynamic_state.requests;
+        if requests.loading || matches!(requests.observation, Observation::Loading) {
             panel = panel.child(
                 div()
                     .absolute()
@@ -878,11 +975,26 @@ impl MouseProductWorkspace {
             ))
             .into_any_element()
     }
+    fn dynamic_chart_points(&self) -> (Vec<CurvePoint>, bool) {
+        let requests = &self.dynamic_state.requests;
+        let table = requests
+            .edit
+            .as_ref()
+            .map(|edit| edit.custom_sensor_accelerations.as_slice())
+            .or_else(|| requests.reading()?.custom_sensor_accelerations.as_deref());
+        curve::display_points(
+            self.dynamic_mode(),
+            table,
+            self.dynamic_state
+                .authoring_curve
+                .then_some(self.dynamic_state.points.as_slice()),
+        )
+    }
     fn dynamic_chart(&self, cx: &Context<Self>) -> AnyElement {
         let grid = self.dynamic_grid();
-        let custom = self.dynamic_mode() == 3;
+        let custom = self.dynamic_mode() == Some(3);
         let enabled = self.dynamic_editable();
-        let points = self.dynamic_state.points.clone();
+        let (points, authored) = self.dynamic_chart_points();
         let firmware = self.advanced_enabled();
         let speed = self.dynamic_state.mouse_speed;
         let area = Rc::new(Cell::new(Bounds::default()));
@@ -895,7 +1007,9 @@ impl MouseProductWorkspace {
             move |bounds, _, window, cx| {
                 measured.set(bounds);
                 let unit = f32::from(window.rem_size()) / 16.;
-                paint_chart(bounds, unit, grid, &points, custom, firmware, speed, window);
+                paint_chart(
+                    bounds, unit, grid, &points, custom, authored, firmware, speed, window,
+                );
                 let Some(entity) = owner.upgrade() else {
                     return;
                 };
@@ -943,7 +1057,10 @@ impl MouseProductWorkspace {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |this, event: &MouseDownEvent, window, cx| {
-                    if this.dynamic_mode() != 3 || !this.dynamic_editable() {
+                    if this.dynamic_mode() != Some(3)
+                        || !this.dynamic_editable()
+                        || !this.dynamic_chart_points().1
+                    {
                         return;
                     }
                     let unit = f32::from(window.rem_size()) / 16.;
@@ -957,7 +1074,10 @@ impl MouseProductWorkspace {
             )
             .on_mouse_move(
                 cx.listener(move |this, event: &MouseMoveEvent, window, cx| {
-                    let hover = if this.dynamic_mode() == 3 && this.dynamic_editable() {
+                    let hover = if this.dynamic_mode() == Some(3)
+                        && this.dynamic_editable()
+                        && this.dynamic_chart_points().1
+                    {
                         this.dynamic_hit(
                             event.position,
                             hover_area.get(),
@@ -1278,6 +1398,7 @@ fn paint_chart(
     grid: Grid,
     points: &[CurvePoint],
     custom: bool,
+    authored: bool,
     firmware: bool,
     speed: f64,
     window: &mut Window,
@@ -1302,7 +1423,9 @@ fn paint_chart(
         })
         .collect();
     let color = rgb(if custom { 0xe4790f } else { 0x44d62c });
-    let curve = Curve::new(&pixel_points);
+    let curve = (!(custom && !authored))
+        .then(|| Curve::new(&pixel_points))
+        .flatten();
     if let Some(curve) = &curve {
         let end = pixel_points.last().unwrap().x.ceil();
         let samples = |last: f64| {
@@ -1336,6 +1459,45 @@ fn paint_chart(
     }
     line([58., 280.], [1092., 280.], 0x5d5d5d, window);
     line([70., 13.], [70., 287.], 0x5d5d5d, window);
+    if custom && !authored && firmware {
+        let clip = Bounds::new(
+            position([66., 16.]),
+            size(px(1018. * unit), px(264. * unit)),
+        );
+        window.with_content_mask(Some(ContentMask { bounds: clip }), |window| {
+            if speed > 0. {
+                let last_x = grid.pixel(CurvePoint { x: speed, y: 0. })[0] as f64;
+                let mut fill = PathBuilder::fill();
+                fill.move_to(position([70., 280.]));
+                let mut last = None;
+                for p in pixel_points.iter().take_while(|p| p.x <= last_x) {
+                    fill.line_to(position([p.x as f32, p.y as f32]));
+                    last = Some(p.x as f32);
+                }
+                if let Some(last) = last {
+                    fill.line_to(position([last, 280.]));
+                    fill.close();
+                    if let Ok(path) = fill.build() {
+                        window.paint_path(path, color.opacity(0.3));
+                    }
+                }
+            }
+            let mut path = PathBuilder::stroke(px(unit));
+            for (index, p) in pixel_points.iter().enumerate() {
+                let p = position([p.x as f32, p.y as f32]);
+                if index == 0 {
+                    path.move_to(p);
+                } else {
+                    path.line_to(p);
+                }
+            }
+            if !pixel_points.is_empty()
+                && let Ok(path) = path.build()
+            {
+                window.paint_path(path, color);
+            }
+        });
+    }
     if let Some(curve) = curve {
         let end = pixel_points.last().unwrap().x.ceil();
         let samples = |last: f64| {
@@ -1353,7 +1515,7 @@ fn paint_chart(
                     window.paint_path(path, color);
                 }
             }
-            if custom {
+            if custom && authored {
                 for p in &pixel_points {
                     window.paint_quad(
                         fill(

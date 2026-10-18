@@ -10,6 +10,14 @@ pub struct AudioRouter {
 }
 
 impl AudioRouter {
+    pub fn shutdown(&mut self) -> Result<()> {
+        #[cfg(windows)]
+        if let Some(mut owner) = self.owner.take() {
+            owner.close()?;
+        }
+        Ok(())
+    }
+
     pub fn enable(&mut self, enable: i32) -> Result<Value> {
         #[cfg(windows)]
         return self.owner()?.call(windows::Command::Enable(enable));

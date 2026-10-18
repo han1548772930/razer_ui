@@ -16,7 +16,7 @@ mod keyboard_submission_controller;
 mod keyboard_wristrest_controller;
 mod leviathan_events;
 #[cfg(windows)]
-mod lighting_engine_native;
+mod lighting_engine;
 mod lighting_engine_session;
 #[path = "mouse_indicator_led_controller.rs"]
 mod mouse_indicator_led_controller;
@@ -32,6 +32,7 @@ mod portable;
 mod receiver_settings;
 #[path = "seiren_audio_capture_controller.rs"]
 mod seiren_audio_capture_controller;
+mod shutdown;
 #[path = "thx_controller.rs"]
 mod thx_controller;
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(4);
@@ -246,56 +247,7 @@ pub fn run_worker() -> i32 {
             },
         };
         if shutdown {
-            match portable.shutdown_tracking() {
-                Ok(Some(progress)) => {
-                    if let Some(data) = response
-                        .data
-                        .as_mut()
-                        .and_then(serde_json::Value::as_object_mut)
-                    {
-                        match serde_json::to_value(progress) {
-                            Ok(progress) => {
-                                data.insert("mouse_tracking_cleanup".into(), progress);
-                            }
-                            Err(error) => {
-                                response.data = None;
-                                response.error =
-                                    Some(format!("Tracking cleanup response failed: {error}"));
-                            }
-                        }
-                    }
-                }
-                Ok(None) => {}
-                Err(error) => {
-                    response.data = None;
-                    response.error = Some(format!("Tracking cleanup failed: {error:#}"));
-                }
-            }
-            match portable.shutdown_philips() {
-                Ok(Some(progress)) => {
-                    if let Some(data) = response
-                        .data
-                        .as_mut()
-                        .and_then(serde_json::Value::as_object_mut)
-                    {
-                        match serde_json::to_value(progress) {
-                            Ok(progress) => {
-                                data.insert("mouse_philips_cleanup".into(), progress);
-                            }
-                            Err(error) => {
-                                response.data = None;
-                                response.error =
-                                    Some(format!("Philips cleanup response failed: {error}"));
-                            }
-                        }
-                    }
-                }
-                Ok(None) => {}
-                Err(error) => {
-                    response.data = None;
-                    response.error = Some(format!("Philips cleanup failed: {error:#}"));
-                }
-            }
+            portable.shutdown().apply(&mut response);
             // ServiceClient terminates its child after receiving this reply.
             // Finish owned WASAPI pumps, COM notifications and receiver input
             // readers first, so a successful frame cannot race their teardown.

@@ -130,6 +130,8 @@ pub mod lighting_driver;
 pub mod lighting_engine;
 #[path = "mapping/macro_engine.rs"]
 pub mod macro_engine;
+#[path = "mapping/macro_runtime.rs"]
+pub mod macro_runtime;
 #[path = "mapping/mapping_document.rs"]
 pub mod mapping_document;
 #[path = "mapping/mapping_engine.rs"]
@@ -242,6 +244,10 @@ pub mod receiver_session;
 pub mod seiren_audio_capture;
 #[path = "audio/seiren_eq.rs"]
 pub mod seiren_eq;
+#[path = "audio/seiren_driver.rs"]
+pub mod seiren_driver;
+#[path = "audio/seiren_mixer.rs"]
+pub mod seiren_mixer;
 #[path = "audio/seiren_microphone.rs"]
 pub mod seiren_microphone;
 #[path = "audio/seiren_stream_mixer.rs"]

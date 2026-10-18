@@ -114,6 +114,66 @@ impl Drop for State {
     }
 }
 
+fn replace_host_observation(observation: &mut Value, snapshot: &Value) {
+    let Some(target) = observation.as_object_mut() else {
+        return;
+    };
+    // These getters are independent of device notifications and of the
+    // lighting-engine memory publisher. Absence is an unobserved host value.
+    for key in [
+        "allChromaResourcesInstalled",
+        "chromaInstalledModule",
+        "chromaProfiles",
+        "selectedChromaProfileGuid",
+        "isChromaEnabled",
+        "isDynamicLighting",
+    ] {
+        target.remove(key);
+        if let Some(value) = snapshot.get(key) {
+            target.insert(key.into(), value.clone());
+        }
+    }
+}
+
+#[cfg(test)]
+mod host_observation_tests {
+    use super::replace_host_observation;
+    use serde_json::json;
+
+    #[test]
+    fn mouse_host_read_clears_missing_fields_and_preserves_device_memory_observations() {
+        let mut observed = json!({
+            "allChromaResourcesInstalled": true, "chromaInstalledModule": true,
+            "chromaProfiles": [{"id":"old"}], "selectedChromaProfileGuid":"old",
+            "isChromaEnabled": true, "isDynamicLighting": false,
+            "brightness":{"value":73}, "chromaDevices":[{"productId":226}],
+            "customColors":[{"color":"#123456","picked":true}], "isMatPlugged":true
+        });
+        replace_host_observation(&mut observed, &json!({"isDynamicLighting":true}));
+        assert_eq!(
+            observed,
+            json!({
+                "isDynamicLighting":true, "brightness":{"value":73},
+                "chromaDevices":[{"productId":226}],
+                "customColors":[{"color":"#123456","picked":true}], "isMatPlugged":true
+            })
+        );
+        replace_host_observation(
+            &mut observed,
+            &json!({
+                "allChromaResourcesInstalled":false, "chromaInstalledModule":false,
+                "chromaProfiles":[], "selectedChromaProfileGuid":null, "isChromaEnabled":false,
+                "brightness":{"value":0}
+            }),
+        );
+        assert_eq!(observed["allChromaResourcesInstalled"], false);
+        assert_eq!(observed["isChromaEnabled"], false);
+        assert_eq!(observed["chromaProfiles"], json!([]));
+        assert!(observed.get("isDynamicLighting").is_none());
+        assert_eq!(observed["brightness"]["value"], 73);
+    }
+}
+
 impl MouseProductWorkspace {
     /// Shared OBM/header reducer observation, independent of the selected tab.
     pub fn observe_mouse_adjustment_mode(
@@ -519,13 +579,18 @@ impl MouseProductWorkspace {
             && observed["isChromaVisualizerEnabled"] != true
             && !(observed["usePowerSavingQuickEffect"] == true
                 && observed["systemPowerStatus"] == "battery")
-            && (self.rgb_hardware_effect() || !self.mouse_advanced())
+            && (self.mouse_lighting_page_variant() == "basic"
+                || self.rgb_hardware_effect()
+                || self.mouse_chroma_mode() == Some(false))
     }
     fn mouse_advanced(&self) -> bool {
+        self.mouse_chroma_mode() == Some(true)
+    }
+    fn mouse_chroma_mode(&self) -> Option<bool> {
         self.mouse_lighting
             .as_ref()
             .and_then(|state| state.ui_advanced)
-            .unwrap_or_else(|| self.lighting_observation()["isChromaEnabled"] == true)
+            .or_else(|| self.lighting_observation()["isChromaEnabled"].as_bool())
     }
     pub(super) fn emit_lighting(
         &mut self,
@@ -880,6 +945,11 @@ impl MouseProductWorkspace {
         }
         if let Some(state) = &mut self.mouse_lighting {
             state.pending.remove(&request.request_id);
+            if request.command == "getMemoryStorageItem"
+                && let Some(observation) = state.observation.as_object_mut()
+            {
+                observation.remove("chromaDevices");
+            }
             if request.command == "TOGGLE_CHROMA" {
                 state.ui_advanced = None;
             }
@@ -904,10 +974,47 @@ impl MouseProductWorkspace {
         }
         if let Some(state) = &mut self.mouse_lighting {
             state.pending.remove(&request.request_id);
+            if request.command == "getMemoryStorageItem"
+                && let Some(observation) = state.observation.as_object_mut()
+            {
+                observation.remove("chromaDevices");
+            }
         }
         if let Some(snapshot) = snapshot {
             self.observe_mouse_lighting(snapshot, window, cx);
         }
+        cx.notify();
+        true
+    }
+    pub fn complete_mouse_host_lighting_request(
+        &mut self,
+        request: &MouseLightingRequested,
+        snapshot: &Value,
+        result: Result<(), String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.accepts_mouse_lighting_request(request, cx) {
+            return false;
+        }
+        if let Some(state) = &mut self.mouse_lighting {
+            state.pending.remove(&request.request_id);
+            let current = ["TOGGLE_CHROMA", "ON_SET_CHROMA_PROFILE"]
+                .into_iter()
+                .all(|command| {
+                    state
+                        .latest
+                        .get(command)
+                        .is_none_or(|id| *id <= request.request_id)
+                });
+            if current {
+                replace_host_observation(&mut state.observation, snapshot);
+                state.error = result.err();
+            }
+        }
+        // A host read must not replay old device fields or erase user edits.
+        self.sync_mouse_lighting(window, cx);
+        self.reconcile_mouse_mapping_lighting_70(window, cx);
         cx.notify();
         true
     }
@@ -924,6 +1031,7 @@ impl MouseProductWorkspace {
             state.ui_chroma_profile = None;
             state.custom_colors_draft = None;
             state.sync_started = None;
+            replace_host_observation(&mut state.observation, &json!({}));
         }
     }
     pub fn mouse_lighting_error(&self) -> Option<&str> {
@@ -942,6 +1050,9 @@ impl MouseProductWorkspace {
             return;
         }
         if self.mouse_lighting_page_variant() == "babel_162" {
+            // The mounted Babel profile loader reads local Chroma/module
+            // values independently of the lighting-engine memory response.
+            self.emit_lighting("READ_HOST_LIGHTING", json!({}), cx);
             self.emit_lighting(
                 "getMemoryStorageItem",
                 json!({"key":"lighting-engine-chroma-devices"}),
@@ -1007,7 +1118,7 @@ impl MouseProductWorkspace {
             .children([(false, "QUICK_EFFECTS"), (true, "ADVANCED_EFFECTS")].map(
                 |(mode, label)| {
                     BaseButton::new(SharedString::from(format!("mouse-effects-tab-{mode}")))
-                        .selected(mode == advanced)
+                        .selected(self.mouse_chroma_mode() == Some(mode))
                         .disabled(!enabled)
                         .h(surface::css(26.))
                         .px(surface::css(10.))
@@ -1015,12 +1126,12 @@ impl MouseProductWorkspace {
                         .rounded(surface::css(13.))
                         .text_size(surface::css(14.))
                         .line_height(surface::css(16.))
-                        .bg(if mode == advanced {
+                        .bg(if self.mouse_chroma_mode() == Some(mode) {
                             Colors::accent()
                         } else {
                             Colors::transparent()
                         })
-                        .text_color(if mode == advanced {
+                        .text_color(if self.mouse_chroma_mode() == Some(mode) {
                             Colors::selected_text()
                         } else {
                             Colors::text()
@@ -1052,14 +1163,7 @@ impl MouseProductWorkspace {
             // commonReducer.installedModules and immediately shows Install
             // when the module is absent.
             let installed = if babel {
-                Some(
-                    observed["isChromaInstalled"] == true
-                        || observed["installedModules"]
-                            .as_array()
-                            .is_some_and(|modules| {
-                                modules.iter().any(|module| module == "chroma-app")
-                            }),
-                )
+                observed["chromaInstalledModule"].as_bool()
             } else {
                 observed["allChromaResourcesInstalled"].as_bool()
             };
@@ -1725,6 +1829,8 @@ impl MouseProductWorkspace {
             profile.set_items(chroma_choices, window, cx);
             if let Some(selected) = chroma_selected {
                 profile.set_selected_value(&selected, window, cx);
+            } else {
+                profile.set_selected_index(None, window, cx);
             }
         });
         for (channel, color) in state.colors.iter().enumerate() {

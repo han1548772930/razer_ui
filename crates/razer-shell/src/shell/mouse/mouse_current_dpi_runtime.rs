@@ -135,11 +135,12 @@ impl AppShell {
         let owner = workspace.downgrade();
         let worker_request = request.clone();
         let worker_route = route.clone();
+        let serial = workspace.read(cx).device(cx).serial_number.clone();
         let delivery = cx.spawn(async move |shell, cx| {
             let completion = cx
                 .background_spawn(async move {
                     let _accepted = accepted;
-                    worker::run(worker_route, worker_request)
+                    worker::run(worker_route, worker_request, serial)
                 })
                 .await;
             let _ = shell.update(cx, |shell, cx| {
@@ -157,6 +158,17 @@ impl AppShell {
                         Err("DPI 设备连接或请求范围已改变".to_owned())
                     };
                     workspace.update(cx, |workspace, cx| {
+                        if current && let Some(profile) = completion.local_profile() {
+                            workspace.accept_current_dpi_local_profile(
+                                &operation.request,
+                                result
+                                    .as_ref()
+                                    .ok()
+                                    .and_then(|report| report.serial_number.as_deref()),
+                                profile,
+                                cx,
+                            );
+                        }
                         workspace.finish_current_dpi_result(&operation.request, result, cx)
                     });
                     if current {

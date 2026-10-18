@@ -25,6 +25,20 @@ pub(super) struct Controller {
 }
 
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        if let Some(active) = self.active.take() {
+            active.canceled.store(true, Ordering::Release);
+            cleanup.record(
+                "keyboard_wristrest",
+                active
+                    .worker
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Wristrest cleanup worker panicked"))
+                    .and_then(stopped),
+            );
+        }
+    }
+
     pub(super) fn start(&mut self, id: String, target: Target) -> anyhow::Result<()> {
         ensure!(
             !id.is_empty() && id.len() <= 128 && !id.contains('\0'),
@@ -95,13 +109,17 @@ impl Controller {
         let result = active.worker.join();
         let outcome = result
             .map_err(|_| anyhow::anyhow!("Wristrest reader thread terminated during cleanup"))?;
-        let cleanup_error = outcome
-            .err()
-            .filter(|error| error.to_string() != "Wristrest owner canceled")
-            .map(|error| format!("{error:#}"));
+        let cleanup_error = stopped(outcome).err().map(|error| format!("{error:#}"));
         Ok(
             json!({"operation_id":id,"target":active.target,"stopped":true,"cleanup_error":cleanup_error}),
         )
+    }
+}
+
+fn stopped(outcome: anyhow::Result<()>) -> anyhow::Result<()> {
+    match outcome {
+        Err(error) if error.to_string() == "Wristrest owner canceled" => Ok(()),
+        outcome => outcome,
     }
 }
 
@@ -218,6 +236,47 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn shutdown_reports_real_cleanup_failure_without_reusing_the_operation() {
+        let (_tx, updates) = mpsc::sync_channel(1);
+        let mut controller = Controller {
+            active: Some(Operation {
+                id: "mock".into(),
+                target: target(),
+                canceled: Arc::new(AtomicBool::new(false)),
+                updates,
+                worker: thread::spawn(|| anyhow::bail!("interrupt reader finish rejected")),
+            }),
+        };
+        let mut cleanup = crate::runtime::shutdown::Cleanup::default();
+        controller.shutdown(&mut cleanup);
+        let mut reply = razer_ipc::ResponseEnvelope {
+            id: 1,
+            data: Some(json!({"stopped":true})),
+            error: None,
+            fatal: false,
+        };
+        cleanup.apply(&mut reply);
+        assert!(reply.data.is_none());
+        assert!(
+            reply
+                .error
+                .unwrap()
+                .contains("interrupt reader finish rejected")
+        );
+        assert!(controller.active.is_none());
+        let mut cleanup = crate::runtime::shutdown::Cleanup::default();
+        controller.shutdown(&mut cleanup);
+        let mut reply = razer_ipc::ResponseEnvelope {
+            id: 2,
+            data: Some(json!({"stopped":true})),
+            error: None,
+            fatal: false,
+        };
+        cleanup.apply(&mut reply);
+        assert!(reply.error.is_none());
     }
 }
 

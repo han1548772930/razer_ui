@@ -406,6 +406,18 @@ impl MouseProductWorkspace {
         editing_enabled: bool,
         cx: &Context<Self>,
     ) -> AnyElement {
+        if !self.current_dpi_profile_known() {
+            return div()
+                .mt(surface::css(25.))
+                .h(surface::css(27.))
+                .flex()
+                .items_center()
+                .text_size(surface::css(14.))
+                .opacity(0.3)
+                .child(t("SENSITIVITY_STAGES"))
+                .child(div().ml(surface::css(10.)).child("—"))
+                .into_any_element();
+        }
         if row_spec.two_way_tab {
             return div()
                 .h(surface::css(72.))

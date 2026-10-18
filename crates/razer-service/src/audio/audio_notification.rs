@@ -23,6 +23,15 @@ impl Default for AudioNotifications {
 }
 
 impl AudioNotifications {
+    pub fn shutdown(&mut self) -> anyhow::Result<()> {
+        #[cfg(windows)]
+        if let Some(registration) = &mut self.registration {
+            registration.close()?;
+            self.registration = None;
+        }
+        Ok(())
+    }
+
     pub fn enable(&mut self, enabled: bool) -> anyhow::Result<Value> {
         #[cfg(not(windows))]
         {

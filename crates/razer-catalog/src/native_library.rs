@@ -1,10 +1,9 @@
 //! Generated inventory of every native library the current sources declare.
 //!
-//! The asset is produced by `tools/generate-native-library-inventory.cjs` from
-//! the reverse-engineered host wrappers and product middleware `ConfigureFFI`
-//! payloads. Nothing here is product-specific: every id, file name, path rule
-//! and declared function comes from that asset, so a new library or a changed
-//! binding table is picked up by regenerating, never by editing Rust.
+//! The packaged typed catalog is maintained through `tools/workspace.py`.
+//! It describes host wrappers and product middleware `ConfigureFFI` payloads;
+//! declaration provenance must be revalidated against current originals before
+//! it can support an implementation decision.
 //!
 //! Declaring a function proves only that the vendor JavaScript passes it to
 //! `ffi-napi-rz.Library`. It does not prove the export exists, that the ABI is

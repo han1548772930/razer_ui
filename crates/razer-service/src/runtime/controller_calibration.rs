@@ -38,6 +38,21 @@ pub(super) struct Controller {
 }
 
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        if let Some(mut active) = self.active.take() {
+            active.canceled.store(true, Ordering::Release);
+            if let Some(worker) = active.worker.take() {
+                cleanup.record(
+                    "controller_calibration",
+                    worker
+                        .join()
+                        .map_err(|_| anyhow::anyhow!("Trigger calibration cleanup worker panicked"))
+                        .and_then(|result| result),
+                );
+            }
+        }
+    }
+
     pub(super) fn start(
         &mut self,
         id: String,

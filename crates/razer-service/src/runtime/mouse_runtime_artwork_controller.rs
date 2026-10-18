@@ -25,6 +25,20 @@ pub(super) struct Controller {
 }
 
 impl Controller {
+    pub(super) fn shutdown(&mut self, cleanup: &mut super::shutdown::Cleanup) {
+        if let Some(active) = self.active.take() {
+            active.canceled.store(true, Ordering::Release);
+            cleanup.record(
+                "mouse_runtime_artwork",
+                active
+                    .worker
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Mouse artwork cleanup worker panicked"))
+                    .and_then(stopped),
+            );
+        }
+    }
+
     pub(super) fn start(&mut self, id: String, target: Target) -> anyhow::Result<()> {
         ensure!(
             !id.is_empty() && id.len() <= 128 && !id.contains('\0'),
@@ -105,13 +119,17 @@ impl Controller {
         let outcome = result.map_err(|_| {
             anyhow::anyhow!("Mouse artwork reader thread terminated during cleanup")
         })?;
-        let cleanup_error = outcome
-            .err()
-            .filter(|error| error.to_string() != "Mouse artwork owner canceled")
-            .map(|error| format!("{error:#}"));
+        let cleanup_error = stopped(outcome).err().map(|error| format!("{error:#}"));
         Ok(
             json!({"operation_id":id,"target":active.target,"stopped":true,"cleanup_error":cleanup_error}),
         )
+    }
+}
+
+fn stopped(outcome: anyhow::Result<()>) -> anyhow::Result<()> {
+    match outcome {
+        Err(error) if error.to_string() == "Mouse artwork owner canceled" => Ok(()),
+        outcome => outcome,
     }
 }
 

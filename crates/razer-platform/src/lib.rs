@@ -19,6 +19,10 @@ pub mod foreground_monitor;
 pub mod game_monitor;
 #[path = "input/global_shortcuts.rs"]
 pub mod global_shortcuts;
+#[path = "observation/hardware_driver.rs"]
+pub mod hardware_driver;
+#[path = "observation/hardware_monitor.rs"]
+pub mod hardware_monitor;
 #[path = "input/keyboard_capture.rs"]
 pub mod keyboard_capture;
 #[path = "input/keyboard_layout.rs"]
@@ -27,6 +31,8 @@ pub mod keyboard_layout;
 pub mod keyboard_layout_monitor;
 #[path = "input/macro_geometry.rs"]
 pub mod macro_geometry;
+#[path = "input/macro_recorder.rs"]
+pub mod macro_recorder;
 pub mod media;
 #[path = "native_paths.rs"]
 pub mod native_paths;

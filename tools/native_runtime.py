@@ -42,7 +42,239 @@ _MAX_JOB_CHARACTERS = 1 << 20
 _MAX_GET_ATTEMPTS = 10
 _GET_INTERVAL_SECONDS = 0.005
 _HID_GUID = "{4d1e55b2-f16f-11cf-88cb-001111000030}"
+_SIMPLE_SHA256 = "f8e3886c1d83e37accebd40d4b72d5f26c1d3b5d09a6b72707a27f089c196f2b"
+_SIMPLE_INPUT = ".analysis/inputs/host-current/extracted/56b7865f424fb4f0c92d3abd210b128a6429df9b8b026cbb6c0f80945bdf4b06/win-unpacked/CommonDLL/simple_service.dll"
+_SIMPLE_FUNCTIONS = (
+    "f420", "1000", "2780", "2970", "21ad2", "21cc0", "1d4ba", "28200",
+    "280a0", "2db6c", "2dc9a", "2e030", "760c0", "761e0", "f1d0",
+    "edf0", "f090", "d754", "ecf0", "ef90", "12f0", "1730", "19c0",
+    "1cf0", "852e0", "af50", "afc0", "b120", "b270", "b3e0", "218ac",
+    "31e66", "b640", "b7c0",
+    "10290", "100b0", "2a50", "2c30", "21dd4", "21fb0", "26caa",
+    "1bd28", "114e", "7f400", "7f940", "e5870", "96ed0", "7e0a0",
+    "7e370", "7e260", "972f0", "85c20", "93610",
+    "25fd4", "25d08", "2612a", "25e5a", "25ee0", "25c10", "7c150",
+)
+_APPS_FUNCTIONS = (
+    "10660", "2d10", "2ee0", "221de", "223a0", "274f4", "4bdb0", "4c10c", "4c725",
+    "10f50", "2fa0", "3150", "22582", "22720", "2793e",
+    "11400", "3210", "33d0", "22908", "22ac0", "27b22",
+    "11a50", "3490", "3660", "22ca8", "22e70", "27d72", "7fe30", "7b8e0", "7b8f0",
+    "4bccb", "4bb64", "4997a", "4991d", "49448", "4adc3", "4ae43",
+    "4b78e", "4b3ab", "4b8eb", "49cb0", "4a002", "4a334", "4a394", "4a857", "4aa08",
+    "f760", "fa70", "ff30", "1f90", "2150", "2230", "23f0", "24d0", "2690",
+    "1dcb6", "1dd2c", "1df10", "1df22", "1df8c", "1e190", "1e1a2", "1e220", "1e232", "1e2b4",
+    "8920", "8b90", "8da0", "9010",
+)
+
+
+def verify_simple_version_source(root, *, include_apps=False):
+    """Static source/ABI receipt; no target DLL or local COM activation."""
+    import uuid
+    root = Path(root)
+    raw = (root / _SIMPLE_INPUT).read_bytes()
+    if len(raw) != 2570440 or hashlib.sha256(raw).hexdigest() != _SIMPLE_SHA256:
+        raise ValueError("Simple Service bytes differ from the current native capture")
+    pe = inspect_pe(raw)
+    if pe["architecture"] != "x64" or pe["unresolved"]:
+        raise ValueError("Simple Service PE/architecture is not verified")
+    image_base = int(pe["image_base"], 16)
+
+    def at(rva, length):
+        for section in pe["sections"]:
+            if section["rva"] <= rva and rva + length <= section["rva"] + section["bytes"]:
+                offset = section["file_offset"] + rva - section["rva"]
+                return raw[offset:offset + length]
+        raise ValueError("Source evidence RVA has no complete raw bytes")
+
+    capture_path = f".analysis/results/native/{_SIMPLE_SHA256}/capture.json"
+    capture = json.loads((root / capture_path).read_text(encoding="utf-8"))
+    if capture["input_sha256"] != _SIMPLE_SHA256 or capture["input_bytes"] != len(raw):
+        raise ValueError("Simple Service capture input differs")
+    functions = []
+    for rva in dict.fromkeys(_SIMPLE_FUNCTIONS + (_APPS_FUNCTIONS if include_apps else ())):
+        path = Path(capture_path).parent / "functions" / (rva + ".json")
+        encoded = (root / path).read_bytes()
+        function = json.loads(encoded)
+        if not (function.get("pseudocode") or {}).get("lines") or not function.get("assembly"):
+            raise ValueError("Complete native source body is absent: " + rva)
+        for chunk in function["chunks"]:
+            start, end = int(chunk["start"], 16), int(chunk["end"], 16)
+            actual = at(start - image_base, end - start)
+            if actual.hex() != chunk["raw_hex"] or hashlib.sha256(actual).hexdigest() != chunk["sha256"]:
+                raise ValueError("Native capture bytes differ: " + rva)
+        functions.append({"path": path.as_posix(), "sha256": hashlib.sha256(encoded).hexdigest(),
+                          "rva": function["rva"], "chunks": function["chunks"],
+                          "complete_function": True, "bytes_verified": True})
+    guids = {}
+    for name, rva, expected in (
+        ("clsid", 0x1f8234, "0edeaf3c-d36e-4e7e-9467-900b977dc4ff"),
+        ("iid", 0x1f8214, "bfe24d59-6568-4179-8ae5-d9d53869a3e3"),
+    ):
+        encoded = at(rva, 16)
+        if str(uuid.UUID(bytes_le=encoded)) != expected:
+            raise ValueError("COM identity differs from captured caller")
+        guids[name] = {"rva": hex(rva), "bytes": encoded.hex(), "value": expected}
+    exports = {name: row for row in pe["exports"] for name in row["names"]}
+    for name, rva in (("simpleServiceInitialize", "0xedf0"),
+                      ("simpleGetVersionInfo", "0xf420"), ("simpleServiceShutdown", "0xf090"),
+                      ("simpleGetUserApps", "0x10290")):
+        if exports.get(name, {}).get("rva") != rva or "forwarder" in exports[name]:
+            raise ValueError("Simple Service export differs: " + name)
+    apps = {}
+    if include_apps:
+        signer_names = []
+        for index in range(2):
+            pointer = struct.unpack("<Q", at(0x24b090 + index * 8, 8))[0]
+            signer_names.append(at(pointer - image_base, 32).split(b"\0", 1)[0].decode("ascii"))
+        if signer_names != ["Razer USA Ltd.", "THX LTD."]:
+            raise ValueError("Apps signer policy differs from source bytes")
+        producers = {}
+        for producer, caller in (("1dcb6", "0x1800278d3"), ("1df22", "0x180027a65"),
+                                 ("1e1a2", "0x180027ccf"), ("1e232", "0x180028086")):
+            path = Path(capture_path).parent / "functions" / (producer + ".json")
+            body = json.loads((root / path).read_bytes())
+            calls = body["xrefs_to_entry"]
+            if len(calls) != 1 or calls[0]["from"] != caller or not calls[0]["code"]:
+                raise ValueError("Apps mutation event has an unclassified producer: " + producer)
+            producers[producer] = calls
+        apps = {"allowed_signer_common_names": signer_names,
+                "signature": "ZIP bypass; offline WinTrust file/handle verification for PE/MSI/MSIX; custom ICO iTXt PKCS#7 reconstructed-content digest, signed-attribute digest and RSA-SHA1/RSA-SHA256/ECDSA-SHA256 verification; signer attempts run Razer then THX and the last failed attempt owns the failure reason",
+                "mutation_event_producers": producers,
+                "subscriptions": "0x2150/0x23f0 toggle singleton enable flag; 0x2690 owns callback. No filesystem watch or cross-process mutation producer. Already posted callbacks survive unregister; JS broadcasts to all live webContents",
+                "cleanup": "Rust owns input/file/provider/certificate/key and staging lifetimes; verification failure and cleanup failure are retained together; queue drains independently and shutdown clears its owner",
+                "runtime_scope": "Pure tests use synthetic certificates and disposable directories only; no installed file write, remove, helper launch or vendor mutation comparison"}
+    return {"input": _SIMPLE_INPUT, "sha256": _SIMPLE_SHA256, "bytes": len(raw),
+            "architecture": pe["architecture"], "capture": capture_path,
+            "ida_version": capture["ida_version"], "hexrays_version": capture["hexrays_version"],
+            "functions": functions, "com_identity": guids, "apps": apps,
+            "abi": {"apartment": 6, "class_context": 4, "version_slot": 8,
+                    "method": "HRESULT(this, BSTR*)", "cleanup": "SysFreeString, IUnknown::Release, CoUninitialize"},
+            "semantics": {
+                "source_build_constants": {"Simple Service Version":"1.2.2.10", "Apps Service Version":"1.2.2.4", "Audio Service Version":"1.2.1.16"},
+                "observed_field": "Elevation Service Version",
+                "source_failure": "RVA 0x28200 discards RVA 0x2dc9a failure and serializes an empty elevation string as callback success",
+                "rust_failure": "Source build metadata is retained; elevation uses observed/value or failed/error, with no fabricated observation",
+                "lifecycle": "Initialize callback precedes query; shutdown stops service owners and waits before its completion callback; the test retains the mapped module until isolated process exit"},
+            "remaining": ["This query does not replace other Simple Service methods or the installed Elevation Service implementation"]}
+
+
+def compare_local_service_version(root):
+    """Audited read-only original DLL versus direct Rust COM test receipt."""
+    import shutil
+    import winreg
+    root = Path(root).resolve()
+    evidence = verify_simple_version_source(root)
+    clsid = evidence["com_identity"]["clsid"]["value"]
+    with winreg.OpenKey(winreg.HKEY_CLASSES_ROOT, f"CLSID\\{{{clsid}}}\\LocalServer32") as key:
+        registered, _ = winreg.QueryValueEx(key, None)
+    registered = registered.strip()
+    if not (registered.startswith('"') and registered.endswith('"')):
+        raise ValueError("Elevation LocalServer32 must be the observed quoted executable without arguments")
+    server = Path(registered[1:-1]).resolve(strict=True)
+    if server.name.casefold() != "razer_elevation_service.exe":
+        raise ValueError("COM registration points to a different local server")
+    raw = server.read_bytes()
+    pe = inspect_pe(raw)
+    if pe["architecture"] != "x64" or pe["unresolved"]:
+        raise ValueError("Installed Elevation Service PE/architecture is not verified")
+    quoted = "'" + str(server).replace("'", "''") + "'"
+    signature = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+        "$s=Get-AuthenticodeSignature -LiteralPath " + quoted +
+        "; @{status=$s.Status.ToString();subject=$s.SignerCertificate.Subject;thumbprint=$s.SignerCertificate.Thumbprint}|ConvertTo-Json -Compress"],
+        capture_output=True, text=True, encoding="utf-8", check=True, timeout=30)
+    signer = json.loads(signature.stdout)
+    if signer["status"] != "Valid" or not signer["subject"].startswith("CN=Razer USA Ltd.,"):
+        raise ValueError("Installed Elevation Service signature is not verified Razer")
+    server_input = root / ".analysis/inputs/installed-current/files/elevation-service/razer_elevation_service.exe"
+    server_input.parent.mkdir(parents=True, exist_ok=True)
+    if not server_input.exists() or server_input.read_bytes() != raw:
+        shutil.copyfile(server, server_input)
+    if server_input.read_bytes() != raw:
+        raise ValueError("Private Elevation Service evidence copy differs")
+    implementation_paths = ["Cargo.lock", "crates/razer-service/src/runtime/windows/native.rs",
+        "crates/razer-service/src/runtime/windows/simple_version.rs",
+        "crates/razer-service/src/runtime/windows/simple_version_tests.rs", "tools/native_runtime.py"]
+    inputs = {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in implementation_paths}
+    command = ["cargo", "test", "--locked", "-p", "razer-service", "--lib",
+        "runtime::native::simple_version::tests::connected_service_version_read_only",
+        "--", "--ignored", "--exact", "--nocapture", "--test-threads=1"]
+    environment = os.environ.copy()
+    environment["RAZER_VERIFIED_SIMPLE_SERVICE"] = str(root / _SIMPLE_INPUT)
+    completed = _run_service_version_test(command, root, environment)
+    reports = re.findall(r"RAZER_VERSION_RESULT (\{[^\r\n]+\})", completed["stdout"])
+    result = json.loads(reports[0]) if len(reports) == 1 else None
+    unchanged = all(hashlib.sha256((root / path).read_bytes()).hexdigest() == digest
+                    for path, digest in inputs.items()) and server.read_bytes() == raw
+    passed = completed["exit_code"] == 0 and not completed["timed_out"] and result is not None and unchanged
+    return {"evidence": evidence, "mode": "read-only", "command": command,
+            "server": {"input": server_input.relative_to(root).as_posix(),
+                       "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw),
+                       "architecture": pe["architecture"], "versions": pe["version_resources"], "signature": signer},
+            "implementation_inputs": inputs, "inputs_unchanged": unchanged,
+            **completed,
+            "result": result, "passed": passed,
+            "scope": "Actual source DLL Initialize/GetVersionInfo/Shutdown callbacks and direct Rust local COM version query; no application window, installer, JS, firmware or device write"}
+
+
+def compare_local_app_files(root):
+    """Original callback versus actual direct inventory; never changes files."""
+    root = Path(root).resolve()
+    evidence = verify_simple_version_source(root, include_apps=True)
+    evidence["apps_inventory"] = {
+        "export": "simpleGetUserApps(const char*, void(bool,const char*,const char*))",
+        "chain": ["10290", "2a50", "2c30", "21dd4", "21fb0", "26caa"],
+        "root": "SHGetFolderPathW(NULL,28,NULL,0) / Razer / RazerAppEngine / User Data / Apps",
+        "format": "JSON array of single-entry app-name dictionaries; each value is a recursive file list with name and uppercase sha256",
+        "ordering": "Windows enumerator order; current directory files precede child directories, pending children traversed LIFO; reparse children skipped",
+        "errors": "PathExists is used before enumeration (not IsDirectory). Missing root/app have separate reasons; empty root and case-mismatched filter return false with empty reason and empty userApps: 0x21fb0 discards producer [] on its failure branch",
+        "read_failure": "Rust returns result=false/reason for actual I/O failure, retaining all independent successful file observations in userApps; no fabricated empty hash",
+        "remaining": ["This live comparison covers inventory only. Mutation/signature/event implementations use pure/synthetic tests; process launch and system monitor still require independent implementation"],
+    }
+    paths = ["Cargo.lock", "crates/razer-storage/src/user_app_files.rs",
+             "crates/razer-service/src/runtime/windows/user_app_files.rs",
+             "crates/razer-platform/src/native_paths.rs", "tools/native_runtime.py"]
+    inputs = {path: hashlib.sha256((root / path).read_bytes()).hexdigest() for path in paths}
+    command = ["cargo", "test", "--locked", "-p", "razer-service", "--lib",
+               "runtime::native::user_app_files::tests::connected_user_apps_read_only",
+               "--", "--ignored", "--exact", "--nocapture", "--test-threads=1"]
+    environment = os.environ.copy()
+    environment["RAZER_VERIFIED_SIMPLE_SERVICE"] = str(root / _SIMPLE_INPUT)
+    completed = _run_service_version_test(command, root, environment)
+    reports = re.findall(r"RAZER_APPS_RESULT (\{[^\r\n]+\})", completed["stdout"])
+    result = json.loads(reports[0]) if len(reports) == 1 else None
+    unchanged = all(hashlib.sha256((root / path).read_bytes()).hexdigest() == digest
+                    for path, digest in inputs.items())
+    return {"evidence": evidence, "mode": "read-only", "command": command,
+            "implementation_inputs": inputs, "inputs_unchanged": unchanged,
+            **completed, "result": result,
+            "passed": completed["exit_code"] == 0 and not completed["timed_out"] and result is not None and unchanged,
+            "scope": "Actual source DLL Initialize/GetUserApps/Shutdown callbacks compared with direct Rust current-file names/hashes; no writes, helpers or application windows"}
+
+
+def _run_service_version_test(command, root, environment):
+    process = subprocess.Popen(command, cwd=root, env=environment, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    timed_out = False
+    termination = None
+    try:
+        stdout, stderr = process.communicate(timeout=180)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        # Cargo owns a test child; killing only cargo would abandon the DLL
+        # call. This branch is restricted to this read-only comparison tree.
+        termination = subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+            capture_output=True, text=True, errors="replace", timeout=15)
+        stdout, stderr = process.communicate(timeout=15)
+    process.wait()
+    return {"exit_code": process.returncode, "stdout": stdout, "stderr": stderr,
+            "timed_out": timed_out, "worker_waited": True,
+            "forced_tree_cleanup": None if termination is None else {
+                "exit_code": termination.returncode, "stdout": termination.stdout, "stderr": termination.stderr}}
 _MOUSE_GETS = {
+    # Current PID190 84816.I_ -> 30580.kD; the identity reply is not a setting.
+    (22, 0, 130): b"",
     (80, 4, 134): bytes([1]),
     (7, 4, 133): bytes([0]),
     (2, 0, 192): bytes([1, 0]),

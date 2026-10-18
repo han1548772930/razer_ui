@@ -18,37 +18,81 @@ pub(super) const CONNECTED_DEVICES_KEY: &str = "lighting-engine-chroma-devices";
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Readback {
     pub(super) snapshot: Result<Snapshot, String>,
-    pub(super) installation: Result<razer_platform::chroma_installation::Installation, String>,
+    pub(super) dynamic_lighting: Result<Option<bool>, String>,
+    pub(super) module_installed: Result<Option<bool>, String>,
+    pub(super) installation:
+        Result<Option<razer_platform::chroma_installation::Installation>, String>,
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum InstallationRead {
+    Required,
+    NotRequested,
+}
+
+impl Readback {
+    pub(super) fn result(&self) -> Result<(), String> {
+        let errors = [
+            ("Chroma profiles", self.snapshot.as_ref().err()),
+            ("Dynamic lighting", self.dynamic_lighting.as_ref().err()),
+            ("Chroma module", self.module_installed.as_ref().err()),
+            ("Chroma installation", self.installation.as_ref().err()),
+        ]
+        .into_iter()
+        .filter_map(|(stage, error)| error.map(|error| format!("{stage}: {error}")))
+        .collect::<Vec<_>>();
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
+        }
+    }
 }
 
 /// The caller owns background execution and scope/cancellation admission.
 pub(super) fn readback() -> Readback {
+    readback_scope(InstallationRead::Required)
+}
+
+pub(super) fn readback_scope(installation: InstallationRead) -> Readback {
     readback_with(
         || {
-            chroma_profiles::load(
+            chroma_profiles::observe(
                 &chroma_profiles::path(),
                 &razer_storage::source_local::path(),
             )
         },
+        installation,
         razer_platform::chroma_installation::inspect,
     )
 }
 
 pub(super) fn from_snapshot(snapshot: Snapshot) -> Readback {
-    readback_with(
-        || Ok(snapshot),
-        razer_platform::chroma_installation::inspect,
-    )
+    let mut observation = readback();
+    observation.snapshot = Ok(snapshot);
+    observation
 }
 
 fn readback_with(
-    snapshot: impl FnOnce() -> anyhow::Result<Snapshot>,
+    storage: impl FnOnce() -> chroma_profiles::Observation,
+    scope: InstallationRead,
     installation: impl FnOnce() -> anyhow::Result<razer_platform::chroma_installation::Installation>,
 ) -> Readback {
-    let snapshot = snapshot().map_err(|error| format!("{error:#}"));
-    let installation = installation().map_err(|error| format!("{error:#}"));
+    let chroma_profiles::Observation {
+        snapshot,
+        dynamic_lighting,
+        module_installed,
+    } = storage();
+    let installation = match scope {
+        InstallationRead::Required => installation()
+            .map(Some)
+            .map_err(|error| format!("{error:#}")),
+        InstallationRead::NotRequested => Ok(None),
+    };
     Readback {
         snapshot,
+        dynamic_lighting,
+        module_installed,
         installation,
     }
 }

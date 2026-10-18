@@ -9,7 +9,7 @@ use std::sync::{
 };
 #[path = "mouse_current_dpi_observation.rs"]
 mod observation;
-use observation::{Observation, Selection};
+use observation::{Observation, RowUpdate, Selection};
 
 #[derive(Clone)]
 pub struct MouseCurrentDpiRequested {
@@ -32,6 +32,21 @@ mod tests {
     };
     use gpui_kit::{AppContext, EntityId, TestAppContext, px, size};
     use std::sync::{Arc, atomic::AtomicBool};
+    fn configured_stages() -> super::DpiStagesDraft {
+        super::DpiStagesDraft {
+            enabled: true,
+            active_stage: 3,
+            stages: [400, 800, 1600, 3200, 6400]
+                .into_iter()
+                .map(|dpi| super::DpiStage {
+                    x: dpi,
+                    y: dpi,
+                    visible: true,
+                    independent: false,
+                })
+                .collect(),
+        }
+    }
 
     #[::core::prelude::v1::test]
     fn current190_source_separates_stage_table_edits_from_transient_stage_selection() {
@@ -102,6 +117,7 @@ mod tests {
         let request = cx
             .update_window(handle.into(), |_, window, cx| {
                 page.update(cx, |owner, cx| {
+                    owner.restore_current_dpi_local_profile(Ok(Some(configured_stages())), cx);
                     let previous_active = owner.draft.get("dpi").cloned();
                     owner.write_number("/dpiStages/stages/2/x", 2000., window, cx);
                     let request = owner
@@ -211,6 +227,85 @@ mod tests {
     }
 
     #[::core::prelude::v1::test]
+    fn current_dpi_observation_write_readback_updates_rows_without_becoming_success() {
+        let mut owner = State::default();
+        let mut request = read(1, "route/profile");
+        request.read = false;
+        request.change = Some(super::DpiChange {
+            stages: None,
+            active: Some(super::DpiPair { x: 2200, y: 2200 }),
+            profile_guid: None,
+            initialize: false,
+        });
+        request.selection = Some(
+            super::Selection::capture(
+                190,
+                &super::DpiStagesDraft {
+                    enabled: false,
+                    active_stage: 3,
+                    stages: [400, 800, 1600, 3200, 6400]
+                        .map(|value| super::DpiStage {
+                            x: value,
+                            y: value,
+                            visible: true,
+                            independent: false,
+                        })
+                        .into(),
+                },
+            )
+            .unwrap(),
+        );
+        owner.connection_key = request.connection_key.clone();
+        owner.row_values[0] = Some(super::DpiPair { x: 500, y: 500 });
+        owner.enqueue(request.clone());
+        let report = serde_json::from_value(serde_json::json!({
+            "requested":request.change, "stages":null, "active":{"x":2300,"y":2400},
+            "acknowledgements":[], "verified":false,
+            "write_errors":{"active":"readback differs","stages":null}
+        }))
+        .unwrap();
+        assert!(owner.accept_report(&request, &report).is_some());
+        assert_eq!(
+            owner.row_values[2],
+            Some(super::DpiPair { x: 2300, y: 2400 })
+        );
+        assert_eq!(owner.row_values[0], Some(super::DpiPair { x: 500, y: 500 }));
+        assert!(
+            owner
+                .read_error
+                .as_ref()
+                .unwrap()
+                .contains("readback differs")
+        );
+        owner.record_edit();
+        assert!(
+            owner
+                .observe_rows(&request, [super::RowUpdate::Unobserved; 5])
+                .is_none()
+        );
+        assert!(owner.row_values[2].is_some());
+    }
+
+    #[::core::prelude::v1::test]
+    fn current_dpi_observation_failed_refresh_removes_the_previous_control_value() {
+        let mut owner = State::default();
+        let request = read(1, "route/profile");
+        owner.connection_key = request.connection_key.clone();
+        owner
+            .row_values
+            .fill(Some(super::DpiPair { x: 1600, y: 1600 }));
+        owner.enqueue(request.clone());
+        let report = serde_json::from_value(serde_json::json!({
+            "requested":null,"stages":null,"active":null,"acknowledgements":[],"verified":false,
+            "read_errors":{"active":"get failed","stages":"get failed"}
+        }))
+        .unwrap();
+        assert!(owner.accept_report(&request, &report).is_some());
+        assert_eq!(owner.row_values, [None; 5]);
+        assert_eq!(owner.observed.errors().count(), 2);
+    }
+
+    #[::core::prelude::v1::test]
     fn current_dpi_observation_old_connection_completion_cannot_release_successor() {
         let mut owner = State::default();
         let old = read(1, "old-route/profile");
@@ -271,6 +366,7 @@ mod tests {
         let page = page.unwrap();
         cx.update_window(handle.into(), |_, window, cx| {
             page.update(cx, |owner, cx| {
+                owner.restore_current_dpi_local_profile(Ok(Some(configured_stages())), cx);
                 let path = "/dpiStages/stages/2/x";
                 let report = |value| {
                     serde_json::from_value(json!({
@@ -350,6 +446,8 @@ pub(super) struct State {
     read_error: Option<String>,
     initialization_key: Option<String>,
     macro_recording: bool,
+    local_profile_known: bool,
+    local_profile_error: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -421,6 +519,39 @@ impl State {
         self.owns_completion(request)
             && request.connection_key == self.connection_key
             && request.edit_revision == self.edit_revision
+    }
+
+    fn accept_report(
+        &mut self,
+        request: &MouseCurrentDpiRequested,
+        report: &DpiReport,
+    ) -> Option<[RowUpdate; 5]> {
+        let updates = self.observed.accept(request.selection.as_ref(), report);
+        let errors = [report.write_errors.stages(), report.write_errors.active()]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join("; ");
+        self.read_error = (!errors.is_empty()).then_some(errors);
+        self.observe_rows(request, updates)
+    }
+
+    fn observe_rows(
+        &mut self,
+        request: &MouseCurrentDpiRequested,
+        updates: [RowUpdate; 5],
+    ) -> Option<[RowUpdate; 5]> {
+        if !self.projection_current(request) {
+            return None;
+        }
+        for (value, update) in self.row_values.iter_mut().zip(updates) {
+            match update {
+                RowUpdate::Unchanged => {}
+                RowUpdate::Unobserved => *value = None,
+                RowUpdate::Observed(observed) => *value = Some(observed),
+            }
+        }
+        Some(updates)
     }
 
     fn owns_completion(&self, request: &MouseCurrentDpiRequested) -> bool {
@@ -562,6 +693,8 @@ impl State {
         {
             return None;
         }
+        self.local_profile_known = false;
+        self.local_profile_error = None;
         self.sequence = self.sequence.wrapping_add(1);
         self.enqueue_initialization(MouseCurrentDpiRequested {
             scope,
@@ -659,10 +792,64 @@ impl Drop for State {
 impl EventEmitter<MouseCurrentDpiRequested> for MouseProductWorkspace {}
 
 impl MouseProductWorkspace {
+    pub fn current_dpi_profile_read_matches(
+        &self,
+        request: &MouseCurrentDpiRequested,
+        cx: &App,
+    ) -> bool {
+        self.current_dpi_request_matches(request, cx)
+            && self.current_dpi.projection_current(request)
+    }
+    pub fn restore_current_dpi_local_profile(
+        &mut self,
+        result: Result<Option<DpiStagesDraft>, String>,
+        cx: &mut Context<Self>,
+    ) {
+        if !razer_storage::host_local_profile::supported(self.spec.product_id) {
+            return;
+        }
+        self.current_dpi.local_profile_known = false;
+        self.current_dpi.local_profile_error = None;
+        match result {
+            Ok(Some(stages)) => {
+                self.draft["dpiStages"] = razer_storage::host_local_profile::stage_value(&stages);
+                self.current_dpi.local_profile_known = true;
+            }
+            Ok(None) => {}
+            Err(error) => self.current_dpi.local_profile_error = Some(error),
+        }
+        cx.notify();
+    }
+    pub(super) fn current_dpi_profile_known(&self) -> bool {
+        !razer_storage::host_local_profile::supported(self.spec.product_id)
+            || self.current_dpi.local_profile_known
+    }
+    pub fn observe_current_dpi_macro_recording(&mut self, recording: bool) {
+        if self.spec.product_id != 182 {
+            return;
+        }
+        if recording && !self.current_dpi.macro_recording {
+            if let Some(request) = &self.current_dpi.pending {
+                request.cancel();
+            }
+            if let Some(queued) = &mut self.current_dpi.queued {
+                queued.change = None;
+            }
+            if let Some(initialization) = self.current_dpi.initialization_queued.take() {
+                initialization.cancel();
+            }
+            self.current_dpi.initialization_key = None;
+        }
+        self.current_dpi.macro_recording = recording;
+    }
     /// Called after the source profile/initialization owners have selected the
     /// current physical route and profile. A busy worker retains the refresh.
     pub fn observe_current_dpi_connection(&mut self, key: Option<String>, cx: &mut Context<Self>) {
         let scope = self.mouse_polling_scope(cx);
+        if key.is_none() {
+            self.current_dpi.local_profile_known = false;
+            self.current_dpi.local_profile_error = None;
+        }
         if !self.current_dpi.install_connection(key, scope) {
             return;
         }
@@ -688,7 +875,7 @@ impl MouseProductWorkspace {
             profile_guid,
             stages: self.current_dpi_draft(),
             selection: self.current_dpi_selection(),
-            macro_recording,
+            macro_recording: macro_recording || self.current_dpi.macro_recording,
         };
         let request = self.current_dpi.initialize_connection(initialization);
         self.initialize_current_mouse_polling(key.as_deref(), profile_guid, cx);
@@ -702,6 +889,9 @@ impl MouseProductWorkspace {
         self.submit_current_dpi(Edit::Profile, cx);
     }
     fn current_dpi_draft(&self) -> Option<DpiStagesDraft> {
+        if !self.current_dpi_profile_known() {
+            return None;
+        }
         let stages = self
             .draft
             .pointer(self.spec.stages_path())?
@@ -854,7 +1044,7 @@ impl MouseProductWorkspace {
     /// serial-indexed profile cache. This request contains no setting or
     /// profile, so the transport must perform only the identity getter.
     pub fn request_current_dpi_identity(&mut self, cx: &mut Context<Self>) {
-        if self.spec.product_id != 182 {
+        if !razer_storage::host_local_profile::supported(self.spec.product_id) {
             return;
         }
         let Some(scope) = self.mouse_polling_scope(cx) else {
@@ -911,19 +1101,28 @@ impl MouseProductWorkspace {
         if current {
             match result {
                 Ok(Some(report)) => {
-                    let values = self
-                        .current_dpi
-                        .observed
-                        .accept(request.selection.as_ref(), &report);
-                    self.current_dpi.read_error = None;
-                    if request.is_read()
-                        && request.change.is_none()
+                    let mut projection = request.clone();
+                    if (projection.selection.is_none()
+                        || projection.is_read()
+                            && razer_storage::host_local_profile::supported(self.spec.product_id))
                         && self.current_dpi.projection_current(request)
                     {
+                        projection.selection = self.current_dpi_selection();
+                    }
+                    if let Some(values) = self.current_dpi.accept_report(&projection, &report) {
                         self.apply_current_dpi_observation(values, cx);
                     }
                 }
-                Err(error) => self.current_dpi.read_error = Some(error),
+                Err(error) => {
+                    self.current_dpi.read_error = Some(error);
+                    self.current_dpi.observed = Observation::default();
+                    if let Some(updates) = self
+                        .current_dpi
+                        .observe_rows(request, [RowUpdate::Unobserved; 5])
+                    {
+                        self.apply_current_dpi_observation(updates, cx);
+                    }
+                }
                 Ok(None) => {}
             }
         }
@@ -987,13 +1186,25 @@ impl MouseProductWorkspace {
         })
     }
 
-    fn apply_current_dpi_observation(&mut self, values: [Option<DpiPair>; 5], cx: &App) {
-        for (index, value) in values.into_iter().enumerate() {
-            let Some(value) = value else { continue };
+    fn apply_current_dpi_observation(&mut self, values: [RowUpdate; 5], cx: &App) {
+        for (index, update) in values.into_iter().enumerate() {
+            let value = match update {
+                RowUpdate::Unchanged => continue,
+                RowUpdate::Unobserved => {
+                    for axis in 0..2 {
+                        self.current_dpi.control_sync.remove(&format!(
+                            "{}/{index}/{}",
+                            self.spec.stages_path(),
+                            self.spec.dpi_axis(axis)
+                        ));
+                    }
+                    continue;
+                }
+                RowUpdate::Observed(value) => value,
+            };
             if self.current_dpi_row_has_preview(index, cx) {
                 continue;
             }
-            self.current_dpi.row_values[index] = Some(value);
             for (axis, value) in [value.x, value.y].into_iter().enumerate() {
                 let path = format!(
                     "{}/{index}/{}",
@@ -1097,6 +1308,7 @@ impl MouseProductWorkspace {
             .current_dpi
             .read_error
             .iter()
+            .chain(self.current_dpi.local_profile_error.iter())
             .map(String::as_str)
             .chain(self.current_dpi.observed.errors())
             .collect::<Vec<_>>()

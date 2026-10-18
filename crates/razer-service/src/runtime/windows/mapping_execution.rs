@@ -10,7 +10,7 @@ type Operation = unsafe extern "C" fn(Callback2);
 
 #[derive(Default)]
 pub(super) struct State {
-    revision: Option<u64>,
+    revisions: std::collections::BTreeMap<String, u64>,
 }
 
 fn operations(target: Target) -> Vec<Action> {
@@ -82,16 +82,19 @@ impl NativeRuntime {
     ) -> anyhow::Result<Value> {
         ensure!(
             self.global_shortcuts.owner().as_deref() == Some(owner)
-                || self.mapping_device.owner_guid().as_deref() == Some(owner),
+                || self.mapping_device.contains_owner(owner),
             "Mapping execution owner changed"
         );
         ensure!(
             self.mapping_execution
-                .revision
-                .is_none_or(|previous| revision > previous),
+                .revisions
+                .get(owner)
+                .is_none_or(|previous| revision > *previous),
             "Mapping execution control revision is stale"
         );
-        self.mapping_execution.revision = Some(revision);
+        self.mapping_execution
+            .revisions
+            .insert(owner.to_owned(), revision);
         // Current restore uses Promise.all: submit both independent source
         // operations even if one rejects. A timed-out ABI cannot be reused.
         let observations = execute(target, |action| -> anyhow::Result<Observation> {

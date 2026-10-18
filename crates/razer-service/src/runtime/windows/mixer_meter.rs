@@ -1,7 +1,7 @@
 //! Current RzNative 0x376c0 capture initialization, 0x32a70 timers and 0x35b60
 //! peak publication. Capture is local WASAPI; samples are discarded like 0x37e10.
 use super::mixer_driver;
-use crate::audio_util::windows::{Com, Property, router_friendly_name};
+use crate::audio_util::windows::{Com, endpoint_container, router_friendly_name};
 use anyhow::{Context as _, ensure};
 use razer_device::{
     audio_mixer::{MixerChannel, MixerControl, MixerSession, MixerTarget, MixerValue},
@@ -17,7 +17,6 @@ use std::{
 use windows_sys::{
     Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize,
-        StructuredStorage::PROPVARIANT,
     },
     core::GUID,
 };
@@ -46,51 +45,6 @@ impl Drop for Apartment {
     }
 }
 
-pub(super) fn endpoint_container(device: &Com) -> anyhow::Result<String> {
-    #[repr(C)]
-    struct Key {
-        fmtid: GUID,
-        pid: u32,
-    }
-    type Open = unsafe extern "system" fn(*mut c_void, u32, *mut *mut c_void) -> i32;
-    type Get = unsafe extern "system" fn(*mut c_void, *const Key, *mut PROPVARIANT) -> i32;
-    let mut raw = null_mut();
-    let open: Open = unsafe { device.method(4) };
-    let store = Com::from_hresult(
-        unsafe { open(device.raw(), 0, &mut raw) },
-        raw,
-        "Mixer endpoint properties",
-    )?;
-    let key = Key {
-        fmtid: GUID::from_u128(0x8c7ed206_3f8a_4827_b3ab_ae9e1faefc6c),
-        pid: 2,
-    };
-    let get: Get = unsafe { store.method(5) };
-    let mut value = Property(PROPVARIANT::default());
-    ok(
-        unsafe { get(store.raw(), &key, &mut value.0) },
-        "Mixer endpoint container",
-    )?;
-    let raw = unsafe { value.0.Anonymous.Anonymous };
-    ensure!(raw.vt == 72, "Mixer endpoint ContainerId is not VT_CLSID");
-    let pointer = unsafe { raw.Anonymous.puuid };
-    ensure!(!pointer.is_null(), "Mixer endpoint ContainerId missing");
-    let g = unsafe { *pointer };
-    Ok(format!(
-        "{{{:08x}-{:04x}-{:04x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}}}",
-        g.data1,
-        g.data2,
-        g.data3,
-        g.data4[0],
-        g.data4[1],
-        g.data4[2],
-        g.data4[3],
-        g.data4[4],
-        g.data4[5],
-        g.data4[6],
-        g.data4[7]
-    ))
-}
 
 fn select(container: &str, name_filter: &str) -> anyhow::Result<Com> {
     let mut raw = null_mut();

@@ -12,7 +12,13 @@ impl KeyboardProductWorkspace {
             return div().into_any_element();
         };
         let disabled = self.rgb_disabled();
-        if fully_installed && observation.chroma_installed_module {
+        let Some(module_installed) = observation.chroma_installed_module else {
+            return div().into_any_element();
+        };
+        if fully_installed && module_installed {
+            if observation.is_chroma_enabled.is_none() {
+                return div().into_any_element();
+            }
             return v_flex()
                 .line_height(surface::css(18.))
                 .child(t("ADVANCED_EFFECTS_MSG"))
@@ -135,7 +141,8 @@ impl KeyboardProductWorkspace {
 
     pub(super) fn huntsman_effects(&self, cx: &Context<Self>) -> AnyElement {
         let hardware = self.rgb_hardware_effect();
-        let advanced = self.analog_gamepad.advanced && !hardware;
+        let mode = if hardware { Some(false) } else { self.chroma_mode() };
+        let advanced = mode == Some(true);
         let selected = self.rgb_effect_id();
         let disabled = self.rgb_disabled();
         let can_sync = self.rgb_can_sync();
@@ -159,12 +166,12 @@ impl KeyboardProductWorkspace {
                     .rounded(surface::css(13.))
                     .text_size(surface::css(14.))
                     .line_height(surface::css(16.))
-                    .bg(if advanced == mode {
+                    .bg(if self.chroma_mode() == Some(mode) {
                         Colors::accent()
                     } else {
                         Colors::transparent()
                     })
-                    .text_color(if advanced == mode {
+                    .text_color(if self.chroma_mode() == Some(mode) {
                         Colors::selected_text()
                     } else {
                         Colors::text()
@@ -175,10 +182,10 @@ impl KeyboardProductWorkspace {
                             return;
                         }
                         this.dismiss_rgb_controls(cx);
-                        this.analog_gamepad.advanced = !this.analog_gamepad.advanced;
+                        this.lighting_runtime.advanced_draft = Some(mode);
                         this.request_lighting_message(
                             "TOGGLE_CHROMA",
-                            json!({"isChromaEnabled":this.analog_gamepad.advanced}),
+                            json!({"isChromaEnabled":mode}),
                             cx,
                         );
                         this.refresh_lighting(cx);

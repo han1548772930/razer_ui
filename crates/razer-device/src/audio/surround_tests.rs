@@ -193,7 +193,8 @@ fn cancellation_and_late_identity_failure_preserve_real_responses() {
     });
     assert!(!late.is_completed());
     assert!(late.calls()[0].is_accepted());
-    assert_eq!(runtime.test_signal(), Some(true));
+    assert_eq!(runtime.test_signal(), None);
+    assert_eq!(runtime.test_signal_requested(), Some(true));
 }
 
 #[test]

@@ -46,6 +46,7 @@ razer-storage = { path = "crates/razer-storage" }
 razer-widgets = { path = "crates/razer-widgets" }
 gpui-kit = { version = "0.7", features = ["gpui-fast"] }
 anyhow = "1"
+log = { version = "0.4.34", features = ["std"] }
 async-channel = "2"
 chrono = "0.4.45"
 # KSNI supplies the Linux tray without requiring a second GTK event loop.

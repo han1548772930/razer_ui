@@ -10,6 +10,7 @@ use std::sync::{
 
 pub(super) enum Work {
     Observe,
+    ObserveLocal,
     Brightness {
         route: ObservedDevice,
         submission: Submission,
@@ -127,8 +128,13 @@ pub(super) fn run(
     canceled: Arc<AtomicBool>,
 ) -> anyhow::Result<Reply> {
     check(&active, &canceled)?;
-    if matches!(work, Work::Observe) {
-        let observation = guarded(|| Ok(super::product_chroma::readback()))?;
+    if matches!(work, Work::Observe | Work::ObserveLocal) {
+        let scope = if matches!(work, Work::ObserveLocal) {
+            super::product_chroma::InstallationRead::NotRequested
+        } else {
+            super::product_chroma::InstallationRead::Required
+        };
+        let observation = guarded(|| Ok(super::product_chroma::readback_scope(scope)))?;
         check(&active, &canceled)?;
         return Ok(Reply::Observation(observation));
     }

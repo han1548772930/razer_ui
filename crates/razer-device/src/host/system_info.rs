@@ -11,15 +11,6 @@ pub enum Query {
     Display,
     Full,
 }
-impl Query {
-    pub fn export(self) -> &'static str {
-        match self {
-            Self::Display => "GetBladeDisplayData",
-            Self::Full => "GetAllBladeInfo",
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Layout {
     Basic,
@@ -58,6 +49,15 @@ pub struct Monitor {
     pub manufacturer: String,
     #[serde(flatten)]
     extensions: BTreeMap<String, serde_json::Value>,
+}
+impl Monitor {
+    pub fn new(name: String, manufacturer: String) -> Self {
+        Self {
+            name,
+            manufacturer,
+            extensions: BTreeMap::new(),
+        }
+    }
 }
 
 fn present<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
@@ -223,6 +223,35 @@ pub struct SystemDetails {
     extensions: BTreeMap<String, serde_json::Value>,
 }
 impl SystemDetails {
+    /// Start a report with the actual monitor enumeration; other fields remain
+    /// unobserved until their corresponding system queries return.
+    pub fn observed_display(display: NativeValue<Vec<Monitor>>) -> Self {
+        Self {
+            device_name: None,
+            model_name: None,
+            cpu: None,
+            cpu_manufacturer: None,
+            gpu: None,
+            gpu_manufacturer: None,
+            ram: None,
+            ram_manufacturer: None,
+            os_version: None,
+            serial_number: None,
+            display,
+            razer_app_engine: None,
+            razer_synapse3: None,
+            nvidia_geforce_experience: None,
+            nvidia_app: None,
+            nvidia_control_panel: None,
+            nvidia_control_panel_platform: None,
+            intel_graphic_command_center: None,
+            intel_graphic_command_center_platform: None,
+            amd_adrenalin_edition: None,
+            razer_cortex: None,
+            razer_axon: None,
+            extensions: BTreeMap::new(),
+        }
+    }
     pub fn monitors(&self) -> &[Monitor] {
         self.display.value().map(Vec::as_slice).unwrap_or(&[])
     }
@@ -261,6 +290,22 @@ pub struct FirmwareDetails {
     #[serde(flatten)]
     extensions: BTreeMap<String, serde_json::Value>,
 }
+impl FirmwareDetails {
+    pub fn observed(
+        bios: Option<String>,
+        ec: Option<String>,
+        camera: Option<String>,
+        vbios: Option<String>,
+    ) -> Self {
+        Self {
+            bios,
+            ec,
+            camera,
+            vbios,
+            extensions: BTreeMap::new(),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FullReport {
@@ -289,6 +334,18 @@ pub struct FullReport {
     extensions: BTreeMap<String, serde_json::Value>,
 }
 impl FullReport {
+    pub fn observed(
+        display: SystemDetails,
+        firmware: NativeValue<FirmwareDetails>,
+        drivers: NativeValue<BTreeMap<String, String>>,
+    ) -> Self {
+        Self {
+            display: Some(display),
+            firmware: Some(firmware),
+            drivers: Some(drivers),
+            extensions: BTreeMap::new(),
+        }
+    }
     pub fn validate(&self) -> anyhow::Result<()> {
         ensure!(
             self.display.is_some() || self.firmware.is_some() || self.drivers.is_some(),
@@ -343,6 +400,9 @@ impl Data {
 pub struct Response {
     pub product_id: u32,
     pub data: Data,
+    /// Query failures are independent of the fields that were actually read.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub diagnostics: Vec<String>,
 }
 impl Response {
     pub fn validate(&self, product_id: u32, query: Query) -> anyhow::Result<()> {

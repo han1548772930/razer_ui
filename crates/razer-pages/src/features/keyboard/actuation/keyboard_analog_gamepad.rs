@@ -24,7 +24,6 @@ pub(super) struct State {
     pub(super) floating: floating_controller::State,
     mapping: mapping_drawer::State,
     pub(super) effect_menu: bool,
-    pub(super) advanced: bool,
     pub(super) gamepad: Option<KeyboardGamepadTesterObservation>,
     pub(super) quick_conflict: bool,
     pub(super) layout: Option<u32>,

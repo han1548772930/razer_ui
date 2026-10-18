@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+log.workspace = true
 razer-resource-db.workspace = true
 razer-dashboard.workspace = true
 razer-discovery.workspace = true

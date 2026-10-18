@@ -45,12 +45,13 @@ impl ProductWorkspace {
         &mut self,
         request: &KeyboardLightingRequested,
         observation: KeyboardLightingHostObservation,
+        result: Result<(), String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> bool {
         match &self.body {
             Body::Source(body) => body.update(cx, |body, cx| {
-                body.complete_keyboard_host_lighting(request, observation, window, cx)
+                body.complete_keyboard_host_lighting(request, observation, result, window, cx)
             }),
             _ => false,
         }
@@ -141,6 +142,21 @@ impl ProductWorkspace {
         match &self.body {
             Body::Source(body) => body.update(cx, |body, cx| {
                 body.complete_mouse_lighting(request, result, window, cx)
+            }),
+            _ => false,
+        }
+    }
+    pub fn complete_mouse_host_lighting(
+        &mut self,
+        request: &MouseLightingRequested,
+        snapshot: &Value,
+        result: Result<(), String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        match &self.body {
+            Body::Source(body) => body.update(cx, |body, cx| {
+                body.complete_mouse_host_lighting(request, snapshot, result, window, cx)
             }),
             _ => false,
         }

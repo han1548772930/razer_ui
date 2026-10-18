@@ -5,8 +5,9 @@
 //! UI 编辑使用本地草稿；启动及 USB/HID 拓扑变化会触发后台设备发现。
 //! 经当前源核实的原生查询在隔离 worker 中执行，结果通过观察事件进入 UI。
 //! 接口存在不等于设备配置已读取；历史快照和静态能力不能冒充当前读值。
-//! 执行限制见 AGENTS.md：不运行应用、探针或厂商代码。
+//! 执行限制和仅限维护工具的原厂对比测试见 AGENTS.md。
 
+mod arguments;
 mod diagnostics;
 
 use razer_assets as resources;
@@ -20,11 +21,34 @@ use razer_storage::workspace as store;
 use gpui_kit::component::{Theme, ThemeMode, TitleBar};
 use gpui_kit::*;
 
-pub fn run() {
+pub fn run() -> std::process::ExitCode {
     let args: Vec<String> = std::env::args().collect();
-    if args.iter().any(|arg| arg == "--service-worker") {
-        std::process::exit(backend::runtime::run_worker());
+    if let Err(error) = arguments::validate(&args) {
+        eprintln!("{error}");
+        return std::process::ExitCode::from(2);
     }
+    if let Some(operation) = arguments::driver_installation(&args) {
+        let result = match operation {
+            arguments::DriverInstallation::Install => {
+                razer_platform::hardware_driver::install_from_application_directory()
+            }
+            arguments::DriverInstallation::Uninstall => {
+                razer_platform::hardware_driver::uninstall_owned_installation()
+            }
+        };
+        return match result {
+            Ok(()) => std::process::ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("Hardware driver installation: {error:#}");
+                std::process::ExitCode::FAILURE
+            }
+        };
+    }
+    if args.iter().any(|arg| arg == "--service-worker") {
+        return std::process::ExitCode::from(backend::runtime::run_worker() as u8);
+    }
+    // The owner drains startup diagnostics and outlives the application cleanup.
+    let _diagnostics = diagnostics::Runtime::install(razer_storage::runtime_log_path());
     diagnostics::install_panic_log();
 
     // 语言：`--lang <代码>`，默认中文。
@@ -50,202 +74,23 @@ pub fn run() {
     i18n::set_locale(&lang);
     let start_hidden = razer_platform::startup::starts_hidden(args.iter().map(String::as_str));
 
-    // `--probe [引擎名]`：加载引擎 DLL 并统计符号后退出。
-    //
-    // 必须放在**独立进程**里逐个调用：第三方 DllMain 可能阻塞
-    // （实测 `SysUtilsNative.dll` 会永久挂住），所以这条路径刻意与 UI 隔离。
-    if let Some(pos) = args.iter().position(|arg| arg == "--probe") {
-        use std::io::Write as _;
-
-        let filter = args.get(pos + 1).filter(|arg| !arg.starts_with("--"));
-        if razer_catalog::engines::catalog().is_empty() {
-            println!("引擎目录为空");
-            return;
-        }
-
-        for spec in razer_catalog::engines::catalog() {
-            if let Some(name) = filter {
-                if spec.stem != name.as_str() {
-                    continue;
-                }
-            }
-            // 已知会阻塞的引擎直接跳过，避免整个进程被挂住。
-            if razer_catalog::engines::blocks_load(spec.stem) {
-                println!("探测 {:<20} ... 跳过（已知加载会阻塞）", spec.stem);
-                if let Some(path) = razer_platform::native_paths::resolve_path(spec.stem) {
-                    println!("      {}", path.display());
-                }
-                continue;
-            }
-
-            // 先打印再加载：这样即使卡住，也能从输出看出卡在哪个 DLL。
-            print!("探测 {:<20} ... ", spec.stem);
-            let _ = std::io::stdout().flush();
-
-            let status = backend::probe_engine(spec);
-            println!("{}", status.summary());
-            if let Some(path) = &status.path {
-                println!("      {}", path.display());
-            }
-        }
-        return;
-    }
-
-    // `--lighting <子命令>`：方案 2 的引擎调用入口。
-    //
-    // 与 `--probe` 一样刻意放在**独立进程、UI 之外**：这些调用会 LoadLibrary
-    // 并执行第三方 `DllMain`，可能阻塞；实测 `SysUtilsNative.dll` 会永久挂住。
-    //
-    // 子命令：
-    //   version                              只读 DLL 版本，无副作用
-    //   handshake <handle> [identifier]      跑一遍 注册→恢复→注销，**不下发效果**
-    if let Some(pos) = args.iter().position(|arg| arg == "--lighting") {
-        use std::io::Write as _;
-
-        use backend::lighting::LightingDriver;
-
-        let sub = args.get(pos + 1).map(String::as_str).unwrap_or("version");
-        let paths = razer_platform::native_paths::EnginePaths::discover();
-
-        // 先打印再加载：万一 DllMain 阻塞，也能从输出看出卡在哪一步。
-        print!("加载 lighting_driver ... ");
-        let _ = std::io::stdout().flush();
-        let mut driver = match LightingDriver::load(&paths) {
-            Ok(driver) => {
-                println!("成功");
-                driver
-            }
-            Err(err) => {
-                println!("失败：{err}");
-                return;
-            }
-        };
-        println!("      {}", driver.path().display());
-
-        match sub {
-            "version" => match driver.version() {
-                Some(version) => println!("GetDllVersion() = {version}"),
-                None => println!("GetDllVersion() 无返回"),
-            },
-            "handshake" => {
-                let handle = args
-                    .get(pos + 2)
-                    .and_then(|value| value.parse::<u64>().ok())
-                    .unwrap_or(1);
-                let identifier = args
-                    .get(pos + 3)
-                    .cloned()
-                    .unwrap_or_else(|| "razer_ui_probe".to_string());
-
-                println!("handshake: device_handle={handle} device_identifier={identifier}");
-                println!("      该序列**不下发任何效果**，不会覆盖当前灯效。");
-                println!("      但雷云若正在运行会争用设备，建议先退出雷云。");
-                let _ = std::io::stdout().flush();
-
-                match driver.handshake(handle, &identifier) {
-                    Ok(steps) => {
-                        for step in steps {
-                            println!("      {step}");
-                        }
-                        println!("会话正常（注册 / 恢复 / 注销均已返回）");
-                    }
-                    Err(err) => println!("handshake 失败：{err}"),
-                }
-            }
-            other => println!("未知子命令：{other}（可用：version / handshake）"),
-        }
-        return;
-    }
-
-    // Version diagnostics use the same isolated worker, verified resources and
-    // timeout as UI requests. Product DLLs require their manifest product ID.
-    if let Some(pos) = args.iter().position(|arg| arg == "--dll-version") {
-        let Some(library) = args.get(pos + 1) else {
-            println!(
-                "用法：--dll-version <库ID> [productId]（ID 见 assets/data/native-library-inventory.json）"
-            );
-            return;
-        };
-        let product_id = match args
-            .get(pos + 2)
-            .map(|value| value.parse::<u32>())
-            .transpose()
-        {
-            Ok(value) => value,
-            Err(error) => {
-                println!("productId 无效：{error}");
-                return;
-            }
-        };
-        match razer_ipc::isolated_request(razer_ipc::ServiceRequest::NativeLibraryVersion {
-            library: library.clone(),
-            product_id,
-        }) {
-            Ok(value) => println!(
-                "{}",
-                serde_json::to_string_pretty(&value).unwrap_or_default()
-            ),
-            Err(error) => println!("{library} 版本查询失败：{error:#}"),
-        }
-        return;
-    }
-
-    // `--dll-get <库ID> <导出名> <设备ID> [productId]`：执行一次只读 getter。
-    //
-    // Requires current wrapper call/session and official PE evidence. The worker
-    // validates the observed ContainerId; export name prefixes are insufficient.
-    if let Some(pos) = args.iter().position(|arg| arg == "--dll-get") {
-        let (Some(library), Some(export), Some(device_id)) =
-            (args.get(pos + 1), args.get(pos + 2), args.get(pos + 3))
-        else {
-            println!("用法：--dll-get <库ID> <导出名> <设备ID> [productId]");
-            return;
-        };
-        let product_id = match args
-            .get(pos + 4)
-            .map(|value| value.parse::<u32>())
-            .transpose()
-        {
-            Ok(value) => value,
-            Err(error) => {
-                println!("productId 无效：{error}");
-                return;
-            }
-        };
-        match razer_ipc::isolated_request(razer_ipc::ServiceRequest::NativeLibraryGetter {
-            library: library.clone(),
-            export: export.clone(),
-            device_id: device_id.clone(),
-            product_id,
-        }) {
-            Ok(value) => println!(
-                "{}",
-                serde_json::to_string_pretty(&value).unwrap_or_default()
-            ),
-            Err(error) => println!("{library}.{export} 读取失败：{error:#}"),
-        }
-        return;
-    }
-
-    // 注册图标源：**必须用 `AllAssets`**（完整 Lucide 图标集，1830 个 SVG）。
-    // 默认的 `Assets` 只有少量图标，用它会导致大部分 `IconName` 渲染为空白。
     if let Err(error) = resources::validate() {
-        eprintln!("资源索引无法加载：{error:#}");
-        std::process::exit(1);
+        log::error!("资源索引无法加载：{error:#}");
+        return std::process::ExitCode::FAILURE;
     }
     if let Err(error) = razer_catalog::emoji::validate() {
-        eprintln!("本地表情数据库无法加载：{error:#}");
-        std::process::exit(1);
+        log::error!("本地表情数据库无法加载：{error:#}");
+        return std::process::ExitCode::FAILURE;
     }
     if let Err(error) = razer_catalog::initialize_registry() {
-        eprintln!("本地产品目录无法加载：{error:#}");
-        std::process::exit(1);
+        log::error!("本地产品目录无法加载：{error:#}");
+        return std::process::ExitCode::FAILURE;
     }
     let resource_runtime = match resources::ResourceRuntime::start() {
         Ok(runtime) => runtime,
         Err(error) => {
-            eprintln!("资源服务无法创建：{error:#}");
-            std::process::exit(1);
+            log::error!("资源服务无法创建：{error:#}");
+            return std::process::ExitCode::FAILURE;
         }
     };
     let assets = resources::SynapseAssets::new(resource_runtime.client());
@@ -256,16 +101,15 @@ pub fn run() {
         gpui_kit::init(cx);
         razer_widgets::init(cx);
         if let Err(error) = resources::start_resources(resource_runtime, cx) {
-            eprintln!("资源加载器无法初始化：{error:#}");
+            log::error!("资源加载器无法初始化：{error:#}");
         }
         if let Err(error) = resources::register_fonts(cx) {
-            eprintln!("字体加载失败：{error}");
+            log::error!("字体加载失败：{error}");
         }
 
         // 暗色主题 + 雷蛇配色。
         //
-        // 下列数值**逐条引自雷云设备模块的 CSS**（`.ref/devices/*/static/css/`），
-        // 不是自拟的：
+        // 共享主题为页面提供基础颜色；具体产品的呈现由所属页面令牌覆盖。
         //
         // ```css
         // .main-container      { background-color:#222 }
@@ -285,7 +129,7 @@ pub fn run() {
         // .s3-dropdown         { border:1px solid #515151 }
         // ```
         //
-        // 见 [`docs/screens/`](../docs/screens/README.md) 各页的「2.0.1 全局样式」。
+        // 当前来源与逐页验证边界见 docs/re/ui-readonly-first-roadmap.md。
         Theme::change(ThemeMode::Dark, None, cx);
         Theme::update(cx, |theme| {
             // 字体与字号：`body,html { font-family:Roboto,sans-serif; font-size:16px }`，
@@ -355,7 +199,7 @@ pub fn run() {
             theme.colors.danger = rgb(0xC8323C).into();
             theme.colors.success = rgb(0x44D62C).into();
 
-            // 开关。真实规格（`.ref/devices/777/static/css/main.e4bab2aa.css`）：
+            // 开关的共享主题基线：
             //
             //   .switch        { width:32px; height:18px; padding:2px;
             //                    background-color:#707070;
@@ -393,4 +237,5 @@ pub fn run() {
         })
         .expect("Failed to open window");
     });
+    std::process::ExitCode::SUCCESS
 }

@@ -229,6 +229,37 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def inspect(self, source, owner):
         return workspace.inspect_architecture_source(source.encode(), owner=owner, rust_parser=self.rust_parser)
 
+    def test_independent_help_report_cannot_reintroduce_vendor_loading(self):
+        for owner in ("crates/razer-service/src/native/help_system_info.rs",
+                      "crates/razer-service/src/native/help_system_info/windows.rs"):
+            for source in (
+                "use crate::dll::EngineLibrary;",
+                "use crate::dll as backend; fn query() { backend::EngineLibrary::load(path); }",
+                "fn query() { crate::native_read::getter(args); }",
+                "use libloading::{Library as Backend}; fn query() { Backend::new(path); }",
+                "use razer_platform as platform; fn query() { platform::native_paths::EnginePaths::discover(); }",
+            ):
+                with self.subTest(owner=owner, source=source):
+                    self.assertIn("independent_help_report_uses_vendor_loader",
+                                  [row["kind"] for row in self.inspect(source, owner)])
+            self.assertFalse(self.inspect('fn query() { let comment = "crate::dll::EngineLibrary"; }', owner))
+            self.assertFalse(self.inspect('use windows::Win32::System::Wmi::IWbemServices;', owner))
+        self.assertFalse(self.inspect('fn unrelated() { local::Library::new(); }',
+                                      'crates/razer-storage/src/other.rs'))
+
+    def test_product_protocol_does_not_expose_generic_vendor_execution(self):
+        self.assertEqual(self.inspect('pub enum ServiceRequest { NativeLibrarySnapshot { library: String } }',
+            'crates/razer-ipc/src/lib.rs')[0]['kind'], 'product_protocol_exposes_vendor_analysis')
+        for owner in ('crates/razer-settings/src/runtime_page.rs',
+                      'crates/razer-service/src/runtime/windows/native.rs'):
+            for source in ('fn read() { ServiceRequest::NativeLibrarySnapshot { library }; }',
+                           'use razer_ipc::ServiceRequest as Request; fn read() { Request::NativeLibrarySnapshot { library }; }'):
+                self.assertEqual(self.inspect(source, owner)[0]['kind'], 'product_protocol_exposes_vendor_analysis')
+        self.assertEqual(self.inspect('', 'crates/razer-service/src/native/native_read.rs')[0]['kind'],
+                         'retired_architecture_source')
+        self.assertFalse(self.inspect('fn unrelated() { let name = "NativeLibrarySnapshot"; }',
+                                      'crates/razer-settings/src/runtime_page.rs'))
+
     def test_chroma_installation_observation_has_one_shell_owner(self):
         shared = 'crates/razer-shell/src/shell/devices/product_chroma.rs'
         for owner in ('crates/razer-shell/src/shell/gamepad/controller_chroma.rs',
@@ -1194,6 +1225,23 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertEqual(self.inspect(good.replace('Lifecycle.lock()', 'OTHER.lock()'), service)[0]["kind"], "macro_recorder_bypasses_shared_capture_lifecycle")
         self.assertFalse(self.inspect('fn unrelated() { drop(client); }', service))
 
+    def test_recorder_mode_and_factory_share_the_actual_input_owner(self):
+        recorder = "crates/razer-service/src/mapping/recorder.rs"
+        owner = "crates/razer-service/src/mapping/recorder_owner.rs"
+        publisher = "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_publisher.rs"
+        for name in ("spawn", "mode"):
+            good = 'use super::recorder_owner as retained; fn ' + name + '() { retained::' + name + '(); }'
+            self.assertFalse(self.inspect(good, recorder))
+            bad = 'fn ' + name + '() { ServiceClient::spawn(); }'
+            self.assertEqual(self.inspect(bad, recorder)[0]["kind"], "macro_recorder_bypasses_shared_transport_owner")
+        query = 'use razer_ipc::ServiceRequest as Request; fn query() { client.request(Request::MacroRecordingMode); }'
+        self.assertFalse(self.inspect(query, owner))
+        self.assertEqual(self.inspect(query, publisher)[0]["kind"], "macro_mode_queries_an_unrelated_worker")
+        self.assertFalse(self.inspect(query.replace('MacroRecordingMode', 'OtherObservation'), publisher))
+        good = 'use razer_service::mapping::recorder as input; impl Publisher { fn macro_mode() { input::mode(); } }'
+        self.assertFalse(self.inspect(good, publisher))
+        self.assertEqual(self.inspect(good.replace('input::mode()', 'cached_mode()'), publisher)[0]["kind"], "mapping_publisher_bypasses_recorder_owner")
+
     def test_macro_and_focused_capture_share_one_native_lifecycle_through_aliases(self):
         key_capture = "crates/razer-service/src/mapping/key_capture.rs"
         prefix = 'use super::WorkerGuard; use razer_ipc::{KEY_CAPTURE_LIFECYCLE as Shared}; '
@@ -1777,13 +1825,16 @@ class ArchitectureBoundaryTests(unittest.TestCase):
     def test_ipc_process_and_pipe_workers_keep_one_owner_until_exit_and_join(self):
         owner = 'crates/razer-ipc/src/lib.rs'
         declaration = ('struct ServiceClient { child: Option<Child>, requests: Option<Sender<Vec<u8>>>, '
-                       'input_worker: Option<JoinHandle<anyhow::Result<()>>>, output_worker: Option<JoinHandle<anyhow::Result<()>>> }')
+                       'input_worker: Option<JoinHandle<anyhow::Result<()>>>, output_worker: Option<JoinHandle<anyhow::Result<()>>>, '
+                       'diagnostic_worker: Option<JoinHandle<anyhow::Result<()>>> }')
         self.assertFalse(self.inspect(declaration, owner))
         self.assertEqual(self.inspect(declaration.replace('input_worker: Option<JoinHandle<anyhow::Result<()>>>', 'input_worker: bool'), owner)[0]['kind'],
                          'ipc_client_discards_owned_process_or_pipe_workers')
         shutdown = ('impl ServiceClient { fn stop() { self.requests.take(); self.stopped = true; self.job.take(); '
                     'reap_child(&mut self.child)?; let input = join_pipe(self.input_worker.take(),"input"); '
-                    'let output = join_pipe(self.output_worker.take(),"output"); combine_cleanup([input,output]) } }')
+                    'let output = join_pipe(self.output_worker.take(),"output"); '
+                    'let diagnostics = join_pipe(self.diagnostic_worker.take(),"diagnostics"); '
+                    'combine_cleanup([input,output,diagnostics]) } }')
         self.assertFalse(self.inspect(shutdown, owner))
         for changed in (shutdown.replace('self.requests.take();', ''), shutdown.replace('self.stopped = true;', ''),
                         shutdown.replace('self.job.take();', ''),
@@ -1792,9 +1843,12 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                         shutdown.replace('join_pipe(self.input_worker.take(),"input");', 'join_pipe(self.input_worker.take(),"input")?;'),
                         shutdown.replace('reap_child(&mut self.child)?;', 'reap_child(&mut self.child);'),
                         shutdown.replace('reap_child(&mut self.child)?;', '').replace(
-                            'combine_cleanup([input,output])', 'reap_child(&mut self.child)?; combine_cleanup([input,output])'),
+                            'combine_cleanup([input,output,diagnostics])', 'reap_child(&mut self.child)?; combine_cleanup([input,output,diagnostics])'),
                         shutdown.replace('self.output_worker.take()', 'self.output_worker.clone()'),
-                        shutdown.replace('combine_cleanup([input,output])', 'input')):
+                        shutdown.replace('self.diagnostic_worker.take()', 'self.diagnostic_worker.clone()'),
+                        shutdown.replace('let diagnostics = join_pipe(self.diagnostic_worker.take(),"diagnostics"); ', ''),
+                        shutdown.replace('combine_cleanup([input,output,diagnostics])', 'combine_cleanup([input,output])'),
+                        shutdown.replace('combine_cleanup([input,output,diagnostics])', 'input')):
             self.assertEqual(self.inspect(changed, owner)[0]['kind'], 'ipc_cleanup_does_not_preserve_owner_until_reap_and_pipe_joins')
         destructor = 'impl Drop for ServiceClient { fn drop(&mut self) { if let Err(error) = self.stop() { log(error); } } }'
         self.assertFalse(self.inspect(destructor, owner))
@@ -1805,7 +1859,7 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertEqual(self.inspect(reaping.replace('terminate_child(child)?', 'terminate_child(child)'), owner)[0]['kind'],
                          'ipc_reap_discards_unconfirmed_process_owner')
         retained = ('use std::thread; fn spawn_with_program() { client.input_worker = Some(thread::Builder::new().spawn(run)?); '
-                    'client.output_worker = Some(thread::spawn(run)); }')
+                    'client.output_worker = Some(thread::spawn(run)); client.diagnostic_worker = Some(thread::spawn(run)); }')
         self.assertFalse(self.inspect(retained, owner))
         for bad in ('use std::thread; fn cleanup() { thread::Builder::new().name("reaper".into()).spawn(run); }',
                     'use std::thread::spawn as run; fn cleanup() { run(reap); }'):
@@ -2605,8 +2659,9 @@ class ConnectedDeviceVerificationTests(unittest.TestCase):
 
     def test_selected_current_observation_suites_only_run_pure_filters(self):
         expected = {
+            'macro-recorder-platform': ('razer-platform', 'macro_recorder'),
             'current-dpi-observations': ('razer-pages', 'current_dpi_observation_'),
-            'current-dpi-initialization': ('razer-pages', 'current182_initialization_'),
+            'current-dpi-initialization': ('razer-pages', 'current_dpi::initialization_tests'),
             'dpi-row-hover-state': ('razer-pages', 'dpi_row_hover_'),
             'current-power-state': ('razer-pages', 'current_power::tests'),
             'current-idle-state': ('razer-pages', 'mouse_polling_profile::idle_tests'),
@@ -2641,6 +2696,69 @@ class ConnectedDeviceVerificationTests(unittest.TestCase):
             self.assertIn('--lib', command)
             self.assertNotIn('--ignored', command)
         self.assertCountEqual(actual_filters, expected.values())
+
+
+class LocalRuntimeReceiptTests(unittest.TestCase):
+    def test_app_comparison_records_failure_without_overwriting_other_evidence(self):
+        import native_runtime
+        receipt = {"evidence": {"apps_inventory": {"complete": True}}, "mode": "read-only",
+            "passed": False, "result": None, "exit_code": 1, "timed_out": False}
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, "ROOT", Path(directory)), \
+                mock.patch.object(native_runtime, "compare_local_app_files", return_value=receipt), \
+                mock.patch("sys.stdout", new=io.StringIO()):
+            audit = Path(directory) / ".analysis/results/host-current/local-audit.json"
+            workspace.write_json(audit, {"existing_query": {"complete": False}})
+            self.assertEqual(workspace.compare_local_app_files(), 1)
+            self.assertEqual(json.loads(audit.read_bytes())["existing_query"], {"complete": False})
+            validation = json.loads((Path(directory) / ".analysis/validation.json").read_bytes())
+            self.assertFalse(validation["local_runtime_checks"]["simple_app_inventory"]["passed"])
+            self.assertNotIn("passed", validation)
+
+    def test_scoped_runtime_receipt_preserves_static_checks_and_other_operations(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(workspace, "ROOT", Path(directory)):
+            path = Path(directory) / ".analysis/validation.json"
+            workspace.write_json(path, {"schema_version": 1, "passed": False,
+                "commands": [{"name": "check", "passed": False}],
+                "local_runtime_checks": {"other": {"passed": False}}})
+            workspace.record_local_runtime("simple_version", {"passed": True, "mode": "read-only"})
+            result = json.loads(path.read_bytes())
+            self.assertFalse(result["passed"])
+            self.assertEqual(result["commands"], [{"name": "check", "passed": False}])
+            self.assertEqual(result["local_runtime_checks"], {
+                "other": {"passed": False}, "simple_version": {"passed": True, "mode": "read-only"}})
+
+    def test_service_original_is_indexed_only_after_byte_and_signature_verification(self):
+        import analysis
+        raw = b"private verified service fixture"
+        name = ".analysis/inputs/installed-current/files/elevation-service/razer_elevation_service.exe"
+        receipt = {"recorded_at_utc": "2026-10-18T00:00:00Z",
+            "evidence": {"com_identity": {"clsid": {"value": "verified-clsid"}}},
+            "server": {"input": name, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+                "architecture": "x64", "versions": [],
+                "signature": {"status": "Valid", "subject": "CN=Razer USA Ltd., O=Razer USA Ltd."}}}
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(workspace, "ROOT", Path(directory)), \
+                mock.patch.object(analysis, "index_files") as publish:
+            original = Path(directory) / name
+            original.parent.mkdir(parents=True)
+            original.write_bytes(raw)
+            workspace.record_service_version_evidence(receipt)
+            rows = publish.call_args.args[0]
+            self.assertEqual(rows[0]["sha256"], hashlib.sha256(raw).hexdigest())
+            self.assertEqual(rows[0]["registry_key"], "CLSID/{verified-clsid}/LocalServer32")
+            evidence = json.loads((Path(directory) / rows[1]["path"]).read_bytes())
+            self.assertFalse(evidence["target_execution"])
+            publish.reset_mock()
+            original.write_bytes(b"changed")
+            with self.assertRaisesRegex(ValueError, "differs"):
+                workspace.record_service_version_evidence(receipt)
+            publish.assert_not_called()
+            original.write_bytes(raw)
+            receipt["server"]["signature"]["status"] = "NotTrusted"
+            with self.assertRaisesRegex(ValueError, "signature"):
+                workspace.record_service_version_evidence(receipt)
+            publish.assert_not_called()
 
 
 class RustValidationBoundaryTests(unittest.TestCase):
@@ -2723,7 +2841,15 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'mouse-dynamic-protocol': ('razer-device', 'mouse_dynamic'),
             'mouse-dynamic-service': ('razer-service', 'mouse_dynamic'),
             'mouse-dynamic-routing': ('razer-discovery', 'direct::mouse_dynamic::tests'),
-            'mouse-dynamic-page': ('razer-pages', 'mouse_dynamic::tests'),
+            'mouse-dynamic-page': ('razer-pages', 'features::mouse_products::dynamic::'),
+            'runtime-diagnostics': ('razer-app', 'diagnostics::runtime::tests'),
+            'product-arguments': ('razer-app', 'arguments::tests'),
+            'service-runtime': ('razer-service', 'runtime::'),
+            'chroma-profile-storage': ('razer-storage', 'chroma_profiles::tests'),
+            'host-profile-storage': ('razer-storage', 'host_local_profile::'),
+            'user-app-files-storage': ('razer-storage', 'user_app_files::'),
+            'lighting-host-page': ('razer-pages', 'host_observation_tests'),
+            'lighting-observation-shell': ('razer-shell', 'product_lighting::observation::tests'),
             'mouse-dynamic-shell': ('razer-shell', 'mouse_dynamic'),
             'mouse-sensor-protocol': ('razer-device', 'mouse_sensor::tests'),
             'help-system-info-domain': ('razer-device', 'system_info::tests'),

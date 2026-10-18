@@ -1369,7 +1369,7 @@ impl KeyboardProductWorkspace {
         let chroma_installed = self
             .lighting_observation
             .as_ref()
-            .is_some_and(|observation| observation.chroma_installed_module);
+            .is_some_and(|observation| observation.chroma_installed_module == Some(true));
         let requires_missing_chroma =
             edit.slots[0].category == "SWITCH_LIGHTING" && !chroma_installed;
         let source_footer_disabled = edit.slots[slot].category == "SWITCH_PROFILE"

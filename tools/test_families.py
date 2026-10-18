@@ -10,6 +10,26 @@ import families
 import host
 
 
+class NativeInitializerTests(unittest.TestCase):
+    @staticmethod
+    def store(address, target, value):
+        encoded = (b"\xc7\x05" + (target - address - 10).to_bytes(4, "little", signed=True)
+                   + value.to_bytes(4, "little"))
+        return {"address": hex(address), "bytes": encoded.hex()}
+
+    def test_actual_instruction_bytes_cover_all_entries_in_source_order(self):
+        rows = [self.store(0x4000, 0x3004, 0x80000001), self.store(0x4010, 0x3000, 17)]
+        self.assertEqual(families.native_rip_u32_initializers(rows, 0x3000, 2), [17, 0x80000001])
+        rows[0]["text"] = "misleading decompiler text"
+        self.assertEqual(families.native_rip_u32_initializers(rows, 0x3000, 2), [17, 0x80000001])
+        with self.assertRaisesRegex(ValueError, "complete source table"):
+            families.native_rip_u32_initializers(rows[1:], 0x3000, 2)
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            families.native_rip_u32_initializers(rows + rows[:1], 0x3000, 2)
+        with self.assertRaisesRegex(ValueError, "unaligned"):
+            families.native_rip_u32_initializers([self.store(0x4000, 0x3001, 1)], 0x3000, 2)
+
+
 class MouseIdleInitializationTests(unittest.TestCase):
     def setUp(self):
         # Load the pinned parser before replacing only the evidence workspace.
