@@ -191,6 +191,10 @@ pub struct MacroLibraryFile {
     pub entries: Vec<Entry>,
     pub current: Option<u64>,
     pub tutorial: Tutorial,
+    /// Source recordProfile.shortcutKey is an editor preference, independent
+    /// of each macro document. Older local files used the empty source default.
+    #[serde(default)]
+    pub record_shortcut: Vec<String>,
 }
 
 impl Default for MacroLibraryFile {
@@ -200,6 +204,43 @@ impl Default for MacroLibraryFile {
             entries: Vec::new(),
             current: None,
             tutorial: Tutorial::Initial,
+            record_shortcut: Vec::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod recorder_preference_tests {
+    use super::*;
+    #[test]
+    fn legacy_file_uses_empty_source_preference_and_changes_need_persistence() {
+        let old: MacroLibraryFile = serde_json::from_str(
+            r#"{"next_id":1,"entries":[],"current":null,"tutorial":"initial"}"#,
+        )
+        .unwrap();
+        assert!(old.record_shortcut.is_empty());
+        let mut changed = old.clone();
+        changed.record_shortcut = vec!["KEY_LEFT_CTRL".into(), "KEY_A".into()];
+        changed.validate().unwrap();
+        assert!(!old.same_document(&changed));
+        let decoded: MacroLibraryFile =
+            serde_json::from_slice(&serde_json::to_vec(&changed).unwrap()).unwrap();
+        assert_eq!(decoded.record_shortcut, vec!["KEY_LEFT_CTRL", "KEY_A"]);
+        assert!(decoded.same_document(&changed));
+    }
+    #[test]
+    fn invalid_or_repeated_recording_keys_fail_at_the_file_boundary() {
+        for keys in [
+            vec!["KEY_UNKNOWN"],
+            vec!["KEY_F12"],
+            vec!["KEY_A", "KEY_B"],
+            vec!["KEY_LEFT_CTRL", "KEY_LEFT_CTRL"],
+        ] {
+            let file = MacroLibraryFile {
+                record_shortcut: keys.into_iter().map(str::to_owned).collect(),
+                ..Default::default()
+            };
+            assert!(file.validate().is_err());
         }
     }
 }
@@ -209,6 +250,20 @@ impl MacroLibraryFile {
     /// Walk ancestors iteratively so malformed deep files cannot recurse into
     /// the UI's tree traversal before missing parents and cycles are rejected.
     pub fn validate(&self) -> Result<(), String> {
+        let mut shortcuts = HashSet::new();
+        let mut ordinary = 0;
+        for input in &self.record_shortcut {
+            if !crate::mapping::valid_key(input)
+                || matches!(input.as_str(), "KEY_F12" | "KEY_LEFT_GUI")
+                || !shortcuts.insert(input)
+            {
+                return Err("Invalid macro recorder shortcut key".into());
+            }
+            ordinary += usize::from(crate::shortcuts::modifier_family(input).is_none());
+        }
+        if ordinary > 1 || self.record_shortcut.len() > 7 {
+            return Err("Invalid macro recorder shortcut combination".into());
+        }
         if self.next_id == 0 || self.next_id == u64::MAX {
             return Err("Macro next_id must be nonzero and below u64::MAX".into());
         }
@@ -386,6 +441,7 @@ impl MacroLibraryFile {
         self.next_id == other.next_id
             && self.current == other.current
             && self.tutorial == other.tutorial
+            && self.record_shortcut == other.record_shortcut
             && self.entries.len() == other.entries.len()
             && self.entries.iter().zip(&other.entries).all(|(a, b)| {
                 a.id == b.id

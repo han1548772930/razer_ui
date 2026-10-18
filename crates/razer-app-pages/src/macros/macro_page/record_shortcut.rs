@@ -1,10 +1,50 @@
-//! Current 58190 Lr -> Rr browser-keycode branch. No global registration or
-//! Razer input redirect: this captures only the focused native Macro window.
+//! Current 58190 Lr -> Rr focused browser capture and 25572.Y -> br global
+//! registration. Native registration and event polling belong to the service.
 use super::keyboard::{RawKey, shortcut_name};
 use super::keyboard_windows::Capture;
 use super::*;
+use razer_service::mapping::hotkeys::{self, Watch, WatchUpdate};
 use serde::Deserialize;
 use std::{collections::HashSet, sync::OnceLock};
+
+const RECORD_ARGUMENT: &str = "macro_record_shortcut";
+
+fn modifier_bit(input: &str) -> Option<u32> {
+    match input {
+        "KEY_RIGHT_ALT" => Some(16),
+        "KEY_RIGHT_CTRL" => Some(32),
+        "KEY_RIGHT_SHIFT" => Some(64),
+        "KEY_LEFT_ALT" => Some(256),
+        "KEY_LEFT_CTRL" => Some(512),
+        "KEY_LEFT_SHIFT" => Some(1024),
+        "KEY_LEFT_GUI" => Some(2048),
+        _ => None,
+    }
+}
+fn registration(selected: &[String]) -> Result<Option<hotkeys::Shortcut>, String> {
+    let Some(input) = selected
+        .iter()
+        .find(|input| modifier_bit(input).is_none())
+        .or_else(|| selected.last())
+    else {
+        return Ok(None);
+    };
+    let virtual_key = data()
+        .keys
+        .iter()
+        .find(|key| key.input_id == *input)
+        .and_then(|key| key.code.parse().ok())
+        .ok_or_else(|| format!("Unknown macro shortcut: {input}"))?;
+    let modifiers = selected
+        .iter()
+        .filter_map(|input| modifier_bit(input))
+        .fold(0, |bits, value| bits | value);
+    Ok(Some(hotkeys::Shortcut {
+        virtual_key,
+        modifiers,
+        argument: RECORD_ARGUMENT.into(),
+    }))
+}
 
 #[derive(Deserialize)]
 struct Key {
@@ -28,7 +68,7 @@ pub struct ShortcutUi {
     generation: u64,
     capture: Option<Capture>,
     listening: bool,
-    selected: Vec<String>,
+    pub(super) selected: Vec<String>,
     // JS Map preserves first insertion order; a sorted map would reorder the
     // shortcut. Browser keyCodes intentionally select the first matching row.
     pressed_modifiers: Vec<String>,
@@ -36,6 +76,13 @@ pub struct ShortcutUi {
     combination_key: Option<String>,
     hovered: bool,
     task: Option<Task<()>>,
+    watch: Option<Watch>,
+    watch_task: Option<Task<()>>,
+    watch_generation: u64,
+    watch_active: bool,
+    watch_closing: bool,
+    registered: Option<hotkeys::Shortcut>,
+    pub(super) registration_error: Option<String>,
 }
 impl ShortcutUi {
     pub fn new(focus: FocusHandle) -> Self {
@@ -50,6 +97,13 @@ impl ShortcutUi {
             combination_key: None,
             hovered: false,
             task: None,
+            watch: None,
+            watch_task: None,
+            watch_generation: 0,
+            watch_active: false,
+            watch_closing: false,
+            registered: None,
+            registration_error: None,
         }
     }
     pub fn stop(&mut self) {
@@ -76,6 +130,12 @@ impl ShortcutUi {
             .filter(|name| !name.is_empty())
             .collect::<Vec<_>>()
             .join(" + ")
+    }
+    pub fn recording_keys(&self) -> Result<Vec<recording_decode::ShortcutKey>, String> {
+        self.selected
+            .iter()
+            .map(|input| super::keyboard::recording_shortcut_key(input))
+            .collect()
     }
     pub fn global_shortcuts_suspended(&self) -> bool {
         self.listening && self.capture.is_some()
@@ -181,6 +241,112 @@ impl ShortcutUi {
 }
 
 impl MacroPage {
+    pub fn resume_recording_shortcut(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.activate_record_shortcut(window, cx);
+    }
+    pub fn recording_shutdown_pending(&self) -> bool {
+        self.recording_busy() || self.record_ui.shortcut.watch_closing
+    }
+    pub fn deactivate_recording(&mut self, cx: &mut Context<Self>) {
+        let shortcut = &mut self.record_ui.shortcut;
+        shortcut.stop();
+        shortcut.watch_active = false;
+        shortcut.watch_generation = shortcut.watch_generation.wrapping_add(1);
+        shortcut.registered = None;
+        if let Some(watch) = &shortcut.watch {
+            shortcut.watch_closing = true;
+            watch.close();
+        }
+        self.cancel_recording(cx);
+    }
+    pub(super) fn activate_record_shortcut(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.record_ui.shortcut.watch_active = true;
+        if self.record_ui.shortcut.watch.is_some() || self.record_ui.shortcut.selected.is_empty() {
+            return;
+        }
+        let (watch, updates) = match Watch::start(Duration::from_millis(400)) {
+            Ok(value) => value,
+            Err(error) => {
+                self.record_ui.shortcut.registration_error = Some(error);
+                cx.notify();
+                return;
+            }
+        };
+        self.record_ui.shortcut.watch = Some(watch);
+        self.update_record_shortcut();
+        self.record_ui.shortcut.watch_task = Some(cx.spawn_in(window, async move |this, cx| {
+            while let Ok(update) = updates.recv().await {
+                let closed = matches!(update, WatchUpdate::Closed(_));
+                if this
+                    .update_in(cx, |this, window, cx| {
+                        match update {
+                            WatchUpdate::Registered { generation, result }
+                                if this.record_ui.shortcut.watch_generation == generation =>
+                            {
+                                match result {
+                                    Ok(shortcut) => {
+                                        this.record_ui.shortcut.registered = shortcut;
+                                        this.record_ui.shortcut.registration_error = None;
+                                    }
+                                    Err(error) => {
+                                        this.record_ui.shortcut.registration_error = Some(error)
+                                    }
+                                }
+                            }
+                            WatchUpdate::Triggered { generation, event }
+                                if this.record_ui.shortcut.watch_active
+                                    && this.record_ui.shortcut.watch_generation == generation
+                                    && this.record_ui.shortcut.registered.as_ref()
+                                        == Some(&event.shortcut) =>
+                            {
+                                this.toggle_recording_from_shortcut(window, cx);
+                            }
+                            WatchUpdate::Closed(result) => {
+                                this.record_ui.shortcut.watch = None;
+                                this.record_ui.shortcut.registered = None;
+                                let resume = this.record_ui.shortcut.watch_closing
+                                    && this.record_ui.shortcut.watch_active;
+                                this.record_ui.shortcut.watch_closing = false;
+                                if let Err(error) = result {
+                                    this.record_ui.shortcut.registration_error = Some(error);
+                                } else if resume {
+                                    this.activate_record_shortcut(window, cx);
+                                }
+                            }
+                            _ => {}
+                        }
+                        cx.notify();
+                    })
+                    .is_err()
+                    || closed
+                {
+                    return;
+                }
+            }
+        }));
+    }
+    fn update_record_shortcut(&mut self) {
+        let shortcut = &mut self.record_ui.shortcut;
+        shortcut.watch_generation = shortcut.watch_generation.wrapping_add(1);
+        shortcut.registered = None;
+        if let Some(watch) = &shortcut.watch {
+            if !shortcut.watch_closing {
+                if let Err(error) = registration(&shortcut.selected)
+                    .and_then(|value| watch.replace(shortcut.watch_generation, value))
+                {
+                    shortcut.registration_error = Some(error);
+                }
+            }
+        }
+    }
+    fn publish_record_shortcut(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.publish_library(cx);
+        if self.record_ui.shortcut.watch.is_none() {
+            self.activate_record_shortcut(window, cx);
+        } else {
+            self.update_record_shortcut();
+        }
+    }
     /// Rr retains listening across blur but only suppresses shortcuts while
     /// its input capture is active; countdown/recording alone do not.
     pub fn record_shortcut_capture_active(&self) -> bool {
@@ -208,7 +374,11 @@ impl MacroPage {
                         {
                             return false;
                         }
+                        let selected = this.record_ui.shortcut.selected.clone();
                         if this.record_ui.shortcut.poll(window) {
+                            if selected != this.record_ui.shortcut.selected {
+                                this.publish_record_shortcut(window, cx);
+                            }
                             cx.notify();
                         }
                         this.record_ui.shortcut.listening
@@ -309,8 +479,9 @@ impl MacroPage {
                             window.prevent_default();
                             cx.stop_propagation();
                         })
-                        .on_click(cx.listener(|this, _, _, cx| {
+                        .on_click(cx.listener(|this, _, window, cx| {
                             this.record_ui.shortcut.reset();
+                            this.publish_record_shortcut(window, cx);
                             cx.stop_propagation();
                             cx.notify();
                         })),
@@ -387,3 +558,46 @@ mod record_shortcut_data_catalog_tests {
     }
 }
 // End generated catalog reader: razer-app-pages/record_shortcut_data.
+
+#[cfg(test)]
+mod registration_tests {
+    use super::*;
+    use std::prelude::v1::test;
+    #[test]
+    fn registration_keeps_browser_keycode_and_source_modifier_order() {
+        let chord = registration(&[
+            "KEY_LEFT_CTRL".into(),
+            "KEY_RIGHT_ALT".into(),
+            "KEY_A".into(),
+        ])
+        .unwrap()
+        .unwrap();
+        assert_eq!((chord.virtual_key, chord.modifiers), (65, 528));
+        assert_eq!(chord.argument, "macro_record_shortcut");
+        let chord = registration(&["KEY_RIGHT_CTRL".into(), "KEY_LEFT_SHIFT".into()])
+            .unwrap()
+            .unwrap();
+        assert_eq!((chord.virtual_key, chord.modifiers), (16, 1056));
+        assert!(registration(&[]).unwrap().is_none());
+        assert!(registration(&["KEY_UNKNOWN".into()]).is_err());
+    }
+    #[test]
+    fn native_release_and_postprocessing_use_different_key_domains() {
+        let left = super::super::keyboard::recording_shortcut_key("KEY_LEFT_CTRL").unwrap();
+        assert_eq!(
+            left,
+            recording_decode::ShortcutKey {
+                virtual_key: 162,
+                key_code: 17
+            }
+        );
+        let right = super::super::keyboard::recording_shortcut_key("KEY_RIGHT_CTRL").unwrap();
+        assert_eq!(
+            right,
+            recording_decode::ShortcutKey {
+                virtual_key: 163,
+                key_code: 17
+            }
+        );
+    }
+}

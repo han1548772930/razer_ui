@@ -26,6 +26,7 @@ fn library(entries: &[(u64, &str, MacroType)]) -> MacroLibraryFile {
             .collect(),
         current: entries.first().map(|entry| entry.0),
         tutorial: Tutorial::Complete,
+        record_shortcut: Vec::new(),
     }
 }
 

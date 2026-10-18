@@ -514,6 +514,7 @@ impl AppShell {
             self.retain_current_power_connections(snapshot.devices(), cx);
             self.retain_product_lighting_connections(snapshot.devices(), cx);
             self.retain_mouse_dynamic_connections(snapshot.devices(), cx);
+            self.retain_mouse_rotation_connections(snapshot.devices(), cx);
         }
         let retained = self
             .devices
@@ -746,6 +747,7 @@ impl AppShell {
         self.retain_current_power_connections(&self.device_observations, cx);
         self.retain_product_lighting_connections(&self.device_observations, cx);
         self.retain_mouse_dynamic_connections(&self.device_observations, cx);
+        self.retain_mouse_rotation_connections(&self.device_observations, cx);
         let retired = self
             .devices
             .iter()

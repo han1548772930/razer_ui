@@ -457,7 +457,7 @@ pub struct ScanCandidate {
     pub keyboard_layout: u8,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct EditionReading {
     pub keyboard_layout: u8,
     pub edition_id: u8,

@@ -1364,16 +1364,28 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         self.assertEqual(self.inspect(lock.replace('canceled.load(order)', 'false'), "crates/razer-service/src/mapping/mod.rs")[0]["kind"], "capture_lifecycle_bypasses_cancelable_shared_lock")
 
     def test_native_mapping_control_uses_observed_receipt_with_identity_checks(self):
-        owner = "crates/razer-service/src/runtime/windows/mapping_execution.rs"
-        source = ('use razer_ipc::mapping_control::Receipt as Confirmation; impl NativeRuntime { fn set_mapping_execution() { '
-                  'anyhow::ensure!(self.global_shortcuts.owner() == owner || self.mapping_device.owner_guid() == owner, "owner"); '
-                  'anyhow::ensure!(self.revision.is_none_or(|prior| revision > prior), "stale"); '
-                  'Confirmation::with_observations(owner,revision,target,observations); } }')
+        owner = "crates/razer-service/src/runtime/windows/mapping_runtime/backend.rs"
+        source = ('use razer_ipc::mapping_control::Receipt as Confirmation; impl Backend { fn request() { '
+                  'match request { ServiceRequest::MappingExecution{owner_guid,revision,target} => { '
+                  'if self.core.global.as_ref().is_some_and(|current|current.scope==scope && current.owner==owner_guid) { '
+                  'anyhow::ensure!(current.execution_revision.is_none_or(|prior| revision > prior), "stale"); '
+                  '} else { let current=self.core.registration(scope,&owner_guid)?; current.ensure_active()?; '
+                  'anyhow::ensure!(current.revision.is_none_or(|prior| revision > prior), "stale"); } '
+                  'self.core.mapping(scope,true); self.core.shortcuts(scope,false); reply.result(); reply.reason(); '
+                  'Confirmation::with_observations(owner_guid,revision,target,observations); } _ => {} } } }')
         self.assertFalse(self.inspect(source, owner))
         for changed in (source.replace('Confirmation::with_observations', 'Other::with_observations'),
-                        source.replace('self.mapping_device.owner_guid()', 'device'), source.replace('.is_none_or(', '.map(')):
+                        source.replace('current.owner==owner_guid', 'current.owner==other'),
+                        source.replace('current.scope==scope', 'current.scope==other'),
+                        source.replace('registration(scope,&owner_guid)', 'registration(other,&owner_guid)'),
+                        source.replace('current.ensure_active()?', '()'),
+                        source.replace('current.execution_revision.is_none_or(', 'current.execution_revision.map('),
+                        source.replace('current.revision.is_none_or(', 'current.revision.map(')):
             self.assertEqual(self.inspect(changed, owner)[0]["kind"], "native_mapping_control_bypasses_owner_revision_receipt")
         self.assertFalse(self.inspect('fn unrelated() { Other::with_observations(); }', owner))
+        for name in ("mapping_execution.rs", "global_shortcuts.rs", "global_shortcut_capture.rs", "mapping_native_output.rs"):
+            retired = "crates/razer-service/src/runtime/windows/" + name
+            self.assertEqual(self.inspect('', retired)[0]["kind"], "retired_architecture_source")
 
     def test_ui_preference_storage_is_only_called_by_its_retained_state_owner(self):
         state = "crates/razer-state/src/ui_preferences.rs"
@@ -2139,6 +2151,9 @@ class ArchitectureBoundaryTests(unittest.TestCase):
         owner = "crates/razer-platform/src/input/global_shortcuts.rs"
         source = 'pub struct Shortcut { pub virtual_key: u32, pub modifiers: u32, pub argument: String }'
         self.assertFalse(self.inspect(source, owner))
+        service_owner = "crates/razer-service/src/mapping/hotkeys.rs"
+        self.assertEqual(self.inspect(source, service_owner)[0]["kind"], "duplicate_persisted_contract")
+        self.assertFalse(self.inspect('pub use razer_platform::global_shortcuts::Shortcut;', service_owner))
         self.assertEqual(self.inspect(source, "crates/razer-pages/src/features/shortcuts.rs")[0]["kind"], "duplicate_persisted_contract")
         self.assertEqual(self.inspect(source.replace('virtual_key', 'input'), owner)[0]["kind"], "duplicate_persisted_contract")
 
@@ -2281,10 +2296,10 @@ class ArchitectureBoundaryTests(unittest.TestCase):
                       "crates/razer-ipc/src/mapping_control.rs", "crates/razer-ipc/src/shortcuts.rs",
                        "crates/razer-ipc/src/lib.rs",
                       "crates/razer-service/src/mapping/control.rs", "crates/razer-service/src/mapping/shortcuts.rs",
-                      "crates/razer-service/src/runtime/windows/global_shortcuts.rs",
-                      "crates/razer-service/src/runtime/windows/mapping_execution.rs",
+                      "crates/razer-service/src/runtime/windows/mapping_runtime/backend.rs",
+                      "crates/razer-service/src/runtime/windows/mapping_runtime/device.rs",
                       "crates/razer-ipc/src/global_shortcut_capture.rs",
-                      "crates/razer-service/src/runtime/windows/global_shortcut_capture.rs",
+                      "crates/razer-service/src/runtime/windows/mapping_runtime/capture.rs",
                       "crates/razer-pages/src/features/workspace/product_workspace.rs",
                       "crates/razer-pages/src/features/workspace/source_workspace/lifecycle.rs",
                       "crates/razer-ipc/src/macro_recording.rs", "crates/razer-service/src/runtime/windows/mapping_runtime/capture/recorder.rs",
@@ -2836,7 +2851,7 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'mouse-philips-protocol': ('razer-device', 'mouse_philips::'),
             'mouse-philips-routing': ('razer-discovery', 'philips'),
             'mouse-philips-state': ('razer-pages', 'calibration_70::state::'),
-            'mouse-philips-native': ('razer-service', 'philips_measurement::tests::'),
+            'mouse-philips-native': ('razer-service', 'mapping_runtime::philips::'),
             'keyboard-latest-restore-state': ('razer-device', 'keyboard_latest_restore::tests::'),
             'keyboard-latest-restore-shell': ('razer-shell', 'shell::keyboard_latest_restore::tests::'),
             'keyboard-latest-restore-publisher': ('razer-shell', 'shell::keyboard_latest_restore::publisher::tests::'),
@@ -2937,6 +2952,30 @@ class RustValidationBoundaryTests(unittest.TestCase):
             'assets-image-lifecycle': ('razer-assets', 'image_cache::lifecycle_tests'),
             'keyboard-macro-submission': ('razer-device', 'keyboard_macro_submission'),
             'onboard-macro': ('razer-device', 'onboard_macro'),
+            'macro-page-phases': ('razer-app-pages', 'macro_page::phased::tests'),
+            'mapping-observation': ('razer-service', 'mapping::observation::'),
+            'global-shortcuts-native': ('razer-service', 'mapping_runtime::backend::tests'),
+            'global-shortcut-capture-native': ('razer-service', 'mapping_runtime::capture::tests'),
+            'mapping-observation-ipc': ('razer-ipc', 'mapping_observation::'),
+            'mapping-dynamic-key-state': ('razer-device', 'mapping_native_dynamic_key'),
+            'mapping-dynamic-key-service': ('razer-service', 'dynamic_key'),
+            'mapping-input-observation-ipc': ('razer-ipc', 'input_observation'),
+            'mapping-input-observation-service': ('razer-service', 'input_observation'),
+            'mapping-analog-observation-state': ('razer-device', 'mapping_native_observation'),
+            'mapping-analog-observation-ipc': ('razer-ipc', 'analog_observation'),
+            'mapping-analog-observation-service': ('razer-service', 'analog_observation'),
+            'mapping-gamepad-observation-state': ('razer-device', 'mapping_native_gamepad_observation'),
+            'mouse-receiver-mapping': ('razer-device', 'mouse_receiver_mapping::tests'),
+            'mapping-gamepad-observation-ipc': ('razer-ipc', 'gamepad_observation'),
+            'mapping-gamepad-observation-service': ('razer-service', 'gamepad_observation'),
+            'keyboard-gamepad-observation': ('razer-pages', 'gamepad_output_'),
+            'keyboard-snaptap-state': ('razer-pages', 'snap_tap::observation::tests'),
+            'keyboard-snaptap-editing': ('razer-pages', 'disabling_capture_keeps_the_source_opposite_preview_key'),
+            'keyboard-analog-feedback': ('razer-pages', 'analog_feedback'),
+            'macro-hotkey-lifecycle': ('razer-service', 'mapping::hotkeys::'),
+            'macro-recording-state': ('razer-model', 'macro_library::recording::'),
+            'macro-recorder-preferences': ('razer-model', 'macro_library::recorder_preference_tests'),
+            'macro-shortcut-registration': ('razer-app-pages', 'macro_page::record_shortcut::registration_tests'),
         }
         def completed(command, **kwargs):
             kwargs['stdout'].write(b'test result: ok. 1 passed; 0 failed; 0 ignored\n')
@@ -2952,6 +2991,10 @@ class RustValidationBoundaryTests(unittest.TestCase):
             actual = {(call.args[0][call.args[0].index('-p') + 1], call.args[0][call.args[0].index('--lib') + 1])
                       for call in runner.call_args_list}
             self.assertEqual(actual, set(expected.values()))
+            macro_phases = next(call.args[0] for call in runner.call_args_list
+                                if 'macro_page::phased::tests' in call.args[0])
+            self.assertEqual(macro_phases, ['cargo', 'test', '--locked', '--offline', '-p',
+                                            'razer-app-pages', '--lib', 'macro_page::phased::tests'])
             settings = next(call.args[0] for call in runner.call_args_list if 'razer-settings' in call.args[0])
             self.assertEqual([settings[ix + 1] for ix, argument in enumerate(settings) if argument == '--skip'], [
                 'runtime_page::tests::partial_enumeration_is_visible_without_starting_a_service',

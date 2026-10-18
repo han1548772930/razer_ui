@@ -18,9 +18,8 @@ use windows_sys::Win32::{
 
 // Application observation budget, not a vendor protocol constant. The current
 // source's maximum scheduled retry sleeps total 5.5s; the parent bounds a stuck
-// worker separately at 15s, including native loading and enumeration.
+// worker separately at 15s, including identity enumeration and transport I/O.
 const APPLICATION_QUERY_BUDGET: Duration = Duration::from_secs(10);
-static QUERY_LOCK: Mutex<()> = Mutex::new(());
 
 pub(super) fn next_transaction(
     path: &str,
@@ -217,7 +216,7 @@ pub(super) fn dock_mode(path: &str, device_container_id: &str) -> anyhow::Result
     let guard = || -> anyhow::Result<()> {
         check_deadline(started)?;
         let (current, _) = select_target(
-            &super::hid::enumerate_for_product(selected.vendor_id, selected.product_id)?,
+            &super::hid::enumerate_collection(selected.vendor_id, selected.product_id, path)?,
             path,
             device_container_id,
         )?;
@@ -245,9 +244,6 @@ pub(super) fn query(
     device_container_id: &str,
     source_product_id: Option<u16>,
 ) -> anyhow::Result<Value> {
-    let _process_lock = QUERY_LOCK
-        .try_lock()
-        .map_err(|_| anyhow::anyhow!("已有接收器查询正在进行"))?;
     let started = Instant::now();
     let (before, selected) = select_target(
         &super::hid::enumerate_metadata()?,
@@ -265,7 +261,7 @@ pub(super) fn query(
     let device = transport::open(path, feature_bytes)?;
     let revalidate = || -> anyhow::Result<Value> {
         let (current, current_capability) = select_target(
-            &super::hid::enumerate_for_product(selected.vendor_id, selected.product_id)?,
+            &super::hid::enumerate_collection(selected.vendor_id, selected.product_id, path)?,
             path,
             device_container_id,
         )?;
@@ -292,7 +288,7 @@ pub(super) fn query(
         "query":"receiver_wireless_status_v2", "path":path, "device_container_id":device_container_id,
         "device_instance_id":before["device_instance_id"], "vendor_id":selected.vendor_id, "product_id":selected.product_id,
         "claim_interface":selected.claim_interface, "report_bytes":selected.report_bytes, "transaction_id":transaction,
-        "source_product_id":selected.source_product_id, "source_class":selected.source_class, "capability_evidence":selected.evidence_path,
+        "source_product_id":selected.source_product_id, "source_class":selected.source_class,
         "application_query_budget_ms":APPLICATION_QUERY_BUDGET.as_millis() as u64,
         "device_count":rows.len(), "devices":rows,
         "observed_at_unix_ms":SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as u64,

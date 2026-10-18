@@ -164,30 +164,130 @@ fn rotation_preserves_negative_twos_complement_and_disabling_does_not_zero_the_a
         let device = Device::new([
             outgoing([3, 11, 20], &payload, 1),
             incoming([3, 11, 20], &[], 1),
-            outgoing([3, 11, 148], &[1], 2),
-            incoming([3, 11, 148], &payload, 2),
         ]);
         let report = apply(
             &device,
             &cap(),
             &rotation(enabled, -44),
-            true,
             transactions(),
             || Ok(()),
             |_| panic!("Rotation should not wait"),
         )
         .unwrap();
-        assert!(report.verified());
+        validate_setter_report(&rotation(enabled, -44), &report, false).unwrap();
         assert_eq!(report.acknowledgements[0].data, Vec::<u8>::new());
-        assert_eq!(
-            report.confirmations[0].observation,
-            SensorObservation::Rotation {
-                raw_state: u8::from(enabled),
-                raw_angle: 212
-            }
-        );
         device.done();
     }
+}
+
+#[test]
+fn mouse_rotation_tasks_keep_ack_and_actual_reading_distinct_for_every_current_factory() {
+    use crate::mouse_rotation::{self as task, Report, Setting};
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../testdata/re/mouse-sensor-current-source.json"
+    ))
+    .unwrap();
+    for &product in task::PRODUCTS {
+        let source = fixture["products"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["product_id"] == product)
+            .unwrap();
+        for (name, command) in [
+            ("setProximitySensorAngleTune", [3, 11, 20]),
+            ("getProximitySensorAngleTune", [3, 11, 148]),
+        ] {
+            assert_eq!(
+                source["queries"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|row| row["name"] == name)
+                    .unwrap()["command"],
+                serde_json::json!(command)
+            );
+        }
+        let mut cap = cap();
+        cap.product_id = product;
+        let setting = Setting {
+            enabled: false,
+            angle_degrees: -44,
+        };
+        let device = Device::new([
+            outgoing([3, 11, 20], &[1, 0, 212], 1),
+            incoming([3, 11, 20], &[], 1),
+        ]);
+        let report = task::execute(&device, &cap, Some(&setting), &mut transactions(), &|| {
+            Ok(())
+        })
+        .unwrap();
+        assert!(report.source_acknowledged());
+        assert!(report.validate_reply(None).is_err());
+        assert!(
+            report
+                .validate_reply(Some(&Setting {
+                    enabled: true,
+                    ..setting
+                }))
+                .is_err()
+        );
+        device.done();
+        let device = Device::new([
+            outgoing([3, 11, 148], &[1], 1),
+            incoming([3, 11, 148], &[1, 255, 200], 1),
+        ]);
+        let reading = task::execute(&device, &cap, None, &mut transactions(), &|| Ok(())).unwrap();
+        let Report::Read { reading } = reading else {
+            panic!("getter must yield an observation")
+        };
+        assert_eq!((reading.raw_state, reading.raw_angle), (255, 200));
+        assert_eq!(reading.enabled(), None);
+        assert_eq!(reading.angle_degrees(), None);
+        device.done();
+    }
+}
+
+#[test]
+fn mouse_rotation_task_preserves_failed_delivery_and_native_disable_semantics() {
+    use crate::mouse_rotation::{self as task, Report, Setting};
+    let setting = Setting {
+        enabled: true,
+        angle_degrees: -44,
+    };
+    assert_eq!(
+        setting.native_request().unwrap(),
+        crate::mapping_native_rotation::RotationRequest::SetAngle(316)
+    );
+    assert_eq!(
+        Setting {
+            enabled: false,
+            ..setting
+        }
+        .native_request()
+        .unwrap(),
+        crate::mapping_native_rotation::RotationRequest::SetAngle(0)
+    );
+    let device = Device::new([Io::OutError(packet([3, 11, 20], &[1, 1, 212], 1))]);
+    let report = task::execute(
+        &device,
+        &cap(),
+        Some(&setting),
+        &mut transactions(),
+        &|| Ok(()),
+    )
+    .unwrap();
+    assert!(!report.source_acknowledged());
+    let Report::Write {
+        delivery, failure, ..
+    } = report
+    else {
+        panic!("write failure lost")
+    };
+    assert_eq!(delivery.attempted_writes, 1);
+    assert!(delivery.acknowledgements.is_empty());
+    assert!(failure.is_some());
+    device.done();
 }
 
 #[test]
@@ -200,14 +300,12 @@ fn source_ack_only_strategy_never_claims_independent_confirmation() {
         &device,
         &cap(),
         &rotation(true, 44),
-        false,
         transactions(),
         || Ok(()),
         |_| Ok(()),
     )
     .unwrap();
-    assert!(!report.verified());
-    assert!(report.confirmations.is_empty());
+    validate_setter_report(&rotation(true, 44), &report, false).unwrap();
     assert_eq!(report.acknowledgements[0].data, [1, 0, 0]);
     device.done();
 }
@@ -217,20 +315,17 @@ fn off_stops_after_state_and_does_not_validate_an_unused_custom_curve() {
     let device = Device::new([
         outgoing([2, 11, 16], &[1, 0], 1),
         incoming([2, 11, 16], &[], 1),
-        outgoing([2, 11, 144], &[1], 2),
-        incoming([2, 11, 144], &[1, 0], 2),
     ]);
     let report = apply(
         &device,
         &cap(),
         &dynamic(false, AccelerationMode::Custom, vec![f32::NAN]),
-        true,
         transactions(),
         || Ok(()),
         |_| panic!("Off should not wait"),
     )
     .unwrap();
-    assert!(report.verified());
+    assert_eq!(report.acknowledgements.len(), 1);
     assert_eq!(report.attempted_writes, 1);
     device.done();
 }
@@ -248,22 +343,17 @@ fn each_preset_keeps_state_then_mode_before_any_separate_getter() {
             incoming([2, 11, 16], &[], 1),
             outgoing([2, 11, 17], &[1, raw], 2),
             incoming([2, 11, 17], &[], 2),
-            outgoing([2, 11, 144], &[1], 3),
-            incoming([2, 11, 144], &[1, 1], 3),
-            outgoing([2, 11, 145], &[1], 4),
-            incoming([2, 11, 145], &[1, raw], 4),
         ]);
         let report = apply(
             &device,
             &cap(),
             &dynamic(true, mode, vec![]),
-            true,
             transactions(),
             || Ok(()),
             |_| panic!("Preset should not wait"),
         )
         .unwrap();
-        assert!(report.verified());
+        validate_setter_report(&dynamic(true, mode, vec![]), &report, false).unwrap();
         assert_eq!(report.acknowledgements.len(), 2);
         device.done();
     }
@@ -305,24 +395,12 @@ fn custom_upload_sends_250_little_endian_floats_with_31_full_chunks_and_short_ta
         io.push(outgoing([37, 11, 19], payload, txn));
         io.push(incoming([37, 11, 19], &[], txn));
     }
-    txn = (txn + 1) % 31;
-    io.push(outgoing([2, 11, 144], &[1], txn));
-    io.push(incoming([2, 11, 144], &[1, 1], txn));
-    txn = (txn + 1) % 31;
-    io.push(outgoing([2, 11, 145], &[1], txn));
-    io.push(incoming([2, 11, 145], &[1, 3], txn));
-    for payload in &payloads {
-        txn = (txn + 1) % 31;
-        io.push(outgoing([37, 11, 147], &payload[..5], txn));
-        io.push(incoming([37, 11, 147], payload, txn));
-    }
     let device = Device::new(io);
     let mut delays = Vec::new();
     let report = apply(
         &device,
         &cap(),
         &dynamic(true, AccelerationMode::Custom, values),
-        true,
         transactions(),
         || Ok(()),
         |time| {
@@ -331,9 +409,8 @@ fn custom_upload_sends_250_little_endian_floats_with_31_full_chunks_and_short_ta
         },
     )
     .unwrap();
-    assert!(report.verified());
     assert_eq!(report.attempted_writes, 34);
-    assert_eq!(report.confirmations.len(), 34);
+    assert_eq!(report.acknowledgements.len(), 34);
     assert_eq!(delays, vec![Duration::from_millis(15); 31]);
     device.done();
 }
@@ -440,7 +517,6 @@ fn unsupported_products_routes_ranges_nonfinite_and_bad_curve_sizes_never_mutate
             &device,
             &cap(),
             &change,
-            true,
             || {
                 count += 1;
                 Ok(1)
@@ -462,7 +538,6 @@ fn unsupported_products_routes_ranges_nonfinite_and_bad_curve_sizes_never_mutate
                 &device,
                 &invalid,
                 &rotation(true, 0),
-                true,
                 transactions(),
                 || Ok(()),
                 |_| Ok(())
@@ -544,7 +619,6 @@ fn short_report_wrong_transaction_command_and_unknown_status_cannot_acknowledge(
             &device,
             &cap(),
             &rotation(true, 0),
-            true,
             transactions(),
             || Ok(()),
             |_| Ok(()),
@@ -564,27 +638,24 @@ fn different_readback_is_retained_without_retrying_a_successfully_acknowledged_w
         outgoing([3, 11, 148], &[1], 2),
         incoming([3, 11, 148], &[1, 1, 11], 2),
     ]);
-    let failure = apply(
+    let report = apply(
         &device,
         &cap(),
         &rotation(true, 12),
-        true,
         transactions(),
         || Ok(()),
         |_| Ok(()),
     )
-    .unwrap_err();
-    assert_eq!(failure.phase, SensorFailurePhase::Readback);
-    assert_eq!(failure.report.acknowledgements.len(), 1);
+    .unwrap();
+    assert_eq!(report.acknowledgements.len(), 1);
+    let observation = read(&device, &cap(), SensorQuery::Rotation, 2, || Ok(())).unwrap();
     assert_eq!(
-        failure.report.confirmations[0].observation,
+        observation,
         SensorObservation::Rotation {
             raw_state: 1,
             raw_angle: 11
         }
     );
-    assert!(!failure.report.confirmations[0].matches_request);
-    assert!(failure.device_state_may_have_changed());
     device.done();
 }
 
@@ -599,7 +670,6 @@ fn failed_mode_write_stops_custom_chunks_and_keeps_completed_state_ack() {
         &device,
         &cap(),
         &dynamic(true, AccelerationMode::Custom, vec![1.0; 250]),
-        true,
         transactions(),
         || Ok(()),
         |_| Ok(()),
@@ -623,7 +693,6 @@ fn cancellation_after_ack_or_during_reply_does_not_start_mode_or_getter() {
             &device,
             &cap(),
             &dynamic(true, AccelerationMode::Natural, vec![]),
-            true,
             transactions(),
             || {
                 let i = validations.get() + 1;
@@ -658,7 +727,6 @@ fn custom_wait_failure_keeps_first_chunk_ack_and_stops_later_packets() {
         &device,
         &cap(),
         &dynamic(true, AccelerationMode::Custom, vec![1.0; 250]),
-        true,
         transactions(),
         || Ok(()),
         |time| {
@@ -688,7 +756,6 @@ fn busy_reply_polls_without_repeating_the_mutation_and_exhaustion_is_finite() {
         &device,
         &cap,
         &rotation(true, 0),
-        false,
         transactions(),
         || Ok(()),
         |_| Ok(()),
@@ -705,7 +772,6 @@ fn busy_reply_polls_without_repeating_the_mutation_and_exhaustion_is_finite() {
         &device,
         &cap,
         &rotation(true, 0),
-        true,
         transactions(),
         || Ok(()),
         |_| Ok(()),
@@ -723,19 +789,17 @@ fn independent_getter_failure_keeps_write_ack_and_no_confirmation() {
         outgoing([3, 11, 148], &[1], 2),
         Io::InError,
     ]);
-    let failure = apply(
+    let report = apply(
         &device,
         &cap(),
         &rotation(true, 0),
-        true,
         transactions(),
         || Ok(()),
         |_| Ok(()),
     )
-    .unwrap_err();
-    assert_eq!(failure.phase, SensorFailurePhase::Readback);
-    assert_eq!(failure.report.acknowledgements.len(), 1);
-    assert!(failure.report.confirmations.is_empty());
+    .unwrap();
+    assert_eq!(report.acknowledgements.len(), 1);
+    assert!(read(&device, &cap(), SensorQuery::Rotation, 2, || Ok(())).is_err());
     device.done();
 }
 
@@ -767,7 +831,6 @@ fn invalid_transactions_and_out_of_range_queries_allocate_no_io() {
             &device,
             &cap(),
             &rotation(true, 0),
-            true,
             || Ok(transaction),
             || Ok(()),
             |_| Ok(()),

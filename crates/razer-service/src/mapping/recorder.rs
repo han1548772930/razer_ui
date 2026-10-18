@@ -8,7 +8,7 @@ use razer_ipc::macro_recording::{RestoreReceipt, SuspensionReceipt};
 use razer_ipc::mapping_control::{Registry, Suppression, Suspension};
 use razer_model::macro_library::{
     ActionItem, RecordingGeometry,
-    recording::{Decoder, Options},
+    recording::{Decoder, Options, StopCause},
 };
 use serde_json::Value;
 use std::{
@@ -22,6 +22,7 @@ use std::{
 
 pub enum Command {
     Stop,
+    StopShortcut,
     Cancel,
 }
 #[derive(Clone, Copy)]
@@ -194,9 +195,14 @@ fn record(
     suppression: &mut Option<Suspension>,
     cancellation: &AtomicBool,
 ) -> Result<Option<Vec<ActionItem>>, String> {
+    let mut stop_cause = StopCause::Button;
     let mut stop_requested = match input.try_recv() {
         Ok(Command::Cancel) | Err(mpsc::TryRecvError::Disconnected) => return Ok(None),
         Ok(Command::Stop) => true,
+        Ok(Command::StopShortcut) => {
+            stop_cause = StopCause::Shortcut;
+            true
+        }
         Err(mpsc::TryRecvError::Empty) => false,
     };
     let before = (options.movement_mode != 0)
@@ -225,7 +231,7 @@ fn record(
     let mut item_count = 0usize;
     let mut bytes = 0usize;
     loop {
-        drain_commands(input, &mut stop_requested, &mut cancelled);
+        drain_commands(input, &mut stop_requested, &mut stop_cause, &mut cancelled);
         if started && stop_requested && !stopping {
             // stoppingRecorder invokes removeWindowStorageItem before dr();
             // it does not wait for the host-storage operation's Promise.
@@ -307,7 +313,7 @@ fn record(
                     }
                     // Cancel may have arrived while this blocking event
                     // request was in flight, including behind a queued Stop.
-                    drain_commands(input, &mut stop_requested, &mut cancelled);
+                    drain_commands(input, &mut stop_requested, &mut stop_cause, &mut cancelled);
                     let result = if cancelled {
                         Ok(None)
                     } else {
@@ -331,7 +337,9 @@ fn record(
                                 screen_after: after.screen,
                             });
                         }
-                        decoder.finish(stop_requested).map(Some)
+                        decoder
+                            .finish(stop_requested.then_some(stop_cause))
+                            .map(Some)
                     };
                     let restored: RestoreReceipt =
                         serde_json::from_value(query(client, ServiceRequest::ResumeMacroMappings)?)
@@ -372,6 +380,10 @@ fn record(
         if updates.len() < 512 {
             match input.recv_timeout(Duration::from_millis(25)) {
                 Ok(Command::Stop) => stop_requested = true,
+                Ok(Command::StopShortcut) => {
+                    stop_requested = true;
+                    stop_cause = StopCause::Shortcut;
+                }
                 Ok(Command::Cancel) | Err(mpsc::RecvTimeoutError::Disconnected) => {
                     stop_requested = true;
                     cancelled = true;
@@ -388,11 +400,16 @@ mod tests;
 fn drain_commands(
     input: &mpsc::Receiver<Command>,
     stop_requested: &mut bool,
+    stop_cause: &mut StopCause,
     cancelled: &mut bool,
 ) {
     loop {
         match input.try_recv() {
             Ok(Command::Stop) => *stop_requested = true,
+            Ok(Command::StopShortcut) => {
+                *stop_requested = true;
+                *stop_cause = StopCause::Shortcut;
+            }
             Ok(Command::Cancel) => {
                 *stop_requested = true;
                 *cancelled = true;

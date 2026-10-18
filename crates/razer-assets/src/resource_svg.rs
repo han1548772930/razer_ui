@@ -1,7 +1,7 @@
 //! Monochrome SVG presentation waits for the same resource owner as images.
 use gpui_kit::{
-    App, InteractiveElement, Interactivity, IntoElement, RenderOnce, SharedString,
-    StyleRefinement, Styled, Svg, Transformation, Window, svg,
+    App, InteractiveElement, Interactivity, IntoElement, RenderOnce, SharedString, StyleRefinement,
+    Styled, Svg, Transformation, Window, svg,
 };
 
 #[derive(IntoElement)]
@@ -11,7 +11,10 @@ pub struct ResourceSvg {
 }
 
 pub fn resource_svg() -> ResourceSvg {
-    ResourceSvg { svg: svg(), path: None }
+    ResourceSvg {
+        svg: svg(),
+        path: None,
+    }
 }
 
 impl ResourceSvg {
@@ -27,11 +30,15 @@ impl ResourceSvg {
 }
 
 impl Styled for ResourceSvg {
-    fn style(&mut self) -> &mut StyleRefinement { self.svg.style() }
+    fn style(&mut self) -> &mut StyleRefinement {
+        self.svg.style()
+    }
 }
 
 impl InteractiveElement for ResourceSvg {
-    fn interactivity(&mut self) -> &mut Interactivity { self.svg.interactivity() }
+    fn interactivity(&mut self) -> &mut Interactivity {
+        self.svg.interactivity()
+    }
 }
 
 impl RenderOnce for ResourceSvg {
@@ -40,9 +47,10 @@ impl RenderOnce for ResourceSvg {
             // Availability only reads memory and queues the shared I/O owner.
             // Its completion refreshes windows. Preserve pending geometry but
             // do not pass a temporary ResourcePending error to GPUI paint_svg.
-            // Actual failures still follow GPUI's error reporting and the
-            // resource owner's retained failure/retry state.
-            if !matches!(crate::resource_runtime::available(&path, cx), Ok(false)) {
+            // Failed requests remain in the resource owner's diagnostics and
+            // retry state. Passing them to paint would report the same failure
+            // again on every frame.
+            if matches!(crate::resource_runtime::available(&path, cx), Ok(true)) {
                 self.svg = self.svg.path(path);
             }
         }

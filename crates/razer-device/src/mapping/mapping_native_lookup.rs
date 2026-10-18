@@ -9,9 +9,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[path = "mapping_native_lookup/input.rs"]
 mod input;
+#[path = "mapping_native_lookup/interrupt_registry.rs"]
+mod interrupt_registry;
+#[path = "mapping_native_lookup/interrupts.rs"]
+mod interrupts;
 #[path = "mapping_native_lookup/serialization.rs"]
 mod serialization;
 pub use input::{Input, InputIdentity, InputKind, Phase, parse_input};
+pub use interrupts::{AnalogInterrupts, DigitalInterrupt};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Family {
@@ -197,6 +202,78 @@ impl<O: Clone> Tables<O> {
             },
         }
     }
+
+    // 909da: analog selection has no dynamic-key family. The global shortcut
+    // overrides a device selection, and its opposite edge stays global.
+    fn select_analog(
+        &self,
+        input: &Input,
+        modes: Modes,
+        break_of: Option<&Resolved<O>>,
+        allow_passthrough: bool,
+    ) -> Resolved<O> {
+        let modes = Modes {
+            hypershift: break_of.map_or(modes.hypershift, |m| m.selectors.hypershift),
+            ..modes
+        };
+        let global_only = break_of.is_some_and(|m| m.global_shortcut);
+        let mut found = None;
+        let mut global = global_only;
+        if !global_only {
+            if break_of.map_or(modes.gaming, |m| m.selectors.gaming) {
+                found = self.find(input, modes, Family::Gaming, false);
+            }
+            if modes.mapping_enabled {
+                if found.is_none() && break_of.map_or(modes.otfs, |m| m.selectors.otfs) {
+                    found = self.find(input, modes, Family::Otfs, false);
+                }
+                if found.is_none() {
+                    found = self.find(input, modes, Family::SnapTap, false);
+                }
+            }
+            if found.is_none() {
+                found = self.find(input, modes, Family::Normal, false);
+            }
+        }
+        if global_only
+            || (break_of.is_none()
+                && modes.mapping_enabled
+                && modes.global_shortcuts_enabled
+                && (allow_passthrough || found.is_some()))
+        {
+            if let Some(shortcut) = self.find(input, modes, Family::Normal, true) {
+                found = Some(shortcut);
+                global = true;
+            }
+        }
+        match found {
+            Some(mapping) => Resolved {
+                input: mapping.input.clone(),
+                output: ResolvedOutput::Mapped(mapping.output.clone()),
+                selectors: mapping.selectors.clone(),
+                mapping_enabled: modes.mapping_enabled,
+                global_shortcut: global,
+            },
+            None => Resolved {
+                input: input.clone(),
+                output: ResolvedOutput::Passthrough(analog_passthrough(input)),
+                selectors: Selectors {
+                    hypershift: modes.hypershift,
+                    ..Default::default()
+                },
+                mapping_enabled: modes.mapping_enabled,
+                global_shortcut: global,
+            },
+        }
+    }
+}
+
+fn analog_passthrough(input: &Input) -> Input {
+    let mut output = input.clone();
+    if let InputKind::AnalogKey { scancode, flag } = output.kind {
+        output.kind = InputKind::Keyboard { scancode, flag };
+    }
+    output
 }
 
 fn index<O>(
@@ -267,7 +344,9 @@ pub struct HeldMapping<O> {
 pub struct Lookup<O> {
     tables: Tables<O>,
     held: BTreeMap<InputIdentity, Held<O>>,
+    analog_held: BTreeMap<InputIdentity, HeldMapping<O>>,
     suppressed: BTreeSet<InputIdentity>,
+    digital_interrupts: interrupt_registry::Registry<Resolved<O>>,
 }
 
 impl<O: Clone> Lookup<O> {
@@ -275,11 +354,15 @@ impl<O: Clone> Lookup<O> {
         Self {
             tables,
             held: BTreeMap::new(),
+            analog_held: BTreeMap::new(),
             suppressed: BTreeSet::new(),
+            digital_interrupts: interrupt_registry::Registry::default(),
         }
     }
     /// Native QueryRunningMacrosAndKeysPressed copies the low byte of held size.
-    pub fn held_count(&self) -> u8 { self.held.len() as u8 }
+    pub fn held_count(&self) -> u8 {
+        self.held.len() as u8
+    }
     pub fn tables(&self) -> &Tables<O> {
         &self.tables
     }
@@ -296,6 +379,60 @@ impl<O: Clone> Lookup<O> {
     }
     pub fn replace_tables(&mut self, tables: Tables<O>) {
         self.tables = tables;
+        // AA588 clears interrupt registrations without changing held inputs.
+        self.digital_interrupts.clear();
+    }
+
+    /// 909da retains both analog directions from first observation until the
+    /// missing-key release is dispatched (7a916). Sparse zero samples and threshold releases do not
+    /// remove this pair, so profile changes cannot replace a held key's output.
+    pub fn analog_mapping(
+        &mut self,
+        input: &Input,
+        modes: Modes,
+        allow_passthrough: bool,
+    ) -> Option<HeldMapping<O>> {
+        let identity = input.identity();
+        if let Some(pair) = self.analog_held.get(&identity) {
+            return Some(pair.clone());
+        }
+        let make = self
+            .tables
+            .select_analog(&input.pressed(), modes, None, allow_passthrough);
+        if !allow_passthrough && make.is_passthrough() {
+            return None;
+        }
+        let release = self.tables.select_analog(
+            &make.input.released(),
+            modes,
+            Some(&make),
+            allow_passthrough,
+        );
+        if !allow_passthrough && release.is_passthrough() {
+            return None;
+        }
+        let pair = HeldMapping { make, release };
+        self.analog_held.insert(identity, pair.clone());
+        Some(pair)
+    }
+
+    /// Call only after dispatching the missing-key release, including its
+    /// continuous analog output and any remaining trigger releases. A sparse
+    /// report that explicitly contains the key at zero does not remove the pair.
+    pub fn release_analog_mapping(&mut self, identity: &InputIdentity) {
+        self.analog_held.remove(identity);
+    }
+
+    pub fn clear_analog_mappings(&mut self) {
+        self.analog_held.clear();
+    }
+
+    /// Retained mapping metadata, not proof that its analog gate is active.
+    pub fn analog_held_by_stateless(&self, identity: &str) -> Option<HeldMapping<O>> {
+        self.analog_held
+            .values()
+            .find(|pair| pair.make.input.stateless_id() == identity)
+            .cloned()
     }
 
     pub fn resolve(&mut self, input: Input, modes: Modes) -> Option<Resolved<O>> {
@@ -321,6 +458,10 @@ impl<O: Clone> Lookup<O> {
                 let release = self
                     .tables
                     .select(&release_input, release_modes, Some(&make));
+                if make.input.interruptible {
+                    self.digital_interrupts
+                        .insert(make.input.stateless_id(), make.clone());
+                }
                 self.held.insert(
                     identity,
                     Held {
@@ -340,7 +481,7 @@ impl<O: Clone> Lookup<O> {
     }
 
     /// 0x6ae30 releases mapped held keys and suppresses them until physical
-    /// release; it does not treat passthrough as a configured mapping.
+    /// release, retaining their pairs. Passthrough is not a configured mapping.
     pub fn hypershift_disabled(&mut self) -> Vec<Resolved<O>> {
         self.release_matching(|make| !make.is_passthrough(), true)
     }
@@ -360,10 +501,11 @@ impl<O: Clone> Lookup<O> {
             .map(|key| {
                 if suppress {
                     self.suppressed.insert(key.clone());
+                    self.held[&key].release.clone()
                 } else {
                     self.suppressed.remove(&key);
+                    self.held.remove(&key).unwrap().release
                 }
-                self.held.remove(&key).unwrap().release
             })
             .collect()
     }
@@ -372,6 +514,7 @@ impl<O: Clone> Lookup<O> {
     /// before closing its driver. Returning them does not prove delivery.
     pub fn drain_releases(&mut self) -> Vec<Resolved<O>> {
         self.suppressed.clear();
+        self.digital_interrupts.clear();
         std::mem::take(&mut self.held)
             .into_values()
             .map(|held| held.release)
@@ -428,12 +571,8 @@ pub fn from_device_document<O: Clone>(
     from_device_document_filtered(document, global_engine, parse_output, |_| Ok(true))
 }
 
-pub(crate) fn from_device_document_filtered<O: Clone>(
-    document: &Value,
-    global_engine: Option<&Value>,
-    mut parse_output: impl FnMut(&Value) -> Result<O>,
-    keep_mapping: impl Fn(&CompiledMapping<O>) -> Result<bool>,
-) -> Result<Tables<O>> {
+/// Shared active-profile boundary for mapping tables and analog profile data.
+pub fn active_profile_engine(document: &Value) -> Result<&Value> {
     let active = document
         .get("activeProfile")
         .and_then(Value::as_str)
@@ -450,13 +589,22 @@ pub(crate) fn from_device_document_filtered<O: Clone>(
         matching.len() == 1,
         "Active mapping profile is missing or ambiguous"
     );
+    matching[0]
+        .get("appEngine")
+        .context("Missing active compiled engine")
+}
+
+pub(crate) fn from_device_document_filtered<O: Clone>(
+    document: &Value,
+    global_engine: Option<&Value>,
+    mut parse_output: impl FnMut(&Value) -> Result<O>,
+    keep_mapping: impl Fn(&CompiledMapping<O>) -> Result<bool>,
+) -> Result<Tables<O>> {
+    let profile = active_profile_engine(document)?;
     let defaults = document
         .get("defaultMappings")
         .and_then(|v| v.get("appEngine"))
         .context("Missing default compiled engine")?;
-    let profile = matching[0]
-        .get("appEngine")
-        .context("Missing active compiled engine")?;
     let filter = |rows: Vec<CompiledMapping<O>>| -> Result<Vec<CompiledMapping<O>>> {
         // Validate the publication before dropping source identity mappings.
         let rows = index(rows, false)?;

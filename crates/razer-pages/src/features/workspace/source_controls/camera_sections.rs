@@ -359,12 +359,13 @@ impl SourceControls {
             .items_center()
             .when(group.collapsible, |view| {
                 view.child(
-                    Icon::default()
+                    razer_assets::resource_svg()
+                        .flex_shrink_0()
                         .path("synapse/camera-section-down.svg")
                         .size(surface::css(10.))
                         .mr(surface::css(10.))
                         .text_color(Colors::text())
-                        .transform(Transformation::rotate(radians(if open {
+                        .with_transformation(Transformation::rotate(radians(if open {
                             0.
                         } else {
                             -std::f32::consts::FRAC_PI_2

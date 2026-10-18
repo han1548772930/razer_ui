@@ -7,7 +7,7 @@ use super::{
     AppShell, Location,
     chroma_page::{ChromaPage, ChromaPageEvent},
     chroma_studio_window::StudioSession,
-    display_window::{CHROMA_APP_WINDOW_ICON_PATH, DisplayMode},
+    display_window::CHROMA_APP_WINDOW_ICON_PATH,
     host_tabs,
 };
 use gpui_kit::{component::*, *};
@@ -479,7 +479,7 @@ impl Render for ChromaWindow {
         let content = v_flex()
             .id(SharedString::from(format!(
                 "display-mode-{}",
-                DisplayMode::ChromaApp.key()
+                razer_pages::features::display_mode_roots::DisplayModeRoot::ChromaApp.key()
             )))
             .size_full()
             .child(bar)

@@ -65,9 +65,6 @@ fn set_complete() -> Step {
         Ok(RotationPoll::Completed(Ok(RotationReply::SetComplete))),
     )
 }
-fn get() -> Step {
-    Step::Submit(RotationRequest::GetAngle, Ok(SubmissionId(2)))
-}
 fn get_complete(raw: i32) -> Step {
     Step::Poll(
         SubmissionId(2),
@@ -142,8 +139,7 @@ fn queue_acceptance_pending_and_final_completion_are_distinct() {
         set_complete(),
     ]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), false, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     assert!(execution.pending());
     assert!(!execution.primary.driver_completed());
     execution.poll(&mut device, Duration::from_millis(9), &valid);
@@ -151,7 +147,6 @@ fn queue_acceptance_pending_and_final_completion_are_distinct() {
     execution.poll(&mut device, Duration::from_millis(5), &valid);
     assert!(execution.finished());
     assert!(execution.primary.driver_completed());
-    assert!(!execution.verified());
     assert_eq!(
         device.waits,
         [Duration::from_millis(9), Duration::from_millis(5)]
@@ -160,62 +155,15 @@ fn queue_acceptance_pending_and_final_completion_are_distinct() {
 }
 
 #[test]
-fn confirmation_only_starts_after_successful_set_completion() {
-    let mut device = Device::new([
-        set(),
-        Step::Poll(SubmissionId(1), Ok(RotationPoll::Pending)),
-        set_complete(),
-        get(),
-        get_complete(316),
-    ]);
-    let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    assert!(execution.confirmation.is_none());
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    assert!(execution.confirmation.as_ref().unwrap().pending());
-    assert!(!execution.verified());
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    assert!(execution.verified());
-    assert!(execution.finished());
-    device.done();
-}
-
-#[test]
-fn mismatched_get_is_retained_and_never_repeats_the_write() {
-    let mut device = Device::new([set(), set_complete(), get(), get_complete(315)]);
-    let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    assert_eq!(
-        execution.stopped,
-        Some(RotationError::ReadbackMismatch {
-            requested: 316,
-            observed: 315
-        })
-    );
-    assert!(execution.primary.driver_completed());
-    assert!(execution.confirmation.as_ref().unwrap().driver_completed());
-    assert!(!execution.verified());
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    device.done();
-}
-
-#[test]
-fn read_only_get_is_an_observation_and_does_not_start_a_confirmation() {
+fn read_only_get_is_an_observation() {
     let mut device = Device::new([
         Step::Submit(RotationRequest::GetAngle, Ok(SubmissionId(2))),
         get_complete(-44),
     ]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::GetAngle, true, &valid).unwrap();
+        RotationExecution::start(&mut device, RotationRequest::GetAngle, &valid).unwrap();
     execution.poll(&mut device, Duration::ZERO, &valid);
     assert!(execution.finished());
-    assert!(!execution.verified());
-    assert!(!execution.confirmation_requested);
     assert_eq!(
         execution.primary.delivery,
         RotationDelivery::Completed(RotationReply::Angle {
@@ -230,31 +178,27 @@ fn read_only_get_is_an_observation_and_does_not_start_a_confirmation() {
 fn unsupported_platform_and_driver_rejection_do_not_start_a_getter() {
     let mut platform = UnsupportedRotationTransport;
     let mut execution =
-        RotationExecution::start(&mut platform, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
+        RotationExecution::start(&mut platform, RotationRequest::SetAngle(316), &valid).unwrap();
     assert_eq!(
         execution.primary.delivery,
         RotationDelivery::Failed(DriverOutputError::UnsupportedPlatform.into())
     );
     execution.poll(&mut platform, Duration::ZERO, &valid);
     assert!(execution.finished());
-    assert!(!execution.verified());
     let error = win32_error(DriverOperation::Submit, 5);
     let mut device = Device::new([Step::Submit(
         RotationRequest::SetAngle(316),
         Err(error.clone()),
     )]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     execution.poll(&mut device, Duration::ZERO, &valid);
     assert_eq!(execution.primary.delivery, RotationDelivery::Failed(error));
-    assert!(execution.confirmation.is_none());
     device.done();
 }
 
 #[test]
-fn completed_failure_does_not_submit_readback() {
+fn completed_failure_is_retained_without_another_request() {
     let error = win32_error(DriverOperation::Complete, 995);
     let mut device = Device::new([
         set(),
@@ -264,12 +208,10 @@ fn completed_failure_does_not_submit_readback() {
         ),
     ]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     execution.poll(&mut device, Duration::ZERO, &valid);
     assert_eq!(execution.primary.delivery, RotationDelivery::Failed(error));
     assert!(execution.finished());
-    assert!(execution.confirmation.is_none());
     device.done();
 }
 
@@ -282,8 +224,7 @@ fn polling_error_keeps_pending_request_and_can_observe_later_completion() {
         set_complete(),
     ]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), false, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     execution.poll(&mut device, Duration::ZERO, &valid);
     assert!(execution.pending());
     assert_eq!(execution.primary.errors, [error]);
@@ -293,7 +234,7 @@ fn polling_error_keeps_pending_request_and_can_observe_later_completion() {
 }
 
 #[test]
-fn cancel_preserves_pending_buffers_until_drain_and_suppresses_getter() {
+fn cancel_preserves_pending_buffers_until_drain() {
     let mut device = Device::new([
         set(),
         Step::Cancel(SubmissionId(1), Ok(())),
@@ -302,8 +243,7 @@ fn cancel_preserves_pending_buffers_until_drain_and_suppresses_getter() {
         Step::Close(Ok(())),
     ]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     execution.cancel(&mut device);
     execution.cancel(&mut device);
     assert_eq!(execution.stopped, Some(RotationError::Canceled));
@@ -316,8 +256,6 @@ fn cancel_preserves_pending_buffers_until_drain_and_suppresses_getter() {
     assert!(execution.pending());
     execution.poll(&mut device, Duration::ZERO, &valid);
     assert!(execution.primary.driver_completed());
-    assert!(!execution.verified());
-    assert!(execution.confirmation.is_none());
     execution.close_if_drained(&mut device).unwrap();
     device.done();
 }
@@ -331,8 +269,7 @@ fn cancel_error_is_observable_and_does_not_retire_the_kernel_operation() {
         set_complete(),
     ]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     execution.cancel(&mut device);
     assert!(execution.pending());
     assert_eq!(execution.primary.errors, [error]);
@@ -345,7 +282,7 @@ fn cancel_error_is_observable_and_does_not_retire_the_kernel_operation() {
 fn invalid_retained_identity_before_submission_sends_nothing() {
     let mut device = Device::new([]);
     assert_eq!(
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &|| Err(
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &|| Err(
             RotationError::SessionInvalid
         )),
         Err(RotationError::SessionInvalid)
@@ -358,7 +295,7 @@ fn identity_change_after_submit_cancels_and_retains_receipt() {
     let mut device = Device::new([set(), Step::Cancel(SubmissionId(1), Ok(())), set_complete()]);
     let calls = Cell::new(0);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &|| {
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &|| {
             let call = calls.get() + 1;
             calls.set(call);
             if call == 1 {
@@ -372,17 +309,14 @@ fn identity_change_after_submit_cancels_and_retains_receipt() {
     assert_eq!(execution.stopped, Some(RotationError::SessionInvalid));
     execution.poll(&mut device, Duration::ZERO, &valid);
     assert!(execution.primary.driver_completed());
-    assert!(execution.confirmation.is_none());
-    assert!(!execution.verified());
     device.done();
 }
 
 #[test]
-fn identity_change_before_readback_suppresses_getter_after_completed_write() {
+fn identity_change_after_completed_write_preserves_ack_without_another_request() {
     let mut device = Device::new([set(), set_complete()]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     let calls = Cell::new(0);
     execution.poll(&mut device, Duration::ZERO, &|| {
         let call = calls.get() + 1;
@@ -395,58 +329,7 @@ fn identity_change_before_readback_suppresses_getter_after_completed_write() {
     });
     assert!(execution.primary.driver_completed());
     assert_eq!(execution.stopped, Some(RotationError::SessionInvalid));
-    assert!(execution.confirmation.is_none());
     device.done();
-}
-
-#[test]
-fn cancel_during_getter_retains_write_acknowledgement_and_actual_read() {
-    let mut device = Device::new([
-        set(),
-        set_complete(),
-        get(),
-        Step::Cancel(SubmissionId(2), Ok(())),
-        get_complete(316),
-    ]);
-    let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-            .unwrap();
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    execution.cancel(&mut device);
-    execution.poll(&mut device, Duration::ZERO, &valid);
-    assert!(execution.primary.driver_completed());
-    assert!(execution.confirmation.as_ref().unwrap().driver_completed());
-    assert_eq!(execution.stopped, Some(RotationError::Canceled));
-    assert!(!execution.verified());
-    device.done();
-}
-
-#[test]
-fn unexpected_completion_and_failed_getter_are_never_verified() {
-    for reply in [
-        Ok(RotationReply::SetComplete),
-        Err(RotationError::ReadLength(3)),
-    ] {
-        let mut device = Device::new([
-            set(),
-            set_complete(),
-            get(),
-            Step::Poll(SubmissionId(2), Ok(RotationPoll::Completed(reply))),
-        ]);
-        let mut execution =
-            RotationExecution::start(&mut device, RotationRequest::SetAngle(316), true, &valid)
-                .unwrap();
-        execution.poll(&mut device, Duration::ZERO, &valid);
-        execution.poll(&mut device, Duration::ZERO, &valid);
-        assert!(execution.primary.driver_completed());
-        assert!(matches!(
-            execution.confirmation.as_ref().unwrap().delivery,
-            RotationDelivery::Failed(_)
-        ));
-        assert!(execution.finished());
-        assert!(!execution.verified());
-        device.done();
-    }
 }
 
 #[test]
@@ -454,8 +337,7 @@ fn close_failure_preserves_execution_without_resetting_angle() {
     let error = win32_error(DriverOperation::Close, 6);
     let mut device = Device::new([set(), set_complete(), Step::Close(Err(error.clone()))]);
     let mut execution =
-        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), false, &valid)
-            .unwrap();
+        RotationExecution::start(&mut device, RotationRequest::SetAngle(316), &valid).unwrap();
     execution.poll(&mut device, Duration::ZERO, &valid);
     assert_eq!(execution.close_if_drained(&mut device), Err(error));
     assert_eq!(execution.primary.request, RotationRequest::SetAngle(316));

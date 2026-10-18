@@ -293,9 +293,6 @@ pub(super) struct CameraComSession {
     _apartment: Apartment,
 }
 impl CameraComSession {
-    pub(super) fn open(target: &CameraTarget) -> Result<Self> {
-        Self::open_mode(target, false)
-    }
     pub(super) fn open_mode(target: &CameraTarget, properties: bool) -> Result<Self> {
         target.validate()?;
         let apartment = Apartment::open_mode(properties)?;

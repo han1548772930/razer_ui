@@ -603,7 +603,8 @@ impl ModulePreview {
                         h_flex()
                             .text_color(MainPageColors.tutorial_accent())
                             .child(
-                                Icon::default()
+                                razer_assets::resource_svg()
+                                    .flex_shrink_0()
                                     .path("synapse/category-keyboard.svg")
                                     .size(surface::css(40.)),
                             )

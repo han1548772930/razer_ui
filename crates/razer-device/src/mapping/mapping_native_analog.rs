@@ -8,7 +8,7 @@ use anyhow::{Context as _, bail, ensure};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AnalogResolution {
     V1,
     V2,
@@ -31,7 +31,7 @@ impl AnalogResolution {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum JoystickBank {
     Axes,
     RotationAxes,
@@ -46,7 +46,7 @@ impl JoystickBank {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum GamepadAxis {
     LeftTrigger,
     RightTrigger,
@@ -85,10 +85,11 @@ pub struct GamepadPoint {
     pub value: i32,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct JoystickCurve {
     pub resolution: AnalogResolution,
     pub bank: JoystickBank,
+    #[serde(with = "curve_table")]
     table: [[i8; 3]; 256],
 }
 
@@ -159,10 +160,11 @@ impl JoystickCurve {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct GamepadCurve {
     pub resolution: AnalogResolution,
     pub axis: GamepadAxis,
+    #[serde(with = "curve_table")]
     table: [i16; 256],
 }
 
@@ -231,7 +233,7 @@ impl GamepadCurve {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum NativeAnalogOutput {
     Joystick(JoystickCurve),
     Gamepad(GamepadCurve),
@@ -477,3 +479,26 @@ impl AnalogMappingState {
 #[cfg(test)]
 #[path = "mapping_native_analog_tests.rs"]
 mod tests;
+
+// The IPC snapshot preserves the complete compiled curve, including its native
+// tail entry. Reject truncated or oversized tables at the wire boundary.
+mod curve_table {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    pub fn serialize<T: Serialize, S: Serializer>(
+        table: &[T; 256],
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        table.as_slice().serialize(serializer)
+    }
+    pub fn deserialize<'de, T: Deserialize<'de>, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<[T; 256], D::Error> {
+        let table = Vec::<T>::deserialize(deserializer)?;
+        table.try_into().map_err(|table: Vec<T>| {
+            serde::de::Error::custom(format!(
+                "Analog curve requires 256 entries, received {}",
+                table.len()
+            ))
+        })
+    }
+}

@@ -736,7 +736,8 @@ impl Render for ArmoryPage {
                                 BaseButton::new("armory-device-root-close")
                                     .accessibility_label(tr("CLOSE"))
                                     .child(
-                                        Icon::default()
+                                        razer_assets::resource_svg()
+                                            .flex_shrink_0()
                                             .path("synapse/host-close.svg")
                                             .size(surface::css(20.)),
                                     )

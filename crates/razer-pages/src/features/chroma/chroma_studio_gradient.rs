@@ -574,21 +574,18 @@ impl StudioGradient {
                                 .child(track),
                         )
                         .child(
-                            button("studio-gradient-remove", "DELETE")
-                                .disabled(self.stops.len() <= definition.min_stops)
-                                .size(surface::css(20.))
-                                .bg(transparent_black())
-                                .hover(|style| {
-                                    style.bg(transparent_black()).text_color(Colors::selected())
-                                })
-                                .child(
-                                    razer_assets::resource_svg()
-                                        .path("synapse/chroma-studio-trash-white.svg")
-                                        .size_full(),
-                                )
-                                .on_click(
-                                    cx.listener(|this, _, window, cx| this.remove(window, cx)),
-                                ),
+                            button_with_hover("studio-gradient-remove", "DELETE", |style| {
+                                style.bg(transparent_black()).text_color(Colors::selected())
+                            })
+                            .disabled(self.stops.len() <= definition.min_stops)
+                            .size(surface::css(20.))
+                            .bg(transparent_black())
+                            .child(
+                                razer_assets::resource_svg()
+                                    .path("synapse/chroma-studio-trash-white.svg")
+                                    .size_full(),
+                            )
+                            .on_click(cx.listener(|this, _, window, cx| this.remove(window, cx))),
                         ),
                 )
                 .child(self.color.clone())

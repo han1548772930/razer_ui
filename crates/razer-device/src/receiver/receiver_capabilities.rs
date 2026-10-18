@@ -45,7 +45,6 @@ pub struct ReceiverCapability {
     #[serde(default)]
     pub startup_retry: Option<ReceiverStartupRetry>,
     pub source_class: String,
-    pub evidence_path: String,
 }
 
 impl ReceiverCapability {

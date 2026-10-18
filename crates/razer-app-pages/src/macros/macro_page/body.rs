@@ -114,6 +114,7 @@ impl MacroPage {
                             }))
                             .when(
                                 self.recording.error.is_some()
+                                    || self.record_ui.shortcut.registration_error.is_some()
                                     || !self.recording_busy() && !self.recording.status.is_empty(),
                                 |palette| palette.child(self.recording_status()),
                             ),

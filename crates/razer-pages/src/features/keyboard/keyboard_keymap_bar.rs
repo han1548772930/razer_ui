@@ -247,7 +247,7 @@ impl KeyboardProductWorkspace {
         if self.customize_controls_disabled() || !rows(self).iter().any(|row| row["guid"] == guid) {
             return;
         }
-        self.clear_analog_mapping();
+        self.clear_analog_mapping(cx);
         self.clear_actuation_selection();
         self.draft["activeKeymapId"] = json!(guid);
         self.keymap_message(

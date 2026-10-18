@@ -89,6 +89,13 @@ fn icon(name: &str, size: f32) -> impl IntoElement + use<> {
     img(SharedString::from(source().assets[name].clone())).size(surface::css(size))
 }
 fn button(id: impl Into<ElementId>, key: &str) -> BaseButton {
+    button_with_hover(id, key, |style| style.bg(Colors::hover()))
+}
+fn button_with_hover(
+    id: impl Into<ElementId>,
+    key: &str,
+    hover: impl FnOnce(StyleRefinement) -> StyleRefinement,
+) -> BaseButton {
     BaseButton::new(id)
         .accessibility_label(label(key))
         .flex()
@@ -97,7 +104,7 @@ fn button(id: impl Into<ElementId>, key: &str) -> BaseButton {
         .p_0()
         .text_color(Colors::text())
         .bg(Colors::panel())
-        .hover(|style| style.bg(Colors::hover()))
+        .hover(hover)
         .focus_visible(|style| style.border_1().border_color(Colors::selected()))
         .styles(|style| style.disabled(|style| style.opacity(0.3)))
 }
@@ -1103,27 +1110,27 @@ impl ChromaStudio {
                     })
                     .child(div().flex_1().child(title))
                     .child(
-                        button("studio-reset-properties", "RESET")
-                            .accessibility_label(label("RESET"))
-                            .size(surface::css(20.))
-                            .mt(surface::css(-3.))
-                            .hover(|style| style.bg(Colors::panel()).text_color(Colors::selected()))
-                            .active(|style| style.opacity(0.7))
-                            .disabled(
-                                current.is_none()
-                                    || !matches!(self.tool.as_str(), "pen" | "bucket"),
-                            )
-                            .child(
-                                razer_assets::resource_svg()
-                                    .path(SharedString::from(source().assets["icon_reset"].clone()))
-                                    .size_full(),
-                            )
-                            .on_click({
-                                let properties = self.properties.clone();
-                                move |_, _, cx| {
-                                    properties.update(cx, |properties, cx| properties.reset(cx))
-                                }
-                            }),
+                        button_with_hover("studio-reset-properties", "RESET", |style| {
+                            style.bg(Colors::panel()).text_color(Colors::selected())
+                        })
+                        .accessibility_label(label("RESET"))
+                        .size(surface::css(20.))
+                        .mt(surface::css(-3.))
+                        .active(|style| style.opacity(0.7))
+                        .disabled(
+                            current.is_none() || !matches!(self.tool.as_str(), "pen" | "bucket"),
+                        )
+                        .child(
+                            razer_assets::resource_svg()
+                                .path(SharedString::from(source().assets["icon_reset"].clone()))
+                                .size_full(),
+                        )
+                        .on_click({
+                            let properties = self.properties.clone();
+                            move |_, _, cx| {
+                                properties.update(cx, |properties, cx| properties.reset(cx))
+                            }
+                        }),
                     ),
             )
             .child(self.properties.clone())
@@ -1479,3 +1486,16 @@ mod chroma_studio_data_catalog_tests {
     }
 }
 // End generated catalog reader: razer-pages/chroma_studio_data.
+
+#[cfg(test)]
+mod button_tests {
+    #[test]
+    fn studio_button_hover_override_constructs_without_duplicate_registration() {
+        let mut applied = 0;
+        let _ = super::button_with_hover("studio-hover-test", "RESET", |style| {
+            applied += 1;
+            style
+        });
+        assert_eq!(applied, 1);
+    }
+}

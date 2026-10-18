@@ -1234,11 +1234,12 @@ impl Render for LightingColorView {
                                             .group_hover("dial-row", |style| style.opacity(1.))
                                     })
                                     .child(
-                                        Icon::default()
+                                        razer_assets::resource_svg()
+                                            .flex_shrink_0()
                                             .path("synapse/expand.svg")
                                             .w(surface::css(10.))
                                             .h(surface::css(5.))
-                                            .transform(Transformation::rotate(radians(
+                                            .with_transformation(Transformation::rotate(radians(
                                                 gpui_kit::base::motion::transition(
                                                     ElementId::from((
                                                         "palette-arrow",

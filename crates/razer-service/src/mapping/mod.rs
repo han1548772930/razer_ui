@@ -3,10 +3,15 @@
 mod control;
 pub(crate) mod owner;
 pub use owner::Client;
-pub mod hotkeys;
+pub mod analog_observation;
+pub mod gamepad_observation;
 pub mod device;
+pub mod hotkeys;
+pub mod input_observation;
 pub mod key_capture;
 pub mod mode_capture;
+pub mod mouse_rotation;
+pub mod observation;
 pub mod recorder;
 mod recorder_owner;
 pub mod shortcuts;

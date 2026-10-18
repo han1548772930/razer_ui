@@ -16,7 +16,61 @@ from unittest.mock import patch
 from host import (HostLocalAudit, add_commands, audit_host_local,
                   help_system_mount_layout, help_system_native_declaration, help_system_report_constants,
                   inspect_host, inspect_pe, pe_cursor_groups, pe_resource_entries,
-                  setup_factory_static_extraction, native_ascii_pointer_table)
+                  setup_factory_static_extraction, native_ascii_pointer_table,
+                  receiver_hardware_dispatch_proof)
+
+
+class ReceiverHardwareDispatchTests(unittest.TestCase):
+    def capture(self):
+        base = 0x180000000
+        result = {"image_base": hex(base), "complete_functions": [], "verified_data_regions": []}
+        for role, owner, lea, table, target in (
+            ("input_base", 0x64e8c, 0x64ef0, 0x2e5ac8, 0x2a4ac0),
+            ("usb", 0xa89f0, 0xa8a5a, 0x2e7e38, 0xa8de0),
+            ("ble", 0x52158, 0x521c2, 0x2e3fd8, 0x53c70),
+            ("external", 0x6319c, 0x63206, 0x2e5668, 0x64a60),
+            ("os_hook", 0xa6b74, 0xa6bde, 0x2e7958, 0x549d0),
+        ):
+            result["complete_functions"].append({"capture": {"rva": hex(owner), "assembly": [
+                {"rva": hex(lea), "bytes": (b"\x48\x8d\x05" + struct.pack("<i", table - lea - 7)).hex()},
+                {"rva": hex(lea + 7), "bytes": "48898680000000"}]}})
+            result["verified_data_regions"].append({"role": role + "_hardware_vtable",
+                "raw_hex": struct.pack("<QQQQ", base, base, base + 0x6a330, base + target).hex()})
+        for owner, rows in ((0x9d7d0, [(0x9d7f4, "488b4620"), (0x9d7f8, "488b4e28"),
+                                     (0x9d7fc, "4883e980")]),
+                            (0x6a470, [(0x6a470, "488b01"), (0x6a473, "488b4018")])):
+            result["complete_functions"].append({"capture": {"rva": hex(owner), "assembly": [
+                {"rva": hex(rva), "bytes": raw} for rva, raw in rows]}})
+        return result
+
+    def test_adjusted_subobject_resolves_each_concrete_device_override(self):
+        result = receiver_hardware_dispatch_proof(self.capture())
+        self.assertEqual(result["bound_object_adjustment"], 128)
+        self.assertEqual({row["device_type"]: row["queued_target_rva"] for row in result["dispatch"]},
+            {"input_base": "0x2a4ac0", "usb": "0xa8de0", "ble": "0x53c70",
+             "external": "0x64a60", "os_hook": "0x549d0"})
+
+    def test_wrong_adjustment_constructor_slot_or_base_vtable_cannot_pass(self):
+        cases = []
+        wrong_adjustment = self.capture()
+        wrong_adjustment["complete_functions"][-2]["capture"]["assembly"][-1]["bytes"] = "4883e988"
+        cases.append(wrong_adjustment)
+        wrong_owner = self.capture()
+        wrong_owner["complete_functions"][1]["capture"]["assembly"][-1]["bytes"] = "48898688000000"
+        cases.append(wrong_owner)
+        wrong_slot = self.capture()
+        wrong_slot["complete_functions"][-1]["capture"]["assembly"][-1]["bytes"] = "488b4010"
+        cases.append(wrong_slot)
+        wrong_table = self.capture()
+        wrong_table["verified_data_regions"][1]["raw_hex"] = struct.pack(
+            "<QQQQ", 0x180000000, 0x180000000, 0x18006a330, 0x1800662b0).hex()
+        cases.append(wrong_table)
+        truncated = self.capture()
+        truncated["verified_data_regions"][1]["raw_hex"] = "00" * 24
+        cases.append(truncated)
+        for index, case in enumerate(cases):
+            with self.subTest(case=index), self.assertRaises(ValueError):
+                receiver_hardware_dispatch_proof(case)
 
 
 class NativeStringPointerTests(unittest.TestCase):

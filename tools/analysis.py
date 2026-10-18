@@ -843,6 +843,10 @@ def _refresh_gaps():
             rows.append({"kind": "implementation_acceptance_pending", "scope": "Rust protocol/service/UI chains"})
         derived[rel(receipt)] = rows
     embedded = ROOT / ".analysis/results/native-packages/embedded-inputs.json"
+    chain = ROOT / ".analysis/results/native/chain-audit.json"
+    if chain.is_file():
+        data = json.loads(chain.read_bytes())
+        derived[rel(chain)] = semantic_query_gaps(data, rel(chain))
     if embedded.is_file():
         derived[rel(embedded)] = embedded_input_gaps(json.loads(embedded.read_bytes()), rel(embedded))
     validation = ROOT / ".analysis/results/native-packages/source-validation.json"
@@ -4073,7 +4077,7 @@ def feature_physical_transports(row, parser, originals):
     return branches
 
 
-def feature_report_callers(parser, originals, selected_capabilities=None, write_runtime=True):
+def feature_report_callers(parser, originals, selected_capabilities=None):
     """Retain current MW report framing owners, including physical factories.
 
     This inventory deliberately does not infer the mounted transport class from
@@ -4081,12 +4085,18 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
     another DualLink master can select different constructors and report IDs.
     """
     import evidence
-    capability_path = builtin_data_path("razer-device", "DEVICE_READ_CAPABILITIES")
     if selected_capabilities is None:
+        import typed_tables
+        capability_path = ROOT / typed_tables.READ_OUTPUT
         capability_raw = capability_path.read_bytes()
-        capabilities = json.loads(capability_raw)["products"]
-        capability_input = {"path": rel(capability_path), "bytes": len(capability_raw),
-                            "sha256": hashlib.sha256(capability_raw).hexdigest()}
+        _, constructors = typed_tables.read_table_constructors(capability_raw)
+        if not constructors:
+            raise ValueError("Read table has no production capability constructors")
+        capabilities = [{"product_id": pid} for pid in constructors]
+        capability_input = {"selection": "all production typed Rust read constructors",
+            "path": rel(capability_path), "bytes": len(capability_raw),
+            "sha256": hashlib.sha256(capability_raw).hexdigest(),
+            "product_ids": list(constructors)}
     else:
         capabilities = selected_capabilities
         capability_input = {"selection": "explicit current-source products", "products": capabilities}
@@ -4096,7 +4106,7 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
         capabilities += [{"product_id": pid} for pid in (631, 658, 756)
                          if not any(cap["product_id"] == pid for cap in capabilities)]
     result = {"capabilities": capability_input, "products": [],
-              "scope": "Every generated basic device-read capability plus 631/658/756 receiver senders; complete retained current MW owners, not a claim of all product/factory implementation",
+              "scope": "Every production typed Rust device-read capability plus 631/658/756 receiver senders; complete retained current MW owners, not a claim of all product/factory implementation",
               "target_execution": False, "runtime_acceptance": "unverified"}
     methods = {b"constructor", b"connectDevice", b"connectHidDevice", b"sendCommand",
                b"_getUSBTransferInResult", b"_createDataSend", b"getFeatureReport",
@@ -4117,7 +4127,7 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
         namespace = f"{family}-mw-{pid}-current"
         root = ROOT / ".analysis/inputs/frontend" / namespace
         row = {"product_id": pid, "namespace": namespace,
-               "generated_capability": cap, "sources": [], "failures": [],
+               "selected_capability": cap, "sources": [], "failures": [],
                "selected_transport_semantics": "Inspect complete factory branches; source_class alone is not a physical transport selector"}
         result["products"].append(row)
         receipt_path = root / "acquisition.json"
@@ -4257,45 +4267,8 @@ def feature_report_callers(parser, originals, selected_capabilities=None, write_
         row["source_owners_complete"] = not row["failures"]
     result["products_total"] = len(result["products"])
     result["source_owners_complete"] = all(row["source_owners_complete"] for row in result["products"])
-    verified_rows = [row for row in result["products"] if row["source_owners_complete"]]
-    if verified_rows and write_runtime:
-        catalog = json.loads(capability_raw)
-        by_pid = {row["product_id"]: row for row in verified_rows}
-        for cap in catalog["products"]:
-            if cap["product_id"] in by_pid:
-                cap["physical_transports_by_pid"] = by_pid[cap["product_id"]]["physical_transports_by_pid"]
-        save(capability_path, catalog)
-        result["runtime_factory_data_updated"] = True
-        result["runtime_factory_products_verified_this_query"] = sorted(by_pid)
-        result["runtime_factory_products_pending_current_evidence"] = [row["product_id"]
-            for row in result["products"] if not row["source_owners_complete"]]
-        result["runtime_factory_data"] = actual(capability_path)[1]
-        receiver_path = builtin_data_path("razer-device", "RECEIVER_QUERY_CAPABILITIES")
-        receivers = json.loads(receiver_path.read_bytes())
-        synchronized = []
-        for receiver in receivers["capabilities"]:
-            source = by_pid.get(receiver["source_product_id"])
-            branch = source["physical_transports_by_pid"].get(str(receiver["product_id"])) if source else None
-            if branch and branch["source_class"] == receiver["source_class"]:
-                # The receiver query has its own command-dependent namespace;
-                # only its actual selected sender's prefix byte is synchronized.
-                receiver["report_id"] = branch["report_id"]
-                synchronized.append(receiver["product_id"])
-        save(receiver_path, receivers)
-        result["receiver_set_selectors_synchronized"] = synchronized
-        result["receiver_runtime_data"] = actual(receiver_path)[1]
-        result["receiver_sources_outside_basic_factory_scope"] = [receiver["product_id"]
-            for receiver in receivers["capabilities"] if receiver["product_id"] not in synchronized]
-        pairing_path = builtin_data_path("razer-device", "RECEIVER_PAIRING_CAPABILITIES")
-        pairing = json.loads(pairing_path.read_bytes())
-        receiver_by_pid = {cap["product_id"]: cap for cap in receivers["capabilities"]}
-        for cap in pairing["products"]:
-            receiver = receiver_by_pid.get(cap["product_id"])
-            if receiver and receiver["source_product_id"] == cap["transport"]["source_product_id"] \
-                    and receiver["source_class"] == cap["transport"]["source_class"]:
-                cap["transport"]["report_id"] = receiver["report_id"]
-        save(pairing_path, pairing)
-        result["pairing_runtime_data"] = actual(pairing_path)[1]
+    if selected_capabilities is None and capability_path.read_bytes() != capability_raw:
+        raise ValueError("Read capability table changed during evidence inventory")
     result["limitations"] = ["Missing indexed originals/receipts require acquisition repair before implementation evidence is complete",
         "Complete protocol classes include unselected alternatives; use the full product registration and physical factory before selecting framing",
         "GET truthy fallback, SET nullish fallback, Windows connection query and source noSlice handling remain distinct host branches",
@@ -4381,7 +4354,7 @@ def hid_indirect_evidence(module, native_path, capture_dir, manifest, exports, s
     _, job_ref = support(0x4800, ("switch (", "case 3:", "off_180051C60", "sub_180016370", "sub_1800164B0"))
     _, copy_ref = support(0x137d0, ("*a2 = off_180051C60", "a2[1] = *(_QWORD *)(a1 + 8)", "return a2"))
     _, destroy_ref = support(0x13590, ("if ( a2 )", "sub_1800184D0(a1)"))
-    _, batch_ref = support(0x16370, ("v7 - 240", "Sleep(v14)", "a1[10]", "+ 16i64"))
+    _, batch_ref = support(0x16370, ("v7 - 240", "Sleep(v14)", "a1[10]", "+ 16LL))(v13, &v19, &v18)"))
     support(0x13700, ("qword_18005E2D8", "return v5", "0xFFFFFFFF"))
     cleanup, cleanup_ref = support(0x164b0, ("v2[10]", "*v3 + 32", "sub_1800184D0(v2)"))
     _, constructor_ref = support(0x5440, ("off_180051A60", "sub_1800045D0", "sub_180010210",
@@ -4390,7 +4363,7 @@ def hid_indirect_evidence(module, native_path, capture_dir, manifest, exports, s
     _, worker_ref = support(0x45d0, ("off_180051BA0", "sub_1800050E0", "a1 + 216"))
     _, worker_destroy_ref = support(0x4710, ("lpMem[200] = 1", "sub_1800195E8", "GetCurrentThreadId", "sub_18001BB64"))
     support(0x10ae0)
-    support(0x10ac0, ("+ 16i64", "1i64"))
+    support(0x10ac0, ("+ 16LL))(a1, 1)",))
     support(0x12200, ("off_180051A60", "sub_1800184D0(a1)"))
 
     def bind(owner_rva, site_rva, table_rva, slot, expected_instruction, context, proof):
@@ -4430,6 +4403,174 @@ def hid_indirect_evidence(module, native_path, capture_dir, manifest, exports, s
          "The byte-exact forwarding thunk adjusts this by 16 and invokes the embedded worker destructor with delete flag 0; the containing control block owns the allocation.", [constructor_ref, worker_ref, worker_destroy_ref])
     module["indirect_resolution_scope"] = "HID dynamic globals, executeJob case-3 batch lambda, and HID constructor shared-worker ownership. Context-specific table targets do not prove arbitrary callers of reusable compiler helpers."
     return bindings, sites
+
+
+def merge_native_chain_modules(previous, current):
+    """Retain scoped evidence only while its referenced bytes are still current."""
+    identities = {}
+
+    def identity(name):
+        if name not in identities:
+            path = resolve(name, ".")
+            identities[name] = {"path": rel(path), "bytes": path.stat().st_size, "sha256": sha(path)}
+        return identities[name]
+
+    def verify(value, ancestry=()):
+        # The capture manifest retains the analyzer script identity at capture
+        # time. Its current checkout bytes are not an input to that capture.
+        if ancestry == ("analyzer", "capture_tool"):
+            return
+        if isinstance(value, dict):
+            if {"path", "bytes", "sha256"} <= value.keys():
+                actual = identity(value["path"])
+                if any(actual[key] != value[key] for key in ("path", "bytes", "sha256")):
+                    raise ValueError("Retained native-chain evidence changed: " + value["path"])
+            for key, item in value.items():
+                verify(item, (*ancestry, key))
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                verify(item, (*ancestry, index))
+
+    def unique(rows, key):
+        return list({key(row): row for row in rows}.values())
+
+    retained = {module["name"]: module for module in previous}
+    selected = {module["name"]: module for module in current}
+    if len(retained) != len(previous) or len(selected) != len(current):
+        raise ValueError("Duplicate native-chain module identity")
+    for name, old in retained.items():
+        if name not in selected:
+            verify(old)
+            continue
+        fresh = selected[name]
+        if fresh.get("original") is not None and old.get("original") != fresh["original"]:
+            continue
+        # Rust changes invalidate an implementation assessment, independently
+        # of unchanged original-source and disassembly semantics.
+        verify({key: value for key, value in old.items() if key != "rust_owners"})
+        if "original" not in fresh and "original" in old:
+            fresh["original"] = old["original"]
+        owners = {row["path"]: row for row in old.get("rust_owners", [])}
+        owners.update({row["path"]: row for row in fresh.get("rust_owners", [])})
+        current_owners = [identity(name) for name in owners if resolve(name, ".").is_file()]
+        old_owners = {row["path"]: row for row in old.get("rust_owners", [])}
+        owners_unchanged = old_owners == {row["path"]: row for row in current_owners}
+        fresh["rust_owners"] = current_owners
+        if owners_unchanged:
+            if "implementation_acceptance" in old:
+                fresh["implementation_acceptance"] = old["implementation_acceptance"]
+        else:
+            fresh["implementation_acceptance"] = (
+                "Rust owners changed; source-to-implementation acceptance requires a new review. "
+                "Revalidated source evidence does not establish implementation completion.")
+        for field in ("semantic_evidence", "verified_semantics", "remaining_semantic_work",
+                      "implementation_adaptations", "rotation_native", "gamepad_native"):
+            if field not in fresh and field in old:
+                fresh[field] = old[field]
+        for field, key in (
+            ("sources", lambda row: row["original"]["path"]),
+            ("native_functions", lambda row: row["path"]),
+            ("native_edges", lambda row: (row["caller"], row["from"], row["to"], row["type"])),
+            ("unresolved_indirect_calls", lambda row: row["address"]),
+            ("resolved_indirect_calls", lambda row: row["address"]),
+        ):
+            fresh[field] = unique([*old.get(field, []), *fresh.get(field, [])], key)
+        resolved = {row["address"] for row in fresh["resolved_indirect_calls"]}
+        fresh["unresolved_indirect_calls"] = [
+            row for row in fresh["unresolved_indirect_calls"] if row["address"] not in resolved]
+        fresh["all_linked_function_bodies_verified"] = all(
+            row["full_assembly"] for row in fresh["native_functions"])
+    retained.update(selected)
+    return list(retained.values())
+
+
+def mapping_gamepad_observer_evidence(module, native_path, function, selected):
+    """Retain the output callback chain with PE-backed functions and vtables."""
+    from host import inspect_pe
+
+    raw = native_path.read_bytes()
+    pe = inspect_pe(raw)
+    base = int(module["image_base"], 16)
+    rvas = (0x41C80, 0x42490, 0x42CF0, 0x43550, 0x43F20,
+            0xF360, 0xF550, 0xF640, 0xF830, 0xF920, 0xFAF0, 0xFBE0, 0xFE10,
+            0x5BD60, 0x5BE90, 0x5BFC0, 0x5C0F0,
+            0x757E0, 0x759D0, 0x75B50, 0x75D40, 0x75EC0, 0x760A0, 0x76210, 0x76420,
+            0xAFB14, 0x10F582, 0x81D6E, 0x81FB6, 0x82220, 0x9E490, 0xA425C,
+            0x1054A8, 0x105590, 0x1055F0)
+    anchors = {
+        0x759D0: ["*(_DWORD *)(a1 + 512) = 0", "*(_DWORD *)(a1 + 516) = a2"],
+        0x75D40: ["257", "1000 * a2"],
+        0x760A0: ["*(_WORD *)(a1 + 528) = 0", "not registered"],
+        0x76420: ["a1 + 520", "a1 + 568"],
+        0x81D6E: ["*(_DWORD *)(a1 + 516) + 1", "*(_DWORD *)(a1 + 512) < v4", "sub_18009E4A2"],
+        0x81FB6: ["0x2711", "a1 + 536", "sub_180082220"],
+        0x82220: ["a1 + 544", "a1 + 528", "a1 + 568", "a1 + 530"],
+        0xAFB14: ["sub_1800FBCB4", "a1 + 328", "sub_18010F582", "sub_180081FB6", "sub_180081D6E"],
+        0x1055F0: ['"buttons"', '"leftTrigger"', '"rightTrigger"', '"leftThumbX"', '"rightThumbY"'],
+    }
+    refs = []
+    for rva in rvas:
+        body, ref = function(base + rva)
+        if not ref["full_assembly"] or not ref["full_pseudocode"]:
+            raise ValueError("Gamepad callback capture is incomplete: " + hex(rva))
+        text = "\n".join(line["text"] for line in body["pseudocode"]["lines"])
+        if not all(anchor in text for anchor in anchors.get(rva, [])):
+            raise ValueError("Gamepad callback semantics require a new source audit: " + hex(rva))
+        for chunk in body["chunks"]:
+            start = int(chunk["start"], 16) - base
+            captured = bytes.fromhex(chunk["raw_hex"])
+            regions = [section for section in pe["sections"]
+                       if 0 <= start - section["rva"] and start - section["rva"] + len(captured) <= section["bytes"]]
+            if len(regions) != 1:
+                raise ValueError("Gamepad function is not uniquely file-backed: " + hex(start))
+            offset = regions[0]["file_offset"] + start - regions[0]["rva"]
+            if raw[offset:offset + len(captured)] != captured:
+                raise ValueError("Gamepad function differs from original PE bytes: " + hex(start))
+        selected.add(base + rva)
+        refs.append(ref)
+    tables = []
+    for rva, count, expected in (
+        (0x2E4C20, 4, [0x5BD60, 0x5BE90, 0x5BFC0, 0x5C0F0]),
+        *((rva, 4, [0x757E0, 0x75B50, 0x75EC0, 0x76210])
+          for rva in (0x2E41A0, 0x2E5830, 0x2E5C90, 0x2E7B20, 0x2E8000)),
+        (0x2EF5C8, 2, [0x105590, 0x1055F0]),
+    ):
+        table = native_pointer_targets(raw, rva, count)
+        if [int(row["rva"], 16) for row in table["targets"]] != expected:
+            raise ValueError("Gamepad callback vtable changed: " + hex(rva))
+        tables.append(table)
+    host = module["sources"][0]
+    names = {"registerXboxGamepadEvent", "registerIntervaledXboxGamepadEvent",
+             "unregisterXboxGamepadEvent", "setXboxGamepadEventCallback", "createCbXboxGamepadEvent"}
+    callers = [row for row in host["callables"] if row["name"] in names]
+    if {row["name"] for row in callers} != names:
+        raise ValueError("Gamepad host callable ownership changed")
+    return {
+        "host": host["original"], "host_callables": callers,
+        "native_functions": refs, "native_pointer_tables": tables,
+        "native_semantic_anchors": {hex(key): value for key, value in anchors.items()},
+        "frontend_query": ".analysis/results/frontend/keyboard-mw-audit.json#queries.gamepad_tester",
+        "verified_semantics": [
+            "The host requires an initialized engine and existing USB identity, registers the native stream only for the first subscriber, retains its interval/skip, and unregisters at the last subscriber. Normal subscribers accept different skip arguments. Stored interval zero is the normal sentinel even after an initial native interval-zero registration.",
+            "Exports queue through F360/F640/F920/FBE0, the registered-device manager5BD60/5BE90/5BFC0/5C0F0 and device757E0/75B50/75EC0/76210. Actor759D0/75D40 rejects duplicate registration;760A0 rejects absent unregister;76420 retains both callbacks and acknowledges installation.",
+            "Normal registration759D0 initializes threshold+512 to zero and counter+516 to the supplied skip.81D6E increments the wrapping counter and compares it with threshold; skip50 therefore emits every changed sample. Counter wrapping can suppress one sample unless a new button press, trigger0/255, or signed thumb endpoint forces it.",
+            "AFB14 compares actual computed output banks, requires the retained driver-thread owner, queues SendInput10F582 and immediately schedules observation without waiting for IOCTL completion. It performs no device GET or output readback. Unchanged banks emit nothing, and registration produces no initial zero snapshot.",
+            "81FB6 retains every changed output in order, uses wrapping milliseconds*1000, flushes at10001 samples and otherwise schedules from the previous scheduling time.82220 drains the batch, requires enabled callback ownership, stamps the batch at flush and clears scheduled state; old capacity-flush timers may still run.",
+            "MappingDataXboxInput equality105590 compares the twelve output bytes. Serializer1055F0 emits buttons, unsigned triggers and signed thumb axes. Host createCbXboxGamepadEvent forwards type8 JSON output only to registered live web contents with matching USB identity.",
+        ],
+        "implementation_scope": "Rust computed-output subscription, typed IPC, shared acknowledged session, device callback owner, host scope fanout and existing PID679 tester consumer are implemented. Output aggregation is shared with driver reports. Retired event generations and queued interval samples are discarded on stop; execution failure remains separate from computed sample provenance.",
+        "remaining_local_chains": [
+            "PID678/688 classic tester mapping ownership and modern interval5 viewport/firmware output branches remain incomplete; PID679 closure does not establish completion for the other eleven frontend products.",
+            "Real-device output, driver failure timing, vendor-DLL comparison, reconnect and actual-window tester acceptance remain unverified. Static captures and pure/mock tests are independent of runtime acceptance.",
+            "Joystick callback subscriptions and other mapping-engine product/version branches remain outside this output-observer implementation.",
+        ],
+        "implementation_adaptations": [
+            "Native callback ownership is represented by scoped UUID generations and typed IPC; a completed stop discards retired batches so old results cannot cross page/connection replacement.",
+            "Rust keeps the last subscriber until native-equivalent stop succeeds, permitting truthful cleanup failure and retry. The host removes its URL before awaiting native unregister.",
+            "Computed samples queued before an output failure are delivered once, then the retained transport error is surfaced independently; samples never constitute driver confirmation.",
+        ],
+        "validation": ".analysis/validation.json records executed Rust suites separately; runtime acceptance remains unverified.",
+    }
 
 
 def audit_native_chain(args):
@@ -4556,8 +4697,43 @@ def audit_native_chain(args):
           "crates/razer-device/src/keyboard/keyboard_analog.rs"]),
         ("mapping-engine", "CommonDLL/mapping_engine.dll", ["electron/modules/mapping_engine/win/index.js"],
          ["crates/razer-service/src/runtime/windows/mapping_native_session.rs",
-          "crates/razer-service/src/runtime/windows/mapping_native_output.rs",
-          "crates/razer-device/src/mapping/mapping_native_output.rs"]),
+          "crates/razer-service/src/runtime/windows/mapping_runtime/driver.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/driver/rotation.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/connections.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/backend.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/backend/rotation.rs",
+          "crates/razer-service/src/runtime/windows/native.rs",
+          "crates/razer-service/src/runtime/portable.rs",
+          "crates/razer-platform/src/input/global_shortcuts.rs",
+          "crates/razer-service/src/mapping/hotkeys.rs",
+          "crates/razer-service/src/mapping/mouse_rotation.rs",
+          "crates/razer-service/src/mouse/mouse_rotation.rs",
+          "crates/razer-service/src/mouse/worker.rs",
+          "crates/razer-ipc/src/mouse_rotation.rs",
+          "crates/razer-shell/src/shell/mouse/mouse_rotation.rs",
+          "crates/razer-shell/src/shell/mouse/mouse_rotation_save.rs",
+          "crates/razer-shell/src/shell.rs",
+          "crates/razer-shell/src/shell/persistence.rs",
+          "crates/razer-shell/src/shell/devices/device_discovery.rs",
+          "crates/razer-pages/src/features/mouse/mouse_rotation.rs",
+          "crates/razer-pages/src/features/mouse/mouse_rotation_state.rs",
+          "crates/razer-pages/src/features/workspace/product_workspace.rs",
+          "crates/razer-pages/src/features/workspace/source_workspace.rs",
+          "crates/razer-device/src/mapping/mapping_native_rotation.rs",
+          "crates/razer-device/src/mapping/mapping_native_output.rs",
+          "crates/razer-device/src/mapping/mapping_native_gamepad_observation.rs",
+          "crates/razer-device/src/mapping/mapping_native_observation.rs",
+          "crates/razer-ipc/src/gamepad_observation.rs",
+          "crates/razer-ipc/src/lib.rs",
+          "crates/razer-service/src/mapping/gamepad_observation.rs",
+          "crates/razer-service/src/mapping/observation.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/direct.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/direct/output_state.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/device.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/device/gamepad_observation.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/backend/gamepad_observation.rs",
+          "crates/razer-service/src/runtime/windows/mapping_runtime/executor.rs",
+          "crates/razer-pages/src/features/keyboard/actuation/keyboard_analog_gamepad.rs"]),
         ("simple-service", "CommonDLL/simple_service.dll", ["electron/modules/simple_service/win/index.js"],
          ["crates/razer-device/src/host/user_app_files.rs"]),
         ("notification-restart", "CommonDLL/SysUtilsNative.dll", ["electron/modules/sysutil/win/index.js"],
@@ -4653,6 +4829,49 @@ def audit_native_chain(args):
                         module["failures"].append({"kind": "ffi_export_body_missing", "name": name})
                     else:
                         selected.add(int(export["address"], 16))
+            if label == "mapping-engine":
+                if module["original"]["sha256"] != "6eabdfdedf797e042738b630d827c06f7a45dbe560ebaec96c66698f88f3320a":
+                    raise ValueError("Rotation semantics require a new native-source audit")
+                rotation_functions = []
+                for rva in (0x39550, 0x39DB0, 0x39200, 0x39AB0, 0xC520, 0xC7E0,
+                            0xC6F0, 0xC9D0, 0x5A9D0, 0x5AB00, 0x71520, 0x71C30,
+                            0x71720, 0x71E20, 0x10F73E, 0x10F8C8, 0x1188F0,
+                            0x118AF0, 0x113CA0, 0x114130, 0x114070, 0x118A30,
+                            0x118C40, 0x7CFA0, 0x7D270, 0x110700, 0x110758,
+                            0x110B5A, 0x110D34, 0x114850, 0x110C04, 0x1158C6):
+                    address = int(module["image_base"], 16) + rva
+                    body, ref = function(address)
+                    if not ref["full_assembly"] or not ref["full_pseudocode"]:
+                        raise ValueError("Rotation function capture is incomplete: " + hex(rva))
+                    selected.add(address)
+                    rotation_functions.append(ref)
+                host = module["sources"][0]
+                names = {"getMouseSensorRotationAngle", "setMouseSensorRotationAngle"}
+                callers = [row for row in host["callables"] if row["name"] in names]
+                if {row["name"] for row in callers} != names:
+                    raise ValueError("Rotation host callable ownership changed")
+                module["rotation_native"] = {
+                    "host": host["original"], "host_callables": callers,
+                    "native_functions": rotation_functions,
+                    "verified_semantics": [
+                        "Host requires initialized engine and an existing deviceMap identity; native manager5A9D0/5AB00 requires an existing registered InputDeviceInterface. Neither operation implicitly registers a source mapping device.",
+                        "Exports39550/39DB0 queue through engineC520/C7E0, manager5A9D0/5AB00, device71520/71C30 and its device thread71720/71E20 to the retained filter-driver owner.",
+                        "GET113CA0 submits DeviceIoControl0x88883184 synchronously with null OVERLAPPED and a four-byte output. The callback chain returns the source result, reason, identity and signed angle.",
+                        "SET114130 submits DeviceIoControl0x88883180 with four-byte input and retained OVERLAPPED; immediate success or ERROR_IO_PENDING is followed by actual completion114850/110B5A. SET has no implicit GET or angle verification request.",
+                        "Cleanup110700 cancels driver I/O and closes its handle;110758 defers cleanup completion until pending count reaches zero. The captured cleanup path does not issue a rotation reset.",
+                    ],
+                    "implementation_scope": "Typed Rotation protocol, shared physical driver lease, per-operation ownership, Windows synchronous GET, asynchronous SET and service Start/Request/Poll/Stop are implemented. The retained public worker and Shell own registration, request identities, cancellation, scope revocation and cleanup. Existing mouse pages dispatch typed edits and explicit profile restores through source-backed product/observed-firmware routing, durable local-save-before-SET and separate draft/persisted/acknowledged state. Native targets retain the actual discovered physical identity; direct requests use the shared HID worker cleanup. The UI does not add an implicit GET, default initialization write or SET readback. The frontend query records the product branches separately.",
+                    "remaining_local_chains": [
+                        "Real-device GET/SET, receiver-specific physical routing, close/reopen state, cancellation and vendor-DLL comparison remain unverified; static capture and simulated tests cannot establish runtime acceptance.",
+                        "Real-window interaction, profile switching and shutdown acceptance remain unverified. Rotation implementation does not establish completion of the remaining mapping-engine product/version branches or other native features.",
+                    ],
+                    "implementation_adaptations": [
+                        "Rust rejects GET buffers shorter than four actual returned bytes; the native source does not validate returned length before consuming its integer.",
+                        "Channel failure retires an unknown in-flight operation as failed only after the shared driver owner has completed cleanup; it cannot report success or keep polling a dead reply channel forever.",
+                    ],
+                    "validation": ".analysis/validation.json retains executed Rust suite outcomes independently of source evidence; real-device and real-window acceptance remain unverified.",
+                }
+                module["gamepad_native"] = mapping_gamepad_observer_evidence(module, native_path, function, selected)
             if label == "hid-feature":
                 module["feature_report_callers"] = feature_report_callers(parser, originals)
                 if not module["feature_report_callers"]["source_owners_complete"]:
@@ -4840,16 +5059,25 @@ def audit_native_chain(args):
             module["all_linked_function_bodies_verified"] = all(x["full_assembly"] for x in module["native_functions"])
         except Exception as exc:
             module["failures"].append({"kind": "native_chain_query_failure", "error": str(exc).replace(str(ROOT), ".")})
-    result["finished_at_utc"] = stamp()
-    result["evidence_query_complete"] = not result["failures"] and all(not m["failures"] for m in result["modules"])
-    destination = ROOT / ".analysis/results/native/chain-audit.json"
-    save(destination, result)
+    return save_native_chain_report(ROOT / ".analysis/results/native/chain-audit.json", result)
+
+
+def save_native_chain_report(destination, result):
+    """Keep revalidated evidence and persist failed queries before returning failure."""
+    with index_lock(destination.with_suffix(".lock")):
+        previous = json.loads(destination.read_bytes()) if destination.exists() else {"modules": []}
+        result["modules"] = merge_native_chain_modules(previous["modules"], result["modules"])
+        result["finished_at_utc"] = stamp()
+        result["evidence_query_complete"] = not result["failures"] and all(not m["failures"] for m in result["modules"])
+        save(destination, result)
     print(json.dumps({"receipt": rel(destination), "evidence_query_complete": result["evidence_query_complete"],
         "modules": [{"name": m["name"], "sources": len(m["sources"]), "ffi_exports": len(m["ffi_exports"]),
                      "native_functions": len(m["native_functions"]), "native_edges": len(m["native_edges"]),
                      "resolved_indirect_calls": len(m.get("resolved_indirect_calls", [])),
                      "unresolved_indirect_calls": len(m["unresolved_indirect_calls"]), "failures": m["failures"]}
                     for m in result["modules"]]}), flush=True)
+    if not result["evidence_query_complete"]:
+        raise SystemExit("Native-chain evidence query is incomplete; the failure report was saved to " + rel(destination))
     return result
 
 

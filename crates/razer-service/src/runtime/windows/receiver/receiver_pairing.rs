@@ -196,7 +196,7 @@ fn post_pair_metadata(
         let metadata_validate = || {
             validate()?;
             let current = metadata_target(
-                &hid::enumerate_for_product(cap.transport.vendor_id, cap.product_id)?,
+                &hid::enumerate_collection(cap.transport.vendor_id, cap.product_id, path)?,
                 before,
                 cap,
             )?;
@@ -209,9 +209,11 @@ fn post_pair_metadata(
             Err(error) => (None, Some(format!("{error:#}"))),
         };
         let layout = edition.as_ref().map(|reading| reading.keyboard_layout);
-        let mut metadata = json!({"source":"getEdition","reading":edition,"read_error":edition_error,"source_fallback":if layout.is_none(){json!({"edition_id":0,"keyboard_layout":0})}else{Value::Null},"metadata_complete":layout.is_some(),"layout_source":"edition_response_byte_0", "transport":{"path":path,"device_container_id":container,"device_instance_id":target["device_instance_id"],"claim_interface":target["claim_interface"],"feature_report_bytes":bytes,"source_class":cap.metadata_source_class,"transaction_prefix":cap.metadata_prefix}});
+        let mut metadata = json!({"source":"getEdition","reading":edition,"read_error":edition_error,"metadata_complete":layout.is_some(),"layout_source":if layout.is_some(){"edition_response_byte_0"}else{"unobserved"}, "transport":{"path":path,"device_container_id":container,"device_instance_id":target["device_instance_id"],"claim_interface":target["claim_interface"],"feature_report_bytes":bytes,"source_class":cap.metadata_source_class,"transaction_prefix":cap.metadata_prefix}});
         if category == "MOUSE" && cap.metadata_mouse_layout {
-            let used = layout.unwrap_or(0) == 0;
+            // The source still requests the hardware module after an edition
+            // failure. Its reply cannot establish the missing edition byte.
+            let used = layout.is_none_or(|value| value == 0);
             let (status, error) = if used {
                 match session.get_mouse_layout(&metadata_validate) {
                     Ok(status) => (Some(status), None),
@@ -226,7 +228,7 @@ fn post_pair_metadata(
         }
         Ok(metadata)
     })();
-    result.unwrap_or_else(|error| json!({"source":"getEdition","reading":null,"read_error":format!("{error:#}"),"source_fallback":{"edition_id":0,"keyboard_layout":0},"metadata_complete":false,"layout_source":"source_failure_default"}))
+    result.unwrap_or_else(|error| json!({"source":"getEdition","reading":null,"read_error":format!("{error:#}"),"metadata_complete":false,"layout_source":"unobserved"}))
 }
 
 fn execute(
@@ -246,7 +248,7 @@ fn execute(
     let _receiver_lock = receiver::ReceiverLock::acquire(container)?;
     let identity = || {
         let (current, current_cap) = receiver::select_target(
-            &hid::enumerate_for_product(query_cap.vendor_id, query_cap.product_id)?,
+            &hid::enumerate_collection(query_cap.vendor_id, query_cap.product_id, path)?,
             path,
             container,
         )?;

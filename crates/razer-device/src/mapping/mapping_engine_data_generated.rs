@@ -2898,6 +2898,10 @@ pub(super) const PRODUCTS: &[ProductData] = &[
         data: &DATA_0,
     },
     ProductData {
+        product_id: 158,
+        data: &DATA_0,
+    },
+    ProductData {
         product_id: 182,
         data: &DATA_0,
     },

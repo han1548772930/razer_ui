@@ -161,12 +161,17 @@ impl KeyboardProductWorkspace {
             return;
         };
         let info = &spec.info;
+        let slider_default = if self.spec.product_id == 679 {
+            ((info.min + info.max - info.default_value) / info.unit).round()
+        } else {
+            (info.default_value / info.unit).round()
+        };
         let slider = cx.new(|_| {
             SliderState::new()
                 .min((info.min / info.unit).round())
                 .max((info.max / info.unit).round())
                 .step(1.)
-                .default_value((info.default_value / info.unit).round())
+                .default_value(slider_default)
         });
         let rapid_default = Self::rapid_display(
             if self.spec.config["DeviceInfo"]["AnalogGenVersion"] == "analogV1" {
@@ -199,7 +204,13 @@ impl KeyboardProductWorkspace {
                         return;
                     };
                     let ids = state.selected.iter().cloned().collect();
-                    let raw = value.start() * state.spec.info.unit;
+                    let display_value = if state.spec.product_id == 679 {
+                        let slider = state.slider.read(cx);
+                        slider.min_value() + slider.max_value() - value.start()
+                    } else {
+                        value.start()
+                    };
+                    let raw = display_value * state.spec.info.unit;
                     state.make_point = raw;
                     state.sync_all_disabled = false;
                     this.apply_actuation(ids, raw, cx);
@@ -505,6 +516,11 @@ impl KeyboardProductWorkspace {
         let rapid_break = state.rapid_break.clone();
         let value = (raw.min(maximum) / state.spec.info.unit).round();
         let slider_max = (maximum / state.spec.info.unit).round();
+        let value = if state.spec.product_id == 679 {
+            (state.spec.info.min / state.spec.info.unit).round() + slider_max - value
+        } else {
+            value
+        };
         self.syncing = true;
         slider.update(cx, |s, cx| {
             *s = std::mem::replace(s, SliderState::new()).max(slider_max);
@@ -1036,7 +1052,12 @@ impl KeyboardProductWorkspace {
         };
         let info = &state.spec.info;
         let locked = state.presentation.factory_profile_lock && self.factory_default_profile;
-        let value = state.slider.read(cx).value().start();
+        let slider = state.slider.read(cx);
+        let value = if state.spec.product_id == 679 {
+            slider.min_value() + slider.max_value() - slider.value().start()
+        } else {
+            slider.value().start()
+        };
         let display = |value: f32| format!("{:.1} mm", value / 10. + info.offset);
         let keys = h_flex()
             .justify_center()
@@ -1177,13 +1198,20 @@ impl KeyboardProductWorkspace {
                                     .object_fit(ObjectFit::Fill),
                             ),
                     )
-                    .child(
+                    .child(if self.spec.product_id == 679 {
+                        self.analog_actuation_slider(
+                            &state.slider,
+                            locked || state.selected.is_empty(),
+                            cx,
+                        )
+                    } else {
                         Slider::new(&state.slider)
                             .vertical()
                             .w(surface::css(70.))
                             .h(surface::css(204.))
-                            .disabled(locked || state.selected.is_empty()),
-                    ),
+                            .disabled(locked || state.selected.is_empty())
+                            .into_any_element()
+                    }),
             )
             .child(div().child(display(value)))
             .child(

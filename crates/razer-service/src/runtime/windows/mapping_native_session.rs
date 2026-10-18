@@ -248,6 +248,7 @@ pub struct WindowsMappingNativeSessionTransport {
     handle: HANDLE,
     next_id: u64,
     pending: BTreeMap<NativeSubmissionId, PendingNative>,
+    completed: BTreeMap<NativeSubmissionId, Vec<u8>>,
 }
 
 impl Default for WindowsMappingNativeSessionTransport {
@@ -256,6 +257,7 @@ impl Default for WindowsMappingNativeSessionTransport {
             handle: ptr::null_mut(),
             next_id: 1,
             pending: BTreeMap::new(),
+            completed: BTreeMap::new(),
         }
     }
 }
@@ -310,6 +312,46 @@ impl NativeSessionTransport for WindowsMappingNativeSessionTransport {
             .next_id
             .checked_add(1)
             .ok_or(NativeTransportError::Submit { code: u32::MAX })?;
+        if let NativeOperation::Ioctl {
+            ioctl,
+            input,
+            output_bytes,
+        } = &operation
+        {
+            if *ioctl == razer_device::mapping_native_rotation::GET_ROTATION_IOCTL {
+                if !input.is_empty() || *output_bytes != 4 {
+                    return Err(NativeTransportError::InvalidBufferLength {
+                        input_bytes: input.len(),
+                        output_bytes: *output_bytes,
+                    });
+                }
+                let mut angle = [0_u8; 4];
+                let mut returned = 0;
+                // 113CA0 performs this read synchronously on the retained
+                // driver thread. No OVERLAPPED or second handle is created.
+                // Both output pointers remain valid through the API call.
+                let succeeded = unsafe {
+                    DeviceIoControl(
+                        handle,
+                        *ioctl,
+                        ptr::null(),
+                        0,
+                        angle.as_mut_ptr().cast(),
+                        4,
+                        &mut returned,
+                        ptr::null_mut(),
+                    )
+                };
+                if succeeded == 0 {
+                    return Err(Self::error(|code| NativeTransportError::Submit { code }));
+                }
+                if returned != 4 {
+                    return Err(NativeTransportError::Poll { code: 13 });
+                }
+                self.completed.insert(id, angle.to_vec());
+                return Ok(id);
+            }
+        }
         let event = unsafe { CreateEventW(ptr::null(), 1, 0, ptr::null()) };
         if event.is_null() {
             return Err(Self::error(|code| NativeTransportError::Submit { code }));
@@ -387,6 +429,9 @@ impl NativeSessionTransport for WindowsMappingNativeSessionTransport {
         wait: Duration,
     ) -> Result<NativeCompletion, NativeTransportError> {
         let handle = self.handle()?;
+        if let Some(output) = self.completed.remove(&id) {
+            return Ok(NativeCompletion::Completed(Ok(output)));
+        }
         let request = self
             .pending
             .get_mut(&id)
@@ -427,6 +472,9 @@ impl NativeSessionTransport for WindowsMappingNativeSessionTransport {
 
     fn cancel(&mut self, id: NativeSubmissionId) -> Result<(), NativeTransportError> {
         let handle = self.handle()?;
+        if self.completed.contains_key(&id) {
+            return Ok(());
+        }
         let request = self
             .pending
             .get(&id)
@@ -443,7 +491,7 @@ impl NativeSessionTransport for WindowsMappingNativeSessionTransport {
     }
 
     fn close(&mut self) -> Result<(), NativeTransportError> {
-        if !self.pending.is_empty() {
+        if !self.pending.is_empty() || !self.completed.is_empty() {
             return Err(NativeTransportError::Close { code: 997 });
         }
         let handle = self.handle()?;

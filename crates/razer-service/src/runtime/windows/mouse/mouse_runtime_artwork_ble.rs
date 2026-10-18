@@ -135,6 +135,52 @@ pub(crate) struct Connection {
 }
 
 impl Connection {
+    pub(crate) fn connect_with_retry(
+        target: &WindowsBleTarget,
+        validate: &dyn Fn() -> anyhow::Result<()>,
+    ) -> anyhow::Result<Self> {
+        let mut last = None;
+        // Current rzDevice30 w6=2 and ah=150, shared by its actual callers.
+        for attempt in 0..2 {
+            if attempt > 0 {
+                interruptible_sleep(Duration::from_millis(150), validate)?;
+            }
+            match Self::connect(target, validate) {
+                Ok(connection) => return Ok(connection),
+                Err(error) => {
+                    validate()?;
+                    last = Some(error);
+                }
+            }
+        }
+        Err(last.context("BLE connection did not run")?)
+    }
+
+    pub(crate) fn exchange_with_retry(
+        &mut self,
+        frame: &[u8],
+        validate: &dyn Fn() -> anyhow::Result<()>,
+    ) -> anyhow::Result<Vec<u8>> {
+        let mut last = None;
+        // Current rzDevice30 lI=2 and lz=30. Retries reuse the same frame/tx.
+        for attempt in 0..2 {
+            if attempt > 0 {
+                interruptible_sleep(Duration::from_millis(30), validate)?;
+            }
+            match self.exchange(frame, validate) {
+                Ok(data) => return Ok(data),
+                Err(error) => {
+                    validate()?;
+                    if !retryable(&error) {
+                        return Err(error);
+                    }
+                    last = Some(error);
+                }
+            }
+        }
+        Err(last.context("BLE command did not run")?)
+    }
+
     pub(crate) fn connect(
         target: &WindowsBleTarget,
         validate: &dyn Fn() -> anyhow::Result<()>,
@@ -462,26 +508,7 @@ impl Transport for Feature<'_> {
         let _lock = receiver::ReceiverLock::acquire(&self.target.device_container_id)?;
         let result = (|| {
             if self.connection.is_none() {
-                let mut last = None;
-                // Current rzDevice30 constants w6=2, ah=150.
-                for attempt in 0..2 {
-                    if attempt > 0 {
-                        interruptible_sleep(Duration::from_millis(150), validate)?;
-                    }
-                    match Connection::connect(self.target, validate) {
-                        Ok(connection) => {
-                            self.connection = Some(connection);
-                            break;
-                        }
-                        Err(error) => {
-                            validate()?;
-                            last = Some(error);
-                        }
-                    }
-                }
-                if self.connection.is_none() {
-                    return Err(last.context("BLE mouse connection did not run")?);
-                }
+                self.connection = Some(Connection::connect_with_retry(self.target, validate)?);
                 // rzDevice30 validates its connected command channel through
                 // Get Edition Information before the first requested query.
                 let transaction = self.sequence;
@@ -491,60 +518,28 @@ impl Transport for Feature<'_> {
                     razer_device::mouse_current_power::ble::EDITION,
                     &[],
                 )?;
-                let mut last = None;
-                let mut verified = false;
-                for attempt in 0..2 {
-                    if attempt > 0 {
-                        interruptible_sleep(Duration::from_millis(30), validate)?;
-                    }
-                    match self.connection.as_mut().unwrap().exchange(&frame, validate) {
-                        Ok(data) => {
-                            ensure!(
-                                data.len() >= 3,
-                                "BLE connection edition response is truncated"
-                            );
-                            verified = true;
-                            break;
-                        }
-                        Err(error) => {
-                            validate()?;
-                            if !retryable(&error) {
-                                return Err(error);
-                            }
-                            last = Some(error);
-                        }
-                    }
-                }
-                if !verified {
-                    return Err(last.context("BLE edition validation did not run")?);
-                }
+                let data = self
+                    .connection
+                    .as_mut()
+                    .unwrap()
+                    .exchange_with_retry(&frame, validate)?;
+                ensure!(
+                    data.len() >= 3,
+                    "BLE connection edition response is truncated"
+                );
             }
             let transaction = self.sequence;
             self.sequence = if self.sequence == 30 { 0 } else { self.sequence + 1 };
             let frame = artwork::ble_query_frame(transaction);
-            let mut last = None;
-            // Current rzDevice30 lI=2, lz=30. Retry retains the same transaction.
-            for attempt in 0..2 {
-                if attempt > 0 {
-                    interruptible_sleep(Duration::from_millis(30), validate)?;
-                }
-                match self.connection.as_mut().unwrap().exchange(&frame, validate) {
-                    Ok(payload) => {
-                        return payload
-                            .first()
-                            .copied()
-                            .context("BLE sidepad response has no actual status byte");
-                    }
-                    Err(error) => {
-                        validate()?;
-                        if !retryable(&error) {
-                            return Err(error);
-                        }
-                        last = Some(error);
-                    }
-                }
-            }
-            Err(last.context("BLE sidepad query did not run")?)
+            let payload = self
+                .connection
+                .as_mut()
+                .unwrap()
+                .exchange_with_retry(&frame, validate)?;
+            payload
+                .first()
+                .copied()
+                .context("BLE sidepad response has no actual status byte")
         })();
         // Power and artwork workers share this GATT characteristic. Release
         // this command's CCCD and callbacks before releasing its container

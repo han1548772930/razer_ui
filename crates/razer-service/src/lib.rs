@@ -17,6 +17,10 @@ pub mod dpi_matcher;
 pub mod help_system_info;
 #[path = "mouse/mouse_dynamic.rs"]
 pub mod mouse_dynamic;
+#[path = "mouse/mouse_rotation.rs"]
+pub mod mouse_rotation;
+#[path = "mouse/worker.rs"]
+mod mouse_worker;
 #[path = "runtime/mod.rs"]
 pub mod runtime;
 #[path = "audio/seiren/mod.rs"]

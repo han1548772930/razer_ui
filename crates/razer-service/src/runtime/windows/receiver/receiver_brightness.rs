@@ -17,7 +17,7 @@ pub(super) fn request(path: &str, container: &str, percent: Option<u8>) -> anyho
     let device = hid_transport::open(path, feature)?;
     let validate = || -> anyhow::Result<()> {
         let (current, current_cap) = receiver::select_target(
-            &hid::enumerate_for_product(cap.vendor_id, cap.product_id)?,
+            &hid::enumerate_collection(cap.vendor_id, cap.product_id, path)?,
             path,
             container,
         )?;

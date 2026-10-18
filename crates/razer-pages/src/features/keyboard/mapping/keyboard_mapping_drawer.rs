@@ -586,29 +586,30 @@ impl KeyboardProductWorkspace {
                         .as_ref()
                         .is_some_and(|edit| edit.from_panel)
                 {
-                    self.clear_analog_mapping();
+                    self.clear_analog_mapping(cx);
                 }
             }
             Next::Hyper => {
                 self.hypershift = !self.hypershift;
-                self.clear_analog_mapping();
+                self.clear_analog_mapping(cx);
                 self.hovered_key = None;
             }
-            Next::Close => self.clear_analog_mapping(),
+            Next::Close => self.clear_analog_mapping(cx),
             Next::Page(page_key) => {
-                self.clear_analog_mapping();
+                self.clear_analog_mapping(cx);
                 cx.emit(KeyboardNavigationRequested::new(page_key));
             }
             Next::HistoryPage(page_key, history_index) => {
-                self.clear_analog_mapping();
+                self.clear_analog_mapping(cx);
                 cx.emit(
                     KeyboardNavigationRequested::new(page_key).with_history_index(history_index),
                 );
             }
         }
+        self.sync_analog_observation(cx);
         cx.notify();
     }
-    pub(in super::super) fn clear_analog_mapping(&mut self) {
+    pub(in super::super) fn clear_analog_mapping(&mut self, cx: &mut Context<Self>) {
         self.selected_key = None;
         self.analog_gamepad.mapping.edit = None;
         self.analog_gamepad.mapping.pending_save = None;
@@ -631,6 +632,7 @@ impl KeyboardProductWorkspace {
         self.analog_gamepad.mapping.options.dismiss();
         self.analog_gamepad.mapping.turbo.dismiss();
         self.analog_gamepad.mapping.targets.dismiss();
+        self.sync_analog_observation(cx);
     }
     pub(in super::super) fn analog_mapping_snapshot(&self, snapshot: &mut Value) {
         // Deliberately local: neither a device mapping nor a successful vendor save.
@@ -646,7 +648,7 @@ impl KeyboardProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.clear_analog_mapping();
+        self.clear_analog_mapping(cx);
         let edit = self
             .draft
             .as_object_mut()
@@ -688,6 +690,7 @@ impl KeyboardProductWorkspace {
                 self.init_mapping_dynamic(1, window, cx);
             }
         }
+        self.sync_analog_observation(cx);
     }
     fn stage_analog_category(
         &mut self,
@@ -787,6 +790,7 @@ impl KeyboardProductWorkspace {
         self.init_mapping_dial(slot, true, window, cx);
         self.init_mapping_audio_brightness(slot, true, window, cx);
         self.init_mapping_dynamic(slot, window, cx);
+        self.sync_analog_observation(cx);
         cx.emit(KeyboardProductChanged);
         cx.notify();
     }
@@ -820,7 +824,7 @@ impl KeyboardProductWorkspace {
         if let Some(target) = self.draft.pointer_mut(&path) {
             *target = json!(merged);
         }
-        self.clear_analog_mapping();
+        self.clear_analog_mapping(cx);
         cx.emit(KeyboardProductChanged);
         self.request_actuation_mapping(cx);
         self.show_mapping_login_warning();
@@ -1391,7 +1395,7 @@ impl KeyboardProductWorkspace {
                             .outline()
                             .disabled(source_footer_disabled)
                             .on_click(cx.listener(|this, _, _, cx| {
-                                this.clear_analog_mapping();
+                                this.clear_analog_mapping(cx);
                                 cx.emit(KeyboardProductChanged);
                                 cx.notify();
                             })),

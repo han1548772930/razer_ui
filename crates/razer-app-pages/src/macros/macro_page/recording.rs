@@ -53,6 +53,26 @@ impl MacroPage {
         }
     }
     pub fn toggle_recording(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.toggle_recording_with(false, window, cx);
+    }
+    pub(super) fn toggle_recording_from_shortcut(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        // xa's start-recording-event listener belongs to the mounted editor.
+        // br can still stop an active recorder independently of that listener.
+        if self.tab != MacroTab::MyMacros && !self.recording_controls_active() {
+            return;
+        }
+        self.toggle_recording_with(true, window, cx);
+    }
+    fn toggle_recording_with(
+        &mut self,
+        shortcut: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         match self.recording.stage {
             Stage::Countdown(_) => {
                 self.cancel_recording(cx);
@@ -60,7 +80,11 @@ impl MacroPage {
             }
             Stage::Starting | Stage::Recording => {
                 if let Some(sender) = &self.recording.command {
-                    let _ = sender.send(Command::Stop);
+                    let _ = sender.send(if shortcut {
+                        Command::StopShortcut
+                    } else {
+                        Command::Stop
+                    });
                 }
                 self.recording.stage = Stage::Stopping;
                 self.recording.status = "正在等待原生录制停止…".into();
@@ -298,6 +322,19 @@ impl MacroPage {
                         .child(error),
                 )
             })
+            .when_some(
+                self.record_ui.shortcut.registration_error.clone(),
+                |v, error| {
+                    v.child(
+                        div()
+                            .id("macro-record-shortcut-error")
+                            .test_support()
+                            .aria_label(error.clone())
+                            .text_color(rgb(0xe65a5a))
+                            .child(error),
+                    )
+                },
+            )
             .into_any_element()
     }
 }

@@ -1543,6 +1543,8 @@ def audit_family_function(args):
         return audit_mouse_receiver_polling(args)
     if getattr(args, "query", None) == "keyboard-analog-keys":
         return audit_keyboard_analog_keys(args)
+    if getattr(args, "query", None) == "keyboard-gamepad-tester":
+        return audit_keyboard_gamepad_tester(args)
     if getattr(args, "query", None) == "keyboard-local-controls":
         return audit_keyboard_local_controls(args)
     if getattr(args, "query", None) == "keyboard-brightness":
@@ -1563,6 +1565,8 @@ def audit_family_function(args):
         return audit_mouse_dpi_matcher(args)
     if getattr(args, "query", None) == "mouse-dynamic-sensitivity":
         return audit_mouse_dynamic_sensitivity(args)
+    if getattr(args, "query", None) == "mouse-rotation":
+        return audit_mouse_rotation(args)
     if getattr(args, "query", None) == "mouse-dpi-profile":
         return audit_mouse_dpi_profile(args)
     if getattr(args, "query", None) == "mouse-local-profile-schema":
@@ -2462,7 +2466,7 @@ def audit_mouse_power(args):
                 for row in physical_factories["products"])
     if not reusable:
         physical_factories = a.feature_report_callers(parser, {item["path"]: item for item in indexed["inputs"]},
-            selected_capabilities=[{"product_id": pid} for pid in sorted(selected)], write_runtime=False)
+            selected_capabilities=[{"product_id": pid} for pid in sorted(selected)])
     physical_factories["tool"] = identity(Path(a.__file__))
     physical_factories["scope"] = "All selected mounted mouse power factories, exact physical Protocol25 senders; Protocol30 BLE is audited independently below"
     # Retain complete physical evidence before a later independent UI closure
@@ -3744,7 +3748,7 @@ def audit_mouse_dpi_backend(args):
                 indexed = json.loads((a.ROOT / ".analysis/inputs.json").read_bytes())
                 factory_originals = {item["path"]: item for item in indexed["inputs"]}
             capture = a.feature_report_callers(factory_parser, factory_originals,
-                selected_capabilities=[{"product_id": pid}], write_runtime=False)
+                selected_capabilities=[{"product_id": pid}])
             row = capture["products"][0]
             physical_rows[pid] = row
         if not row["source_owners_complete"]:
@@ -6665,11 +6669,11 @@ def mapping_engine_literals(text):
             "turbo_events": events, "constants": constants}, modules
 
 
-def mapping_engine_active_binding_182(family, factory):
+def mapping_engine_active_binding_182(family, factory, pid=182):
     """Verify the middleware selects this factory, rather than an unused bundle."""
-    if family != "mouse" or factory["module_id"] != 77898:
-        raise ValueError("PID182 mapping requires its current mouse factory 77898")
-    receipt, original, text = verified_acquired_chunk(family, 182, "6259")
+    if family != "mouse" or pid not in (158, 182) or factory["module_id"] != 77898:
+        raise ValueError("Selected mouse mapping requires its current factory 77898")
+    receipt, original, text = verified_acquired_chunk(family, pid, "6259")
     captured = {row["module_id"]: row for row in keyboard_source_modules(text)}
     wrapper, caller = captured[32226], captured[30525]
     if ("var o=n(77898);" not in wrapper["body"]
@@ -6678,7 +6682,7 @@ def mapping_engine_active_binding_182(family, factory):
             or any("a.A." + method not in caller["body"] for method in (
                 "generateDefaultTurbos()", "generateAppEngineMultiMappings(e)",
                 "generateAppEngineMappings(e)", "generateAppEngineData(t)"))):
-        raise ValueError("PID182 active mapping factory linkage differs from current source")
+        raise ValueError(f"PID{pid} active mapping factory linkage differs from current source")
     modules = {}
     for role, row in (("factory_export_wrapper", wrapper), ("profile_mapping_caller", caller)):
         modules[role] = {**row, "sha256": hashlib.sha256(row["body"].encode("utf-8")).hexdigest()}
@@ -6697,15 +6701,15 @@ def audit_mapping_engine_literals(args):
     data = json.loads(destination.read_bytes()) if destination.is_file() else {}
     products = []
     for pid in args.product:
-        chunk = "1451" if pid == 756 else "7795" if pid in (182, 740, 746) else "2520"
+        chunk = "1451" if pid == 756 else "7795" if pid in (158, 182, 740, 746) else "2520"
         receipt_path, source, text = verified_acquired_chunk(args.family, pid, chunk)
         data[str(pid)], modules = mapping_engine_literals(text)
         products.append({"product_id": pid, "acquisition": identity(receipt_path),
                          "original": source, "complete_modules": modules,
                           "keys": len(data[str(pid)]["keys"]),
                           "default_turbos": len(data[str(pid)]["default_turbo_ids"]), "failures": []})
-        if pid == 182:
-            products[-1]["active_factory"] = mapping_engine_active_binding_182(args.family, modules["factory"])
+        if pid in (158, 182):
+            products[-1]["active_factory"] = mapping_engine_active_binding_182(args.family, modules["factory"], pid)
         if pid in (740, 746):
             products[-1]["magnetic_mapping"] = keyboard_magnetic_mapping_sources(pid)
         if pid == 756:
@@ -10615,6 +10619,7 @@ def audit_mouse_receiver_runtime(args):
     again. This query does not promote the reviewed subset to page closure.
     """
     import importlib.metadata
+    import host
     import sys
     sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
     from tree_sitter import Language, Parser
@@ -10623,6 +10628,16 @@ def audit_mouse_receiver_runtime(args):
     report_path = a.ROOT / ".analysis/results/frontend/mouse-main-audit.json"
     previous = json.loads(report_path.read_bytes())["receiver_indicator_runtime"]
     result = deepcopy(previous)
+    result["native_verified_indirect_slots"] = [slot for slot in result["native_verified_indirect_slots"]
+        if slot["role"] != "base_input_device_hardware_event_dispatch"]
+    for role, table, target in (("input_base", 0x2e5ac8, 0x2a4ac0), ("usb", 0x2e7e38, 0xa8de0),
+            ("ble", 0x2e3fd8, 0x53c70), ("external", 0x2e5668, 0x64a60),
+            ("os_hook", 0x2e7958, 0x549d0)):
+        name = role + "_adjusted_hardware_callback_dispatch"
+        result["native_verified_indirect_slots"] = [slot for slot in result["native_verified_indirect_slots"]
+            if slot["role"] != name]
+        result["native_verified_indirect_slots"].append({"role": name, "vtable_rva": hex(table),
+            "slot_byte_offset": 24, "target_rva": hex(target)})
     parser = Parser(Language(tree_sitter_javascript.language()))
     inputs, trees, checked, parsed_module_cache = {}, {}, {}, {}
 
@@ -10900,6 +10915,13 @@ def audit_mouse_receiver_runtime(args):
             result["native_verified_indirect_slots"] = verified["verified_indirect_slots"]
         native_rows.append(native)
     result["native"] = native_rows
+    producer_audit = host.HostLocalAudit()
+    result["hardware_event_producer"] = host.retain_receiver_hardware_producer(producer_audit)
+    if producer_audit.final_snapshot():
+        raise ValueError("Receiver hardware producer originals changed during static verification")
+    result["source_semantics"]["native_hardware_event_partial_closure"] = result[
+        "hardware_event_producer"]["semantics"]["adjusted_dispatch"] + " " + result[
+        "hardware_event_producer"]["semantics"]["callback"]
     for product in result["verified_source_ui_query_links"]:
         for region in product["complete_regions_verified"]:
             _, body = span(region["original"], region)
@@ -13169,7 +13191,7 @@ def audit_mouse_dynamic_sensitivity(args):
             "scope": "Complete source reducer/dispatch, mounted editor and panel function bodies; transitive imported helpers remain covered by the current source set and separate UI-tree audit"})
     indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
     physical = a.feature_report_callers(audit.parser, {item["path"]: item for item in indexed["inputs"]},
-        selected_capabilities=[{"product_id": pid} for pid in ids], write_runtime=False)
+        selected_capabilities=[{"product_id": pid} for pid in ids])
     if any(not row["source_owners_complete"] or row["failures"] for row in physical["products"]):
         raise ValueError("Dynamic effective physical factories are unresolved")
     # Input START/STOP uses the same native entry points whose full ABI, callback,
@@ -13209,6 +13231,345 @@ def audit_mouse_dynamic_sensitivity(args):
                 for row in products],"semantics":result["semantics"]})
     print(json.dumps({"receipt":a.rel(matcher_path),"query":"dynamic_sensitivity",
         "products":ids,"complete_owners":len(audit.owners),"target_execution":False}),flush=True)
+    return result
+
+
+def rotation_member_references(audit, files, names):
+    """Find actual member uses, including aliases, without counting declarations/text."""
+    rows = []
+    for source in files:
+        if not source["path"].endswith(".js"):
+            continue
+        raw = audit.read(source)
+        seen = set()
+        for name in names:
+            for hit in re.finditer(re.escape(name.encode()), raw):
+                node = audit.tree(source).root_node.descendant_for_byte_range(hit.start(), hit.end()-1)
+                while node is not None and node.type in {"string_fragment", "string", "property_identifier"}:
+                    node = node.parent
+                if node is None or node.type not in {"member_expression", "subscript_expression"}:
+                    continue
+                prop = node.child_by_field_name("property" if node.type == "member_expression" else "index")
+                if prop is None or prop.text.decode().strip("\"'") != name:
+                    continue
+                key = (node.start_byte, node.end_byte)
+                if key in seen:
+                    continue
+                seen.add(key)
+                rows.append({"name": name, "owner": audit.retain_range("rotation_member_use", source,
+                    node.start_byte, node.end_byte, node.type)})
+    return rows
+
+
+def rotation_factory_closure(audit, files, seeds):
+    """Retain full transitive numeric factories, resolving lexical require owners."""
+    factories = {}
+    for source in files:
+        if source["path"].endswith(".js"):
+            for module in keyboard_source_modules(audit.read(source).decode()):
+                if isinstance(module["module_id"], int):
+                    factories.setdefault(module["module_id"], []).append((source, module))
+    rows, pending = {}, list(seeds)
+    while pending:
+        identifier = pending.pop()
+        if identifier in rows:
+            continue
+        found = factories.get(identifier, [])
+        if len(found) != 1:
+            raise ValueError(f"Rotation dependency factory {identifier} is absent or ambiguous")
+        source, module = found[0]
+        node = audit.tree(source).root_node.descendant_for_byte_range(module["byte_start"], module["byte_end"]-1)
+        while node is not None and (node.start_byte != module["byte_start"] or node.end_byte != module["byte_end"]):
+            node = node.parent
+        if node is None:
+            raise ValueError("Rotation factory has no exact syntax owner")
+        value = node.child_by_field_name("value") if node.type == "pair" else node
+        parameters = value.child_by_field_name("parameters")
+        params = parameters.named_children if parameters is not None else []
+        dependencies = set()
+        if len(params) >= 3:
+            require, work = params[2], [value]
+            while work:
+                current = work.pop(); work.extend(current.named_children)
+                callee = current.child_by_field_name("function") if current.type == "call_expression" else None
+                if callee is None or callee.type != "identifier" or callee.text != require.text:
+                    continue
+                binding = audit.binding("rotation_dependency_require", source, callee.text.decode(), callee.start_byte)
+                if binding.get("start_byte") != require.start_byte:
+                    continue
+                arguments = current.child_by_field_name("arguments").named_children
+                if len(arguments) != 1 or arguments[0].type != "number":
+                    raise ValueError("Rotation factory contains an unresolved dynamic dependency")
+                dependencies.add(javascript_integer_literal(arguments[0].text.decode()))
+        rows[identifier] = {"module_id": identifier, "dependencies": sorted(dependencies),
+            "owner": audit.retain_range("rotation_dependency_factory", source, node.start_byte, node.end_byte, node.type)}
+        pending.extend(dependencies)
+    return [rows[key] for key in sorted(rows)]
+
+
+def rotation_imported_owners(audit, files, source, owner_id):
+    """Resolve actual task-maker namespaces to complete exported cache/queue/callback owners."""
+    owner = audit.owners[owner_id]
+    node = audit.tree(source).root_node.descendant_for_byte_range(owner["byte_start"],owner["byte_end"]-1)
+    rows, seen, pending = [], set(), [node]
+    while pending:
+        current = pending.pop(); pending.extend(current.named_children)
+        if current.type != "member_expression":
+            continue
+        obj, prop = current.child_by_field_name("object"),current.child_by_field_name("property")
+        if obj is None or obj.type != "identifier" or prop is None:
+            continue
+        binding = audit.binding("rotation_task_namespace",source,obj.text.decode(),obj.start_byte)
+        if binding["resolution"] != "declaration":
+            continue
+        dependency = re.fullmatch(r'[\w$]+=[\w$]+\((\d+)\)',binding["body"])
+        if dependency is None:
+            continue
+        key = (int(dependency[1]),prop.text.decode())
+        if key in seen:
+            continue
+        seen.add(key)
+        exported = audit.webpack_export("rotation_task_import",files,*key)
+        rows.append({"namespace":binding,"export":exported})
+    return rows
+
+
+def mouse_rotation_source(audit, files, ui_files, product_id):
+    def original(items, anchor):
+        found = [source for source in items if source["path"].endswith(".js") and anchor.encode() in audit.read(source)]
+        if len(found) != 1:
+            raise ValueError(f"Rotation {product_id} source absent or ambiguous: {anchor}")
+        return found[0]
+    def retain(role, source, anchor, kinds, unique=True):
+        return audit.retain("rotation_" + role, source, anchor, set(kinds), unique=unique)
+    def factory(role, source, owner):
+        record = audit.owners[owner]
+        node = audit.tree(source).root_node.descendant_for_byte_range(record["byte_start"], record["byte_end"]-1)
+        while node is not None:
+            key = node.child_by_field_name("key" if node.type == "pair" else "name") if node.type in {"pair", "method_definition"} else None
+            if key is not None and key.type == "number":
+                return audit.retain_range("rotation_" + role, source, node.start_byte, node.end_byte, node.type)
+            node = node.parent
+        raise ValueError("Rotation source owner has no enclosing factory: " + role)
+    source = original(files, "rotation=n")
+    owners = {}
+    for role, anchor, kinds, unique in (
+            ("persistence_then_queue", "rotation=n", {"function_declaration", "function_expression"}, True),
+            ("setter_runner", "setMouseSensorRotationAngle(t.device,o)", {"function_declaration"}, True),
+            ("result_consumer", "MW_SET_ROTATION_TO_UI", {"function_declaration"}, True),
+            ("dispatch_and_profile_restore", 'case"rotation"', {"variable_declarator", "function_declaration"}, False)):
+        owners[role] = retain(role, source, anchor, kinds, unique)
+    for role in ("persistence_then_queue", "dispatch_and_profile_restore"):
+        owners[role + "_factories"] = [factory(role + "_factory", source, owner) for owner in owners[role]]
+    maker = audit.owners[owners["persistence_then_queue"][0]]["body"]
+    runner = audit.owners[owners["setter_runner"][0]]["body"]
+    consumer = audit.owners[owners["result_consumer"][0]]["body"]
+    if not all(value in maker for value in ("nextVersion", "NORMAL_SKIPPABLE", "enqueueTask", '"setting"')):
+        raise ValueError("Rotation profile/version/persistence queue contract differs")
+    if not all(value in runner for value in ("signal.aborted", "(e.value+360)%360", "fwVersionForRotation", "Promise.reject(i)", "i.result=!0")):
+        raise ValueError("Rotation complete runner/cancel/result contract differs")
+    if "MW_ACTION_FROM_UI" not in consumer or "payload:{rotation:e}" not in consumer:
+        raise ValueError("Rotation result callback source projection differs")
+    owners["maker_imports"] = rotation_imported_owners(audit,files,source,owners["persistence_then_queue"][0])
+    imported_ids = {row["export"]["binding"]["owner_id"] for row in owners["maker_imports"]}
+    if not set(owners["setter_runner"]+owners["result_consumer"]) <= imported_ids:
+        raise ValueError("Rotation task maker does not import the retained runner and callback")
+    guard_source = original(files, "macroRecorderNotRunning:")
+    guard = retain("macro_guard", guard_source, "macroRecorderNotRunning:", {"variable_declarator"})[0]
+    owners["macro_guard_factory"] = factory("macro_guard_factory", guard_source, guard)
+    queue_source = original(files, 'RzTaskCategory:()=>')
+    queue = retain("task_queue", queue_source, 'RzTaskCategory:()=>', {"pair", "method_definition"})[0]
+    owners["task_queue_factory"] = factory("task_queue_factory", queue_source, queue)
+    defaults = original(files, "rotation:{isEnabled:!1,value:0}")
+    owners["middleware_profile_default"] = retain("middleware_profile_default", defaults,
+        "rotation:{isEnabled:!1,value:0}", {"variable_declarator"}, False)
+    protocols = []
+    for item in files:
+        if not item["path"].endswith(".js") or b"getProximitySensorAngleTune(" not in audit.read(item):
+            continue
+        method = retain("protocol_getter", item, "getProximitySensorAngleTune(", {"method_definition"})[0]
+        record = audit.owners[method]
+        node = audit.tree(item).root_node.descendant_for_byte_range(record["byte_start"], record["byte_end"]-1)
+        while node is not None and node.type not in {"class", "class_declaration"}:
+            node = node.parent
+        if node is None:
+            raise ValueError("Rotation protocol class is unresolved")
+        ble = Path(item["path"]).name.startswith("rzDevice30.")
+        commands, methods = direct_command_headers(audit, item, node,
+            ("getProximitySensorAngleTune", "setProximitySensorAngleTune"), array_header=ble)
+        expected = {"getProximitySensorAngleTune": [0,15,148] if ble else [3,11,148],
+                    "setProximitySensorAngleTune": [2,15,20] if ble else [3,11,20]}
+        if commands != expected:
+            raise ValueError("Rotation effective protocol commands differ")
+        protocols.append({"original":item,"ble":ble,"commands":commands,"methods":methods,
+            "factory":factory("protocol_factory",item,method)})
+    if len(protocols) != (2 if product_id == 226 else 1):
+        raise ValueError("Rotation protocol family coverage differs")
+    getters = rotation_member_references(audit, files,
+        ("getProximitySensorAngleTune", "getMouseSensorRotationAngle"))
+    if getters:
+        raise ValueError("Rotation getter acquired a real consumer or alias; re-audit state semantics")
+    mounted = original(ui_files, 'rotationId:"rotation"')
+    panel_id = retain("mounted_advanced_panel", mounted, 'rotationId:"rotation"', {"variable_declarator"})[0]
+    panel = audit.owners[panel_id]
+    symbol = panel["body"].split("=",1)[0]
+    raw = audit.read(mounted)
+    calls = list(re.finditer(rb'\.jsx\)\(' + re.escape(symbol.encode()) + rb',',raw))
+    if len(calls) != 1:
+        raise ValueError("Rotation actual navigation panel mount is absent or ambiguous")
+    owner = audit.tree(mounted).root_node.descendant_for_byte_range(calls[0].start(), calls[0].end()-1)
+    while owner is not None and owner.type != "class_declaration":
+        owner = owner.parent
+    if owner is None or b"tabNavigations" not in owner.text:
+        raise ValueError("Rotation panel is not in the actual navigation owner")
+    ui = {"panel":panel_id,"navigation":audit.retain_range("rotation_navigation_and_profile_lifecycle",mounted,
+        owner.start_byte,owner.end_byte,owner.type),
+        "editor":retain("editor",mounted,"min:-44,max:44",{"variable_declarator"})}
+    action = retain("action_export",mounted,"setRotation:()=>",{"pair"})[0]
+    record = audit.owners[action]
+    node = audit.tree(mounted).root_node.descendant_for_byte_range(record["byte_start"],record["byte_end"]-1)
+    while node is not None and node.type != "pair":
+        node = node.parent
+    getter = node.child_by_field_name("value") if node is not None else None
+    binding = getter.child_by_field_name("body") if getter is not None and getter.type == "arrow_function" else None
+    if binding is None or binding.type != "identifier":
+        raise ValueError("Rotation UI action creator is unresolved")
+    ui["action_creator"] = audit.binding("rotation_action_creator",mounted,binding.text.decode(),binding.start_byte)
+    reducer_source = original(ui_files, "actionsFromLocalStorage:[],errorActions:[],rotation:")
+    ui["reducer_and_initial_draft"] = retain("reducer_and_initial_draft", reducer_source,
+        "actionsFromLocalStorage:[],errorActions:[],rotation:", {"lexical_declaration"})
+    if product_id == 226:
+        if "isCurrentFWSupportAdvanced:!0" not in panel["body"]:
+            raise ValueError("PID226 Rotation advanced availability changed")
+        ui["firmware_floor"] = None
+        ui["local_profile_projection"] = "loadRotationSettings merges UI DEFAULTPROFILE.rotation; no middleware initialization"
+    else:
+        export = audit.webpack_export("rotation_advanced_firmware_floor",ui_files,8193,"ADVANCED_TAB_FW_VERSION")
+        ui["firmware_floor_owner"] = export
+        body = audit.owners[export["binding"]["owner_id"]]["body"]
+        floor = re.fullmatch(r'[\w$]+="([0-9.]+)"',body)
+        if floor is None:
+            raise ValueError("Rotation advanced firmware floor is not a fixed source value")
+        ui["firmware_floor"] = floor[1]
+        ui["local_profile_projection"] = "Only existing selected profile keys dispatch rotation; absent field preserves reducer draft"
+    feature_calls = []
+    for item in files:
+        if item["path"].endswith(".js") and b'"useMappingEngine"' in audit.read(item):
+            for call in javascript_feature_calls(audit.tree(item)):
+                if call["feature"] == "useMappingEngine":
+                    feature_calls.append({**call,"owner":audit.retain_range("rotation_mapping_feature_selection",item,
+                        call["byte_start"],call["byte_end"],"call_expression")})
+    if (product_id == 196 and (len(feature_calls) != 1 or feature_calls[0]["variant"] != "config"
+            or feature_calls[0]["arguments"][2] != '{setMouseRotation:!0,setMappingEngineLocalStorage:!0,fwVersionForRotation:"1.10.1.0"}')) or product_id != 196 and feature_calls:
+        raise ValueError("Rotation mounted mapping-engine branch selection changed")
+    row = {"product_id":product_id,"owners":owners,"protocols":protocols,"ui":ui,
+        "getter_consumers":getters,"mapping_features":feature_calls}
+    if product_id == 226:
+        row["ble_transport"] = mouse_rotation_ble_source(audit,files)
+    return row
+
+
+def mouse_rotation_comparator(audit, files):
+    export = audit.webpack_export("rotation_firmware_comparator",files,76665,"k0")
+    source = export["original"]
+    owner = audit.owners[export["binding"]["owner_id"]]
+    imports, seeds = [], set()
+    for match in re.finditer(r'([\w$]+)\(\)\(',owner["body"]):
+        binding = audit.binding("rotation_comparator_callable",source,match[1],owner["byte_start"]+match.start())
+        if binding["resolution"] != "declaration":
+            raise ValueError("Rotation comparator callable is unresolved")
+        record = audit.owners[binding["owner_id"]]
+        declaration = audit.tree(source).root_node.descendant_for_byte_range(record["byte_start"],record["byte_end"]-1)
+        while declaration is not None and declaration.type != "variable_declarator":
+            declaration = declaration.parent
+        value = declaration.child_by_field_name("value") if declaration is not None else None
+        arguments = value.child_by_field_name("arguments") if value is not None and value.type == "call_expression" else None
+        if arguments is None or len(arguments.named_children) != 1 or arguments.named_children[0].type != "identifier":
+            raise ValueError("Rotation comparator interop import is unresolved")
+        alias = arguments.named_children[0]
+        imported = audit.binding("rotation_comparator_import",source,alias.text.decode(),alias.start_byte)
+        record = audit.owners[imported["owner_id"]]
+        declaration = audit.tree(source).root_node.descendant_for_byte_range(record["byte_start"],record["byte_end"]-1)
+        while declaration is not None and declaration.type != "variable_declarator":
+            declaration = declaration.parent
+        value = declaration.child_by_field_name("value") if declaration is not None else None
+        while value is not None and value.type in {"parenthesized_expression","sequence_expression"}:
+            value = value.named_children[-1]
+        arguments = value.child_by_field_name("arguments") if value is not None and value.type == "call_expression" else None
+        if arguments is None or len(arguments.named_children) != 1 or arguments.named_children[0].type != "number":
+            raise ValueError("Rotation comparator dependency is not a fixed factory")
+        identifier = javascript_integer_literal(arguments.named_children[0].text.decode())
+        if identifier not in seeds:
+            imports.append({"callable":binding,"import":imported,"module_id":identifier})
+            seeds.add(identifier)
+    if seeds != {13726,45376,49962}:
+        raise ValueError("Rotation comparator validity/coercion/comparison imports changed")
+    return {"export":export,"callable_imports":imports,
+        "semantic_dependency_closure":rotation_factory_closure(audit,files,seeds),
+        "dependency_closure":rotation_factory_closure(audit,[source],[76665]),
+        "factory_scope":"Comparator and all 81 transitive factory dependencies are in the mounted initial main chunk; later lazy chunks contain other copies of some module IDs and are not substituted for these initial factories",
+        "semantics":"Four-component floor is not strict SemVer; independent coerce calls return distinct objects, so identity equality never compares the fourth component. Exact floor equality is handled by the caller; otherwise coerced first three components >= 1.10.1 select direct transport. Unknown firmware throws; invalid coerce selects native. Disable maps to zero only at native SET boundary."}
+
+
+def audit_mouse_rotation(args):
+    """Audit mounted Rotation, local profile intent, actual transport and completion."""
+    import host
+    if args.family != "mouse" or args.function != "mw":
+        raise ValueError("mouse-rotation requires current mouse middleware")
+    supported = {190,192,196,222,226,229,239}
+    ids = sorted(set(args.product or supported))
+    if set(ids)-supported:
+        raise ValueError("Rotation query requires a currently mounted product")
+    audit, source_sets, ui_sets, inventory = host.HostLocalAudit(), [], {}, []
+    for directory in sorted((a.ROOT / ".analysis/inputs/frontend").glob("mouse-*-current")):
+        match = re.fullmatch(r"mouse-(\d+)-current",directory.name)
+        if match is None:
+            continue
+        source_set, files = audit.source_set(directory.name)
+        if source_set["deployment"]["failures"]:
+            raise ValueError("Rotation UI deployment selection failed")
+        mounted = [item for item in files if item["path"].endswith(".js") and b'rotationId:"rotation"' in audit.read(item)]
+        inventory.append({"product_id":int(match[1]),"source_set":source_set,"rotation_mount_originals":mounted})
+        if int(match[1]) in ids:
+            ui_sets[int(match[1])] = files
+    if {row["product_id"] for row in inventory if row["rotation_mount_originals"]} != supported:
+        raise ValueError("Rotation mounted product inventory changed; review all new/removed branches")
+    products, middleware = [], {}
+    for pid in ids:
+        source_set, files = audit.source_set(f"mouse-mw-{pid}-current")
+        if source_set["deployment"]["failures"]:
+            raise ValueError("Rotation middleware deployment selection failed")
+        source_sets.append(source_set); middleware[pid] = files
+        products.append(mouse_rotation_source(audit,files,ui_sets[pid],pid))
+    comparator = None
+    if 196 in middleware:
+        comparator = mouse_rotation_comparator(audit,middleware[196])
+    indexed = json.loads(audit.artifact(a.ROOT / ".analysis/inputs.json"))
+    physical = a.feature_report_callers(audit.parser,{item["path"]:item for item in indexed["inputs"]},
+        selected_capabilities=[{"product_id":pid} for pid in ids])
+    if any(not row["source_owners_complete"] or row["failures"] for row in physical["products"]):
+        raise ValueError("Rotation physical factory is unresolved")
+    if audit.final_snapshot():
+        raise ValueError("Rotation evidence bytes changed during audit")
+    result = {"recorded_at_utc":a.stamp(),"tool":identity(Path(__file__)),"parsers":audit.parser_versions,
+        "ui_inventory":inventory,"source_sets":source_sets,"products":products,"comparator":comparator,
+        "physical_factories":physical,"complete_owners":audit.owners,"verified_artifacts":list(audit.artifacts.values()),
+        "semantics":{"open":"Restore UI draft from selected local profile; no GET consumer or implicit default SET",
+            "write":"Persist actual rotation and 53-bit version before NORMAL_SKIPPABLE setting queue",
+            "macro_exclusive":"UI edits persist only; local profile restore ignored; neither writes hardware",
+            "completion":"Source result callback projects requested rotation only for non-UI origin, including queue skip/failure. Rust retains Direct setter ACK and Native SetComplete separately; neither is a device readback or enabled-state GET observation.",
+            "missing_profile":"No local file, first discovery, failed read and disconnect do not prove first initialization",
+            "ble":"PID226 advanced Rotation stays editable for physical PID228; rzDevice30 owns BLE commands"},
+        "target_execution":False,"runtime_acceptance":"unverified","whole_page_complete":False,
+        "limitations":["Source-map/acquisition gaps remain explicit in each source set",
+            "Static source owners and pure transport tests do not establish real window or device acceptance"]}
+    path = a.ROOT / ".analysis/results/frontend/mouse-mw-audit.json"
+    with a.index_lock():
+        document = json.loads(path.read_bytes()) if path.is_file() else {"schema_version":1}
+        document.setdefault("queries",{})["rotation"] = result
+        a.save(path,document)
+    print(json.dumps({"receipt":a.rel(path),"query":"rotation","products":ids,
+        "ui_products_scanned":len(inventory),"complete_owners":len(audit.owners),"target_execution":False}),flush=True)
     return result
 
 
@@ -15718,7 +16079,7 @@ def audit_mouse_receiver_polling(args):
                 "dpi": "getDpiLevel(0); data[0] class; unsigned big-endian x=data[1..3], y=data[3..5]; no UI edit-limit clamp",
                 "idle": "getTimeToSleep(); unsigned big-endian data[0..2]; source native units retained",
             },
-            "source_defaults": "Unknown polling codes retain the source switch default (ordinary100/high-speed8000); this is decoder fallback, not an independently confirmed hardware capability",
+            "source_defaults": "The original switches display ordinary100/high-speed8000 for unknown codes; these fallbacks do not identify an enumerated device rate. Rust observations reject unknown codes and preserve the failed read instead of publishing either default as confirmed hardware state",
             "polling_write": "30525.Ct saves the selected wired/wireless field and root53-bit version before85191.ot; ot caps ordinary masters to1000 and sends4625.RA/MW_SET_POLLING_RATE_WIRELESS_TO_UI, pre-reads, skips unchanged, sends87887.be setter ACK then independently reads/verifies.85191.rt OBM task only pre-reads/conditionally sets matching observed slots.",
             "idle_write": "85191.Rt uses the factory-selected rzDevice for setTimeToSleep(minutes*60), abort check, one getTimeToSleep and exact comparison. The inherited87969 methods apply to own/shared DualLink masters with the same two-byte big-endian data and no profile selector; no idle pre-read or equality skip. Setter ACK payload is not the getter value. pn and Rt task-memory/version bookkeeping is distinct from optional device localStorage, disabled by PID182 alwaysReadPowerSavingFromDevice.",
             "dpi_stages": {
@@ -16444,6 +16805,146 @@ def review_current_multipairing(acquired, captured, files, main, css, parser, ow
     return result
 
 
+def mouse_rotation_ble_source(audit, files):
+    """Retain PID226's selected Protocol30 implementation without executing it."""
+    selected = [source for source in files if Path(source["path"]).name.startswith("rzDevice30.")
+                and source["path"].endswith(".js")]
+    if len(selected) != 1:
+        raise ValueError("Rotation BLE current device chunk is absent or ambiguous")
+    source = selected[0]
+    if "/mouse-mw-226-current/" not in source["path"]:
+        raise ValueError("Rotation BLE source belongs to another product deployment")
+    actual = audit.webpack_export("rotation_ble_selected_class", selected, 20063, "default")
+    tree = audit.tree(source)
+
+    def declaration(binding):
+        if binding["resolution"] != "declaration":
+            raise ValueError("Rotation BLE lexical declaration is unresolved")
+        node = tree.root_node.descendant_for_byte_range(binding["start_byte"], binding["end_byte"] - 1)
+        while node is not None and (node.start_byte != binding["start_byte"] or node.end_byte != binding["end_byte"]):
+            node = node.parent
+        if node is None:
+            raise ValueError("Rotation BLE lexical owner is absent")
+        return node
+
+    alias = declaration(actual["binding"])
+    value = alias.child_by_field_name("value")
+    if value is None or value.type != "identifier":
+        raise ValueError("Rotation BLE exported class alias differs")
+    class_binding = audit.binding("rotation_ble_complete_class", source, value.text.decode(), value.start_byte)
+    device_class = declaration(class_binding)
+    if device_class.type != "class_declaration":
+        raise ValueError("Rotation BLE actual class declaration differs")
+
+    def imported(name, reference):
+        binding = audit.binding("rotation_ble_actual_import_" + name, source, name, reference)
+        node = declaration(binding)
+        value = node.child_by_field_name("value")
+        arguments = value.child_by_field_name("arguments") if value is not None and value.type == "call_expression" else None
+        if arguments is None or len(arguments.named_children) != 1 or arguments.named_children[0].type != "number":
+            raise ValueError("Rotation BLE actual import is not one numeric webpack module")
+        return javascript_integer_literal(arguments.named_children[0].text.decode())
+
+    heritage = next((node for node in device_class.named_children if node.type == "class_heritage"), None)
+    parent = heritage.named_children[0] if heritage is not None and len(heritage.named_children) == 1 else None
+    if parent is None or parent.type != "member_expression":
+        raise ValueError("Rotation BLE superclass import differs")
+    base_id = imported(parent.child_by_field_name("object").text.decode(), parent.start_byte)
+    base = audit.webpack_export("rotation_ble_actual_base", files, base_id, parent.child_by_field_name("property").text.decode())
+    methods, method_nodes = {}, {}
+    for name in ("constructor", "connectDevice", "_getTransactionId", "_createDataSend", "_getDataLengthFromHeader",
+                 "sendCommand", "getProximitySensorAngleTune", "setProximitySensorAngleTune"):
+        node, owner = audit.callable_member("rotation_ble_" + name, source, device_class, name)
+        method_nodes[name], methods[name] = node, owner
+
+    command_owners = {}
+    expected = {"getProximitySensorAngleTune": [0, 15, 148], "setProximitySensorAngleTune": [2, 15, 20]}
+    for name, command in expected.items():
+        method = method_nodes[name]
+        calls = list(re.finditer(rb'\.sendCommand\(([\w$]+),"(?:Get|Set) Sensor Angle Tune",([\w$]+),0(?=[,)])', method.text))
+        if len(calls) != 1:
+            raise ValueError("Rotation BLE actual angle-tune sendCommand call differs")
+        call = calls[0]
+        binding = audit.binding("rotation_ble_header_" + name, source, call[1].decode(), method.start_byte + call.start())
+        node = declaration(binding)
+        value = node.child_by_field_name("value")
+        if value is not None and value.type == "new_expression":
+            constructor = value.child_by_field_name("constructor")
+            arguments = value.child_by_field_name("arguments")
+            if constructor is None or constructor.text != b'Uint8Array' or len(arguments.named_children) != 1:
+                raise ValueError("Rotation BLE command bytes constructor differs")
+            value = arguments.named_children[0]
+        if value is None or value.type != "array" or static_js_literal(value.text.decode()) != command:
+            raise ValueError("Rotation BLE actual command bytes differ")
+        command_owners[name] = {"command": command, "owner": binding["owner_id"]}
+    if not re.search(rb'jsonData=\{state:([\w$]+)\.data\[0\],angleTune:\1\.data\[1\]\}', method_nodes["getProximitySensorAngleTune"].text):
+        raise ValueError("Rotation BLE getter no longer reads two unprefixed payload bytes")
+
+    constants = {}
+    constructor = method_nodes["constructor"]
+    constant_alias = re.search(rb'this\.serviceUUID=([\w$]+)\.Ij', constructor.text)
+    if constant_alias is None:
+        raise ValueError("Rotation BLE service UUID owner differs")
+    constant_id = imported(constant_alias[1].decode(), constructor.start_byte + constant_alias.start())
+    expected_constants = {"Ij": "52401523f97c7f900e7f6c6f4e36db1c", "xe": "52401524f97c7f900e7f6c6f4e36db1c",
+        "ex": "52401525f97c7f900e7f6c6f4e36db1c", "w6": 2, "ah": 150, "lI": 2, "lz": 30, "y2": 20,
+        "_p": 1, "J$": 3, "z$": "timeout"}
+    for name, value in expected_constants.items():
+        exported = audit.webpack_export("rotation_ble_transport_constant_" + name, files, constant_id, name)
+        body = exported["binding"]["body"]
+        if "=" not in body or static_js_literal(body.split("=", 1)[1]) != value:
+            raise ValueError("Rotation BLE transport constant differs: " + name)
+        constants[name] = {"value": value, "export": exported}
+    connect = method_nodes["connectDevice"]
+    edition_call = re.search(rb'const [\w$]+=yield ([\w$]+)\.([\w$]+)\(this\)', connect.text)
+    if edition_call is None:
+        raise ValueError("Rotation BLE connection edition call is unresolved")
+    edition_id = imported(edition_call[1].decode(), connect.start_byte + edition_call.start())
+    edition = audit.webpack_export("rotation_ble_connection_edition", files, edition_id, edition_call[2].decode())
+    return {"product_id": 226, "physical_product_id": 228, "source_class": "rzDevice30",
+        "actual_class_export": actual, "class_owner": class_binding["owner_id"], "base_export": base,
+        "method_owners": methods, "commands": command_owners, "constants": constants,
+        "connection_edition": edition, "target_execution": False, "runtime_acceptance": "unverified",
+        "semantics": {
+            "frame": "_createDataSend allocates payload+8 bytes. Transaction is0..30; bytes1..3 contain little-endian payload length,4/5 command class/id,6 profile,7 parameter. Mounted Rotation passes profile1/parameter0; SET payload is enabled then signed-angle byte, GET has no payload. No Protocol25 report/profile prefix or checksum is introduced.",
+            "response": "The selected host GATT strategy matches transaction and success status2. rzDevice30 uses its20-byte response-header boundary, then eight bytes when the declared nonzero payload length differs. Rotation GET reads raw payload bytes0/1; SET completion uses the actual ACK and does not invoke GET.",
+            "lifecycle": "connectDevice uses the source connection retry constants and then actual Get Edition Information. sendCommand holds the physical lock and retries only timeout/status1/status3 with the same generated frame. Rust reuses the existing GATT identity/notification/CCCD/handle owner, finishes it before releasing the container lock, and treats cleanup failure as failure.",
+            "scope": "This retains Protocol30 framing/commands and source connection semantics. Mounted logical226/BLE228 selection and its current UI/task consumer belong to the surrounding Rotation audit; original source acquisition and runtime acceptance remain independent."}}
+
+
+def javascript_feature_calls(tree):
+    """Inventory literal member calls without treating strings/comments as code.
+
+    Literal computed names are included and nonliteral arguments stay explicit.
+    Dynamically selected methods and aliased calls require separate resolution.
+    """
+    result = []
+    stack = [tree.root_node]
+    while stack:
+        node = stack.pop()
+        if node.type == "call_expression":
+            function = node.child_by_field_name("function")
+            if function is not None and function.type in {"member_expression", "subscript_expression"}:
+                member = function.child_by_field_name("property") if function.type == "member_expression" else function.child_by_field_name("index")
+                if member is not None:
+                    name = member.text.decode("utf-8")
+                    if member.type == "string" and name[:1] == name[-1:] and name[:1] in {'"', "'"}:
+                        name = name[1:-1]
+                    if name == "useFeature":
+                        arguments = node.child_by_field_name("arguments")
+                        values = [argument for argument in arguments.named_children if argument.type != "comment"]
+                        def literal(index):
+                            if index >= len(values) or values[index].type != "string":
+                                return None
+                            value = values[index].text.decode("utf-8")
+                            return value[1:-1] if "\\" not in value else None
+                        result.append({"byte_start": node.start_byte, "byte_end": node.end_byte,
+                            "callee": function.text.decode("utf-8"), "feature": literal(0),
+                            "variant": literal(1), "arguments": [value.text.decode("utf-8") for value in values]})
+        stack.extend(reversed(node.named_children))
+    return result
+
+
 def review_legacy_duallink_protocol(pid, files, captured, parser, owners):
     """Retain per-product factory, protocol and event selection from originals."""
     import evidence as e
@@ -16744,12 +17245,16 @@ def review_legacy_duallink_protocol(pid, files, captured, parser, owners):
                 if node is not None:
                     keep("single_led_serial_result_parser" if name == "getSerialNumber" else "single_led_result_parser", protocol_source, node)
 
+    factory_source, factory = modules[ids["complete_device_adapter_factory"]]
+    offset = factory.start_byte + factory.text.index(b'[connectRZDevice]')
+    factory_node = tree_for(factory_source).root_node.descendant_for_byte_range(offset, offset)
+    while factory_node is not None and factory_node.type not in {"variable_declarator", "function_declaration"}:
+        factory_node = factory_node.parent
+    if factory_node is None:
+        raise ValueError("Legacy receiver actual connection factory is unresolved")
+    keep("actual_product_connect_factory", factory_source, factory_node)
+
     if pid in {158, 192, 194}:
-        factory_source, factory = modules[ids["complete_device_adapter_factory"]]
-        offset = factory.start_byte + factory.text.index(b'[connectRZDevice]')
-        factory_node = tree_for(factory_source).root_node.descendant_for_byte_range(offset, offset)
-        while factory_node is not None and factory_node.type not in {"variable_declarator", "function_declaration"}:
-            factory_node = factory_node.parent
         keep("single_led_actual_connect_factory", factory_source, factory_node)
         base_source, base = modules[ids["complete_base_protocol_framing_lifecycle"]]
         constants_alias = re.search(rb'=([\w$]+)\.SLEEP_TIME_BETWEEN_OUT', base.text)
@@ -16802,6 +17307,127 @@ def review_legacy_duallink_protocol(pid, files, captured, parser, owners):
                 result["hardware_registration_callers"].append({"byte_offset": match.start(), "complete_owner": key})
     if not result["hardware_registration_callers"]:
         raise ValueError("Legacy DualLink actual hardware registration caller is absent")
+
+    selection = {"direct_feature_calls": [], "storage_hooks": {}, "descriptor_exports": {},
+                 "target_execution": False, "runtime_acceptance": "unverified"}
+    selection["connection_factory"] = keep("actual_product_connect_factory", factory_source, factory_node)
+    selection["actual_hardware_target_callers"] = []
+    for key in sorted({row["complete_owner"] for row in result["hardware_registration_callers"]}):
+        retained = owners[key]
+        source = retained["original"]
+        owner = module_at(source, retained["byte_start"])
+        matches = list(re.finditer(rb'unregisterDevice\(\(yield\(0,([\w$]+)\.([\w$]+)\)\([\w$]+\)\)\.device\)', owner.text))
+        if len(matches) != 1:
+            raise ValueError("Legacy receiver actual retained hardware target is unresolved")
+        target_id = imported_module(source, owner, matches[0][1].decode(), "actual_hardware_target_module")
+        target_source, target = exported(target_id, matches[0][2].decode(), "actual_hardware_target_selector")
+        selection["actual_hardware_target_callers"].append({"module_id": target_id, "export": matches[0][2].decode(),
+            "reference_byte": owner.start_byte + matches[0].start(),
+            "complete_owner": keep("actual_hardware_target_selector", target_source, target)})
+    for source in sources:
+        if b'useFeature' not in raw_inputs[source["path"]]:
+            continue
+        tree = tree_for(source)
+        for call in javascript_feature_calls(tree):
+            node = tree.root_node.descendant_for_byte_range(call["byte_start"], call["byte_end"] - 1)
+            while node is not None and (node.start_byte != call["byte_start"] or node.end_byte != call["byte_end"]):
+                node = node.parent
+            if node is None:
+                raise ValueError("Legacy receiver feature call owner is unresolved")
+            selection["direct_feature_calls"].append({**call, "original": source,
+                "complete_owner": keep("actual_product_feature_call", source, node)})
+    selection["direct_feature_inventory_scope"] = (
+        "AST call expressions with direct .useFeature or literal ['useFeature'] member names in every verified current product MW JavaScript original. "
+        "Calls are retained with arguments and complete owners; this inventory alone does not resolve dynamically named methods, aliased calls or direct object mutation.")
+
+    storage_id = anchored_module("complete_descriptor_storage_hooks", b'PreSetLocalStorage(e){')
+    storage_source, storage = modules[storage_id]
+    hook_nodes = {}
+    stack = [storage]
+    while stack:
+        node = stack.pop()
+        name = node.child_by_field_name("name") if node.type == "method_definition" else None
+        if name is not None and name.text in {b'PreSetLocalStorage', b'PostSetLocalStorage'}:
+            if name.text in hook_nodes:
+                raise ValueError("Legacy receiver descriptor storage hook is ambiguous")
+            hook_nodes[name.text] = node
+            selection["storage_hooks"][name.text.decode()] = keep("descriptor_" + name.text.decode(), storage_source, node)
+        stack.extend(reversed(node.named_children))
+    if set(hook_nodes) != {b'PreSetLocalStorage', b'PostSetLocalStorage'}:
+        raise ValueError("Legacy receiver descriptor storage hooks are incomplete")
+    pre, post = hook_nodes[b'PreSetLocalStorage'], hook_nodes[b'PostSetLocalStorage']
+    info_aliases = set(re.findall(rb'([\w$]+)\.(?:BLE_REPORTIDS|REPORTIDS)\b', pre.text))
+    if len(info_aliases) != 1:
+        raise ValueError("Legacy receiver descriptor namespace is ambiguous")
+    info_id = imported_module(storage_source, storage, next(iter(info_aliases)).decode(), "descriptor_actual_device_info_namespace")
+    if info_id != ids["complete_product_device_info_and_defaults"]:
+        raise ValueError("Legacy receiver descriptor namespace differs from current product")
+    info_source, info = modules[info_id]
+    default_source, default_node = exported(info_id, "getDeviceDefaultLocalData", "descriptor_initial_local_document_factory")
+    selection["initial_document_factory"] = keep("descriptor_initial_local_document_factory", default_source, default_node)
+    for name in ("REPORTIDS", "BLE_REPORTIDS", "FIRMWARE_REPORT_IDS"):
+        exists = re.search(rb'(?<![\w$])' + name.encode() + rb':\(\)=>', info.text) is not None
+        selection["descriptor_exports"][name] = {"exported": exists}
+        if exists:
+            source, node = exported(info_id, name, "descriptor_export_" + name)
+            selection["descriptor_exports"][name]["complete_owner"] = keep("descriptor_export_" + name, source, node)
+
+    selection["post_storage_callers"] = []
+    for alias, name in sorted(set(re.findall(rb'\(0,([\w$]+)\.([\w$]+)\)\(', post.text))):
+        module_id = imported_module(storage_source, storage, alias.decode(), "descriptor_post_storage_actual_import")
+        source, node = exported(module_id, name.decode(), "descriptor_post_storage_selected_callable")
+        selection["post_storage_callers"].append({"module_id": module_id, "export": name.decode(),
+            "complete_owner": keep("descriptor_post_storage_selected_callable", source, node)})
+
+    # Protocol30 is selected by the real PID211 BLE branch. Retain its actual
+    # lazy import and complete parser rather than substituting Protocol25.
+    if pid == 211:
+        route30 = re.search(rb'rzHardwareEventsProtocol30Parser:\(\)=>([\w$]+)\.e\((\d+)\)\.then\(\1\.bind\(\1,(\d+)\)\)', registration_owner.text)
+        if route30 is None:
+            raise ValueError("Legacy receiver actual BLE Protocol30 route is unresolved")
+        parser30_id = int(route30[3])
+        main_sources = [source for source in sources if re.search(r'/mw/main\.[^/]+\.js$', source["url"])]
+        if len(main_sources) != 1:
+            raise ValueError("Legacy receiver BLE runtime filename map is ambiguous")
+        runtime_source = main_sources[0]
+        runtime_raw = raw_inputs[runtime_source["path"]]
+        chunk_prefix = rb'(?<![\w$])' + route30[2] + rb':"'
+        runtime_name = list(re.finditer(chunk_prefix + rb'rzHardwareEventsProtocol30Parser"', runtime_raw))
+        runtime_hash = list(re.finditer(chunk_prefix + rb'([0-9a-f]{20})"', runtime_raw))
+        if len(runtime_name) != 1 or len(runtime_hash) != 1:
+            raise ValueError("Legacy receiver BLE runtime filename route differs")
+        for match in (runtime_name[0], runtime_hash[0]):
+            node = tree_for(runtime_source).root_node.descendant_for_byte_range(match.start(), match.end() - 1)
+            while node is not None and node.type != "assignment_expression":
+                node = node.parent
+            if node is None:
+                raise ValueError("Legacy receiver complete BLE runtime filename resolver is unavailable")
+            keep("ble_complete_runtime_chunk_resolver", runtime_source, node)
+        filename = "rzHardwareEventsProtocol30Parser." + runtime_hash[0][1].decode() + ".js"
+        parser_sources = [source for source in sources if Path(source["path"]).name == filename]
+        if len(parser_sources) != 1:
+            raise ValueError("Legacy receiver actual BLE lazy original is unavailable")
+        parser_source = parser_sources[0]
+        selected = {}
+        for match in re.finditer(rb'(?<![\w$])' + route30[3] + rb'(?=[(:])', raw_inputs[parser_source["path"]]):
+            node = module_at(parser_source, match.start())
+            if node is not None and node.start_byte == match.start():
+                selected[node.start_byte] = node
+        if len(selected) != 1:
+            raise ValueError("Legacy receiver actual BLE parser factory boundary differs")
+        modules[parser30_id] = (parser_source, next(iter(selected.values())))
+        module(parser30_id, "complete_selected_ble_protocol30_parser")
+        exported(parser30_id, "default", "selected_ble_protocol30_parser_export")
+        selection["protocol30_parser_route"] = {"chunk_id": int(route30[2]), "module_id": parser30_id,
+            "reference_byte": registration_owner.start_byte + route30.start(), "original": registration_source}
+    selection["semantics"] = {
+        "pre_storage": "PreSetLocalStorage updates the active profile, then replaces reportIDs only when the selected DeviceInfo namespace actually exports BLE_REPORTIDS for useBle or REPORTIDS otherwise. FIRMWARE_REPORT_IDS is not read by this hook. An absent export leaves the document's existing map unchanged.",
+        "post_storage": "PostSetLocalStorage requires an actual runtime rzDevice. NONE publishes the unchanged document unless the Mika gate selects merge; MASTER merges before publishing; SLAVE performs no publication in this hook. Complete actual role/Mika/merge/publisher export bodies are retained separately.",
+        "merge": "The selected merger clones the master document and its reportIDs, optionally overlays a slave document's reportIDs only when the stored slave/profile/serial conditions hold, then sets the selected slave key-report ID last. Its profile, hash, sidepanel, SnapTap and game-mode transformations remain in the complete callable. This is not a fixed default descriptor.",
+        "publication": "The selected publisher checks useMappingEngine.config.setMappingEngineLocalStorage, the source recording gate and cached default/active/profile/analog changes. reportIDs alone is not an independent publication trigger. The published synapse key uses the actual runtime .device.productId with DeviceInfo fallback plus container, while merge can use the patched logical runtime productId.",
+        "selection_boundary": "Mounted feature calls, initialization/default/derived-feature modules, connection factory, actual hardware target selection, registration lifecycle and selected parser service are retained. Dynamic feature mutation and slave-storage notification consumers still require a separate complete join; packaged alternates are not declared active merely because retained."}
+    result["event_selection_and_publication"] = selection
+
     if pid == 192:
         # Resolve the mounted receiver query independently of the single-LED
         # gate. Complete modules above retain context; these owners identify the
@@ -16961,6 +17587,7 @@ def review_legacy_duallink_protocol(pid, files, captured, parser, owners):
 def review_legacy_host_native():
     """Verify current official host files and HID worker/Windows API records."""
     import evidence as e
+    import host
     import sys
     sys.path.insert(0, str(a.ROOT / "tools/analyzers/python-static"))
     from tree_sitter import Language, Parser
@@ -17090,8 +17717,12 @@ def review_legacy_host_native():
         "focus_query": "getFocusTab reads the named window's browserWindow ID, gets TabStore.windows[id].tabName and finds that tab's frameName. getWindowStatus separately reports visibility/minimization. The selected host tab gate is not the OS active-window state.",
         "window_service": "The preload invokes electronAction and stringifies the returned clients. Host clients enumerate real tabs/windows/webviews; activation focuses the resolved owning window and requests its active tab. TabManager updates TabStore and emits activeTabChanged. The complete source owners preserve force-focus/hibernate branches.",
         "window_storage": "WindowStorage maps values by sender URL. Reads return all truthy matching values as JSON entries; writes notify other non-disposed webContents respecting registered URL listeners. Preload teardown removes storage/tab listeners, while destroyed host contents clear their URL's storage.",
-        "limits": "All selected IDA records are reverified against the actual original PE chunks. This retains full disassembly/pseudocode/failures and does not establish the complete native device-event producer or page closure."}
-    result["unresolved_chains"] = ["Mapping-engine native device-event producer/type/collection selection must be joined to the exact current product registration and parser branch", "Host dispatch/lifecycle/resource closure beyond the retained files remains required; host package acquisition limitations are not cleared by these verified spans"]
+        "limits": "All selected IDA records are reverified against the actual original PE chunks. The separate hardware_event_producer resolves the adjusted callback/classifier/type0 path; product descriptor/parser selection and whole-page closure remain separate."}
+    producer_audit = host.HostLocalAudit()
+    result["hardware_event_producer"] = host.retain_receiver_hardware_producer(producer_audit)
+    if producer_audit.final_snapshot():
+        raise ValueError("Legacy receiver hardware producer originals changed during verification")
+    result["unresolved_chains"] = ["The resolved native hardware producer/classifier must be joined to each current product's actual published descriptor, registration and parser override; default report tables alone are insufficient", "Host dispatch/lifecycle/resource closure beyond the retained files remains required; host package acquisition limitations are not cleared by these verified spans"]
     return result
 
 
@@ -17176,6 +17807,15 @@ def validate_shortcut_capture_keys(rows):
     return rows
 
 
+def validate_shortcut_capture_projection(rows, excluded):
+    """The recorder consumes identity, scan-code, key-code and make/break flags only."""
+    validate_shortcut_capture_keys(rows)
+    metadata = {"type", "virtualKey", "pageID", "HID", "modifier", "ExtendedKey"}
+    expected = {"$[]." + name for row in rows for name in row if name in metadata}
+    if set(excluded) != expected:
+        raise ValueError("Mounted recorder projection excludes a consumed field or retains evidence-only metadata")
+
+
 def shortcut_capture_sources(audit, modules, roles):
     """Retain the UI-specific key table and the current DKM producer closure."""
     keys_source = modules[46114][0]
@@ -17189,8 +17829,9 @@ def shortcut_capture_sources(audit, modules, roles):
     import rust_data
     recipes = json.loads(audit.artifact(a.ROOT / "tools/typed-data.json"))
     recipe = next(row for row in recipes["tables"] if row["symbol"] == "SHORTCUT_CAPTURE_KEYS")
-    if recipe.get("storage") != "rust" or recipe.get("excluded_evidence_fields") or recipe.get("external_json_boundaries"):
-        raise ValueError("Capture protocol keys must remain a complete ordinary typed Rust table")
+    if recipe.get("storage") != "rust" or recipe.get("external_json_boundaries"):
+        raise ValueError("Capture protocol keys require ordinary typed Rust consumers")
+    validate_shortcut_capture_projection(keys, recipe.get("excluded_evidence_fields", []))
     generation = rust_data.build_table(recipe["crate"], recipe["symbol"], recipe["module"], recipe["root_type"],
         source=recipe["source"], macro_name=recipe["macro"], check=True)
 
@@ -17735,7 +18376,7 @@ def audit_shared_preferences(args):
     return result
 
 
-def direct_command_headers(audit, source, module, names):
+def direct_command_headers(audit, source, module, names, *, array_header=False):
     """Resolve direct methods to their actual lexical header arrays."""
     def walk(node):
         yield node
@@ -17767,8 +18408,8 @@ def direct_command_headers(audit, source, module, names):
         while value is not None and value.type in {"parenthesized_expression", "sequence_expression"}:
             value = value.named_children[-1]
         arguments = value.child_by_field_name("arguments") if value is not None and value.type == "new_expression" else None
-        array = arguments.named_children[0] if arguments is not None and len(arguments.named_children) == 1 else None
-        if (value is None or value.type != "new_expression" or value.child_by_field_name("constructor").text != b"Uint8Array"
+        array = value if array_header else arguments.named_children[0] if arguments is not None and len(arguments.named_children) == 1 else None
+        if (value is None or not array_header and (value.type != "new_expression" or value.child_by_field_name("constructor").text != b"Uint8Array")
                 or array is None or array.type != "array" or len(array.named_children) != 3
                 or any(node.type != "number" for node in array.named_children)):
             raise ValueError("Tracking header is not a fixed three-byte Uint8Array: " + name)
@@ -20204,6 +20845,94 @@ def audit_runtime_setup(args):
     a.save(catalog_path, [policies[pid] for pid in sorted(policies)])
 
 
+def audit_keyboard_gamepad_tester(args):
+    """Retain actual tester consumers separately from output/FW implementation."""
+    import host
+    if args.family != "keyboard" or args.function != "mw" or args.product not in (None, [679]):
+        raise ValueError("keyboard-gamepad-tester requires current keyboard middleware (implemented PID679)")
+    audit = host.HostLocalAudit()
+    products = [678, 679, 688, 719, 720, 721, 728, 740, 741, 742, 746, 756]
+    branches, sets, selected = [], [], {}
+    for pid in products:
+        row = {"product_id": pid, "owners": {}, "rust_consumer": "implemented" if pid == 679 else "incomplete"}
+        for layer in ("ui", "mw"):
+            name = f"keyboard-{'mw-' if layer == 'mw' else ''}{pid}-current"
+            source_set, files = audit.source_set(name)
+            if source_set["deployment"]["failures"]:
+                raise ValueError("Gamepad tester current source selection failed: " + name)
+            sets.append(source_set)
+            if pid == 679:
+                selected[layer] = files
+                row[layer + "_capture"] = audit.frontend_capture(name, files)
+            if layer == "ui":
+                found = [source for source in files if source["path"].endswith(".js")
+                         and b'gamepad-tester-title' in audit.read(source)]
+                if len(found) != 1:
+                    raise ValueError(f"Gamepad tester mounted component absent or ambiguous: {pid}")
+                row["owners"]["tester"] = audit.retain("gamepad_tester_component", found[0],
+                    'gamepad-tester-title', {"variable_declarator"})
+                if pid not in (678, 679, 688):
+                    for role, anchor in (("in_view", "this.props.toggleXboxRegistration(!0)"),
+                                         ("out_of_view", "this.props.toggleXboxRegistration(!1)")):
+                        row["owners"][role] = audit.retain("gamepad_tester_" + role, found[0], anchor,
+                            {"arrow_function", "method_definition"}, unique=False)
+            else:
+                main = [source for source in files if Path(source["path"]).name.startswith("main.")]
+                if len(main) != 1:
+                    raise ValueError("Gamepad tester middleware entry is unresolved")
+                row["middleware_main"] = main[0]
+                row["firmware_analog_mapping"] = b'isFWAnalogMapping:!0' in audit.read(main[0])
+        row["remaining_local_chains"] = (["Real device output delivery and actual tester window acceptance remain unverified"] if pid == 679 else [
+            "Firmware-controller input and in-view interval5 lifecycle require independent wiring"
+            if row["firmware_analog_mapping"] else
+            "This product still requires its mapping document compiler/owner and tester wiring"])
+        branches.append(row)
+    files = selected["mw"]
+    exports = {name: audit.webpack_export("gamepad_" + name, files, 14486, export)
+               for name, export in (("register_events", "Y$"), ("register_interval", "q6"), ("unregister", "XC"))}
+    source = exports["register_events"]["original"]
+    registration_body = audit.owners[exports["register_events"]["binding"]["owner_id"]]["body"]
+    if "=50" not in registration_body or "PollingRateSkipMap" not in registration_body:
+        raise ValueError("Gamepad tester default/8k registration selection changed")
+    callback = audit.retain("gamepad_callback_playback", source, "O=t;const i=JSON.parse(e.jsonEvent)",
+                            {"variable_declarator"})
+    body = audit.owners[callback[0]]["body"]
+    if not all(token in body for token in ("productId", "DeviceInfo.productId", "Array.isArray", "setTimeout(e,5)", "O!==t")):
+        raise ValueError("Gamepad tester product filter/latest-array/5ms callback changed")
+    assignment = audit.webpack_export("gamepad_analog_assignment_filter", files, 52418, "$T")
+    mapping = audit.retain("gamepad_mapping_publication_selector", source, "e(C)&&Boolean",
+                           {"function_declaration"})
+    toggle = audit.retain("gamepad_visibility_registration", source, "toggleXboxRegistration(e)",
+                          {"variable_declarator", "method_definition"}, unique=False)
+    ui = next(source for source in selected["ui"] if Path(source["path"]).name.startswith("main."))
+    reducer = audit.retain("gamepad_callback_reducer", ui, "gamepadTester:t.payload", {"variable_declarator"})
+    feature = next(source for source in files if b'useFeature("analogV3","yes",{})' in audit.read(source))
+    setup = audit.retain("gamepad_analog_v3_selection", feature, 'useFeature("analogV3","yes",{})',
+                         {"function_declaration", "arrow_function", "method_definition"})
+    changed = audit.final_snapshot()
+    if changed:
+        raise ValueError("Gamepad tester evidence changed during audit: " + str(changed))
+    result = {"schema_version": 1, "tool": identity(Path(__file__)), "parser_versions": audit.parser_versions,
+        "products": branches, "source_sets": sets, "exports": exports,
+        "callback": callback, "assignment_filter": assignment, "mapping_selector": mapping,
+        "visibility_toggle": toggle, "reducer": reducer, "analog_v3_setup": setup,
+        "complete_owners": list(audit.owners.values()), "verified_artifacts": list(audit.artifacts.values()),
+        "semantics": {"source": "Native mapping output state after driver-thread submission; not physical controller readback",
+            "pid679": "analogV3 non-FW mapping, source ten analog controller assignments, Events skip50",
+            "batch": "Product-filtered output samples; newest callback replaces older playback; array samples are separated by5ms; empty array produces no zero sample",
+            "state": "Page output observation is separate from persisted profile, draft and device observations",
+            "modern": "In-view interval5 registration and separate firmware controller event source remain independent unimplemented branches"},
+        "target_execution": False, "runtime_acceptance": "unverified", "whole_page_complete": False}
+    path = a.ROOT / ".analysis/results/frontend/keyboard-mw-audit.json"
+    with a.index_lock():
+        document = json.loads(path.read_bytes()) if path.is_file() else {"schema_version": 1}
+        document.setdefault("queries", {})["gamepad_tester"] = result
+        a.save(path, document)
+    print(json.dumps({"receipt": a.rel(path), "query": "gamepad_tester", "products": products,
+                      "complete_owners": len(audit.owners), "target_execution": False}), flush=True)
+    return result
+
+
 def add_commands(parsers):
     setup = parsers.add_parser("audit-runtime-setup", help="Verify current module setup producers and prepare their runtime lifecycle policy")
     setup.add_argument("--family", choices=[*FAMILY_CANDIDATES, "all"], default="all")
@@ -20218,7 +20947,7 @@ def add_commands(parsers):
     audit.add_argument("--family", required=True, choices=list(FAMILY_CANDIDATES))
     audit.add_argument("--function", required=True)
     audit.add_argument("--product", type=int, action="append")
-    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
+    audit.add_argument("--query", choices=["mouse-dpi", "mouse-dpi-profile", "mouse-local-profile-schema", "mouse-dpi-matcher", "mouse-dynamic-sensitivity", "mouse-rotation", "mouse-customize", "mouse-page-layout", "mouse-power", "mouse-scroll", "mouse-dpi-backend", "mouse-tracking", "mouse-calibration", "global-shortcuts", "shared-preferences", "profile-import-processors", "mouse-runtime-artwork", "mouse-receiver-polling", "mouse-receiver-indicator", "mouse-receiver-legacy", "mouse-dpi-profile-events", "keyboard-analog-keys", "keyboard-gamepad-tester", "keyboard-local-controls", "keyboard-brightness", "keyboard-artwork", "keyboard-metadata", "keyboard-page-layout", "keyboard-actuation-selection", "receiver-page-layout", "receiver-local-runtime", "shared-page-layout", "gamepad-artwork", "gamepad-triggers", "gamepad-input", "gamepad-thumbsticks", "gamepad-lighting", "mapping-engine", "audio-firmware-selector", "audio-help-reset", "audio-seiren-eq", "audio-leviathan", "audio-demo", "audio-surround", "camera-local-pages", "camera-source-review", "hanbo-local-runtime"], help="Append a semantic query to an existing complete capture audit")
     audit.add_argument("--prepare", action="store_true", help="Prepare verified current artwork resources through the shared workflow")
     audit.add_argument("--receipt-only", action="store_true", help="Refresh supported mouse or mapping-engine evidence without rewriting runtime descriptors")
     parser = parsers.add_parser("acquire-family", help=__doc__)

@@ -79,7 +79,7 @@ fn library() -> MacroLibraryFile {
 }
 
 #[test]
-fn macro_identity_resolves_local_id_and_both_consumers_receive_complete_list() {
+fn macro_identity_resolves_local_id_and_preserves_consumer_contracts() {
     let library = library();
     let item = shortcut(ShortcutOutput::Macro {
         macro_id: 1,
@@ -88,7 +88,7 @@ fn macro_identity_resolves_local_id_and_both_consumers_receive_complete_list() {
         repeat_count: 3,
     });
     let document = Compiler::new().compile(&[item], &library).unwrap();
-    assert_eq!(document.macros(), document.phased_macros());
+    assert!(document.phased_macros().is_empty());
     assert_eq!(
         document.macros()[0]["appEngine"]["events"],
         json!([
@@ -134,6 +134,95 @@ fn invalid_dependencies_and_ipc_corruption_cannot_be_published() {
     let mut wire = serde_json::to_value(&good).unwrap();
     wire.as_object_mut().unwrap().remove("phased_macros");
     assert!(serde_json::from_value::<CompiledDocument>(wire).is_err());
+    let mut wire = serde_json::to_value(&good).unwrap();
+    wire["phased_macros"] = wire["macros"].clone();
+    assert!(serde_json::from_value::<CompiledDocument>(wire).is_err());
+}
+
+#[test]
+fn mixed_macro_catalogs_publish_to_native_consumers_and_clear_deleted_definitions() {
+    let mut library = library();
+    let mut phased = library.entries[0].clone();
+    phased.id = 2;
+    phased.xml_guid = Some("23456789-1234-4234-8234-123456789abc".into());
+    phased.macro_type = MacroType::Phased;
+    phased.actions.clear();
+    library.entries.push(phased);
+    library.next_id = 3;
+    let mut compiler = Compiler::new();
+    let document = compiler.compile(&[], &library).unwrap();
+    assert_eq!(document.macros().len(), 2);
+    assert_eq!(document.phased_macros().len(), 1);
+    assert_eq!(
+        document.phased_macros()[0]["guid"],
+        "23456789-1234-4234-8234-123456789abc"
+    );
+    let mut ordinary = razer_device::macro_runtime::Library::default();
+    let mut phased = razer_device::macro_runtime::advanced::Library::default();
+    assert_eq!(
+        ordinary.publish(&json!(document.macros())).unwrap().count,
+        2
+    );
+    assert_eq!(
+        phased
+            .publish_phased(&json!(document.phased_macros()))
+            .unwrap()
+            .count,
+        1
+    );
+    assert!(
+        razer_device::macro_runtime::advanced::Execution::phased(
+            &phased,
+            "23456789-1234-4234-8234-123456789abc",
+            0
+        )
+        .is_ok()
+    );
+
+    library
+        .entries
+        .retain(|entry| entry.macro_type != MacroType::Phased);
+    let document = compiler.compile(&[], &library).unwrap();
+    ordinary.publish(&json!(document.macros())).unwrap();
+    assert_eq!(
+        phased
+            .publish_phased(&json!(document.phased_macros()))
+            .unwrap()
+            .count,
+        0
+    );
+    assert!(
+        razer_device::macro_runtime::advanced::Execution::phased(
+            &phased,
+            "23456789-1234-4234-8234-123456789abc",
+            0
+        )
+        .is_err()
+    );
+    assert!(
+        ordinary
+            .get("12345678-1234-4234-8234-123456789abc")
+            .is_some()
+    );
+
+    library.entries.clear();
+    let document = compiler.compile(&[], &library).unwrap();
+    assert_eq!(
+        ordinary.publish(&json!(document.macros())).unwrap().count,
+        0
+    );
+    assert_eq!(
+        phased
+            .publish_phased(&json!(document.phased_macros()))
+            .unwrap()
+            .count,
+        0
+    );
+    assert!(
+        ordinary
+            .get("12345678-1234-4234-8234-123456789abc")
+            .is_none()
+    );
 }
 
 #[test]
@@ -166,14 +255,16 @@ fn source_phase_and_sequence_options_keep_distinct_native_edges() {
         let document = Compiler::new().compile(&[item], &library).unwrap();
         assert_eq!(document.app_engine()["mappings"][0]["output"], down);
         assert_eq!(document.app_engine()["mappings"][1]["output"], up);
-        assert_eq!(document.macros(), document.phased_macros());
         if kind == MacroType::Phased {
+            assert_eq!(document.macros(), document.phased_macros());
             assert_eq!(
                 document.macros()[0]["appEngine"]["pressEvents"],
                 json!([
                     {"type":"clipboard","id":"text","text":"Local macro"},{"type":"delay","ms":500}
                 ])
             );
+        } else {
+            assert!(document.phased_macros().is_empty());
         }
     }
 }
@@ -232,4 +323,102 @@ fn unrecorded_output_rows_remain_local_without_blocking_recorded_shortcuts() {
         .unwrap();
     assert_eq!(before, combined);
     assert!(draft.input.is_empty());
+}
+
+#[test]
+fn imported_catalog_routes_types_and_retains_phase_lanes_through_edit_and_delete() {
+    let phased_guid = "33456789-1234-4234-8234-123456789abc";
+    let source = json!({
+        "guid":phased_guid,"name":"Phased import","macroPlaybackOption":"phased",
+        "macroEvents":[
+            {"Type":"actionBar","recordProfile":{"mmtSetting":0,"macroType":2}},
+            {"Type":4,"Text":"press","phase":0},
+            {"Type":4,"Text":"held","phase":1},
+            {"Type":4,"Text":"release","phase":2}
+        ],
+        "appEngine":{
+            "events":[],"mouseMoveType":"none",
+            "pressEvents":[{"type":"clipboard","id":"text","text":"press"},{"type":"delay","ms":500}],
+            "holdEvents":[{"type":"clipboard","id":"text","text":"held"},{"type":"delay","ms":500}],
+            "releaseEvents":[{"type":"clipboard","id":"text","text":"release"},{"type":"delay","ms":500}]
+        }
+    });
+    let mut library = library();
+    let mut sequence = library.entries[0].clone();
+    sequence.id = 2;
+    sequence.xml_guid = Some("23456789-1234-4234-8234-123456789abc".into());
+    sequence.macro_type = MacroType::Sequence;
+    library.entries.push(sequence);
+    library.next_id = 3;
+    library.append_source_documents(&[source]).unwrap();
+    let mut compiler = Compiler::new();
+    let initial = compiler.compile(&[], &library).unwrap();
+    assert_eq!(initial.macros().len(), 3);
+    assert_eq!(initial.phased_macros().len(), 1);
+    assert_eq!(initial.phased_macros()[0]["guid"], phased_guid);
+    let mut ordinary = razer_device::macro_runtime::Library::default();
+    let mut advanced = razer_device::macro_runtime::advanced::Library::default();
+    ordinary.publish(&json!(initial.macros())).unwrap();
+    advanced
+        .publish_phased(&json!(initial.phased_macros()))
+        .unwrap();
+
+    library.entries[2].name = "Renamed phased import".into();
+    let renamed = compiler.compile(&[], &library).unwrap();
+    assert_eq!(renamed.phased_macros()[0]["name"], "Renamed phased import");
+    assert_eq!(
+        renamed.phased_macros()[0]["appEngine"],
+        initial.phased_macros()[0]["appEngine"]
+    );
+
+    // Saving an edited phase rebuilds its source lanes; the retained import
+    // must not override the changed row or leave events in the former lane.
+    library.entries[2].actions[0].phase = Some(2);
+    library.entries[2]
+        .actions
+        .retain(|action| action.phase != Some(1));
+    let edited = compiler.compile(&[], &library).unwrap();
+    let engine = &edited.phased_macros()[0]["appEngine"];
+    assert_eq!(engine["pressEvents"], json!([]));
+    assert_eq!(engine["holdEvents"], json!([]));
+    assert_eq!(
+        engine["releaseEvents"],
+        json!([
+            {"type":"clipboard","id":"text","text":"press"},{"type":"delay","ms":500},
+            {"type":"clipboard","id":"text","text":"release"},{"type":"delay","ms":500}
+        ])
+    );
+    assert_eq!(engine["events"], json!([]));
+    advanced
+        .publish_phased(&json!(edited.phased_macros()))
+        .unwrap();
+
+    library.entries.pop();
+    let deleted = compiler.compile(&[], &library).unwrap();
+    assert_eq!(deleted.macros().len(), 2);
+    assert!(deleted.phased_macros().is_empty());
+    advanced
+        .publish_phased(&json!(deleted.phased_macros()))
+        .unwrap();
+    assert!(
+        razer_device::macro_runtime::advanced::Execution::phased(&advanced, phased_guid, 0)
+            .is_err()
+    );
+}
+
+#[test]
+fn retained_phased_import_missing_a_lane_is_rejected_without_synthesizing_it() {
+    for missing in ["pressEvents", "holdEvents", "releaseEvents"] {
+        let mut source = json!({
+            "guid":"33456789-1234-4234-8234-123456789abc","name":"Incomplete phase",
+            "macroPlaybackOption":"phased","macroEvents":[],
+            "appEngine":{"events":[],"pressEvents":[],"holdEvents":[],"releaseEvents":[],"mouseMoveType":"none"}
+        });
+        source["appEngine"].as_object_mut().unwrap().remove(missing);
+        let mut library = MacroLibraryFile::default();
+        library.append_source_documents(&[source.clone()]).unwrap();
+        let error = Compiler::new().compile(&[], &library).unwrap_err();
+        assert!(error.contains(missing), "{error}");
+        assert_eq!(library.source_macro_documents().unwrap(), [source]);
+    }
 }

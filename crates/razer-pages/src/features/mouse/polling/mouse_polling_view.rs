@@ -219,6 +219,7 @@ fn polling_button(
 impl MouseProductWorkspace {
     pub fn invalidate_mouse_polling_connection(&mut self) {
         self.polling_state.invalidate_connection();
+        self.receiver_mapping.stop();
     }
 
     pub fn observe_mouse_polling_values(
@@ -574,6 +575,7 @@ impl MouseProductWorkspace {
             self.scroll_task.cancel();
             self.cancel_calibration_requests();
             self.legacy_mapping.stop();
+            self.receiver_mapping.stop();
         }
         self.sync_receiver_indicator(cx);
         self.request_current_power_read(cx);

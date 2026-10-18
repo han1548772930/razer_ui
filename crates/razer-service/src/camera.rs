@@ -73,9 +73,6 @@ pub(super) struct ScopedCameraSession {
     scope: CameraScope,
 }
 impl ScopedCameraSession {
-    pub(super) fn open(scope: CameraScope) -> Result<Self> {
-        Self::open_mode(scope, false)
-    }
     pub(super) fn open_mode(scope: CameraScope, properties: bool) -> Result<Self> {
         let target = discover(&scope)?;
         let inner = CameraDeviceSession::open_mode(target.clone(), properties)?;

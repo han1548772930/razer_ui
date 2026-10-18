@@ -1,10 +1,11 @@
 //! Retained input lookup and output tasks for one device registration.
-use super::{Cancellation, driver};
+use super::{Cancellation, driver, hardware};
 use anyhow::{Context, Result, ensure};
 use razer_device::{
     mapping_native_action::Output,
     mapping_native_composite::{Dispatch, State as CompositeState},
     mapping_native_events::{NativeStreamKind, decode_native_stream_packet},
+    mapping_native_hid::NativeHidDeviceConfig,
     mapping_native_input::{KeyboardInput, MouseInput, NativeInput},
     mapping_native_lookup::{Input, InputKind, Lookup, Modes, Resolved, Tables},
     mapping_native_mode::ModeState,
@@ -17,11 +18,31 @@ use std::{
         mpsc,
     },
     thread::{self, JoinHandle},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use uuid::Uuid;
 
+#[path = "device/analog_observation.rs"]
+pub(super) mod analog_observation;
+#[path = "device/digital_state.rs"]
+mod digital_state;
+#[path = "device/gamepad_observation.rs"]
+pub(super) mod gamepad_observation;
+#[path = "device/hardware_state.rs"]
+mod hardware_state;
+
 pub(super) trait Executor: 'static {
+    fn next_wait(&self) -> Duration;
+    fn gamepad_observation(
+        &mut self,
+        control: gamepad_observation::Control,
+        sink: gamepad_observation::Sink,
+    ) -> Result<()>;
+    fn begin_hardware_frame(&mut self, cleanup: bool) -> Result<()>;
+    fn finish_hardware_frame(&mut self) -> Result<()>;
+    fn analog(&mut self, resolved: Resolved<Output>, actuation: u16) -> Result<()>;
+    fn interrupt_macro(&mut self, resolved: &Resolved<Output>) -> Result<()>;
+    fn pause_mapping_replay(&mut self) -> Result<()>;
     fn execute(
         &mut self,
         resolved: Resolved<Output>,
@@ -40,14 +61,43 @@ pub(super) enum Event {
         input: Input,
         tick: u64,
         redirected: bool,
+        observer: Option<Uuid>,
+    },
+    SnapTap {
+        observer: Uuid,
+        observation: razer_ipc::mapping_observation::SnapTapEvent,
+    },
+    Analog {
+        observer: Uuid,
+        delivery: razer_ipc::analog_observation::Delivery,
+    },
+    Gamepad {
+        observer: Uuid,
+        delivery: razer_ipc::gamepad_observation::Delivery,
     },
     Failure(String),
 }
 enum Command {
     Input(driver::Packet),
-    Tables(Tables<Output>, mpsc::SyncSender<Result<(), String>>),
+    Hardware(hardware::Packet),
+    Tables(
+        Tables<Output>,
+        NativeHidDeviceConfig,
+        mpsc::SyncSender<Result<(), String>>,
+    ),
     Mapping(bool, mpsc::SyncSender<Result<(), String>>),
     Shortcuts(bool, mpsc::SyncSender<Result<(), String>>),
+    InputObservation(bool, mpsc::SyncSender<Result<(), String>>),
+    InputSubscriber(Option<Uuid>, mpsc::SyncSender<Result<(), String>>),
+    SnapTapObservation(Option<Uuid>, mpsc::SyncSender<Result<(), String>>),
+    GamepadObservation(
+        gamepad_observation::Control,
+        mpsc::SyncSender<Result<(), String>>,
+    ),
+    AnalogObservation(
+        analog_observation::Control,
+        mpsc::SyncSender<Result<(), String>>,
+    ),
     HypershiftReleased,
     HeldCount(mpsc::SyncSender<u8>),
     RedirectActivated(mpsc::SyncSender<Result<(), String>>),
@@ -113,16 +163,53 @@ fn hooks(tables: &Tables<Output>) -> Vec<HookInput> {
 struct Worker<E> {
     lookup: Lookup<Output>,
     composites: CompositeState,
+    hardware: hardware_state::Hardware,
+    snaptap: razer_device::mapping_native_snaptap::DigitalState,
+    dynamic_keys: razer_device::mapping_native_dynamic_key::State,
+    began: Instant,
     route: driver::Route,
     executor: E,
     caller: Uuid,
     modes: Arc<Mutex<ModeState>>,
     mapping_enabled: bool,
     shortcuts_enabled: bool,
+    input_observed: bool,
+    input_observer: Option<Uuid>,
+    snaptap_observer: Option<Uuid>,
+    analog_observation: analog_observation::Observation,
     events: mpsc::SyncSender<Event>,
     overflow: Arc<AtomicBool>,
 }
 impl<E: Executor> Worker<E> {
+    pub(super) fn input_observation_enabled(&self) -> bool {
+        self.input_observed || self.input_observer.is_some()
+    }
+    pub(super) fn notify_snaptap(&self, input: &Input, replayed: bool) -> Result<()> {
+        if let Some(observer) = self.snaptap_observer {
+            self.emit(Event::SnapTap {
+                observer,
+                observation: razer_ipc::mapping_observation::SnapTapEvent::new(
+                    input.clone(),
+                    replayed,
+                    razer_platform::event_clock::tick()?,
+                ),
+            });
+        }
+        Ok(())
+    }
+    fn current_modes(&self) -> Result<Modes> {
+        let state = self
+            .modes
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Mapping modes poisoned"))?;
+        Ok(Modes {
+            mapping_enabled: self.mapping_enabled,
+            global_shortcuts_enabled: self.shortcuts_enabled,
+            hypershift: state.hypershift(),
+            otfs: state.otfs(),
+            gaming: state.gaming(self.caller)?,
+        })
+    }
     fn emit(&self, event: Event) {
         if self.events.try_send(event).is_err() {
             self.overflow.store(true, Ordering::Release);
@@ -134,10 +221,22 @@ impl<E: Executor> Worker<E> {
         tick: u64,
         cleanup: bool,
     ) -> Result<()> {
-        let mut pending = std::collections::VecDeque::from([Dispatch {
-            resolved: value,
-            contribution_id: None,
-        }]);
+        self.execute_dispatches(
+            vec![Dispatch {
+                resolved: value,
+                contribution_id: None,
+            }],
+            tick,
+            cleanup,
+        )
+    }
+    fn execute_dispatches(
+        &mut self,
+        dispatches: Vec<Dispatch>,
+        tick: u64,
+        cleanup: bool,
+    ) -> Result<()> {
+        let mut pending = std::collections::VecDeque::from(dispatches);
         let mut errors = Vec::new();
         while let Some(Dispatch {
             resolved,
@@ -147,14 +246,15 @@ impl<E: Executor> Worker<E> {
             if matches!(
                 resolved.output,
                 razer_device::mapping_native_lookup::ResolvedOutput::Mapped(
-                    Output::Cascade(_) | Output::Dpad(_)
+                    Output::Cascade(_) | Output::Dpad(_) | Output::ModTap { .. }
                 )
             ) {
                 let lookup = &self.lookup;
-                match self
-                    .composites
-                    .apply(resolved, |id| lookup.held_by_stateless(id))
-                {
+                match self.composites.apply_at(
+                    resolved,
+                    |id| lookup.held_by_stateless(id),
+                    self.began.elapsed(),
+                ) {
                     Ok(dispatches) => {
                         for mut dispatch in dispatches.into_iter().rev() {
                             if dispatch.contribution_id.is_none() {
@@ -176,10 +276,42 @@ impl<E: Executor> Worker<E> {
         ensure!(errors.is_empty(), "{}", errors.join("; "));
         Ok(())
     }
+    fn poll(&mut self) -> Result<()> {
+        self.poll_analog_observation()?;
+        let dispatches = self.composites.poll(self.began.elapsed());
+        let mut errors = Vec::new();
+        if !dispatches.is_empty() {
+            let tick = razer_platform::event_clock::tick()?;
+            if let Err(error) = self.execute_dispatches(dispatches, tick, false) {
+                errors.push(format!("Timed mapping: {error:#}"));
+            }
+        }
+        if let Err(error) = self.executor.poll() {
+            errors.push(format!("{error:#}"));
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
     fn released(&mut self, values: Vec<Resolved<Output>>) -> Result<()> {
         let mut errors = Vec::new();
         let tick = razer_platform::event_clock::tick()?;
         for value in values {
+            if let Err(error) = self.execute_resolved(value, tick, true) {
+                errors.push(format!("{error:#}"));
+            }
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
+    fn release_mode_mappings(&mut self, values: Vec<Resolved<Output>>) -> Result<()> {
+        let mut errors = Vec::new();
+        let tick = razer_platform::event_clock::tick()?;
+        for value in values {
+            // 6a5e0/6ae30 skip inactive Snap Tap outputs without arbitrating
+            // group membership. Shutdown's 7961a instead releases every pair.
+            if self.snaptap.remove_inactive(&value.input.stateless_id()) {
+                continue;
+            }
             if let Err(error) = self.execute_resolved(value, tick, true) {
                 errors.push(format!("{error:#}"));
             }
@@ -198,27 +330,12 @@ impl<E: Executor> Worker<E> {
         };
         match decoded.kind {
             NativeStreamKind::Hook => {
-                let state = self
-                    .modes
-                    .lock()
-                    .map_err(|_| anyhow::anyhow!("Mapping modes poisoned"))?;
-                let modes = Modes {
-                    mapping_enabled: self.mapping_enabled,
-                    global_shortcuts_enabled: self.shortcuts_enabled,
-                    hypershift: state.hypershift(),
-                    otfs: state.otfs(),
-                    gaming: state.gaming(self.caller)?,
-                };
-                drop(state);
-                if let Some(resolved) = self.lookup.resolve(input, modes) {
-                    self.execute_resolved(resolved, packet.time_tick, false)?;
-                }
+                let modes = self.current_modes()?;
+                self.resolve_digital(input, modes, packet.time_tick, 1, false)?;
             }
-            NativeStreamKind::Notify => self.emit(Event::Input {
-                input,
-                tick: packet.time_tick,
-                redirected: false,
-            }),
+            NativeStreamKind::Notify => {
+                self.notify_input(&input, packet.time_tick, false)?;
+            }
             NativeStreamKind::Redirect => {
                 if matches!(input.kind, InputKind::Mouse { id: 0, data: 0 }) {
                     return Ok(());
@@ -227,6 +344,7 @@ impl<E: Executor> Worker<E> {
                     input,
                     tick: packet.time_tick,
                     redirected: true,
+                    observer: None,
                 });
             }
             NativeStreamKind::Unknown(_) => {}
@@ -234,18 +352,25 @@ impl<E: Executor> Worker<E> {
         Ok(())
     }
     fn stop(&mut self) -> Result<()> {
+        self.control_gamepad_observation(gamepad_observation::Control::Clear)?;
+        self.analog_observation = Default::default();
         let mut errors = Vec::new();
         if let Err(error) = self.executor.prepare_redirect() {
             errors.push(format!("Stop keyboard timers: {error:#}"));
+        }
+        if let Err(error) = self.release_hardware() {
+            errors.push(format!("Release hardware mappings: {error:#}"));
         }
         let releases = self.lookup.drain_releases();
         if let Err(error) = self.released(releases) {
             errors.push(format!("Release input mappings: {error:#}"));
         }
         self.composites.clear();
+        self.snaptap.clear();
         if let Err(error) = self.executor.close() {
             errors.push(format!("Stop device execution: {error:#}"));
         }
+        self.dynamic_keys.clear();
         ensure!(errors.is_empty(), "{}", errors.join("; "));
         Ok(())
     }
@@ -278,28 +403,46 @@ impl Owner {
                 let mut state = Worker {
                     lookup: Lookup::new(Tables::new(Vec::new(), Vec::new(), Vec::new()).unwrap()),
                     composites: CompositeState::default(),
+                    hardware: hardware_state::Hardware::default(),
+                    snaptap: Default::default(),
+                    dynamic_keys: Default::default(),
+                    began: Instant::now(),
                     route,
                     executor,
                     caller,
                     modes,
                     mapping_enabled: true,
                     shortcuts_enabled: true,
+                    input_observed: false,
+                    input_observer: None,
+                    snaptap_observer: None,
+                    analog_observation: Default::default(),
                     events: event_sender,
                     overflow: worker_overflow,
                 };
                 let _ = ready.send(Ok(()));
                 loop {
                     let mut stopping = false;
-                    match commands.recv_timeout(Duration::from_millis(4)) {
+                    match commands
+                        .recv_timeout(state.observation_wait().min(state.executor.next_wait()))
+                    {
                         Ok(Command::Input(packet)) => {
                             if let Err(error) = crate::mapping::guarded(|| state.input(packet)) {
                                 state.emit(Event::Failure(format!("{error:#}")));
                             }
                         }
-                        Ok(Command::Tables(tables, reply)) => {
+                        Ok(Command::Hardware(packet)) => {
+                            if let Err(error) =
+                                crate::mapping::guarded(|| state.hardware_input(packet))
+                            {
+                                state.emit(Event::Failure(format!("{error:#}")));
+                            }
+                        }
+                        Ok(Command::Tables(tables, config, reply)) => {
                             let result = crate::mapping::guarded(|| {
                                 state.route.replace_hooks(hooks(&tables))?;
                                 state.lookup.replace_tables(tables);
+                                state.hardware.replace_config(config);
                                 Ok(())
                             });
                             let _ = reply.send(result.map_err(|e| format!("{e:#}")));
@@ -308,7 +451,7 @@ impl Owner {
                             let result = crate::mapping::guarded(|| {
                                 let releases = state.lookup.mapping_changed(enabled);
                                 state.mapping_enabled = enabled;
-                                state.released(releases)
+                                state.release_mode_mappings(releases)
                             });
                             let _ = reply.send(result.map_err(|e| format!("{e:#}")));
                         }
@@ -316,9 +459,39 @@ impl Owner {
                             state.shortcuts_enabled = enabled;
                             let _ = reply.send(Ok(()));
                         }
+                        Ok(Command::InputObservation(enabled, reply)) => {
+                            state.input_observed = enabled;
+                            let _ = reply.send(Ok(()));
+                        }
+                        Ok(Command::InputSubscriber(observer, reply)) => {
+                            state.input_observer = observer;
+                            let _ = reply.send(Ok(()));
+                        }
+                        Ok(Command::SnapTapObservation(observer, reply)) => {
+                            state.snaptap_observer = observer;
+                            let _ = reply.send(Ok(()));
+                        }
+                        Ok(Command::GamepadObservation(control, reply)) => {
+                            let result = crate::mapping::guarded(|| {
+                                state.control_gamepad_observation(control)
+                            });
+                            let _ = reply.send(result.map_err(|error| format!("{error:#}")));
+                        }
+                        Ok(Command::AnalogObservation(control, reply)) => {
+                            let result = crate::mapping::guarded(|| {
+                                state.control_analog_observation(control)
+                            });
+                            let _ = reply.send(result.map_err(|error| format!("{error:#}")));
+                        }
                         Ok(Command::HypershiftReleased) => {
                             let releases = state.lookup.hypershift_disabled();
-                            if let Err(error) = crate::mapping::guarded(|| state.released(releases))
+                            if let Err(error) =
+                                crate::mapping::guarded(|| state.release_mode_mappings(releases))
+                            {
+                                state.emit(Event::Failure(format!("{error:#}")));
+                            }
+                            if let Err(error) =
+                                crate::mapping::guarded(|| state.hypershift_hardware_released())
                             {
                                 state.emit(Event::Failure(format!("{error:#}")));
                             }
@@ -329,11 +502,15 @@ impl Owner {
                                 if let Err(error) = state.executor.prepare_redirect() {
                                     errors.push(format!("Stop keyboard timers: {error:#}"));
                                 }
+                                if let Err(error) = state.release_hardware() {
+                                    errors.push(format!("Release hardware mappings: {error:#}"));
+                                }
                                 let releases = state.lookup.drain_releases();
                                 if let Err(error) = state.released(releases) {
                                     errors.push(format!("Release input mappings: {error:#}"));
                                 }
                                 state.composites.clear();
+                                state.snaptap.clear();
                                 if let Err(error) = state.executor.redirect_activated() {
                                     errors.push(format!("Reset redirected input: {error:#}"));
                                 }
@@ -342,7 +519,9 @@ impl Owner {
                             });
                             let _ = reply.send(result.map_err(|e| format!("{e:#}")));
                         }
-                        Ok(Command::HeldCount(reply)) => { let _ = reply.send(state.lookup.held_count()); }
+                        Ok(Command::HeldCount(reply)) => {
+                            let _ = reply.send(state.lookup.held_count());
+                        }
                         Ok(Command::Stop(reply)) => {
                             let result = crate::mapping::guarded(|| state.stop());
                             let _ = reply.send(result.map_err(|e| format!("{e:#}")));
@@ -359,7 +538,7 @@ impl Owner {
                     if stopping {
                         break;
                     }
-                    if let Err(error) = crate::mapping::guarded(|| state.executor.poll()) {
+                    if let Err(error) = crate::mapping::guarded(|| state.poll()) {
                         state.emit(Event::Failure(format!("{error:#}")));
                     }
                 }
@@ -384,6 +563,11 @@ impl Owner {
             .try_send(Command::Input(packet))
             .context("Mapping device input queue is incomplete")
     }
+    pub fn hardware_input(&self, packet: hardware::Packet) -> Result<()> {
+        self.sender
+            .try_send(Command::Hardware(packet))
+            .context("Mapping hardware input queue is incomplete")
+    }
     pub fn events(&mut self) -> Result<Vec<Event>> {
         ensure!(
             !self.overflow.load(Ordering::Acquire),
@@ -404,8 +588,8 @@ impl Owner {
             .context("Mapping device reply disconnected")?
             .map_err(anyhow::Error::msg)
     }
-    pub fn publish(&self, tables: Tables<Output>) -> Result<()> {
-        self.control(|reply| Command::Tables(tables, reply))
+    pub fn publish(&self, tables: Tables<Output>, config: NativeHidDeviceConfig) -> Result<()> {
+        self.control(|reply| Command::Tables(tables, config, reply))
     }
     pub fn mapping(&self, enabled: bool) -> Result<()> {
         self.control(|reply| Command::Mapping(enabled, reply))
@@ -414,9 +598,13 @@ impl Owner {
         self.control(|reply| Command::Shortcuts(enabled, reply))
     }
     pub fn held_count(&self) -> Result<u8> {
-        let (reply,receive)=mpsc::sync_channel(1);
-        self.sender.send(Command::HeldCount(reply)).context("Mapping device stopped")?;
-        receive.recv().context("Mapping held count reply disconnected")
+        let (reply, receive) = mpsc::sync_channel(1);
+        self.sender
+            .send(Command::HeldCount(reply))
+            .context("Mapping device stopped")?;
+        receive
+            .recv()
+            .context("Mapping held count reply disconnected")
     }
     pub fn hypershift_released(&self) -> Result<()> {
         self.sender
@@ -426,21 +614,40 @@ impl Owner {
     pub fn redirect_activated(&self) -> Result<()> {
         self.control(Command::RedirectActivated)
     }
+    pub fn input_observation(&self, enabled: bool) -> Result<()> {
+        self.control(|reply| Command::InputObservation(enabled, reply))
+    }
+    pub fn input_subscriber(&self, observer: Option<Uuid>) -> Result<()> {
+        self.control(|reply| Command::InputSubscriber(observer, reply))
+    }
+    pub fn gamepad_observation(&self, control: gamepad_observation::Control) -> Result<()> {
+        self.control(|reply| Command::GamepadObservation(control, reply))
+    }
+    pub fn analog_observation(&self, control: analog_observation::Control) -> Result<()> {
+        self.control(|reply| Command::AnalogObservation(control, reply))
+    }
+    pub fn snaptap_observation(&self, observer: Option<Uuid>) -> Result<()> {
+        self.control(|reply| Command::SnapTapObservation(observer, reply))
+    }
     pub fn stop(&mut self) -> Result<()> {
         let Some(worker) = self.worker.take() else {
-            return self.cleanup_result.clone().unwrap_or(Ok(())).map_err(anyhow::Error::msg);
+            return self
+                .cleanup_result
+                .clone()
+                .unwrap_or(Ok(()))
+                .map_err(anyhow::Error::msg);
         };
         self.cancellation.cancel();
         let result = self.control(Command::Stop);
         let joined = worker
             .join()
             .map_err(|_| anyhow::anyhow!("Mapping device worker panicked"));
-        let result=match (result, joined) {
+        let result = match (result, joined) {
             (Ok(()), Ok(())) => Ok(()),
             (Err(error), Ok(())) | (Ok(()), Err(error)) => Err(format!("{error:#}")),
             (Err(error), Err(join)) => Err(format!("{error:#}; {join:#}")),
         };
-        self.cleanup_result=Some(result.clone());
+        self.cleanup_result = Some(result.clone());
         result.map_err(anyhow::Error::msg)
     }
 }

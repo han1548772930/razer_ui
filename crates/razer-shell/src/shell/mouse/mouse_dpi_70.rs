@@ -70,6 +70,14 @@ pub(super) fn prepare_mapping_document(
             previous,
             guids,
         )?
+    } else if device.product_id == 158 {
+        razer_device::mouse_receiver_mapping::prepare_document_with_device_settings(
+            &profiles,
+            &active.guid,
+            previous,
+            device.source_device_settings.as_ref(),
+            guids,
+        )?
     } else {
         razer_device::keyboard_legacy_mapping::prepare_document(
             &profiles,
@@ -78,14 +86,10 @@ pub(super) fn prepare_mapping_document(
             guids,
         )?
     };
-    match macros
-        .source_macro_documents()
-        .map_err(anyhow::Error::msg)
-        .and_then(|macros| razer_device::macro_engine::publication_documents(&macros))
-    {
+    match macros.publication_catalogs() {
         Ok(macros) => {
-            document["macros"] = serde_json::json!(macros);
-            document["phasedMacros"] = serde_json::json!(macros);
+            document["macros"] = serde_json::json!(macros.macros);
+            document["phasedMacros"] = serde_json::json!(macros.phased_macros);
             document
                 .as_object_mut()
                 .unwrap()
@@ -160,7 +164,7 @@ impl AppShell {
         cx: &mut Context<Self>,
     ) {
         if !self.devices.contains(&workspace)
-            || !matches!(workspace.read(cx).device(cx).product_id, 70 | 182 | 190)
+            || !matches!(workspace.read(cx).device(cx).product_id, 70 | 158 | 182 | 190)
             || workspace.read(cx).mouse_polling_scope(cx) != Some(scope)
         {
             return;

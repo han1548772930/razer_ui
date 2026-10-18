@@ -115,10 +115,11 @@ impl MacroPage {
                     .items_center()
                     .justify_center()
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
                             .path("synapse/expand.svg")
                             .size(css(10.))
-                            .transform(Transformation::rotate(radians(angle))),
+                            .with_transformation(Transformation::rotate(radians(angle))),
                     ),
             );
         let field = if self.rename.is_some() && !self.rename_in_tree {

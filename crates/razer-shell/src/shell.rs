@@ -43,8 +43,6 @@ mod audio_mixer;
 mod audio_notifications;
 #[path = "shell/audio/audio_volume.rs"]
 mod audio_volume;
-#[path = "shell/audio/surround.rs"]
-mod surround;
 #[path = "shell/windows/chroma_studio_window.rs"]
 mod chroma_studio_window;
 #[path = "shell/windows/chroma_window.rs"]
@@ -121,6 +119,8 @@ mod mouse_dpi_70;
 mod mouse_dpi_stages;
 #[path = "shell/mouse/mouse_dynamic.rs"]
 mod mouse_dynamic;
+#[path = "shell/mouse/mouse_rotation.rs"]
+mod mouse_rotation;
 #[path = "shell/mouse/mouse_matcher.rs"]
 mod mouse_matcher;
 #[path = "shell/mouse/mouse_philips.rs"]
@@ -133,6 +133,8 @@ mod mouse_runtime_artwork;
 mod mouse_scroll;
 #[path = "shell/mouse/mouse_tracking.rs"]
 mod mouse_tracking;
+#[path = "shell/audio/surround.rs"]
+mod surround;
 use controller_chroma::ControllerChromaSave;
 use controller_lighting::ControllerLightingSave;
 use controller_triggers::ControllerTriggerSave;
@@ -383,6 +385,7 @@ pub struct AppShell {
     mouse_tracking_tasks: BTreeMap<String, mouse_tracking::TrackingTask>,
     mouse_matcher: mouse_matcher::State,
     mouse_dynamic: mouse_dynamic::State,
+    mouse_rotation: mouse_rotation::State,
     mouse_power: mouse_current_power_runtime::State,
     controller_trigger_workers: usize,
     controller_lighting_workers: usize,
@@ -654,6 +657,7 @@ impl AppShell {
             mouse_tracking_tasks: BTreeMap::new(),
             mouse_matcher: mouse_matcher::State::default(),
             mouse_dynamic: mouse_dynamic::State::default(),
+            mouse_rotation: mouse_rotation::State::default(),
             mouse_power: mouse_current_power_runtime::State::default(),
             controller_trigger_workers: 0,
             controller_lighting_workers: 0,
@@ -1201,6 +1205,15 @@ impl AppShell {
             }));
         this.subscriptions
             .push(cx.observe_window_activation(window, |this, window, cx| {
+                if window.is_window_active()
+                    && this.location == Location::Macro
+                    && !this.close_requested
+                    && this.macro_exit_wait.is_none()
+                {
+                    if let Some(page) = &this.macro_page {
+                        page.update(cx, |page, cx| page.resume_recording_shortcut(window, cx));
+                    }
+                }
                 this.observe_controller_calibration_window_focus(window, cx);
                 this.observe_help_owner_window_focus(window, cx);
                 let _ = this.observe_seiren_audio_host_visibility(window, cx);
@@ -1268,6 +1281,7 @@ impl AppShell {
         this.install_mouse_runtime_artwork_cleanup(cx);
         this.install_mouse_matcher_cleanup(cx);
         this.install_mouse_dynamic_cleanup(cx);
+        this.install_mouse_rotation_cleanup(cx);
         this.install_mouse_receiver_indicator_cleanup(cx);
         this.install_controller_input_cleanup(cx);
         this.install_controller_lighting_cleanup(cx);
@@ -1469,6 +1483,9 @@ impl AppShell {
                 }
                 WorkspaceEvent::MouseDynamicRequested(request) => {
                     this.dispatch_mouse_dynamic(entity.clone(), request, window, cx);
+                }
+                WorkspaceEvent::MouseRotationRequested(request) => {
+                    this.dispatch_mouse_rotation(entity.clone(), request, window, cx);
                 }
                 WorkspaceEvent::MouseMatcherRequested(request) => {
                     this.dispatch_mouse_matcher(entity.clone(), request, window, cx);
@@ -1861,20 +1878,14 @@ impl AppShell {
             window_min_size: Some(size(px(600.), px(500.))),
             ..TitleBar::window_options()
         };
-        display_window::open_or_focus(
-            cx,
-            "chroma-app".into(),
-            display_window::WindowPolicy::Different,
-            options,
-            move |window, cx| {
-                let host = existing.unwrap_or_else(|| {
-                    cx.new(|cx| chroma_window::ChromaWindow::new(owner, devices, window, cx))
-                });
-                host.update(cx, |host, cx| host.bind_window(window, cx));
-                result.replace(Some(host.clone()));
-                host
-            },
-        )
+        display_window::open_or_focus(cx, "chroma-app".into(), options, move |window, cx| {
+            let host = existing.unwrap_or_else(|| {
+                cx.new(|cx| chroma_window::ChromaWindow::new(owner, devices, window, cx))
+            });
+            host.update(cx, |host, cx| host.bind_window(window, cx));
+            result.replace(Some(host.clone()));
+            host
+        })
         .map_err(|error| error.to_string())?;
         if let Some(host) = created.take() {
             self.chroma_host = Some(host);
@@ -1990,7 +2001,7 @@ impl AppShell {
             self.observe_help_owner_tab(&next, cx);
             if self.location == Location::Macro {
                 if let Some(page) = &self.macro_page {
-                    page.update(cx, |page, cx| page.cancel_recording(cx));
+                    page.update(cx, |page, cx| page.deactivate_recording(cx));
                 }
             }
             if self.location == Location::Profiles {
@@ -2473,6 +2484,12 @@ impl AppShell {
             self.continue_save_queue(false, cx);
             return false;
         }
+        if let Err(error) = self.rebase_mouse_rotation_save(&mut request, cx) {
+            self.status = format!("旋转设置本地保存失败：{error:#}");
+            self.cancel_prepared_save(request, cx);
+            self.continue_save_queue(false, cx);
+            return false;
+        }
         if let Err(error) = self.rebase_mouse_philips_save(&mut request, cx) {
             self.status = format!("Philips calibration local storage failed: {error:#}");
             self.cancel_prepared_save(request, cx);
@@ -2775,6 +2792,7 @@ impl AppShell {
             || !self.mouse_tracking_tasks.is_empty()
             || self.mouse_power.pending()
             || self.mouse_dynamic.pending()
+            || self.mouse_rotation.pending()
             || self.controller_trigger_workers > 0
             || self.controller_lighting_workers > 0
             || self.product_lighting.pending()
@@ -2795,6 +2813,7 @@ impl AppShell {
                     workspace.update(cx, |workspace, cx| workspace.finish_exit(cx));
                 }
                 self.stop_global_shortcuts();
+                self.stop_mouse_rotation_native();
                 if self.finish_keyboard_latest_exit(cx) {
                     return;
                 }
@@ -2946,7 +2965,7 @@ impl AppShell {
     }
     fn request_window_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(page) = &self.macro_page {
-            page.update(cx, |page, cx| page.cancel_recording(cx));
+            page.update(cx, |page, cx| page.deactivate_recording(cx));
         }
         #[cfg(target_os = "windows")]
         if let Some(tray) = &mut self.tray {
@@ -2963,17 +2982,17 @@ impl AppShell {
             return;
         }
         if let Some(page) = self.macro_page.clone() {
-            if page.read(cx).recording_busy() {
+            page.update(cx, |page, cx| page.deactivate_recording(cx));
+            if page.read(cx).recording_shutdown_pending() {
                 if self.macro_exit_wait.is_none() {
                     self.macro_exit_wait =
                         Some(cx.observe_in(&page, window, |this, page, window, cx| {
-                            if !page.read(cx).recording_busy() {
+                            if !page.read(cx).recording_shutdown_pending() {
                                 this.macro_exit_wait = None;
                                 this.request_exit(window, cx);
                             }
                         }));
                 }
-                page.update(cx, |page, cx| page.cancel_recording(cx));
                 self.status = "正在结束宏录制并恢复临时映射状态…".into();
                 cx.notify();
                 return;

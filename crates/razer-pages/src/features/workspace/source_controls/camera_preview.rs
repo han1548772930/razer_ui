@@ -343,11 +343,12 @@ impl SourceControls {
                     .hover(|button| button.opacity(0.7))
                     .focus_visible(|button| button.border_1().border_color(Colors::focus()))
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
                             .path("synapse/camera-section-reset.svg")
                             .size(surface::css(20.))
                             .text_color(Colors::text())
-                            .transform(Transformation::scale(size(-1., 1.))),
+                            .with_transformation(Transformation::scale(size(-1., 1.))),
                     )
                     .on_click(cx.listener(|_, _, _, cx| {
                         // Source requests enumeration/reconnect. No source state changes the

@@ -68,10 +68,15 @@ impl CompiledDocument {
         let mut turbos = BTreeSet::new();
         let mut macros = BTreeSet::new();
         let mut phased_macros = BTreeSet::new();
-        validate_collection(&self.default_turbos, &mut turbos, &mut identities)?;
-        validate_collection(&self.synapse_turbos, &mut turbos, &mut identities)?;
-        validate_collection(&self.macros, &mut macros, &mut identities)?;
-        validate_collection(&self.phased_macros, &mut phased_macros, &mut identities)?;
+        validate_collection(&self.default_turbos, &mut turbos, &mut identities, false)?;
+        validate_collection(&self.synapse_turbos, &mut turbos, &mut identities, false)?;
+        validate_collection(&self.macros, &mut macros, &mut identities, false)?;
+        validate_collection(
+            &self.phased_macros,
+            &mut phased_macros,
+            &mut identities,
+            true,
+        )?;
         validate_engine(&self.app_engine, &["mappings"])?;
         let mappings = self
             .app_engine
@@ -125,6 +130,7 @@ fn validate_collection(
     documents: &[Value],
     target: &mut BTreeSet<String>,
     identities: &mut BTreeMap<String, Value>,
+    phased_consumer: bool,
 ) -> Result<(), String> {
     for document in documents {
         let guid = document
@@ -148,12 +154,13 @@ fn validate_collection(
         let engine = document
             .get("appEngine")
             .ok_or("Native document has no engine")?;
-        let lanes: &[&str] =
-            if document.get("macroPlaybackOption").and_then(Value::as_str) == Some("phased") {
-                &["events", "pressEvents", "holdEvents", "releaseEvents"]
-            } else {
-                &["events"]
-            };
+        let lanes: &[&str] = if phased_consumer
+            || document.get("macroPlaybackOption").and_then(Value::as_str) == Some("phased")
+        {
+            &["events", "pressEvents", "holdEvents", "releaseEvents"]
+        } else {
+            &["events"]
+        };
         validate_engine(engine, lanes)?;
     }
     Ok(())
@@ -416,11 +423,7 @@ impl Compiler {
         }
         context.synapse_turbos = Some(Vec::new());
         context.is_global_shortcuts = true;
-        let source = library.source_macro_documents()?;
-        let published = razer_device::macro_engine::publication_documents(&source)
-            .map_err(|e| e.to_string())?;
-        // Js/qs sends the complete saved list to the consumer selected by the
-        // edited macro type. Both consumers therefore require the same list.
+        let published = library.publication_catalogs()?;
         // Source output edits are saved before the independent input recorder.
         // A row without an input produces no native mappings and stays local.
         let recorded: Vec<_> = shortcuts
@@ -438,8 +441,8 @@ impl Compiler {
                 .synapse_turbos
                 .clone()
                 .ok_or("Turbo compilation did not produce a catalog")?,
-            macros: published.clone(),
-            phased_macros: published,
+            macros: published.macros,
+            phased_macros: published.phased_macros,
             app_engine,
         })?;
         self.context = context;

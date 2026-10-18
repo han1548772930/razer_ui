@@ -15,14 +15,6 @@ struct Session {
     connection: Connection,
     sequence: u8,
 }
-fn pause(duration: Duration, validate: &dyn Fn() -> anyhow::Result<()>) -> anyhow::Result<()> {
-    let deadline = Instant::now() + duration;
-    while let Some(remaining) = deadline.checked_duration_since(Instant::now()) {
-        validate()?;
-        std::thread::sleep(remaining.min(Duration::from_millis(5)));
-    }
-    validate()
-}
 impl ble::Transport for Session {
     fn exchange(
         &mut self,
@@ -33,24 +25,8 @@ impl ble::Transport for Session {
         let transaction = self.sequence;
         self.sequence = if self.sequence == 30 { 0 } else { self.sequence + 1 };
         let frame = ble::frame(transaction, command, data)?;
-        let mut last = None;
-        // Current rzDevice30 lI=2/lz=30; retry keeps the same transaction.
-        for attempt in 0..2 {
-            if attempt > 0 {
-                pause(Duration::from_millis(30), validate)?;
-            }
-            match self.connection.exchange(&frame, validate) {
-                Ok(data) => return ble::acknowledged(command, transaction, data),
-                Err(error) => {
-                    validate()?;
-                    if !gatt::retryable(&error) {
-                        return Err(error);
-                    }
-                    last = Some(error);
-                }
-            }
-        }
-        Err(last.context("BLE power request did not run")?)
+        let data = self.connection.exchange_with_retry(&frame, validate)?;
+        ble::acknowledged(command, transaction, data)
     }
 }
 
@@ -74,29 +50,8 @@ pub(super) fn request(target: &WindowsBleTarget, change: &Change) -> anyhow::Res
     validate()?;
     let _lock = receiver::ReceiverLock::acquire(&target.device_container_id)?;
     validate()?;
-    let mut connection = None;
-    let mut last = None;
-    // Current rzDevice30 connectDevice w6=2/ah=150.
-    for attempt in 0..2 {
-        if attempt > 0 {
-            pause(Duration::from_millis(150), &validate)?;
-        }
-        match Connection::connect(target, &validate) {
-            Ok(opened) => {
-                connection = Some(opened);
-                break;
-            }
-            Err(error) => {
-                validate()?;
-                last = Some(error);
-            }
-        }
-    }
     let mut session = Session {
-        connection: match connection {
-            Some(connection) => connection,
-            None => return Err(last.context("BLE power connection did not run")?),
-        },
+        connection: Connection::connect_with_retry(target, &validate)?,
         sequence: 0,
     };
     let result = (|| {

@@ -22,6 +22,7 @@ pub mod mouse_current_dpi;
 pub mod mouse_current_polling;
 pub mod mouse_current_power;
 pub mod mouse_dynamic;
+pub mod mouse_rotation;
 pub mod mouse_indicator_led;
 pub mod mouse_philips;
 pub mod mouse_receiver_legacy;

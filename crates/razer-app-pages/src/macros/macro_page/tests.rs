@@ -44,6 +44,7 @@ fn existing_file(kind: MacroType, tutorial: Tutorial) -> MacroLibraryFile {
         }],
         current: Some(1),
         tutorial,
+        record_shortcut: Vec::new(),
     }
 }
 

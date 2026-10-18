@@ -391,7 +391,6 @@ fn execute(
         "device_write_verified":verified,
         "error":operation.err().map(|e|format!("{e:#}")),
         "transport_metadata":device.metadata(),
-        "persistence":"device_calibration_write_with_exact_readback",
-        "evidence":"docs/re/gamepad-calibration-middleware-current.md"}),
+        "persistence":"device_calibration_write_with_exact_readback"}),
     )
 }

@@ -18,11 +18,16 @@ mod worker_shutdown;
 
 pub const FRAME_PREFIX: &str = "RAZER_UI_SERVICE ";
 pub const MAX_FRAME_BYTES: usize = 4 * 1024 * 1024;
+pub mod analog_observation;
+pub mod gamepad_observation;
 pub mod device_tasks;
 pub mod global_shortcut_capture;
+pub mod input_observation;
 pub mod macro_recording;
 pub mod mapping_control;
+pub mod mapping_observation;
 pub mod mouse_input_monitoring;
+pub mod mouse_rotation;
 pub mod shortcuts;
 
 /// Serializes owners of the process-wide vendor input redirection lifecycle.
@@ -266,6 +271,10 @@ pub enum ServiceRequest {
     BleMouseCurrentPower {
         target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
         change: razer_device::mouse_current_power::Change,
+    },
+    BleMouseRotation {
+        target: razer_device::mouse_runtime_artwork::WindowsBleTarget,
+        change: Option<razer_device::mouse_rotation::Setting>,
     },
     HidNodeMouseIndicatorLed {
         node: razer_device::backend::HidNode,
@@ -572,6 +581,12 @@ pub enum ServiceRequest {
         product_id: u32,
         change: Option<razer_device::mouse_current_polling::Change>,
     },
+    HidNodeMouseRotation {
+        node: razer_device::backend::HidNode,
+        product_id: u32,
+        peer_product_id: Option<u32>,
+        change: Option<razer_device::mouse_rotation::Setting>,
+    },
     KeyboardIndicator {
         target: razer_device::keyboard_indicator::Target,
         change: razer_device::keyboard_indicator::Change,
@@ -768,6 +783,10 @@ pub enum ServiceRequest {
         target: razer_device::device_reads::DeviceReadTarget,
         change: Option<razer_device::mouse_current_polling::Change>,
     },
+    DeviceMouseRotation {
+        target: razer_device::device_reads::DeviceReadTarget,
+        change: Option<razer_device::mouse_rotation::Setting>,
+    },
     DeviceKeyboardBrightnessWrite {
         target: razer_device::device_reads::DeviceReadTarget,
         percent: u8,
@@ -785,6 +804,62 @@ pub enum ServiceRequest {
     },
     MappingDeviceEvents {
         owner_guid: String,
+    },
+    MappingRotationStart {
+        owner_guid: String,
+        target: mouse_rotation::NativeTarget,
+    },
+    MappingRotationRequest {
+        owner_guid: String,
+        request: razer_device::mapping_native_rotation::RotationRequest,
+    },
+    MappingRotationPoll {
+        owner_guid: String,
+    },
+    MappingRotationStop {
+        owner_guid: String,
+    },
+    MappingGamepadObservationStart {
+        target: gamepad_observation::Target,
+        observer_guid: String,
+        registration: gamepad_observation::Registration,
+    },
+    MappingGamepadObservationPoll {
+        observer_guid: String,
+    },
+    MappingGamepadObservationStop {
+        observer_guid: String,
+    },
+    MappingAnalogObservationStart {
+        target: analog_observation::Target,
+        observer_guid: String,
+        registration: analog_observation::Registration,
+    },
+    MappingAnalogObservationPoll {
+        observer_guid: String,
+    },
+    MappingAnalogObservationStop {
+        observer_guid: String,
+    },
+    MappingObservationStart {
+        target: mapping_observation::Target,
+        observer_guid: String,
+    },
+    MappingInputObservationStart {
+        target: input_observation::Target,
+        observer_guid: String,
+    },
+    MappingInputObservationPoll {
+        observer_guid: String,
+    },
+    MappingInputObservationStop {
+        observer_guid: String,
+    },
+    MappingObservationPoll {
+        observer_guid: String,
+    },
+    MappingObservationStop {
+        observer_guid: String,
     },
     MappingDeviceHypershiftActive {
         owner_guid: String,
@@ -1192,6 +1267,7 @@ impl ServiceClient {
         let starting_mapping = matches!(
             request,
             ServiceRequest::MappingDeviceStart { .. }
+                | ServiceRequest::MappingRotationStart { .. }
                 | ServiceRequest::ControllerInputStart { .. }
                 | ServiceRequest::MappingOtfmInputStart { .. }
         );
@@ -1270,6 +1346,9 @@ impl ServiceClient {
                     change: Some(_),
                     ..
                 }
+                | ServiceRequest::HidNodeMouseRotation { change: Some(_), .. }
+                | ServiceRequest::DeviceMouseRotation { change: Some(_), .. }
+                | ServiceRequest::BleMouseRotation { change: Some(_), .. }
                 | ServiceRequest::HidNodeMouseCurrentPolling {
                     change: Some(_),
                     ..
@@ -1286,6 +1365,10 @@ impl ServiceClient {
                 | ServiceRequest::MouseReceiverLegacy { .. }
                 | ServiceRequest::MappingDeviceStart { .. }
                 | ServiceRequest::MappingDevicePublish { .. }
+                | ServiceRequest::MappingRotationStart { .. }
+                | ServiceRequest::MappingRotationRequest { .. }
+                | ServiceRequest::MappingRotationPoll { .. }
+                | ServiceRequest::MappingRotationStop { .. }
                 | ServiceRequest::SetOtfmMappingsSuspended { .. }
                 | ServiceRequest::MacroRecorderGlobalState
                 | ServiceRequest::MacroRecorderStorageWrite { .. }
@@ -1389,6 +1472,9 @@ impl ServiceClient {
                 | ServiceRequest::DeviceMouseCurrentDpi { change: None, .. }
                 | ServiceRequest::HidNodeMouseDynamic { change: None, .. }
                 | ServiceRequest::DeviceMouseDynamic { change: None, .. }
+                | ServiceRequest::HidNodeMouseRotation { change: None, .. }
+                | ServiceRequest::DeviceMouseRotation { change: None, .. }
+                | ServiceRequest::BleMouseRotation { change: None, .. }
                 | ServiceRequest::HidNodeMouseCurrentPower {
                     change: razer_device::mouse_current_power::Change::ReadPowerSaving,
                     ..
@@ -1436,9 +1522,14 @@ impl ServiceClient {
                 | ServiceRequest::HidNodeMixerRouteRead { .. }
         );
         let marie_timeout = match &request {
-            ServiceRequest::SeirenNativeOpen { .. } => Some(razer_device::seiren_eq::NativeOperation::DeviceInitialize.service_budget()),
-            ServiceRequest::SeirenNativeCall { native_operation, .. } => Some(native_operation.service_budget()),
-            ServiceRequest::SeirenNativeClose { .. } | ServiceRequest::SeirenNativeEvents { .. } => Some(Duration::from_secs(20)),
+            ServiceRequest::SeirenNativeOpen { .. } => {
+                Some(razer_device::seiren_eq::NativeOperation::DeviceInitialize.service_budget())
+            }
+            ServiceRequest::SeirenNativeCall {
+                native_operation, ..
+            } => Some(native_operation.service_budget()),
+            ServiceRequest::SeirenNativeClose { .. }
+            | ServiceRequest::SeirenNativeEvents { .. } => Some(Duration::from_secs(20)),
             _ => None,
         };
         let id = self.next_id;
@@ -1597,16 +1688,24 @@ impl ServiceClient {
     }
 
     fn stop(&mut self) -> anyhow::Result<()> {
-        let request_shutdown = !self.stopped && self.child.is_some()
-            && self.input_worker.is_some() && self.output_worker.is_some();
+        let request_shutdown = !self.stopped
+            && self.child.is_some()
+            && self.input_worker.is_some()
+            && self.output_worker.is_some();
         self.stopped = true;
         let cleanup = if request_shutdown {
             let id = self.next_id;
             self.next_id = self.next_id.wrapping_add(1);
             let result = (|| {
-                let mut frame = serde_json::to_vec(&RequestEnvelope { id, request: ServiceRequest::Shutdown })?;
+                let mut frame = serde_json::to_vec(&RequestEnvelope {
+                    id,
+                    request: ServiceRequest::Shutdown,
+                })?;
                 frame.push(b'\n');
-                self.requests.as_ref().context("设备服务清理管道不可用")?.send(frame)?;
+                self.requests
+                    .as_ref()
+                    .context("设备服务清理管道不可用")?
+                    .send(frame)?;
                 // The longest admitted operation has a 180-second budget;
                 // teardown retains its separate 45-second cleanup allowance.
                 worker_shutdown::drain(&self.responses, id, Duration::from_secs(225))
@@ -1617,13 +1716,17 @@ impl ServiceClient {
             if result.is_err() {
                 if let Some(child) = self.child.as_mut() {
                     let deadline = std::time::Instant::now() + Duration::from_secs(45);
-                    while matches!(child.try_wait(), Ok(None)) && std::time::Instant::now() < deadline {
+                    while matches!(child.try_wait(), Ok(None))
+                        && std::time::Instant::now() < deadline
+                    {
                         thread::sleep(Duration::from_millis(50));
                     }
                 }
             }
             result
-        } else { Ok(()) };
+        } else {
+            Ok(())
+        };
         let process = self.finish_process();
         combine_cleanup([cleanup, process])
     }

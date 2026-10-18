@@ -1,4 +1,4 @@
-//! Dashboard module 46114 Rk preserves the mounted recorder's key order and fields.
+//! Dashboard module 46114 Rk fields consumed by the mounted recorder, in source order.
 use serde::Deserialize;
 use std::sync::OnceLock;
 
@@ -7,23 +7,12 @@ pub(super) struct CaptureKey {
     pub(super) name: String,
     #[serde(rename = "inputID")]
     pub(super) input_id: Option<String>,
-    #[serde(rename = "type")]
-    pub(super) key_type: String,
     pub(super) scancode: u32,
-    #[serde(rename = "virtualKey")]
-    pub(super) virtual_key: String,
     #[serde(rename = "keyCode")]
     pub(super) key_code: String,
     pub(super) flag: u32,
     #[serde(rename = "outputFlag")]
     pub(super) output_flag: Option<u32>,
-    #[serde(rename = "pageID")]
-    pub(super) page_id: Option<String>,
-    #[serde(rename = "HID")]
-    pub(super) hid: Option<String>,
-    pub(super) modifier: Option<String>,
-    #[serde(rename = "ExtendedKey")]
-    pub(super) extended_key: Option<String>,
 }
 
 pub(super) fn keys() -> &'static [CaptureKey] {
@@ -58,32 +47,20 @@ mod tests {
         };
         assert_eq!(by_id("KEY_RIGHT_CTRL").output_flag, None);
         assert_eq!(by_id("KEY_RIGHT_ALT").output_flag, None);
-        assert_eq!(by_id("KEY_NUMPAD_PERIOD").virtual_key, "46");
+        assert_eq!(by_id("KEY_NUMPAD_PERIOD").key_code, "110");
         assert_eq!(by_id("KEY_CANCEL").name, "Invalid/cancel");
-        assert_eq!(by_id("KEY_CANCEL").key_type, "");
-        assert_eq!(by_id("KEY_NUMPAD_NUM_LOCK").key_type, "Numpad");
         assert_eq!(
             rows.iter()
                 .enumerate()
                 .filter(|(_, row)| row.input_id.as_deref() == Some("KEY_NUMPAD_NUM_LOCK"))
-                .map(|(ix, row)| (ix, row.key_type.as_str()))
+                .map(|(ix, row)| (ix, row.scancode))
                 .collect::<Vec<_>>(),
-            [(60, "Numpad"), (105, "Modifiers")]
+            [(60, 69), (105, 69)]
         );
-        assert_eq!(by_id("KEY_F13").page_id, None);
-        assert_eq!(by_id("KEY_F13").hid, None);
-        assert!(rows.iter().any(|row| row.input_id.is_none()
-            && row.name == "<"
-            && row.hid.as_deref() == Some("100")));
         assert!(
             rows.iter()
-                .all(|row| row.modifier.as_deref().is_none_or(|value| value == "16"))
+                .any(|row| row.input_id.is_none() && row.name == "<")
         );
-        assert!(rows.iter().all(|row| {
-            row.extended_key
-                .as_deref()
-                .is_none_or(|value| value == "Extended_00")
-        }));
         assert!(!rows.iter().any(|row| {
             row.input_id
                 .as_deref()
@@ -109,2018 +86,1154 @@ fn make_shortcut_capture_keys_table() -> Vec<CaptureKey> {
         CaptureKey{
             name: "A".into(),
             input_id: Some("KEY_A".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 30u32,
-            virtual_key: "65".into(),
             key_code: "65".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("4".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "B".into(),
             input_id: Some("KEY_B".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 48u32,
-            virtual_key: "66".into(),
             key_code: "66".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("5".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "C".into(),
             input_id: Some("KEY_C".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 46u32,
-            virtual_key: "67".into(),
             key_code: "67".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("6".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "D".into(),
             input_id: Some("KEY_D".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 32u32,
-            virtual_key: "68".into(),
             key_code: "68".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("7".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "E".into(),
             input_id: Some("KEY_E".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 18u32,
-            virtual_key: "69".into(),
             key_code: "69".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("8".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F".into(),
             input_id: Some("KEY_F".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 33u32,
-            virtual_key: "70".into(),
             key_code: "70".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("9".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "G".into(),
             input_id: Some("KEY_G".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 34u32,
-            virtual_key: "71".into(),
             key_code: "71".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("10".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "H".into(),
             input_id: Some("KEY_H".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 35u32,
-            virtual_key: "72".into(),
             key_code: "72".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("11".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "I".into(),
             input_id: Some("KEY_I".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 23u32,
-            virtual_key: "73".into(),
             key_code: "73".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("12".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "J".into(),
             input_id: Some("KEY_J".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 36u32,
-            virtual_key: "74".into(),
             key_code: "74".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("13".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "K".into(),
             input_id: Some("KEY_K".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 37u32,
-            virtual_key: "75".into(),
             key_code: "75".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("14".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "L".into(),
             input_id: Some("KEY_L".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 38u32,
-            virtual_key: "76".into(),
             key_code: "76".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("15".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "M".into(),
             input_id: Some("KEY_M".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 50u32,
-            virtual_key: "77".into(),
             key_code: "77".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("16".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "N".into(),
             input_id: Some("KEY_N".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 49u32,
-            virtual_key: "78".into(),
             key_code: "78".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("17".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "O".into(),
             input_id: Some("KEY_O".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 24u32,
-            virtual_key: "79".into(),
             key_code: "79".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("18".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "P".into(),
             input_id: Some("KEY_P".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 25u32,
-            virtual_key: "80".into(),
             key_code: "80".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("19".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Q".into(),
             input_id: Some("KEY_Q".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 16u32,
-            virtual_key: "81".into(),
             key_code: "81".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("20".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "R".into(),
             input_id: Some("KEY_R".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 19u32,
-            virtual_key: "82".into(),
             key_code: "82".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("21".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "S".into(),
             input_id: Some("KEY_S".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 31u32,
-            virtual_key: "83".into(),
             key_code: "83".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("22".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "T".into(),
             input_id: Some("KEY_T".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 20u32,
-            virtual_key: "84".into(),
             key_code: "84".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("23".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "U".into(),
             input_id: Some("KEY_U".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 22u32,
-            virtual_key: "85".into(),
             key_code: "85".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("24".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "V".into(),
             input_id: Some("KEY_V".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 47u32,
-            virtual_key: "86".into(),
             key_code: "86".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("25".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "W".into(),
             input_id: Some("KEY_W".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 17u32,
-            virtual_key: "87".into(),
             key_code: "87".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("26".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "X".into(),
             input_id: Some("KEY_X".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 45u32,
-            virtual_key: "88".into(),
             key_code: "88".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("27".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Y".into(),
             input_id: Some("KEY_Y".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 21u32,
-            virtual_key: "89".into(),
             key_code: "89".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("28".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Z".into(),
             input_id: Some("KEY_Z".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 44u32,
-            virtual_key: "90".into(),
             key_code: "90".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("29".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "0".into(),
             input_id: Some("KEY_0".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 11u32,
-            virtual_key: "48".into(),
             key_code: "48".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("39".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "1".into(),
             input_id: Some("KEY_1".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 2u32,
-            virtual_key: "49".into(),
             key_code: "49".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("30".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "2".into(),
             input_id: Some("KEY_2".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 3u32,
-            virtual_key: "50".into(),
             key_code: "50".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("31".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "3".into(),
             input_id: Some("KEY_3".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 4u32,
-            virtual_key: "51".into(),
             key_code: "51".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("32".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "4".into(),
             input_id: Some("KEY_4".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 5u32,
-            virtual_key: "52".into(),
             key_code: "52".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("33".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "5".into(),
             input_id: Some("KEY_5".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 6u32,
-            virtual_key: "53".into(),
             key_code: "53".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("34".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "6".into(),
             input_id: Some("KEY_6".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 7u32,
-            virtual_key: "54".into(),
             key_code: "54".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("35".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "7".into(),
             input_id: Some("KEY_7".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 8u32,
-            virtual_key: "55".into(),
             key_code: "55".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("36".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "8".into(),
             input_id: Some("KEY_8".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 9u32,
-            virtual_key: "56".into(),
             key_code: "56".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("37".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "9".into(),
             input_id: Some("KEY_9".into()),
-            key_type: "Alphanumeric".into(),
             scancode: 10u32,
-            virtual_key: "57".into(),
             key_code: "57".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("38".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F1".into(),
             input_id: Some("KEY_F1".into()),
-            key_type: "Function".into(),
             scancode: 59u32,
-            virtual_key: "112".into(),
             key_code: "112".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("58".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F2".into(),
             input_id: Some("KEY_F2".into()),
-            key_type: "Function".into(),
             scancode: 60u32,
-            virtual_key: "113".into(),
             key_code: "113".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("59".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F3".into(),
             input_id: Some("KEY_F3".into()),
-            key_type: "Function".into(),
             scancode: 61u32,
-            virtual_key: "114".into(),
             key_code: "114".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("60".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F4".into(),
             input_id: Some("KEY_F4".into()),
-            key_type: "Function".into(),
             scancode: 62u32,
-            virtual_key: "115".into(),
             key_code: "115".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("61".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F5".into(),
             input_id: Some("KEY_F5".into()),
-            key_type: "Function".into(),
             scancode: 63u32,
-            virtual_key: "116".into(),
             key_code: "116".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("62".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F6".into(),
             input_id: Some("KEY_F6".into()),
-            key_type: "Function".into(),
             scancode: 64u32,
-            virtual_key: "117".into(),
             key_code: "117".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("63".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F7".into(),
             input_id: Some("KEY_F7".into()),
-            key_type: "Function".into(),
             scancode: 65u32,
-            virtual_key: "118".into(),
             key_code: "118".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("64".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F8".into(),
             input_id: Some("KEY_F8".into()),
-            key_type: "Function".into(),
             scancode: 66u32,
-            virtual_key: "119".into(),
             key_code: "119".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("65".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F9".into(),
             input_id: Some("KEY_F9".into()),
-            key_type: "Function".into(),
             scancode: 67u32,
-            virtual_key: "120".into(),
             key_code: "120".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("66".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F10".into(),
             input_id: Some("KEY_F10".into()),
-            key_type: "Function".into(),
             scancode: 68u32,
-            virtual_key: "121".into(),
             key_code: "121".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("67".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F11".into(),
             input_id: Some("KEY_F11".into()),
-            key_type: "Function".into(),
             scancode: 87u32,
-            virtual_key: "122".into(),
             key_code: "122".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("68".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F12".into(),
             input_id: Some("KEY_F12".into()),
-            key_type: "Function".into(),
             scancode: 88u32,
-            virtual_key: "123".into(),
             key_code: "123".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("69".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F13".into(),
             input_id: Some("KEY_F13".into()),
-            key_type: "Function".into(),
             scancode: 100u32,
-            virtual_key: "124".into(),
             key_code: "124".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F14".into(),
             input_id: Some("KEY_F14".into()),
-            key_type: "Function".into(),
             scancode: 101u32,
-            virtual_key: "125".into(),
             key_code: "125".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F15".into(),
             input_id: Some("KEY_F15".into()),
-            key_type: "Function".into(),
             scancode: 102u32,
-            virtual_key: "126".into(),
             key_code: "126".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F16".into(),
             input_id: Some("KEY_F16".into()),
-            key_type: "Function".into(),
             scancode: 103u32,
-            virtual_key: "127".into(),
             key_code: "127".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F17".into(),
             input_id: Some("KEY_F17".into()),
-            key_type: "Function".into(),
             scancode: 104u32,
-            virtual_key: "128".into(),
             key_code: "128".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F18".into(),
             input_id: Some("KEY_F18".into()),
-            key_type: "Function".into(),
             scancode: 105u32,
-            virtual_key: "129".into(),
             key_code: "129".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F19".into(),
             input_id: Some("KEY_F19".into()),
-            key_type: "Function".into(),
             scancode: 106u32,
-            virtual_key: "130".into(),
             key_code: "130".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F20".into(),
             input_id: Some("KEY_F20".into()),
-            key_type: "Function".into(),
             scancode: 107u32,
-            virtual_key: "131".into(),
             key_code: "131".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F21".into(),
             input_id: Some("KEY_F21".into()),
-            key_type: "Function".into(),
             scancode: 108u32,
-            virtual_key: "132".into(),
             key_code: "132".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F22".into(),
             input_id: Some("KEY_F22".into()),
-            key_type: "Function".into(),
             scancode: 109u32,
-            virtual_key: "133".into(),
             key_code: "133".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F23".into(),
             input_id: Some("KEY_F23".into()),
-            key_type: "Function".into(),
             scancode: 110u32,
-            virtual_key: "134".into(),
             key_code: "134".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "F24".into(),
             input_id: Some("KEY_F24".into()),
-            key_type: "Function".into(),
             scancode: 118u32,
-            virtual_key: "135".into(),
             key_code: "135".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num Lock".into(),
             input_id: Some("KEY_NUMPAD_NUM_LOCK".into()),
-            key_type: "Numpad".into(),
             scancode: 69u32,
-            virtual_key: "144".into(),
             key_code: "144".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("83".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: None
         },
         CaptureKey{
             name: "Num 0".into(),
             input_id: Some("KEY_NUMPAD_0".into()),
-            key_type: "Numpad".into(),
             scancode: 82u32,
-            virtual_key: "96".into(),
             key_code: "96".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("98".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 1".into(),
             input_id: Some("KEY_NUMPAD_1".into()),
-            key_type: "Numpad".into(),
             scancode: 79u32,
-            virtual_key: "97".into(),
             key_code: "97".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("89".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 2".into(),
             input_id: Some("KEY_NUMPAD_2".into()),
-            key_type: "Numpad".into(),
             scancode: 80u32,
-            virtual_key: "98".into(),
             key_code: "98".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("90".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 3".into(),
             input_id: Some("KEY_NUMPAD_3".into()),
-            key_type: "Numpad".into(),
             scancode: 81u32,
-            virtual_key: "99".into(),
             key_code: "99".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("91".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 4".into(),
             input_id: Some("KEY_NUMPAD_4".into()),
-            key_type: "Numpad".into(),
             scancode: 75u32,
-            virtual_key: "100".into(),
             key_code: "100".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("92".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 5".into(),
             input_id: Some("KEY_NUMPAD_5".into()),
-            key_type: "Numpad".into(),
             scancode: 76u32,
-            virtual_key: "101".into(),
             key_code: "101".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("93".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 6".into(),
             input_id: Some("KEY_NUMPAD_6".into()),
-            key_type: "Numpad".into(),
             scancode: 77u32,
-            virtual_key: "102".into(),
             key_code: "102".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("94".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 7".into(),
             input_id: Some("KEY_NUMPAD_7".into()),
-            key_type: "Numpad".into(),
             scancode: 71u32,
-            virtual_key: "103".into(),
             key_code: "103".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("95".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 8".into(),
             input_id: Some("KEY_NUMPAD_8".into()),
-            key_type: "Numpad".into(),
             scancode: 72u32,
-            virtual_key: "104".into(),
             key_code: "104".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("96".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num 9".into(),
             input_id: Some("KEY_NUMPAD_9".into()),
-            key_type: "Numpad".into(),
             scancode: 73u32,
-            virtual_key: "105".into(),
             key_code: "105".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("97".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num /".into(),
             input_id: Some("KEY_NUMPAD_SLASH".into()),
-            key_type: "Numpad".into(),
             scancode: 53u32,
-            virtual_key: "111".into(),
             key_code: "111".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("84".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Num *".into(),
             input_id: Some("KEY_NUMPAD_ASTERISK".into()),
-            key_type: "Numpad".into(),
             scancode: 55u32,
-            virtual_key: "106".into(),
             key_code: "106".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("85".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num -".into(),
             input_id: Some("KEY_NUMPAD_DASH".into()),
-            key_type: "Numpad".into(),
             scancode: 74u32,
-            virtual_key: "109".into(),
             key_code: "109".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("86".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num +".into(),
             input_id: Some("KEY_NUMPAD_PLUS".into()),
-            key_type: "Numpad".into(),
             scancode: 78u32,
-            virtual_key: "107".into(),
             key_code: "107".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("87".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num .".into(),
             input_id: Some("KEY_NUMPAD_PERIOD".into()),
-            key_type: "Numpad".into(),
             scancode: 83u32,
-            virtual_key: "46".into(),
             key_code: "110".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("99".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num Enter".into(),
             input_id: Some("KEY_NUMPAD_ENTER".into()),
-            key_type: "Numpad".into(),
             scancode: 28u32,
-            virtual_key: "13".into(),
             key_code: "13".into(),
             flag: 1u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("88".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Up".into(),
             input_id: Some("KEY_UP_ARROW".into()),
-            key_type: "Navigation".into(),
             scancode: 72u32,
-            virtual_key: "38".into(),
             key_code: "38".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("82".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Down".into(),
             input_id: Some("KEY_DOWN_ARROW".into()),
-            key_type: "Navigation".into(),
             scancode: 80u32,
-            virtual_key: "40".into(),
             key_code: "40".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("81".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Left".into(),
             input_id: Some("KEY_LEFT_ARROW".into()),
-            key_type: "Navigation".into(),
             scancode: 75u32,
-            virtual_key: "37".into(),
             key_code: "37".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("80".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Right".into(),
             input_id: Some("KEY_RIGHT_ARROW".into()),
-            key_type: "Navigation".into(),
             scancode: 77u32,
-            virtual_key: "39".into(),
             key_code: "39".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("79".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Page Up".into(),
             input_id: Some("KEY_PAGE_UP".into()),
-            key_type: "Navigation".into(),
             scancode: 73u32,
-            virtual_key: "33".into(),
             key_code: "33".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("75".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Page Down".into(),
             input_id: Some("KEY_PAGE_DOWN".into()),
-            key_type: "Navigation".into(),
             scancode: 81u32,
-            virtual_key: "34".into(),
             key_code: "34".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("78".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Backspace".into(),
             input_id: Some("KEY_BACKSPACE".into()),
-            key_type: "Navigation".into(),
             scancode: 14u32,
-            virtual_key: "8".into(),
             key_code: "8".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("42".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Tab".into(),
             input_id: Some("KEY_TAB".into()),
-            key_type: "Navigation".into(),
             scancode: 15u32,
-            virtual_key: "9".into(),
             key_code: "9".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("43".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Space".into(),
             input_id: Some("KEY_SPACEBAR".into()),
-            key_type: "Navigation".into(),
             scancode: 57u32,
-            virtual_key: "32".into(),
             key_code: "32".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("44".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Enter".into(),
             input_id: Some("KEY_ENTER".into()),
-            key_type: "Navigation".into(),
             scancode: 28u32,
-            virtual_key: "13".into(),
             key_code: "13".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("40".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Esc".into(),
             input_id: Some("KEY_ESC".into()),
-            key_type: "Navigation".into(),
             scancode: 1u32,
-            virtual_key: "27".into(),
             key_code: "27".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("41".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Insert".into(),
             input_id: Some("KEY_INSERT".into()),
-            key_type: "Navigation".into(),
             scancode: 82u32,
-            virtual_key: "45".into(),
             key_code: "45".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("73".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Home".into(),
             input_id: Some("KEY_HOME".into()),
-            key_type: "Navigation".into(),
             scancode: 71u32,
-            virtual_key: "36".into(),
             key_code: "36".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("74".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Delete".into(),
             input_id: Some("KEY_DELETE".into()),
-            key_type: "Navigation".into(),
             scancode: 83u32,
-            virtual_key: "46".into(),
             key_code: "46".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("76".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "End".into(),
             input_id: Some("KEY_END".into()),
-            key_type: "Navigation".into(),
             scancode: 79u32,
-            virtual_key: "35".into(),
             key_code: "35".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("77".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Print Screen".into(),
             input_id: Some("KEY_PRINT_SCREEN".into()),
-            key_type: "Navigation".into(),
             scancode: 55u32,
-            virtual_key: "44".into(),
             key_code: "44".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("70".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Pause".into(),
             input_id: Some("KEY_PAUSE".into()),
-            key_type: "Navigation".into(),
             scancode: 29u32,
-            virtual_key: "19".into(),
             key_code: "19".into(),
             flag: 0u32,
-            output_flag: Some(4u32),
-            page_id: Some("7".into()),
-            hid: Some("72".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: Some(4u32)
         },
         CaptureKey{
             name: "Invalid/cancel".into(),
             input_id: Some("KEY_CANCEL".into()),
-            key_type: "".into(),
             scancode: 70u32,
-            virtual_key: "70".into(),
             key_code: "3".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("".into()),
-            hid: Some("".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Menu".into(),
             input_id: Some("KEY_APPLICATION".into()),
-            key_type: "Navigation".into(),
             scancode: 93u32,
-            virtual_key: "93".into(),
             key_code: "93".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: Some("7".into()),
-            hid: Some("101".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Ctrl".into(),
             input_id: Some("KEY_LEFT_CTRL".into()),
-            key_type: "Modifiers".into(),
             scancode: 29u32,
-            virtual_key: "162".into(),
             key_code: "17".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("224".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Right Ctrl".into(),
             input_id: Some("KEY_RIGHT_CTRL".into()),
-            key_type: "Modifiers".into(),
             scancode: 29u32,
-            virtual_key: "163".into(),
             key_code: "17".into(),
             flag: 2u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("228".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: None
         },
         CaptureKey{
             name: "Shift".into(),
             input_id: Some("KEY_LEFT_SHIFT".into()),
-            key_type: "Modifiers".into(),
             scancode: 42u32,
-            virtual_key: "160".into(),
             key_code: "16".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("225".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Right Shift".into(),
             input_id: Some("KEY_RIGHT_SHIFT".into()),
-            key_type: "Modifiers".into(),
             scancode: 54u32,
-            virtual_key: "161".into(),
             key_code: "16".into(),
             flag: 2u32,
-            output_flag: Some(0u32),
-            page_id: Some("7".into()),
-            hid: Some("229".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: Some(0u32)
         },
         CaptureKey{
             name: "Alt".into(),
             input_id: Some("KEY_LEFT_ALT".into()),
-            key_type: "Modifiers".into(),
             scancode: 56u32,
-            virtual_key: "164".into(),
             key_code: "18".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("226".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Right Alt".into(),
             input_id: Some("KEY_RIGHT_ALT".into()),
-            key_type: "Modifiers".into(),
             scancode: 56u32,
-            virtual_key: "165".into(),
             key_code: "18".into(),
             flag: 2u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("230".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: None
         },
         CaptureKey{
             name: "Windows".into(),
             input_id: Some("KEY_LEFT_GUI".into()),
-            key_type: "Modifiers".into(),
             scancode: 91u32,
-            virtual_key: "91".into(),
             key_code: "91".into(),
             flag: 0u32,
-            output_flag: Some(2u32),
-            page_id: None,
-            hid: Some("227".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: Some(2u32)
         },
         CaptureKey{
             name: "Caps Lock".into(),
             input_id: Some("KEY_CAPS_LOCK".into()),
-            key_type: "Modifiers".into(),
             scancode: 58u32,
-            virtual_key: "20".into(),
             key_code: "20".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("57".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Scroll Lock".into(),
             input_id: Some("KEY_SCROLL_LOCK".into()),
-            key_type: "Modifiers".into(),
             scancode: 70u32,
-            virtual_key: "145".into(),
             key_code: "145".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("71".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "Num Lock".into(),
             input_id: Some("KEY_NUMPAD_NUM_LOCK".into()),
-            key_type: "Modifiers".into(),
             scancode: 69u32,
-            virtual_key: "144".into(),
             key_code: "144".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("83".into()),
-            modifier: None,
-            extended_key: Some("Extended_00".into())
+            output_flag: None
         },
         CaptureKey{
             name: "`".into(),
             input_id: Some("KEY_TILDE".into()),
-            key_type: "Symbols".into(),
             scancode: 41u32,
-            virtual_key: "192".into(),
             key_code: "192".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("53".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "~".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 41u32,
-            virtual_key: "192".into(),
             key_code: "192".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "!".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 2u32,
-            virtual_key: "49".into(),
             key_code: "49".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "@".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 3u32,
-            virtual_key: "50".into(),
             key_code: "50".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "#".into(),
             input_id: Some("KEY_NON_US_POUND".into()),
-            key_type: "Symbols".into(),
             scancode: 43u32,
-            virtual_key: "51".into(),
             key_code: "51".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("50".into()),
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "$".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 5u32,
-            virtual_key: "52".into(),
             key_code: "52".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "%".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 6u32,
-            virtual_key: "53".into(),
             key_code: "53".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "^".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 7u32,
-            virtual_key: "54".into(),
             key_code: "54".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "&".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 8u32,
-            virtual_key: "55".into(),
             key_code: "55".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "*".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 9u32,
-            virtual_key: "56".into(),
             key_code: "56".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "(".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 10u32,
-            virtual_key: "57".into(),
             key_code: "57".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: ")".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 11u32,
-            virtual_key: "48".into(),
             key_code: "48".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "-".into(),
             input_id: Some("KEY_HYPEN".into()),
-            key_type: "Symbols".into(),
             scancode: 12u32,
-            virtual_key: "189".into(),
             key_code: "189".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("45".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "=".into(),
             input_id: Some("KEY_EQUAL".into()),
-            key_type: "Symbols".into(),
             scancode: 13u32,
-            virtual_key: "187".into(),
             key_code: "187".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("46".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "_".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 12u32,
-            virtual_key: "189".into(),
             key_code: "189".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "+".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 13u32,
-            virtual_key: "187".into(),
             key_code: "187".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "[".into(),
             input_id: Some("KEY_OPEN_SQUARE_BRACKET".into()),
-            key_type: "Symbols".into(),
             scancode: 26u32,
-            virtual_key: "219".into(),
             key_code: "219".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("47".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "]".into(),
             input_id: Some("KEY_CLOSE_SQUARE_BRACKET".into()),
-            key_type: "Symbols".into(),
             scancode: 27u32,
-            virtual_key: "221".into(),
             key_code: "221".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("48".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "\\".into(),
             input_id: Some("KEY_BACKSLASH".into()),
-            key_type: "Symbols".into(),
             scancode: 43u32,
-            virtual_key: "220".into(),
             key_code: "220".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("49".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "{".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 26u32,
-            virtual_key: "219".into(),
             key_code: "219".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "}".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 27u32,
-            virtual_key: "221".into(),
             key_code: "221".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "|".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 43u32,
-            virtual_key: "220".into(),
             key_code: "220".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: ";".into(),
             input_id: Some("KEY_SEMICOLON".into()),
-            key_type: "Symbols".into(),
             scancode: 39u32,
-            virtual_key: "186".into(),
             key_code: "186".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("51".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "'".into(),
             input_id: Some("KEY_APOSTROPHE".into()),
-            key_type: "Symbols".into(),
             scancode: 40u32,
-            virtual_key: "222".into(),
             key_code: "222".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("52".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: ":".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 39u32,
-            virtual_key: "186".into(),
             key_code: "186".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "\"".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 40u32,
-            virtual_key: "222".into(),
             key_code: "222".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: ",".into(),
             input_id: Some("KEY_COMMA".into()),
-            key_type: "Symbols".into(),
             scancode: 51u32,
-            virtual_key: "188".into(),
             key_code: "188".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("54".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: ".".into(),
             input_id: Some("KEY_PERIOD".into()),
-            key_type: "Symbols".into(),
             scancode: 52u32,
-            virtual_key: "190".into(),
             key_code: "190".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("55".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "/".into(),
             input_id: Some("KEY_SLASH".into()),
-            key_type: "Symbols".into(),
             scancode: 53u32,
-            virtual_key: "191".into(),
             key_code: "191".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("56".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "<".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 51u32,
-            virtual_key: "188".into(),
             key_code: "188".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("100".into()),
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: ">".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 52u32,
-            virtual_key: "190".into(),
             key_code: "190".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "?".into(),
             input_id: None,
-            key_type: "Symbols".into(),
             scancode: 53u32,
-            virtual_key: "191".into(),
             key_code: "191".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: None,
-            hid: None,
-            modifier: Some("16".into()),
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "KEY_YEN".into(),
             input_id: Some("KEY_YEN".into()),
-            key_type: "".into(),
             scancode: 125u32,
-            virtual_key: "".into(),
             key_code: "".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("137".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "KEY_BEFORE_LEFT_SHIFT".into(),
             input_id: Some("KEY_RO".into()),
-            key_type: "".into(),
             scancode: 115u32,
-            virtual_key: "".into(),
             key_code: "".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("135".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "KEY_BEFORE_SPACE".into(),
             input_id: Some("KEY_MUHENKAN".into()),
-            key_type: "".into(),
             scancode: 123u32,
-            virtual_key: "235".into(),
             key_code: "".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("139".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "KEY_AFTER_SPACE".into(),
             input_id: Some("KEY_HENKAN".into()),
-            key_type: "".into(),
             scancode: 121u32,
-            virtual_key: "255".into(),
             key_code: "".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("138".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "KEY_BEFORE_RIGHT_ALT".into(),
             input_id: Some("KEY_KATAKANA_HIRAGANA".into()),
-            key_type: "".into(),
             scancode: 112u32,
-            virtual_key: "255".into(),
             key_code: "".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("136".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         },
         CaptureKey{
             name: "\\".into(),
             input_id: Some("KEY_NON_US_BACKSLASH".into()),
-            key_type: "".into(),
             scancode: 86u32,
-            virtual_key: "226".into(),
             key_code: "226".into(),
             flag: 0u32,
-            output_flag: None,
-            page_id: Some("7".into()),
-            hid: Some("100".into()),
-            modifier: None,
-            extended_key: None
+            output_flag: None
         }
     ]
 }

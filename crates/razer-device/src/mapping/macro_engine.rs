@@ -282,6 +282,13 @@ pub fn publication_documents(documents: &[Value]) -> Result<Vec<Value>> {
         .collect()
 }
 
+/// Complete replacement catalogs for the distinct MacroData and PhasedMacroData
+/// consumers, including empty catalogs when the last definition is removed.
+pub struct PublicationCatalogs {
+    pub macros: Vec<Value>,
+    pub phased_macros: Vec<Value>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

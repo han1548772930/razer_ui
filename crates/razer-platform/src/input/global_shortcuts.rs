@@ -1,7 +1,8 @@
 //! Source-defined mapping-engine hotkey identity, isolated from OS registration.
 //! Native evidence: registerGlobalShortcut → 0x143e0 → 0xc97c0 RegisterHotKey.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Deserialize, PartialEq, Eq)]
 pub struct Shortcut {
+    #[serde(rename = "virtualKey")]
     pub virtual_key: u32,
     pub modifiers: u32,
     pub argument: String,

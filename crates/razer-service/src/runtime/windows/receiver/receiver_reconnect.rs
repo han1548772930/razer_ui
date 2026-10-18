@@ -215,7 +215,7 @@ impl Adapter for WindowsAdapter {
         // its current HID.node returns the original length on API success.
         self.check_owner()?;
         let (after, _) = receiver::select_target(
-            &hid::enumerate_for_product(self.cap.transport.vendor_id, self.cap.product_id)?,
+            &hid::enumerate_collection(self.cap.transport.vendor_id, self.cap.product_id, path)?,
             path,
             &self.container,
         )?;

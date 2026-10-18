@@ -1,10 +1,10 @@
 //! Dynamic setters and input-monitor ownership stay on a background worker.
 //! Source setter acknowledgement and independent GET diagnostics are distinct.
-use anyhow::ensure;
+use crate::mouse_worker::{Cleanup, check, guarded, release, shutdown};
 use razer_device::mouse_dynamic::{Report, Setting, input::Speed};
 use razer_discovery::{direct, discovery::ObservedDevice};
 use razer_ipc::{
-    ServiceClient, ServiceRequest,
+    ServiceClient,
     mouse_input_monitoring::{InputEvent, Session},
 };
 use std::{
@@ -20,86 +20,10 @@ pub enum Outcome {
     Device(Report),
     MonitoringStopped,
 }
-pub struct Completion {
-    pub result: Result<Outcome, String>,
-    pub cleanup_failure: Option<String>,
-}
+pub type Completion = crate::mouse_worker::Completion<Outcome>;
 pub enum Update {
     MonitoringStarted,
     Speed(f64),
-}
-
-fn check(active: &AtomicBool) -> anyhow::Result<()> {
-    ensure!(
-        active.load(Ordering::Acquire),
-        "Dynamic request owner was canceled"
-    );
-    Ok(())
-}
-fn guarded<T>(run: impl FnOnce() -> anyhow::Result<T>) -> Result<T, String> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(run))
-        .map_err(|_| "Dynamic transport owner panicked".to_owned())?
-        .map_err(|error| format!("{error:#}"))
-}
-
-trait Cleanup {
-    fn stop(&mut self) -> anyhow::Result<()>;
-    fn shutdown(&mut self) -> anyhow::Result<()>;
-    fn terminate(&mut self) -> anyhow::Result<()>;
-}
-fn release(backend: &mut impl Cleanup, mut wait: impl FnMut()) -> Option<String> {
-    let mut errors = Vec::new();
-    for result in [guarded(|| backend.stop()), guarded(|| backend.shutdown())] {
-        if let Err(error) = result {
-            errors.push(error);
-        }
-    }
-    loop {
-        match guarded(|| backend.terminate()) {
-            Ok(()) => break,
-            Err(error) => {
-                if !errors.contains(&error) {
-                    errors.push(error);
-                }
-                // Keep the process, pipe workers and input lease owned until
-                // actual termination succeeds. A retry does not erase failure.
-                wait();
-            }
-        }
-    }
-    (!errors.is_empty()).then(|| errors.join("; "))
-}
-
-fn shutdown(client: &mut ServiceClient) -> anyhow::Result<()> {
-    ensure!(
-        !client.is_stopped(),
-        "Dynamic service terminated without a shutdown acknowledgement"
-    );
-    #[derive(serde::Deserialize)]
-    struct Receipt {
-        stopped: bool,
-    }
-    let receipt: Receipt = serde_json::from_value(client.request(ServiceRequest::Shutdown)?)?;
-    ensure!(
-        receipt.stopped,
-        "Dynamic service did not acknowledge shutdown"
-    );
-    Ok(())
-}
-
-struct DeviceBackend {
-    client: ServiceClient,
-}
-impl Cleanup for DeviceBackend {
-    fn stop(&mut self) -> anyhow::Result<()> {
-        Ok(())
-    }
-    fn shutdown(&mut self) -> anyhow::Result<()> {
-        shutdown(&mut self.client)
-    }
-    fn terminate(&mut self) -> anyhow::Result<()> {
-        self.client.finish_termination()
-    }
 }
 
 pub fn device(
@@ -107,39 +31,12 @@ pub fn device(
     change: Option<Setting>,
     active: Arc<AtomicBool>,
 ) -> Completion {
-    let backend = guarded(|| {
-        check(&active)?;
-        ensure!(
-            direct::mouse_dynamic::available(&route),
-            "Dynamic physical route is unavailable"
-        );
-        let mut client = ServiceClient::spawn()?;
-        client.set_request_guard(active.clone());
-        Ok(DeviceBackend { client })
-    });
-    let mut backend = match backend {
-        Ok(backend) => backend,
-        Err(error) => {
-            return Completion {
-                result: Err(error),
-                cleanup_failure: None,
-            };
-        }
-    };
-    let result = guarded(|| {
-        check(&active)?;
-        let report = direct::mouse_dynamic::request(&mut backend.client, &route, change)?;
-        check(&active)?;
-        Ok(Outcome::Device(report))
-    });
-    let cleanup_failure = release(&mut backend, || {
-        std::thread::sleep(Duration::from_millis(100))
-    });
-    drop(backend);
-    Completion {
-        result,
-        cleanup_failure,
-    }
+    crate::mouse_worker::device(
+        route,
+        active,
+        direct::mouse_dynamic::available,
+        |client, route| direct::mouse_dynamic::request(client, route, change).map(Outcome::Device),
+    )
 }
 
 trait Monitor: Cleanup {

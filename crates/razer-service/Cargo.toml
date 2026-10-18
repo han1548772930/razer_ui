@@ -12,7 +12,6 @@ anyhow.workspace = true
 async-channel.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-libloading.workspace = true
 md5.workspace = true
 razer-device.workspace = true
 razer-discovery.workspace = true

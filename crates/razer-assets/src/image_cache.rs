@@ -436,7 +436,7 @@ fn discard_image_entries<K, E, I>(
     }
 }
 
-fn available(path: &str, cx: &App) -> anyhow::Result<bool> {
+fn available(path: &str, cx: &mut App) -> anyhow::Result<bool> {
     crate::resource_runtime::available(path, cx)
 }
 

@@ -44,9 +44,11 @@ impl State {
 impl MouseProductWorkspace {
     pub fn cancel_mapping_service_exit(&mut self) {
         self.legacy_mapping.stop();
+        self.receiver_mapping.stop();
     }
 
     pub fn finish_mapping_service(&mut self) {
+        self.receiver_mapping.finish();
         self.legacy_mapping.stopping = true;
         if let Some(owner) = &self.legacy_mapping.owner {
             if let Err(error) = owner.request_stop_after_pending() {

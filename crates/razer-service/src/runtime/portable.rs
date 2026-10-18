@@ -44,6 +44,8 @@ mod mouse_indicator_led;
 mod mouse_philips;
 #[path = "mouse_receiver_legacy.rs"]
 mod mouse_receiver_legacy;
+#[path = "mouse_rotation.rs"]
+mod mouse_rotation;
 #[path = "mouse_scroll.rs"]
 mod mouse_scroll;
 #[path = "mouse_tracking.rs"]
@@ -243,7 +245,7 @@ impl PortableRuntime {
         Ok(
             json!({"node":node,"query":"receiver_wireless_status_v2","devices":rows,"device_count":rows.len(),
             "transaction_id":transaction,"source_product_id":cap.source_product_id,"source_class":cap.source_class,
-            "capability_evidence":cap.evidence_path,"transport_metadata":device.metadata(),
+            "transport_metadata":device.metadata(),
             "elapsed_ms":started.elapsed().as_millis() as u64,"identity_scope":"hid_collection"}),
         )
     }
@@ -363,7 +365,6 @@ impl PortableRuntime {
         response["transport_metadata"] = device.metadata();
         response["identity_scope"] = json!("hid_collection_and_live_receiver_peer");
         response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
-        response["evidence"] = json!(".analysis/results/frontend/mouse-mw-audit.json");
         Ok(response)
     }
 
@@ -427,12 +428,17 @@ impl PortableRuntime {
             "report_lengths": lengths,
             "identity_scope": "hid_collection",
             "elapsed_ms": started.elapsed().as_millis() as u64,
-            "evidence": ".analysis/inputs/frontend/accessories-mw-3893-current/raw/apps.razer.com/synapse/products/3893/mw/6259.e34ab9ddf1b145a67b62.js"
         }))
     }
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
+            ServiceRequest::MappingRotationStart { .. }
+            | ServiceRequest::MappingRotationRequest { .. }
+            | ServiceRequest::MappingRotationPoll { .. }
+            | ServiceRequest::MappingRotationStop { .. } => {
+                bail!("Native mouse rotation requires the Windows mapping filter driver")
+            }
             ServiceRequest::HyperpollingReceiver { target, command, transaction } => self.hyperpolling_receiver(&target, command, transaction),
             ServiceRequest::KeyboardIndicator { target, change } => {
                 self.keyboard_indicator(&target, &change)
@@ -589,7 +595,6 @@ impl PortableRuntime {
                     "observation": observed,
                     "vendor_dll_loaded": false,
                     "transport": "windows_core_audio",
-                    "evidence": "docs/re/audio-util-enumerator-current-evidence.json"
                 }))
             }
             ServiceRequest::HidNodeMixerRead {
@@ -735,7 +740,7 @@ impl PortableRuntime {
                     json!({"node":node,"product_id":product_id,"reading":reading,
                     "method":command.method,"source_class":cap.source_class,"transaction_id":transaction,
                     "transport_metadata":device.metadata(),"elapsed_ms":started.elapsed().as_millis() as u64,
-                    "identity_scope":"hid_collection", "evidence":"docs/re/mouse-read-capabilities-current-evidence.json"}),
+                    "identity_scope":"hid_collection"}),
                 )
             }
             ServiceRequest::HidNodeKeyboardBrightnessRead { node, product_id } => {
@@ -773,6 +778,14 @@ impl PortableRuntime {
                 }
             }
             ServiceRequest::HidNodeMouseBrightness {node, product_id, peer_product_id, submission} => self.mouse_brightness(&node, product_id, peer_product_id, &submission),
+            ServiceRequest::HidNodeMouseRotation { node, product_id, peer_product_id, change } => {
+                if let Some(peer) = peer_product_id {
+                    self.receiver_setting(&node, product_id, peer,
+                        super::receiver_settings::Setting::Rotation(change.as_ref()))
+                } else {
+                    self.mouse_rotation(&node, product_id, change.as_ref())
+                }
+            }
             ServiceRequest::HidNodeMouseCurrentPolling { node, product_id, change } => {
                 self.mouse_current_polling(&node, product_id, change.as_ref())
             }
@@ -867,8 +880,7 @@ impl PortableRuntime {
                 )?;
                 Ok(json!({"node":node,"product_id":product_id,"result":result,
                     "source_class":cap.source_class,"transport_metadata":device.metadata(),
-                    "identity_scope":"hid_collection","elapsed_ms":started.elapsed().as_millis() as u64,
-                    "evidence":"docs/re/device-write-capabilities-current-evidence.json"}))
+                    "identity_scope":"hid_collection","elapsed_ms":started.elapsed().as_millis() as u64}))
             }
             ServiceRequest::HidNodeHanboCooler {
                 node,
@@ -957,7 +969,7 @@ impl PortableRuntime {
         let mut response = json!({"node":node,"product_id":product_id,"source_class":settings.source_class,
             "transport_source_class":cap.source_class,
             "identity_scope":"hid_collection","transport_metadata":device.metadata(),
-            "evidence":"docs/re/mouse-dpi-stages-current-evidence.json","profile_scope":"current_active_table","obm_profiles_written":false});
+            "profile_scope":"current_active_table","obm_profiles_written":false});
         let mut next = || {
             self.transaction(
                 node,
@@ -1128,8 +1140,7 @@ impl PortableRuntime {
             "键盘亮度接口实际 Feature Report 长度不匹配"
         );
         let mut response = json!({"node":node,"product_id":product_id,"source_class":settings.source_class,
-            "identity_scope":"hid_collection","transport_metadata":device.metadata(),
-            "evidence":"docs/re/keyboard-brightness-expanded-current-source.json"});
+            "identity_scope":"hid_collection","transport_metadata":device.metadata()});
         let mut next = || {
             self.transaction(
                 node,
@@ -1334,8 +1345,7 @@ fn mixer_eq_request(node: HidNode, product_id: u32, bands: [i32; 10]) -> anyhow:
     Ok(
         json!({"node":node,"product_id":product_id,"target":target,"bands":bands,"results":results,
         "source_property":razer_device::audio_mixer::source_property(&target)?,
-        "completed_bands":completed,"identity_scope":"hid_collection",
-        "evidence":"docs/re/audio-mixer-page-bindings-source-current.json"}),
+        "completed_bands":completed,"identity_scope":"hid_collection"}),
     )
 }
 
@@ -1374,7 +1384,6 @@ fn mixer_request(
         "source_limits":razer_device::audio_mixer::mic_monitor_limits(),
         "endpoint_limits":razer_device::audio_mixer::endpoint_limits(),
         "identity_scope":"hid_collection","transport_metadata":device.metadata(),
-        "elapsed_ms":started.elapsed().as_millis() as u64,
-        "evidence":"docs/re/audio-mixer-controls-current-evidence.json"}),
+        "elapsed_ms":started.elapsed().as_millis() as u64}),
     )
 }

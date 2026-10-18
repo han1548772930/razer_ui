@@ -1,9 +1,43 @@
-//! Current macro main.3f4b9604: Gs50348, Js50572 and qs50611.
+//! Current macro main.f7cc2d30: source events and ordinary/phased publication.
 //! Local editor identities are resolved to persistent UUIDs before compilation.
 use super::*;
 use serde_json::{Value, json};
 
 impl MacroLibraryFile {
+    /// Restore both native consumers from the local library. The source UI's qs
+    /// writes only the consumer selected by the edited type; PhasedMacroData
+    /// (1080b2) requires three lanes, while MacroData (f7106) accepts the ordinary
+    /// lane retained on every source document.
+    pub fn publication_catalogs(
+        &self,
+    ) -> Result<razer_device::macro_engine::PublicationCatalogs, String> {
+        let source = self.source_macro_documents()?;
+        let macros = razer_device::macro_engine::publication_documents(&source)
+            .map_err(|error| error.to_string())?;
+        let mut phased_macros = Vec::new();
+        for (entry, document) in self
+            .entries
+            .iter()
+            .filter(|entry| entry.kind == EntryKind::Macro)
+            .zip(&macros)
+        {
+            if entry.macro_type != MacroType::Phased {
+                continue;
+            }
+            let engine = document.get("appEngine").ok_or("Macro engine is missing")?;
+            for lane in ["pressEvents", "holdEvents", "releaseEvents"] {
+                if engine.get(lane).and_then(Value::as_array).is_none() {
+                    return Err(format!("Phased macro {lane} is missing"));
+                }
+            }
+            phased_macros.push(document.clone());
+        }
+        Ok(razer_device::macro_engine::PublicationCatalogs {
+            macros,
+            phased_macros,
+        })
+    }
+
     /// Assignment menus inspect source event kinds and retained identities;
     /// they do not require every editor row to be ready for publication.
     pub fn mapping_catalog(&self) -> Vec<Value> {

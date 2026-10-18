@@ -36,7 +36,9 @@ impl Downloader for HttpDownloader {
         Box::pin(async move {
             let url = remote_url(&manifest()?.storage, &file)?;
             let mut request = client.get(url);
-            if let Some(token) = crate::credentials::token() {
+            let token = crate::credentials::token();
+            let credential_supplied = token.is_some();
+            if let Some(token) = token {
                 request = request.bearer_auth(token);
             }
             // Reqwest removes sensitive headers on cross-origin redirects. Errors must
@@ -47,6 +49,7 @@ impl Downloader for HttpDownloader {
                 .map_err(|_| anyhow::anyhow!("资源服务器暂时无法连接"))?;
             validate_head(
                 response.status().as_u16(),
+                credential_supplied,
                 response
                     .headers()
                     .get("Content-Length")
@@ -74,11 +77,24 @@ impl Downloader for HttpDownloader {
     }
 }
 
-fn validate_head(status: u16, length: Option<&str>, file: &ResourceFile) -> anyhow::Result<()> {
-    ensure!(
-        status != 401 && status != 403,
-        "私有资源仓库需要本机已配置的访问凭据"
-    );
+fn validate_head(
+    status: u16,
+    credential_supplied: bool,
+    length: Option<&str>,
+    file: &ResourceFile,
+) -> anyhow::Result<()> {
+    match (status, credential_supplied) {
+        (401 | 403, false) => {
+            anyhow::bail!("私有资源仓库需要本机已配置的访问凭据（HTTP {status}）")
+        }
+        (401, true) => {
+            anyhow::bail!("已配置本机访问凭据，但资源请求未通过认证（HTTP 401）")
+        }
+        (403, true) => {
+            anyhow::bail!("资源服务器拒绝访问，请核对本机令牌的仓库读取权限（HTTP 403）")
+        }
+        _ => {}
+    }
     ensure!(status != 404, "所需资源尚未上传或资源路径不存在");
     ensure!(status != 429, "资源服务器请求受限，请稍后重试");
     ensure!(
@@ -109,7 +125,28 @@ mod tests {
             (429, None, false),
             (500, None, false),
         ] {
-            assert_eq!(validate_head(status, length, &file).is_ok(), valid);
+            assert_eq!(validate_head(status, false, length, &file).is_ok(), valid);
         }
+    }
+
+    #[test]
+    fn authentication_failures_distinguish_missing_rejected_and_forbidden_credentials() {
+        let file = crate::cache::tests::file("assets/icon.svg", b"verified");
+        for status in [401, 403] {
+            let missing = validate_head(status, false, None, &file)
+                .unwrap_err()
+                .to_string();
+            assert!(missing.contains("需要本机已配置"));
+            assert!(missing.contains(&format!("HTTP {status}")));
+        }
+        let rejected = validate_head(401, true, None, &file)
+            .unwrap_err()
+            .to_string();
+        assert!(rejected.contains("资源请求未通过认证"));
+        let forbidden = validate_head(403, true, None, &file)
+            .unwrap_err()
+            .to_string();
+        assert!(forbidden.contains("仓库读取权限"));
+        assert_ne!(rejected, forbidden);
     }
 }

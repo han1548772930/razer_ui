@@ -426,7 +426,6 @@ fn source_decoders_distinguish_ordinary_and_high_speed_response_values() {
                 (5, 200),
                 (8, 125),
                 (10, 100),
-                (77, 100),
             ],
         ),
         (
@@ -439,7 +438,6 @@ fn source_decoders_distinguish_ordinary_and_high_speed_response_values() {
                 (16, 500),
                 (32, 250),
                 (64, 125),
-                (77, 8000),
             ],
         ),
     ] {
@@ -450,6 +448,67 @@ fn source_decoders_distinguish_ordinary_and_high_speed_response_values() {
                 .unwrap();
             assert_eq!(hz(&result), expected);
         }
+    }
+}
+
+#[test]
+fn unknown_receiver_polling_codes_never_become_observed_source_defaults() {
+    // Source j/$ switch defaults are presentation fallbacks. Neither source
+    // polling enum assigns these bytes a device-observed rate.
+    for physical in [183, 164, 179] {
+        for code in [0, 77, 255] {
+            let transport = Transport::new([online(), Reply::Data(vec![1, code])]);
+            let error = route(physical)
+                .read(&transport, transactions(), || Ok(()))
+                .err()
+                .expect("unknown polling code must not produce an observation");
+            assert!(format!("{error:#}").contains(&format!("未知回报率编码：{code}")));
+            assert_eq!(transport.outputs.borrow().len(), 2);
+        }
+    }
+}
+
+#[test]
+fn unknown_polling_readback_never_confirms_an_acknowledged_receiver_write() {
+    for (physical, requested_hz, setter) in [(183, 1000, 14), (164, 8000, 64), (179, 8000, 64)] {
+        let transport = Transport::new([
+            online(),
+            Reply::Data(vec![1, 8]),
+            Reply::Data(vec![]),
+            Reply::Data(vec![1, 77]),
+        ]);
+        let error = route(physical)
+            .apply_polling(&transport, requested_hz, transactions(), || Ok(()))
+            .err()
+            .expect("unknown readback must not confirm the requested rate");
+        assert!(format!("{error:#}").contains("未知回报率编码：77"));
+        let reports = transport.outputs.borrow();
+        assert_eq!(reports.len(), 4);
+        assert_eq!(&reports[2][6..11], &[2, 0, setter, 1, 1]);
+    }
+}
+
+#[test]
+fn unknown_polling_pre_read_remains_failed_until_the_explicit_write_is_confirmed() {
+    for (physical, requested_hz) in [(183, 1000), (164, 8000), (179, 8000)] {
+        let transport = Transport::new([
+            online(),
+            Reply::Data(vec![1, 77]),
+            Reply::Data(vec![]),
+            Reply::Data(vec![1, 1]),
+            online(),
+        ]);
+        let result = route(physical)
+            .apply_polling(&transport, requested_hz, transactions(), || Ok(()))
+            .unwrap();
+        let PollingPreRead::Failed { message } = &result.reading.previous else {
+            panic!("unknown pre-read must remain separate from an observed rate");
+        };
+        assert!(message.contains("未知回报率编码：77"));
+        assert!(result.reading.changed);
+        assert_eq!(result.reading.observed_hz, requested_hz);
+        assert!(result.reading.acknowledgement.is_some());
+        assert_eq!(transport.outputs.borrow().len(), 5);
     }
 }
 

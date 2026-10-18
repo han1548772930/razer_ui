@@ -3,42 +3,47 @@
 //! join handles rather than transferring native pointers across threads.
 #[path = "mapping_runtime/acceleration.rs"]
 mod acceleration;
-#[path = "mapping_runtime/backend.rs"]
-mod backend;
+#[path = "mapping_runtime/advanced.rs"]
+mod advanced;
 #[path = "mapping_runtime/audio.rs"]
 mod audio;
-#[path = "mapping_runtime/clipboard.rs"]
-mod clipboard;
+#[path = "mapping_runtime/backend.rs"]
+mod backend;
 #[path = "mapping_runtime/capture.rs"]
 mod capture;
-#[path = "mapping_runtime/driver.rs"]
-mod driver;
+#[path = "mapping_runtime/clipboard.rs"]
+mod clipboard;
 #[path = "mapping_runtime/connections.rs"]
 mod connections;
-#[path = "mapping_runtime/direct.rs"]
-mod direct;
-#[path = "mapping_runtime/executor.rs"]
-mod executor;
 #[path = "mapping_runtime/device.rs"]
 mod device;
+#[path = "mapping_runtime/direct.rs"]
+mod direct;
+#[path = "mapping_runtime/display.rs"]
+mod display;
+#[path = "mapping_runtime/driver.rs"]
+mod driver;
+#[path = "mapping_runtime/executor.rs"]
+mod executor;
+#[path = "mapping_runtime/hardware.rs"]
+mod hardware;
 #[path = "mapping_runtime/identity.rs"]
 mod identity;
 #[path = "mapping_runtime/input.rs"]
 mod input;
 #[path = "mapping_runtime/launch.rs"]
 mod launch;
-#[path = "mapping_runtime/advanced.rs"]
-mod advanced;
-#[path = "mapping_runtime/display.rs"]
-mod display;
-#[path = "mapping_runtime/system.rs"]
-mod system;
 #[path = "mapping_runtime/philips.rs"]
 mod philips;
+#[path = "mapping_runtime/system.rs"]
+mod system;
 
 pub(super) fn client() -> Result<crate::mapping::owner::Client> {
-    static REGISTRY: std::sync::OnceLock<crate::mapping::owner::Registry> = std::sync::OnceLock::new();
-    REGISTRY.get_or_init(Default::default).acquire(||Ok(backend::Backend::new(executor::Executor::open)))
+    static REGISTRY: std::sync::OnceLock<crate::mapping::owner::Registry> =
+        std::sync::OnceLock::new();
+    REGISTRY
+        .get_or_init(Default::default)
+        .acquire(|| Ok(backend::Backend::new(executor::Executor::open)))
 }
 
 use anyhow::{Context, Result, ensure};
@@ -71,6 +76,9 @@ pub struct Parameters {
     pub(crate) program: Program,
     /// An observed filter-driver route, never a HID collection or saved path.
     pub(crate) driver_route: Option<driver::Route>,
+    pub(crate) mapped_key: Option<
+        razer_device::mapping_native_lookup::Resolved<razer_device::mapping_native_action::Output>,
+    >,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -164,7 +172,9 @@ impl State {
     pub fn new() -> Self {
         Self {
             library: Arc::new(RwLock::new(Library::default())),
-            advanced: Arc::new(RwLock::new(razer_device::macro_runtime::advanced::Library::default())),
+            advanced: Arc::new(RwLock::new(
+                razer_device::macro_runtime::advanced::Library::default(),
+            )),
             completion_callers: BTreeMap::new(),
             running: BTreeMap::new(),
             scheduler: Scheduler::default(),
@@ -183,20 +193,40 @@ impl State {
             .publish(document)
     }
 
-    pub fn publish_storage(&mut self,key:&str,value:&Value)->Result<()> {
+    pub fn publish_storage(&mut self, key: &str, value: &Value) -> Result<()> {
         use razer_device::macro_runtime::advanced::TurboSource;
         match key {
-            "synapseMacros"=>{self.publish(value)?;}
-            "synapseDefaultTurbos"=>{self.advanced.write().map_err(|_|anyhow::anyhow!("Advanced macro library poisoned"))?.publish_turbos(TurboSource::Default,value)?;}
-            "synapseTurbos"=>{self.advanced.write().map_err(|_|anyhow::anyhow!("Advanced macro library poisoned"))?.publish_turbos(TurboSource::User,value)?;}
-            "synapsePhasedMacros"=>{self.advanced.write().map_err(|_|anyhow::anyhow!("Advanced macro library poisoned"))?.publish_phased(value)?;}
-            _=>anyhow::bail!("Unknown mapping engine storage key {key}"),
+            "synapseMacros" => {
+                self.publish(value)?;
+            }
+            "synapseDefaultTurbos" => {
+                self.advanced
+                    .write()
+                    .map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?
+                    .publish_turbos(TurboSource::Default, value)?;
+            }
+            "synapseTurbos" => {
+                self.advanced
+                    .write()
+                    .map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?
+                    .publish_turbos(TurboSource::User, value)?;
+            }
+            "synapsePhasedMacros" => {
+                self.advanced
+                    .write()
+                    .map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?
+                    .publish_phased(value)?;
+            }
+            _ => anyhow::bail!("Unknown mapping engine storage key {key}"),
         }
         Ok(())
     }
 
-    fn observed_completions(&mut self)->Vec<(Uuid,Option<Uuid>,Result<Finished>)> {
-        self.take_completed().into_iter().map(|(id,result)| (id,self.completion_callers.remove(&id),result)).collect()
+    fn observed_completions(&mut self) -> Vec<(Uuid, Option<Uuid>, Result<Finished>)> {
+        self.take_completed()
+            .into_iter()
+            .map(|(id, result)| (id, self.completion_callers.remove(&id), result))
+            .collect()
     }
 
     pub fn submit(&mut self, request: Start, mode: Mode) -> Result<Submission> {
@@ -232,16 +262,34 @@ impl State {
         let request = dispatch.request;
         let execution = match request.payload.program {
             Program::Macro => ExecutionProgram::Macro(Execution::start(
-                &*self.library.read().map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?,
-                &request.guid, request.payload.repeat)?),
+                &*self
+                    .library
+                    .read()
+                    .map_err(|_| anyhow::anyhow!("Macro library lock poisoned"))?,
+                &request.guid,
+                request.payload.repeat,
+            )?),
             Program::Phased { delay_ms } => ExecutionProgram::Advanced(
                 razer_device::macro_runtime::advanced::Execution::phased(
-                    &*self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
-                    &request.guid, delay_ms)?),
-            Program::Turbo { delay_ms } => ExecutionProgram::Advanced(
-                razer_device::macro_runtime::advanced::Execution::turbo(
-                    &*self.advanced.read().map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
-                    &request.guid, request.payload.repeat, delay_ms)?),
+                    &*self
+                        .advanced
+                        .read()
+                        .map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
+                    &request.guid,
+                    delay_ms,
+                )?,
+            ),
+            Program::Turbo { delay_ms } => {
+                ExecutionProgram::Advanced(razer_device::macro_runtime::advanced::Execution::turbo(
+                    &*self
+                        .advanced
+                        .read()
+                        .map_err(|_| anyhow::anyhow!("Advanced macro library poisoned"))?,
+                    &request.guid,
+                    request.payload.repeat,
+                    delay_ms,
+                )?)
+            }
         };
         let clipboard = self.clipboard_client()?;
         let cancellation = Arc::new(Cancellation::default());
@@ -250,9 +298,8 @@ impl State {
         let acceleration = self.acceleration.clone();
         let thread = thread::Builder::new()
             .name("razer-macro-execution".into())
-            .spawn(move || {
-                match execution {
-                    ExecutionProgram::Macro(execution) => run(
+            .spawn(move || match execution {
+                ExecutionProgram::Macro(execution) => run(
                     id,
                     execution,
                     library,
@@ -260,10 +307,15 @@ impl State {
                     worker_cancel,
                     clipboard,
                     acceleration,
-                    ),
-                    ExecutionProgram::Advanced(execution) => advanced::run(
-                        id, execution, request.payload.driver_route, worker_cancel, clipboard, acceleration),
-                }
+                ),
+                ExecutionProgram::Advanced(execution) => advanced::run(
+                    id,
+                    execution,
+                    request.payload.driver_route,
+                    worker_cancel,
+                    clipboard,
+                    acceleration,
+                ),
             })
             .context("Start macro execution worker")?;
         self.completion_callers.insert(id, request.caller);
@@ -296,9 +348,37 @@ impl State {
     }
 
     pub fn cancel_caller(&mut self, caller: Uuid) -> Result<()> {
+        let mut errors = Vec::new();
         for id in self.scheduler.stop_matching(caller, |_| true) {
-            self.cancel(id)?;
+            if let Err(error) = self.cancel(id) {
+                errors.push(format!("Macro cancellation {id}: {error:#}"));
+            }
         }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
+        Ok(())
+    }
+
+    pub fn interrupt_macro(
+        &mut self,
+        caller: Uuid,
+        mapped_key: &razer_device::mapping_native_lookup::Resolved<
+            razer_device::mapping_native_action::Output,
+        >,
+    ) -> Result<()> {
+        // 5D890 removes queued executions and cancels current/running entries
+        // only when their device and full native mapped-key identity match.
+        let ids = self.scheduler.stop_matching(caller, |parameters| {
+            parameters.mapped_key.as_ref().is_some_and(|running| {
+                razer_device::mapping_native_action::matches_interrupted_macro(running, mapped_key)
+            })
+        });
+        let mut errors = Vec::new();
+        for id in ids {
+            if let Err(error) = self.cancel(id) {
+                errors.push(format!("{error:#}"));
+            }
+        }
+        ensure!(errors.is_empty(), "{}", errors.join("; "));
         Ok(())
     }
 
@@ -310,14 +390,29 @@ impl State {
     }
 
     pub fn drain_caller(&mut self, caller: Uuid) -> Result<()> {
-        self.cancel_caller(caller)?;
-        let ids = self.running.iter().filter_map(|(id, run)| (run.caller == caller).then_some(*id)).collect::<Vec<_>>();
         let mut errors = Vec::new();
+        if let Err(error) = self.cancel_caller(caller) {
+            errors.push(format!("{error:#}"));
+        }
+        // Real workers remain owned even if the scheduler lost their identities.
+        // Signal all of them before joining any one cancellation barrier.
+        for run in self.running.values().filter(|run| run.caller == caller) {
+            run.cancellation.cancel();
+        }
+        let ids = self
+            .running
+            .iter()
+            .filter_map(|(id, run)| (run.caller == caller).then_some(*id))
+            .collect::<Vec<_>>();
         for id in ids {
             let run = self.running.remove(&id).unwrap();
             let result = join(run.thread);
-            if let Err(error) = &result { errors.push(format!("Macro execution {id}: {error:#}")); }
-            if let Ok(finished) = &result { errors.extend(finished.completion.cleanup_errors.iter().cloned()); }
+            if let Err(error) = &result {
+                errors.push(format!("Macro execution {id}: {error:#}"));
+            }
+            if let Ok(finished) = &result {
+                errors.extend(finished.completion.cleanup_errors.iter().cloned());
+            }
             self.pending_completions.push((id, result));
             match self.scheduler.complete(id) {
                 Ok(next) => self.launch_queued(next),
@@ -390,7 +485,8 @@ impl State {
             Ok(mut library) => library.clear(),
             Err(error) => {
                 error.into_inner().clear();
-                cleanup_errors.push("Advanced macro library lock was poisoned during cleanup".into());
+                cleanup_errors
+                    .push("Advanced macro library lock was poisoned during cleanup".into());
             }
         }
         self.completion_callers.clear();
@@ -400,6 +496,10 @@ impl State {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "mapping_runtime/lifecycle_tests.rs"]
+mod lifecycle_tests;
 impl Drop for State {
     fn drop(&mut self) {
         let result = self.shutdown();

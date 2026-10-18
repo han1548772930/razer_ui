@@ -827,7 +827,7 @@ impl MouseProductWorkspace {
         self.set_current_customize_input(None, false);
         self.mapping_current_state.clear();
         cx.emit(MouseProductChanged);
-        if self.spec.product_id == 70 {
+        if matches!(self.spec.product_id, 70 | 158) {
             cx.emit(super::dpi_70::MouseLegacyMappingCommitted);
         }
         cx.notify();

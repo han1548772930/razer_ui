@@ -1,6 +1,7 @@
 //! Mounted Analog Controller module84350, not MapControllerV2.
 //! Current source literals and graph presets are prepared without executing JS.
 use super::*;
+use razer_widgets::theme::KeyboardControllerGraphColors as Colors;
 use std::{cell::Cell, rc::Rc};
 
 #[derive(Deserialize)]
@@ -100,6 +101,53 @@ pub(super) fn is_analog(pid: u32, assignment: &str) -> bool {
         .analog
         .iter()
         .any(|choice| choice.content == assignment)
+}
+fn graph_visible(pid: u32, slot: &Slot) -> bool {
+    slot.category == "CONTROLLER"
+        && slot
+            .staged
+            .pointer("/controllerGroup/controllerAssignment")
+            .and_then(Value::as_str)
+            .is_some_and(|assignment| {
+                is_analog(pid, assignment)
+                    && !data(pid)
+                        .without_synapse
+                        .iter()
+                        .any(|value| value == assignment)
+            })
+}
+
+/// G.De fills the fraction of area under the configured curve, not a
+/// fraction of its horizontal width. Coordinates here retain source units.
+fn observed_polygon(points: [Node; 4], low: f32, high: f32, level: u16) -> Vec<Node> {
+    let area = |a: Node, b: Node| f64::from(b.x - a.x) * f64::from(a.y + b.y) / 2.;
+    let total: f64 = points.windows(2).map(|pair| area(pair[0], pair[1])).sum();
+    let mut remaining = total * f64::from(level) / f64::from(u16::MAX);
+    let mut polygon = vec![Node { x: low, y: 0. }, points[0]];
+    for pair in points.windows(2) {
+        let [a, b] = [pair[0], pair[1]];
+        let segment = area(a, b);
+        if segment > 0. && remaining <= segment {
+            let width = f64::from(b.x - a.x);
+            let slope = f64::from(b.y - a.y) / width;
+            let y = (f64::from(a.y).powi(2) + 2. * slope * remaining)
+                .max(0.)
+                .sqrt();
+            let denominator = f64::from(a.y) + y;
+            let offset = if denominator == 0. {
+                0.
+            } else {
+                2. * remaining / denominator
+            };
+            let x = a.x + offset as f32;
+            polygon.extend([Node { x, y: y as f32 }, Node { x, y: 0. }]);
+            return polygon;
+        }
+        remaining -= segment;
+        polygon.push(b);
+    }
+    polygon.push(Node { x: high, y: 0. });
+    polygon
 }
 pub(super) fn valid(pid: u32, slot: &Value) -> bool {
     let assignment = slot
@@ -207,6 +255,7 @@ pub(super) fn element(
                                     if slot == 0 {
                                         this.correct_secondary_joystick(cx);
                                     }
+                                    this.sync_analog_observation(cx);
                                     cx.emit(KeyboardProductChanged);
                                     cx.notify();
                                 },
@@ -215,14 +264,7 @@ pub(super) fn element(
                 ),
         );
     }
-    let graph_visible = assignment.is_some_and(|assignment| {
-        is_analog(workspace.spec.product_id, assignment)
-            && !controller
-                .without_synapse
-                .iter()
-                .any(|value| value == assignment)
-    });
-    if graph_visible {
+    if graph_visible(workspace.spec.product_id, &edit.slots[slot]) {
         let mode = edit.slots[slot]
             .staged
             .pointer("/controllerGroup/analogSensitivityType")
@@ -265,6 +307,9 @@ pub(super) fn element(
         let graph = &controller.graph["STANDARD"];
         let low = graph["p0"].x;
         let high = graph["p5"].x;
+        let observed = workspace
+            .mapping_analog_level()
+            .map(|level| observed_polygon(points, low, high, level));
         let bounds = state.bounds.clone();
         body = body.child(
             div()
@@ -297,9 +342,7 @@ pub(super) fn element(
                                 grid.move_to(point(bounds.left(), y));
                                 grid.line_to(point(bounds.right(), y));
                             }
-                            if let Ok(path) = grid.build() {
-                                window.paint_path(path, rgb(0x707070));
-                            }
+                            let grid = grid.build().ok();
                             let mut fill = PathBuilder::fill();
                             fill.move_to(pos(points[0]));
                             for node in &points[1..] {
@@ -309,15 +352,32 @@ pub(super) fn element(
                             fill.line_to(point(bounds.left(), bounds.bottom()));
                             fill.close();
                             if let Ok(path) = fill.build() {
-                                window.paint_path(path, rgba(0x44d62c4d));
+                                window.paint_path(path, Colors::area());
                             }
                             let mut stroke = PathBuilder::stroke(px(1.));
                             stroke.move_to(pos(points[0]));
                             for node in &points[1..] {
                                 stroke.line_to(pos(*node));
                             }
+                            stroke.line_to(point(bounds.right(), bounds.bottom()));
+                            stroke.line_to(point(bounds.left(), bounds.bottom()));
                             if let Ok(path) = stroke.build() {
-                                window.paint_path(path, rgb(0x44d62c));
+                                window.paint_path(path, Colors::curve());
+                            }
+                            if let Some(observed) = &observed {
+                                let mut fill = PathBuilder::fill();
+                                fill.move_to(pos(observed[0]));
+                                for node in &observed[1..] {
+                                    fill.line_to(pos(*node));
+                                }
+                                fill.close();
+                                if let Ok(path) = fill.build() {
+                                    window.paint_path(path, Colors::observed_area());
+                                }
+                            }
+                            // Source CanvasDiv3 keeps the grid above both fills.
+                            if let Some(path) = grid {
+                                window.paint_path(path, Colors::grid());
                             }
                         },
                     )
@@ -333,8 +393,8 @@ pub(super) fn element(
                     .size(surface::css(8.))
                     .rounded_full()
                     .border_1()
-                    .border_color(rgb(0x44d62c))
-                    .bg(rgb(0x222222))
+                    .border_color(Colors::curve())
+                    .bg(Colors::handle())
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(move |this, _, _, cx| {
@@ -365,6 +425,23 @@ pub(super) fn element(
     body.into_any_element()
 }
 impl KeyboardProductWorkspace {
+    pub(in crate::features::keyboard_products) fn mapping_analog_input_id(&self) -> Option<&str> {
+        if self.page != "TAB_CUSTOMIZE" {
+            return None;
+        }
+        let edit = self.analog_gamepad.mapping.edit.as_ref()?;
+        if edit.button["inputType"] != "AnalogInput" {
+            return None;
+        }
+        edit.slots
+            .iter()
+            .enumerate()
+            .any(|(slot, value)| {
+                (slot == 0 || edit.secondary_enabled) && graph_visible(self.spec.product_id, value)
+            })
+            .then(|| edit.button["inputID"].as_str())
+            .flatten()
+    }
     fn move_analog_controller_point(
         &mut self,
         slot: usize,
@@ -414,6 +491,83 @@ impl KeyboardProductWorkspace {
         }
         cx.emit(KeyboardProductChanged);
         cx.notify();
+    }
+}
+
+#[cfg(test)]
+mod observation_tests {
+    use super::*;
+    fn area(points: &[Node]) -> f32 {
+        points
+            .iter()
+            .zip(points.iter().cycle().skip(1))
+            .take(points.len())
+            .map(|(a, b)| a.x * b.y - b.x * a.y)
+            .sum::<f32>()
+            .abs()
+            / 2.
+    }
+    #[::core::prelude::v1::test]
+    fn analog_controller_observation_fills_area_instead_of_horizontal_distance() {
+        let ratio = 16384. / 65535.;
+        for heights in [[0., 85., 170., 255.], [255., 170., 85., 0.], [100.; 4]] {
+            let points = std::array::from_fn(|index| Node {
+                x: index as f32,
+                y: heights[index],
+            });
+            let polygon = observed_polygon(points, 0., 3., 16384);
+            let full = observed_polygon(points, 0., 3., u16::MAX);
+            assert!((area(&polygon) / area(&full) - ratio).abs() < 0.00001);
+            let x = polygon.last().unwrap().x;
+            let expected = if heights[0] == 0. {
+                3. * ratio.sqrt()
+            } else if heights[3] == 0. {
+                3. * (1. - (1. - ratio).sqrt())
+            } else {
+                3. * ratio
+            };
+            assert!((x - expected).abs() < 0.00001);
+            assert!(area(&observed_polygon(points, 0., 3., 0)) < 0.00001);
+        }
+    }
+    #[::core::prelude::v1::test]
+    fn analog_controller_observation_handles_presets_and_changing_drafts() {
+        for (mode, graph) in &data(679).graph {
+            let points = [graph["p1"], graph["p2"], graph["p3"], graph["p4"]];
+            let low = graph["p0"].x;
+            let high = graph["p5"].x;
+            let full = observed_polygon(points, low, high, u16::MAX);
+            for level in [0, 1, 16384, 32768, 65534, 65535] {
+                let partial = observed_polygon(points, low, high, level);
+                assert!(
+                    partial
+                        .iter()
+                        .all(|node| node.x.is_finite() && node.y.is_finite()),
+                    "{mode}"
+                );
+                assert!(
+                    (area(&partial) / area(&full) - f32::from(level) / 65535.).abs() < 0.00001,
+                    "{mode} {level}"
+                );
+            }
+        }
+        let flat = [
+            Node { x: 0., y: 0. },
+            Node { x: 1., y: 0. },
+            Node { x: 2., y: 0. },
+            Node { x: 3., y: 0. },
+        ];
+        assert_eq!(area(&observed_polygon(flat, 0., 3., 100)), 0.);
+    }
+    #[::core::prelude::v1::test]
+    fn analog_controller_observation_only_mounts_for_live_analog_graphs() {
+        let mut slot = Slot::new(payload(679, "LEFTTRIGGER", "STANDARD", None));
+        assert!(graph_visible(679, &slot));
+        slot.staged = payload(679, "A_BUTTON", "STANDARD", None);
+        assert!(!graph_visible(679, &slot));
+        slot.staged = payload(679, "LEFTTRIGGER", "STANDARD", None);
+        slot.category = "KEYBOARD_FUNCTION".into();
+        assert!(!graph_visible(679, &slot));
     }
 }
 

@@ -6,8 +6,9 @@
 pub struct MappingProduct(u32);
 
 impl MappingProduct {
-    pub const ALL: [Self; 6] = [
+    pub const ALL: [Self; 7] = [
         Self(70),
+        Self(158),
         Self(515),
         Self(679),
         Self(740),
@@ -17,7 +18,7 @@ impl MappingProduct {
 
     pub const fn for_product_id(product_id: u32) -> Option<Self> {
         match product_id {
-            70 | 515 | 679 | 740 | 746 | 756 => Some(Self(product_id)),
+            70 | 158 | 515 | 679 | 740 | 746 | 756 => Some(Self(product_id)),
             _ => None,
         }
     }
@@ -29,6 +30,7 @@ impl MappingProduct {
     pub const fn storage_field(self) -> &'static str {
         match self.0 {
             70 => "_mouse70_mapping_document",
+            158 => crate::mouse_receiver_mapping::STORAGE_FIELD,
             515 => "_keyboard515_mapping_document",
             679 => crate::keyboard_current_mapping::STORAGE_FIELD,
             740 | 746 => crate::keyboard_magnetic_mapping::STORAGE_FIELD,
@@ -38,7 +40,7 @@ impl MappingProduct {
     }
 
     pub const fn is_keyboard(self) -> bool {
-        self.0 != 70
+        !matches!(self.0, 70 | 158)
     }
 
     pub const fn uses_retained_mapping_owner(self) -> bool {

@@ -1,8 +1,8 @@
 //! Current direct sensor rotation and dynamic sensitivity commands.
-//! Source setters resolve after their response; optional independent readback
-//! is explicit below. This module neither chooses a HID node nor saves a profile.
+//! Source setters resolve after their response; getters are separate requests.
+//! This module neither chooses a HID node nor saves a profile.
 use crate::{backend::FeatureTransport, device_reads::DeviceReadCapability, feature_exchange};
-use anyhow::{Context as _, ensure};
+use anyhow::ensure;
 use serde::{Deserialize, Serialize};
 use std::{fmt, time::Duration};
 
@@ -92,27 +92,10 @@ pub struct SensorAcknowledgement {
     pub data: Vec<u8>,
 }
 
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
-pub struct SensorConfirmation {
-    pub acknowledgement_index: usize,
-    pub observation: SensorObservation,
-    pub matches_request: bool,
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub struct SensorWriteReport {
     pub attempted_writes: usize,
     pub acknowledgements: Vec<SensorAcknowledgement>,
-    pub confirmations: Vec<SensorConfirmation>,
-}
-
-impl SensorWriteReport {
-    pub fn verified(&self) -> bool {
-        self.attempted_writes > 0
-            && self.attempted_writes == self.acknowledgements.len()
-            && self.acknowledgements.len() == self.confirmations.len()
-            && self.confirmations.iter().all(|row| row.matches_request)
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,7 +103,6 @@ pub enum SensorFailurePhase {
     Prepare,
     Write,
     Wait,
-    Readback,
 }
 
 #[derive(Debug)]
@@ -255,10 +237,6 @@ pub fn read(
     validate: impl Fn() -> anyhow::Result<()>,
 ) -> anyhow::Result<SensorObservation> {
     validate_cap(cap)?;
-    ensure!(
-        query != SensorQuery::Rotation || cap.product_id == 226,
-        "Rotation protocol has no current product audit"
-    );
     let (command, payload) = query_request(query)?;
     let data = feature_exchange::exchange(device, cap, command, &payload, transaction, &validate)?;
     parse(query, &data)
@@ -267,15 +245,13 @@ pub fn read(
 struct WriteRequest {
     command: [u8; 3],
     payload: Vec<u8>,
-    query: SensorQuery,
     wait_after: Duration,
 }
 
 fn prepare(change: &SensorChange) -> anyhow::Result<Vec<WriteRequest>> {
-    let step = |command, payload, query| WriteRequest {
+    let step = |command, payload| WriteRequest {
         command,
         payload,
-        query,
         wait_after: Duration::ZERO,
     };
     match change {
@@ -295,7 +271,6 @@ fn prepare(change: &SensorChange) -> anyhow::Result<Vec<WriteRequest>> {
             Ok(vec![step(
                 SET_ROTATION,
                 vec![PROFILE, u8::from(*enabled), *angle_degrees as u8],
-                SensorQuery::Rotation,
             )])
         }
         SensorChange::DynamicSensitivity {
@@ -317,19 +292,11 @@ fn prepare(change: &SensorChange) -> anyhow::Result<Vec<WriteRequest>> {
                     "Custom sensitivity contains a nonfinite value"
                 );
             }
-            let mut requests = vec![step(
-                SET_STATE,
-                vec![PROFILE, u8::from(*enabled)],
-                SensorQuery::AccelerationState,
-            )];
+            let mut requests = vec![step(SET_STATE, vec![PROFILE, u8::from(*enabled)])];
             if !enabled {
                 return Ok(requests);
             }
-            requests.push(step(
-                SET_MODE,
-                vec![PROFILE, *mode as u8],
-                SensorQuery::AccelerationMode,
-            ));
+            requests.push(step(SET_MODE, vec![PROFILE, *mode as u8]));
             if *mode == AccelerationMode::Custom {
                 for (index, points) in custom_sensor_accelerations.chunks(CHUNK).enumerate() {
                     let offset = (index * CHUNK) as u8;
@@ -338,14 +305,7 @@ fn prepare(change: &SensorChange) -> anyhow::Result<Vec<WriteRequest>> {
                     for value in points {
                         payload.extend_from_slice(&value.to_le_bytes());
                     }
-                    let mut request = step(
-                        SET_CURVE,
-                        payload,
-                        SensorQuery::CurveChunk {
-                            point_offset: offset,
-                            point_count: count,
-                        },
-                    );
+                    let mut request = step(SET_CURVE, payload);
                     // Current runner waits 15 ms only after a full 32-byte chunk.
                     if points.len() == CHUNK {
                         request.wait_after = Duration::from_millis(15);
@@ -358,27 +318,6 @@ fn prepare(change: &SensorChange) -> anyhow::Result<Vec<WriteRequest>> {
     }
 }
 
-fn matches_request(request: &WriteRequest, observation: &SensorObservation) -> bool {
-    match observation {
-        SensorObservation::AccelerationState { raw_state } => request.payload[1] == *raw_state,
-        SensorObservation::AccelerationMode { raw_mode } => request.payload[1] == *raw_mode,
-        SensorObservation::Rotation {
-            raw_state,
-            raw_angle,
-        } => request.payload[1..3] == [*raw_state, *raw_angle],
-        SensorObservation::CurveChunk {
-            points,
-            raw_point_data,
-            ..
-        } => {
-            let requested = &request.payload[5..];
-            points.len() * 4 == requested.len()
-                && raw_point_data.get(..requested.len()) == Some(requested)
-        }
-        SensorObservation::CurveSetting { .. } => false,
-    }
-}
-
 pub(crate) fn validate_setter_report(
     change: &SensorChange,
     report: &SensorWriteReport,
@@ -386,8 +325,7 @@ pub(crate) fn validate_setter_report(
 ) -> anyhow::Result<()> {
     let requests = prepare(change)?;
     ensure!(
-        report.confirmations.is_empty()
-            && report.attempted_writes <= requests.len()
+        report.attempted_writes <= requests.len()
             && report.acknowledgements.len() <= report.attempted_writes
             && report.attempted_writes <= report.acknowledgements.len() + 1,
         "Sensor setter report contains impossible delivery status"
@@ -409,15 +347,13 @@ pub(crate) fn validate_setter_report(
     Ok(())
 }
 
-/// Keep the source mutation order. Independent confirmation is an explicit
-/// optional extension: no request value or setter echo substitutes for a GET.
+/// Keep the source mutation order and return only actual setter responses.
 /// `wait` is supplied by the caller so tests simulate the source chunk delays.
 #[allow(clippy::too_many_arguments)]
 pub fn apply(
     device: &dyn FeatureTransport,
     cap: &DeviceReadCapability,
     change: &SensorChange,
-    confirm_with_readback: bool,
     mut next_transaction: impl FnMut() -> anyhow::Result<u8>,
     validate: impl Fn() -> anyhow::Result<()>,
     mut wait: impl FnMut(Duration) -> anyhow::Result<()>,
@@ -429,13 +365,6 @@ pub fn apply(
         error,
     };
     let requests = validate_cap(cap)
-        .and_then(|()| {
-            ensure!(
-                !matches!(change, SensorChange::Rotation { .. }) || cap.product_id == 226,
-                "Rotation protocol has no current product audit"
-            );
-            Ok(())
-        })
         .and_then(|()| prepare(change))
         .map_err(|error| fail(SensorFailurePhase::Prepare, report.clone(), error))?;
     for request in &requests {
@@ -469,33 +398,6 @@ pub fn apply(
         }
     }
     validate().map_err(|error| fail(SensorFailurePhase::Write, report.clone(), error))?;
-    if confirm_with_readback {
-        for (index, request) in requests.iter().enumerate() {
-            let observation = (|| {
-                validate()?;
-                read(device, cap, request.query, next_transaction()?, &validate)
-            })()
-            .map_err(|error| fail(SensorFailurePhase::Readback, report.clone(), error))?;
-            let matches = matches_request(request, &observation);
-            report.confirmations.push(SensorConfirmation {
-                acknowledgement_index: index,
-                observation,
-                matches_request: matches,
-            });
-            if !matches {
-                return Err(fail(
-                    SensorFailurePhase::Readback,
-                    report,
-                    anyhow::anyhow!(
-                        "Sensor readback differs; acknowledged writes were not rolled back"
-                    ),
-                ));
-            }
-        }
-        validate()
-            .context("Sensor readback session is no longer valid")
-            .map_err(|error| fail(SensorFailurePhase::Readback, report.clone(), error))?;
-    }
     Ok(report)
 }
 

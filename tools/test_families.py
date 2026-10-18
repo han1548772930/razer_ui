@@ -30,6 +30,126 @@ class NativeInitializerTests(unittest.TestCase):
             families.native_rip_u32_initializers([self.store(0x4000, 0x3001, 1)], 0x3000, 2)
 
 
+class FeatureCallInventoryTests(unittest.TestCase):
+    def inspect(self, source):
+        raw = source.encode("utf-8")
+        tree = host.HostLocalAudit().parser.parse(raw)
+        self.assertFalse(tree.root_node.has_error)
+        rows = families.javascript_feature_calls(tree)
+        for row in rows:
+            self.assertTrue(raw[row["byte_start"]:row["byte_end"]].endswith(b")"))
+        return rows
+
+    def test_actual_calls_ignore_comments_strings_and_method_declarations(self):
+        rows = self.inspect('const label="设备 .useFeature(fake)";'
+            '// injector.useFeature("hardwareEvent", "config")\n'
+            'class Injector {useFeature(name, variant) {}}'
+            'injector.useFeature("rzDeviceType","rzDevice25",{isDualLinkDevice:!0});'
+            'injector.useFeature("battery","yes");')
+        self.assertEqual([(row["feature"], row["variant"]) for row in rows],
+                         [("rzDeviceType", "rzDevice25"), ("battery", "yes")])
+        self.assertEqual(rows[0]["arguments"][2], "{isDualLinkDevice:!0}")
+
+    def test_literal_computed_optional_and_dynamic_arguments_are_retained(self):
+        rows = self.inspect('injector["useFeature"]("hardwareEvent", "config", settings);'
+            'injector?.useFeature(featureName, /* current variant */ variantName);')
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["feature"], "hardwareEvent")
+        self.assertIsNone(rows[1]["feature"])
+        self.assertIsNone(rows[1]["variant"])
+        self.assertEqual(rows[1]["arguments"], ["featureName", "variantName"])
+
+    def test_escaped_strings_are_not_silently_treated_as_literal_selection(self):
+        rows = self.inspect(r'injector.useFeature("hardware\u0045vent", "config");')
+        self.assertEqual(len(rows), 1)
+        self.assertIsNone(rows[0]["feature"])
+
+
+class MouseRotationAuditTests(unittest.TestCase):
+    def setUp(self):
+        self.audit = host.HostLocalAudit()
+        self.directory = tempfile.TemporaryDirectory()
+        self.root = Path(self.directory.name)
+        self.root_patch = patch.object(analysis, "ROOT", self.root)
+        self.root_patch.start()
+        self.addCleanup(self.directory.cleanup)
+        self.addCleanup(self.root_patch.stop)
+
+    def original(self, text):
+        raw = text.encode()
+        path = self.root / ".analysis/inputs/rotation" / (hashlib.sha256(raw).hexdigest()+".js")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(raw)
+        return families.identity(path)
+
+    def test_getter_inventory_ignores_declarations_text_but_keeps_aliases_and_computed_calls(self):
+        source = self.original('const title="设备 getProximitySensorAngleTune";'
+            '// device.getProximitySensorAngleTune()\n'
+            'class D {getProximitySensorAngleTune(){}}'
+            'device?.getProximitySensorAngleTune(1);'
+            'const read=device["getProximitySensorAngleTune"];'
+            'device["getMouseSensorRotationAngle"]();')
+        rows = families.rotation_member_references(self.audit,[source],
+            ("getProximitySensorAngleTune","getMouseSensorRotationAngle"))
+        self.assertEqual([row["name"] for row in rows],
+            ["getProximitySensorAngleTune","getProximitySensorAngleTune","getMouseSensorRotationAngle"])
+        for row in rows:
+            owner = self.audit.owners[row["owner"]]
+            body = self.audit.read(source)[owner["byte_start"]:owner["byte_end"]]
+            self.assertEqual(body.decode(),owner["body"])
+            self.assertEqual(hashlib.sha256(body).hexdigest(),owner["body_sha256"])
+
+    def test_factory_closure_follows_transitive_requires_and_ignores_shadowed_parameters(self):
+        source = self.original('const title="设备";self.chunks.push([[1],{'
+            '1:(e,t,n)=>{const helper=n(2);function f(n){return n(999)}},'
+            '2(e,t,n){const parse=n(3);},3:(e)=>{e.exports=4}}]);')
+        rows = families.rotation_factory_closure(self.audit,[source],[1])
+        self.assertEqual([(row["module_id"],row["dependencies"]) for row in rows],
+            [(1,[2]),(2,[3]),(3,[])])
+        self.assertEqual(self.audit.final_snapshot(),[])
+
+    def test_factory_closure_rejects_dynamic_missing_and_ambiguous_dependencies(self):
+        source = self.original('self.chunks.push([[1],{1:(e,t,n)=>{n(dynamic)}}]);')
+        with self.assertRaisesRegex(ValueError,"dynamic dependency"):
+            families.rotation_factory_closure(self.audit,[source],[1])
+        source = self.original('self.chunks.push([[1],{1:(e,t,n)=>{n(2)}}]);')
+        with self.assertRaisesRegex(ValueError,"absent or ambiguous"):
+            families.rotation_factory_closure(self.audit,[source],[1])
+        duplicate = self.original('self.chunks.push([[1],{1:(e,t,n)=>{n(3)}}]);')
+        with self.assertRaisesRegex(ValueError,"absent or ambiguous"):
+            families.rotation_factory_closure(self.audit,[source,duplicate],[1])
+
+    def test_ble_array_header_is_explicit_and_validated_at_its_lexical_owner(self):
+        source = self.original('const command=[2,15,20];'
+            'class Device {setProximitySensorAngleTune(p,s,a){return this.sendCommand(command,p,s,a)}}')
+        root = self.audit.tree(source).root_node
+        cls = next(node for node in root.named_children if node.type=="class_declaration")
+        commands,_ = families.direct_command_headers(self.audit,source,cls,
+            ("setProximitySensorAngleTune",),array_header=True)
+        self.assertEqual(commands,{"setProximitySensorAngleTune":[2,15,20]})
+        with self.assertRaisesRegex(ValueError,"fixed three-byte"):
+            families.direct_command_headers(self.audit,source,cls,("setProximitySensorAngleTune",))
+        changed = self.original('const command=[2,15,dynamic];'
+            'class Device {setProximitySensorAngleTune(){return this.sendCommand(command)}}')
+        cls = next(node for node in self.audit.tree(changed).root_node.named_children if node.type=="class_declaration")
+        with self.assertRaisesRegex(ValueError,"fixed three-byte"):
+            families.direct_command_headers(self.audit,changed,cls,("setProximitySensorAngleTune",),array_header=True)
+
+    def test_task_maker_imports_resolve_actual_exports_instead_of_same_named_decoys(self):
+        source = self.original('self.chunks.push([[1],{'
+            '1:(e,t,n)=>{var tasks=n(2);function make(){tasks.run.bind(null,1);tasks.done(1)}},'
+            '2:(e,t,n)=>{n.d(t,{run:()=>runner,done:()=>callback});'
+            'function runner(){return "actual"}function callback(){return "requested value"}},'
+            '3:(e,t,n)=>{n.d(t,{run:()=>runner});function runner(){return "decoy"}}}]);')
+        owner = self.audit.retain("maker",source,"function make()",{"function_declaration"})[0]
+        rows = families.rotation_imported_owners(self.audit,[source],source,owner)
+        self.assertEqual({(row["export"]["module_id"],row["export"]["export"]) for row in rows},
+            {(2,"run"),(2,"done")})
+        bodies = {row["export"]["binding"]["body"] for row in rows}
+        self.assertEqual(bodies,{'function runner(){return "actual"}',
+                                'function callback(){return "requested value"}'})
+
+
 class MouseIdleInitializationTests(unittest.TestCase):
     def setUp(self):
         # Load the pinned parser before replacing only the evidence workspace.

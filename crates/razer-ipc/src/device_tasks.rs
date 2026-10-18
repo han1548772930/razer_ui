@@ -142,6 +142,23 @@ impl ServiceRequest {
     /// These requests complete their setter/ACK chain before returning. Retained
     /// operations acquire one lease around their entire start/poll/cleanup path.
     pub(crate) fn synchronous_device_task(&self) -> anyhow::Result<Option<Scope>> {
+        if let Self::BleMouseRotation {
+            target,
+            change: Some(_),
+        } = self
+        {
+            anyhow::ensure!(
+                razer_device::mouse_rotation::ble::accepts(
+                    target.product_id,
+                    target.physical_product_id
+                ),
+                "Rotation BLE mutation scope has another physical factory"
+            );
+            return Ok(Some(Scope::container(
+                target.product_id,
+                &target.device_container_id,
+            )?));
+        }
         if let Self::HyperpollingReceiver {
             target,
             command:
@@ -195,6 +212,12 @@ impl ServiceRequest {
                 product_id,
                 change: Some(_),
                 ..
+            }
+            | Self::HidNodeMouseRotation {
+                node,
+                product_id,
+                change: Some(_),
+                ..
             } => Some((*product_id, node)),
             Self::HidNodeMouseCurrentPower {
                 node,
@@ -227,6 +250,10 @@ impl ServiceRequest {
             Self::DeviceMouseDynamic {
                 target,
                 change: Some(_),
+            }
+            | Self::DeviceMouseRotation {
+                target,
+                change: Some(_),
             } => Some(target),
             Self::DeviceMouseCurrentPower { target, change }
                 if !matches!(
@@ -245,6 +272,61 @@ impl ServiceRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mouse_rotation_ble_ipc_uses_logical_container_scope_only_for_setter() {
+        let container = "b63bfcb4-c1ee-4b2b-83f3-90fc06229af0";
+        let value = serde_json::json!({"operation":"ble_mouse_rotation","target":{
+            "product_id":226,"physical_product_id":228,"device_container_id":container,
+            "hid_path":"hid-ble-rotation","device_instance_id":"HID-INSTANCE",
+            "parent_instance_id":"BTHLEDevice-INSTANCE","mac_address":177789161760246u64},
+            "change":{"enabled":true,"angle_degrees":-44}});
+        let request: ServiceRequest = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(
+            request.synchronous_device_task().unwrap(),
+            Some(Scope::container(226, container).unwrap())
+        );
+        let mut read = value.clone();
+        read["change"] = serde_json::Value::Null;
+        assert!(
+            serde_json::from_value::<ServiceRequest>(read)
+                .unwrap()
+                .synchronous_device_task()
+                .unwrap()
+                .is_none()
+        );
+        let mut other = value;
+        other["target"]["physical_product_id"] = serde_json::json!(227);
+        assert!(
+            serde_json::from_value::<ServiceRequest>(other)
+                .unwrap()
+                .synchronous_device_task()
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn mouse_rotation_ipc_keeps_wire_identity_and_only_setters_take_mutation_scope() {
+        let bytes = br#"{"operation":"hid_node_mouse_rotation","node":{"path":[255,0,34,92,128],"vendor_id":5426,"product_id":241,"usage_page":65280,"usage":1,"interface_number":0,"release_number":4660,"serial_number":null,"manufacturer":null,"product":null},"product_id":226,"peer_product_id":227,"change":{"enabled":true,"angle_degrees":-44}}"#;
+        let request: ServiceRequest = serde_json::from_slice(bytes).unwrap();
+        assert_eq!(serde_json::to_vec(&request).unwrap(), bytes);
+        let ServiceRequest::HidNodeMouseRotation { ref node, .. } = request else {
+            panic!("rotation wire kind changed")
+        };
+        assert_eq!(
+            request.synchronous_device_task().unwrap(),
+            Some(Scope::collection(226, node))
+        );
+        let mut read: serde_json::Value = serde_json::from_slice(bytes).unwrap();
+        read["change"] = serde_json::Value::Null;
+        assert!(
+            serde_json::from_value::<ServiceRequest>(read)
+                .unwrap()
+                .synchronous_device_task()
+                .unwrap()
+                .is_none()
+        );
+    }
 
     #[test]
     fn current_power_ipc_preserves_fixed_wire_bytes_and_collection_task_identity() {

@@ -112,10 +112,11 @@ impl RenderOnce for CollapseArrow {
             .text_color(rgb(0x999999))
             .group_hover(self.id, |style| style.text_color(rgb(0xffffff)))
             .child(
-                Icon::default()
+                razer_assets::resource_svg()
+                    .flex_shrink_0()
                     .path("synapse/expand.svg")
                     .size(surface::css(10.))
-                    .transform(Transformation::rotate(radians(angle))),
+                    .with_transformation(Transformation::rotate(radians(angle))),
             )
     }
 }

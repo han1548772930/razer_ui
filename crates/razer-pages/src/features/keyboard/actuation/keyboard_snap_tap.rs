@@ -9,6 +9,8 @@ use std::{cell::Cell, rc::Rc, time::Duration};
 const LOCAL: &str = "_snapTapLocalV1";
 #[path = "keyboard_snap_analog.rs"]
 mod analog;
+#[path = "keyboard_snap_observation.rs"]
+pub(super) mod observation;
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Pair {
@@ -70,6 +72,40 @@ fn data() -> &'static SnapTapData {
     DATA.get_or_init(|| read_keyboard_snap_tap_catalog())
 }
 
+pub(super) fn analog_input_id(scancode: u16) -> Option<&'static str> {
+    data()
+        .inputs
+        .iter()
+        .find(|key| key.get("scancode").and_then(Value::as_u64) == Some(scancode.into()))
+        .and_then(|key| key.get("inputID"))
+        .and_then(Value::as_str)
+}
+
+pub(super) fn analog_input(
+    input_id: &str,
+) -> anyhow::Result<razer_device::mapping_native_lookup::Input> {
+    use razer_device::mapping_native_lookup::{Input, InputKind};
+    #[derive(Deserialize)]
+    struct Key {
+        scancode: u16,
+        flag: u16,
+        #[serde(rename = "outputFlag")]
+        output_flag: Option<u16>,
+    }
+    let value = data()
+        .inputs
+        .iter()
+        .find(|key| key.get("inputID").and_then(Value::as_str) == Some(input_id))
+        .ok_or_else(|| {
+            anyhow::anyhow!("Analog input is absent from the source key table: {input_id}")
+        })?;
+    let key: Key = serde_json::from_value(value.clone())?;
+    Ok(Input::new(InputKind::AnalogKey {
+        scancode: key.scancode,
+        flag: key.output_flag.unwrap_or(key.flag),
+    }))
+}
+
 /// Middleware observations and native keystrokes have separate entry points;
 /// keystrokes describe local editing input, not device configuration.
 #[derive(Clone)]
@@ -99,6 +135,7 @@ pub(super) struct State {
     return_focus: Option<FocusHandle>,
     capture_generation: u64,
     success_timer: Option<Task<()>>,
+    toggle_timer: Option<Task<()>>,
     pair_bounds: Rc<Cell<Bounds<Pixels>>>,
     add_bounds: Rc<Cell<Bounds<Pixels>>>,
     tooltip: Option<Point<Pixels>>,
@@ -130,6 +167,7 @@ impl State {
             return_focus: None,
             capture_generation: 0,
             success_timer: None,
+            toggle_timer: None,
             pair_bounds: Rc::new(Cell::new(Bounds::default())),
             add_bounds: Rc::new(Cell::new(Bounds::default())),
             tooltip: None,
@@ -330,11 +368,14 @@ impl KeyboardProductWorkspace {
             return;
         };
         state.config.enabled = !state.config.enabled;
+        let interrupted = state.finish_disabled_analog_capture();
         state.local = true;
         self.draft["snapTap"] = json!(state.config);
+        if interrupted {
+            self.schedule_snap_success(cx);
+        }
+        self.publish_snap_tap(cx);
         self.submit_analog_snap(cx);
-        cx.emit(KeyboardProductChanged);
-        cx.notify();
     }
     pub fn captures_snap_keys(&self) -> bool {
         (self.page == "TAB_CUSTOMIZE"
@@ -393,6 +434,7 @@ impl KeyboardProductWorkspace {
                 focus.focus(window, cx);
             }
         }
+        self.reset_snap_observation(cx);
         let mut state = State::new(cx);
         state.mod_tap = self.spec.source_mod_tap && self.draft["modTap"].as_bool().unwrap_or(false);
         state.analog = self.spec.analog_gamepad_layout();
@@ -408,14 +450,16 @@ impl KeyboardProductWorkspace {
         if let Some(config) = self
             .draft
             .get(LOCAL)
+            .or_else(|| self.draft.get("snapTap"))
             .and_then(|v| serde_json::from_value::<Configuration>(v.clone()).ok())
         {
             state.config = config;
             state.config.pairs.retain(Pair::complete);
             state.staged = state.config.pairs.clone();
-            state.local = true;
+            state.local = self.draft.get(LOCAL).is_some();
         }
         self.snap_tap = Some(state);
+        self.sync_snap_observation(cx);
     }
     fn publish_snap_tap(&mut self, cx: &mut Context<Self>) {
         if let Some(state) = &self.snap_tap {
@@ -424,6 +468,7 @@ impl KeyboardProductWorkspace {
                 cx.emit(KeyboardProductChanged);
             }
         }
+        self.sync_snap_observation(cx);
         cx.notify();
     }
     pub(super) fn blur_snap_tap(&mut self, cx: &mut Context<Self>) {
@@ -452,6 +497,7 @@ impl KeyboardProductWorkspace {
         }
     }
     pub fn leave_snap_tap(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.leave_snap_observation(cx);
         if let Some(state) = &mut self.snap_tap {
             if state.local {
                 state.config = serde_json::from_value(state.snapshot()).unwrap();
@@ -463,8 +509,10 @@ impl KeyboardProductWorkspace {
             if state.analog {
                 state.message = Message::AnalogIntroduction;
                 state.pressed = [0; 2];
+                state.observed_pressed = json!([]);
             }
             state.success_timer = None;
+            state.toggle_timer = None;
             state.tooltip = None;
             if state.prompt {
                 if let Some(focus) = &state.return_focus {
@@ -546,21 +594,7 @@ impl KeyboardProductWorkspace {
         };
         let analog = state.analog;
         if state.accept(input) {
-            state.success_timer = Some(cx.spawn(async move |this, cx| {
-                cx.background_executor()
-                    .timer(Duration::from_secs(if analog { 5 } else { 3 }))
-                    .await;
-                let _ = this.update(cx, |this, cx| {
-                    if let Some(state) = &mut this.snap_tap {
-                        state.message = if state.analog {
-                            Message::AnalogIntroduction
-                        } else {
-                            Message::Introduction
-                        };
-                    }
-                    cx.notify();
-                });
-            }));
+            self.schedule_snap_success(cx);
         }
         self.publish_snap_tap(cx);
         if analog
@@ -571,6 +605,28 @@ impl KeyboardProductWorkspace {
         {
             self.submit_analog_snap(cx);
         }
+    }
+
+    pub(super) fn schedule_snap_success(&mut self, cx: &mut Context<Self>) {
+        let Some(state) = &mut self.snap_tap else {
+            return;
+        };
+        let seconds = if state.analog { 5 } else { 3 };
+        state.success_timer = Some(cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_secs(seconds))
+                .await;
+            let _ = this.update(cx, |this, cx| {
+                if let Some(state) = &mut this.snap_tap {
+                    state.message = if state.analog {
+                        Message::AnalogIntroduction
+                    } else {
+                        Message::Introduction
+                    };
+                }
+                cx.notify();
+            });
+        }));
     }
     pub fn observe_snap_tap(
         &mut self,
@@ -700,6 +756,9 @@ impl KeyboardProductWorkspace {
             }
             SnapTapObservation::ModTapEnabled(enabled) => state.mod_tap = enabled,
         }
+        // tv4 replaces configuration but preserves pressedKeys. The mounted
+        // observer effect is keyed only by isEnabled; pair edits do not restart it.
+        self.sync_snap_observation(cx);
         cx.notify();
     }
     fn snap_razer_keys(&self) -> &'static [Value] {

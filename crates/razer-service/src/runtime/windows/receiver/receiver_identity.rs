@@ -15,7 +15,7 @@ pub(super) fn read(path: &str, container: &str) -> anyhow::Result<Value> {
     let device = super::hid_transport::open(path, feature)?;
     let validate = || -> anyhow::Result<()> {
         let (current, _) = super::receiver::select_target(
-            &super::hid::enumerate_for_product(cap.vendor_id, cap.product_id)?,
+            &super::hid::enumerate_collection(cap.vendor_id, cap.product_id, path)?,
             path,
             container,
         )?;

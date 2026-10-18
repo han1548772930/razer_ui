@@ -217,7 +217,8 @@ impl MacroPage {
             InputState::new(window, cx).validate(|value, _| editors::valid_randomized_draft(value))
         });
         let keyboard_focus = cx.focus_handle();
-        let record_ui = record_options::RecordUi::new(window, cx);
+        let mut record_ui = record_options::RecordUi::new(window, cx);
+        record_ui.shortcut.selected = file.record_shortcut;
         let record_subscriptions = [
             (&record_ui.fixed, record_options::NumberField::Fixed),
             (&record_ui.min, record_options::NumberField::Min),
@@ -297,7 +298,7 @@ impl MacroPage {
                 }
             }),
         ];
-        Self {
+        let mut page = Self {
             library,
             tab: MacroTab::MyMacros,
             focus: cx.focus_handle(),
@@ -363,9 +364,12 @@ impl MacroPage {
                 .into_iter()
                 .chain(record_subscriptions)
                 .collect(),
-        }
+        };
+        page.activate_record_shortcut(window, cx);
+        page
     }
     pub fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.activate_record_shortcut(window, cx);
         self.focus.focus(window, cx);
         cx.notify();
     }
@@ -379,6 +383,7 @@ impl MacroPage {
             entries,
             current: self.current,
             tutorial: self.tutorial,
+            record_shortcut: self.record_ui.shortcut.selected.clone(),
         };
         self.library
             .update(cx, |library, cx| library.replace(file, cx));
@@ -741,6 +746,16 @@ impl MacroPage {
     }
 
     pub fn add_action_at(&mut self, kind: &str, index: usize, cx: &mut Context<Self>) {
+        self.add_action_at_phase(kind, index, self.active_phase(), cx);
+    }
+
+    fn add_action_at_phase(
+        &mut self,
+        kind: &str,
+        index: usize,
+        phase: Option<u8>,
+        cx: &mut Context<Self>,
+    ) {
         let Some(current) = self.current else { return };
         if self.tutorial != Tutorial::Complete || self.recording_busy() || self.record_ui.open {
             return;
@@ -762,9 +777,8 @@ impl MacroPage {
         };
         let mut items = items;
         if self.current_macro_type() == razer_pages::features::macro_library::MacroType::Phased {
-            let phase = self.active_phase().unwrap_or(0);
             for item in &mut items {
-                item.phase = Some(phase);
+                item.phase = phase;
             }
         }
         self.undo.push(self.actions.clone());

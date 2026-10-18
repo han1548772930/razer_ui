@@ -48,7 +48,7 @@ pub struct JoystickOutputState {
     pub pov: [i8; 3],
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct GamepadOutputState {
     pub buttons: u16,
     pub left_trigger: u8,

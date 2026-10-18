@@ -2,7 +2,27 @@
 use gpui_kit::{App, AppContext as _, Context, Entity, EventEmitter, Global, Subscription, Task};
 pub use razer_resources::ResourceChanged;
 use razer_resources::{ResourceClient, ResourceRuntime};
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
+
+/// Presentation diagnostics also cover failures before a worker can emit an event.
+#[derive(Default)]
+struct AvailabilityErrors(BTreeMap<String, String>);
+impl Global for AvailabilityErrors {}
+impl AvailabilityErrors {
+    fn observe(&mut self, path: &str, error: Option<String>) -> bool {
+        match error {
+            Some(error) if self.0.get(path) != Some(&error) => {
+                self.0.insert(path.to_owned(), error);
+                true
+            }
+            Some(_) => false,
+            None => {
+                self.0.remove(path);
+                false
+            }
+        }
+    }
+}
 
 pub struct ResourceEvents;
 impl EventEmitter<ResourceChanged> for ResourceEvents {}
@@ -48,6 +68,10 @@ pub fn start_resources(owner: ResourceRuntime, cx: &mut App) -> anyhow::Result<(
     let results = cx.spawn(async move |cx| {
         while let Ok(changed) = changes.recv().await {
             cx.update(|cx| {
+                if changed.error().is_none() && cx.has_global::<AvailabilityErrors>() {
+                    cx.global_mut::<AvailabilityErrors>()
+                        .observe(changed.path(), None);
+                }
                 if changed.error().is_none() && result_client.is_font(changed.path()) {
                     if let Ok(Some(bytes)) = result_client.load(changed.path()) {
                         if let Err(error) = cx.text_system().add_fonts(vec![Cow::Owned(bytes)]) {
@@ -79,6 +103,7 @@ pub fn start_resources(owner: ResourceRuntime, cx: &mut App) -> anyhow::Result<(
         results: Some(results),
         _quit: quit,
     });
+    cx.set_global(AvailabilityErrors::default());
     Ok(())
 }
 
@@ -112,6 +137,14 @@ pub fn register_fonts(cx: &App) -> anyhow::Result<()> {
 
 pub fn resource_errors(cx: &App) -> Vec<String> {
     let mut errors = crate::image_cache::resource_image_errors(cx);
+    if let Some(availability) = cx.try_global::<AvailabilityErrors>() {
+        errors.extend(
+            availability
+                .0
+                .iter()
+                .map(|(path, error)| format!("{path}：{error}")),
+        );
+    }
     if let Some(runtime) = cx.try_global::<Runtime>() {
         errors.extend(runtime.client.errors());
     } else {
@@ -125,11 +158,32 @@ pub fn retry_resources(cx: &mut App) -> anyhow::Result<()> {
         .client
         .retry()?;
     crate::image_cache::retry_resource_images(cx);
+    if cx.has_global::<AvailabilityErrors>() {
+        cx.global_mut::<AvailabilityErrors>().0.clear();
+    }
     cx.refresh_windows();
     Ok(())
 }
 
-pub(crate) fn available(path: &str, cx: &App) -> anyhow::Result<bool> {
+pub(crate) fn available(path: &str, cx: &mut App) -> anyhow::Result<bool> {
+    let result = query_availability(path, cx);
+    let path = crate::resource_identity(path).map_or(path, |(path, _, _)| path);
+    if !cx.has_global::<AvailabilityErrors>() {
+        cx.set_global(AvailabilityErrors::default());
+    }
+    let error = result.as_ref().err().map(|error| format!("{error:#}"));
+    if cx
+        .global_mut::<AvailabilityErrors>()
+        .observe(path, error.clone())
+    {
+        if let Some(error) = error {
+            log::warn!(target: "razer_assets::resources", "unavailable {path}: {error}");
+        }
+    }
+    result
+}
+
+fn query_availability(path: &str, cx: &App) -> anyhow::Result<bool> {
     if crate::embedded_asset(path).is_some() {
         return Ok(true);
     }
@@ -141,4 +195,24 @@ pub(crate) fn available(path: &str, cx: &App) -> anyhow::Result<bool> {
         "Resource runtime is not installed"
     );
     Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AvailabilityErrors;
+
+    #[test]
+    fn resource_availability_errors_report_transitions_and_remain_queryable() {
+        let mut errors = AvailabilityErrors::default();
+        let path = "synapse/test.svg";
+        assert!(errors.observe(path, Some("Resource runtime is not installed".into())));
+        assert!(!errors.observe(path, Some("Resource runtime is not installed".into())));
+        assert_eq!(errors.0[path], "Resource runtime is not installed");
+        assert!(errors.observe(path, Some("HTTP 403".into())));
+        assert!(!errors.observe(path, Some("HTTP 403".into())));
+        assert_eq!(errors.0[path], "HTTP 403");
+        assert!(!errors.observe(path, None));
+        assert!(errors.0.is_empty());
+        assert!(errors.observe(path, Some("HTTP 403".into())));
+    }
 }

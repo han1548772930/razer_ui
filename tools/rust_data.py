@@ -1049,6 +1049,9 @@ def build_table(crate, symbol, module, root_type, *, source=None, check=False,
         schema.excluded, schema.value_fields = excluded, boundaries
     else:
         expression = schema.render(value, root_type, module, allow_value=allow_value)
+    if (crate, symbol) == ("razer-model", "SHORTCUT_CAPTURE_KEYS"):
+        import families
+        families.validate_shortcut_capture_projection(value, schema.excluded)
     macro_name = macro_name or symbol.lower()
     if not re.fullmatch(r"[a-z][a-z0-9_]*", macro_name):
         raise ValueError("Invalid Rust table macro name")

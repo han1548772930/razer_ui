@@ -815,6 +815,7 @@ fn recorder_source_started_waits_for_both_mapping_processes_and_restores_them() 
         random: [0., 0.],
         next_pair: 1,
         movement_mode: 0,
+        shortcut: Vec::new(),
     };
     let (record_session, updates) =
         recorder::spawn_with_registry(options, || Ok(record_mock), registry).unwrap();

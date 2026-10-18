@@ -1,5 +1,4 @@
-//! Current 58190 Za/$r/Ur/vr and 25572.G. Local recording preferences do not
-//! register a system shortcut or imply a connected recording service.
+//! Current 58190 Za/$r/Ur/vr and 25572.G recording preferences.
 use super::*;
 use gpui_kit::component::select::SelectState;
 use razer_pages::features::macro_library::MacroType;
@@ -491,18 +490,7 @@ impl MacroPage {
                             .when(!last, |v| v.border_b_1().border_color(rgb(0x5d5d5d)))
                             .child(header);
                         match index {
-                            1 => {
-                                section = section
-                                    .child(self.record_shortcut_control(window, cx))
-                                    .child(
-                                        div()
-                                            .id("macro-record-shortcut-unavailable")
-                                            .test_support()
-                                            .text_size(css(12.))
-                                            .text_color(rgb(0xaaaaaa))
-                                            .child("快捷键仅为本地设置；全局快捷键录制尚未连接，请使用录制/停止按钮"),
-                                    )
-                            }
+                            1 => section = section.child(self.record_shortcut_control(window, cx)),
                             2 => {
                                 section = section.children(
                                     group.content.iter().take(2).enumerate().map(|(i, item)| {
@@ -850,6 +838,7 @@ impl MacroPage {
             fixed,
             random,
             next_pair: self.next_event_pair_id().ok_or("本地宏事件标识已耗尽")?,
+            shortcut: self.record_ui.shortcut.recording_keys()?,
         })
     }
 }

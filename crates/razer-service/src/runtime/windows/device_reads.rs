@@ -72,6 +72,18 @@ pub(super) fn mouse_dynamic(
         mouse_dynamic_adapter::request(target, change)
     }
 }
+#[path = "mouse/mouse_rotation.rs"]
+mod mouse_rotation_adapter;
+pub(super) fn mouse_rotation(
+    target: &DeviceReadTarget,
+    change: Option<&razer_device::mouse_rotation::Setting>,
+) -> anyhow::Result<Value> {
+    if target.peer_product_id.is_some() {
+        receiver_setting(target, super::super::receiver_settings::Setting::Rotation(change))
+    } else {
+        mouse_rotation_adapter::request(target, change)
+    }
+}
 #[path = "mouse/mouse_current_polling.rs"]
 mod mouse_current_polling_adapter;
 pub(super) fn mouse_current_polling(
@@ -142,14 +154,10 @@ pub(super) fn leviathan(
     leviathan_adapter::request(target, operation)
 }
 pub(super) use seiren_eq_adapter::State as SeirenAudio;
-pub(super) fn seiren_eq(
-    target: &DeviceReadTarget,
-    change: &razer_device::seiren_eq::Change,
-) -> anyhow::Result<Value> {
-    seiren_eq_adapter::request(target, change)
-}
 #[path = "mouse/mouse_current_power_ble.rs"]
 mod mouse_current_power_ble_adapter;
+#[path = "mouse/mouse_rotation_ble.rs"]
+mod mouse_rotation_ble_adapter;
 #[path = "mouse/mouse_runtime_artwork.rs"]
 mod mouse_runtime_artwork_adapter;
 pub(super) fn mouse_current_power(
@@ -175,6 +183,13 @@ pub(super) fn mouse_current_power_ble(
     change: &razer_device::mouse_current_power::Change,
 ) -> anyhow::Result<Value> {
     mouse_current_power_ble_adapter::request(target, change)
+}
+
+pub(super) fn mouse_rotation_ble(
+    target: &razer_device::mouse_runtime_artwork::WindowsBleTarget,
+    change: Option<&razer_device::mouse_rotation::Setting>,
+) -> anyhow::Result<Value> {
+    mouse_rotation_ble_adapter::request(target, change)
 }
 
 pub(super) fn keyboard_wristrest(
@@ -222,7 +237,7 @@ fn current_target(target: &DeviceReadTarget, cap: &DeviceReadCapability) -> anyh
         "设备查询路径无效"
     );
     let pid = u16::try_from(target.physical_product_id)?;
-    let snapshot = hid::enumerate_for_product(cap.vendor_id, pid)?;
+    let snapshot = hid::enumerate_collection(cap.vendor_id, pid, &target.path)?;
     ensure!(snapshot["complete"] == true, "设备查询目标枚举未完成");
     let items = snapshot["interfaces"]
         .as_array()
@@ -397,7 +412,7 @@ pub(super) fn query(target: &DeviceReadTarget, kind: DeviceReadKind) -> anyhow::
     verify_routing(target, source_cap)?;
     Ok(
         json!({"target":target,"reading":reading,"method":command.method,"source_class":cap.source_class,
-        "transport_metadata":transport_metadata, "elapsed_ms":started.elapsed().as_millis() as u64,"evidence":"docs/re/mouse-read-capabilities-current-evidence.json"}),
+        "transport_metadata":transport_metadata, "elapsed_ms":started.elapsed().as_millis() as u64}),
     )
 }
 
@@ -459,7 +474,6 @@ fn with_mouse_receiver(
     response["source_class"] = json!(cap.source_class);
     response["transport_metadata"] = device.metadata();
     response["elapsed_ms"] = json!(started.elapsed().as_millis() as u64);
-    response["evidence"] = json!(".analysis/results/frontend/mouse-mw-audit.json");
     Ok(response)
 }
 
@@ -541,8 +555,7 @@ pub(super) fn write(
         device_writes::apply(&device, cap, setting, || transaction(target, cap), validate)?;
     Ok(
         json!({"target":target,"result":result,"source_class":cap.source_class,
-        "transport_metadata":device.metadata(),"elapsed_ms":started.elapsed().as_millis() as u64,
-        "evidence":"docs/re/device-write-capabilities-current-evidence.json"}),
+        "transport_metadata":device.metadata(),"elapsed_ms":started.elapsed().as_millis() as u64}),
     )
 }
 
@@ -751,7 +764,7 @@ pub(super) fn keyboard_brightness(
     let device = hid_transport::open(&target.path, feature_bytes)?;
     validate()?;
     let mut response = json!({"target":target,"source_class":settings.source_class,
-        "transport_metadata":device.metadata(),"evidence":"docs/re/keyboard-brightness-expanded-current-source.json"});
+        "transport_metadata":device.metadata()});
     if let Some(percent) = percent {
         response["result"] = serde_json::to_value(keyboard_settings::apply(
             &device,
@@ -950,7 +963,7 @@ pub(super) fn dpi_stages(
     validate()?;
     let mut response = json!({"target":target,"source_class":settings.source_class,
         "transport_source_class":cap.source_class,"transport_metadata":device.metadata(),
-        "evidence":"docs/re/mouse-dpi-stages-current-evidence.json","profile_scope":"current_active_table","obm_profiles_written":false});
+        "profile_scope":"current_active_table","obm_profiles_written":false});
     if let Some(draft) = draft {
         response["result"] = serde_json::to_value(mouse_dpi_stages::apply_current(
             &device,

@@ -745,8 +745,7 @@ def render_receiver_capability(value, indent):
     lines.extend([indent + "    protocol: ReceiverProtocol::RazerDevice25WirelessStatusV2,",
                   indent + "    command: " + str(value["command"]) + ",",
                   indent + "    peer_match_product_id: " + boolean(value["peer_match_product_id"], "peer_match_product_id") + ","])
-    for field in ("source_class", "evidence_path"):
-        lines.append(indent + f"    {field}: " + rust_string(value[field]) + ".into(),")
+    lines.append(indent + "    source_class: " + rust_string(value["source_class"]) + ".into(),")
     retry = value.get("startup_retry")
     if retry is not None:
         lines.extend([indent + "    startup_retry: Some(ReceiverStartupRetry {",
@@ -1200,7 +1199,7 @@ def current_read_sources():
     audit = host.HostLocalAudit()
     indexed = json.loads(audit.artifact(ROOT / ".analysis/inputs.json"))
     physical = analysis.feature_report_callers(audit.parser, {row["path"]: row for row in indexed["inputs"]},
-        selected_capabilities=[{"product_id": 190}, {"product_id": 679}], write_runtime=False)
+        selected_capabilities=[{"product_id": 190}, {"product_id": 679}])
     capabilities, products = [], []
 
     def binding_value(source, binding):
@@ -1434,48 +1433,54 @@ def current_read_sources():
                           "target_execution": False, "runtime_acceptance": "unverified"}
 
 
+def read_table_constructors(raw):
+    """Resolve every literal capability under the production products array."""
+    tree = receiver_table_tree(raw)
+    found, pending = {}, [tree.root_node]
+    while pending:
+        node = pending.pop(); pending.extend(reversed(node.named_children))
+        if node.type != "struct_expression" or node.child_by_field_name("name").text != b"DeviceReadCapability":
+            continue
+        fields = {}
+        for field in node.child_by_field_name("body").named_children:
+            if field.type in {"line_comment", "block_comment"}:
+                continue
+            if field.type != "field_initializer":
+                raise ValueError("Read constructor requires explicit fields")
+            key = field.child_by_field_name("field").text.decode()
+            if key in fields:
+                raise ValueError("Read constructor repeats a field")
+            fields[key] = field.child_by_field_name("value")
+        pid = fields.get("product_id")
+        if pid is None or pid.type != "integer_literal" or int(pid.text) in found:
+            raise ValueError("Read constructor has missing or repeated product identity")
+        found[int(pid.text)] = node
+    if found:
+        owner = next(iter(found.values())).parent
+        if owner.type != "array_expression" or any(node.parent != owner for node in found.values()):
+            raise ValueError("Read table production constructors do not share one array owner")
+        function = owner.parent.parent if owner.parent is not None else None
+        if (function is None or function.type != "function_item"
+                or function.child_by_field_name("name").text != b"products"
+                or function.parent.type != "source_file"):
+            raise ValueError("Read table constructors are not owned by the production products function")
+        values = [node for node in owner.named_children if node.type not in {"line_comment", "block_comment"}]
+        if values != list(found.values()):
+            raise ValueError("Read table array contains an unrecognized capability expression")
+    return tree, found
+
+
 def current_read_table_projection(content, capabilities, *, update=False):
     """Replace only verified product constructors; preserve the rest of the typed table."""
     expected_raw = render_read_catalog(json.dumps({"schema_version": 1, "products": capabilities}).encode())
 
-    def constructors(raw):
-        tree = receiver_table_tree(raw)
-        found, pending = {}, [tree.root_node]
-        while pending:
-            node = pending.pop(); pending.extend(reversed(node.named_children))
-            if node.type != "struct_expression" or node.child_by_field_name("name").text != b"DeviceReadCapability":
-                continue
-            fields = {}
-            for field in node.child_by_field_name("body").named_children:
-                if field.type in {"line_comment", "block_comment"}:
-                    continue
-                if field.type != "field_initializer":
-                    raise ValueError("Read constructor requires explicit fields")
-                key = field.child_by_field_name("field").text.decode()
-                if key in fields:
-                    raise ValueError("Read constructor repeats a field")
-                fields[key] = field.child_by_field_name("value")
-            pid = fields.get("product_id")
-            if pid is None or pid.type != "integer_literal" or int(pid.text) in found:
-                raise ValueError("Read constructor has missing or repeated product identity")
-            found[int(pid.text)] = node
-        if found:
-            owner = next(iter(found.values())).parent
-            if owner.type != "array_expression" or any(node.parent != owner for node in found.values()):
-                raise ValueError("Read table production constructors do not share one array owner")
-            function = owner.parent.parent if owner.parent is not None else None
-            if (function is None or function.type != "function_item"
-                    or function.child_by_field_name("name").text != b"products"
-                    or function.parent.type != "source_file"):
-                raise ValueError("Read table constructors are not owned by the production products function")
-        return tree, found
 
     def shape(node):
         return (node.type, tuple(shape(child) for child in node.children
                                if child.type not in {"line_comment", "block_comment"})) if node.children else (node.type, node.text)
 
-    expected_tree, expected = constructors(expected_raw)
-    tree, existing = constructors(content)
+    expected_tree, expected = read_table_constructors(expected_raw)
+    tree, existing = read_table_constructors(content)
     if not existing:
         raise ValueError("Read table has no production constructors")
     edits, missing = [], []
@@ -3428,6 +3433,48 @@ def receiver_table_tree(content):
     return tree
 
 
+def receiver_evidence_path(product_id):
+    """Resolve the captured source family, independent of the physical receiver PID."""
+    usb_product(product_id, "receiver source product")
+    candidates = list((ROOT / ".analysis/results/frontend").glob(f"*-mw-{product_id}-current/analysis.json"))
+    if len(candidates) != 1:
+        raise ValueError(f"Receiver source {product_id} requires exactly one current capture")
+    path = candidates[0]
+    capture = json.loads(path.read_bytes(), object_pairs_hook=duplicate_free)
+    source = ".analysis/inputs/frontend/" + path.parent.name
+    if capture.get("input") != source or not (ROOT / source).is_dir() or not capture.get("original_inputs"):
+        raise ValueError(f"Receiver source {product_id} capture does not identify its current originals")
+    return path.relative_to(ROOT).as_posix()
+
+
+def receiver_evidence_table_projection(content):
+    """Keep source provenance in the maintenance receipt, never in runtime tables."""
+    tree = receiver_table_tree(content)
+    pending, rows = [tree.root_node], []
+    while pending:
+        node = pending.pop(); pending.extend(node.named_children)
+        if node.type != "struct_expression" or node.child_by_field_name("name").text != b"ReceiverCapability":
+            continue
+        fields = {}
+        for field in node.child_by_field_name("body").named_children:
+            if field.type != "field_initializer":
+                raise ValueError("Receiver evidence requires explicit capability fields")
+            name = field.child_by_field_name("field").text.decode()
+            if name in fields:
+                raise ValueError("Receiver evidence capability repeats a field")
+            fields[name] = field.child_by_field_name("value")
+        pid = fields.get("source_product_id")
+        if "evidence_path" in fields:
+            raise ValueError("Receiver evidence paths belong only in maintenance receipts")
+        if pid is None or pid.type != "integer_literal":
+            raise ValueError("Receiver evidence requires an explicit source identity")
+        expected = receiver_evidence_path(int(pid.text))
+        rows.append({"source_product_id": int(pid.text), "evidence_path": expected})
+    if not rows:
+        raise ValueError("Receiver evidence table has no capability constructors")
+    return content, sorted(rows, key=lambda row: row["source_product_id"])
+
+
 def receiver_sender_table_projection(content, bindings, *, update=False):
     """Read actual typed receiver constructors; preserve every other field and caller."""
     tree = receiver_table_tree(content)
@@ -3562,6 +3609,7 @@ def prepare_receiver_sender_tables(*, check=False, record=True):
         path = local_path(name)
         original = path.read_bytes()
         rendered, rows = receiver_sender_table_projection(original, bindings, update=not check)
+        rendered, evidence_rows = receiver_evidence_table_projection(rendered)
         namespace_rows = []
         if name == PAIR_CAP_OUTPUT:
             rendered, namespace_rows = receiver_pairing_namespace_table_projection(rendered, namespaces, update=not check)
@@ -3570,12 +3618,15 @@ def prepare_receiver_sender_tables(*, check=False, record=True):
         verified, verified_rows = receiver_sender_table_projection(path.read_bytes(), bindings)
         if verified != path.read_bytes() or rows != verified_rows:
             raise ValueError("Receiver sender typed constructor verification differs")
+        verified, verified_evidence = receiver_evidence_table_projection(path.read_bytes())
+        if verified != path.read_bytes() or evidence_rows != verified_evidence:
+            raise ValueError("Receiver evidence typed constructor verification differs")
         if name == PAIR_CAP_OUTPUT:
             verified, verified_namespaces = receiver_pairing_namespace_table_projection(path.read_bytes(), namespaces)
             if verified != path.read_bytes() or namespace_rows != verified_namespaces:
                 raise ValueError("Receiver pairing namespace verification differs")
         tables.append({"output": families.identity(path), "complete_selector_constructors": rows,
-                       "complete_pairing_namespaces": namespace_rows})
+                       "complete_pairing_namespaces": namespace_rows, "source_capture_paths": evidence_rows})
     if audit.final_snapshot():
         raise ValueError("Current receiver sender source bytes changed during generation")
     report = {"tool": families.identity(Path(__file__)), "source_extractor": families.identity(Path(families.__file__)),

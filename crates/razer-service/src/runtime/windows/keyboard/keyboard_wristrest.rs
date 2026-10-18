@@ -25,7 +25,11 @@ fn collection_target(node: &HidNode, product_id: u32) -> anyhow::Result<DeviceRe
         nodes.iter().filter(|current| *current == node).count() == 1,
         "Wristrest collection changed before ContainerId resolution"
     );
-    let observation = hid::enumerate_for_product(cap.vendor_id, node.product_id)?;
+    let observation = hid::enumerate_collection(
+        cap.vendor_id,
+        node.product_id,
+        std::str::from_utf8(&node.path)?,
+    )?;
     ensure!(
         observation["complete"] == true,
         "Wristrest Windows identity enumeration is incomplete"

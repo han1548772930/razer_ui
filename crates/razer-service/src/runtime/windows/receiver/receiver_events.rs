@@ -99,6 +99,29 @@ impl Events {
         }
         Ok(None)
     }
+
+    fn receive_checked(
+        &mut self,
+        timeout: Duration,
+        validate: impl Fn(&Self) -> anyhow::Result<()>,
+    ) -> anyhow::Result<Option<Vec<u8>>> {
+        ensure!(!self.readers.is_empty(), "硬件事件订阅未开始");
+        validate(self)?;
+        let deadline = Instant::now() + timeout;
+        loop {
+            if let Some(data) = self.receive_pending()? {
+                // The Feature collection can survive while an interrupt
+                // collection changes. Recheck the complete retained identity
+                // after the read before publishing its notification.
+                validate(self)?;
+                return Ok(Some(data));
+            }
+            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
+                return Ok(None);
+            };
+            std::thread::sleep(remaining.min(Duration::from_millis(2)));
+        }
+    }
 }
 
 fn open_readers(
@@ -163,18 +186,7 @@ impl HardwareEvents for Events {
     }
 
     fn receive(&mut self, timeout: Duration) -> anyhow::Result<Option<Vec<u8>>> {
-        ensure!(!self.readers.is_empty(), "硬件事件订阅未开始");
-        self.validate()?;
-        let deadline = Instant::now() + timeout;
-        loop {
-            if let Some(data) = self.receive_pending()? {
-                return Ok(Some(data));
-            }
-            let Some(remaining) = deadline.checked_duration_since(Instant::now()) else {
-                return Ok(None);
-            };
-            std::thread::sleep(remaining.min(Duration::from_millis(2)));
-        }
+        self.receive_checked(timeout, Self::validate)
     }
 
     fn finish(&mut self) -> anyhow::Result<()> {
@@ -207,6 +219,7 @@ mod tests {
 
     enum Report {
         Bytes(Vec<u8>),
+        BytesAfterCollectionChange(Vec<u8>, Rc<Cell<bool>>),
         ExcessiveCount,
     }
 
@@ -226,6 +239,11 @@ mod tests {
             assert_eq!(report.len(), 100);
             match self.reports.borrow_mut().pop_front() {
                 Some(Report::Bytes(bytes)) => {
+                    report[..bytes.len()].copy_from_slice(&bytes);
+                    Ok(bytes.len())
+                }
+                Some(Report::BytesAfterCollectionChange(bytes, current)) => {
+                    current.set(false);
                     report[..bytes.len()].copy_from_slice(&bytes);
                     Ok(bytes.len())
                 }
@@ -425,5 +443,61 @@ mod tests {
         let mut events = Events::new(653, "physical-container");
         events.readers = open_readers(&mut backend, 653, &selected).unwrap();
         assert!(events.receive_pending().is_err());
+    }
+
+    #[test]
+    fn events_reject_a_notification_when_its_collection_changes_during_read() {
+        let mut backend = Backend::new(&[(5, 3)]);
+        let current = Rc::new(Cell::new(true));
+        backend
+            .reports
+            .borrow_mut()
+            .push_back(Report::BytesAfterCollectionChange(
+                vec![5, 54, 2],
+                current.clone(),
+            ));
+        let selected = backend.selected();
+        let mut events = Events::new(653, "physical-container");
+        events.retained = selected.clone();
+        events.readers = open_readers(&mut backend, 653, &selected).unwrap();
+        let error = events
+            .receive_checked(Duration::ZERO, |_| {
+                ensure!(current.get(), "interrupt collection changed");
+                Ok(())
+            })
+            .unwrap_err();
+        assert!(error.to_string().contains("interrupt collection changed"));
+        assert!(backend.reports.borrow().is_empty());
+        events.finish().unwrap();
+        assert_eq!(backend.active.get(), 0);
+    }
+
+    #[test]
+    fn events_deliver_only_current_notifications_and_preserve_idle_reads() {
+        let mut backend = Backend::new(&[(5, 3)]);
+        backend
+            .reports
+            .borrow_mut()
+            .push_back(Report::Bytes(vec![5, 54, 2]));
+        let selected = backend.selected();
+        let mut events = Events::new(653, "physical-container");
+        events.readers = open_readers(&mut backend, 653, &selected).unwrap();
+        let checks = Cell::new(0);
+        let validate = |_: &Events| {
+            checks.set(checks.get() + 1);
+            Ok(())
+        };
+        assert_eq!(
+            events.receive_checked(Duration::ZERO, validate).unwrap(),
+            Some(vec![5, 54, 2])
+        );
+        assert_eq!(checks.get(), 2);
+        assert_eq!(
+            events.receive_checked(Duration::ZERO, validate).unwrap(),
+            None
+        );
+        assert_eq!(checks.get(), 3);
+        events.finish().unwrap();
+        assert_eq!(backend.active.get(), 0);
     }
 }

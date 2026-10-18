@@ -1431,21 +1431,21 @@ impl StudioProperties {
                     // 1958:N starts the native region service. No device/native
                     // bridge exists locally, so this command cannot invent a region.
                     .child(
-                        button("studio-edit-region", "TEXT_EDIT_REGION")
-                            .disabled(true)
-                            .styles(|style| {
-                                style
-                                    .disabled(|style| style.opacity(if enabled { 0.3 } else { 1. }))
-                            })
-                            .hover(|style| style.bg(Colors::panel()))
-                            .w_full()
-                            .h(surface::css(27.))
-                            .mb(surface::css(10.))
-                            .rounded(surface::css(3.))
-                            .border_1()
-                            .border_color(Colors::text())
-                            .text_size(surface::css(12.))
-                            .child(label("TEXT_EDIT_REGION").to_uppercase()),
+                        button_with_hover("studio-edit-region", "TEXT_EDIT_REGION", |style| {
+                            style.bg(Colors::panel())
+                        })
+                        .disabled(true)
+                        .styles(|style| {
+                            style.disabled(|style| style.opacity(if enabled { 0.3 } else { 1. }))
+                        })
+                        .w_full()
+                        .h(surface::css(27.))
+                        .mb(surface::css(10.))
+                        .rounded(surface::css(3.))
+                        .border_1()
+                        .border_color(Colors::text())
+                        .text_size(surface::css(12.))
+                        .child(label("TEXT_EDIT_REGION").to_uppercase()),
                     )
                     .child(div().mb(surface::css(6.)).child(label("TEXT_PRESETS")))
                     .child(presets),

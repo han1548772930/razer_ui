@@ -63,7 +63,11 @@ fn collection_target(node: &HidNode, product_id: u32) -> anyhow::Result<DeviceRe
         nodes.iter().filter(|current| *current == node).count() == 1,
         "Receiver quality collection changed"
     );
-    let observation = hid::enumerate_for_product(cap.vendor_id, node.product_id)?;
+    let observation = hid::enumerate_collection(
+        cap.vendor_id,
+        node.product_id,
+        std::str::from_utf8(&node.path)?,
+    )?;
     ensure!(
         observation["complete"] == true,
         "Receiver quality physical enumeration is incomplete"

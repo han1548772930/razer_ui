@@ -88,6 +88,7 @@ pub enum WorkspaceEvent {
     MouseInGamePollingRequested,
     MouseProfileSerialObserved,
     MouseDynamicRequested(super::mouse_products::MouseDynamicRequested),
+    MouseRotationRequested(super::mouse_products::MouseRotationRequested),
     MouseMatcherRequested(super::mouse_products::MouseMatcherRequest),
     /// Actual local validation failure; no device submission has succeeded.
     MouseMappingSaveRejected(super::mouse_products::MouseMappingSaveRejected),

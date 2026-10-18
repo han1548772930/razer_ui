@@ -21,6 +21,10 @@ use std::{collections::BTreeMap, sync::OnceLock};
 mod actuation;
 #[path = "actuation/keyboard_actuation_submission.rs"]
 mod actuation_submission;
+#[path = "actuation/keyboard_analog_observation.rs"]
+mod analog_observation;
+#[path = "actuation/keyboard_gamepad_observation.rs"]
+mod gamepad_observation;
 pub use actuation_submission::KeyboardActuationRequested;
 #[path = "lighting/keyboard_brightness.rs"]
 mod brightness;
@@ -203,6 +207,9 @@ pub struct KeyboardProductWorkspace {
     calibration_modal: Option<Entity<calibration::CalibrationModal>>,
     calibration_v2: calibration_v2::State,
     snap_tap: Option<snap_tap::State>,
+    snap_observer: snap_tap::observation::Observer,
+    analog_observer: analog_observation::Observer,
+    gamepad_observer: gamepad_observation::Observer,
     /// Retained OS icon choice; failed queries fall back to the legacy icon.
     properties_icon: Option<&'static str>,
     brightness: brightness::State,
@@ -297,6 +304,9 @@ impl KeyboardProductWorkspace {
             calibration_modal: None,
             calibration_v2: calibration_v2::State::default(),
             snap_tap: None,
+            snap_observer: Default::default(),
+            analog_observer: Default::default(),
+            gamepad_observer: Default::default(),
             power_indicator: power::IndicatorState::default(),
             button_drawer_open: false,
             analog_gamepad: analog_gamepad::State::default(),
@@ -388,7 +398,7 @@ impl KeyboardProductWorkspace {
         self.finish_gaming_recording(false, window, cx);
         self.leave_analog_controls(window, cx);
         self.mapping_login_warning.unmount();
-        self.clear_analog_mapping();
+        self.clear_analog_mapping(cx);
         self.dismiss_calibration(window, cx);
     }
     /// The current 756 root's history handlers bypass changeView's calibration
@@ -412,9 +422,11 @@ impl KeyboardProductWorkspace {
             }
             self.dismiss_rgb_controls(cx);
             self.leave_snap_tap(window, cx);
+            self.leave_analog_observation(cx);
+            self.stop_gamepad_observation(cx);
             self.dismiss_calibration(window, cx);
             self.clear_actuation_selection();
-            self.clear_analog_mapping();
+            self.clear_analog_mapping(cx);
             self.analog_gamepad.floating.unmount();
             self.page = key.into();
             if key == "TAB_CUSTOMIZE" {
@@ -438,6 +450,7 @@ impl KeyboardProductWorkspace {
             if key == "TAB_POWER" {
                 self.restart_indicator_animation();
             }
+            self.sync_gamepad_observation(cx);
             cx.notify();
         }
     }
@@ -487,7 +500,7 @@ impl KeyboardProductWorkspace {
             self.leave_analog_controls(window, cx);
             self.dismiss_calibration(window, cx);
             self.clear_actuation_selection();
-            self.clear_analog_mapping();
+            self.clear_analog_mapping(cx);
         }
         cx.notify();
     }

@@ -93,7 +93,7 @@ pub fn project_scan_candidates_for_source(
 
 /// Current756 event54 response reconstructs the candidate from the current
 /// AvailableDevices/DualDongle tables. Names use the scanned edition; fields
-/// use the post-pair getEdition reading or its explicit source failure defaults.
+/// use the complete post-pair getEdition reading supplied by the caller.
 /// The caller must separately validate the matching hardware success event.
 pub fn project_source756_pair_device(
     dongle_id: u16,
@@ -124,6 +124,8 @@ pub fn project_source756_pair_device(
         {
             projected = Value::Object(info.clone());
             projected["dongleId"] = json!(dongle_id);
+            projected["editionId"] = json!(edition_id);
+            projected["layoutId"] = json!(layout_id);
         }
     }
     Ok(projected)
@@ -339,6 +341,8 @@ mod tests {
         let merged = project_source756_pair_device(183, 128, 0, 0, &[connected.clone()]).unwrap();
         let mut expected = connected;
         expected["dongleId"] = json!(183);
+        expected["editionId"] = json!(0);
+        expected["layoutId"] = json!(0);
         assert_eq!(merged, expected);
     }
 

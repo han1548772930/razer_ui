@@ -832,23 +832,3 @@ pub(in crate::features) struct SoundPayloadProductsitemCloudInitial {
     pub(in crate::features) available_esports_presets:
         Vec<SoundPayloadProductsitemCloudInitialAvailableesportspresetsitem>,
 }
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(in crate::features) struct SoundPayloadProductsitem {
-    #[serde(rename = "configs")]
-    pub(in crate::features) configs: SoundPayloadProductsitemConfigs,
-    #[serde(rename = "media")]
-    pub(in crate::features) media: SoundPayloadProductsitemMedia,
-    #[serde(rename = "initials")]
-    pub(in crate::features) initials: SoundPayloadProductsitemInitials,
-    #[serde(rename = "cloud_initial")]
-    pub(in crate::features) cloud_initial: SoundPayloadProductsitemCloudInitial,
-}
-
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(in crate::features) struct SoundPayload {
-    #[serde(rename = "products")]
-    pub(in crate::features) products: Vec<SoundPayloadProductsitem>,
-}

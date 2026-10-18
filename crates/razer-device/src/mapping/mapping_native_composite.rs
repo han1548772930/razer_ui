@@ -1,4 +1,4 @@
-//! Cascade and D-pad combination ownership (8397a/84508/861ca/87b6e).
+//! Cascade, D-pad and ModTap ownership (8397a/84508/861ca/87b6e/8b460/8ba50).
 //! Plans preserve the press-time lookup pair; only the transport owner can
 //! confirm output delivery or report a failed release.
 use crate::{
@@ -7,6 +7,20 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use std::collections::{BTreeMap, VecDeque};
+use std::time::Duration;
+
+#[path = "mapping_native_composite/analog.rs"]
+mod analog;
+#[path = "mapping_native_composite/analog_cascade.rs"]
+mod analog_cascade;
+#[path = "mapping_native_composite/analog_dispatch.rs"]
+mod analog_dispatch;
+#[path = "mapping_native_composite/modtap.rs"]
+mod modtap;
+pub use analog::{AnalogSample, RapidParameters};
+pub use analog_dispatch::{
+    AnalogDispatch, AnalogOperation, AnalogParameters, AnalogStep, AnalogTransition,
+};
 
 #[derive(Clone, Debug)]
 pub struct Dispatch {
@@ -20,19 +34,24 @@ pub struct State {
     dpad: VecDeque<(String, String)>,
     diagnostics: Vec<String>,
     omitted_diagnostics: u64,
+    modtaps: modtap::State,
+    analog: analog::State,
+    analog_dispatch: analog_dispatch::State,
 }
 
 impl State {
-    pub fn apply(
+    pub fn apply_at(
         &mut self,
         resolved: Resolved<Output>,
         held: impl Fn(&str) -> Option<HeldMapping<Output>>,
+        now: Duration,
     ) -> Result<Vec<Dispatch>> {
         match &resolved.output {
             ResolvedOutput::Mapped(Output::Cascade(branches)) => {
                 self.cascade(&resolved, branches, &held)
             }
             ResolvedOutput::Mapped(Output::Dpad(branches)) => self.dpad(&resolved, branches, &held),
+            ResolvedOutput::Mapped(Output::ModTap { .. }) => self.modtaps.apply(resolved, now),
             _ => Ok(vec![Dispatch {
                 resolved,
                 contribution_id: None,
@@ -42,6 +61,28 @@ impl State {
     pub fn clear(&mut self) {
         self.cascades.clear();
         self.dpad.clear();
+        self.modtaps.clear();
+        self.analog.clear();
+        self.analog_dispatch.clear();
+    }
+
+    pub fn poll(&mut self, now: Duration) -> Vec<Dispatch> {
+        self.modtaps.poll(now)
+    }
+
+    pub fn rapid_transition(&mut self, sample: AnalogSample, parameters: RapidParameters) -> bool {
+        self.analog.rapid_transition(sample, parameters)
+    }
+
+    pub fn trigger_transition(
+        &mut self,
+        sample: AnalogSample,
+        trigger_id: u16,
+        actuation: u16,
+        has_retained_mapping: bool,
+    ) -> bool {
+        self.analog
+            .trigger_transition(sample, trigger_id, actuation, has_retained_mapping)
     }
 
     pub fn take_diagnostics(&mut self) -> Vec<String> {

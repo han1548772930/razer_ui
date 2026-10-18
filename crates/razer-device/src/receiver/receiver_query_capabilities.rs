@@ -23,7 +23,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -44,7 +43,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -65,7 +63,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -86,7 +83,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -107,7 +103,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -128,7 +123,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25Linker".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -149,7 +143,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -170,7 +163,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -191,7 +183,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -212,7 +203,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -233,7 +223,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25LinkerUma".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: Some(ReceiverStartupRetry {
                 first_peer_status: 0,
                 delays_ms: vec![400, 600, 800, 1000, 1200],
@@ -257,7 +246,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -278,7 +266,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -299,7 +286,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -320,7 +306,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -341,7 +326,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -362,7 +346,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -383,7 +366,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -404,7 +386,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25LinkerMultiDevices".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -425,7 +406,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -446,7 +426,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -467,7 +446,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -488,7 +466,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -509,7 +486,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -530,7 +506,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -551,7 +526,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -572,7 +546,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25LinkerMultiDevices".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -593,7 +566,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -614,7 +586,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -635,7 +606,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -656,7 +626,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -677,7 +646,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -698,7 +666,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -719,7 +686,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -740,7 +706,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -761,7 +726,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -782,7 +746,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -803,7 +766,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -824,7 +786,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: false,
             source_class: "rzDevice25DualLinkMouse".into(),
-            evidence_path: "docs/re/receiver-catalog-current-evidence.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -845,7 +806,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25".into(),
-            evidence_path: ".analysis/results/frontend/keyboard-mw-756-current/analysis.json".into(),
             startup_retry: None,
         },
         ReceiverCapability {
@@ -866,7 +826,6 @@ pub(crate) fn products() -> Vec<ReceiverCapability> {
             command: [80, 0, 191],
             peer_match_product_id: true,
             source_class: "rzDevice25DualLinkKeyboard".into(),
-            evidence_path: ".analysis/results/frontend/keyboard-mw-756-current/analysis.json".into(),
             startup_retry: None,
         },
     ]

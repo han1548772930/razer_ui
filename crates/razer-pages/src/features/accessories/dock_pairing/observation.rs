@@ -324,6 +324,14 @@ impl PairingState {
                 }
             }
             "DUALLINK_BIND_DEVICE" => {
+                if payload["hardware_confirmed"] == true && payload["metadata_complete"] == false {
+                    return Err(format!(
+                        "硬件已确认配对，设备信息读取失败：{}",
+                        payload["metadata_error"]
+                            .as_str()
+                            .unwrap_or("配对后的设备信息未完整读取")
+                    ));
+                }
                 let peer = peer(
                     payload
                         .get("device")
@@ -387,6 +395,29 @@ mod tests {
 
     fn unknown(dongle_id: u16) -> serde_json::Value {
         json!({"productId":0,"dongleId":dongle_id,"category":"","editionId":129,"layoutId":0,"productName":{"en":format!("unknown-{dongle_id}")}})
+    }
+
+    #[::core::prelude::v1::test]
+    fn confirmed_pair_with_failed_metadata_does_not_publish_peer_or_close_success() {
+        let mut state = PairingState::default();
+        let bind = state.request("DUALLINK_BIND_DEVICE", json!({"device":mouse()}));
+        let (accepted, next, error) = state.observe(
+            DockPairingObservation::result(
+                bind.session(),
+                bind.kind(),
+                Ok(json!({"hardware_confirmed":true,
+                "metadata_complete":false,"metadata_error":"getEdition failed","device":null})),
+            ),
+            true,
+        );
+        assert!(accepted && next.is_none());
+        assert_eq!(
+            error.as_deref(),
+            Some("硬件已确认配对，设备信息读取失败：getEdition failed")
+        );
+        assert!(state.channel(Lane::Mouse).peer.is_none());
+        assert!(state.success_close.is_none());
+        assert_eq!(state.channel(Lane::Mouse).status, Status::PairFailed);
     }
 
     #[::core::prelude::v1::test]

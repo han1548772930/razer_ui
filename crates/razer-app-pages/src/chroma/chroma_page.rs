@@ -253,7 +253,8 @@ impl ChromaPage {
                     .disabled(!self.can_step_history(false))
                     .accessibility_label(tr("BACK"))
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
                             .path("synapse/history-back.svg")
                             .size(css(16.)),
                     )
@@ -266,7 +267,8 @@ impl ChromaPage {
                     .disabled(!self.can_step_history(true))
                     .accessibility_label(tr("FORWARD"))
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
                             .path("synapse/history-forward.svg")
                             .size(css(16.)),
                     )
@@ -284,7 +286,12 @@ impl ChromaPage {
                     .size(css(24.))
                     .p_0()
                     .accessibility_label(tr("SETTINGS_HEADER"))
-                    .child(Icon::default().path("synapse/settings.svg").size(css(20.)))
+                    .child(
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
+                            .path("synapse/settings.svg")
+                            .size(css(20.)),
+                    )
                     .on_click(cx.listener(|_, _, _, cx| cx.emit(ChromaPageEvent::OpenSettings))),
             )
             .into_any_element()
@@ -700,7 +707,8 @@ impl ChromaPage {
                     .p_0()
                     .accessibility_label(tr("CLOSE"))
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
                             .path("synapse/host-close.svg")
                             .size(css(16.)),
                     )
@@ -733,7 +741,8 @@ impl ChromaPage {
                             ),
                     )
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
                             .path("synapse/onboard-help.svg")
                             .size(css(14.)),
                     ),
@@ -956,7 +965,8 @@ impl ChromaPage {
                                         .p_0()
                                         .accessibility_label(tr("CLOSE"))
                                         .child(
-                                            Icon::default()
+                                            razer_assets::resource_svg()
+                                                .flex_shrink_0()
                                                 .path("synapse/host-close.svg")
                                                 .size(css(20.)),
                                         )

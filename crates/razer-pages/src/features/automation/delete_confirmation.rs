@@ -272,7 +272,8 @@ impl AutomationEditor {
             .text_color(color)
             .focus_visible(|style| style.border_1().border_color(Colors::danger()))
             .child(
-                Icon::default()
+                razer_assets::resource_svg()
+                    .flex_shrink_0()
                     .path("synapse/automation-delete-action.svg")
                     .size(surface::css(24.)),
             )

@@ -391,22 +391,165 @@ fn numeric_report_id_alone_never_implies_analog_support() {
 }
 
 #[test]
-fn all_nonanalog_selectors_are_explicit_unsupported_packets() {
-    for kind in [
-        NativeHidReportKind::ControlPod,
-        NativeHidReportKind::CoolingPad,
-        NativeHidReportKind::RazerEvent,
-        NativeHidReportKind::RazerKey,
-        NativeHidReportKind::StreamController,
-        NativeHidReportKind::HardwareEvent,
+fn nonanalog_selectors_decode_their_native_payloads() {
+    for (kind, payload) in [
+        (
+            NativeHidReportKind::ControlPod,
+            NativeHidPayload::ControlPod {
+                first_button: 1,
+                second_button: 2,
+                dial: 3,
+            },
+        ),
+        (
+            NativeHidReportKind::CoolingPad,
+            NativeHidPayload::CoolingPad {
+                id: 1,
+                byte1: 2,
+                byte2: 3,
+            },
+        ),
+        (
+            NativeHidReportKind::RazerEvent,
+            NativeHidPayload::RazerEvent(vec![0x75, 1, 2, 3]),
+        ),
+        (
+            NativeHidReportKind::RazerKey,
+            NativeHidPayload::RazerKeys(vec![1, 2, 3]),
+        ),
+        (
+            NativeHidReportKind::StreamController,
+            NativeHidPayload::StreamController { key: 1, flag: 2 },
+        ),
+        (
+            NativeHidReportKind::HardwareEvent,
+            NativeHidPayload::HardwareEvent(vec![0x75, 1, 2, 3]),
+        ),
     ] {
         let descriptor = NativeHidDescriptor::new(false, [(0x75, kind)]);
         let packet =
             decode_native_hid_packet(NativeHidFraming::Usb, Some(&descriptor), &[0x75, 1, 2, 3])
                 .unwrap();
-        assert_eq!(packet.payload, NativeHidPayload::Unsupported { kind });
+        assert_eq!(packet.payload, payload);
         assert_eq!(packet.payload_offset, 0);
         assert!(packet.descriptor_binding);
+    }
+}
+
+#[test]
+fn nonanalog_bluetooth_framing_retains_selector_specific_offsets() {
+    for (kind, payload, offset) in [
+        (
+            NativeHidReportKind::ControlPod,
+            NativeHidPayload::ControlPod {
+                first_button: 1,
+                second_button: 2,
+                dial: -1,
+            },
+            1,
+        ),
+        (
+            NativeHidReportKind::CoolingPad,
+            NativeHidPayload::CoolingPad {
+                id: 1,
+                byte1: 2,
+                byte2: 255,
+            },
+            1,
+        ),
+        (
+            NativeHidReportKind::RazerEvent,
+            NativeHidPayload::RazerEvent(vec![0x75, 1, 2, -1]),
+            1,
+        ),
+        (
+            NativeHidReportKind::RazerKey,
+            NativeHidPayload::RazerKeys(vec![1, 2, 255]),
+            1,
+        ),
+        (
+            NativeHidReportKind::StreamController,
+            NativeHidPayload::StreamController { key: 0x75, flag: 1 },
+            0,
+        ),
+        (
+            NativeHidReportKind::HardwareEvent,
+            NativeHidPayload::HardwareEvent(vec![0xa7, 0x75, 1, 2, 255]),
+            0,
+        ),
+    ] {
+        let descriptor = NativeHidDescriptor::new(true, [(0x75, kind)]);
+        for framing in [NativeHidFraming::Usb, NativeHidFraming::Ble] {
+            let packet =
+                decode_native_hid_packet(framing, Some(&descriptor), &[0xa7, 0x75, 1, 2, 255])
+                    .unwrap();
+            match (framing, kind) {
+                (NativeHidFraming::Ble, NativeHidReportKind::ControlPod) => {
+                    assert_eq!(
+                        packet.payload,
+                        NativeHidPayload::ControlPod {
+                            first_button: 0x75,
+                            second_button: 1,
+                            dial: 2,
+                        }
+                    );
+                    assert_eq!(packet.payload_offset, 0);
+                }
+                (NativeHidFraming::Ble, NativeHidReportKind::StreamController) => {
+                    assert_eq!(packet.kind, NativeHidReportKind::HardwareEvent);
+                    assert_eq!(
+                        packet.payload,
+                        NativeHidPayload::HardwareEvent(vec![0xa7, 0x75, 1, 2, 255])
+                    );
+                    assert_eq!(packet.payload_offset, 0);
+                }
+                _ => {
+                    assert_eq!(packet.payload, payload);
+                    assert_eq!(packet.payload_offset, offset);
+                }
+            }
+            assert_eq!(packet.report_id, 0x75);
+            assert!(packet.descriptor_binding);
+        }
+    }
+}
+
+#[test]
+fn razer_report_zero_terminator_does_not_discard_retained_key_tail() {
+    let descriptor = NativeHidDescriptor::new(
+        false,
+        [
+            (0x75, NativeHidReportKind::RazerEvent),
+            (0x76, NativeHidReportKind::RazerKey),
+        ],
+    );
+    let event = decode_native_hid_packet(
+        NativeHidFraming::Usb,
+        Some(&descriptor),
+        &[0x75, 0xff, 0, 4],
+    )
+    .unwrap();
+    assert_eq!(event.payload, NativeHidPayload::RazerEvent(vec![0x75, -1]));
+    let keys = decode_native_hid_packet(NativeHidFraming::Usb, Some(&descriptor), &[0x76, 1, 0, 4])
+        .unwrap();
+    assert_eq!(keys.payload, NativeHidPayload::RazerKeys(vec![1, 0, 4]));
+}
+
+#[test]
+fn nonanalog_fixed_fields_reject_truncated_payloads() {
+    for (kind, minimum) in [
+        (NativeHidReportKind::ControlPod, 4),
+        (NativeHidReportKind::CoolingPad, 4),
+        (NativeHidReportKind::StreamController, 3),
+    ] {
+        let descriptor = NativeHidDescriptor::new(false, [(0x75, kind)]);
+        for length in 1..minimum {
+            let raw = [0x75, 1, 2, 3];
+            assert!(
+                decode_native_hid_packet(NativeHidFraming::Usb, Some(&descriptor), &raw[..length])
+                    .is_err()
+            );
+        }
     }
 }
 
@@ -444,17 +587,18 @@ fn unknown_packets_do_not_touch_held_keys_or_outputs() {
 }
 
 #[test]
-fn each_framing_and_analog_minimum_is_checked() {
+fn missing_report_ids_fail_but_short_analog_tails_remain_empty_frames() {
     assert!(decode_native_hid_packet(NativeHidFraming::Usb, None, &[]).is_err());
     assert!(decode_native_hid_packet(NativeHidFraming::Ble, None, &[0]).is_err());
     for (id, minimum) in [(0x91, 3), (0x92, 4), (0x93, 2)] {
         for length in 1..minimum {
             let mut bytes = vec![1; length];
             bytes[0] = id;
-            assert!(matches!(
-                decode_native_hid_packet(NativeHidFraming::Usb, Some(&descriptor()), &bytes),
-                Err(NativeHidDecodeError::Truncated { .. })
-            ));
+            let packet =
+                decode_native_hid_packet(NativeHidFraming::Usb, Some(&descriptor()), &bytes)
+                    .unwrap();
+            assert!(analog(&packet).levels.is_empty());
+            assert_eq!(analog(&packet).ignored_tail, bytes[1..]);
         }
     }
 }
@@ -498,7 +642,7 @@ fn sparse_zero_levels_are_present_and_v1_special_ids_are_unsigned() {
 }
 
 #[test]
-fn frame_updates_are_sorted_and_duplicate_keys_do_not_duplicate_events() {
+fn frame_updates_follow_native_chain_and_duplicate_keys_do_not_duplicate_events() {
     let mut session = connected(all_capabilities());
     let (mut hid, mut output, mut handler) = (
         NativeHidRuntime::default(),
@@ -1276,15 +1420,15 @@ fn signed_extremes_threshold_equality_and_direction_bytes_match_native() {
         result.signed_transitions,
         [
             NativeHidSignedTransition {
-                key_id: 251,
-                value: -32768,
-                direction: 0,
-                released: false
-            },
-            NativeHidSignedTransition {
                 key_id: 252,
                 value: 32766,
                 direction: 2,
+                released: false
+            },
+            NativeHidSignedTransition {
+                key_id: 251,
+                value: -32768,
+                direction: 0,
                 released: false
             }
         ]
@@ -1304,7 +1448,7 @@ fn signed_extremes_threshold_equality_and_direction_bytes_match_native() {
             .iter()
             .map(|transition| (transition.direction, transition.released))
             .collect::<Vec<_>>(),
-        [(1, true), (3, true)]
+        [(3, true), (1, true)]
     );
 }
 
@@ -1415,4 +1559,383 @@ fn invalid_frame_does_not_commit_staged_signed_transitions_either() {
     );
     assert!(!hid.stick_pressed(251));
     assert_eq!(hid.tracked_level(255), None);
+}
+
+#[test]
+fn descriptor_preserves_analog_parameters_and_native_narrowing() {
+    let descriptor = NativeHidDescriptor::from_native_json(&serde_json::json!({
+        "turnOffAnalogToKey": true,
+        "reportIDs": {"11":"analogKeyboardV2ReportID", "9":"analogKeypadReportID"},
+        "analogData": {
+            "defaultMakeActuation": -1, "defaultBreakActuation": 70000,
+            "rapidTrigger": {"makeSensitivity": 123, "breakSensitivity": -2, "continuous": false},
+            "maxActuationLevel": 54321,
+            "keyIdToKeyInput": {"59":{"type":"razerKey","key":7,"flag":0,"reportId":4,"interrupts": []}}
+        },
+        "analogStick":{"threshold":12345}
+    })).unwrap();
+    assert_eq!(
+        descriptor.analog_format,
+        Some(NativeHidAnalogFormat::V1Dense)
+    );
+    assert_eq!(
+        descriptor.analog_data.actuation,
+        NativeHidActuation {
+            make: 65535,
+            release: 4464
+        }
+    );
+    assert_eq!(descriptor.analog_data.rapid_trigger.continuous, Some(false));
+    assert_eq!(
+        descriptor.analog_data.rapid_trigger.break_sensitivity,
+        Some(65534)
+    );
+    assert_eq!(descriptor.analog_data.max_actuation_level, Some(54321));
+    assert_eq!(descriptor.stick_threshold.value(), 12345);
+    assert!(!descriptor.analog_passthrough());
+    let key = &descriptor.analog_data.key_inputs[&59];
+    assert_eq!(key.kind, InputKind::RazerKey { key: 7, flag: 0 });
+    assert_eq!(key.report_id, Some(4));
+    assert!(key.interrupts.is_empty());
+}
+
+#[test]
+fn descriptor_rejects_invalid_required_values_and_key_ranges() {
+    for document in [
+        serde_json::json!({"analogData":{"defaultMakeActuation":10}}),
+        serde_json::json!({"analogData":{"defaultMakeActuation":10,"defaultBreakActuation":11}}),
+        serde_json::json!({"analogData":{"defaultMakeActuation":2147483648i64,"defaultBreakActuation":0}}),
+        serde_json::json!({"analogData":{"defaultMakeActuation":1,"defaultBreakActuation":0,"keyIdToKeyInput":{"256":{"type":"analogKey","scancode":30,"flag":0}}}}),
+        serde_json::json!({"analogStick":{"threshold":32767}}),
+        serde_json::json!({"analogStick":{"threshold":-1}}),
+        serde_json::json!({"turnOffAnalogToKey":0}),
+    ] {
+        assert!(
+            NativeHidDescriptor::from_native_json(&document).is_err(),
+            "{document}"
+        );
+    }
+}
+
+fn analog_document() -> Value {
+    serde_json::json!({
+        "activeProfile":"one",
+        "profiles":[{"guid":"one","appEngine":{
+            "mappings":[],
+            "actuations":[{"keyId":31,"hypershift":true,"make":1000,"break":2000}],
+            "rapidTriggers":{"31":{"makeSensitivity":300,"breakSensitivity":400}}
+        }}],
+        "reportIDs":{"11":"analogKeyboardV2ReportID"},
+        "analogData":{
+            "defaultMakeActuation":6000,"defaultBreakActuation":5000,
+            "rapidTrigger":{"makeSensitivity":100,"breakSensitivity":200,"continuous":false}
+        }
+    })
+}
+
+#[test]
+fn config_uses_current_profile_overrides_and_native_key_tables() {
+    use crate::mapping_native_lookup::Phase;
+    let config = NativeHidDeviceConfig::from_document(&analog_document()).unwrap();
+    let make = config.analog_parameters(31, true, Phase::Press);
+    let release = config.analog_parameters(31, true, Phase::Release);
+    assert_eq!(make.actuation, 1000);
+    assert_eq!(release.actuation, 2000);
+    assert!(make.default_continuous);
+    let rapid = make.rapid.unwrap();
+    assert_eq!(
+        (
+            rapid.make_sensitivity,
+            rapid.break_sensitivity,
+            rapid.continuous
+        ),
+        (300, 400, false)
+    );
+    assert_eq!(
+        config.analog_parameters(31, false, Phase::Press).actuation,
+        6000
+    );
+    assert_eq!(
+        config.analog_input(31).unwrap().kind,
+        InputKind::AnalogKey {
+            scancode: 30,
+            flag: 0
+        }
+    );
+    assert_eq!(
+        config.analog_input(62).unwrap().kind,
+        InputKind::AnalogKey {
+            scancode: 56,
+            flag: 2
+        }
+    );
+    assert!(config.analog_input(59).is_none());
+    assert!(config.analog_input(255).is_none());
+    let mut document = analog_document();
+    document["reportIDs"] = serde_json::json!({"2":"analogKeypadReportID"});
+    let keypad = NativeHidDeviceConfig::from_document(&document).unwrap();
+    assert_eq!(
+        keypad.analog_input(1).unwrap().kind,
+        InputKind::AnalogKey {
+            scancode: 2,
+            flag: 0
+        }
+    );
+    assert!(keypad.analog_input(21).is_none());
+}
+
+#[test]
+fn profile_rejects_duplicates_after_native_identity_narrowing() {
+    let mut document = analog_document();
+    document["profiles"][0]["appEngine"]["actuations"] = serde_json::json!([
+        {"keyId":31,"make":1,"break":0}, {"keyId":287,"make":2,"break":0}
+    ]);
+    assert_eq!(
+        NativeHidDeviceConfig::from_document(&document).unwrap_err(),
+        NativeHidDescriptorError::DuplicateProfileKey(31)
+    );
+}
+
+#[test]
+fn prepared_frame_drop_and_commit_control_ingress_state() {
+    let mut ingress = NativeHidRuntime::default();
+    let context = NativeHidProcessingContext {
+        analog_enabled: true,
+        ..Default::default()
+    };
+    let prepared = ingress.prepare_frame(
+        packet(&[0x91, 31, 42]),
+        &context,
+        NativeModifierSnapshot::default(),
+    );
+    assert_eq!(prepared.dispatch().analog_events[0].level, 42);
+    assert_eq!(ingress.tracked_level(31), None);
+    drop(prepared);
+    assert_eq!(ingress.tracked_level(31), None);
+    ingress
+        .prepare_frame(
+            packet(&[0x91, 31, 43]),
+            &context,
+            NativeModifierSnapshot::default(),
+        )
+        .commit(&mut ingress);
+    assert_eq!(ingress.tracked_level(31), Some(43));
+}
+
+#[test]
+fn razer_key_frames_keep_report_identity_and_disabled_release_cleanup() {
+    let descriptor = NativeHidDescriptor::from_native_json(&serde_json::json!({"dualLinked":true,"reportIDs":{"4":"razerKeyReportID","5":"razerKeyReportID"}})).unwrap();
+    let decode = |bytes: &[u8]| {
+        decode_native_hid_packet(NativeHidFraming::Usb, Some(&descriptor), bytes).unwrap()
+    };
+    let context = NativeHidProcessingContext {
+        analog_enabled: true,
+        ..Default::default()
+    };
+    let mut ingress = NativeHidRuntime::default();
+    let make = ingress
+        .prepare_frame(
+            decode(&[4, 8, 7, 8, 0, 9]),
+            &context,
+            NativeModifierSnapshot::default(),
+        )
+        .commit(&mut ingress);
+    assert_eq!(
+        make.input_events
+            .iter()
+            .map(|event| event.input.kind.clone())
+            .collect::<Vec<_>>(),
+        vec![
+            InputKind::RazerKey { key: 7, flag: 0 },
+            InputKind::RazerKey { key: 8, flag: 0 }
+        ]
+    );
+    assert!(
+        make.input_events
+            .iter()
+            .all(|event| event.input.report_id == Some(4))
+    );
+    let other = ingress
+        .prepare_frame(decode(&[5, 7]), &context, NativeModifierSnapshot::default())
+        .commit(&mut ingress);
+    assert_eq!(other.input_events.len(), 1);
+    assert_eq!(other.input_events[0].input.report_id, Some(5));
+    let disabled = NativeHidProcessingContext::default();
+    let release = ingress
+        .prepare_frame(
+            decode(&[4, 0]),
+            &disabled,
+            NativeModifierSnapshot::default(),
+        )
+        .commit(&mut ingress);
+    assert_eq!(release.input_events.len(), 3);
+    assert!(
+        release
+            .input_events
+            .iter()
+            .all(|event| event.mapping_allowed
+                && matches!(event.input.kind, InputKind::RazerKey { flag: 1, .. }))
+    );
+    assert_eq!(
+        release.input_events[2].input.kind,
+        InputKind::RazerKey { key: 9, flag: 1 }
+    );
+}
+
+#[test]
+fn control_pod_repeat_and_stream_release_follow_native_gates() {
+    let descriptor = NativeHidDescriptor::new(
+        false,
+        [
+            (4, NativeHidReportKind::ControlPod),
+            (5, NativeHidReportKind::StreamController),
+        ],
+    );
+    let decode = |bytes: &[u8]| {
+        decode_native_hid_packet(NativeHidFraming::Usb, Some(&descriptor), bytes).unwrap()
+    };
+    let ingress = NativeHidRuntime::default();
+    let context = NativeHidProcessingContext {
+        analog_enabled: true,
+        ..Default::default()
+    };
+    let prepared = ingress.prepare_frame(
+        decode(&[4, 2, 3, 128]),
+        &context,
+        NativeModifierSnapshot::default(),
+    );
+    let events = &prepared.dispatch().input_events;
+    assert_eq!(events.len(), 3);
+    assert_eq!(events[2].repetitions, 128);
+    assert_eq!(
+        events[2].input.kind,
+        InputKind::ControlPodDial { clockwise: false }
+    );
+    let disabled = NativeHidProcessingContext::default();
+    let prepared = ingress.prepare_frame(
+        decode(&[5, 9, 1]),
+        &disabled,
+        NativeModifierSnapshot::default(),
+    );
+    assert!(prepared.dispatch().input_events[0].mapping_allowed);
+    let prepared = ingress.prepare_frame(
+        decode(&[5, 9, 0]),
+        &disabled,
+        NativeModifierSnapshot::default(),
+    );
+    assert!(!prepared.dispatch().input_events[0].mapping_allowed);
+}
+
+#[test]
+fn native_hash_rehash_preserves_runs_and_relinks_later_buckets() {
+    let mut order = NativeHidKeyOrder {
+        keys: vec![1, 6, 2, 11, 16],
+        buckets: 2,
+    };
+    order.rehash(5);
+    assert_eq!(order.keys, vec![16, 11, 1, 6, 2]);
+    let mut order = NativeHidKeyOrder::default();
+    order.insert(31);
+    order.insert(32);
+    assert_eq!(order.keys, vec![32, 31]);
+    order.insert(31);
+    assert_eq!(order.keys, vec![32, 31]);
+    order.remove(32);
+    assert_eq!(order.buckets, 2);
+}
+
+#[test]
+fn native_frame_steps_interleave_stick_and_analog_then_release_in_held_order() {
+    let mut ingress = NativeHidRuntime::default();
+    let context = NativeHidProcessingContext {
+        analog_enabled: true,
+        stick_available: true,
+        ..Default::default()
+    };
+    let prepared = ingress.prepare_frame(
+        packet(&[0x92, 31, 0, 50, 251, 127, 255, 32, 0, 60]),
+        &context,
+        NativeModifierSnapshot::default(),
+    );
+    let report = analog(&prepared.dispatch().packet);
+    let source_keys = report.key_order.clone();
+    let step_keys: Vec<_> = prepared
+        .dispatch()
+        .steps
+        .iter()
+        .map(|step| match step {
+            NativeHidFrameStep::Analog(event) => event.key_id,
+            NativeHidFrameStep::Signed(event) => event.key_id,
+            NativeHidFrameStep::AnalogCleanup(key) => *key,
+        })
+        .collect();
+    assert_eq!(step_keys, source_keys);
+    assert!(matches!(
+        prepared.dispatch().steps[1],
+        NativeHidFrameStep::Signed(_)
+    ));
+    prepared.commit(&mut ingress);
+    let release = ingress.prepare_frame(
+        packet(&[0x92, 0, 0, 0]),
+        &context,
+        NativeModifierSnapshot::default(),
+    );
+    let released: Vec<_> = release
+        .dispatch()
+        .analog_events
+        .iter()
+        .map(|event| event.key_id)
+        .collect();
+    assert_eq!(released, ingress.tracked_order.keys);
+}
+
+#[test]
+fn native_hash_growth_and_duplicate_replacement_keep_source_chain() {
+    for (input, expected) in [
+        (vec![1, 3, 2, 6, 1], vec![2, 3, 6, 1]),
+        (vec![1, 6, 2, 11, 16], vec![2, 16, 11, 6, 1]),
+        (vec![1, 2, 3, 4, 12, 6], vec![6, 4, 3, 1, 12, 2]),
+    ] {
+        let mut order = NativeHidKeyOrder::default();
+        for key in input {
+            order.insert(key);
+        }
+        assert_eq!(order.keys, expected);
+    }
+}
+
+#[test]
+fn short_analog_frame_runs_native_missing_key_release() {
+    let mut session = connected(all_capabilities());
+    let (mut hid, mut output, mut handler) = (
+        NativeHidRuntime::default(),
+        NativeEventRuntime::default(),
+        Handler::default(),
+    );
+    deliver(
+        &mut hid,
+        &mut output,
+        &mut session,
+        &mut handler,
+        &[0x92, 31, 0, 123],
+        &enabled(),
+    )
+    .unwrap();
+    let release = deliver(
+        &mut hid,
+        &mut output,
+        &mut session,
+        &mut handler,
+        &[0x92, 31, 0],
+        &enabled(),
+    )
+    .unwrap();
+    assert_eq!(release.analog_events.len(), 1);
+    assert_eq!(
+        release.analog_events[0].phase,
+        NativeHidAnalogPhase::Released
+    );
+    assert_eq!(release.analog_events[0].previous_level, 123);
+    assert_eq!(hid.tracked_level(31), None);
+    assert_eq!(analog(&release.packet).ignored_tail, vec![31, 0]);
 }

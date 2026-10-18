@@ -21,7 +21,6 @@ impl AppShell {
         if let Err(error) = display_window::open_or_focus(
             cx,
             "razer-settings".into(),
-            display_window::WindowPolicy::Different,
             options,
             move |window, cx| cx.new(|cx| SettingsWindow::new(settings, window, cx)),
         ) {

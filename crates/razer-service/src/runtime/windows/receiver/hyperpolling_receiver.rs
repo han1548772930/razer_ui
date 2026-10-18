@@ -29,7 +29,7 @@ pub(super) fn request(
             "Uma request expired"
         );
         let (current, selected) = receiver::select_target(
-            &hid::enumerate_for_product(0x1532, uma::PRODUCT_ID)?,
+            &hid::enumerate_collection(0x1532, uma::PRODUCT_ID, path)?,
             path,
             container,
         )?;

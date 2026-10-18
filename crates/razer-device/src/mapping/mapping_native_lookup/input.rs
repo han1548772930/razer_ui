@@ -1,7 +1,7 @@
 use super::*;
 use crate::mapping_native_input::MouseInput;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum InputKind {
     Keyboard { scancode: u16, flag: u16 },
     AnalogKey { scancode: u16, flag: u16 },
@@ -16,7 +16,7 @@ pub enum InputKind {
     RazerEvent(Vec<i8>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct Input {
     pub kind: InputKind,
     pub modifiers: u32,
@@ -25,6 +25,8 @@ pub struct Input {
     pub delay_ms: Option<u32>,
     pub release_after_ms: Option<u32>,
     pub repeat: bool,
+    /// EE0F1 / 100802 preserve presence separately from an empty interrupt list.
+    pub interruptible: bool,
     pub interrupts: Vec<Input>,
 }
 
@@ -61,6 +63,7 @@ impl Input {
             delay_ms: None,
             release_after_ms: None,
             repeat: false,
+            interruptible: false,
             interrupts: Vec::new(),
         }
     }
@@ -198,7 +201,7 @@ fn text<'a>(value: &'a Value, key: &str) -> Result<&'a str> {
 }
 
 /// JSON is confined to this current-source constructor boundary (0xee5a1).
-pub fn parse_input(value: &Value) -> Result<Input> {
+fn parse_basic_input(value: &Value) -> Result<Input> {
     let kind = match text(value, "type")? {
         "keyboard" => InputKind::Keyboard {
             scancode: integer(value, "scancode")? as u16,
@@ -316,21 +319,23 @@ pub fn parse_input(value: &Value) -> Result<Input> {
     if matches!(input.kind, InputKind::ControlPodDial { .. }) {
         input.repeat = optional_bool(value, "repeat")?;
     }
+    Ok(input)
+}
+
+pub fn parse_input(value: &Value) -> Result<Input> {
+    let mut input = parse_basic_input(value)?;
     if let Some(interrupts) = value.get("interrupts") {
+        input.interruptible = true;
         let mut seen = BTreeSet::new();
         for raw in interrupts.as_array().context("Invalid input interrupts")? {
             // 0xee0f1 parses basic inputs here, not recursively nested lists.
-            ensure!(
-                raw.get("interrupts").is_none(),
-                "Nested input interrupts are invalid"
-            );
-            let interrupt = parse_input(raw)?;
+            let interrupt = parse_basic_input(raw)?;
             ensure!(
                 interrupt.phase() != Phase::Release,
                 "Break interrupt is invalid"
             );
             ensure!(
-                seen.insert(interrupt.identity()),
+                seen.insert(interrupt.stateless_id()),
                 "Duplicate input interrupt"
             );
             input.interrupts.push(interrupt);

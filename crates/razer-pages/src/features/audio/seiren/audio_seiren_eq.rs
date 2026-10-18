@@ -4,7 +4,7 @@
 use super::*;
 use gpui_kit::base::motion::{self, Easing, Presence, Transition};
 use gpui_kit::base::{Button as BaseButton, Popover, Select as BaseSelect};
-use gpui_kit::component::{Icon, IndexPath};
+use gpui_kit::component::IndexPath;
 use razer_widgets::{source_text::SourceText, surface::css, synapse_select};
 use std::time::Duration;
 
@@ -137,7 +137,10 @@ mod state_tests {
         state.sync_monitor(0, serde_json::json!({"value":37,"isEnabled":true}));
         assert_eq!(state.monitor_preview[0]["value"], 82);
         state.sync_monitor(0, serde_json::json!({"value":61,"isEnabled":false}));
-        assert_eq!(state.monitor_preview[0], serde_json::json!({"value":61,"isEnabled":false}));
+        assert_eq!(
+            state.monitor_preview[0],
+            serde_json::json!({"value":61,"isEnabled":false})
+        );
     }
     #[test]
     fn seiren_eq_filter_refresh_preserves_navigation_until_value_changes() {
@@ -225,17 +228,34 @@ impl AudioProductWorkspace {
     pub(super) fn seiren_endpoint_available(&self, index: usize) -> bool {
         self.seiren_endpoint_value(index).is_some()
     }
-    pub(super) fn seiren_microphone_volume_preview(&self) -> &Value { &self.seiren_eq.monitor_preview[0] }
-    pub(super) fn preview_seiren_microphone_volume(&mut self, value: Value) { self.seiren_eq.monitor_preview[0] = value; }
+    pub(super) fn seiren_microphone_volume_preview(&self) -> &Value {
+        &self.seiren_eq.monitor_preview[0]
+    }
+    pub(super) fn preview_seiren_microphone_volume(&mut self, value: Value) {
+        self.seiren_eq.monitor_preview[0] = value;
+    }
     fn seiren_endpoint_value(&self, index: usize) -> Option<Value> {
-        use razer_device::seiren_mixer::{MICROPHONE, HEADPHONES};
+        use razer_device::seiren_mixer::{HEADPHONES, MICROPHONE};
         let id = *[MICROPHONE, HEADPHONES].get(index)?;
         let value = self.seiren_eq.live.endpoint(id)?.value()?;
         Some(json!({"isEnabled": !value.muted, "value": value.level}))
     }
-    pub(in crate::features) fn observe_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, window: &mut Window, cx: &mut Context<Self>) {
-        if !supported(self.spec.product_id) { return; }
-        for (index, id) in [razer_device::seiren_mixer::MICROPHONE, razer_device::seiren_mixer::HEADPHONES].into_iter().enumerate() {
+    pub(in crate::features) fn observe_seiren_live(
+        &mut self,
+        observed: razer_device::seiren_mixer::LiveState,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !supported(self.spec.product_id) {
+            return;
+        }
+        for (index, id) in [
+            razer_device::seiren_mixer::MICROPHONE,
+            razer_device::seiren_mixer::HEADPHONES,
+        ]
+        .into_iter()
+        .enumerate()
+        {
             if self.seiren_eq.live.endpoint(id) != observed.endpoint(id) {
                 self.seiren_eq.monitor_observed[index] = Value::Null;
             }
@@ -552,16 +572,21 @@ impl AudioProductWorkspace {
         let agc = self.draft["device"]["micAgc"]["isEnabled"] == true;
         let stream = self.draft["profile"]["streamMixerSettings"]["isStreamMixerEnabled"] == true;
         for (index, (name, path)) in MONITORS.into_iter().enumerate() {
-            let value = if index < 2 { self.seiren_endpoint_value(index).unwrap_or(Value::Null) }
-                else { self.draft.pointer(path).cloned().unwrap_or_default() };
+            let value = if index < 2 {
+                self.seiren_endpoint_value(index).unwrap_or(Value::Null)
+            } else {
+                self.draft.pointer(path).cloned().unwrap_or_default()
+            };
             // UI6007 T mirrors changed props with useEffect even while its
             // 300 ms callback is pending. A temporary slider value has no
             // priority over a later observed endpoint update.
             self.seiren_eq.sync_monitor(index, value);
             let volume = &self.seiren_eq.monitor_preview[index];
             let value = volume["value"].as_f64().unwrap_or(0.);
-            let disabled =
-                (index < 2 && !self.seiren_endpoint_available(index)) || volume["isEnabled"] != true || (index == 0 && agc) || (index == 2 && stream);
+            let disabled = (index < 2 && !self.seiren_endpoint_available(index))
+                || volume["isEnabled"] != true
+                || (index == 0 && agc)
+                || (index == 2 && stream);
             if let Some(fader) = self.seiren_eq.faders.get(index) {
                 fader.update(cx, |fader, cx| fader.set_value(value as f32, window, cx));
             }
@@ -759,7 +784,9 @@ impl AudioProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if (index < 2 && !self.seiren_endpoint_available(index)) || self.seiren_eq.monitor_preview[index]["isEnabled"] != true {
+        if (index < 2 && !self.seiren_endpoint_available(index))
+            || self.seiren_eq.monitor_preview[index]["isEnabled"] != true
+        {
             return;
         }
         self.seiren_eq.monitor_preview[index]["value"] = json!(value.clamp(0., 100.));
@@ -818,7 +845,9 @@ impl AudioProductWorkspace {
         self.submit_seiren_eq_payload(operation, json!({(key):value}), cx);
     }
     fn seiren_monitor_mute(&mut self, index: usize, window: &mut Window, cx: &mut Context<Self>) {
-        if index < 2 && !self.seiren_endpoint_available(index) { return; }
+        if index < 2 && !self.seiren_endpoint_available(index) {
+            return;
+        }
         let mut value = self.seiren_eq.monitor_preview[index].clone();
         value["isEnabled"] = json!(value["isEnabled"] != true);
         self.seiren_eq.monitor_preview[index] = value.clone();
@@ -961,13 +990,28 @@ impl AudioProductWorkspace {
         }
         for (index, level) in [(0, &levels.microphone), (1, &levels.headphones)] {
             self.seiren_eq.monitor_observed[index] = Value::Null;
-            let id = [razer_device::seiren_mixer::MICROPHONE, razer_device::seiren_mixer::HEADPHONES][index];
-            if level.value().is_finite() && (0. ..=100.).contains(&level.value()) && level.value().fract() == 0. {
-                let _ = self.seiren_eq.live.observe_endpoint(id, razer_device::seiren_mixer::EndpointObservation {
-                    level: level.value() as u32, muted: !level.is_enabled(),
-                });
+            let id = [
+                razer_device::seiren_mixer::MICROPHONE,
+                razer_device::seiren_mixer::HEADPHONES,
+            ][index];
+            if level.value().is_finite()
+                && (0. ..=100.).contains(&level.value())
+                && level.value().fract() == 0.
+            {
+                let _ = self.seiren_eq.live.observe_endpoint(
+                    id,
+                    razer_device::seiren_mixer::EndpointObservation {
+                        level: level.value() as u32,
+                        muted: !level.is_enabled(),
+                    },
+                );
             } else {
-                self.seiren_eq.live.set_endpoint(id, razer_device::seiren_mixer::Reading::Failed("Invalid Marie volume readback".into()));
+                self.seiren_eq.live.set_endpoint(
+                    id,
+                    razer_device::seiren_mixer::Reading::Failed(
+                        "Invalid Marie volume readback".into(),
+                    ),
+                );
             }
         }
         self.sync_seiren_eq(window, cx);
@@ -1157,7 +1201,11 @@ impl AudioProductWorkspace {
                                 .text_size(css(14.))
                                 .text_color(C::text())
                                 .hover(|style| style.text_color(C::selected()))
-                                .child(razer_assets::resource_svg().path("synapse/seiren-eq-reset.svg").size(css(20.)))
+                                .child(
+                                    razer_assets::resource_svg()
+                                        .path("synapse/seiren-eq-reset.svg")
+                                        .size(css(20.)),
+                                )
                                 .child(div().underline().child(label("Odj")))
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.seiren_reset(false, window, cx)
@@ -1400,10 +1448,13 @@ impl AudioProductWorkspace {
                             .items_center()
                             .justify_center()
                             .child(
-                                Icon::default()
+                                razer_assets::resource_svg()
+                                    .flex_shrink_0()
                                     .path("synapse/expand.svg")
                                     .size(css(10.))
-                                    .transform(Transformation::rotate(radians(arrow_angle))),
+                                    .with_transformation(Transformation::rotate(radians(
+                                        arrow_angle,
+                                    ))),
                             ),
                     )
                     .into_any_element()

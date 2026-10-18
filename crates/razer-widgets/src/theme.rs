@@ -1523,9 +1523,42 @@ impl AetherStripColors {
     }
 }
 
+/// Controller module84350's static curve and live analog area canvases.
+pub struct KeyboardControllerGraphColors;
+impl KeyboardControllerGraphColors {
+    pub fn grid() -> Hsla {
+        rgb(0x707070).into()
+    }
+    pub fn curve() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub fn area() -> Hsla {
+        rgba(0x44d62c4d).into()
+    }
+    pub fn observed_area() -> Hsla {
+        rgba(0x44d62ccc).into()
+    }
+    pub fn handle() -> Hsla {
+        rgb(0x222222).into()
+    }
+}
+
 /// Current keyboard ACTUATION `.btn-sync` and `.actuation-warning` palette.
 pub struct KeyboardActuationColors;
 impl KeyboardActuationColors {
+    /// PID679 slider Hh and `.actuation-vertical-track` in current main CSS.
+    pub fn sensor_idle() -> Hsla {
+        rgb(0xcccccc).into()
+    }
+    pub fn sensor_active() -> Hsla {
+        rgb(0x44d62c).into()
+    }
+    pub fn sensor_release() -> Hsla {
+        rgb(0xc8323c).into()
+    }
+    pub fn sensor_track() -> Hsla {
+        rgba(0x44d62c4d).into()
+    }
     pub fn warning() -> Hsla {
         rgb(0xfd8611).into()
     }
@@ -1609,9 +1642,16 @@ impl StreamMixerColors {
     }
 }
 
-/// Current 515 `.key-record-item`, `.snap-tap-*` and warning dialog palette.
+/// Current 515/679 `.key-record-item`, `.snap-tap-*` and warning dialog palette.
 pub struct SnapTapColors;
 impl SnapTapColors {
+    /// PID679 `.key-record-item-assignment-deactive`.
+    pub fn snapped() -> Hsla {
+        rgb(0x888888).into()
+    }
+    pub fn pressed_text() -> Hsla {
+        rgb(0x000000).into()
+    }
     pub fn border() -> Hsla {
         rgb(0xcccccc).into()
     }

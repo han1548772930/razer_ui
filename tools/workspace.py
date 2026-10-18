@@ -133,7 +133,7 @@ def source_layout_destination(path):
                   ("devices", ("device_discovery", "product_")),
                   ("host", ("host_",)),
                   ("navigation", ("main_pages",)),
-                  ("windows", ("chroma_", "pairing_window", "settings_window", "display_window", "firmware_update")))
+                  ("windows", ("chroma_", "settings_window", "display_window", "firmware_update")))
         selected = next((folder for folder, prefixes in groups if inner.parts[0].startswith(prefixes)), None)
         if selected and inner.parts[0] != selected:
             return Path("crates") / crate / "src/shell" / selected / inner
@@ -352,7 +352,7 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
     macro_receipts = "crates/razer-ipc/src/macro_recording.rs"
     mapping_receipts = "crates/razer-ipc/src/mapping_control.rs"
     mapping_control = mapping_workers + "control.rs"
-    mapping_native_control = "crates/razer-service/src/runtime/windows/mapping_execution.rs"
+    mapping_native_control = "crates/razer-service/src/runtime/windows/mapping_runtime/backend.rs"
     keyboard_restore = "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore.rs"
     keyboard_publisher = "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_publisher.rs"
     keyboard_worker = "crates/razer-shell/src/shell/keyboard/keyboard_latest_restore_worker.rs"
@@ -392,6 +392,10 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                        macro_page + "/transfer/xml.rs": macro_xml,
                        macro_page + "/recording_decode.rs": macro_recording,
                        macro_page + "/recording_actor.rs": macro_recorder,
+                       "crates/razer-service/src/runtime/windows/global_shortcuts.rs": mapping_native_control,
+                       "crates/razer-service/src/runtime/windows/mapping_execution.rs": mapping_native_control,
+                       "crates/razer-service/src/runtime/windows/global_shortcut_capture.rs": "crates/razer-service/src/runtime/windows/mapping_runtime/capture.rs",
+                       "crates/razer-service/src/runtime/windows/mapping_native_output.rs": "crates/razer-service/src/runtime/windows/mapping_runtime/driver.rs",
                        "crates/razer-service/src/native/native_read.rs": "Explicit tools/workspace.py comparisons"}
     shortcut_scope = owner.startswith(("crates/razer-model/src/shortcuts/", "crates/razer-pages/src/features/shortcuts/"))
     publication_consumers = {"crates/razer-resource-db/src/installation.rs": ("InstallationPaths", "publish_catalog"),
@@ -1207,11 +1211,36 @@ def inspect_architecture_source(raw, *, owner, rust_parser, expression_fragment=
                 if (not delegated and (("razer_ipc", "mapping_control", "Receipt") not in observed
                         or not required <= methods or not ("request" in methods or ("request",) in direct))):
                     fail(node, "mapping_control_bypasses_correlated_receipt", mapping_receipts)
-            if owner == mapping_native_control and name == "set_mapping_execution":
-                direct = {resolved_call(parts) for parts, _ in calls(node)}
-                if (("razer_ipc", "mapping_control", "Receipt", "with_observations") not in direct
-                        or not {"owner", "owner_guid", "is_none_or"} <= called_methods(node)):
-                    fail(node, "native_mapping_control_bypasses_owner_revision_receipt", mapping_receipts)
+            if owner == mapping_native_control and name == "request":
+                for branch in walk(node):
+                    if branch.type != "match_arm":
+                        continue
+                    pattern, value = branch.child_by_field_name("pattern"), branch.child_by_field_name("value")
+                    if pattern is None or value is None or not any(
+                            item.type == "struct_pattern" and text(item.child_by_field_name("type")).split("::")[-1] == "MappingExecution"
+                            for item in walk(pattern)):
+                        continue
+                    direct = {resolved_call(parts) for parts, _ in calls(value)}
+                    required = {"registration", "ensure_active", "is_some_and", "is_none_or", "mapping", "shortcuts", "result", "reason"}
+                    identities = set()
+                    for item in walk(value):
+                        if item.type != "binary_expression" or text(item.child_by_field_name("operator")) != "==":
+                            continue
+                        left, right = item.child_by_field_name("left"), item.child_by_field_name("right")
+                        if left is not None and left.type == "field_expression":
+                            identities.add((text(left.child_by_field_name("field")), text(right)))
+                    revisions = [item for item in walk(value) if item.type == "macro_invocation"
+                                 and text(item.child_by_field_name("macro")).split("::")[-1] == "ensure"
+                                 and "is_none_or" in called_methods(item)]
+                    registrations = [item for item in walk(value) if item.type == "call_expression"
+                                     and item.child_by_field_name("function").type == "field_expression"
+                                     and text(item.child_by_field_name("function").child_by_field_name("field")) == "registration"]
+                    scoped_registration = any([text(arg) for arg in call.child_by_field_name("arguments").named_children] == ["scope", "&owner_guid"]
+                                              for call in registrations)
+                    if (("razer_ipc", "mapping_control", "Receipt", "with_observations") not in direct
+                            or not required <= called_methods(value) or len(revisions) != 2
+                            or not {("scope", "scope"), ("owner", "owner_guid")} <= identities or not scoped_registration):
+                        fail(branch, "native_mapping_control_bypasses_owner_revision_receipt", mapping_receipts)
             if owner == mapping_workers + "key_capture.rs" and name == "start_with_registry":
                 for branch in walk(node):
                     if branch.type != "match_arm":
@@ -7452,7 +7481,9 @@ def verification_environment(name):
     # Keep generated test state under build output, not analysis inputs or
     # fixture/scratch paths. TemporaryDirectory owns only its unique child;
     # parallel validation commands cannot remove each other's working files.
-    with tempfile.TemporaryDirectory(prefix=name + "-", dir=directory) as temporary:
+    # AF_UNIX fixtures append their own unique socket filename. Keep the
+    # per-run directory independent of the suite name to stay within sun_path.
+    with tempfile.TemporaryDirectory(prefix="v-", dir=directory) as temporary:
         path = safe(Path(temporary))
         environment = os.environ.copy()
         for variable in ("TEMP", "TMP", "TMPDIR"):
@@ -8973,13 +9004,51 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("packaged-catalogs", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "-p", "razer-app-pages", "-p", "razer-assets", "-p", "razer-model", "-p", "razer-catalog", "-p", "razer-shell", "-p", "razer-tray", "-p", "razer-settings", "--lib", "packaged_catalog_"]),
         ("model", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib"]),
         ("mapping-engine", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_engine"]),
+        ("mapping-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native"]),
+        ("mouse-rotation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_rotation"]),
+        ("mouse-rotation-domain", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_rotation"]),
+        ("mouse-rotation-discovery", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "mouse_rotation"]),
+        ("mouse-rotation-worker", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::mouse_rotation::tests"]),
+        ("mouse-worker-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mouse_worker::tests"]),
+        ("mouse-rotation-page", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_rotation_owner_"]),
+        ("mouse-rotation-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "rotation"]),
+        ("mouse-power-ble", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_current_power::ble::tests"]),
+        ("mouse-artwork-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_runtime_artwork::tests"]),
+        ("mapping-rotation-driver", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::driver::tests"]),
+        ("mapping-dynamic-key-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native_dynamic_key"]),
+        ("mapping-dynamic-key-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "dynamic_key"]),
+        ("macro-engine", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "macro_engine"]),
+        ("macro-page-phases", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "macro_page::phased::tests"]),
+        ("receiver-protocol", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "receiver_"]),
+        ("chroma-studio-construction", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "studio_button_hover_override_constructs_without_duplicate_registration"]),
         ("mapping-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::"]),
+        ("mapping-observation", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::observation::"]),
+        ("mapping-observation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mapping_observation::"]),
+        ("mapping-input-observation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "input_observation"]),
+        ("mapping-input-observation-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "input_observation"]),
+        ("mapping-analog-observation-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native_observation"]),
+        ("mapping-analog-observation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "analog_observation"]),
+        ("mapping-analog-observation-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "analog_observation"]),
+        ("mapping-gamepad-observation-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mapping_native_gamepad_observation"]),
+        ("mouse-receiver-mapping", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "mouse_receiver_mapping::tests"]),
+        ("mapping-gamepad-observation-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "gamepad_observation"]),
+        ("mapping-gamepad-observation-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "gamepad_observation"]),
+        ("keyboard-gamepad-observation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "gamepad_output_"]),
+        ("keyboard-snaptap-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "snap_tap::observation::tests"]),
+        ("keyboard-snaptap-editing", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "disabling_capture_keeps_the_source_opposite_preview_key"]),
+        ("keyboard-analog-feedback", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "analog_feedback"]),
+        ("keyboard-controller-observation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "analog_controller_observation_"]),
+        ("keyboard-mapping-observation", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "analog_mapping_observation_"]),
+        ("macro-hotkey-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::hotkeys::"]),
+        ("macro-recording-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "macro_library::recording::"]),
+        ("macro-recorder-preferences", ["cargo", "test", "--locked", "--offline", "-p", "razer-model", "--lib", "macro_library::recorder_preference_tests"]),
+        ("macro-shortcut-registration", ["cargo", "test", "--locked", "--offline", "-p", "razer-app-pages", "--lib", "macro_page::record_shortcut::registration_tests"]),
         ("mapping-control-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mapping_control::tests"]),
         ("global-shortcuts-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "shortcuts::tests"]),
         ("global-shortcut-capture-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "global_shortcut_capture::tests"]),
         ("global-shortcuts-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::backend::tests"]),
         ("mapping-control-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping::owner::tests"]),
-        ("global-shortcut-capture-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "global_shortcut_capture::tests"]),
+        ("global-shortcut-capture-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::capture::tests"]),
         ("mapping-connections", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "device_discovery::tests"]),
         ("profiles-transfer-codec", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "profile_transfer"]),
         ("audio-profile-import", ["cargo", "test", "--locked", "--offline", "-p", "razer-device", "--lib", "import_1398"]),
@@ -9042,7 +9111,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("mouse-philips-ipc", ["cargo", "test", "--locked", "--offline", "-p", "razer-ipc", "--lib", "mouse_tracking_tests::mouse_philips"]),
         ("mouse-philips-routing", ["cargo", "test", "--locked", "--offline", "-p", "razer-discovery", "--lib", "philips"]),
         ("mouse-philips-service", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "runtime::mouse_philips_controller::tests::"]),
-        ("mouse-philips-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::philips::tests::"]),
+        ("mouse-philips-native", ["cargo", "test", "--locked", "--offline", "-p", "razer-service", "--lib", "mapping_runtime::philips::"]),
         ("mouse-philips-shell", ["cargo", "test", "--locked", "--offline", "-p", "razer-shell", "--lib", "shell::mouse_tracking::tests::philips"]),
         ("mouse-philips-state", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "calibration_70::state::"]),
         ("mouse-profile-source", ["cargo", "test", "--locked", "--offline", "-p", "razer-pages", "--lib", "mouse_profile_source::tests"]),
@@ -9122,6 +9191,7 @@ def validate_rust(selected_suites=None, cargo_config=None):
         ("assets-resource-identity", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "asset_decode_tests"]),
         ("assets-image-lifecycle", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "image_cache::lifecycle_tests"]),
         ("assets-resource-runtime", ["cargo", "test", "--locked", "--offline", "-p", "razer-resources", "--lib"]),
+        ("assets-resource-diagnostics", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "resource_availability_errors"]),
         ("assets-fixed-icons", ["cargo", "test", "--locked", "--offline", "-p", "razer-assets", "--lib", "icons::tests"]),
         ("workspace", ["cargo", "check", "--locked", "--offline", "--workspace", "--all-targets"]),
     ]

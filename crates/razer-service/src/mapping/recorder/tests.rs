@@ -12,6 +12,7 @@ fn options() -> Options {
         random: [0., 0.],
         next_pair: 1,
         movement_mode: 0,
+        shortcut: Vec::new(),
     }
 }
 
@@ -90,6 +91,77 @@ fn completed_batch() -> Value {
 
 fn restored() -> Value {
     json!({"suspended":false,"mapping":{"result":true,"reason":""},"global_shortcuts":{"result":true,"reason":""}})
+}
+
+#[test]
+fn shortcut_stop_carries_its_cause_through_restoration_and_postprocessing() {
+    let mut started = false;
+    let mut stopped = false;
+    let (mock, trace, cleanup) = Mock::new(move |request| match request {
+        ServiceRequest::StartMacroRecording => Ok(json!({"accepted":true})),
+        ServiceRequest::MacroRecordingEvents if stopped => {
+            Ok(json!({"overflow":false,"events":[{"kind":"stopped","mode":"kSoftware"}]}))
+        }
+        ServiceRequest::MacroRecordingEvents if !started => {
+            started = true;
+            let mut events = vec![json!({"kind":"started","mode":"kSoftware","received_at_ms":0})];
+            for (tick, vk, scan, down) in [
+                (1, 65, 30, false),
+                (2, 162, 29, false),
+                (3, 66, 48, true),
+                (4, 66, 48, false),
+                (5, 162, 29, true),
+                (6, 65, 30, true),
+                (7, 65, 30, false),
+                (8, 162, 29, false),
+            ] {
+                events.push(json!({"kind":"item","time_tick":tick,"received_at_ms":tick,"event":[{"action":if down {"keydown"} else {"keyup"},"vkCode":vk,"scanCode":scan,"flags":if down {0} else {128},"time":1000}]}));
+            }
+            Ok(json!({"overflow":false,"events":events}))
+        }
+        ServiceRequest::MacroRecordingEvents => Ok(json!({"overflow":false,"events":[]})),
+        ServiceRequest::SuspendMacroMappings => Ok(json!({"suspended":true})),
+        ServiceRequest::StopMacroRecording => {
+            stopped = true;
+            Ok(json!({"accepted":true}))
+        }
+        ServiceRequest::ResumeMacroMappings => Ok(restored()),
+        ServiceRequest::Shutdown => Ok(json!({"stopped":true})),
+        request => panic!("unexpected request: {request:?}"),
+    });
+    let mut settings = options();
+    settings.shortcut = vec![
+        razer_model::macro_library::recording::ShortcutKey {
+            virtual_key: 162,
+            key_code: 17,
+        },
+        razer_model::macro_library::recording::ShortcutKey {
+            virtual_key: 65,
+            key_code: 65,
+        },
+    ];
+    let (session, updates) = spawn_with(settings, || Ok(mock)).unwrap();
+    while !matches!(next(&updates), Update::Recording) {}
+    session.send(Command::StopShortcut).unwrap();
+    let rows = finished(&updates).unwrap().unwrap();
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().all(|row| {
+        row.keyboard
+            .as_ref()
+            .is_some_and(|key| key.makecode == Some(66))
+    }));
+    cleanup.try_recv().unwrap();
+    let trace = trace.lock().unwrap();
+    let stop = trace
+        .iter()
+        .position(|request| matches!(request, ServiceRequest::StopMacroRecording))
+        .unwrap();
+    let restore = trace
+        .iter()
+        .position(|request| matches!(request, ServiceRequest::ResumeMacroMappings))
+        .unwrap();
+    assert!(stop < restore);
+    assert!(matches!(trace.last(), Some(ServiceRequest::Shutdown)));
 }
 
 #[test]

@@ -31,7 +31,8 @@ fn collection_target(
         nodes.iter().filter(|current| *current == node).count() == 1,
         "Mouse artwork collection changed before identity resolution"
     );
-    let observation = hid::enumerate_for_product(0x1532, node.product_id)?;
+    let observation =
+        hid::enumerate_collection(0x1532, node.product_id, std::str::from_utf8(&node.path)?)?;
     ensure!(
         observation["complete"] == true,
         "Mouse artwork identity enumeration is incomplete"

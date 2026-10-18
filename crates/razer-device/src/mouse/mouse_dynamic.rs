@@ -278,7 +278,6 @@ pub fn execute(
             device,
             cap,
             &setting.sensor_change(),
-            false,
             &mut *next,
             validate,
             wait,

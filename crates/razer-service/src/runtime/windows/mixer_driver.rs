@@ -15,9 +15,7 @@ use std::{
 };
 use windows_sys::{
     Win32::{
-        Foundation::{
-            CloseHandle, HANDLE, INVALID_HANDLE_VALUE,
-        },
+        Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE},
         Storage::FileSystem::{CreateFileW, FILE_ATTRIBUTE_NORMAL, OPEN_EXISTING},
         System::IO::DeviceIoControl,
     },
@@ -53,7 +51,7 @@ pub(super) fn observe_node(node: &HidNode, product_id: u32) -> anyhow::Result<Va
         path.is_ascii() && !path.contains('\0'),
         "Mixer HID 路径无法准确匹配 Windows 元数据"
     );
-    let snapshot = hid::enumerate_for_product(node.vendor_id, node.product_id)?;
+    let snapshot = hid::enumerate_collection(node.vendor_id, node.product_id, path)?;
     ensure!(snapshot["complete"] == true, "Mixer HID 身份枚举未完成");
     let items = snapshot["interfaces"]
         .as_array()
@@ -249,8 +247,7 @@ fn request(
         "device_container_id":container,"driver_instance_id":selected.instance,
         "transport":"windows_scoped_driver_ioctl","vendor_dll_loaded":false,
         "identity_policy":"unique_observed_container_and_driver_interface",
-        "elapsed_ms":started.elapsed().as_millis() as u64,
-        "evidence":"docs/re/audio-mixer-controls-current-evidence.json"}))
+        "elapsed_ms":started.elapsed().as_millis() as u64}))
 }
 
 pub(super) fn route(

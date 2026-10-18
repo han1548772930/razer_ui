@@ -1,10 +1,25 @@
 //! Independently mounted 678/679/688 Analog Gamepad callers; 679 CU -> DU -> jm.
-//! Current source caller receipts: tools/audit_keyboard_analog_callers.cjs. One pair with an
-//! explicit Create command and observed READY/ACTIVE/SNAPPED key states.
+//! Current jm owns one pair, explicit Create, and READY/ACTIVE/SNAPPED key states.
 //! This is separate from the ordinary Customize multi-pair widget.
 use super::*;
 
 impl State {
+    pub(super) fn finish_disabled_analog_capture(&mut self) -> bool {
+        if !self.analog || self.config.enabled || self.phase == Phase::Ready {
+            return false;
+        }
+        // jm's enable effect preserves the configured key being recorded and
+        // the opposite key from the current preview.
+        if let Some(pair) =
+            interrupted_pair(self.config.pairs.first(), self.staged.first(), self.phase)
+        {
+            self.commit(vec![pair]);
+        }
+        self.finish();
+        self.message = Message::Success;
+        true
+    }
+
     pub(super) fn accept_analog(&mut self, input: &str) -> bool {
         if !self.config.enabled || self.phase == Phase::Ready {
             return false;
@@ -35,6 +50,25 @@ impl State {
             true
         }
     }
+}
+
+fn interrupted_pair(
+    configured: Option<&Pair>,
+    preview: Option<&Pair>,
+    phase: Phase,
+) -> Option<Pair> {
+    if phase == Phase::Ready {
+        return None;
+    }
+    let mut pair = configured?.clone();
+    if let Some(preview) = preview {
+        match phase {
+            Phase::Key1 => pair.key2 = preview.key2.clone(),
+            Phase::Key2 => pair.key1 = preview.key1.clone(),
+            Phase::Ready => return None,
+        }
+    }
+    Some(pair)
 }
 
 impl KeyboardProductWorkspace {
@@ -74,7 +108,8 @@ impl KeyboardProductWorkspace {
         let Some(state) = &mut self.snap_tap else {
             return;
         };
-        state.success_timer = Some(cx.spawn_in(window, async move |this, cx| {
+        // DU's 500 ms switch debounce and jm's success timeout are independent.
+        state.toggle_timer = Some(cx.spawn_in(window, async move |this, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(500))
                 .await;
@@ -99,22 +134,11 @@ impl KeyboardProductWorkspace {
             return;
         }
         state.config.enabled = !state.config.enabled;
-        if !state.config.enabled && state.phase != Phase::Ready {
-            // jm's enable effect retains the untouched config key and the
-            // staged opposite key when a recording is interrupted.
-            let mut pair = state.config.pairs[0].clone();
-            if let Some(preview) = state.staged.first() {
-                if state.phase == Phase::Key1 {
-                    pair.key2 = preview.key2.clone();
-                } else {
-                    pair.key1 = preview.key1.clone();
-                }
-            }
-            state.commit(vec![pair]);
-            state.finish();
-            state.message = Message::Success;
-        }
+        let interrupted = state.finish_disabled_analog_capture();
         state.local = true;
+        if interrupted {
+            self.schedule_snap_success(cx);
+        }
         self.publish_snap_tap(cx);
         self.submit_analog_snap(cx);
     }
@@ -202,12 +226,12 @@ impl KeyboardProductWorkspace {
                             } else if pressed == 1 {
                                 Colors::accent()
                             } else if pressed == 2 {
-                                Hsla::from(rgb(0x888888))
+                                Colors::snapped()
                             } else {
                                 Colors::border()
                             })
                             .text_color(if pressed > 0 && !recording {
-                                Hsla::from(rgb(0))
+                                Colors::pressed_text()
                             } else {
                                 Colors::text()
                             })
@@ -215,7 +239,7 @@ impl KeyboardProductWorkspace {
                                 row.bg(if pressed == 1 {
                                     Colors::accent()
                                 } else {
-                                    Hsla::from(rgb(0x888888))
+                                    Colors::snapped()
                                 })
                             })
                             .child(text)
@@ -322,5 +346,32 @@ impl KeyboardProductWorkspace {
             })
             .into_any_element(),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn disabling_capture_keeps_the_source_opposite_preview_key() {
+        let configured = Pair {
+            key1: "KEY_A".into(),
+            key2: "KEY_D".into(),
+            id: 1,
+            extra: Default::default(),
+        };
+        let preview = Pair {
+            key1: "KEY_W".into(),
+            key2: "KEY_S".into(),
+            id: 1,
+            extra: Default::default(),
+        };
+        let key1 = interrupted_pair(Some(&configured), Some(&preview), Phase::Key1).unwrap();
+        assert_eq!((&*key1.key1, &*key1.key2), ("KEY_A", "KEY_S"));
+        let key2 = interrupted_pair(Some(&configured), Some(&preview), Phase::Key2).unwrap();
+        assert_eq!((&*key2.key1, &*key2.key2), ("KEY_W", "KEY_D"));
+        assert!(interrupted_pair(None, Some(&preview), Phase::Key1).is_none());
+        assert!(interrupted_pair(Some(&configured), Some(&preview), Phase::Ready).is_none());
     }
 }

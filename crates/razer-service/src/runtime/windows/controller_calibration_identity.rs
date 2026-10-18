@@ -14,7 +14,7 @@ pub(super) fn proof(node: &HidNode, claim_interface: u8) -> anyhow::Result<Value
             && path.to_ascii_lowercase().starts_with(r"\\?\hid#"),
         "手柄 Windows HID 路径无效"
     );
-    let snapshot = hid::enumerate_for_product(node.vendor_id, node.product_id)?;
+    let snapshot = hid::enumerate_collection(node.vendor_id, node.product_id, path)?;
     ensure!(snapshot["complete"] == true, "手柄 Windows HID 枚举未完成");
     let matches = snapshot["interfaces"]
         .as_array()

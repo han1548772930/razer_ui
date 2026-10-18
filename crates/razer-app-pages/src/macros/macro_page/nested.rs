@@ -214,11 +214,12 @@ impl MacroPage {
                     .items_center()
                     .justify_center()
                     .child(
-                        Icon::default()
+                        razer_assets::resource_svg()
+                            .flex_shrink_0()
                             .path("synapse/expand.svg")
                             .size(css(10.))
                             .text_color(rgb(0xcccccc))
-                            .transform(Transformation::rotate(radians(angle))),
+                            .with_transformation(Transformation::rotate(radians(angle))),
                     ),
             )
         })

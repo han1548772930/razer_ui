@@ -771,10 +771,11 @@ fn status_text(id: &'static str, text: String, color: Hsla) -> AnyElement {
 }
 fn progress_spinner(cx: &App) -> AnyElement {
     let frame = |phase: f32| {
-        gpui_kit::component::Icon::default()
+        razer_assets::resource_svg()
+            .flex_shrink_0()
             .path("synapse/dock-164-icon-progress_spinner.svg")
             .size(surface::css(24.))
-            .transform(Transformation::rotate(radians(
+            .with_transformation(Transformation::rotate(radians(
                 phase * std::f32::consts::TAU,
             )))
     };

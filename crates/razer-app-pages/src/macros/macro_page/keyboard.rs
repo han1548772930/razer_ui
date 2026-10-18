@@ -60,6 +60,36 @@ fn data() -> &'static Data {
     DATA.get_or_init(|| read_keyboard_catalog())
 }
 
+pub(super) fn recording_shortcut_key(input: &str) -> Result<recording_decode::ShortcutKey, String> {
+    let key = data()
+        .keys
+        .iter()
+        .find(|key| key.input_id.as_deref() == Some(input))
+        .ok_or_else(|| format!("Unknown macro shortcut key: {input}"))?;
+    // Current 62141.S supplies native release identities; Ao/Nr retain the
+    // recorder table's keyCode for post-recording chord removal.
+    let virtual_key = match input {
+        "KEY_LEFT_ALT" => 164,
+        "KEY_LEFT_CTRL" => 162,
+        "KEY_LEFT_SHIFT" => 160,
+        "KEY_RIGHT_ALT" => 165,
+        "KEY_RIGHT_CTRL" => 163,
+        "KEY_RIGHT_SHIFT" => 258,
+        _ => key
+            .virtual_key
+            .as_deref()
+            .and_then(|value| value.parse().ok())
+            .ok_or_else(|| format!("Macro shortcut has no native key: {input}"))?,
+    };
+    Ok(recording_decode::ShortcutKey {
+        virtual_key,
+        key_code: key
+            .code
+            .parse()
+            .map_err(|_| format!("Invalid macro shortcut keyCode: {input}"))?,
+    })
+}
+
 pub use razer_widgets::keyboard_capture::RawKey;
 fn captured_key(event: &RawKey) -> Option<&'static Key> {
     let code = if event.down() && event.code() == 92 {

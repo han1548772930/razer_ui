@@ -279,6 +279,47 @@ class TypedTableTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 typed_tables.verify_receiver_battery_peers(raw.replace(before,after),rows)
 
+    def test_receiver_evidence_tracks_source_product_and_preserves_physical_receiver(self):
+        raw = b'''fn products(){vec![ReceiverCapability{source_product_id:756,product_id:241,
+            report_id:0}]}'''
+        expected = ".analysis/results/frontend/keyboard-mw-756-current/analysis.json"
+        with patch.object(typed_tables, "receiver_evidence_path", return_value=expected) as resolve:
+            updated, rows = typed_tables.receiver_evidence_table_projection(raw)
+            resolve.assert_called_with(756)
+            self.assertEqual(updated, raw)
+            self.assertEqual(rows, [{"source_product_id": 756, "evidence_path": expected}])
+            self.assertEqual(typed_tables.receiver_evidence_table_projection(updated)[0], updated)
+            for evidence in (b'"stale".into()', json.dumps(expected).encode() + b'.into()', b'path()'):
+                leaked = raw.replace(b"report_id:0", b"evidence_path:" + evidence + b",report_id:0")
+                with self.assertRaisesRegex(ValueError, "maintenance receipts"):
+                    typed_tables.receiver_evidence_table_projection(leaked)
+            for broken in (updated.replace(b"source_product_id:756", b"source_product_id:unknown"),
+                           updated.replace(b"report_id:0", b"report_id:0,report_id:0")):
+                with self.assertRaises(ValueError):
+                    typed_tables.receiver_evidence_table_projection(broken)
+
+    def test_receiver_evidence_rejects_missing_ambiguous_and_wrong_family_capture(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(typed_tables, "ROOT", Path(directory)):
+            root = Path(directory)
+            def capture(family):
+                name = f"{family}-mw-179-current"
+                source = ".analysis/inputs/frontend/" + name
+                (root / source).mkdir(parents=True)
+                path = root / ".analysis/results/frontend" / name / "analysis.json"
+                path.parent.mkdir(parents=True)
+                path.write_text(json.dumps({"input": source, "original_inputs": [{"path": source + "/main.js"}]}))
+                return path
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                typed_tables.receiver_evidence_path(179)
+            path = capture("accessories")
+            self.assertEqual(typed_tables.receiver_evidence_path(179), path.relative_to(root).as_posix())
+            path.write_text(json.dumps({"input": "wrong", "original_inputs": [1]}))
+            with self.assertRaisesRegex(ValueError, "current originals"):
+                typed_tables.receiver_evidence_path(179)
+            capture("receiver")
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                typed_tables.receiver_evidence_path(179)
+
     def test_receiver_sender_table_uses_mounted_selector_and_keeps_other_factories(self):
         raw = b'''fn products(){vec![ReceiverCapability{source_product_id:241,product_id:241,
             claim_interface:3,report_id:0,source_class:"rzDevice25LinkerMultiDevices".into()},
@@ -747,6 +788,36 @@ class TypedTableTests(unittest.TestCase):
                 source["capabilities"].append(copy.deepcopy(source["capabilities"][0]))
             with self.assertRaises(ValueError):
                 typed_tables.render_receiver_query_catalog(json.dumps(source).encode())
+
+    def test_receiver_renderers_keep_provenance_out_of_every_runtime_constructor(self):
+        for name, renderer in (
+                ("receiver-query-capabilities.json", typed_tables.render_receiver_query_catalog),
+                ("receiver-pairing-capabilities.json", typed_tables.render_pairing_capabilities)):
+            source = json.loads(self.source_fixture(name))
+            transport = (source["capabilities"][0] if "capabilities" in source
+                         else source["products"][0]["transport"])
+            transport["source_product_id"] = 756
+            transport["evidence_path"] = ".analysis/results/frontend/keyboard-mw-756-current/analysis.json"
+            raw = json.dumps(source).encode()
+            with patch.object(typed_tables, "receiver_evidence_path", side_effect=AssertionError("runtime rendering must not resolve evidence")):
+                rendered = renderer(raw)
+            self.assertNotIn(b"evidence_path", rendered)
+            self.assertNotIn(b".analysis/", rendered)
+            tree = typed_tables.receiver_table_tree(rendered)
+            pending, constructors = [tree.root_node], []
+            while pending:
+                node = pending.pop(); pending.extend(node.named_children)
+                if node.type == "struct_expression" and node.child_by_field_name("name").text == b"ReceiverCapability":
+                    fields = {field.child_by_field_name("field").text.decode(): field.child_by_field_name("value").text
+                              for field in node.child_by_field_name("body").named_children}
+                    constructors.append(fields)
+            self.assertEqual(len(constructors), 1)
+            self.assertEqual(set(constructors[0]), typed_tables.RECEIVER_FIELDS - {"evidence_path"} | {"startup_retry"})
+            self.assertEqual(constructors[0]["source_product_id"], b"756")
+            self.assertEqual(constructors[0]["product_id"], b"241")
+            del transport["evidence_path"]
+            with self.assertRaises(ValueError):
+                renderer(json.dumps(source).encode())
 
     def test_fixed_pairing_rejects_transport_owner_and_category_branch_mismatches(self):
         for mutation in range(3):

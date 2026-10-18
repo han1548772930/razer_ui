@@ -165,6 +165,7 @@ impl MacroPage {
             entries: self.entries.clone(),
             current: if was_empty { Some(entry.id) } else { self.current },
             tutorial: Tutorial::Complete,
+            record_shortcut: self.record_ui.shortcut.selected.clone(),
         };
         candidate.entries.push(entry.clone());
         candidate.validate()?;

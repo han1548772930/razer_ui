@@ -236,6 +236,16 @@ impl MacroPage {
     }
 
     pub fn drop_actions(&mut self, drag: &ActionDrag, target: usize, cx: &mut Context<Self>) {
+        self.drop_actions_in_phase(drag, target, None, cx);
+    }
+
+    pub(super) fn drop_actions_in_phase(
+        &mut self,
+        drag: &ActionDrag,
+        target: usize,
+        phase: Option<u8>,
+        cx: &mut Context<Self>,
+    ) {
         if self.recording_busy()
             || self.record_ui.open
             || self.tutorial != Tutorial::Complete
@@ -248,13 +258,21 @@ impl MacroPage {
             return;
         }
         if let Some(kind) = drag.palette_kind {
-            self.add_action_at(kind, target, cx);
+            // dt uses the target row's phase for an ordinary palette drop;
+            // drop_space supplies its phase independently of the active radio.
+            let phase = phase.or_else(|| {
+                target
+                    .checked_sub(1)
+                    .and_then(|index| self.actions.get(index))
+                    .and_then(|item| item.phase)
+            });
+            self.add_action_at_phase(kind, target, phase, cx);
             return;
         }
         let before = self.actions.clone();
         // T9 keeps the target object's identity during removal and inserts
         // after it. Dropping on a selected member of the moved group is a no-op.
-        if target > 0 && drag.indices.contains(&(target - 1)) {
+        if phase.is_none() && target > 0 && drag.indices.contains(&(target - 1)) {
             return;
         }
         let mut order: Vec<_> = (0..self.actions.len())
@@ -300,28 +318,37 @@ impl MacroPage {
                 order.insert(destination, paired);
             }
         }
-        let assignments = self.dragged_phase_assignments(drag, target, &order);
-        let phase_changed = assignments.iter().any(|&(index, phase)| {
-            self.actions
-                .get(index)
-                .is_some_and(|item| item.phase != Some(phase))
-        });
-        for &(index, phase) in &assignments {
-            if let Some(item) = self.actions.get_mut(index) {
-                item.phase = Some(phase);
-            }
+        let assignments = if self.current_macro_type() == MacroType::Phased {
+            phased::dragged_phase_assignments(&self.actions, &drag.indices, &order, phase)
+        } else {
+            Vec::new()
+        };
+        let phase_changed = assignments
+            .iter()
+            .any(|&(index, phase)| self.actions[index].phase != Some(phase));
+        let order_changed = !order.iter().copied().eq(0..self.actions.len());
+        if !order_changed && !phase_changed {
+            return;
         }
-        self.commit_row_order(order, cx);
-        let order_changed = self.actions != before;
+        for (index, phase) in assignments {
+            self.actions[index].phase = Some(phase);
+        }
+        self.actions = order
+            .iter()
+            .map(|&index| self.actions[index].clone())
+            .collect();
+        self.selected_actions = order
+            .iter()
+            .enumerate()
+            .filter_map(|(next, old)| self.selected_actions.contains(old).then_some(next))
+            .collect();
         if self.current_macro_type() == MacroType::Phased {
             self.normalize_phased_rows();
         }
-        if phase_changed && !order_changed {
-            self.undo.push(before);
-            self.redo.clear();
-            self.clear_action_editors();
-            cx.notify();
-        }
+        self.undo.push(before);
+        self.redo.clear();
+        self.clear_action_editors();
+        cx.notify();
     }
 
     pub fn sync_loop_value(&mut self, index: usize) {

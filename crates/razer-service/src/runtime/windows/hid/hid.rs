@@ -319,10 +319,61 @@ pub(super) fn enumerate_for_product(vendor_id: u16, product_id: u16) -> anyhow::
     enumerate_with_scope(InventoryScope::Product(vendor_id, product_id), false)
 }
 
-enum InventoryScope { Razer, Product(u16, u16) }
+pub(super) fn enumerate_collection(
+    vendor_id: u16,
+    product_id: u16,
+    path: &str,
+) -> anyhow::Result<Value> {
+    anyhow::ensure!(
+        path.is_ascii()
+            && !path.contains('\0')
+            && path.to_ascii_lowercase().starts_with(r"\\?\hid#"),
+        "HID collection path is invalid"
+    );
+    enumerate_with_scope(
+        InventoryScope::Collection {
+            vendor_id,
+            product_id,
+            path,
+        },
+        false,
+    )
+}
+
+enum InventoryScope<'a> {
+    Razer,
+    Product(u16, u16),
+    Collection {
+        vendor_id: u16,
+        product_id: u16,
+        path: &'a str,
+    },
+}
+
+impl InventoryScope<'_> {
+    fn includes_path(&self, candidate: &str) -> bool {
+        match self {
+            Self::Collection { path, .. } => candidate.eq_ignore_ascii_case(path),
+            Self::Razer | Self::Product(..) => true,
+        }
+    }
+
+    fn includes_product(&self, vendor: u16, product: u16) -> bool {
+        matches!(vendor, 0x1532 | 0x068e)
+            && match self {
+                Self::Razer => true,
+                Self::Product(vendor_id, product_id)
+                | Self::Collection {
+                    vendor_id,
+                    product_id,
+                    ..
+                } => (vendor, product) == (*vendor_id, *product_id),
+            }
+    }
+}
 
 fn enumerate_with_scope(
-    scope: InventoryScope,
+    scope: InventoryScope<'_>,
     read_display_metadata: bool,
 ) -> anyhow::Result<Value> {
     let mut guid = GUID::default();
@@ -448,6 +499,11 @@ fn enumerate_with_scope(
             continue;
         };
         let path = String::from_utf16_lossy(&path_slice[..length]);
+        // Revalidation uses the selected collection's actual attributes and
+        // SetupAPI identity. Other collections need no handle or metadata I/O.
+        if !scope.includes_path(&path) {
+            continue;
+        }
         // Access=0 allows metadata queries without claiming read/write access.
         let raw = unsafe {
             CreateFileW(
@@ -481,11 +537,7 @@ fn enumerate_with_scope(
             }));
             continue;
         }
-        let included = match scope {
-            InventoryScope::Razer => matches!(attributes.VendorID, 0x1532 | 0x068e),
-            InventoryScope::Product(vendor, product) => matches!(vendor, 0x1532 | 0x068e) && (vendor, product) == (attributes.VendorID, attributes.ProductID),
-        };
-        if !included {
+        if !scope.includes_product(attributes.VendorID, attributes.ProductID) {
             continue;
         }
         let (container_id, container_error) = match device_container_id(set.0, &device_info) {
@@ -564,6 +616,30 @@ fn enumerate_with_scope(
 #[cfg(test)]
 mod inventory_tests {
     use super::*;
+
+    #[test]
+    fn collection_revalidation_excludes_other_paths_before_open_and_checks_actual_ids() {
+        let path = r"\\?\hid#vid_1532&pid_00bf&mi_00#instance-a";
+        let scope = InventoryScope::Collection {
+            vendor_id: 0x1532,
+            product_id: 0xbf,
+            path,
+        };
+        assert!(scope.includes_path(&path.to_ascii_uppercase()));
+        for unrelated in [
+            path.replace("mi_00", "mi_01"),
+            path.replace("instance-a", "instance-b"),
+            path.replace("00bf", "00be"),
+        ] {
+            assert!(!scope.includes_path(&unrelated));
+        }
+        assert!(scope.includes_product(0x1532, 0xbf));
+        assert!(!scope.includes_product(0x1532, 0xbe));
+        assert!(!scope.includes_product(0x1234, 0xbf));
+        assert!(InventoryScope::Razer.includes_path("another collection"));
+        assert!(InventoryScope::Product(0x1532, 0xbf).includes_path("another collection"));
+        assert!(!InventoryScope::Product(0x1234, 0xbf).includes_product(0x1234, 0xbf));
+    }
 
     #[test]
     fn inventory_reads_only_the_source_display_properties_and_keeps_failures_separate() {

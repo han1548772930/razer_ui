@@ -119,10 +119,6 @@ pub(super) fn mapping_client() -> anyhow::Result<crate::mapping::owner::Client> 
 }
 #[path = "mapping_native_input.rs"]
 pub mod mapping_native_input;
-#[path = "mapping_native_output.rs"]
-pub mod mapping_native_output;
-#[path = "mapping_native_rotation.rs"]
-pub mod mapping_native_rotation;
 #[path = "mapping_native_session.rs"]
 pub mod mapping_native_session;
 #[path = "mixer_driver.rs"]
@@ -213,54 +209,72 @@ impl NativeRuntime {
     }
 
     fn mapping_request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
-        if self.mapping_scope.is_none() { self.mapping_scope = Some(mapping_client()?); }
+        if self.mapping_scope.is_none() {
+            self.mapping_scope = Some(mapping_client()?);
+        }
         self.mapping_scope.as_mut().unwrap().request(request)
     }
 
     pub(super) fn request(&mut self, request: ServiceRequest) -> anyhow::Result<Value> {
         match request {
             request @ (ServiceRequest::MousePhilipsMeasurementStart { .. }
-                | ServiceRequest::MousePhilipsMeasurementPoll { .. }
-                | ServiceRequest::MousePhilipsMeasurementCancel { .. }
-                | ServiceRequest::StartMappingKeyCapture
-                | ServiceRequest::StartGlobalShortcutCapture
-                | ServiceRequest::StartKeyboardCalibrationCapture { .. }
-                | ServiceRequest::MappingKeyCaptureEvents
-                | ServiceRequest::GlobalShortcutCaptureEvents
-                | ServiceRequest::StopMappingKeyCapture
-                | ServiceRequest::StartShortcutCapture
-                | ServiceRequest::ShortcutCaptureEvents
-                | ServiceRequest::StopShortcutCapture
-                | ServiceRequest::MappingDeviceStart { .. }
-                | ServiceRequest::MappingDevicePublish { .. }
-                | ServiceRequest::MappingDeviceEvents { .. }
-                | ServiceRequest::MappingDeviceHypershiftActive { .. }
-                | ServiceRequest::MappingDeviceStop { .. }
-                | ServiceRequest::MappingKeyboardGamingIndicator { .. }
-                | ServiceRequest::StartMacroRecording
-                | ServiceRequest::PrepareOtfmRecorder
-                | ServiceRequest::StartOtfmRecording
-                | ServiceRequest::QueryMacroRecordingStarted
-                | ServiceRequest::MacroRecordingMode
-                | ServiceRequest::MacroRecorderGlobalState
-                | ServiceRequest::SetOtfmMappingsSuspended { .. }
-                | ServiceRequest::MappingOtfmInputStart { .. }
-                | ServiceRequest::MacroRecorderStorageWrite { .. }
-                | ServiceRequest::StopMacroRecording
-                | ServiceRequest::MacroRecordingEvents
-                | ServiceRequest::SuspendMacroMappings
-                | ServiceRequest::ResumeMacroMappings
-                | ServiceRequest::GlobalMode
-                | ServiceRequest::GlobalShortcuts
-                | ServiceRequest::RegisterShortcut { .. }
-                | ServiceRequest::UnregisterShortcut { .. }
-                | ServiceRequest::EnableGlobalShortcuts { .. }
-                | ServiceRequest::ShortcutEvents
-                | ServiceRequest::GlobalShortcutStart { .. }
-                | ServiceRequest::GlobalShortcutPublish { .. }
-                | ServiceRequest::GlobalShortcutPoll { .. }
-                | ServiceRequest::GlobalShortcutStop { .. }
-                | ServiceRequest::MappingExecution { .. }) => self.mapping_request(request),
+            | ServiceRequest::MousePhilipsMeasurementPoll { .. }
+            | ServiceRequest::MousePhilipsMeasurementCancel { .. }
+            | ServiceRequest::StartMappingKeyCapture
+            | ServiceRequest::StartGlobalShortcutCapture
+            | ServiceRequest::StartKeyboardCalibrationCapture { .. }
+            | ServiceRequest::MappingKeyCaptureEvents
+            | ServiceRequest::GlobalShortcutCaptureEvents
+            | ServiceRequest::StopMappingKeyCapture
+            | ServiceRequest::StartShortcutCapture
+            | ServiceRequest::ShortcutCaptureEvents
+            | ServiceRequest::StopShortcutCapture
+            | ServiceRequest::MappingRotationStart { .. }
+            | ServiceRequest::MappingRotationRequest { .. }
+            | ServiceRequest::MappingRotationPoll { .. }
+            | ServiceRequest::MappingRotationStop { .. }
+            | ServiceRequest::MappingDeviceStart { .. }
+            | ServiceRequest::MappingDevicePublish { .. }
+            | ServiceRequest::MappingDeviceEvents { .. }
+            | ServiceRequest::MappingGamepadObservationStart { .. }
+            | ServiceRequest::MappingGamepadObservationPoll { .. }
+            | ServiceRequest::MappingGamepadObservationStop { .. }
+            | ServiceRequest::MappingAnalogObservationStart { .. }
+            | ServiceRequest::MappingAnalogObservationPoll { .. }
+            | ServiceRequest::MappingAnalogObservationStop { .. }
+            | ServiceRequest::MappingObservationStart { .. }
+            | ServiceRequest::MappingInputObservationStart { .. }
+            | ServiceRequest::MappingInputObservationPoll { .. }
+            | ServiceRequest::MappingInputObservationStop { .. }
+            | ServiceRequest::MappingObservationPoll { .. }
+            | ServiceRequest::MappingObservationStop { .. }
+            | ServiceRequest::MappingDeviceHypershiftActive { .. }
+            | ServiceRequest::MappingDeviceStop { .. }
+            | ServiceRequest::MappingKeyboardGamingIndicator { .. }
+            | ServiceRequest::StartMacroRecording
+            | ServiceRequest::PrepareOtfmRecorder
+            | ServiceRequest::StartOtfmRecording
+            | ServiceRequest::QueryMacroRecordingStarted
+            | ServiceRequest::MacroRecordingMode
+            | ServiceRequest::MacroRecorderGlobalState
+            | ServiceRequest::SetOtfmMappingsSuspended { .. }
+            | ServiceRequest::MappingOtfmInputStart { .. }
+            | ServiceRequest::MacroRecorderStorageWrite { .. }
+            | ServiceRequest::StopMacroRecording
+            | ServiceRequest::MacroRecordingEvents
+            | ServiceRequest::SuspendMacroMappings
+            | ServiceRequest::ResumeMacroMappings
+            | ServiceRequest::GlobalMode
+            | ServiceRequest::GlobalShortcuts
+            | ServiceRequest::RegisterShortcut { .. }
+            | ServiceRequest::UnregisterShortcut { .. }
+            | ServiceRequest::EnableGlobalShortcuts { .. }
+            | ServiceRequest::ShortcutEvents
+            | ServiceRequest::GlobalShortcutStart { .. }
+            | ServiceRequest::GlobalShortcutPublish { .. }
+            | ServiceRequest::GlobalShortcutPoll { .. }
+            | ServiceRequest::GlobalShortcutStop { .. }
+            | ServiceRequest::MappingExecution { .. }) => self.mapping_request(request),
             ServiceRequest::MouseInputMonitoringStart { owner_guid } => {
                 self.start_mouse_input_monitoring(owner_guid)
             }
@@ -337,6 +351,7 @@ impl NativeRuntime {
             | ServiceRequest::HidNodeDpiStagesWrite { .. }
             | ServiceRequest::HidNodeMouseCurrentDpi { .. }
             | ServiceRequest::HidNodeMouseDynamic { .. }
+            | ServiceRequest::HidNodeMouseRotation { .. }
             | ServiceRequest::HidNodeMouseCurrentPolling { .. }
             | ServiceRequest::HidNodeMouseCurrentPower { .. }
             | ServiceRequest::HidNodeMouseScroll { .. }
@@ -450,6 +465,9 @@ impl NativeRuntime {
             ServiceRequest::DeviceMouseDynamic { target, change } => {
                 device_reads::mouse_dynamic(&target, change.as_ref())
             }
+            ServiceRequest::DeviceMouseRotation { target, change } => {
+                device_reads::mouse_rotation(&target, change.as_ref())
+            }
             ServiceRequest::DeviceMouseCurrentPolling { target, change } => {
                 device_reads::mouse_current_polling(&target, change.as_ref())
             }
@@ -490,6 +508,9 @@ impl NativeRuntime {
             ServiceRequest::SurroundClose { identity } => self.surround.close(&identity),
             ServiceRequest::BleMouseCurrentPower { target, change } => {
                 device_reads::mouse_current_power_ble(&target, &change)
+            }
+            ServiceRequest::BleMouseRotation { target, change } => {
+                device_reads::mouse_rotation_ble(&target, change.as_ref())
             }
             ServiceRequest::ReceiverWirelessStatus {
                 path,
@@ -691,15 +712,15 @@ impl NativeRuntime {
                 if let Some(scope) = self.mapping_scope.as_mut() {
                     if let Err(error) = scope.request(ServiceRequest::Shutdown) {
                         errors.push(format!("Mapping scope cleanup failed: {error:#}"));
-                    } else { self.mapping_scope = None; }
+                    } else {
+                        self.mapping_scope = None;
+                    }
                 }
                 self.app_files.clear();
                 if !errors.is_empty() {
                     bail!("{}", errors.join("；"));
                 }
-                Ok(
-                    json!({"stopped": true, "system_monitor_cleanup": system_monitor_cleanup}),
-                )
+                Ok(json!({"stopped": true, "system_monitor_cleanup": system_monitor_cleanup}))
             }
         }
     }
@@ -744,17 +765,26 @@ fn surround_identity(
 ) -> impl Fn() -> anyhow::Result<()> + use<> {
     let container = identity.container_id().to_owned();
     let product = u32::from(identity.product());
-    move || native_target_with_scope(&container, Some(product), NativeTargetScope::Surround).map(|_| ())
+    move || {
+        native_target_with_scope(&container, Some(product), NativeTargetScope::Surround).map(|_| ())
+    }
 }
 #[derive(Clone, Copy)]
-enum NativeTargetScope { Direct, Surround }
+enum NativeTargetScope {
+    Direct,
+    Surround,
+}
 /// Native container getters require a real, uniquely observed physical device.
 /// This uses the same current USB enumeration and product identity projection
 /// as discovery; arbitrary CLI strings and local profiles are not observations.
 fn native_target(container: &str, expected_product: Option<u32>) -> anyhow::Result<(u32, Value)> {
     native_target_with_scope(container, expected_product, NativeTargetScope::Direct)
 }
-fn native_target_with_scope(container: &str, expected_product: Option<u32>, scope: NativeTargetScope) -> anyhow::Result<(u32, Value)> {
+fn native_target_with_scope(
+    container: &str,
+    expected_product: Option<u32>,
+    scope: NativeTargetScope,
+) -> anyhow::Result<(u32, Value)> {
     use razer_device::device_identity;
     use razer_device::device_identity::IdentityLookup;
     anyhow::ensure!(
@@ -796,9 +826,11 @@ fn native_target_with_scope(container: &str, expected_product: Option<u32>, scop
         bail!("物理 PID {physical_pid} 没有唯一的当前源码产品归属");
     };
     anyhow::ensure!(
-        !identity.is_ble && (!identity.is_dongle || matches!(scope, NativeTargetScope::Surround)
-            && matches!(identity.product_id, 1392 | 1442)
-            && physical_pid == identity.product_id),
+        !identity.is_ble
+            && (!identity.is_dongle
+                || matches!(scope, NativeTargetScope::Surround)
+                    && matches!(identity.product_id, 1392 | 1442)
+                    && physical_pid == identity.product_id),
         "接收器或 BLE PID 不能冒充直接原生设备"
     );
     anyhow::ensure!(

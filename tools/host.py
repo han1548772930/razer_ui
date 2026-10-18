@@ -2954,6 +2954,89 @@ def verified_host_native(audit, suffix):
     return row, {"original": row, "official_package": packages[0], "acquisition": audit.families.identity(receipt_path)}
 
 
+def receiver_hardware_dispatch_proof(retained):
+    """Resolve the queued callback's adjusted this pointer against verified PE bytes."""
+    functions = {int(row["capture"]["rva"], 16): row["capture"]
+                 for row in retained["complete_functions"]}
+    instructions = {int(row["rva"], 16): bytes.fromhex(row["bytes"])
+                    for function in functions.values() for row in function["assembly"]}
+    for rva, expected in ((0x9d7f4, "488b4620"), (0x9d7f8, "488b4e28"),
+                          (0x9d7fc, "4883e980"), (0x6a470, "488b01"),
+                          (0x6a473, "488b4018")):
+        if instructions.get(rva) != bytes.fromhex(expected):
+            raise ValueError("Receiver queued hardware callback this adjustment or slot differs: " + hex(rva))
+    base = int(retained["image_base"], 16)
+    regions = {row["role"]: bytes.fromhex(row["raw_hex"])
+               for row in retained["verified_data_regions"]}
+    dispatch = []
+    for name, constructor, lea, table, target in (
+        ("input_base", 0x64e8c, 0x64ef0, 0x2e5ac8, 0x2a4ac0),
+        ("usb", 0xa89f0, 0xa8a5a, 0x2e7e38, 0xa8de0),
+        ("ble", 0x52158, 0x521c2, 0x2e3fd8, 0x53c70),
+        ("external", 0x6319c, 0x63206, 0x2e5668, 0x64a60),
+        ("os_hook", 0xa6b74, 0xa6bde, 0x2e7958, 0x549d0),
+    ):
+        encoded = instructions.get(lea, b"")
+        if (constructor not in functions or len(encoded) != 7 or encoded[:3] != b"\x48\x8d\x05"
+                or lea + 7 + struct.unpack_from("<i", encoded, 3)[0] != table
+                or instructions.get(lea + 7) != bytes.fromhex("48898680000000")):
+            raise ValueError("Receiver hardware callback constructor subobject differs: " + name)
+        raw = regions.get(name + "_hardware_vtable", b"")
+        if len(raw) != 32:
+            raise ValueError("Receiver hardware callback table is truncated: " + name)
+        if (struct.unpack_from("<Q", raw, 16)[0] - base != 0x6a330
+                or struct.unpack_from("<Q", raw, 24)[0] - base != target):
+            raise ValueError("Receiver hardware callback virtual dispatch differs: " + name)
+        dispatch.append({"device_type": name, "constructor_rva": hex(constructor),
+            "subobject_offset": 128, "vtable_rva": hex(table), "slot_byte_offset": 24,
+            "queued_target_rva": hex(target), "actual_constructor_and_pe_bytes_verified": True})
+    return {"bound_object_adjustment": 128, "queued_thunk_rva": "0x9d7d0",
+        "virtual_thunk_rva": "0x6a470", "virtual_slot_bytes": 24, "dispatch": dispatch}
+
+
+def retain_receiver_hardware_producer(audit):
+    """Retain the exact collection, adjusted callback, report classifier and serializer."""
+    original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
+    retained = audit.native_slice(original, ("registerHardwareEvent", "unregisterHardwareEvent",
+        "setHardwareEventCallback"), depth=0,
+        rvas=(0x7610, 0x7800, 0x58790, 0x64e8c, 0x52158, 0x6319c, 0xa6b74, 0xa89f0,
+              0x6b7c0, 0x6b9e0, 0x6bbd0, 0x6bde0, 0xab7f0, 0x11a702, 0x119de6,
+              0xac850, 0x123720, 0x122fd8, 0x1232f8, 0x123600, 0x1244e0,
+              0x6a330, 0x9d7d0, 0x6a470, 0xa8de0, 0x53c70, 0x64a60, 0x549d0,
+              0xe5a74, 0xe5b6c, 0x7f43e, 0x9e490, 0x18db0, 0x51ac0, 0x2b770,
+              0x7f9fe, 0x7fc20, 0x2b8b0, 0x7bb0, 0x7de0),
+        regions=tuple({"role": role + "_hardware_vtable", "rva": rva, "bytes": 32}
+            for role, rva in (("input_base", 0x2e5ac8), ("usb", 0x2e7e38),
+                             ("ble", 0x2e3fd8), ("external", 0x2e5668), ("os_hook", 0x2e7958))))
+    if retained["failures"] or retained["decompiler_failures"]:
+        raise ValueError("Receiver hardware producer native functions are unavailable")
+    dispatch = receiver_hardware_dispatch_proof(retained)
+    sources = verified_host_owners(audit, ("electron/modules/mapping_engine/win/index.js",))
+    source = sources["electron/modules/mapping_engine/win/index.js"]["original"]
+    owners = {}
+    for name in ("createCbHardwareEvent", "createCbDeviceEvent", "registerHardwareEvent",
+                 "unregisterHardwareEvent", "setHardwareEventCallback", "createDeviceKey",
+                 "getUSBDeviceInfoFromDeviceMap"):
+        _, owners[name] = audit.callable_member("receiver_host_" + name, source,
+            audit.tree(source).root_node, name)
+    callback = audit.owners[owners["createCbHardwareEvent"]]["body"]
+    if any(token not in callback for token in ('0===+t', 'hardwareEventList.includes(e.getURL())',
+            'data:{buffer:JSON.parse(s)}', 'e.send("hardwareevent"')):
+        raise ValueError("Receiver host hardware callback type/identity/raw-byte route differs")
+    return {**provenance, "native": retained, "verified_callback_dispatch": dispatch,
+        "host_sources": sources, "host_owners": owners, "complete_host_owners": audit.owners,
+        "semantics": {
+            "collections": "ab7f0 -> 11a702 -> 119de6 enumerates matching physical ContainerId/PID across HID collections. ac850 -> 123720 creates the reader; 1232f8 uses capacity100, 123600 passes actual completion length, 1244e0 copies exactly those bytes.",
+            "adjusted_dispatch": "6a330 binds the base object; 9d7d0 adds128 before 6a470 invokes virtual slot24. The callback table is the +128 subobject: USB A8DE0, BLE53C70, external64A60, OS-hook549D0. Base table2e5a18 slot24/662b0 is not this hardware dispatch.",
+            "classification": "USB A8DE0 selects raw[bluetoothLE] using E5B6C; class0..6 follows the respective input handler, class7 stream-controller80738, class8 hardware7f43e. Hardware bytes are never stripped. Missing descriptor/report binding selects class8; BLE and external have their separately retained dispatch branches.",
+            "registration": "InputDevice registration uses the +136 interface: 6b7c0 stores registered at base640; 6bbd0 queues6bde0 to store callbacks at base648/704. 7f43e requires the global enabled bit, registered bit and callback, then posts an owned copy or the explicitly configured interval batch.",
+            "callback": "7f43e -> 9e490 -> 18db0 invokes the callback bound by2ba40/51ac0 to2b770. 2b770 serializes every unsigned byte, supplies type0 and the captured timestamp. Host createCbHardwareEvent accepts type0, resolves physical identity and current subscriber URL, then publishes the raw buffer. createCbDeviceEvent accepts type5 and is a separate notification path.",
+            "product_join": "Legacy product default reportIDs map4 to razerKey and5 to hardwareEvent. Published DualLink descriptors also merge slave reportIDs and add a slave key report. Defaults alone do not establish the live descriptor, parser override or product/version initialization state."},
+        "limitations": ["The selected native producer is statically resolved; live product descriptors and current registration/parser branches must still be joined before changing a generic event adapter.",
+            "No vendor export, device I/O or window was executed; full native and page acceptance remains unverified."],
+        "target_execution": False, "runtime_acceptance": "unverified"}
+
+
 def retain_global_shortcut_clock(audit):
     original, provenance = verified_host_native(audit, "CommonDLL/mapping_engine.dll")
     retained = audit.native_slice(original, [], depth=0,

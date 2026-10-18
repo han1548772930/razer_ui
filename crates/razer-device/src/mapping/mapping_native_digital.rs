@@ -16,7 +16,7 @@ use crate::{
 use serde_json::Value;
 use std::{collections::BTreeMap, fmt};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum JoystickGroup {
     Axes,
     RotationAxes,
@@ -33,7 +33,7 @@ impl JoystickGroup {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum NativeDigitalOutput {
     /// Native parser keeps a DWORD button number. The event handler ignores
     /// numbers outside 1..=24. Flag 0 increments, 1 decrements, others do nothing.

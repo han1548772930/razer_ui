@@ -290,7 +290,8 @@ impl GamerRoomPage {
                             .hover(|view| view.text_color(rgb(0x44d62c)))
                             .child(i18n::t("LEARN_MORE"))
                             .child(
-                                Icon::default()
+                                razer_assets::resource_svg()
+                                    .flex_shrink_0()
                                     .path("synapse/gr-external-link.svg")
                                     .w(surface::css(21.))
                                     .h(surface::css(20.)),

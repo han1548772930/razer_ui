@@ -125,11 +125,52 @@ class ResourceScopeTests(unittest.TestCase):
             with self.subTest(source=source, owner=owner):
                 self.assertIn("custom_image_source", [row["kind"] for row in self.inspect(source, owner)["violations"]])
 
-    def test_external_svg_path_is_rejected_while_svg_path_is_not(self):
-        ordinary = self.inspect("fn view() { svg().path(\"synapse/icon.svg\"); }")
+    def test_external_svg_path_and_direct_svg_pending_bypass_are_rejected(self):
+        ordinary = self.inspect("fn view() { razer_assets::resource_svg().path(\"synapse/icon.svg\"); }")
         self.assertEqual(ordinary["violations"], [])
         result = self.inspect("fn view() { svg().external_path(\"synapse/icon.svg\"); }")
         self.assertEqual([v["kind"] for v in result["violations"]], ["external_svg_asset"])
+
+    def test_svg_pending_owner_aliases_dynamic_paths_and_local_bindings(self):
+        for call in ('svg().path(path)', 'gpui_kit::svg().size_full().path(path)',
+                     'raw().path(if active { first } else { second })',
+                     'Icon::default().path(path)', 'Glyph::new(icon).path(path)',
+                     'icon.path(path)'):
+            source = ('use gpui_kit::svg as raw; use gpui_kit::component::Icon as Glyph; '
+                      'fn view() { let icon = raw(); ' + call + '; }')
+            for owner in ('crates/razer-pages/src/features/help/help_page.rs',
+                          'crates/razer-dashboard/src/dashboard_device.rs',
+                          'crates/consumer/src/resource_svg.rs'):
+                result = self.inspect(source, owner)
+                self.assertEqual([v['kind'] for v in result['violations']], ['direct_svg_resource'])
+                self.assertEqual(result['violations'][0]['resource_owner'], resource_scope._SVG_OWNER)
+            self.assertFalse(self.inspect(source, resource_scope._SVG_OWNER)['violations'])
+        self.assertFalse(self.inspect('fn view() { model.path(path); svg().data(bytes); }')['violations'])
+        root = Path(__file__).resolve().parent.parent
+        actual = root / resource_scope._SVG_OWNER
+        self.assertFalse(resource_scope.inspect_source(actual.read_bytes(),
+                         owner=resource_scope._SVG_OWNER, rust_parser=self.parser)['violations'])
+
+    def test_svg_in_macro_is_explicitly_unresolved(self):
+        result = self.inspect('fn view() { custom!(svg().path(path)); }')
+        self.assertEqual([v['kind'] for v in result['violations']], ['svg_macro_requires_audit'])
+
+    def test_svg_binding_shadowing_follows_the_actual_lexical_owner(self):
+        owner = "crates/razer-pages/src/features/help/help_page.rs"
+        for source in (
+            'fn view() { let icon = svg(); let icon = icon.size_full(); icon.path(path); }',
+            'fn view() { let icon = svg(); let callback = || icon.path(path); }',
+        ):
+            with self.subTest(source=source):
+                self.assertEqual([v['kind'] for v in self.inspect(source, owner)['violations']],
+                                 ['direct_svg_resource'])
+        for source in (
+            'fn view() { let icon = svg(); let callback = |icon: Model| icon.path(path); }',
+            'fn view() { let icon = svg(); let callback = |icon| icon.path(path); }',
+            'fn view() { let icon = svg(); { let icon = model; icon.path(path); } }',
+        ):
+            with self.subTest(source=source):
+                self.assertFalse(self.inspect(source, owner)['violations'])
 
     def test_filtered_svg_uses_the_existing_window_owner_and_verified_resource_bytes(self):
         owner = "crates/razer-assets/src/image_cache.rs"

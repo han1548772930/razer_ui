@@ -9,7 +9,7 @@ pub enum MovementMode {
     Relative,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Keyboard {
     pub scancode: u16,
     pub flag: u16,
@@ -19,7 +19,7 @@ pub struct Keyboard {
     pub release_after_ms: Option<u32>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Mouse {
     pub id: u16,
     pub data: u16,
@@ -39,14 +39,14 @@ impl Mouse {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AudioTarget {
     All,
     Microphone,
     Speaker,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum AudioAction {
     Set {
         target: AudioTarget,
@@ -59,14 +59,14 @@ pub enum AudioAction {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Launch {
     pub path: String,
     pub path_to_check: String,
     pub hidden: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Event {
     Keyboard(Keyboard),
     Mouse(Mouse),

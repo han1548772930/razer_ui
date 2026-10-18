@@ -618,7 +618,8 @@ fn artwork_icon(kind: &'static str, id: &str) -> BaseButton {
                 .text_color(ArtworkColors::selected())
         })
         .child(
-            gpui_kit::component::Icon::default()
+            razer_assets::resource_svg()
+                .flex_shrink_0()
                 .path(SharedString::from(format!(
                     "synapse/audio-oled-artwork-{kind}.svg"
                 )))

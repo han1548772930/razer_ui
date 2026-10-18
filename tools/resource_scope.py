@@ -17,6 +17,7 @@ _ASSET_OWNER_PREFIX = "crates/razer-assets/src/"
 _LOCAL_IMPORTED_ASSET = "crates/razer-assets/src/local_image.rs"
 _SHARED_CUSTOM_IMAGE = "crates/razer-app-pages/src/services/module_service_rows.rs"
 _WINDOW_IMAGE_CACHE = "crates/razer-assets/src/image_cache.rs"
+_SVG_OWNER = "crates/razer-assets/src/resource_svg.rs"
 
 
 def parser(root):
@@ -39,7 +40,7 @@ def inspect_source(raw, *, owner, rust_parser):
         raw, offset = prefix + raw + b";", len(prefix)
 
     aliases = {name: name for name in ("deferred", "deferred_resource", "Popup", "Popover", "Dialog", "BasePopup", "BaseDialog",
-                                      "resource_scope", "ResourceLayer")}
+                                      "resource_scope", "ResourceLayer", "svg", "Icon", "Svg")}
     edges, violations, asset_edges, tests = [], [], [], 0
 
     def text(node):
@@ -72,6 +73,34 @@ def inspect_source(raw, *, owner, rust_parser):
         while (member := method(node)) is not None:
             node = member[1]
         return node
+
+    def raw_svg_receiver(node, seen=frozenset()):
+        node = receiver_root(node)
+        if node.type == "call_expression":
+            parts = text(node.child_by_field_name("function")).split("::")
+            return (aliases.get(parts[-1]) == "svg" or
+                    len(parts) > 1 and aliases.get(parts[-2]) in ("Icon", "Svg")
+                    and parts[-1] in ("new", "default", "empty"))
+        if node.type != "identifier" or node.start_byte in seen:
+            return False
+        name = text(node)
+        scope = node.parent
+        while scope is not None and scope.type != "function_item":
+            if scope.type == "closure_expression":
+                parameters = scope.child_by_field_name("parameters")
+                for parameter in children(parameters) if parameters is not None else ():
+                    pattern = parameter.child_by_field_name("pattern") or parameter
+                    if any(part.type == "identifier" and text(part) == name for part in walk(pattern)):
+                        return False
+            if scope.type == "block":
+                for binding in reversed(children(scope)):
+                    if binding.end_byte >= node.start_byte or binding.type != "let_declaration":
+                        continue
+                    if text(binding.child_by_field_name("pattern")) == name:
+                        value = binding.child_by_field_name("value")
+                        return value is not None and raw_svg_receiver(value, seen | {node.start_byte})
+            scope = scope.parent
+        return False
 
     def constructor(node):
         node = receiver_root(node)
@@ -177,10 +206,10 @@ def inspect_source(raw, *, owner, rust_parser):
         if not valid:
             violations.append(row)
 
-    def asset_edge(node, kind, valid, detail=None):
+    def asset_edge(node, kind, valid, detail=None, resource_owner=OWNER):
         row = {"owner": owner, "line": raw[:node.start_byte].count(b"\n") + 1,
                "byte_start": node.start_byte - offset, "byte_end": node.end_byte - offset,
-               "kind": kind, "resource_owner": OWNER, "valid": valid,
+               "kind": kind, "resource_owner": resource_owner, "valid": valid,
                "function": context(node)}
         if detail:
             row["detail"] = detail
@@ -238,12 +267,15 @@ def inspect_source(raw, *, owner, rust_parser):
         # `Svg::external_path` invokes gpui-fast's SvgAsset loader, whose
         # completed error is cached by GPUI.  The application has no valid
         # external-path owner; keeping this check explicit prevents a future
-        # remote alias from silently bypassing ResourceImageCache.  Ordinary
-        # `svg().path(...)` intentionally remains allowed: gpui-fast resolves
-        # it through the configured AssetSource and runtime refresh events.
+        # remote alias from silently bypassing ResourceImageCache.
         if member is not None and member[0] == "external_path":
             asset_edge(node, "external_svg_asset", owner.startswith(_ASSET_OWNER_PREFIX),
-                       "external_path uses gpui-fast SvgAsset; use svg().path or the shared loader")
+                       "external_path uses gpui-fast SvgAsset; use resource_svg or the shared loader")
+
+        if member is not None and member[0] == "path" and raw_svg_receiver(member[1]):
+            asset_edge(node, "direct_svg_resource", owner == _SVG_OWNER,
+                       "raw SVG paint treats pending bytes as an error; use resource_svg",
+                       resource_owner=_SVG_OWNER)
 
         # Custom image sources are valid only when their closure is visibly
         # connected to the shared loader, or when they are the documented OLED
@@ -340,6 +372,13 @@ def inspect_source(raw, *, owner, rust_parser):
         tokens = [n for n in walk(node) if overlay_token(n)]
         if tokens:
             edge(node, "overlay_macro_requires_audit", False, sorted(set(text(n) for n in tokens)))
+        svg_tokens = [n for n in walk(node) if n.type == "identifier"
+                      and aliases.get(text(n)) == "svg" and argument_group(next_token(n))
+                      and text(n.prev_sibling) != "."]
+        if svg_tokens and owner != _SVG_OWNER:
+            asset_edge(node, "svg_macro_requires_audit", False,
+                       "Macro SVG expressions require an explicit resource-path audit",
+                       resource_owner=_SVG_OWNER)
     return {"edges": edges, "asset_edges": asset_edges, "violations": violations,
             "test_edges": tests}
 
@@ -353,7 +392,9 @@ def audit_sources(root, sources=None):
               "test_edges": 0,
               "scope": "Rust call AST, overlay ownership, and image-loader bypass diagnostics",
               "limitations": ["No Rust type checking or macro expansion; compilation remains separate",
-                              "Indirect callback or builder indirection requires an explicit audit"],
+                              "Indirect callback or builder indirection requires an explicit audit",
+                              "SVG constructors, import aliases and preceding local bindings are checked; field/function-return indirection requires an explicit audit",
+                              "Dynamic path arguments are checked by their SVG receiver; macro SVG constructors are reported as unresolved"],
               "target_execution": False}
     for path in sources:
         path = Path(path).resolve()

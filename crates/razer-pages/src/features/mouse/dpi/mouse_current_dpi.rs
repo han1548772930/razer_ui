@@ -888,6 +888,35 @@ impl MouseProductWorkspace {
     pub fn apply_current_dpi_profile(&mut self, cx: &mut Context<Self>) {
         self.submit_current_dpi(Edit::Profile, cx);
     }
+
+    /// Current158 mapping callbacks distinguish the profile stage task from
+    /// temporary clutch DPI. Clutch never becomes a saved profile value.
+    pub(super) fn submit_receiver_callback_dpi(
+        &mut self,
+        temporary: Option<DpiPair>,
+        persist: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if self.spec.product_id != 158 || self.current_dpi.macro_recording {
+            return;
+        }
+        let Some(scope) = self.mouse_polling_scope(cx) else { return };
+        let Some(stages) = self.current_dpi_draft() else { return };
+        if persist { self.current_dpi.record_edit(); }
+        self.current_dpi.sequence = self.current_dpi.sequence.wrapping_add(1);
+        let request = MouseCurrentDpiRequested {
+            scope,
+            sequence: self.current_dpi.sequence,
+            profile: persist.then(|| self.draft.clone()),
+            change: Some(DpiChange { stages: temporary.is_none().then_some(stages), active: temporary, profile_guid: None, initialize: false }),
+            read: false,
+            connection_key: self.current_dpi.connection_key.clone(),
+            edit_revision: self.current_dpi.edit_revision,
+            selection: if temporary.is_some() { None } else { self.current_dpi_selection() },
+            valid: Arc::new(AtomicBool::new(true)),
+        };
+        self.enqueue_current_dpi(request, cx);
+    }
     fn current_dpi_draft(&self) -> Option<DpiStagesDraft> {
         if !self.current_dpi_profile_known() {
             return None;
@@ -1091,6 +1120,8 @@ impl MouseProductWorkspace {
             return;
         }
         let current = self.current_dpi_request_matches(request, cx);
+        let temporary_clutch = self.spec.product_id == 158 && request.profile.is_none()
+            && request.change.as_ref().is_some_and(|change| change.active.is_some());
         let initialized = current
             && result
                 .as_ref()
@@ -1102,7 +1133,7 @@ impl MouseProductWorkspace {
             match result {
                 Ok(Some(report)) => {
                     let mut projection = request.clone();
-                    if (projection.selection.is_none()
+                    if !temporary_clutch && (projection.selection.is_none()
                         || projection.is_read()
                             && razer_storage::host_local_profile::supported(self.spec.product_id))
                         && self.current_dpi.projection_current(request)
@@ -1116,7 +1147,7 @@ impl MouseProductWorkspace {
                 Err(error) => {
                     self.current_dpi.read_error = Some(error);
                     self.current_dpi.observed = Observation::default();
-                    if let Some(updates) = self
+                    if !temporary_clutch && let Some(updates) = self
                         .current_dpi
                         .observe_rows(request, [RowUpdate::Unobserved; 5])
                     {

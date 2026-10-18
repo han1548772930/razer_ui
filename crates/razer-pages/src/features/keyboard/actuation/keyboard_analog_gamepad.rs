@@ -30,8 +30,9 @@ pub(super) struct State {
     pub(super) key_pressed: bool,
 }
 
-/// Publish only host callback values; None means no observed controller data.
-#[derive(Clone, Copy)]
+/// Mapping output callback values, not physical controller readback.
+/// None means the current owner has not published an output sample.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct KeyboardGamepadTesterObservation {
     pub left_thumb_x: i16,
     pub left_thumb_y: i16,

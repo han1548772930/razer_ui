@@ -27,6 +27,7 @@ pub(super) struct State {
     window: Option<AnyWindowHandle>,
     latest_gaming_mode: Option<Value>,
     latest_connected: bool,
+    ready: bool,
 }
 impl State {
     pub(super) fn new(window: &Window) -> Self {
@@ -37,8 +38,12 @@ impl State {
     }
 }
 impl KeyboardProductWorkspace {
+    pub(super) fn snap_mapping_ready(&self) -> bool {
+        self.legacy_mapping.ready && !self.legacy_mapping.stopping
+    }
     pub fn finish_mapping_service(&mut self) {
         self.legacy_mapping.stopping = true;
+        self.legacy_mapping.ready = false;
         self.legacy_mapping.held_brightness.clear();
         if let Some(owner) = &self.legacy_mapping.owner {
             if let Err(error) = owner.request_stop_after_pending() {
@@ -198,6 +203,7 @@ impl KeyboardProductWorkspace {
             return;
         }
         self.legacy_mapping.owner = None;
+        self.legacy_mapping.ready = false;
         self.legacy_mapping.stopping = false;
         self.legacy_mapping.poll = None;
         self.legacy_mapping.epoch = self.legacy_mapping.epoch.wrapping_add(1);
@@ -269,7 +275,11 @@ impl KeyboardProductWorkspace {
                         let mut running = true;
                         for reply in messages {
                             match reply {
-                                Reply::Ready => {}
+                                Reply::Ready => {
+                                    this.legacy_mapping.ready = true;
+                                    this.sync_snap_observation(cx);
+                                    this.sync_analog_observation(cx);
+                                }
                                 Reply::Published {
                                     revision,
                                     result,
@@ -282,6 +292,11 @@ impl KeyboardProductWorkspace {
                                         Ok(()) => {
                                             this.legacy_mapping.published = Some(revision);
                                             this.legacy_mapping.error = None;
+                                            if let Some(document) =
+                                                this.legacy_mapping.document.clone()
+                                            {
+                                                this.gamepad_mapping_published(&document, cx);
+                                            }
                                         }
                                         Err(error) => this.mapping_failure(error, cx),
                                     }
@@ -299,8 +314,18 @@ impl KeyboardProductWorkspace {
                                         }
                                     }
                                 }
-                                Reply::Failed(error) => this.mapping_failure(error, cx),
+                                Reply::Failed(error) => {
+                                    this.legacy_mapping.ready = false;
+                                    this.stop_snap_observation(cx);
+                                    this.stop_analog_observation(cx);
+                                    this.suspend_gamepad_mapping(cx);
+                                    this.mapping_failure(error, cx);
+                                }
                                 Reply::Stopped(result) => {
+                                    this.legacy_mapping.ready = false;
+                                    this.stop_snap_observation(cx);
+                                    this.stop_analog_observation(cx);
+                                    this.suspend_gamepad_mapping(cx);
                                     this.legacy_mapping.owner = None;
                                     this.legacy_mapping.held_brightness.clear();
                                     if let Err(error) = result {
@@ -342,6 +367,7 @@ impl KeyboardProductWorkspace {
         if self.legacy_mapping.stopping {
             return;
         }
+        self.suspend_gamepad_mapping(cx);
         let Some(document) = self.legacy_mapping.document.as_ref() else {
             return;
         };

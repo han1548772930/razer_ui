@@ -10,18 +10,22 @@ use anyhow::{Context as _, Result, bail, ensure};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[path = "mapping_native_action/interrupt.rs"]
+mod interrupt;
+pub use interrupt::matches_interrupted_macro;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ModeScope {
     Global,
     Interdevice,
     Local,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SystemAction {
     Hibernate,
     Sleep,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DisplayAction {
     Brightness(u8),
     BrightnessDown(u8),
@@ -34,7 +38,7 @@ pub enum DisplayAction {
 /// Native mode/copy-text/unrecognized-output objects retain their JSON for
 /// the verified notification boundary. Consumers must decode their own domain
 /// contract; this payload does not claim an action was performed.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct NotificationPayload(Box<str>);
 impl NotificationPayload {
     fn new(value: &Value) -> Result<Self> {
@@ -45,19 +49,19 @@ impl NotificationPayload {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Branch {
     pub input: Option<Input>,
     pub output: Output,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Trigger {
     pub actuation: u16,
     pub output: Output,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum Output {
     Event(Event),
     Digital(NativeDigitalOutput),
@@ -242,6 +246,12 @@ pub fn device_tables(
 }
 
 impl Output {
+    /// 909DA uses the retained input as passthrough output, after the analog
+    /// lookup has converted AnalogKey into Keyboard through its +104 method.
+    pub fn from_passthrough(input: &Input) -> Result<Self> {
+        parse_output(&input.to_native_json())
+    }
+
     fn equals_input(&self, input: &Input) -> bool {
         use crate::mapping_native_lookup::InputKind;
         match (self, &input.kind) {

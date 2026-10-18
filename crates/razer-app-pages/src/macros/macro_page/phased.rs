@@ -30,76 +30,39 @@ const PHASES: [(&str, &str, &str); 3] = [
     ),
 ];
 
+/// T9 changes only the moved object identities. A phase-header drop supplies
+/// its phase directly; an ordinary row drop checks its immediate neighbors.
+/// Assignments are applied in moved-row order before the stable phase sort.
+pub(super) fn dragged_phase_assignments(
+    actions: &[ActionItem],
+    moved: &[usize],
+    order: &[usize],
+    explicit_phase: Option<u8>,
+) -> Vec<(usize, u8)> {
+    let mut planned: Vec<_> = actions.iter().map(|item| item.phase).collect();
+    let mut assignments = Vec::new();
+    for &old_index in moved {
+        let Some(index) = order.iter().position(|&old| old == old_index) else {
+            continue;
+        };
+        let phase = explicit_phase.or_else(|| {
+            index
+                .checked_sub(1)
+                .and_then(|previous| planned[order[previous]])
+                .or_else(|| order.get(index + 1).and_then(|&next| planned[next]))
+        });
+        if let Some(phase) = phase {
+            planned[old_index] = Some(phase);
+            assignments.push((old_index, phase));
+        }
+    }
+    assignments
+}
+
 impl MacroPage {
-    /// Move a drag payload to a phase boundary and mark the moved rows with
-    /// that phase.  The regular row drop handler only reorders rows; phase
-    /// drops additionally update the source phase field so the rows remain in
-    /// the selected section after the reorder.
     pub fn drop_phase_actions(&mut self, drag: &ActionDrag, phase: u8, cx: &mut Context<Self>) {
         let boundary = self.phase_insertion_boundary(phase);
-        if self.recording_busy()
-            || self.record_ui.open
-            || self.tutorial != Tutorial::Complete
-            || drag.page != cx.entity_id()
-            || drag.document != self.current
-            || self.actions_for != self.current
-            || self.actions() != drag.baseline.as_slice()
-            || !drag.allows(boundary)
-        {
-            return;
-        }
-        let before = self.actions.clone();
-        let undo_len = self.undo.len();
-        let old_len = self.actions.len();
-        let insertion = boundary.min(old_len);
-        let moved: Vec<_> = drag
-            .indices
-            .iter()
-            .filter_map(|&index| drag.baseline.get(index).cloned())
-            .collect();
-        self.drop_actions(drag, boundary, cx);
-        let order_changed = self.undo.len() > undo_len;
-
-        // Palette drops create fresh rows at the insertion point. Existing
-        // row drops are matched by value; duplicate rows are harmless because
-        // all matching moved rows receive the same phase.
-        let mut phase_changed = false;
-        if drag.palette_kind.is_some() {
-            let added = self.actions.len().saturating_sub(old_len);
-            for item in self.actions.iter_mut().skip(insertion).take(added) {
-                if item.phase != Some(phase) {
-                    item.phase = Some(phase);
-                    phase_changed = true;
-                }
-            }
-        } else if !moved.is_empty() {
-            let mut used = vec![false; self.actions.len()];
-            for wanted in moved {
-                if let Some((index, item)) = self
-                    .actions
-                    .iter_mut()
-                    .enumerate()
-                    .find(|(index, item)| !used[*index] && **item == wanted)
-                {
-                    if item.phase != Some(phase) {
-                        item.phase = Some(phase);
-                        phase_changed = true;
-                    }
-                    used[index] = true;
-                }
-            }
-        }
-        if phase_changed {
-            // drop_actions already recorded the pre-move snapshot when the
-            // order changed. For a phase-only move, create that snapshot here
-            // so undo restores both the rows and their phase assignment.
-            if !order_changed {
-                self.undo.push(before);
-            }
-            self.clear_action_editors();
-            self.redo.clear();
-            cx.notify();
-        }
+        self.drop_actions_in_phase(drag, boundary, Some(phase), cx);
     }
 
     pub fn active_phase(&self) -> Option<u8> {
@@ -147,41 +110,6 @@ impl MacroPage {
             .iter()
             .rposition(|item| item.phase.is_some_and(|p| p < phase))
             .map_or(0, |index| index + 1)
-    }
-
-    /// T9 assigns an ordinary row drop the phase of the row immediately
-    /// before it, falling back to the next defined phase. The assignment is
-    /// performed in moved-row order, then Gs applies the stable phase sort.
-    pub fn dragged_phase_assignments(
-        &self,
-        drag: &ActionDrag,
-        target: usize,
-        order: &[usize],
-    ) -> Vec<(usize, u8)> {
-        if self.current_macro_type() != MacroType::Phased || drag.palette_kind.is_some() {
-            return Vec::new();
-        }
-        // T9 treats dropping into the selected group as a no-op.
-        if target > 0 && drag.indices.contains(&(target - 1)) {
-            return Vec::new();
-        }
-        let mut planned: Vec<_> = self.actions.iter().map(|item| item.phase).collect();
-        let mut assignments = Vec::new();
-        for &old_index in &drag.indices {
-            let Some(index) = order.iter().position(|&old| old == old_index) else {
-                continue;
-            };
-            let phase = order[..index]
-                .iter()
-                .rev()
-                .find_map(|&old| planned[old])
-                .or_else(|| order[index + 1..].iter().find_map(|&old| planned[old]));
-            if let Some(phase) = phase.filter(|phase| *phase <= 2) {
-                planned[old_index] = Some(phase);
-                assignments.push((old_index, phase));
-            }
-        }
-        assignments
     }
 
     pub fn phase_row_offset(&self, index: usize) -> f32 {
@@ -405,16 +333,19 @@ impl MacroPage {
                                             .active(|s| s.opacity(0.7))
                                             .child(
                                                 div().size(css(24.)).child(
-                                                    Icon::default()
+                                                    razer_assets::resource_svg()
+                                                        .flex_shrink_0()
                                                         .path(if chevron_hovered {
                                                             "synapse/macro/phase-chevron-hover.svg"
                                                         } else {
                                                             "synapse/macro/phase-chevron.svg"
                                                         })
                                                         .size(css(24.))
-                                                        .transform(Transformation::rotate(
-                                                            radians(angle.to_radians()),
-                                                        )),
+                                                        .with_transformation(
+                                                            Transformation::rotate(radians(
+                                                                angle.to_radians(),
+                                                            )),
+                                                        ),
                                                 ),
                                             )
                                             .on_hover(move |value, _, cx| {
@@ -659,4 +590,61 @@ fn phase_help(phase: usize, key: &'static str, window: &mut Window, cx: &mut App
             )
         })
         .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ActionItem, ActionKind, dragged_phase_assignments};
+
+    fn row(phase: Option<u8>) -> ActionItem {
+        let mut row = ActionItem::new(ActionKind::Text);
+        row.value = "same contents".into();
+        row.phase = phase;
+        row
+    }
+
+    #[test]
+    fn header_drop_changes_only_the_moved_duplicate_identity() {
+        let before = vec![row(Some(0)), row(Some(0)), row(Some(1))];
+        let assignments = dragged_phase_assignments(&before, &[1], &[0, 1, 2], Some(2));
+        assert_eq!(assignments, [(1, 2)]);
+        let mut after = before.clone();
+        for (index, phase) in assignments {
+            after[index].phase = Some(phase);
+        }
+        assert_eq!(after[0].phase, Some(0));
+        assert_eq!(after[1].phase, Some(2));
+        assert_eq!(before[1].phase, Some(0));
+    }
+
+    #[test]
+    fn row_drop_reads_immediate_neighbors_in_moved_row_order() {
+        let actions = vec![
+            row(Some(0)),
+            row(None),
+            row(Some(2)),
+            row(Some(2)),
+            row(Some(1)),
+        ];
+        assert_eq!(
+            dragged_phase_assignments(&actions, &[2, 3], &[0, 1, 2, 3, 4], None),
+            [(2, 2), (3, 2)]
+        );
+        assert_eq!(
+            dragged_phase_assignments(&actions, &[2, 3], &[0, 2, 3, 1, 4], None),
+            [(2, 0), (3, 0)]
+        );
+    }
+
+    #[test]
+    fn row_drop_does_not_infer_a_phase_across_unassigned_neighbors() {
+        let actions = vec![
+            row(Some(0)),
+            row(None),
+            row(Some(2)),
+            row(None),
+            row(Some(1)),
+        ];
+        assert!(dragged_phase_assignments(&actions, &[2], &[0, 1, 2, 3, 4], None).is_empty());
+    }
 }

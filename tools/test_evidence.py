@@ -94,6 +94,192 @@ class SemanticQueryGapTests(unittest.TestCase):
                                  "typed_maintenance_regeneration_unverified")
 
 
+class NativeChainEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        import copy
+        self.copy = copy.deepcopy
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        patcher = patch.object(analysis, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def record(self, name, content):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return {"path": name, "bytes": len(content), "sha256": hashlib.sha256(content).hexdigest()}
+
+    def module(self, name="mapping-engine"):
+        original = self.record(".analysis/inputs/" + name + ".bin", b"original")
+        source = self.record(".analysis/inputs/" + name + ".js", b"source")
+        body = {**self.record(".analysis/results/" + name + ".json", b"function"),
+                "full_assembly": True}
+        owner = self.record("crates/example/" + name + ".rs", b"implementation")
+        return {"name": name, "original": original, "sources": [{"original": source}],
+                "native_functions": [body], "native_edges": [], "unresolved_indirect_calls": [],
+                "resolved_indirect_calls": [], "failures": [], "rust_owners": [owner],
+                "semantic_evidence": {"frontend": source}, "implementation_acceptance": "reviewed partial scope"}
+
+    def fresh(self, previous):
+        value = self.copy(previous)
+        del value["semantic_evidence"]
+        value["implementation_acceptance"] = "not established by source/evidence presence"
+        value["native_functions"] = []
+        return value
+
+    def test_targeted_refresh_keeps_verified_other_modules_and_supplemental_closure(self):
+        old = self.module()
+        other = self.module("hid-feature")
+        current = self.fresh(old)
+        old["unresolved_indirect_calls"] = [{"address": "0x18001", "instruction": "call rax"}]
+        current["resolved_indirect_calls"] = [{"address": "0x18001", "resolution": "verified table"}]
+        result = analysis.merge_native_chain_modules([old, other], [current])
+        self.assertEqual([row["name"] for row in result], ["mapping-engine", "hid-feature"])
+        self.assertEqual(result[0]["semantic_evidence"], old["semantic_evidence"])
+        self.assertEqual(result[0]["native_functions"], old["native_functions"])
+        self.assertEqual(result[0]["implementation_acceptance"], old["implementation_acceptance"])
+        self.assertEqual(result[0]["unresolved_indirect_calls"], [])
+        self.assertEqual(result[1], other)
+
+    def test_changed_or_removed_rust_owner_does_not_inherit_implementation_acceptance(self):
+        old = self.module()
+        current = self.fresh(old)
+        owner = old["rust_owners"][0]["path"]
+        changed = self.record(owner, b"replacement implementation")
+        result = analysis.merge_native_chain_modules([old], [current])[0]
+        self.assertEqual(result["rust_owners"], [changed])
+        self.assertIn("requires a new review", result["implementation_acceptance"])
+        self.assertEqual(result["semantic_evidence"], old["semantic_evidence"])
+        (self.root / owner).unlink()
+        result = analysis.merge_native_chain_modules([old], [self.fresh(old)])[0]
+        self.assertEqual(result["rust_owners"], [])
+        self.assertIn("requires a new review", result["implementation_acceptance"])
+
+    def test_changed_supplemental_or_unselected_evidence_is_rejected(self):
+        old = self.module()
+        path = old["semantic_evidence"]["frontend"]["path"]
+        self.record(path, b"changed source")
+        with self.assertRaisesRegex(ValueError, "Retained native-chain evidence changed"):
+            analysis.merge_native_chain_modules([old], [self.fresh(old)])
+        with self.assertRaisesRegex(ValueError, "Retained native-chain evidence changed"):
+            analysis.merge_native_chain_modules([old], [])
+
+    def test_new_native_identity_does_not_reuse_old_semantics(self):
+        old = self.module()
+        current = self.fresh(old)
+        current["original"] = self.record(".analysis/inputs/new.bin", b"new version")
+        result = analysis.merge_native_chain_modules([old], [current])[0]
+        self.assertNotIn("semantic_evidence", result)
+        self.assertEqual(result["native_functions"], [])
+        self.assertEqual(result["implementation_acceptance"], current["implementation_acceptance"])
+
+    def test_capture_tool_identity_is_historical_but_capture_bytes_must_still_match(self):
+        old = self.module()
+        tool = self.record("tools/ida/capture.py", b"capturing tool")
+        old["analyzer"] = {"capture_tool": tool}
+        old["capture"] = self.record(".analysis/results/capture.json", b"manifest")
+        self.record(tool["path"], b"new tool version")
+        result = analysis.merge_native_chain_modules([old], [])[0]
+        self.assertEqual(result["analyzer"]["capture_tool"], tool)
+        self.record(old["capture"]["path"], b"changed manifest")
+        with self.assertRaisesRegex(ValueError, "Retained native-chain evidence changed"):
+            analysis.merge_native_chain_modules([old], [])
+
+    def test_failed_refresh_retains_verified_closure_and_reports_the_actual_failure(self):
+        old = self.module()
+        current = self.fresh(old)
+        current["failures"] = [{"kind": "native_chain_query_failure", "error": "missing parser input"}]
+        result = analysis.merge_native_chain_modules([old], [current])[0]
+        self.assertEqual(result["failures"], current["failures"])
+        self.assertEqual(result["semantic_evidence"], old["semantic_evidence"])
+        self.assertEqual(result["native_functions"], old["native_functions"])
+        missing_original = {"name": old["name"], "failures": current["failures"]}
+        result = analysis.merge_native_chain_modules([old], [missing_original])[0]
+        self.assertEqual(result["original"], old["original"])
+        self.assertEqual(result["native_functions"], old["native_functions"])
+
+    def test_duplicate_modules_and_external_evidence_paths_are_rejected(self):
+        old = self.module()
+        with self.assertRaisesRegex(ValueError, "Duplicate"):
+            analysis.merge_native_chain_modules([old, old], [])
+        with self.assertRaisesRegex(ValueError, "Duplicate"):
+            analysis.merge_native_chain_modules([], [old, old])
+        old["semantic_evidence"]["frontend"]["path"] = "../outside.js"
+        with self.assertRaisesRegex(ValueError, "Path outside"):
+            analysis.merge_native_chain_modules([old], [])
+
+    def test_incomplete_query_is_saved_before_nonzero_exit_and_retains_verified_evidence(self):
+        old = self.module()
+        old["ffi_exports"] = []
+        destination = self.root / ".analysis/results/native/chain-audit.json"
+        analysis.save(destination, {"modules": [old]})
+        current = self.fresh(old)
+        current["failures"] = [{"kind": "native_chain_query_failure", "error": "missing current original"}]
+        with redirect_stdout(io.StringIO()) as output, self.assertRaises(SystemExit) as failed:
+            analysis.save_native_chain_report(destination, {"modules": [current], "failures": []})
+        self.assertNotEqual(failed.exception.code, 0)
+        saved = json.loads(destination.read_bytes())
+        self.assertFalse(saved["evidence_query_complete"])
+        self.assertEqual(saved["modules"][0]["native_functions"], old["native_functions"])
+        self.assertEqual(saved["modules"][0]["failures"], current["failures"])
+        self.assertFalse(json.loads(output.getvalue())["evidence_query_complete"])
+
+    def test_complete_evidence_query_returns_without_claiming_runtime_acceptance(self):
+        current = self.module()
+        current["ffi_exports"] = []
+        destination = self.root / ".analysis/results/native/chain-audit.json"
+        with redirect_stdout(io.StringIO()):
+            result = analysis.save_native_chain_report(destination, {
+                "modules": [current], "failures": [], "runtime_acceptance": "unverified"})
+        self.assertTrue(result["evidence_query_complete"])
+        self.assertEqual(result["runtime_acceptance"], "unverified")
+        self.assertEqual(json.loads(destination.read_bytes()), result)
+
+
+class FeatureReportInventoryTests(unittest.TestCase):
+    def test_default_inventory_uses_all_typed_products_without_legacy_json_writes(self):
+        import typed_tables
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            root = Path(directory)
+            path = root / typed_tables.READ_OUTPUT
+            path.parent.mkdir(parents=True)
+            raw = b'''pub(crate) fn products() -> Vec<DeviceReadCapability> {
+                vec![DeviceReadCapability { product_id: 124 }, DeviceReadCapability { product_id: 190 },
+                     DeviceReadCapability { product_id: 679 }, DeviceReadCapability { product_id: 742 }]
+            }'''
+            path.write_bytes(raw)
+            with patch.object(analysis, "builtin_data_path", side_effect=AssertionError("retired JSON access")), \
+                    patch.object(typed_tables, "current_read_sources", side_effect=AssertionError("narrow source subset")), \
+                    patch.object(analysis, "save", side_effect=AssertionError("evidence query mutated runtime data")):
+                result = analysis.feature_report_callers(None, {})
+            self.assertEqual([row["product_id"] for row in result["products"]],
+                             [124, 190, 679, 742, 631, 658, 756])
+            self.assertEqual(result["capabilities"]["sha256"], hashlib.sha256(raw).hexdigest())
+            self.assertFalse(result["source_owners_complete"])
+            self.assertTrue(all(row["failures"] for row in result["products"]))
+            self.assertEqual(path.read_bytes(), raw)
+            self.assertFalse(list(root.rglob("*.json")))
+
+    def test_explicit_selection_does_not_require_typed_inventory_or_add_other_products(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(analysis, "ROOT", Path(directory)):
+            result = analysis.feature_report_callers(None, {}, selected_capabilities=[{"product_id": 190}])
+        self.assertEqual([row["product_id"] for row in result["products"]], [190])
+        self.assertFalse(result["source_owners_complete"])
+
+    def test_typed_inventory_rejects_dynamic_duplicate_or_unowned_product_rows(self):
+        import typed_tables
+        for content in [
+            b'fn products() { vec![DeviceReadCapability { product_id: 124 }, delegated()] }',
+            b'fn products() { vec![DeviceReadCapability { product_id: 124 }, DeviceReadCapability { product_id: 124 }] }',
+            b'fn test_only() { vec![DeviceReadCapability { product_id: 124 }] }',
+            b'fn products() { vec![DeviceReadCapability { product_id: SELECTED_PRODUCT }] }',
+        ]:
+            with self.subTest(content=content), self.assertRaises(ValueError):
+                typed_tables.read_table_constructors(content)
+
+
 class FontFixtureEvidenceTests(unittest.TestCase):
     @staticmethod
     def fonts():
@@ -3198,6 +3384,11 @@ class HostLocalAuditTests(unittest.TestCase):
         self.assertNotIn("outputFlag", rows[0])
         self.assertEqual(rows[1]["outputFlag"], 0)
         self.assertEqual([item["type"] for item in rows], ["Modifiers", "Navigation"])
+        excluded = {"$[].type", "$[].virtualKey", "$[].HID"}
+        families.validate_shortcut_capture_projection(rows, excluded)
+        for changed in (excluded | {"$[].keyCode"}, excluded - {"$[].type"}, set()):
+            with self.assertRaisesRegex(ValueError, "Mounted recorder projection"):
+                families.validate_shortcut_capture_projection(rows, changed)
         for change in (lambda x: x.clear(), lambda x: x[0].pop("keyCode"),
                        lambda x: x[0].update(scancode=True), lambda x: x[0].update(scancode=-1),
                        lambda x: x[0].update(flag=2**32), lambda x: x[0].update(outputFlag="2"),
@@ -3206,6 +3397,8 @@ class HostLocalAuditTests(unittest.TestCase):
             change(changed)
             with self.assertRaisesRegex(ValueError, "Mounted recorder key"):
                 families.validate_shortcut_capture_keys(changed)
+            with self.assertRaisesRegex(ValueError, "Mounted recorder key"):
+                families.validate_shortcut_capture_projection(changed, excluded)
 
     def test_preference_calls_have_exact_storage_key_and_complete_callback_owners(self):
         source = self.original(".analysis/inputs/test/preferences.js",

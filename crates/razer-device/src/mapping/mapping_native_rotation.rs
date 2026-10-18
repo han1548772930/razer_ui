@@ -7,7 +7,7 @@ use std::{error::Error, fmt, time::Duration};
 pub const GET_ROTATION_IOCTL: u32 = 0x8888_3184;
 pub const SET_ROTATION_IOCTL: u32 = 0x8888_3180;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RotationRequest {
     GetAngle,
     SetAngle(i32),
@@ -49,7 +49,7 @@ pub fn native_angle_for_task(enabled: bool, degrees: i8) -> Result<i32, Rotation
     })
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RotationReply {
     SetComplete,
     Angle { raw: i32, bytes: [u8; 4] },
@@ -77,7 +77,6 @@ pub enum RotationError {
     UnexpectedReply,
     SessionInvalid,
     Canceled,
-    ReadbackMismatch { requested: i32, observed: i32 },
 }
 
 impl From<DriverOutputError> for RotationError {
@@ -99,10 +98,6 @@ impl fmt::Display for RotationError {
             Self::UnexpectedReply => f.write_str("rotation completion has the wrong operation"),
             Self::SessionInvalid => f.write_str("retained rotation device session is invalid"),
             Self::Canceled => f.write_str("rotation operation was canceled"),
-            Self::ReadbackMismatch {
-                requested,
-                observed,
-            } => write!(f, "rotation readback {observed} differs from {requested}"),
         }
     }
 }
@@ -218,42 +213,30 @@ impl RotationReceipt {
     }
 }
 
-/// One read or write, with optional independent GET after a completed SET.
-/// The original task only waits for SET completion; readback is an explicit
-/// Rust extension. No write is repeated after polling failure or mismatch.
+/// One source request and its actual driver completion. A successful SET
+/// does not submit an additional GET or manufacture an observed angle.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RotationExecution {
     pub primary: RotationReceipt,
-    pub confirmation: Option<RotationReceipt>,
-    pub confirmation_requested: bool,
     pub stopped: Option<RotationError>,
 }
-
 impl RotationExecution {
     pub fn start(
         transport: &mut impl RotationTransport,
         request: RotationRequest,
-        confirm_with_readback: bool,
         validate: &impl Fn() -> Result<(), RotationError>,
     ) -> Result<Self, RotationError> {
         validate()?;
         let primary = RotationReceipt::submit(transport, request);
         let mut result = Self {
             primary,
-            confirmation: None,
-            confirmation_requested: confirm_with_readback
-                && matches!(request, RotationRequest::SetAngle(_)),
             stopped: None,
         };
-        // Retain and drain a write even when identity/cancellation changes
-        // immediately after queue acceptance.
         if let Err(error) = validate() {
-            result.stopped = Some(error);
-            result.primary.cancel(transport);
+            result.stop_and_cancel(transport, error);
         }
         Ok(result)
     }
-
     pub fn poll(
         &mut self,
         transport: &mut impl RotationTransport,
@@ -265,95 +248,28 @@ impl RotationExecution {
                 self.stop_and_cancel(transport, error);
             }
         }
-        // Drain even after an invalid session; it does not grant a new write
-        // or allow dropping memory retained by the kernel.
-        if self.primary.pending() {
-            self.primary.poll(transport, wait);
-        } else if let Some(confirmation) = &mut self.confirmation {
-            confirmation.poll(transport, wait);
-        }
+        // A retired identity still owns pending kernel memory until drained.
+        self.primary.poll(transport, wait);
         if self.stopped.is_none() {
             if let Err(error) = validate() {
                 self.stop_and_cancel(transport, error);
-            }
-        }
-        if self.stopped.is_none()
-            && self.confirmation_requested
-            && self.primary.delivery == RotationDelivery::Completed(RotationReply::SetComplete)
-            && self.confirmation.is_none()
-        {
-            self.confirmation = Some(RotationReceipt::submit(
-                transport,
-                RotationRequest::GetAngle,
-            ));
-            if let Err(error) = validate() {
-                self.stop_and_cancel(transport, error);
-            }
-        }
-        if self.stopped.is_none() {
-            if let (
-                RotationRequest::SetAngle(requested),
-                Some(RotationReceipt {
-                    delivery: RotationDelivery::Completed(RotationReply::Angle { raw, .. }),
-                    ..
-                }),
-            ) = (self.primary.request, &self.confirmation)
-            {
-                if *raw != requested {
-                    self.stopped = Some(RotationError::ReadbackMismatch {
-                        requested,
-                        observed: *raw,
-                    });
-                }
             }
         }
     }
-
     fn stop_and_cancel(&mut self, transport: &mut impl RotationTransport, error: RotationError) {
         self.stopped.get_or_insert(error);
         self.primary.cancel(transport);
-        if let Some(confirmation) = &mut self.confirmation {
-            confirmation.cancel(transport);
-        }
     }
-
     pub fn cancel(&mut self, transport: &mut impl RotationTransport) {
         self.stop_and_cancel(transport, RotationError::Canceled);
     }
-
     pub fn pending(&self) -> bool {
         self.primary.pending()
-            || self
-                .confirmation
-                .as_ref()
-                .is_some_and(RotationReceipt::pending)
     }
-
     pub fn finished(&self) -> bool {
         !self.pending()
-            && (self.stopped.is_some()
-                || !self.confirmation_requested
-                || !self.primary.driver_completed()
-                || self.confirmation.is_some())
     }
-
-    pub fn verified(&self) -> bool {
-        self.stopped.is_none()
-            && self.primary.driver_completed()
-            && matches!(
-                (&self.primary.request, &self.confirmation),
-                (
-                    RotationRequest::SetAngle(requested),
-                    Some(RotationReceipt {
-                        delivery: RotationDelivery::Completed(RotationReply::Angle { raw, .. }),
-                        ..
-                    })
-                ) if requested == raw
-            )
-    }
-
-    /// Call after cancellation/draining on disconnect. Closing never resets
-    /// the configured angle or implies profile persistence.
+    /// Closing never resets the configured angle or implies persistence.
     pub fn close_if_drained(
         &self,
         transport: &mut impl RotationTransport,

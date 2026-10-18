@@ -41,6 +41,8 @@ pub use dpi_70::{
 };
 #[path = "mapping/mouse_mapping_runtime_70.rs"]
 mod mapping_runtime_70;
+#[path = "mapping/mouse_mapping_runtime_158.rs"]
+mod mapping_runtime_158;
 #[path = "scrolling/mouse_scroll_task.rs"]
 mod scroll_task;
 #[path = "scrolling/mouse_scroll_wheel.rs"]
@@ -132,10 +134,13 @@ mod properties;
 pub use matcher_owner::{MouseMatcherRequest, MouseMatcherScope};
 #[path = "mouse_rotation.rs"]
 mod rotation;
+#[path = "mouse_rotation_state.rs"]
+mod rotation_state;
 pub use dynamic::{
     MouseDynamicAction, MouseDynamicCompletion, MouseDynamicObservation, MouseDynamicRequested,
     MouseDynamicScope, MouseDynamicTutorialChanged,
 };
+pub use rotation_state::{MouseRotationCompletion, MouseRotationRequested, MouseRotationSource};
 #[path = "scrolling/mouse_scroll_options.rs"]
 mod scroll_options;
 
@@ -334,6 +339,7 @@ pub struct MouseProductWorkspace {
     current_dpi: current_dpi::State,
     current_power: current_power::State,
     legacy_mapping: mapping_runtime_70::State,
+    receiver_mapping: mapping_runtime_158::State,
     polling_owner: Option<EntityId>,
     properties_icon: Option<&'static str>,
     matcher: Option<Entity<super::mouse_dpi_matcher::MouseDpiMatcher>>,
@@ -370,6 +376,7 @@ pub struct MouseProductWorkspace {
     scroll_application_picker: bool,
     dynamic_state: dynamic::State,
     rotation_resources: rotation::Resources,
+    rotation_state: rotation_state::State,
     calibration_state: calibration_70::State,
     smart_calibration_drag: Option<String>,
     smart_calibration_drag_cancelled: bool,
@@ -458,6 +465,7 @@ impl MouseProductWorkspace {
             current_dpi: current_dpi::State::default(),
             current_power: current_power::State::default(),
             legacy_mapping: mapping_runtime_70::State::default(),
+            receiver_mapping: mapping_runtime_158::State::default(),
             polling_owner: (product_id == 70
                 || razer_device::mouse_current_dpi::capability(product_id).is_some()
                 || razer_device::mouse_current_power::capability(product_id).is_some()
@@ -498,6 +506,7 @@ impl MouseProductWorkspace {
             scroll_application_picker: false,
             dynamic_state: dynamic::State::new(window, cx),
             rotation_resources: rotation::Resources::default(),
+            rotation_state: rotation_state::State::default(),
             calibration_state: calibration_70::State::new(product_id, cx),
             smart_calibration_drag: None,
             smart_calibration_drag_cancelled: false,
@@ -597,6 +606,7 @@ impl MouseProductWorkspace {
     pub fn snapshot(&self) -> Value {
         let mut snapshot = self.draft.clone();
         self.snapshot_power(&mut snapshot);
+        self.snapshot_rotation(&mut snapshot);
         if let Some(saved) = &self.scroll_custom_saved {
             set_pointer(
                 &mut snapshot,
@@ -611,6 +621,7 @@ impl MouseProductWorkspace {
             self.active = active;
             self.sync_matcher_mount(cx);
             if !active {
+                self.invalidate_mouse_rotation();
                 self.dismiss_editors(window, cx);
             } else if self.page == "ADVANCED" {
                 self.request_dynamic_read(cx);
@@ -722,6 +733,7 @@ impl MouseProductWorkspace {
         self.restore_polling(value);
         self.restore_receiver_indicator(window, cx);
         self.restore_dynamic(value, window, cx);
+        self.restore_rotation(value);
         if let Some(editor) = &self.scroll_editor {
             let wheel_spec = scroll_wheel::source_spec(self.spec.product_id)
                 .expect("scroll editor retains its source capability");
@@ -742,6 +754,12 @@ impl MouseProductWorkspace {
         self.syncing = true;
         for (path, state) in &self.sliders {
             if self.has_observed_power_saving_control(path) {
+                continue;
+            }
+            if path == "/rotation/value" {
+                state.update(cx, |state, cx| {
+                    state.set_value(self.rotation_degrees() as f32, window, cx)
+                });
                 continue;
             }
             if path == "smart-preset" {
@@ -880,6 +898,12 @@ impl MouseProductWorkspace {
     }
 
     fn write(&mut self, path: &str, value: Value, cx: &mut Context<Self>) {
+        if path == "/rotation/isEnabled" {
+            if let Some(enabled) = value.as_bool() {
+                self.edit_rotation_enabled(enabled, cx);
+            }
+            return;
+        }
         if (path.starts_with("/brightness/") || path.starts_with("/switchOffLighting/"))
             && self.check_mouse_adjustment_mode(cx)
         {
@@ -924,6 +948,10 @@ impl MouseProductWorkspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if path == "/rotation/value" {
+            self.edit_rotation_degrees(value, cx);
+            return;
+        }
         if let Some(field) = path.strip_prefix("/presetTracking/") {
             self.set_preset_tracking_field(field, json!(value as i64), window, cx);
             return;
@@ -1105,7 +1133,7 @@ impl MouseProductWorkspace {
         }
         match path {
             "/lowPowerMode" => self.low_power_enabled() == Some(true),
-            "/rotation/value" => self.boolean("/rotation/isEnabled") && self.advanced_enabled(),
+            "/rotation/value" => self.rotation_enabled() && self.rotation_editable(),
             "/brightness/value" => self.boolean("/brightness/isEnabled"),
             "/switchOffLighting/idleMinutes" => {
                 self.boolean("/brightness/isEnabled")
@@ -2147,10 +2175,10 @@ impl MouseProductWorkspace {
                     t("ROTATION"),
                     surface::SynapseSwitch::new("mouse-rotation-enabled")
                         .accessibility_label(t("ROTATION"))
-                        .checked(self.boolean("/rotation/isEnabled"))
-                        .disabled(!self.advanced_enabled())
+                        .checked(self.rotation_enabled())
+                        .disabled(!self.rotation_editable())
                         .on_change(cx.listener(|this, enabled: &bool, _, cx| {
-                            if this.advanced_enabled() {
+                            if this.rotation_editable() {
                                 this.write("/rotation/isEnabled", json!(*enabled), cx);
                             }
                         })),
@@ -2168,33 +2196,27 @@ impl MouseProductWorkspace {
                         .left(surface::css(217.5))
                         .top(surface::css(119.5))
                         .size(surface::css(165.))
-                        .opacity(
-                            if self.boolean("/rotation/isEnabled") && self.advanced_enabled() {
-                                1.
-                            } else {
-                                0.3
-                            },
-                        )
+                        .opacity(if self.rotation_enabled() && self.rotation_editable() {
+                            1.
+                        } else {
+                            0.3
+                        })
                         .child(rotation::cross().size_full()),
                 )
                 .children(
                     self.rotation_resources
-                        .image(self.number("/rotation/value") as i32)
+                        .image(self.rotation_degrees() as i32)
                         .map(|image| {
                             img(image)
                                 .absolute()
                                 .left(surface::css(209.5))
                                 .top(surface::css(112.))
                                 .size(surface::css(180.))
-                                .opacity(
-                                    if self.boolean("/rotation/isEnabled")
-                                        && self.advanced_enabled()
-                                    {
-                                        1.
-                                    } else {
-                                        0.3
-                                    },
-                                )
+                                .opacity(if self.rotation_enabled() && self.rotation_editable() {
+                                    1.
+                                } else {
+                                    0.3
+                                })
                         }),
                 )
                 .child(
@@ -2205,7 +2227,7 @@ impl MouseProductWorkspace {
                         .top(surface::css(287.))
                         .child(rotation::RotationRange {
                             state: self.sliders["/rotation/value"].clone(),
-                            enabled: self.boolean("/rotation/isEnabled") && self.advanced_enabled(),
+                            enabled: self.rotation_enabled() && self.rotation_editable(),
                         }),
                 )
                 .child(
@@ -2213,7 +2235,7 @@ impl MouseProductWorkspace {
                         .absolute()
                         .left(surface::css(297.))
                         .top(surface::css(341.))
-                        .child(format!("{}°", self.number("/rotation/value"))),
+                        .child(format!("{}°", self.rotation_degrees())),
                 )
                 .children(
                     (!self.advanced_enabled()).then(|| surface::note(t("FW_UPDATE_REQUIRED"), cx)),

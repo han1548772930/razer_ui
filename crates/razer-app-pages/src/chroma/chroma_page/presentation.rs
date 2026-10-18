@@ -3,7 +3,6 @@ use gpui_kit::base::{
     Button as BaseButton,
     motion::{self, Easing, Transition},
 };
-use gpui_kit::component::*;
 use gpui_kit::{prelude::FluentBuilder as _, *};
 use razer_widgets::surface;
 use razer_widgets::surface::css;
@@ -89,10 +88,11 @@ impl RenderOnce for CollapseIcon {
             .text_color(rgb(0x999999))
             .group_hover(self.id, |s| s.text_color(rgb(0xffffff)))
             .child(
-                Icon::default()
+                razer_assets::resource_svg()
+                    .flex_shrink_0()
                     .path("synapse/expand.svg")
                     .size(css(10.))
-                    .transform(Transformation::rotate(radians(angle))),
+                    .with_transformation(Transformation::rotate(radians(angle))),
             )
     }
 }

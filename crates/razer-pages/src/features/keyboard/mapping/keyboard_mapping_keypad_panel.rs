@@ -258,7 +258,7 @@ impl KeyboardProductWorkspace {
                             .as_ref()
                             .map(|edit| text(&edit.button["buttonKey"]));
                         if let Some(active) = active {
-                            this.clear_analog_mapping();
+                            this.clear_analog_mapping(cx);
                             this.analog_mapping_continue(Next::Key(active, false), window, cx);
                         }
                         cx.notify();

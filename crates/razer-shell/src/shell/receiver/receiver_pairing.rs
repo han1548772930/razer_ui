@@ -623,9 +623,9 @@ impl AppShell {
                             && result["pair"]["dongle_id"] == event.payload()["device"]["dongleId"],
                         "配对缺少匹配的真实完成事件"
                     );
-                    // Source Ee reads edition/layout after event54. Failed reads
-                    // use explicit source defaults; scan metadata is not reused
-                    // as a successful post-pair observation.
+                    // Source Ee reads edition/layout after event54. Hardware
+                    // pairing and its subsequent metadata read are independent
+                    // observations; failed reads cannot publish default fields.
                     ensure!(
                         result["source_ui_response"] != false,
                         "原配对回调没有发布 UI 响应"
@@ -633,22 +633,41 @@ impl AppShell {
                     let mut device = event.payload()["device"].clone();
                     let metadata = &result["post_pair_metadata"];
                     let reading = &metadata["reading"];
-                    let fallback = &metadata["source_fallback"];
-                    let edition = reading["edition_id"]
-                        .as_u64()
-                        .or_else(|| fallback["edition_id"].as_u64())
-                        .context("配对完成缺少 edition 读取或原默认值")?;
-                    let mut layout = reading["keyboard_layout"]
-                        .as_u64()
-                        .or_else(|| fallback["keyboard_layout"].as_u64())
-                        .context("配对完成缺少 layout 读取或原默认值")?;
-                    if result["category"] == "MOUSE" && layout == 0 {
-                        layout = metadata["mouse_layout_followup"]["status"]
-                            .as_u64()
-                            .filter(|layout| *layout != 0)
-                            .unwrap_or(layout);
-                    }
-                    ensure!(edition <= 255 && layout <= 255, "配对元数据超过原字节范围");
+                    let observed = (|| -> anyhow::Result<_> {
+                        ensure!(metadata["metadata_complete"] == true,
+                            "{}", metadata["read_error"].as_str()
+                                .or_else(|| metadata["mouse_layout_followup"]["read_error"].as_str())
+                                .unwrap_or("配对后的设备信息未完整读取"));
+                        let mut reading: razer_device::receiver_pairing::EditionReading =
+                            serde_json::from_value(reading.clone())
+                                .context("配对后的设备信息格式无效")?;
+                        let followup = &metadata["mouse_layout_followup"];
+                        if result["category"] == "MOUSE"
+                            && reading.keyboard_layout == 0
+                            && followup["used"] == true
+                        {
+                            let status = followup["status"]
+                                .as_u64()
+                                .and_then(|value| u8::try_from(value).ok())
+                                .context("配对后的鼠标布局未读取")?;
+                            if status != 0 {
+                                reading.keyboard_layout = status;
+                            }
+                        }
+                        Ok(reading)
+                    })();
+                    let observed = match observed {
+                        Ok(observed) => observed,
+                        Err(error) => {
+                            return Ok(json!({"device":null,"hardware_confirmed":true,
+                            "post_pair_metadata":metadata,"post_pair_metadata_observed":false,
+                            "metadata_complete":false,"metadata_error":format!("{error:#}"),
+                            "runtime_published":false,"local_cache_persisted":result["local_cache_persisted"],
+                            "local_cache_error":result["local_cache_error"]}));
+                        }
+                    };
+                    let edition = observed.edition_id;
+                    let layout = observed.keyboard_layout;
                     if result["source_product_id"] == 756 || product_id == 757 {
                         let dongle = event.payload()["device"]["dongleId"]
                             .as_u64()
@@ -661,15 +680,13 @@ impl AppShell {
                         device = razer_discovery::receiver_pairing::project_source756_pair_device(
                             dongle,
                             scanned_edition,
-                            edition as u8,
-                            layout as u8,
+                            edition,
+                            layout,
                             result["source_connected_device_info"]
                                 .as_array()
                                 .map_or(&[][..], Vec::as_slice),
                         )?;
                     } else {
-                        device["editionId"] = json!(edition);
-                        device["layoutId"] = json!(layout);
                         if let Some(connected) = result["source_connected_device_info"]
                             .as_array()
                             .and_then(|rows| {
@@ -681,8 +698,12 @@ impl AppShell {
                             device["dongleId"] = event.payload()["device"]["dongleId"].clone();
                         }
                     }
+                    // Host presentation may supply names and product metadata;
+                    // the post-pair read remains the owner of edition/layout.
+                    device["editionId"] = json!(edition);
+                    device["layoutId"] = json!(layout);
                     Ok(
-                        json!({"device":device,"hardware_confirmed":true,"post_pair_metadata":metadata,"post_pair_metadata_observed":reading.is_object(),"metadata_complete":metadata["metadata_complete"],"runtime_published":false,"local_cache_persisted":result["local_cache_persisted"],"local_cache_error":result["local_cache_error"]}),
+                        json!({"device":device,"hardware_confirmed":true,"post_pair_metadata":metadata,"post_pair_metadata_observed":true,"metadata_complete":true,"runtime_published":false,"local_cache_persisted":result["local_cache_persisted"],"local_cache_error":result["local_cache_error"]}),
                     )
                 }
                 "DUALLINK_UNBIND_DEVICE" => {
@@ -1285,5 +1306,64 @@ mod tests {
         let mut callback_abort = result;
         callback_abort["source_ui_response"] = json!(false);
         assert!(AppShell::dock_pairing_result(241, &event, callback_abort).is_err());
+    }
+
+    #[::core::prelude::v1::test]
+    fn pair_metadata_failure_never_uses_defaults_or_scanned_fields() {
+        let event = DockPairingEvent::request(
+            "DUALLINK_BIND_DEVICE",
+            json!({"device":{"productId":182,"dongleId":183,"category":"MOUSE","editionId":128,"layoutId":9}}),
+        );
+        let base = json!({"operation":"pair","category":"MOUSE","source_ui_response":true,
+            "completion_evidence":"hardware_event_54_status_2","pair":{"hardware_status":2,"dongle_id":183},
+            "post_pair_metadata":{"reading":null,"metadata_complete":false,"read_error":"read failed",
+                "source_fallback":{"edition_id":0,"keyboard_layout":0}}});
+        let observed = AppShell::dock_pairing_result(241, &event, base.clone()).unwrap();
+        assert_eq!(observed["hardware_confirmed"], true);
+        assert!(observed["device"].is_null());
+        assert_eq!(observed["metadata_complete"], false);
+        assert_eq!(observed["metadata_error"], "read failed");
+        for reading in [
+            json!({}),
+            json!({"edition_id":5,"keyboard_layout":256}),
+            json!({"edition_id":"5","keyboard_layout":6}),
+        ] {
+            let mut malformed = base.clone();
+            malformed["post_pair_metadata"]["metadata_complete"] = json!(true);
+            malformed["post_pair_metadata"]["reading"] = reading;
+            let observed = AppShell::dock_pairing_result(241, &event, malformed).unwrap();
+            assert!(observed["device"].is_null());
+            assert_eq!(observed["hardware_confirmed"], true);
+            assert_eq!(observed["post_pair_metadata_observed"], false);
+        }
+    }
+
+    #[::core::prelude::v1::test]
+    fn pair_metadata_readback_survives_connected_presentation_override() {
+        let event = DockPairingEvent::request(
+            "DUALLINK_BIND_DEVICE",
+            json!({"device":{"productId":182,"dongleId":183,"category":"MOUSE","editionId":128,"layoutId":9}}),
+        );
+        let mut result = json!({"operation":"pair","category":"MOUSE","source_ui_response":true,
+            "completion_evidence":"hardware_event_54_status_2","pair":{"hardware_status":2,"dongle_id":183},
+            "post_pair_metadata":{"reading":{"edition_id":5,"keyboard_layout":6},"metadata_complete":true},
+            "source_connected_device_info":[{"productId":182,"dongleId":999,"category":"MOUSE",
+                "editionId":17,"layoutId":23,"productName":{"en":"Observed name"}}]});
+        for source in [241, 756] {
+            result["source_product_id"] = json!(source);
+            let observed = AppShell::dock_pairing_result(241, &event, result.clone()).unwrap();
+            assert_eq!(observed["device"]["editionId"], 5);
+            assert_eq!(observed["device"]["layoutId"], 6);
+            assert_eq!(observed["device"]["dongleId"], 183);
+            assert_eq!(observed["device"]["productName"]["en"], "Observed name");
+        }
+        result["post_pair_metadata"]["reading"]["keyboard_layout"] = json!(0);
+        result["post_pair_metadata"]["mouse_layout_followup"] = json!({"used":true,"status":37});
+        let observed = AppShell::dock_pairing_result(241, &event, result.clone()).unwrap();
+        assert_eq!(observed["device"]["layoutId"], 37);
+        result["post_pair_metadata"]["mouse_layout_followup"]["status"] = Value::Null;
+        let failed = AppShell::dock_pairing_result(241, &event, result).unwrap();
+        assert!(failed["device"].is_null());
+        assert_eq!(failed["hardware_confirmed"], true);
     }
 }

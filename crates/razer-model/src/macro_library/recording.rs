@@ -16,6 +16,21 @@ pub struct Options {
     pub random: [f64; 2],
     pub next_pair: u64,
     pub movement_mode: u8,
+    pub shortcut: Vec<ShortcutKey>,
+}
+
+/// Source _r uses native VKs for initial releases; Nr uses the recorder
+/// table's keyCode for the trailing stop chord. These are different domains.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ShortcutKey {
+    pub virtual_key: u16,
+    pub key_code: u16,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StopCause {
+    Button,
+    Shortcut,
 }
 
 #[cfg(test)]
@@ -31,6 +46,7 @@ mod movement_tests {
             random: [0., 0.],
             next_pair: 1,
             movement_mode: mode,
+            shortcut: Vec::new(),
         }
     }
     fn geometry() -> RecordingGeometry {
@@ -46,7 +62,7 @@ mod movement_tests {
         let mut decoder = Decoder::new(&options(1));
         decoder.set_geometry(geometry());
         decoder.push(&json!({"kind":"item","time_tick":4,"received_at_ms":100,"event":[{"action":"mousemove","x":10,"y":20,"time":1500},{"action":"mousemove","x":11,"y":21,"time":2500},{"action":"lbuttondown","time":1000}]})).unwrap();
-        let rows = decoder.finish(false).unwrap();
+        let rows = decoder.finish(None).unwrap();
         let movement = rows[0].mouse_movement.as_ref().unwrap();
         assert_eq!(
             movement.buffer,
@@ -63,12 +79,12 @@ mod movement_tests {
         let callback = json!({"kind":"item","time_tick":5,"received_at_ms":100,"event":[{"action":"mousemove","x":10,"y":20,"time":1500}]});
         let mut decoder = Decoder::new(&options(3));
         decoder.push(&callback).unwrap();
-        assert!(decoder.finish(false).is_err());
+        assert!(decoder.finish(None).is_err());
         let mut decoder = Decoder::new(&options(3));
         decoder.set_geometry(geometry());
         decoder.push(&callback).unwrap();
         assert_eq!(
-            decoder.finish(false).unwrap()[0]
+            decoder.finish(None).unwrap()[0]
                 .mouse_movement
                 .as_ref()
                 .unwrap()
@@ -77,7 +93,7 @@ mod movement_tests {
         );
         let mut disabled = Decoder::new(&options(0));
         disabled.push(&callback).unwrap();
-        assert!(disabled.finish(false).unwrap().is_empty());
+        assert!(disabled.finish(None).unwrap().is_empty());
     }
 }
 
@@ -196,6 +212,8 @@ pub struct Decoder {
     dropped: usize,
     movement: Vec<Value>,
     geometry: Option<RecordingGeometry>,
+    initial_release: bool,
+    shortcut_preview: Vec<Value>,
 }
 impl Decoder {
     pub fn new(options: &Options) -> Self {
@@ -214,6 +232,8 @@ impl Decoder {
             dropped: 0,
             movement: Vec::new(),
             geometry: None,
+            initial_release: true,
+            shortcut_preview: Vec::new(),
         }
     }
     /// 58190 le uses a separate live converter and a 50-row DOM window.
@@ -333,8 +353,55 @@ impl Decoder {
             }
         }
         if action == "mousemove" {
+            // _r clears its initial-release gate on the first accepted item,
+            // even when mouse tracking is disabled for the document.
+            self.initial_release = false;
+            if self.preview && self.shortcut_preview.len() != self.options.shortcut.len() {
+                for held in std::mem::take(&mut self.shortcut_preview) {
+                    self.push_input(&held, &held["event"][0], "keydown")?;
+                }
+            }
             return Ok(());
         }
+        if let Some(vk) = raw["vkCode"].as_u64() {
+            if matches!(vk, 173 | 176 | 177 | 179 | 175 | 174)
+                || vk == 255 && !matches!(raw["scanCode"].as_u64(), Some(112 | 121))
+            {
+                return Ok(());
+            }
+        }
+        let shortcut_key = self
+            .options
+            .shortcut
+            .iter()
+            .any(|key| raw["vkCode"].as_u64() == Some(u64::from(key.virtual_key)));
+        if self.initial_release && shortcut_key && action == "keyup" {
+            return Ok(());
+        }
+        self.initial_release = false;
+        if self.preview && !self.options.shortcut.is_empty() {
+            if shortcut_key
+                && action == "keydown"
+                && self.shortcut_preview.len() != self.options.shortcut.len()
+                && self
+                    .shortcut_preview
+                    .iter()
+                    .all(|held| held["event"][0]["vkCode"] != raw["vkCode"])
+            {
+                let mut held = callback.clone();
+                held["event"] = Value::Array(vec![raw.clone()]);
+                self.shortcut_preview.push(held);
+                return Ok(());
+            }
+            if self.shortcut_preview.len() != self.options.shortcut.len() {
+                for held in std::mem::take(&mut self.shortcut_preview) {
+                    self.push_input(&held, &held["event"][0], "keydown")?;
+                }
+            }
+        }
+        self.push_input(callback, raw, &action)
+    }
+    fn push_input(&mut self, callback: &Value, raw: &Value, action: &str) -> Result<(), String> {
         let options = &self.options;
         let sequence = options.macro_type == MacroType::Sequence;
         let output = &mut self.output;
@@ -348,16 +415,9 @@ impl Decoder {
                 .ok_or_else(|| "Local macro event identity exhausted".to_string())?;
             Ok::<_, String>(id)
         };
-        if let Some(vk) = raw["vkCode"].as_u64() {
-            if matches!(vk, 173 | 176 | 177 | 179 | 175 | 174)
-                || vk == 255 && !matches!(raw["scanCode"].as_u64(), Some(112 | 121))
-            {
-                return Ok(());
-            }
-        }
         let mut item;
         let mut repeat = false;
-        if matches!(action.as_str(), "keydown" | "keyup") {
+        if matches!(action, "keydown" | "keyup") {
             let down = action == "keydown";
             if sequence && down {
                 return Ok(());
@@ -407,7 +467,7 @@ impl Decoder {
             });
         } else {
             let data = raw["data"].as_i64().unwrap_or(0);
-            let (button, state) = match action.as_str() {
+            let (button, state) = match action {
                 "lbuttondown" => (0, Some(0)),
                 "lbuttonup" => (0, Some(1)),
                 "rbuttondown" => (1, Some(0)),
@@ -534,20 +594,26 @@ impl Decoder {
             })
             .collect()
     }
-    pub fn finish(mut self, click_stop: bool) -> Result<Vec<ActionItem>, String> {
+    pub fn finish(mut self, stop: Option<StopCause>) -> Result<Vec<ActionItem>, String> {
         self.flush_movement()?;
         let options = &self.options;
         let sequence = options.macro_type == MacroType::Sequence;
         let mut output = self.output;
         let first_at = self.first_at;
         let started_at = self.started_at;
-        if click_stop && !sequence {
+        if stop == Some(StopCause::Button) && !sequence {
             if let Some(index) = output
                 .iter()
                 .rposition(|v| v.mouse.as_ref().is_some_and(|m| m.button == Some(0)))
             {
                 output.remove(index); // Nr removes exactly its last left-button row.
             }
+        }
+        if stop == Some(StopCause::Shortcut) {
+            if options.shortcut.is_empty() {
+                return Err("Shortcut stop has no configured chord".into());
+            }
+            trim_stop_shortcut(&mut output, &options.shortcut);
         }
         if output.iter().all(|v| v.kind == ActionKind::Delay) {
             output.clear();
@@ -581,6 +647,124 @@ impl Decoder {
             }
         }
         Ok(output)
+    }
+}
+
+fn trim_stop_shortcut(output: &mut Vec<ActionItem>, shortcut: &[ShortcutKey]) {
+    let mut remaining: Vec<_> = shortcut.iter().map(|key| key.key_code).collect();
+    let mut remove = vec![false; output.len()];
+    let mut cursor = output.len();
+    while cursor > 0 && !remaining.is_empty() {
+        cursor -= 1;
+        let row = &output[cursor];
+        if row.kind == ActionKind::Delay {
+            continue;
+        }
+        let Some(key) = row
+            .keyboard
+            .as_ref()
+            .filter(|key| key.makecode.is_some_and(|code| remaining.contains(&code)))
+        else {
+            break;
+        };
+        if key.state == Some(0) {
+            remaining.retain(|code| Some(*code) != key.makecode);
+        }
+        remove[cursor] = true;
+        if cursor > 0 && output[cursor - 1].kind == ActionKind::Delay {
+            cursor -= 1;
+            remove[cursor] = true;
+        }
+    }
+    let mut index = 0;
+    output.retain(|_| {
+        let keep = !remove[index];
+        index += 1;
+        keep
+    });
+}
+
+#[cfg(test)]
+mod shortcut_tests {
+    use super::*;
+    use serde_json::json;
+    fn options() -> Options {
+        Options {
+            macro_type: MacroType::Standard,
+            phase: None,
+            delay_mode: 3,
+            fixed: 0.,
+            random: [0., 0.],
+            next_pair: 1,
+            movement_mode: 0,
+            shortcut: vec![
+                ShortcutKey {
+                    virtual_key: 162,
+                    key_code: 17,
+                },
+                ShortcutKey {
+                    virtual_key: 65,
+                    key_code: 65,
+                },
+            ],
+        }
+    }
+    fn input(tick: u64, vk: u16, scan: u16, down: bool) -> Value {
+        json!({"kind":"item","time_tick":tick,"received_at_ms":100+tick,
+            "event":[{"action":if down {"keydown"} else {"keyup"},"vkCode":vk,"scanCode":scan,"flags":if down {0} else {128},"time":1000}]})
+    }
+    #[test]
+    fn leading_trigger_releases_are_ignored_but_later_releases_are_retained() {
+        let mut decoder = Decoder::new(&options());
+        decoder.push(&input(1, 65, 30, false)).unwrap();
+        decoder.push(&input(2, 162, 29, false)).unwrap();
+        assert_eq!(decoder.len(), 0);
+        decoder.push(&input(3, 66, 48, true)).unwrap();
+        decoder.push(&input(4, 65, 30, false)).unwrap();
+        assert_eq!(decoder.finish(None).unwrap().len(), 2);
+        let mut decoder = Decoder::new(&options());
+        decoder.push(&json!({"kind":"item","time_tick":1,"received_at_ms":101,"event":[{"action":"mousemove","x":1,"y":2,"time":1000}]})).unwrap();
+        decoder.push(&input(2, 65, 30, false)).unwrap();
+        assert_eq!(decoder.finish(None).unwrap().len(), 1);
+    }
+    #[test]
+    fn shortcut_stop_removes_only_the_trailing_chord_and_its_delays() {
+        let mut options = options();
+        options.delay_mode = 1;
+        options.fixed = 0.1;
+        let mut decoder = Decoder::new(&options);
+        for (tick, vk, scan, down) in [
+            (1, 66, 48, true),
+            (2, 66, 48, false),
+            (3, 162, 29, true),
+            (4, 65, 30, true),
+            (5, 65, 30, false),
+            (6, 162, 29, false),
+        ] {
+            decoder.push(&input(tick, vk, scan, down)).unwrap();
+        }
+        let rows = decoder.finish(Some(StopCause::Shortcut)).unwrap();
+        assert_eq!(rows.len(), 4);
+        assert!(
+            rows.iter()
+                .filter_map(|row| row.keyboard.as_ref())
+                .all(|key| key.makecode == Some(66))
+        );
+    }
+    #[test]
+    fn partial_preview_flushes_before_unrelated_input_and_stopping_preserves_mouse() {
+        let options = options();
+        let mut preview = Decoder::for_preview(&options);
+        preview.push(&input(1, 162, 29, true)).unwrap();
+        assert_eq!(preview.len(), 0);
+        preview.push(&input(2, 66, 48, true)).unwrap();
+        assert_eq!(preview.len(), 2);
+        let mut decoder = Decoder::new(&options);
+        decoder.push(&input(1, 162, 29, true)).unwrap();
+        decoder.push(&json!({"kind":"item","time_tick":2,"received_at_ms":102,"event":[{"action":"lbuttondown","time":1000}]})).unwrap();
+        let rows = decoder.finish(Some(StopCause::Shortcut)).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert!(rows[1].mouse.is_some());
     }
 }
 

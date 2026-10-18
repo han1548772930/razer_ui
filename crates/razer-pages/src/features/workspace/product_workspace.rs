@@ -494,6 +494,47 @@ impl ProductWorkspace {
     ) -> bool {
         matches!(&self.body, Body::Source(body) if body.read(cx).mouse_dynamic_scope_is_current(request, cx))
     }
+    pub fn mouse_rotation_scope_is_current(
+        &self,
+        request: &super::mouse_products::MouseRotationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mouse_rotation_scope_is_current(request, cx))
+    }
+    pub fn mouse_rotation_request_is_current(
+        &self,
+        request: &super::mouse_products::MouseRotationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, Body::Source(body) if body.read(cx).mouse_rotation_request_is_current(request, cx))
+    }
+    pub fn mark_mouse_rotation_persisted(
+        &mut self,
+        request: &super::mouse_products::MouseRotationRequested,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.mark_mouse_rotation_persisted(request, cx)
+            })
+        } else {
+            false
+        }
+    }
+    pub fn complete_mouse_rotation(
+        &mut self,
+        request: &super::mouse_products::MouseRotationRequested,
+        completion: super::mouse_products::MouseRotationCompletion,
+        cx: &mut Context<Self>,
+    ) -> Option<String> {
+        if let Body::Source(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_mouse_rotation(request, completion, cx)
+            })
+        } else {
+            None
+        }
+    }
     pub fn mouse_dynamic_request_is_current(
         &self,
         request: &super::mouse_products::MouseDynamicRequested,
@@ -921,9 +962,16 @@ impl ProductWorkspace {
             });
         }
     }
-    pub fn observe_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn observe_seiren_live(
+        &mut self,
+        observed: razer_device::seiren_mixer::LiveState,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let Body::Source(body) = &self.body {
-            body.update(cx, |body, cx| body.observe_seiren_live(observed, window, cx));
+            body.update(cx, |body, cx| {
+                body.observe_seiren_live(observed, window, cx)
+            });
         }
     }
     pub fn observe_seiren_native_event(

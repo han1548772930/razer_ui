@@ -613,6 +613,47 @@ impl SourceProductWorkspace {
     ) -> bool {
         matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_dynamic_scope_is_current(request))
     }
+    pub fn mouse_rotation_scope_is_current(
+        &self,
+        request: &super::mouse_products::MouseRotationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_rotation_scope_is_current(request, cx))
+    }
+    pub fn mouse_rotation_request_is_current(
+        &self,
+        request: &super::mouse_products::MouseRotationRequested,
+        cx: &App,
+    ) -> bool {
+        matches!(&self.body, FamilyBody::Mouse(body) if body.read(cx).mouse_rotation_request_is_current(request, cx))
+    }
+    pub fn mark_mouse_rotation_persisted(
+        &mut self,
+        request: &super::mouse_products::MouseRotationRequested,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.mark_mouse_rotation_persisted(request, cx)
+            })
+        } else {
+            false
+        }
+    }
+    pub fn complete_mouse_rotation(
+        &mut self,
+        request: &super::mouse_products::MouseRotationRequested,
+        completion: super::mouse_products::MouseRotationCompletion,
+        cx: &mut Context<Self>,
+    ) -> Option<String> {
+        if let FamilyBody::Mouse(body) = &self.body {
+            body.update(cx, |body, cx| {
+                body.complete_mouse_rotation(request, completion, cx)
+            })
+        } else {
+            None
+        }
+    }
     pub fn mouse_dynamic_request_is_current(
         &self,
         request: &super::mouse_products::MouseDynamicRequested,
@@ -935,6 +976,7 @@ impl SourceProductWorkspace {
                 body.update(cx, |body, cx| {
                     body.invalidate_mouse_polling_connection();
                     body.invalidate_current_power_connection();
+                    body.invalidate_mouse_rotation();
                     body.cancel_calibration_requests();
                     body.observe_dynamic_connection(observation.is_some(), cx);
                 });
@@ -985,6 +1027,7 @@ impl SourceProductWorkspace {
         self.help
             .update(cx, |help, cx| help.set_device(&device, cx));
         self.sync_keyboard_read_activity(cx);
+        self.sync_mouse_mapping_activity(cx);
         self.sync_audio_volume_activity(cx);
         self.sync_audio_mixer_activity(cx);
         self.sync_seiren_audio_activity(cx);
@@ -1149,10 +1192,15 @@ impl SourceProductWorkspace {
             body.update(cx, |body, cx| {
                 body.set_volume_active(active, cx);
                 body.set_leviathan_active(active, cx);
-                let surround_active = self.active && !self.exiting && matches!(
-                    self.device.dashboard.connection_observation,
-                    Some(razer_model::model::DeviceConnectionObservation::UsbPresent | razer_model::model::DeviceConnectionObservation::HidPresent)
-                );
+                let surround_active = self.active
+                    && !self.exiting
+                    && matches!(
+                        self.device.dashboard.connection_observation,
+                        Some(
+                            razer_model::model::DeviceConnectionObservation::UsbPresent
+                                | razer_model::model::DeviceConnectionObservation::HidPresent
+                        )
+                    );
                 body.set_surround_active(surround_active, &self.device.device_container_id, cx);
             });
         }
@@ -1225,8 +1273,49 @@ impl SourceProductWorkspace {
             _ => None,
         }
     }
+    fn sync_mouse_mapping_activity(&self, cx: &mut Context<Self>) {
+        use razer_model::model::DeviceConnectionObservation;
+        if self.device.product_id != 158 || self.exiting {
+            return;
+        }
+        let FamilyBody::Mouse(body) = &self.body else {
+            return;
+        };
+        let connected = self.device.real_product_id == 158
+            && matches!(self.device.dashboard.connection_observation,
+                Some(DeviceConnectionObservation::UsbPresent | DeviceConnectionObservation::HidPresent));
+        let container = connected.then(|| self.device.device_container_id.clone());
+        let document = self.saved.source_device_settings.as_ref()
+            .and_then(|settings| settings.get(razer_device::mouse_receiver_mapping::STORAGE_FIELD))
+            .cloned();
+        body.update(cx, |body, cx| {
+            body.set_receiver_mapping_connection(container.clone());
+            if let (Some(container), Some(document)) = (container, document) {
+                body.publish_receiver_mapping(container, document, cx);
+            }
+        });
+    }
+
     fn sync_keyboard_read_activity(&self, cx: &mut Context<Self>) {
         if let FamilyBody::Keyboard(body) = &self.body {
+            let observation_target = (!self.exiting
+                && matches!(
+                    self.device.dashboard.connection_observation,
+                    Some(
+                        razer_model::model::DeviceConnectionObservation::UsbPresent
+                            | razer_model::model::DeviceConnectionObservation::HidPresent
+                    )
+                ))
+            .then(|| {
+                razer_ipc::mapping_observation::Target::new(
+                    self.device.product_id,
+                    self.device.device_container_id.clone(),
+                )
+            });
+            let observing = self.active
+                && self
+                    .current_page()
+                    .is_some_and(|page| page.kind().key() == "ACTUATION");
             if !self.exiting && matches!(self.device.product_id, 515 | 679 | 740 | 746) {
                 let connected = matches!(
                     self.device.dashboard.connection_observation,
@@ -1254,6 +1343,11 @@ impl SourceProductWorkspace {
                     }
                 });
             }
+            body.update(cx, |body, cx| {
+                body.set_snap_observation_target(observation_target.clone(), observing, cx);
+                body.set_gamepad_observation_target(observation_target.clone(), self.active, cx);
+                body.set_analog_observation_target(observation_target, self.active, cx);
+            });
             let active = self.active
                 && self
                     .current_page()
@@ -1563,9 +1657,16 @@ impl SourceProductWorkspace {
             });
         }
     }
-    pub fn observe_seiren_live(&mut self, observed: razer_device::seiren_mixer::LiveState, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn observe_seiren_live(
+        &mut self,
+        observed: razer_device::seiren_mixer::LiveState,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if let FamilyBody::Audio(body) = &self.body {
-            body.update(cx, |body, cx| body.observe_seiren_live(observed, window, cx));
+            body.update(cx, |body, cx| {
+                body.observe_seiren_live(observed, window, cx)
+            });
         }
     }
     pub fn observe_seiren_native_event(
@@ -2408,6 +2509,11 @@ impl SourceProductWorkspace {
                 return;
             }
         }
+        if apply {
+            if let FamilyBody::Mouse(body) = &self.body {
+                body.update(cx, |body, cx| body.apply_mouse_rotation_profile(cx));
+            }
+        }
         if matches!(self.device.product_id, 164 | 241) {
             if apply {
                 self.request_receiver_profile_selection(cx);
@@ -2420,7 +2526,9 @@ impl SourceProductWorkspace {
             )));
             return;
         }
-        if self.device.product_id == 182 || self.device.product_id == 190 && !apply {
+        if self.device.product_id == 182
+            || matches!(self.device.product_id, 158 | 190) && !apply
+        {
             if let Some(scope) = self.mouse_polling_scope(cx) {
                 cx.emit(WorkspaceEvent::MouseLegacyProfileRequested { scope, apply });
             }
@@ -2841,6 +2949,12 @@ impl SourceProductWorkspace {
                 &body,
                 |_: &mut Self, _, request: &super::mouse_products::MouseDynamicRequested, cx| {
                     cx.emit(WorkspaceEvent::MouseDynamicRequested(request.clone()));
+                },
+            ));
+            subscriptions.push(cx.subscribe(
+                &body,
+                |_: &mut Self, _, request: &super::mouse_products::MouseRotationRequested, cx| {
+                    cx.emit(WorkspaceEvent::MouseRotationRequested(request.clone()));
                 },
             ));
             subscriptions.push(cx.subscribe(
@@ -3981,7 +4095,13 @@ impl SourceProductWorkspace {
         let container = self.device.device_container_id.clone();
         if let FamilyBody::Mouse(body) = &self.body {
             body.update(cx, |body, cx| {
-                body.publish_legacy_mapping(container, document, cx)
+                if self.device.product_id == 158 {
+                    if self.device.real_product_id == 158 {
+                        body.publish_receiver_mapping(container, document, cx);
+                    }
+                } else {
+                    body.publish_legacy_mapping(container, document, cx);
+                }
             });
         } else if let FamilyBody::Keyboard(body) = &self.body {
             body.update(cx, |body, cx| {
@@ -4818,6 +4938,8 @@ impl SourceProductWorkspace {
                 FamilyBody::Keyboard(body) => body.update(cx, |body, cx| {
                     body.source_history_page_bypass(page.kind().key(), window, cx);
                     body.leave_snap_tap(window, cx);
+                    body.leave_analog_observation(cx);
+                    body.leave_gamepad_observation(cx);
                 }),
                 FamilyBody::Gamepad(body) => body.update(cx, |body, cx| {
                     body.cancel_range_edits(cx);
@@ -4988,7 +5110,9 @@ impl Render for SourceProductWorkspace {
             _ => None,
         };
         let surround_tutorial = match &self.body {
-            FamilyBody::Audio(audio) if self.active => audio.update(cx, |audio, cx| audio.surround_tutorial(window, cx)),
+            FamilyBody::Audio(audio) if self.active => {
+                audio.update(cx, |audio, cx| audio.surround_tutorial(window, cx))
+            }
             _ => None,
         };
         let mut body_layout = super::product_surface::BodyLayout::Document;

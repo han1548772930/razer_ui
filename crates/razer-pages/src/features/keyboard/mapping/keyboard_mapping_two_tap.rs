@@ -825,6 +825,7 @@ impl KeyboardProductWorkspace {
             .unwrap()
             .secondary_enabled = enabled;
         self.init_mapping_turbo(1, window, cx);
+        self.sync_analog_observation(cx);
         cx.emit(KeyboardProductChanged);
         cx.notify();
     }
